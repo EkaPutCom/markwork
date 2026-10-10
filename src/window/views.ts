@@ -9,7 +9,7 @@ import type Gtk from 'gi://Gtk?version=4.0';
 import { readTextFile, writeTextFile, flushWrites } from '../files.js';
 import { TEXT_ACTIONS } from '../actions.js';
 import { isBoard, isList } from '../markdown/layout.js';
-import { newInbox, parseInbox, serializeInbox, type Inbox } from '../markdown/inbox.js';
+import { newList } from '../markdown/inbox.js';
 import { countCards, newBoard, parseBoard, serializeBoard, type Board } from '../markdown/kanban.js';
 import type { KanbanBoard } from '../ui/kanban.js';
 import type { InboxView } from '../ui/inbox.js';
@@ -100,7 +100,7 @@ export class ViewController {
             // The view gets its contents before it is shown.
             const text = doc.editor.getText();
             if (view === 'board') host.board.setBoard(parseBoard(text));
-            else host.inbox.setInbox(parseInbox(text));
+            else host.inbox.setBoard(parseBoard(text));
             this.state(doc).boardText = text;
             host.findBar.close();
             host.content.visible_child_name = view;
@@ -113,7 +113,7 @@ export class ViewController {
 
     private showCounts(view: 'board' | 'inbox'): void {
         if (view === 'board') this.showBoardCounts(this.host.board.getBoard());
-        else this.host.statusBar.setInboxCounts(this.host.inbox.getInbox().items.length);
+        else this.host.statusBar.setInboxCounts(countCards(this.host.inbox.getBoard()));
     }
 
     // A new document containing an empty kanban board.
@@ -123,7 +123,7 @@ export class ViewController {
 
     // A new document containing an empty inbox, ready to capture.
     newInbox(): void {
-        this.host.newDocument(serializeInbox(newInbox()));
+        this.host.newDocument(serializeBoard(newList()));
         this.host.inbox.focusCapture();
     }
 
@@ -159,12 +159,12 @@ export class ViewController {
     }
 
     // Changes from the inbox → document text (one undo step).
-    private writeInbox(inbox: Inbox): void {
+    private writeInbox(board: Board): void {
         const doc = this.host.active();
-        const text = serializeInbox(inbox);
+        const text = serializeBoard(board);
         this.state(doc).boardText = text;
         doc.editor.replaceText(text);
-        this.host.statusBar.setInboxCounts(inbox.items.length);
+        this.host.statusBar.setInboxCounts(countCards(board));
     }
 
     // Changes from the board → document text (one undo step).
@@ -184,7 +184,7 @@ export class ViewController {
         try {
             if (!doc) flushWrites(file);
             const text = doc ? doc.editor.getText() : readTextFile(file);
-            if (!isBoard(text)) return 'the board file is no longer a board (its frontmatter has no "layout: board")';
+            if (!isBoard(text) && !isList(text)) return 'the board file is no longer a board (its frontmatter has no "layout: board")';
             const board = parseBoard(text);
             const next = edit(board);
             if (next === board) return null;
@@ -226,7 +226,7 @@ export class ViewController {
         }
         state.boardText = text;
         if (this.boardMode) this.host.board.setBoard(parseBoard(text));
-        else this.host.inbox.setInbox(parseInbox(text));
+        else this.host.inbox.setBoard(parseBoard(text));
         this.showCounts(this.boardMode ? 'board' : 'inbox');
     }
 }

@@ -5,7 +5,6 @@
 
 import { cardMeta, dueStatus, parseBoard, type Board, type Card, type DueStatus, type Position } from './kanban.js';
 import { isBoard, isList } from './layout.js';
-import { parseInbox } from './inbox.js';
 
 export interface HomeFile {
     name: string;    // relative to the work folder
@@ -31,12 +30,12 @@ const DAY = 24 * 60 * 60 * 1000;
 const daysBetween = (from: string, to: string): number =>
     Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY);
 
-// Unfinished cards whose due date is overdue, today, or within the next two days, ordered by due date.
+// Unfinished cards (of a board or a list) whose due date is overdue, today, or within the next two days, ordered by due date.
 // projectOf determines the card's project name (see cardProject in agent/harness.ts); this layer does not know about it.
 export function dueTasks(files: HomeFile[], today: string, projectOf: (board: Board, card: Card) => string | null = () => null): Task[] {
     const tasks: Task[] = [];
     for (const file of files) {
-        if (!isBoard(file.text)) continue;
+        if (!isBoard(file.text) && !isList(file.text)) continue;
         const board = parseBoard(file.text);
         board.columns.forEach((column, c) => {
             if (DONE_COLUMN.test(column.title.trim())) return;
@@ -65,7 +64,7 @@ export interface InboxCount {
 export function openInboxes(files: HomeFile[]): InboxCount[] {
     return files
         .filter(f => isList(f.text))
-        .map(f => ({ file: f.name, open: parseInbox(f.text).items.filter(i => i.done !== true).length }))
+        .map(f => ({ file: f.name, open: parseBoard(f.text).columns.flatMap(c => c.cards).filter(card => card.done !== true).length }))
         .filter(i => i.open > 0)
         .sort((a, b) => b.open - a.open || a.file.localeCompare(b.file));
 }

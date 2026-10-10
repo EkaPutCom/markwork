@@ -199,8 +199,9 @@ export class KanbanBoard {
         box.add_css_class('kanban-column');
 
         // Title: double click to rename.
-        const title = new Gtk.Label({ label: column.title, xalign: 0, ellipsize: Pango.EllipsizeMode.END, hexpand: true });
+        const title = new Gtk.Label({ label: column.title || _('No list'), xalign: 0, ellipsize: Pango.EllipsizeMode.END, hexpand: true });
         title.add_css_class('kanban-column-title');
+        if (column.title === '') title.add_css_class('dim-label');
         const titleBox = new Gtk.Box();
         titleBox.append(title);
         titleBox.set_tooltip_text(_('Double-click to rename'));
@@ -487,7 +488,7 @@ export class KanbanBoard {
         const col = this.board.columns[column];
         if (!col) return;
         const detail = col.cards.length ? fmt(_('The {count} cards in it will also be deleted.'), { count: col.cards.length }) : undefined;
-        void after(this.dialogs.confirm(this.parent, fmt(_('Delete the list “{title}”?'), { title: col.title }), detail), yes => {
+        void after(this.dialogs.confirm(this.parent, fmt(_('Delete the list “{title}”?'), { title: col.title || _('No list') }), detail), yes => {
             if (yes && this.board.columns[column]?.title === col.title) this.commit(deleteColumn(this.board, column));
         });
     }
@@ -500,7 +501,7 @@ export class KanbanBoard {
         const at = { column, index };
         const move = this.board.columns
             .map((target, t): MenuEntry | null => t === column ? null
-                : { label: target.title, run: () => this.commit(moveCard(this.board, at, { column: t, index: Infinity })) })
+                : { label: target.title || _('No list'), run: () => this.commit(moveCard(this.board, at, { column: t, index: Infinity })) })
             .filter((e): e is MenuEntry => e !== null);
         return [
             { label: _('Edit…'), run: () => this.editCard(column, index) },
@@ -515,10 +516,13 @@ export class KanbanBoard {
     }
 
     columnMenu(column: number): MenuEntry[] {
+        // The group without a name stays first: it cannot be moved, and nothing is moved before it.
+        const first = this.board.columns[0]?.title === '' ? 1 : 0;
+        const movable = this.board.columns[column]?.title !== '';
         return [
             { label: _('Rename…'), run: () => this.renameColumnPrompt(column) },
-            { label: _('Move Left'), enabled: column > 0, run: () => this.commit(moveColumn(this.board, column, column - 1)) },
-            { label: _('Move Right'), enabled: column < this.board.columns.length - 1, run: () => this.commit(moveColumn(this.board, column, column + 1)) },
+            { label: _('Move Left'), enabled: movable && column > first, run: () => this.commit(moveColumn(this.board, column, column - 1)) },
+            { label: _('Move Right'), enabled: movable && column < this.board.columns.length - 1, run: () => this.commit(moveColumn(this.board, column, column + 1)) },
             separator(),
             { label: _('Delete List…'), run: () => this.deleteColumnConfirm(column) },
         ];

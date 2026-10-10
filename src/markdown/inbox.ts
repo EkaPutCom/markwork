@@ -1,5 +1,6 @@
-// A list of notes in a Markdown file (an inbox, a reading list, …). Frontmatter marks the document
-// as a list (see layout.ts):
+// The notes of a `layout: list` document (an inbox, a reading list, …). The model is the same as a board's
+// (kanban.ts): the notes before the first `##` heading are one unnamed group and every heading starts another, so a
+// document can be shown as a board or as a list without being converted. Frontmatter marks the document (layout.ts):
 //
 //   ---
 //   layout: list
@@ -13,99 +14,45 @@
 //     item note (indented)           ← an indented line = item note
 //   - [x] Workbench name idea #nyerat [created:: 2026-10-07 09:10]
 //
-// One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without
-// a time are still valid. Pure TypeScript without GTK; all operations return a new inbox.
+// One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without a time are
+// still valid. Pure TypeScript without GTK; all operations return a new board.
 
-import { addOption, applyDefaults, fieldChips, findSegments, missingFields, parseSchema, readItem, setField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
-import { parseColumn, trimBlankEnds, type Card } from './kanban.js';
+import { applyDefaults, fieldChips, findSegments, missingFields, readItem, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { boardSchema, type Board, type Card, type Column } from './kanban.js';
 
 export const CREATED_FIELD: FieldDef = { key: 'created', type: 'date', multiple: false, options: [] };
 
-export type InboxItem = Card;
-
-export interface Inbox {
-    head: string[];        // frontmatter, title, and description: all lines before the first item
-    items: InboxItem[];    // from the top; new items are inserted at the top
-    outro: string[];       // plain lines after the last item, kept as is
-}
-
 export const DEFAULT_HEAD = ['---', 'layout: list', 'fields:', '  created: date = now', '---'];
 
-const ITEM = /^[-*+]\s/;
-
-export function parseInbox(text: string): Inbox {
-    const lines = text.replace(/\r\n?/g, '\n').split('\n');
-    // List bullets inside the frontmatter (e.g. "tags:\n- a") are not items.
-    let from = 0;
-    if (lines[0]?.trim() === '---') {
-        const close = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
-        from = close < 0 ? lines.length : close + 1;
-    }
-    const first = lines.findIndex((l, i) => i >= from && ITEM.test(l));
-    if (first < 0) return { head: trimBlankEnds(lines), items: [], outro: [] };
-    const column = parseColumn('', lines.slice(first));
-    return { head: trimBlankEnds(lines.slice(0, first)), items: column.cards, outro: column.outro };
-}
-
-export function serializeInbox(inbox: Inbox): string {
-    const out: string[] = [...(inbox.head.length ? inbox.head : DEFAULT_HEAD), ''];
-    for (const item of inbox.items) {
-        const box = item.done === null ? '' : item.done ? '[x] ' : '[ ] ';
-        out.push(`- ${box}${item.text}`, ...item.notes.map(n => (n ? `  ${n}` : '')));
-    }
-    if (inbox.items.length) out.push('');
-    if (inbox.outro.length) out.push(...inbox.outro, '');
-    return `${trimBlankEnds(out).join('\n')}\n`;
-}
-
-export function newInbox(title = 'Inbox'): Inbox {
-    return { head: [...DEFAULT_HEAD, '', `# ${title}`], items: [], outro: [] };
+// An empty list: the frontmatter and a title, no notes.
+export function newList(title = 'Inbox'): Board {
+    return { head: [...DEFAULT_HEAD, '', `# ${title}`], columns: [], footer: [] };
 }
 
 // ---------- Operations ----------
 
-// New item at the very top, with the default of every field of the inbox that the text does not set itself
-// (the capture time, for an inbox that declares `created: date = now`).
-export function captureItem(inbox: Inbox, text: string, now: Date, notes: string[] = []): Inbox {
+const emptyGroup = (): Column => ({ title: '', intro: [], cards: [], outro: [] });
+
+// New item at the very top of the first group (a group without a name is made if there is none), with the default of
+// every field of the document that the text does not set itself (the capture time, for a list that declares
+// `created: date = now`).
+export function captureItem(board: Board, text: string, now: Date, notes: string[] = []): Board {
     const body = text.trim();
-    if (!body) return inbox;
-    return { ...inbox, items: [{ done: null, text: applyDefaults(body, inboxSchema(inbox), now), notes }, ...inbox.items] };
+    if (!body) return board;
+    const item: Card = { done: null, text: applyDefaults(body, boardSchema(board), now), notes };
+    const columns = board.columns.length ? board.columns : [emptyGroup()];
+    return { ...board, columns: columns.map((c, i) => (i === 0 ? { ...c, cards: [item, ...c.cards] } : c)) };
 }
-
-export function updateItem(inbox: Inbox, index: number, patch: Partial<InboxItem>): Inbox {
-    return { ...inbox, items: inbox.items.map((item, i) => (i === index ? { ...item, ...patch } : item)) };
-}
-
-export const deleteItem = (inbox: Inbox, index: number): Inbox =>
-    ({ ...inbox, items: inbox.items.filter((_, i) => i !== index) });
 
 // ---------- Fields ----------
-
-// The fields the inbox declares in its frontmatter `fields:` block.
-export const inboxSchema = (inbox: Inbox): FieldDef[] => parseSchema(inbox.head.join('\n')).fields;
 
 // The chips for a note's fields; the capture time is shown as its age instead.
 export const itemFields = (text: string, schema: FieldDef[]): FieldChip[] =>
     fieldChips(readItem(text, schema), schema, [CREATED_FIELD.key]);
 
-// The fields a note has no value for yet. The capture time is set by capturing, not by hand.
+// The fields a note has no value for yet. The capture time is set by capturing, and an agent has its own menu.
 export const itemMissingFields = (text: string, schema: FieldDef[]): FieldDef[] =>
-    missingFields(readItem(text, schema), schema, [CREATED_FIELD.key]);
-
-// The note at `index` with its field `def` set from `raw` (empty removes it; a value that does not fit changes nothing).
-export function setItemField(inbox: Inbox, index: number, def: FieldDef, raw: string): Inbox {
-    const item = inbox.items[index];
-    if (!item) return inbox;
-    const text = setField(item.text, def, raw);
-    return text === item.text ? inbox : updateItem(inbox, index, { text });
-}
-
-// The inbox with `option` added to the select field `key` in its frontmatter; unchanged if it cannot be added.
-export function withInboxOption(inbox: Inbox, key: string, option: string): Inbox {
-    const head = inbox.head.join('\n');
-    const next = addOption(head, key, option);
-    return next === head ? inbox : { ...inbox, head: next.split('\n') };
-}
+    missingFields(readItem(text, schema), schema, [CREATED_FIELD.key, 'agent']);
 
 // ---------- Item content ----------
 

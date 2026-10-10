@@ -15,7 +15,7 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import { copyEntry, createFile, createFolder, moveEntry, renameEntry, trashEntry } from '../fileops.js';
-import { newInbox, serializeInbox } from '../markdown/inbox.js';
+import { newList } from '../markdown/inbox.js';
 import { newBoard, serializeBoard } from '../markdown/kanban.js';
 import { confirmDialog, promptDialog, showError } from './dialogs.js';
 import { after, onClick, pack, type Awaitable } from '../gtkutil.js';
@@ -385,7 +385,7 @@ export class FileTree {
         let path: string;
         try {
             path = kind === 'folder' ? createFolder(dir, name)
-                : createFile(dir, name, kind === 'board' ? serializeBoard(newBoard()) : kind === 'inbox' ? serializeInbox(newInbox()) : '');
+                : createFile(dir, name, kind === 'board' ? serializeBoard(newBoard()) : kind === 'inbox' ? serializeBoard(newList()) : '');
         } catch (e) {
             this.dialogs.error((e as Error).message);
             return null;

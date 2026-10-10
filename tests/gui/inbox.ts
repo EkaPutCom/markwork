@@ -2,7 +2,7 @@
 
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
-import { parseInbox } from '../../src/markdown/inbox.js';
+import { parseBoard } from '../../src/markdown/kanban.js';
 import { isList } from '../../src/markdown/layout.js';
 import { descendants, widgetPixbuf } from '../widgets.js';
 import { section, test, eq, ok, tmp, optVal } from '../framework.js';
@@ -51,7 +51,7 @@ export function inboxTests(c: GuiContext): void {
         entry().emit('activate');
         settle();
         eq(rows().length, 4, 'rows');
-        const items = parseInbox(text()).items;
+        const items = parseBoard(text()).columns.flatMap(c => c.cards);
         ok(/^Interesting link #read \[created:: \d{4}-\d{2}-\d{2} \d{2}:\d{2}\]$/.test(items[0].text), items[0].text);
         eq(entry().text, '', 'the entry was cleared');
         ok(w.statusBar.right.label.includes('4 notes'), 'the status was updated');
@@ -79,16 +79,16 @@ export function inboxTests(c: GuiContext): void {
         w.inbox.showAddNote();
         settle();
         eq(calls, ['New Note']);
-        const items = parseInbox(text()).items;
+        const items = parseBoard(text()).columns.flatMap(c => c.cards);
         ok(items[0].text.startsWith('From dialog #d [created:: '), items[0].text);
         eq(items[0].notes, ['content']);
         rows()[1].emit('activate');
         settle();
         eq(calls[1], 'edit');
-        eq(parseInbox(text()).items[1].text, 'SQLite idea #idea [created:: 2026-10-07 14:22] #new');
+        eq(parseBoard(text()).columns.flatMap(c => c.cards)[1].text, 'SQLite idea #idea [created:: 2026-10-07 14:22] #new');
         w.inbox.dialogs = { editNote: () => null };
         const before = text();
-        w.inbox.editItem(0);
+        w.inbox.editItem({ column: 0, index: 0 });
         settle();
         eq(text(), before, 'cancelling changes nothing');
     });
@@ -130,19 +130,19 @@ export function inboxTests(c: GuiContext): void {
         eq(chips(0).map(l => l.label), ['ide']);
         ok(chips(0)[0].has_css_class('inbox-field-0'), 'a select option takes the color of its position');
         eq(chips(1).map(l => [l.label, l.has_css_class('inbox-field-invalid')]), [['tipe: urgent', true]]);
-        eq(w.inbox.getInbox().items[1].text, 'Dua [tipe:: urgent]');
+        eq(w.inbox.getBoard().columns[0].cards[1].text, 'Dua [tipe:: urgent]');
         eq(text(), FIELD_INBOX, 'opening the inbox did not change the text');
     });
 
     test('a chip popover changes the value; a new option is added only after confirmation, and is one undo step', () => {
         open(FIELD_INBOX);
-        let pop = w.inbox.editField(0, 'tipe')!;
+        let pop = w.inbox.editField({ column: 0, index: 0 }, 'tipe')!;
         settle();
         eq(popButtons(pop).filter(b => b.get_visible()).map(b => b.label), ['✓ ide', 'bacaan', 'Clear']);
         popButton(pop, 'bacaan').emit('clicked'); settle();
-        eq(w.inbox.getInbox().items[0].text, 'Satu [tipe:: bacaan] [created:: 2026-10-07 14:22]');
+        eq(w.inbox.getBoard().columns[0].cards[0].text, 'Satu [tipe:: bacaan] [created:: 2026-10-07 14:22]');
         open(FIELD_INBOX);
-        pop = w.inbox.editField(1, 'tipe')!; settle();
+        pop = w.inbox.editField({ column: 0, index: 1 }, 'tipe')!; settle();
         const entry = descendants(pop).find((x): x is Gtk.Entry => x instanceof Gtk.Entry)!;
         entry.set_text('video'); settle();
         eq(text(), FIELD_INBOX, 'nothing is written before the confirmation');
@@ -150,7 +150,7 @@ export function inboxTests(c: GuiContext): void {
         ok(text().includes('tipe: select(ide, bacaan, video)') && text().includes('Dua [tipe:: video]'), text());
         c.action('undo'); settle();
         eq(text(), FIELD_INBOX, 'one undo reverts the option and the value');
-        eq(w.inbox.editField(0, 'nope'), null, 'a key that is not declared has no popover');
+        eq(w.inbox.editField({ column: 0, index: 0 }, 'nope'), null, 'a key that is not declared has no popover');
     });
 
     test('the + button offers the fields a note has no value for; the capture time is not one of them', () => {
@@ -158,8 +158,8 @@ export function inboxTests(c: GuiContext): void {
         const add = (row: number) => descendants(rows()[row]).find((x): x is Gtk.Button => x instanceof Gtk.Button && x.has_css_class('inbox-add-field'));
         ok(add(0) && add(1), 'notes with a field to fill have the button');
         ok(!add(2), 'a note with every field filled has none');
-        eq(w.inbox.addFieldMenu(2), null);
-        const menu = w.inbox.addFieldMenu(0)!; settle();
+        eq(w.inbox.addFieldMenu({ column: 0, index: 2 }), null);
+        const menu = w.inbox.addFieldMenu({ column: 0, index: 0 })!; settle();
         eq(popButtons(menu).filter(b => b.get_visible()).map(b => b.label), ['progres']);
         popButton(menu, 'progres').emit('clicked'); settle(); settle();
         const pop = descendants(w.inbox.widget).find((x): x is Gtk.Popover => x instanceof Gtk.Popover && x.get_mapped());
@@ -168,7 +168,22 @@ export function inboxTests(c: GuiContext): void {
         entry.set_text('nope'); entry.emit('activate'); settle();
         ok(entry.has_css_class('error'), 'a value that does not fit is refused');
         entry.set_text('2/4'); entry.emit('activate'); settle();
-        eq(w.inbox.getInbox().items[0].text, 'Satu [tipe:: ide] [created:: 2026-10-07 14:22] [progres:: 2/4]');
+        eq(w.inbox.getBoard().columns[0].cards[0].text, 'Satu [tipe:: ide] [created:: 2026-10-07 14:22] [progres:: 2/4]');
+        open();
+    });
+
+    test('a list with headings shows them as sections; the same file with layout: board shows them as columns, without a conversion', () => {
+        const TEXT = '---\nlayout: list\n---\n\n# Reading\n\n- loose\n\n## Now\n\n- one\n- two\n\n## Later\n\n- three\n';
+        open(TEXT);
+        ok(w.inboxMode, 'shown as a list');
+        const sections = descendants(w.inbox.widget).filter((x): x is Gtk.ListBoxRow => x instanceof Gtk.ListBoxRow && x.has_css_class('inbox-section'));
+        eq(sections.length, 2, 'a section title for each heading');
+        eq(labels().filter(l => ['Now', 'Later'].includes(l)), ['Now', 'Later']);
+        eq(rows().length, 6, 'two section titles and four notes');
+        open(TEXT.replace('layout: list', 'layout: board'));
+        ok(w.boardMode && !w.inboxMode, 'shown as a board');
+        eq(w.board.getBoard().columns.map(c => [c.title, c.cards.length]), [['', 1], ['Now', 2], ['Later', 1]], 'the notes before the first heading are the first column');
+        eq(text(), TEXT.replace('layout: list', 'layout: board'), 'the text was not rewritten by being opened');
         open();
     });
 }

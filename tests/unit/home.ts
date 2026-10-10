@@ -48,6 +48,11 @@ export function homeModelTests(): void {
         eq(openInboxes([{ name: 'inbox.md', text: INBOX }, { name: 'empty.md', text: '---\nlayout: list\n---\n\n- [x] a\n' }, { name: 'board.md', text: BOARD }]),
             [{ file: 'inbox.md', open: 2 }]);
     });
+    test('a list counts too: its due notes show up in dueTasks, and notes under headings count as open', () => {
+        const list = '---\nlayout: list\n---\n\n- loose [due:: 2026-10-07]\n\n## Later\n\n- [ ] one\n- [x] done\n';
+        eq(dueTasks([{ name: 'list.md', text: list }], '2026-10-07').map(t => [t.title, t.at]), [['loose', { column: 0, index: 0 }]]);
+        eq(openInboxes([{ name: 'list.md', text: list }]), [{ file: 'list.md', open: 2 }]);
+    });
     test('rememberRecent: at the front, without duplicates, limited', () => {
         let list: RecentFile[] = [];
         list = rememberRecent(list, '/a.md', 1);

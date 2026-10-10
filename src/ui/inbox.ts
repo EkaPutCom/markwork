@@ -1,4 +1,5 @@
-// The inbox view for inbox documents (markdown/inbox.ts).
+// The view of `layout: list` documents (markdown/inbox.ts): an inbox, a reading list, any list of notes. It shows the
+// same model as a board (markdown/kanban.ts), with a `##` heading as a section title instead of a column.
 //
 //   Inbox                                        [+ New Note]
 //   A place to capture ideas, notes, and things to process later.
@@ -16,7 +17,8 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
-import { ageOf, captureItem, deleteItem, inboxSchema, itemFields, itemMeta, itemMissingFields, newInbox, setItemField, updateItem, withInboxOption, type Age, type Inbox } from '../markdown/inbox.js';
+import { ageOf, captureItem, itemFields, itemMeta, itemMissingFields, newList, type Age } from '../markdown/inbox.js';
+import { boardSchema, deleteCard, setCardField, updateCard, withFieldOption, type Board, type Position } from '../markdown/kanban.js';
 import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
@@ -46,13 +48,14 @@ export interface InboxDialogs {
 
 export class InboxView {
     readonly widget: Gtk.ScrolledWindow;
-    onChange: (inbox: Inbox) => void = () => {};
+    onChange: (board: Board) => void = () => {};
     dialogs: InboxDialogs = { editNote: editNoteDialog };
     now: () => Date = () => new Date();
     onOpenNote: (link: WikiLink) => void = () => {};
     listNotes: (() => string[]) | null = null;
 
-    private inbox: Inbox = newInbox();
+    private board: Board = newList();
+    private positions: (Position | null)[] = [];   // what each row of the list is: a note, or null for a section title
     private colors: MarkupColors = { code: '#c7254e', codeBg: '#f3f4f4', link: '#1c71d8', mark: '#fff3a3' };
     private readonly page: Gtk.Box;
     private readonly entry: Gtk.Entry;
@@ -86,7 +89,10 @@ export class InboxView {
 
         this.list = new Gtk.ListBox({ selection_mode: Gtk.SelectionMode.NONE });
         this.list.add_css_class('inbox-list');
-        this.list.connect('row-activated', (_l, row: Gtk.ListBoxRow) => this.editItem(row.get_index()));
+        this.list.connect('row-activated', (_l, row: Gtk.ListBoxRow) => {
+            const at = this.positions[row.get_index()];
+            if (at) this.editItem(at);
+        });
         this.empty = new Adw.StatusPage({ icon_name: 'mail-inbox-symbolic', title: _('The inbox is empty'), description: _('Write something above to capture it.') });
         this.empty.add_css_class('compact');
 
@@ -104,31 +110,31 @@ export class InboxView {
 
     // ---------- Model ----------
 
-    getInbox(): Inbox {
-        return this.inbox;
+    getBoard(): Board {
+        return this.board;
     }
 
     // The fields of this inbox (the built-in ones plus the frontmatter `fields:` block), read again only when the head changes.
     private schemaKey = '';
     private schemaCache: FieldDef[] = [];
     schema(): FieldDef[] {
-        const key = this.inbox.head.join('\n');
+        const key = this.board.head.join('\n');
         if (key !== this.schemaKey) {
             this.schemaKey = key;
-            this.schemaCache = inboxSchema(this.inbox);
+            this.schemaCache = boardSchema(this.board);
         }
         return this.schemaCache;
     }
 
     // Replace the contents (document opened or undo) without calling onChange.
-    setInbox(inbox: Inbox): void {
-        this.inbox = inbox;
+    setBoard(board: Board): void {
+        this.board = board;
         this.render();
     }
 
-    commit(next: Inbox): void {
-        if (next === this.inbox) return;
-        this.inbox = next;
+    commit(next: Board): void {
+        if (next === this.board) return;
+        this.board = next;
         this.queueRender();
         this.onChange(next);
     }
@@ -162,14 +168,35 @@ export class InboxView {
         this.description.set_label(description);
         this.description.set_visible(!!description);
         removeChildren(this.list);
-        this.inbox.items.forEach((_item, i) => this.list.append(this.buildRow(i)));
-        this.list.set_visible(this.inbox.items.length > 0);
-        this.empty.set_visible(this.inbox.items.length === 0);
+        this.positions = [];
+        let count = 0;
+        this.board.columns.forEach((column, c) => {
+            if (column.title !== '') {
+                this.list.append(this.buildSection(column.title));
+                this.positions.push(null);
+            }
+            column.cards.forEach((_card, i) => {
+                this.list.append(this.buildRow({ column: c, index: i }));
+                this.positions.push({ column: c, index: i });
+                count++;
+            });
+        });
+        this.list.set_visible(this.positions.length > 0);
+        this.empty.set_visible(count === 0 && this.positions.length === 0);
+    }
+
+    // A group with a title is shown as a section title above its notes.
+    private buildSection(title: string): Gtk.ListBoxRow {
+        const label = new Gtk.Label({ label: title, xalign: 0, margin_top: 8, margin_bottom: 4, margin_start: 14 });
+        label.add_css_class('heading');
+        const row = new Gtk.ListBoxRow({ child: label, activatable: false, selectable: false });
+        row.add_css_class('inbox-section');
+        return row;
     }
 
     // The title and description are taken from the head part after the frontmatter.
     private heading(): { title: string; description: string } {
-        const lines = [...this.inbox.head];
+        const lines = [...this.board.head];
         if (lines[0]?.trim() === '---') {
             const close = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
             lines.splice(0, close < 0 ? lines.length : close + 1);
@@ -184,8 +211,8 @@ export class InboxView {
         return ageLabel(captured, this.now());
     }
 
-    private buildRow(i: number): Gtk.ListBoxRow {
-        const item = this.inbox.items[i];
+    private buildRow(at: Position): Gtk.ListBoxRow {
+        const item = this.board.columns[at.column].cards[at.index];
         const meta = itemMeta(item.text);
 
         const title = new Gtk.Label({ use_markup: true, xalign: 0, wrap: true, wrap_mode: Pango.WrapMode.WORD_CHAR, hexpand: true, width_chars: 10 });
@@ -205,18 +232,18 @@ export class InboxView {
 
         const box = new Gtk.Box({ spacing: 8, margin_top: 10, margin_bottom: 10, margin_start: 14, margin_end: 8 });
         box.append(text);
-        for (const f of itemFields(item.text, this.schema())) box.append(this.fieldChip(i, f));
+        for (const f of itemFields(item.text, this.schema())) box.append(this.fieldChip(at, f));
         for (const tag of meta.tags) {
             const chip = new Gtk.Label({ label: `#${tag}`, valign: Gtk.Align.CENTER });
             chip.add_css_class('inbox-tag');
             box.append(chip);
         }
-        if (itemMissingFields(item.text, this.schema()).length) box.append(this.addFieldButton(i));
+        if (itemMissingFields(item.text, this.schema()).length) box.append(this.addFieldButton(at));
         const remove = new Gtk.Button({ icon_name: 'window-close-symbolic', valign: Gtk.Align.CENTER, tooltip_text: _('Delete note') });
         remove.add_css_class('flat');
         remove.add_css_class('circular');
         remove.update_property([Gtk.AccessibleProperty.LABEL], [fmt(_('Delete note: {title}'), { title: meta.title })]);
-        remove.connect('clicked', () => this.commit(deleteItem(this.inbox, i)));
+        remove.connect('clicked', () => this.commit(deleteCard(this.board, at)));
         box.append(remove);
 
         const row = new Gtk.ListBoxRow({ child: box, activatable: true });
@@ -224,7 +251,7 @@ export class InboxView {
     }
 
     // A declared field as a chip: a select option takes the color of its position, a value that does not fit is marked.
-    private fieldChip(index: number, f: FieldChip): Gtk.Label {
+    private fieldChip(at: Position, f: FieldChip): Gtk.Label {
         const chip = new Gtk.Label({ label: f.text, valign: Gtk.Align.CENTER });
         chip.add_css_class('inbox-field');
         if (f.invalid) {
@@ -233,48 +260,53 @@ export class InboxView {
         } else if (f.option !== null) {
             chip.add_css_class(`inbox-field-${f.option % 8}`);
         }
-        if (f.type !== null) onChipClick(chip, () => this.editField(index, f.key, chip));
+        if (f.type !== null) onChipClick(chip, () => this.editField(at, f.key, chip));
         return chip;
     }
 
     // A small button on the row, shown while the pointer is over it, to give a field that has no value yet one.
-    private addFieldButton(index: number): Gtk.Button {
+    private addFieldButton(at: Position): Gtk.Button {
         const button = new Gtk.Button({ icon_name: 'list-add-symbolic', valign: Gtk.Align.CENTER, tooltip_text: _('Add a field') });
         button.add_css_class('flat');
         button.add_css_class('circular');
         button.add_css_class('inbox-add-field');
-        button.connect('clicked', () => this.addFieldMenu(index, button));
+        button.connect('clicked', () => this.addFieldMenu(at, button));
         return button;
     }
 
+    private cardAt(at: Position) {
+        return this.board.columns[at.column]?.cards[at.index];
+    }
+
     // The widget a chip or button is clicked on: the given one, or the content of the note's row.
-    private sourceFor(index: number, source?: Gtk.Widget): Gtk.Widget | null {
-        return source ?? this.list.get_row_at_index(index)?.get_child() ?? null;
+    private sourceFor(at: Position, source?: Gtk.Widget): Gtk.Widget | null {
+        const row = this.positions.findIndex(p => p?.column === at.column && p.index === at.index);
+        return source ?? this.list.get_row_at_index(row)?.get_child() ?? null;
     }
 
     // The fields this note has no value for; choosing one opens its popover.
-    addFieldMenu(index: number, source?: Gtk.Widget): Gtk.Popover | null {
-        const item = this.inbox.items[index];
-        const from = this.sourceFor(index, source);
+    addFieldMenu(at: Position, source?: Gtk.Widget): Gtk.Popover | null {
+        const item = this.cardAt(at);
+        const from = this.sourceFor(at, source);
         const missing = item ? itemMissingFields(item.text, this.schema()) : [];
         if (!item || !from || !missing.length) return null;
-        return this.popovers.menu(from, missing, def => this.editField(index, def.key, source));
+        return this.popovers.menu(from, missing, def => this.editField(at, def.key, source));
     }
 
     // Change one field of a note in place from a popover that points at `source`. A new select option and the value
     // that uses it are written together, so they are one undo step.
-    editField(index: number, key: string, source?: Gtk.Widget): Gtk.Popover | null {
-        const item = this.inbox.items[index];
+    editField(at: Position, key: string, source?: Gtk.Widget): Gtk.Popover | null {
+        const item = this.cardAt(at);
         const def = this.schema().find(f => f.key === key);
-        const from = this.sourceFor(index, source);
+        const from = this.sourceFor(at, source);
         if (!item || !def || !from) return null;
         return this.popovers.edit(from, {
             def,
             current: fieldInputText(item.text, def),
             apply: (raw, newOption) => {
-                if (this.inbox.items[index]?.text !== item.text) return;
-                const inbox = newOption ? withInboxOption(this.inbox, key, newOption) : this.inbox;
-                this.commit(setItemField(inbox, index, inboxSchema(inbox).find(f => f.key === key) ?? def, raw));
+                if (this.cardAt(at)?.text !== item.text) return;
+                const board = newOption ? withFieldOption(this.board, key, newOption) : this.board;
+                this.commit(setCardField(board, at, boardSchema(board).find(f => f.key === key) ?? def, raw));
             },
         });
     }
@@ -291,24 +323,24 @@ export class InboxView {
     capture(text: string): void {
         this.entry.set_text('');
         if (!text.trim()) return;
-        this.commit(captureItem(this.inbox, text, this.now()));
+        this.commit(captureItem(this.board, text, this.now()));
         this.entry.grab_focus();
     }
 
     // A new note through the dialog, with tags and notes.
     showAddNote(): void {
         void after(this.dialogs.editNote(this.parent, { text: '', notes: [] }, _('New Note'), this.listNotes ?? undefined, this.schema()), draft => {
-            if (draft?.text) this.commit(captureItem(this.inbox, draft.text, this.now(), draft.notes));
+            if (draft?.text) this.commit(captureItem(this.board, draft.text, this.now(), draft.notes));
         });
     }
 
-    editItem(index: number): void {
-        const item = this.inbox.items[index];
+    editItem(at: Position): void {
+        const item = this.cardAt(at);
         if (!item) return;
         void after(this.dialogs.editNote(this.parent, { text: item.text, notes: item.notes }, undefined, this.listNotes ?? undefined, this.schema()), result => {
-            // The inbox can change while the dialog is open; the same item is found again through its position.
-            if (result?.text && this.inbox.items[index]?.text === item.text)
-                this.commit(updateItem(this.inbox, index, { text: result.text, notes: result.notes }));
+            // The list can change while the dialog is open; the same item is found again through its position.
+            if (result?.text && this.cardAt(at)?.text === item.text)
+                this.commit(updateCard(this.board, at, { text: result.text, notes: result.notes }));
         });
     }
 

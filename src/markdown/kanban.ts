@@ -25,6 +25,7 @@
 // Pure TypeScript without GTK. All operations return a new board; the original board
 // is not changed, so it is easy to test.
 
+import { layoutOf } from './layout.js';
 import { addOption, applyDefaults, fieldChips, fieldInputText, findSegments, missingFields, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 
 export interface Card {
@@ -34,7 +35,7 @@ export interface Card {
 }
 
 export interface Column {
-    title: string;
+    title: string;          // the `##` heading; '' = the unnamed group before the first heading (only ever the first)
     intro: string[];        // plain lines before the first card (e.g. "**Complete**")
     cards: Card[];
     outro: string[];        // plain lines after the last card (e.g. "***")
@@ -94,18 +95,36 @@ export function parseColumn(title: string, lines: string[]): Column {
     return column;
 }
 
+// Index of the first line that starts the content: a `##` heading or a top-level list item, not counting the
+// frontmatter (its own bullets, such as `tags:\n- a`, are not items). -1 if there is none.
+function contentStart(body: string[]): number {
+    let from = 0;
+    if (body[0]?.trim() === '---') {
+        const close = body.findIndex((l, i) => i > 0 && l.trim() === '---');
+        from = close < 0 ? body.length : close + 1;
+    }
+    return body.findIndex((l, i) => i >= from && (COLUMN.test(l) || (CARD.test(l) && !INDENTED.test(l))));
+}
+
+// The content as groups: the items before the first heading are one unnamed group, and every `##` heading starts a
+// group. A `layout: board` shows them as columns and a `layout: list` as sections; the same text serves both.
 export function parseBoard(text: string): Board {
     const lines = text.replace(/\r\n?/g, '\n').split('\n');
     const footerAt = lines.findIndex(l => FOOTER.test(l));
     const body = footerAt >= 0 ? lines.slice(0, footerAt) : lines;
     const footer = footerAt >= 0 ? trimBlankEnds(lines.slice(footerAt)) : [];
 
-    const firstColumn = body.findIndex(l => COLUMN.test(l));
-    const head = trimBlankEnds(firstColumn >= 0 ? body.slice(0, firstColumn) : body);
+    const first = contentStart(body);
+    const head = trimBlankEnds(first >= 0 ? body.slice(0, first) : body);
     const columns: Column[] = [];
-    if (firstColumn >= 0) {
-        let start = firstColumn;
-        for (let i = firstColumn + 1; i <= body.length; i++) {
+    let start = first;
+    if (first >= 0 && !COLUMN.test(body[first])) {
+        const heading = body.findIndex((l, i) => i > first && COLUMN.test(l));
+        start = heading < 0 ? body.length : heading;
+        columns.push(parseColumn('', body.slice(first, start)));
+    }
+    if (start >= 0 && start < body.length) {
+        for (let i = start + 1; i <= body.length; i++) {
             if (i < body.length && !COLUMN.test(body[i])) continue;
             columns.push(parseColumn(COLUMN.exec(body[start])![1], body.slice(start + 1, i)));
             start = i;
@@ -114,12 +133,10 @@ export function parseBoard(text: string): Board {
     return { head, columns, footer };
 }
 
-// ---------- Writing ----------
-
 export function serializeBoard(board: Board): string {
     const out: string[] = [...(board.head.length ? board.head : DEFAULT_HEAD), ''];
     for (const column of board.columns) {
-        out.push(`## ${column.title}`, '');
+        if (column.title !== '') out.push(`## ${column.title}`, '');
         if (column.intro.length) out.push(...column.intro, '');
         for (const card of column.cards) {
             const box = card.done === null ? '' : card.done ? '[x] ' : '[ ] ';
@@ -186,11 +203,14 @@ export function moveCard(board: Board, from: Position, to: Position): Board {
     });
 }
 
+// The lowest index a column can be put at: the unnamed group stays first, so nothing goes before it.
+const firstMovable = (columns: Column[]): number => (columns[0]?.title === '' ? 1 : 0);
+
 export function addColumn(board: Board, title: string, index = Infinity): Board {
     const name = title.trim();
     if (!name) return board;
     const columns = [...board.columns];
-    columns.splice(clamp(index, 0, columns.length), 0, { title: name, intro: [], cards: [], outro: [] });
+    columns.splice(clamp(index, firstMovable(columns), columns.length), 0, { title: name, intro: [], cards: [], outro: [] });
     return { ...board, columns };
 }
 
@@ -204,9 +224,9 @@ export const deleteColumn = (board: Board, column: number): Board =>
 
 export function moveColumn(board: Board, from: number, to: number): Board {
     const column = board.columns[from];
-    if (!column) return board;
+    if (!column || column.title === '') return board;   // the unnamed group stays first
     const columns = board.columns.filter((_, i) => i !== from);
-    columns.splice(clamp(to, 0, columns.length), 0, column);
+    columns.splice(clamp(to, firstMovable(columns), columns.length), 0, column);
     return { ...board, columns };
 }
 
@@ -246,9 +266,12 @@ export interface CardParts {
 
 export const DUE_INPUT = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2})?$/;
 
-// The fields every card understands plus those the board declares in its frontmatter `fields:` block.
+// The fields of a document: what it declares in its frontmatter `fields:` block, and for a board also the two every
+// card understands (due and agent). A list has only the fields it declares.
 export function boardSchema(board: Board): FieldDef[] {
-    const declared = parseSchema(board.head.join('\n')).fields;
+    const head = board.head.join('\n');
+    const declared = parseSchema(head).fields;
+    if (layoutOf(head) === 'list') return declared;
     return [...CARD_SCHEMA, ...declared.filter(f => !CARD_SCHEMA.some(c => c.key === f.key))];
 }
 
