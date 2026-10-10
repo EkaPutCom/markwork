@@ -1,6 +1,6 @@
 // Kanban board model tests.
 
-import { addCard, addColumn, cardMeta, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { addCard, addColumn, cardMeta, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok } from '../framework.js';
 import { BOARD } from '../fixtures.js';
 
@@ -31,7 +31,7 @@ export function kanbanModelTests(): void {
         const b = parseBoard(BOARD);
         eq(titles(b), ['Plan', 'In Progress', 'Done'], 'lists');
         eq(b.head, ['---', 'kanban: true', '---'], 'head');
-        eq(b.columns[0].cards[0], { done: false, text: 'Write report #important @{2026-10-20}', notes: ['note one', '', 'note two'] }, 'card with notes');
+        eq(b.columns[0].cards[0], { done: false, text: 'Write report #important [due:: 2026-10-20]', notes: ['note one', '', 'note two'] }, 'card with notes');
         eq(b.columns[1].intro, ['**Active**'], 'intro');
         eq(b.columns[2].cards.map(c => c.done), [true, null], 'done and a plain item');
         eq(b.columns[2].outro, ['***'], 'outro');
@@ -72,10 +72,10 @@ export function kanbanModelTests(): void {
     test('moveCard: between lists and within the same list', () => {
         const b = parseBoard(BOARD);
         const across = moveCard(b, { column: 0, index: 0 }, { column: 2, index: 1 });
-        eq([cardsOf(across, 0), cardsOf(across, 2)], [['Send invitations'], ['Book venue', 'Write report #important @{2026-10-20}', 'Plain item']], 'between lists');
+        eq([cardsOf(across, 0), cardsOf(across, 2)], [['Send invitations'], ['Book venue', 'Write report #important [due:: 2026-10-20]', 'Plain item']], 'between lists');
         eq(across.columns[2].cards[1].notes, ['note one', '', 'note two'], 'notes move along');
         const down = moveCard(b, { column: 0, index: 0 }, { column: 0, index: 1 });
-        eq(cardsOf(down, 0), ['Send invitations', 'Write report #important @{2026-10-20}'], 'downward: index = final position');
+        eq(cardsOf(down, 0), ['Send invitations', 'Write report #important [due:: 2026-10-20]'], 'downward: index = final position');
         eq(cardsOf(moveCard(down, { column: 0, index: 1 }, { column: 0, index: 0 }), 0), cardsOf(b, 0), 'back up');
         eq(moveCard(b, { column: 0, index: 9 }, { column: 1, index: 0 }), b, 'a card that does not exist');
         eq(cardsOf(moveCard(b, { column: 0, index: 0 }, { column: 1, index: 99 }), 1).length, 2, 'index clamped');
@@ -93,11 +93,15 @@ export function kanbanModelTests(): void {
         eq(titles(b), ['Plan', 'Done', 'New Idea']);
         eq(b.footer, parseBoard(BOARD).footer, 'footer unchanged');
     });
-    test('cardMeta: #tag and @{date} are separated from the title', () => {
-        eq(cardMeta('Write report #important #work/big @{2026-10-20}'), { title: 'Write report', tags: ['important', 'work/big'], due: '2026-10-20', agent: null });
+    test('cardMeta: #tag and [due:: date] are separated from the title', () => {
+        eq(cardMeta('Write report #important #work/big [due:: 2026-10-20]'), { title: 'Write report', tags: ['important', 'work/big'], due: '2026-10-20', agent: null });
         eq(cardMeta('No meta'), { title: 'No meta', tags: [], due: null, agent: null });
         eq(cardMeta('http://x.y/#section').tags, [], 'a # inside a URL is not a tag');
         eq(cardMeta('#only').title, '#only', 'text that is only a tag is still shown');
+    });
+    test('splitCard keeps a due text that is not a date, so editing a card does not lose it', () => {
+        eq(splitCard('Send [due:: besok]').due, 'besok');
+        eq(cardMeta('Send [due:: besok]').due, null, 'it is not a due date');
     });
     test('dueStatus and dropIndex', () => {
         eq(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-09'].map(d => dueStatus(d, '2026-10-03')), ['overdue', 'today', 'soon', 'later']);

@@ -7,15 +7,19 @@
 //
 //   # Inbox                          ← title and description (anything before the first item) are kept
 //
-//   - Read the GNOME HIG article #read ➕ 2026-10-07 14:32
+//   - Read the GNOME HIG article #read [created:: 2026-10-07 14:32]
 //     item note (indented)           ← an indented line = item note
-//   - [x] Workbench name idea #nyerat ➕ 2026-10-07 09:10
+//   - [x] Workbench name idea #nyerat [created:: 2026-10-07 09:10]
 //
-// One item = one list bullet; "➕ date time" is the capture time (same as the "created" marker in
-// the Obsidian Tasks plugin). Items without a time are still valid. Pure TypeScript without
+// One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without
+// a time are still valid. Pure TypeScript without
 // GTK; all operations return a new inbox.
 
-import { cardMeta, parseColumn, trimBlankEnds, type Card } from './kanban.js';
+import { findSegments, readItem, setField, type DateValue, type FieldDef } from './fields.js';
+import { parseColumn, trimBlankEnds, type Card } from './kanban.js';
+
+export const CREATED_FIELD: FieldDef = { key: 'created', type: 'date', multiple: false, options: [] };
+export const INBOX_SCHEMA: FieldDef[] = [CREATED_FIELD];
 
 export type InboxItem = Card;
 
@@ -29,8 +33,6 @@ export const DEFAULT_HEAD = ['---', 'inbox: true', '---'];
 
 const MARKER = /^inbox:\s*["']?(?:true|yes)["']?\s*$/i;
 const ITEM = /^[-*+]\s/;
-// Capture time; the time of day may be absent.
-const CAPTURED = /\s*➕\s*(\d{4}-\d{2}-\d{2})(?:[ T](\d{1,2}:\d{2}))?/;
 
 export function isInbox(text: string): boolean {
     const lines = text.split('\n', 40);
@@ -83,7 +85,7 @@ export const stamp = (date: Date): string =>
 export function captureItem(inbox: Inbox, text: string, now: Date, notes: string[] = []): Inbox {
     const body = text.trim();
     if (!body) return inbox;
-    const full = CAPTURED.test(body) ? body : `${body} ➕ ${stamp(now)}`;
+    const full = findSegments(body).some(s => s.key === CREATED_FIELD.key) ? body : setField(body, CREATED_FIELD, stamp(now));
     return { ...inbox, items: [{ done: null, text: full, notes }, ...inbox.items] };
 }
 
@@ -103,23 +105,23 @@ export interface ItemMeta {
 }
 
 export function itemMeta(text: string): ItemMeta {
-    const m = CAPTURED.exec(text);
-    const meta = cardMeta(text.replace(CAPTURED, ''));
+    const item = readItem(text, INBOX_SCHEMA);
+    const created = item.fields.created;
     let captured: Date | null = null;
-    if (m) {
-        const [y, mo, d] = m[1].split('-').map(Number);
-        const [h, mi] = (m[2] ?? '0:0').split(':').map(Number);
+    if (created?.ok) {
+        const { date, time } = created.value as DateValue;
+        const [y, mo, d] = date.split('-').map(Number);
+        const [h, mi] = (time ?? '0:0').split(':').map(Number);
         captured = new Date(y, mo - 1, d, h, mi);
     }
-    return { title: meta.title, tags: meta.tags, captured };
+    return { title: item.title, tags: item.tags, captured };
 }
 
-// Compose the item text from an edited title and tags; the capture time from `oldText` is kept.
+// Compose the item text from an edited title and tags; every field in `oldText` (the capture time among them) is kept.
 export function composeItem(title: string, tags: string[], oldText = ''): string {
     const tagText = tags.map(t => t.replace(/^#+/, '')).filter(Boolean).map(t => `#${t}`);
-    const old = CAPTURED.exec(oldText);
-    const when = old ? `➕ ${old[1]}${old[2] ? ` ${old[2]}` : ''}` : '';
-    return [title.trim(), ...tagText, when].filter(Boolean).join(' ');
+    const fields = findSegments(oldText).map(s => oldText.slice(s.start, s.end));
+    return [title.trim(), ...tagText, ...fields].filter(Boolean).join(' ');
 }
 
 export type AgeUnit = 'now' | 'minutes' | 'hours' | 'days' | 'date';

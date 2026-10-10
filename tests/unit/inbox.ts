@@ -17,7 +17,7 @@ export function inboxModelTests(): void {
     test('parseInbox: head, items, notes, and outro', () => {
         const inbox = parseInbox(INBOX);
         eq(inbox.head, ['---', 'inbox: true', '---', '', '# Inbox', '', 'A place to capture ideas.'], 'head');
-        eq(inbox.items.map(i => i.text), ['SQLite idea #idea ➕ 2026-10-07 14:22', 'Read HIG article #read #gnome ➕ 2026-10-07 13:32', 'Item without time']);
+        eq(inbox.items.map(i => i.text), ['SQLite idea #idea [created:: 2026-10-07 14:22]', 'Read HIG article #read #gnome [created:: 2026-10-07 13:32]', 'Item without time']);
         eq(inbox.items[0].notes, ['note one', '', 'note two'], 'item notes');
         eq(inbox.outro, ['Plain closing'], 'outro');
     });
@@ -37,9 +37,9 @@ export function inboxModelTests(): void {
     test('captureItem inserts at the top with a capture time, unless the text already has one', () => {
         let inbox = parseInbox(INBOX);
         inbox = captureItem(inbox, '  New idea #x  ', new Date(2026, 9, 8, 9, 5));
-        eq(inbox.items[0].text, 'New idea #x ➕ 2026-10-08 09:05', 'local time formatted with two digits');
+        eq(inbox.items[0].text, 'New idea #x [created:: 2026-10-08 09:05]', 'local time formatted with two digits');
         eq(inbox.items.length, 4);
-        eq(captureItem(inbox, 'already ➕ 2026-01-01 10:00', new Date()).items[0].text, 'already ➕ 2026-01-01 10:00', 'not overwritten');
+        eq(captureItem(inbox, 'already [created:: 2026-01-01 10:00]', new Date()).items[0].text, 'already [created:: 2026-01-01 10:00]', 'not overwritten');
         ok(captureItem(inbox, '   ', new Date()) === inbox, 'empty text is ignored');
     });
     test('updateItem and deleteItem do not change the original inbox', () => {
@@ -50,14 +50,14 @@ export function inboxModelTests(): void {
         eq([a.items.length, c.items.length, c.items[0].text.startsWith('Read')], [3, 2, true]);
     });
     test('itemMeta: title, tags, and capture time', () => {
-        const m = itemMeta('Read HIG article #read #gnome ➕ 2026-10-07 13:32');
+        const m = itemMeta('Read HIG article #read #gnome [created:: 2026-10-07 13:32]');
         eq([m.title, m.tags], ['Read HIG article', ['read', 'gnome']]);
         eq(m.captured?.getTime(), new Date(2026, 9, 7, 13, 32).getTime(), 'time');
-        eq(itemMeta('Date only ➕ 2026-10-07').captured?.getTime(), new Date(2026, 9, 7, 0, 0).getTime(), 'without a time of day');
+        eq(itemMeta('Date only [created:: 2026-10-07]').captured?.getTime(), new Date(2026, 9, 7, 0, 0).getTime(), 'without a time of day');
         eq(itemMeta('Without time').captured, null);
     });
     test('composeItem keeps the old capture time', () => {
-        eq(composeItem(' Title ', ['#a', 'b', ''], 'old ➕ 2026-10-07 13:32'), 'Title #a #b ➕ 2026-10-07 13:32');
+        eq(composeItem(' Title ', ['#a', 'b', ''], 'old [created:: 2026-10-07 13:32]'), 'Title #a #b [created:: 2026-10-07 13:32]');
         eq(composeItem('Title', []), 'Title');
     });
     test('ageOf: minutes, hours, days, then a date', () => {

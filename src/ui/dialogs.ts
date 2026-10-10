@@ -290,7 +290,7 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
     if (!accepted) return null;
     const [start, end] = notes.buffer.get_bounds();
     return {
-        text: composeCard({ title: title.text, tags: tags.text.split(/[\s,]+/), due: due.text, agent: agent.text }),
+        text: composeCard({ title: title.text, tags: tags.text.split(/[\s,]+/), due: due.text, agent: agent.text }, card.text),
         notes: notes.buffer.get_text(start, end, true).replace(/\s+$/, '').split('\n').filter((l, i, all) => all.length > 1 || l !== ''),
     };
 }

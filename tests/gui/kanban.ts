@@ -97,7 +97,7 @@ export function kanbanBoardTests(c: GuiContext): void {
         const menu = kb.cardMenu(0, 0);
         ok(!kbMenu(menu, 'Move Up').enabled && kbMenu(menu, 'Move Down').enabled, 'Move Up/Move Down on the first card');
         kbMenu(menu, 'Move Down').activate(); settleK();
-        eq(kb.cardTexts(0), ['Send invitations', 'Write report #important @{2026-10-20}'], 'down');
+        eq(kb.cardTexts(0), ['Send invitations', 'Write report #important [due:: 2026-10-20]'], 'down');
         const submenu = kbMenu(kb.cardMenu(0, 0), 'Move to').item.submenu!;
         eq(submenu.map(e => e.label), ['In Progress', 'Done'], 'the destinations do not include the source list');
         submenu.find(e => e.label === 'Done')!.run!(); settleK();
@@ -231,7 +231,7 @@ export function kanbanBoardTests(c: GuiContext): void {
         setText(BOARD.replace('- [ ] Send invitations', '- [ ] Send invitations\n- [ ] From text'));
         w.toggleBoardView(true); settleK();
         ok(w.boardMode, 'back to the board');
-        eq(kb.cardTexts(0), ['Write report #important @{2026-10-20}', 'Send invitations', 'From text']);
+        eq(kb.cardTexts(0), ['Write report #important [due:: 2026-10-20]', 'Send invitations', 'From text']);
     });
     test('the board view for a plain document is refused with a message', () => {
         GLib.file_set_contents(board, '# Plain');
@@ -370,7 +370,7 @@ export function kanbanBoardTests(c: GuiContext): void {
                     widgetPixbuf(dialog)?.savev(`${shot}-dialog${dark ? '-dark' : ''}.png`, 'png', [], []);
                     dialog.close();
                 });
-                settle(editCardDialog(w.win, { text: 'Write report #work @{2026-10-20}', notes: ['Follow the decision in [[Meeting Notes]].'] }, 'Add Card', () => ['Meeting Notes.md']));
+                settle(editCardDialog(w.win, { text: 'Write report #work [due:: 2026-10-20]', notes: ['Follow the decision in [[Meeting Notes]].'] }, 'Add Card', () => ['Meeting Notes.md']));
             }
             w.setOption('dark', false);
             pump();

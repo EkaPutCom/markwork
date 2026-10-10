@@ -9,16 +9,16 @@ kanban: true
 
 ## Plan
 
-- [ ] Overdue @{2026-10-05}
-- [ ] Today #project/estuary @{2026-10-07}
-- [ ] Next week @{2026-10-14}
+- [ ] Overdue [due:: 2026-10-05]
+- [ ] Today #project/estuary [due:: 2026-10-07]
+- [ ] Next week [due:: 2026-10-14]
 - [ ] No due date
-- [x] Already checked @{2026-10-07}
-- Plain bullet day after tomorrow @{2026-10-09 10:00}
+- [x] Already checked [due:: 2026-10-07]
+- Plain bullet day after tomorrow [due:: 2026-10-09 10:00]
 
 ## Done
 
-- Finished without a checkbox @{2026-10-07}
+- Finished without a checkbox [due:: 2026-10-07]
 `;
 
 const INBOX = `---
@@ -34,10 +34,10 @@ export function homeModelTests(): void {
     section('Home (model)');
 
     test('dueTasks: unfinished overdue, today, and next two days, ordered by due date', () => {
-        const tasks = dueTasks([{ name: 'board.md', text: BOARD }, { name: 'notes.md', text: '# Plain\n\n- [ ] a @{2026-10-07}' }], '2026-10-07');
+        const tasks = dueTasks([{ name: 'board.md', text: BOARD }, { name: 'notes.md', text: '# Plain\n\n- [ ] a [due:: 2026-10-07]' }], '2026-10-07');
         eq(tasks.map(t => [t.title, t.status, t.days]), [['Overdue', 'overdue', -2], ['Today', 'today', 0], ['Plain bullet day after tomorrow', 'soon', 2]]);
         eq(tasks[1].at, { column: 0, index: 1 }, 'card position');
-        eq(tasks[1].card, 'Today #project/estuary @{2026-10-07}', 'original card text');
+        eq(tasks[1].card, 'Today #project/estuary [due:: 2026-10-07]', 'original card text');
         eq(tasks[0].file, 'board.md', 'board file');
     });
     test('dueTasks: project name from projectOf', () => {

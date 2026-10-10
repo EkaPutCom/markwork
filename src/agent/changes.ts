@@ -101,7 +101,7 @@ export const CHANGE_TOOLS: ToolSpec[] = [
             properties: {
                 name: { type: 'string', description: 'Board file name as in list_files' },
                 action: { type: 'string', enum: ['add', 'move', 'mark', 'edit', 'delete', 'add_list', 'rename_list', 'delete_list'], description: 'add = new card at the end of a list; move = move a card to the end of another list; mark = change the done status; edit = replace the card text with new_text; delete = remove a card; add_list/rename_list/delete_list = manage lists' },
-                card: { type: 'string', description: 'add: text of the new card (may contain #tags and @{2026-10-20}). move/mark/edit/delete: a piece of the text of an existing card (must match exactly one card). Not used for list actions' },
+                card: { type: 'string', description: 'add: text of the new card (may contain #tags and fields such as [due:: 2026-10-20]). move/mark/edit/delete: a piece of the text of an existing card (must match exactly one card). Not used for list actions' },
                 list: { type: 'string', description: 'add/move: the destination list. add_list: name of the new list. rename_list/delete_list: the existing list. The exact name as the heading on the board (case-insensitive)' },
                 new_text: { type: 'string', description: 'edit: the replacement card text. rename_list: the new list name' },
                 done: { type: 'boolean', description: 'mark only: true = done, false = not done' },

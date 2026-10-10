@@ -11,8 +11,10 @@
 //
 //   - [ ] Write the report #important  ← list item = card; [x] = done
 //     card note (indented)          ← an indented line = card note
-//   - [ ] Send invitations @{2026-10-20}
-//   - [ ] Fix checkout @pi          ← @name = the harness assigned to work on the card
+//   - [ ] Send invitations [due:: 2026-10-20]
+//   - [ ] Fix checkout [agent:: pi]  ← the harness assigned to work on the card
+//
+// `[key:: value]` is a typed field (see fields.ts); a card has the fields in CARD_SCHEMA.
 //
 //   ## Done
 //
@@ -24,9 +26,11 @@
 // Pure TypeScript without GTK. All operations return a new board; the original board
 // is not changed, so it is easy to test.
 
+import { findSegments, formatValue, readItem, setField, writeField, type DateValue, type FieldDef } from './fields.js';
+
 export interface Card {
     done: boolean | null;   // null = plain item without a checkbox ("- text")
-    text: string;           // first line of the card, raw Markdown (including #tag and @{date})
+    text: string;           // first line of the card, raw Markdown (including #tag and [key:: value] fields)
     notes: string[];        // notes: continuation lines of the card, without indentation
 }
 
@@ -221,24 +225,27 @@ export function moveColumn(board: Board, from: number, to: number): Board {
 
 // ---------- Card content ----------
 
+// The typed fields every card understands. A document-specific schema (fields.ts `parseSchema`) can add more.
+export const DUE_FIELD: FieldDef = { key: 'due', type: 'date', multiple: false, options: [] };
+export const AGENT_FIELD: FieldDef = { key: 'agent', type: 'agent', multiple: false, options: [] };
+export const CARD_SCHEMA: FieldDef[] = [DUE_FIELD, AGENT_FIELD];
+
 export interface CardMeta {
-    title: string;         // text without #tag, @{date}, and @assignment, for display
+    title: string;         // text without #tag and [key:: value] fields, for display
     tags: string[];
     due: string | null;    // "YYYY-MM-DD"
-    agent: string | null;  // the assigned harness ("@pi" → "pi"); the first one if there is more than one
+    agent: string | null;  // the assigned harness ("[agent:: pi]" → "pi")
 }
 
-const TAG = /(^|\s)#([\p{L}\p{N}_/-]+)/gu;
-const DUE = /\s*@\{(\d{4}-\d{2}-\d{2})(?:[ T]\d{1,2}:\d{2})?\}/;
-// Must stand alone (preceded by a space), so email addresses and @{date} are not matched.
-const AGENT = /(^|\s)@([a-z][a-z0-9_-]*)(?=\s|$)/g;
-
 export function cardMeta(text: string): CardMeta {
-    const tags = [...text.matchAll(TAG)].map(m => m[2]);
-    const due = DUE.exec(text)?.[1] ?? null;
-    const agent = [...text.matchAll(AGENT)][0]?.[2] ?? null;
-    const title = text.replace(TAG, '$1').replace(DUE, '').replace(AGENT, '$1').replace(/\s{2,}/g, ' ').trim();
-    return { title: title || text.trim(), tags, due, agent };
+    const item = readItem(text, CARD_SCHEMA);
+    const due = item.fields.due, agent = item.fields.agent;
+    return {
+        title: item.title,
+        tags: item.tags,
+        due: due?.ok ? (due.value as DateValue).date : null,
+        agent: agent?.ok ? agent.value as string : null,
+    };
 }
 
 // Split card text into title, tags, and due date (date with time if present) for the
@@ -250,8 +257,14 @@ export interface CardParts {
     agent?: string;   // empty = not assigned
 }
 
-const DUE_FULL = /\s*@\{(\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2})?)\}/;
 export const DUE_INPUT = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2})?$/;
+
+// The text a field has in `text`: its normal form if it is valid, what was written if not, empty if absent.
+function fieldText(text: string, def: FieldDef): string {
+    const parsed = readItem(text, CARD_SCHEMA).fields[def.key];
+    if (!parsed) return '';
+    return parsed.ok ? formatValue(def, parsed.value) : parsed.raw;
+}
 
 // Replace the due date part with `date` (YYYY-MM-DD) from the date picker; a time already typed is kept.
 export function withDueDate(due: string, date: string): string {
@@ -260,28 +273,24 @@ export function withDueDate(due: string, date: string): string {
 }
 
 export function splitCard(text: string): CardParts {
-    const meta = cardMeta(text);
-    return { title: meta.title, tags: meta.tags, due: DUE_FULL.exec(text)?.[1] ?? '', agent: meta.agent ?? '' };
+    return { title: cardMeta(text).title, tags: cardMeta(text).tags, due: fieldText(text, DUE_FIELD), agent: fieldText(text, AGENT_FIELD) };
 }
 
-export function composeCard({ title, tags, due, agent = '' }: CardParts): string {
+// Put the parts back into card text. Fields that are not due or agent are taken over from `old`, so
+// editing the title does not lose them.
+export function composeCard({ title, tags, due, agent = '' }: CardParts, old = ''): string {
     const tagText = tags.map(t => t.replace(/^#+/, '')).filter(Boolean).map(t => `#${t}`);
-    const dueText = due.trim() ? `@{${due.trim()}}` : '';
+    const kept = findSegments(old).filter(s => !CARD_SCHEMA.some(f => f.key === s.key)).map(s => old.slice(s.start, s.end));
     const name = agent.trim().replace(/^@+/, '').toLowerCase();
-    const agentText = AGENT_NAME.test(name) ? `@${name}` : '';
-    return [title.trim(), agentText, ...tagText, dueText].filter(Boolean).join(' ');
+    const text = [title.trim(), ...tagText, ...kept].filter(Boolean).join(' ');
+    return setField(setField(text, DUE_FIELD, due), AGENT_FIELD, AGENT_NAME.test(name) ? name : '');
 }
 
 export const AGENT_NAME = /^[a-z][a-z0-9_-]*$/;
 
 // Assign the card to harness `agent` (replaces the old assignment, or removes it if null) without touching the rest of its text.
 export function assignCard(text: string, agent: string | null): string {
-    const rest = text.replace(AGENT, '$1').replace(/\s{2,}/g, ' ').trim();
-    if (!agent) return rest;
-    const meta = cardMeta(rest);
-    // Insert right after the title so the order is the same as composeCard.
-    const at = rest.indexOf(meta.title);
-    return at < 0 ? `${rest} @${agent}` : `${rest.slice(0, at + meta.title.length)} @${agent}${rest.slice(at + meta.title.length)}`;
+    return writeField(text, AGENT_FIELD, agent);
 }
 
 export type DueStatus = 'overdue' | 'today' | 'soon' | 'later';

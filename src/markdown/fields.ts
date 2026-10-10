@@ -293,3 +293,11 @@ export function writeField(text: string, def: FieldDef, value: Value | null): st
     if (written) return text.slice(0, at.start) + written + text.slice(at.end);
     return [text.slice(0, at.start).trimEnd(), text.slice(at.end).trimStart()].filter(Boolean).join(' ');
 }
+
+// `text` with field `def` set from what a user typed: empty removes the field, a valid value is written in
+// its normal form, and a value that does not fit leaves the text as it was.
+export function setField(text: string, def: FieldDef, raw: string): string {
+    if (!raw.trim()) return writeField(text, def, null);
+    const parsed = parseValue(def, raw);
+    return parsed.ok ? writeField(text, def, parsed.value) : text;
+}

@@ -115,7 +115,7 @@ export function journalTests(c: GuiContext): void {
     test('a finished harness result is recorded once', () => {
         const { win } = open();
         const before = readActivity(ws, today).length;
-        const run = win.harness.orchestrator.queue.add({ board: board, card: 'Fix checkout @pi', title: 'Fix checkout', agent: 'pi', project: 'shop', folder: '/tmp/shop', prompt: '', session: null });
+        const run = win.harness.orchestrator.queue.add({ board: board, card: 'Fix checkout [agent:: pi]', title: 'Fix checkout', agent: 'pi', project: 'shop', folder: '/tmp/shop', prompt: '', session: null });
         const result: HarnessResult = { ok: true, summary: 'Done', error: null, cost: 0, tokens: 0, sessionId: null };
         win.harness.orchestrator.queue.end(run, 'done', result);
         const host = (win.harness.orchestrator as unknown as { host: { changed: (r: typeof run, m: string | null) => void } }).host;

@@ -42,7 +42,7 @@ export function inboxTests(c: GuiContext): void {
         ok(all.includes('10 minutes ago · has notes'), `age: ${all.join('|')}`);
         ok(all.includes('1 hour ago'), 'jam');
         ok(all.includes('#idea') && all.includes('#read'), 'tag');
-        ok(!all.some(l => l.includes('➕')), 'the capture time is not shown raw');
+        ok(!all.some(l => l.includes('created::')), 'the capture time is not shown raw');
     });
     test('quick capture inserts the item at the top and writes the document text', () => {
         open();
@@ -51,7 +51,7 @@ export function inboxTests(c: GuiContext): void {
         settle();
         eq(rows().length, 4, 'rows');
         const items = parseInbox(text()).items;
-        ok(/^Interesting link #read ➕ \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(items[0].text), items[0].text);
+        ok(/^Interesting link #read \[created:: \d{4}-\d{2}-\d{2} \d{2}:\d{2}\]$/.test(items[0].text), items[0].text);
         eq(entry().text, '', 'the entry was cleared');
         ok(w.statusBar.right.label.includes('4 notes'), 'the status was updated');
         entry().set_text('   ');
@@ -79,12 +79,12 @@ export function inboxTests(c: GuiContext): void {
         settle();
         eq(calls, ['New Note']);
         const items = parseInbox(text()).items;
-        ok(items[0].text.startsWith('From dialog #d ➕ '), items[0].text);
+        ok(items[0].text.startsWith('From dialog #d [created:: '), items[0].text);
         eq(items[0].notes, ['content']);
         rows()[1].emit('activate');
         settle();
         eq(calls[1], 'edit');
-        eq(parseInbox(text()).items[1].text, 'SQLite idea #idea ➕ 2026-10-07 14:22 #new');
+        eq(parseInbox(text()).items[1].text, 'SQLite idea #idea [created:: 2026-10-07 14:22] #new');
         w.inbox.dialogs = { editNote: () => null };
         const before = text();
         w.inbox.editItem(0);

@@ -1,6 +1,6 @@
 // Typed field tests (markdown/fields.ts).
 
-import { addOption, findSegments, formatValue, nearestOption, parseSchema, parseValue, readItem, writeField, type FieldDef } from '../../src/markdown/fields.js';
+import { addOption, findSegments, formatValue, nearestOption, parseSchema, parseValue, readItem, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
 import { section, test, eq, ok } from '../framework.js';
 
 const DOC = [
@@ -92,6 +92,14 @@ export function fieldsModelTests(): void {
         eq(writeField('A [due:: 2026-10-24]', def('due'), null), 'A');
         eq(writeField('A', def('due'), null), 'A', 'removing an absent field changes nothing');
         eq(readItem(writeField('A', def('terkait'), ['X', 'Y']), SCHEMA).fields.terkait, { ok: true, value: ['X', 'Y'] }, 'round trip');
+    });
+
+    test('setField: empty removes, a valid value is normalized, an invalid one changes nothing', () => {
+        const text = 'A [due:: 2026-10-24] [pemilik:: Eka]';
+        eq(setField(text, def('due'), '2026-10-25 9:30'), 'A [due:: 2026-10-25 09:30] [pemilik:: Eka]');
+        eq(setField(text, def('due'), '  '), 'A [pemilik:: Eka]');
+        eq(setField(text, def('due'), 'besok'), text, 'invalid');
+        eq(setField('A', def('prioritas'), 'TINGGI'), 'A [prioritas:: tinggi]', 'select is written in its canonical case');
     });
 
     test('addOption adds an option to the frontmatter line and nothing else', () => {
