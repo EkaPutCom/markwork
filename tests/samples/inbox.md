@@ -1,5 +1,5 @@
 ---
-inbox: true
+layout: list
 ---
 
 # Inbox

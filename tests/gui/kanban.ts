@@ -3,7 +3,8 @@
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import { readTextFile } from '../../src/files.js';
-import { addCard, isKanban, parseBoard } from '../../src/markdown/kanban.js';
+import { addCard, parseBoard } from '../../src/markdown/kanban.js';
+import { isBoard } from '../../src/markdown/layout.js';
 import { KanbanBoard } from '../../src/ui/kanban.js';
 import { dueField, editCardDialog, findDialog } from '../../src/ui/dialogs.js';
 import { findEntry, type MenuEntry } from '../../src/ui/menu.js';
@@ -48,7 +49,7 @@ export function kanbanBoardTests(c: GuiContext): void {
     const openBoard = () => { GLib.file_set_contents(board, BOARD); w.load(board); settleK(); };
 
     test('fields declared in the frontmatter are shown as chips; a value that does not fit is marked and its text is unchanged', () => {
-        const text = '---\nkanban: true\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Parser [prioritas:: sedang] [progres:: 3/5] [due:: 2026-10-20]\n- [ ] Broken [prioritas:: urgent] [owner:: Eka]\n';
+        const text = '---\nlayout: board\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Parser [prioritas:: sedang] [progres:: 3/5] [due:: 2026-10-20]\n- [ ] Broken [prioritas:: urgent] [owner:: Eka]\n';
         GLib.file_set_contents(board, text); w.load(board); settleK();
         const chips = (idx: number) => kbDescendants(kb.columns[0].cards[idx]).filter((x): x is Gtk.Label => x instanceof Gtk.Label && x.has_css_class('kanban-chip'));
         eq(chips(0).slice(0, 2).map(c => c.label), ['sedang', 'progres: 3/5'], 'select value, then progress; the due badge follows');
@@ -61,7 +62,7 @@ export function kanbanBoardTests(c: GuiContext): void {
     });
 
     // Change a field in place from its popover.
-    const FIELD_BOARD = '---\nkanban: true\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Parser [prioritas:: sedang] [due:: 2026-10-20 09:00]\n';
+    const FIELD_BOARD = '---\nlayout: board\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Parser [prioritas:: sedang] [due:: 2026-10-20 09:00]\n';
     const popoverOf = (key: string, column = 0, index = 0): Gtk.Popover => {
         const popover = kb.editField(column, index, key);
         ok(popover, `no popover for ${key}`);
@@ -126,7 +127,7 @@ export function kanbanBoardTests(c: GuiContext): void {
     });
 
     test('a card offers the fields it has no value for; choosing one opens its popover and fills it in', () => {
-        const T = '---\nkanban: true\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Bare\n- [ ] Full [prioritas:: sedang] [progres:: 1/2] [due:: 2026-10-20]\n';
+        const T = '---\nlayout: board\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Bare\n- [ ] Full [prioritas:: sedang] [progres:: 1/2] [due:: 2026-10-20]\n';
         GLib.file_set_contents(board, T); w.load(board); settleK();
         const addButton = (idx: number) => kbDescendants(kb.columns[0].cards[idx]).find((x): x is Gtk.Button => x instanceof Gtk.Button && x.has_css_class('kanban-add-field'));
         ok(addButton(0), 'a card with fields to fill has the add button');
@@ -336,13 +337,13 @@ export function kanbanBoardTests(c: GuiContext): void {
         w.load(board); settleK();
         w.toggleBoardView(true);
         ok(!w.boardMode, 'a plain document was shown as a board');
-        ok(w.lastToast.includes('not a kanban board'), `message: ${w.lastToast}`);
+        ok(w.lastToast.includes('not a board or list'), `message: ${w.lastToast}`);
     });
     test('a new kanban board contains three empty lists', () => {
         w.newBoardDocument(); settleK();
         ok(w.boardMode && w.file === null, 'mode or file name');
         eq(kbTitles(), ['Plan', 'In Progress', 'Done']);
-        ok(isKanban(w.editor.getText()), 'the text is not a kanban board');
+        ok(isBoard(w.editor.getText()), 'the text is not a kanban board');
         // The new board opens in a new tab (the previous document has a file); close it so the other tests use the original editor.
         ok(w.closeTab(), 'closeTab() failed'); settleK();
         ok(w.editor === ed, 'the original editor is no longer active');

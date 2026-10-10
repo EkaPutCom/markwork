@@ -37,7 +37,7 @@ export function workTests(): void {
         eq([...disk.values()], ['old', 'old']);
     });
     test('verification checks the actual contents, missing files, and kanban position/status', () => {
-        const files = [{ name: 'plan.md', text: 'Release November 22' }, { name: 'board.md', text: '---\nkanban: true\n---\n\n## Done\n\n- [x] Release material\n' }];
+        const files = [{ name: 'plan.md', text: 'Release November 22' }, { name: 'board.md', text: '---\nlayout: board\n---\n\n## Done\n\n- [x] Release material\n' }];
         const checks = [{ file: 'plan.md', text: 'November 22', kind: 'present' }, { file: 'plan.md', text: 'November 15', kind: 'absent' }, { file: 'board.md', text: 'Release material', kind: 'kanban', list: 'Done', done: true }];
         eq(verifyWork(JSON.stringify({ checks }), files).passed, true);
         eq(verifyWork(JSON.stringify({ checks }), files.slice(1)).passed, false);

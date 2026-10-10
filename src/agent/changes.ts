@@ -3,7 +3,8 @@
 // the user approves the diff (ui/chat.ts), so the model never changes files on its own.
 
 import { matchMention, type SourceFile } from './context.js';
-import { addCard, addColumn, deleteCard, deleteColumn, isKanban, moveCard, parseBoard, renameColumn, serializeBoard, updateCard, type Board, type Position } from '../markdown/kanban.js';
+import { addCard, addColumn, deleteCard, deleteColumn, moveCard, parseBoard, renameColumn, serializeBoard, updateCard, type Board, type Position } from '../markdown/kanban.js';
+import { isBoard } from '../markdown/layout.js';
 import type { ToolSpec } from './provider.js';
 
 export interface Change {
@@ -95,7 +96,7 @@ export const CHANGE_TOOLS: ToolSpec[] = [
     },
     {
         name: 'edit_kanban',
-        description: 'Propose a change to a kanban board (a Markdown file with "kanban: true" in the frontmatter). Safer than edit_file for boards. Card actions: add, move, mark (done/not done), edit (replace the card text), delete. List actions: add_list, rename_list, delete_list (empty lists only). It is not written right away: the user sees the diff and then applies or rejects it.',
+        description: 'Propose a change to a kanban board (a Markdown file with "layout: board" in the frontmatter). Safer than edit_file for boards. Card actions: add, move, mark (done/not done), edit (replace the card text), delete. List actions: add_list, rename_list, delete_list (empty lists only). It is not written right away: the user sees the diff and then applies or rejects it.',
         parameters: {
             type: 'object',
             properties: {
@@ -356,7 +357,7 @@ const KANBAN_ACTIONS: Record<string, (k: KanbanTarget) => Board | PlanResult> = 
 };
 
 function planKanban(args: Record<string, unknown>, reason: string, file: SourceFile): PlanResult {
-    if (!isKanban(file.text)) return fail(`${file.name} is not a kanban board (frontmatter without "kanban: true"). Use edit_file for ordinary files.`, 'not a board');
+    if (!isBoard(file.text)) return fail(`${file.name} is not a board (frontmatter without "layout: board"). Use edit_file for ordinary files.`, 'not a board');
     const action = lookup(KANBAN_ACTIONS, asText(args.action));
     if (!action) return fail('The "action" argument must be one of: add, move, mark, edit, delete, add_list, rename_list, delete_list.', 'invalid action');
     const next = action(new KanbanTarget(parseBoard(file.text), args, file.name));

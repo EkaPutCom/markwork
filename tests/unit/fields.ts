@@ -4,7 +4,7 @@ import { addOption, applyDefaults, fieldChips, fieldInputText, findSegments, for
 import { section, test, eq, ok } from '../framework.js';
 
 const DOC = [
-    '---', 'kanban: true', 'fields:',
+    '---', 'layout: board', 'fields:',
     '  prioritas: select(tinggi, sedang, rendah)', '  due: date', '  progres: progress', '  pemilik: person[]',
     '  halaman: number', '  agent: agent', '  terkait: link[]', 'title: after', '---', '', '## Plan', ''].join('\n');
 

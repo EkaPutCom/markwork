@@ -9,7 +9,7 @@ import { AgentTrace } from '../../src/agent/trace.js';
 import { section, test, eq, ok, contains } from '../framework.js';
 
 const BOARD = `---
-kanban: true
+layout: board
 project: web-ecommerce
 ---
 
@@ -59,8 +59,8 @@ export function harnessTests(): void {
         eq(boardProject(b), 'web-ecommerce');
         eq(cardProject(b, b.columns[0].cards[0]), 'web-ecommerce');
         eq(cardProject(b, b.columns[0].cards[1]), 'shop-admin');
-        eq(boardProject(parseBoard('---\nkanban: true\nproject: "shop"\n---\n\n## A\n')), 'shop', 'quoted value');
-        eq(boardProject(parseBoard('---\nkanban: true\n---\n\nproject: outside\n\n## A\n')), null, 'outside the frontmatter is ignored');
+        eq(boardProject(parseBoard('---\nlayout: board\nproject: "shop"\n---\n\n## A\n')), 'shop', 'quoted value');
+        eq(boardProject(parseBoard('---\nlayout: board\n---\n\nproject: outside\n\n## A\n')), null, 'outside the frontmatter is ignored');
     });
 
     test('the project folder must not be the Nyerat work folder, its contents, or its parent', () => {
@@ -124,10 +124,10 @@ export function harnessTests(): void {
     test('stageColumn and locateCard', () => {
         const b = parseBoard(BOARD);
         eq([stageColumn(b, 'doing'), stageColumn(b, 'review')], [1, 2]);
-        eq(stageColumn(parseBoard('---\nkanban: true\n---\n\n## A\n\n## B\n'), 'review'), -1);
+        eq(stageColumn(parseBoard('---\nlayout: board\n---\n\n## A\n\n## B\n'), 'review'), -1);
         eq(locateCard(b, 'Checkout with QRIS [agent:: pi] #feature'), { column: 0, index: 0 });
         eq(locateCard(b, 'nonexistent'), null);
-        const dup = parseBoard('---\nkanban: true\n---\n\n## A\n\n- [ ] X\n- [ ] X\n');
+        const dup = parseBoard('---\nlayout: board\n---\n\n## A\n\n- [ ] X\n- [ ] X\n');
         eq(locateCard(dup, 'X'), null, 'duplicate cards are not picked arbitrarily');
     });
 

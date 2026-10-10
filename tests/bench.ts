@@ -117,7 +117,7 @@ const x: number = 1;
 `;
 
 const KANBAN = (cards: number): string =>
-    `---\nkanban: true\n---\n\n` + ['Plan', 'In Progress', 'Done'].map(c =>
+    `---\nlayout: board\n---\n\n` + ['Plan', 'In Progress', 'Done'].map(c =>
         `## ${c}\n\n` + Array.from({ length: cards }, (_, i) => `- [ ] Card ${i} #tag @due(2026-01-01)\n`).join('') + '\n').join('');
 
 // Book manuscript: one scene per block, a new chapter every 10 scenes. Paragraphs are written as one

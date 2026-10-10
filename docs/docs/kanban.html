@@ -28,13 +28,13 @@
 <main class="doc">
 <p class="eyebrow">Workspace</p>
 <h1>The kanban board</h1>
-<p class="lead">A Markdown file with <code>kanban: true</code> opens as a board. Every change is written back as plain Markdown text that can be diffed and committed.</p>
+<p class="lead">A Markdown file with <code>layout: board</code> opens as a board. Every change is written back as plain Markdown text that can be diffed and committed.</p>
 
 <figure><img src="../assets/kanban.gif" width="900" height="586" loading="lazy" alt="Animation of kanban cards moving between the Plan, In Progress, Review, and Done lists"><figcaption>Cards move from Plan to In Progress and then to Review</figcaption></figure>
 
 <h2 id="format">File format</h2>
 <pre><code>---
-kanban: true
+layout: board
 ---
 
 ## Plan
@@ -50,7 +50,7 @@ kanban: true
   <li>A <code>##</code> heading becomes a list, a <code>- [ ]</code> item becomes a card, and <code>[x]</code> means done.</li>
   <li>The indented lines below a card are its notes.</li>
   <li><code>#tag</code> is shown as a colored label; <code>[due:: 2026-10-20]</code> as a due date, red when it is overdue.</li>
-  <li>The <code>kanban-plugin:</code> marker of the Obsidian Kanban plugin is still recognized, and anything that is not recognized is preserved as it is.</li>
+  <li>Anything that is not recognized is preserved as it is.</li>
 </ul>
 
 <h2 id="creating">Creating a board</h2>

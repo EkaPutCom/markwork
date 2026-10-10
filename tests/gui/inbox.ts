@@ -2,7 +2,8 @@
 
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
-import { parseInbox, isInbox } from '../../src/markdown/inbox.js';
+import { parseInbox } from '../../src/markdown/inbox.js';
+import { isList } from '../../src/markdown/layout.js';
 import { descendants, widgetPixbuf } from '../widgets.js';
 import { section, test, eq, ok, tmp, optVal } from '../framework.js';
 import { BOARD, INBOX } from '../fixtures.js';
@@ -99,7 +100,7 @@ export function inboxTests(c: GuiContext): void {
         ok(w.inboxMode, 'did not return to the inbox');
         w.newInboxDocument();
         settle();
-        ok(w.inboxMode && isInbox(text()), 'the new document is not an inbox');
+        ok(w.inboxMode && isList(text()), 'the new document is not an inbox');
         eq(rows().length, 0, 'the new inbox is empty');
         ok(descendants(w.inbox.widget).some(x => x instanceof Gtk.Label && x.get_label() === 'The inbox is empty'), 'the empty state is not shown');
         while (w.editor !== c.ed) ok(w.closeTab(), 'closeTab() failed');
@@ -119,7 +120,7 @@ export function inboxTests(c: GuiContext): void {
     });
 
     // Fields declared in the frontmatter: chips, a popover on a chip, and the + button for a field with no value.
-    const FIELD_INBOX = '---\ninbox: true\nfields:\n  tipe: select(ide, bacaan)\n  progres: progress\n---\n\n# Inbox\n\n- Satu [tipe:: ide] [created:: 2026-10-07 14:22]\n- Dua [tipe:: urgent]\n- Tiga [tipe:: bacaan] [progres:: 1/2]\n';
+    const FIELD_INBOX = '---\nlayout: list\nfields:\n  tipe: select(ide, bacaan)\n  progres: progress\n---\n\n# Inbox\n\n- Satu [tipe:: ide] [created:: 2026-10-07 14:22]\n- Dua [tipe:: urgent]\n- Tiga [tipe:: bacaan] [progres:: 1/2]\n';
     const popButtons = (popover: Gtk.Popover) => descendants(popover).filter((x): x is Gtk.Button => x instanceof Gtk.Button);
     const popButton = (popover: Gtk.Popover, label: string) => popButtons(popover).find(b => b.label === label) ?? (() => { throw new Error(`no button "${label}"`); })();
     const chips = (row: number) => descendants(rows()[row]).filter((x): x is Gtk.Label => x instanceof Gtk.Label && x.has_css_class('inbox-field'));

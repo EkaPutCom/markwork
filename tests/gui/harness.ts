@@ -13,7 +13,7 @@ import type { HarnessAsk, HarnessReply } from '../../src/agent/harness.js';
 import type { GuiContext } from './context.js';
 
 const BOARD = `---
-kanban: true
+layout: board
 project: shop
 ---
 

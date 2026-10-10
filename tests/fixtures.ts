@@ -2,7 +2,7 @@
 
 // The standard kanban board for the model tests and the GUI tests.
 export const BOARD = [
-    '---', 'kanban: true', '---', '',
+    '---', 'layout: board', '---', '',
     '## Plan', '',
     '- [ ] Write report #important [due:: 2026-10-20]', '  note one', '', '  note two',
     '- [ ] Send invitations', '',
@@ -13,7 +13,7 @@ export const BOARD = [
 
 // The standard inbox for the model tests and the GUI tests.
 export const INBOX = [
-    '---', 'inbox: true', 'fields:', '  created: date = now', '---', '',
+    '---', 'layout: list', 'fields:', '  created: date = now', '---', '',
     '# Inbox', '',
     'A place to capture ideas.', '',
     '- SQLite idea #idea [created:: 2026-10-07 14:22]', '  note one', '', '  note two',

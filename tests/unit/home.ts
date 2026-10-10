@@ -4,7 +4,7 @@ import { dayPart, dueTasks, localDate, moveRecent, openInboxes, rememberRecent, 
 import { section, test, eq } from '../framework.js';
 
 const BOARD = `---
-kanban: true
+layout: board
 ---
 
 ## Plan
@@ -22,7 +22,7 @@ kanban: true
 `;
 
 const INBOX = `---
-inbox: true
+layout: list
 ---
 
 - one
@@ -45,7 +45,7 @@ export function homeModelTests(): void {
         eq(tasks.map(t => t.project), [null, 'estuary', null]);
     });
     test('openInboxes: only unchecked items, an empty inbox is skipped', () => {
-        eq(openInboxes([{ name: 'inbox.md', text: INBOX }, { name: 'empty.md', text: '---\ninbox: true\n---\n\n- [x] a\n' }, { name: 'board.md', text: BOARD }]),
+        eq(openInboxes([{ name: 'inbox.md', text: INBOX }, { name: 'empty.md', text: '---\nlayout: list\n---\n\n- [x] a\n' }, { name: 'board.md', text: BOARD }]),
             [{ file: 'inbox.md', open: 2 }]);
     });
     test('rememberRecent: at the front, without duplicates, limited', () => {

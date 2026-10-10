@@ -1,11 +1,10 @@
-// Kanban board in a Markdown file. Frontmatter marks the document as a board:
+// Kanban board in a Markdown file. Frontmatter marks the document as a board (see layout.ts):
 //
 //   ---
-//   kanban: true
+//   layout: board
 //   ---
 //
-// The old marker "kanban-plugin: …" (from the Obsidian Kanban plugin) is still recognized, and
-// existing frontmatter is kept as is when saved. Contents:
+// Existing frontmatter is kept as is when saved. Contents:
 //
 //   ## Plan                         ← heading level 2 = list (column)
 //
@@ -52,7 +51,7 @@ export interface Position {
     index: number;
 }
 
-export const DEFAULT_HEAD = ['---', 'kanban: true', '---'];
+export const DEFAULT_HEAD = ['---', 'layout: board', '---'];
 
 const COLUMN = /^##\s+(.*?)\s*$/;
 const CARD = /^[-*+]\s+(?:\[([ xX])\]\s?)?(.*)$/;
@@ -60,20 +59,6 @@ const FOOTER = /^%%\s*kanban:settings/;
 const INDENTED = /^( {2,}|\t)/;
 
 // ---------- Recognizing and reading ----------
-
-// Board marker in the frontmatter: "kanban: true", or "kanban-plugin: …" (any value).
-const MARKER = /^(?:kanban:\s*["']?(?:true|yes)["']?|kanban-plugin:\s*\S+)\s*$/i;
-
-// A document is a kanban board if its frontmatter contains the board marker.
-export function isKanban(text: string): boolean {
-    const lines = text.split('\n', 40);
-    if (lines[0]?.trim() !== '---') return false;
-    for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim() === '---') return false;
-        if (MARKER.test(lines[i])) return true;
-    }
-    return false;
-}
 
 export const trimBlankEnds = (lines: string[]): string[] => {
     let a = 0, b = lines.length;

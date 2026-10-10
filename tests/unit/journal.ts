@@ -11,7 +11,7 @@ const EMPTY = newJournal('Thursday, October 8, 2026');
 const at = (h: number, m: number) => Math.floor(new Date(2026, 9, 8, h, m).getTime() / 1000);
 
 const BOARD = `---
-kanban: true
+layout: board
 ---
 
 ## Plan

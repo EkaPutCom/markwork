@@ -1,8 +1,10 @@
-// Inbox: a place to capture ideas, links, and quick notes in a Markdown file. Frontmatter
-// marks the document as an inbox:
+// A list of notes in a Markdown file (an inbox, a reading list, …). Frontmatter marks the document
+// as a list (see layout.ts):
 //
 //   ---
-//   inbox: true
+//   layout: list
+//   fields:
+//     created: date = now
 //   ---
 //
 //   # Inbox                          ← title and description (anything before the first item) are kept
@@ -12,8 +14,7 @@
 //   - [x] Workbench name idea #nyerat [created:: 2026-10-07 09:10]
 //
 // One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without
-// a time are still valid. Pure TypeScript without
-// GTK; all operations return a new inbox.
+// a time are still valid. Pure TypeScript without GTK; all operations return a new inbox.
 
 import { addOption, applyDefaults, fieldChips, findSegments, missingFields, parseSchema, readItem, setField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 import { parseColumn, trimBlankEnds, type Card } from './kanban.js';
@@ -28,20 +29,9 @@ export interface Inbox {
     outro: string[];       // plain lines after the last item, kept as is
 }
 
-export const DEFAULT_HEAD = ['---', 'inbox: true', 'fields:', '  created: date = now', '---'];
+export const DEFAULT_HEAD = ['---', 'layout: list', 'fields:', '  created: date = now', '---'];
 
-const MARKER = /^inbox:\s*["']?(?:true|yes)["']?\s*$/i;
 const ITEM = /^[-*+]\s/;
-
-export function isInbox(text: string): boolean {
-    const lines = text.split('\n', 40);
-    if (lines[0]?.trim() !== '---') return false;
-    for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim() === '---') return false;
-        if (MARKER.test(lines[i])) return true;
-    }
-    return false;
-}
 
 export function parseInbox(text: string): Inbox {
     const lines = text.replace(/\r\n?/g, '\n').split('\n');

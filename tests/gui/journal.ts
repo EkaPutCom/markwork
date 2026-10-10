@@ -30,7 +30,7 @@ export function journalTests(c: GuiContext): void {
     const put = (name: string, text: string) => { GLib.file_set_contents(path(name), text); return path(name); };
     const today = localDate(new Date());
     const journal = path(`journal/${today}.md`);
-    const BOARD = '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Release material\n- [ ] Research prices\n\n## In Progress\n\n## Done\n';
+    const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n- [ ] Research prices\n\n## In Progress\n\n## Done\n';
     const board = put('tasks.md', BOARD);
     put('plan.md', '# Plan\n\nRelease on 15 November.\n');
 

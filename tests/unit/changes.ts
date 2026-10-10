@@ -11,7 +11,7 @@ import { section, test, eq, ok, contains, settle } from '../framework.js';
 const PLAN = '# Plan\n\n- First draft: October\n- Revision: November\n\n## Notes\n\nNone yet.\n';
 const files: SourceFile[] = [{ name: 'plan.md', text: PLAN }, { name: 'research/harbor.md', text: '# Harbor\n\nThere are two piers.\n' }];
 
-const BOARD = '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Write report #important\n  report note\n- [ ] Send invitations [due:: 2026-10-20]\n\n## In Progress\n\n- [ ] Harbor research\n\n## Done\n\n- [x] Book venue\n';
+const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Write report #important\n  report note\n- [ ] Send invitations [due:: 2026-10-20]\n\n## In Progress\n\n- [ ] Harbor research\n\n## Done\n\n- [x] Book venue\n';
 const kfiles: SourceFile[] = [...files, { name: 'board.md', text: BOARD }];
 const kanban = (args: object) => planChange('edit_kanban', JSON.stringify({ name: 'board', reason: 'x', ...args }), kfiles);
 const kanbanAfter = (args: object): string => { const r = kanban(args); if (!r.ok) throw new Error(r.message); return r.change.after; };
@@ -123,7 +123,7 @@ export function changeTests(): void {
 
     test('edit_kanban: clear errors for the model (not a board, list/card does not match, no change)', () => {
         const bad = (args: object, base = kanban): string => { const r = base(args); ok(!r.ok, 'should have failed'); return r.ok ? '' : r.message; };
-        contains(bad({ action: 'add', card: 'x', list: 'Plan', name: 'plan.md' }), 'not a kanban board');
+        contains(bad({ action: 'add', card: 'x', list: 'Plan', name: 'plan.md' }), 'not a board');
         contains(bad({ action: 'add', card: 'x', list: 'Postponed' }), 'Lists on the board: Plan, In Progress, Done');
         contains(bad({ action: 'add', card: 'x', list: '' }), '"list" argument is required');
         contains(bad({ action: 'move', card: 'nonexistent', list: 'Done' }), 'No card contains');

@@ -1,36 +1,30 @@
 // Inbox model tests.
 
-import { ageOf, captureItem, composeItem, deleteItem, inboxSchema, isInbox, itemFields, itemMeta, itemMissingFields, newInbox, parseInbox, serializeInbox, setItemField, updateItem, withInboxOption } from '../../src/markdown/inbox.js';
-import { isKanban } from '../../src/markdown/kanban.js';
+import { ageOf, captureItem, composeItem, deleteItem, inboxSchema, itemFields, itemMeta, itemMissingFields, newInbox, parseInbox, serializeInbox, setItemField, updateItem, withInboxOption } from '../../src/markdown/inbox.js';
+import { isList } from '../../src/markdown/layout.js';
 import { section, test, eq, ok } from '../framework.js';
 import { INBOX } from '../fixtures.js';
 
 export function inboxModelTests(): void {
     section('Inbox (model)');
 
-    test('isInbox: only if the frontmatter contains the inbox marker', () => {
-        eq([isInbox(INBOX), isInbox('# Plain\n\n- a'), isInbox('---\ntitle: a\n---\n\n- a'), isInbox('- a\n\ninbox: true'),
-            isInbox('---\nINBOX: "True"\n---'), isInbox('---\ninbox: false\n---'), isInbox('---\ninboxes: true\n---')],
-            [true, false, false, false, true, false, false]);
-        ok(!isKanban(INBOX), 'an inbox is not kanban');
-    });
     test('parseInbox: head, items, notes, and outro', () => {
         const inbox = parseInbox(INBOX);
-        eq(inbox.head, ['---', 'inbox: true', 'fields:', '  created: date = now', '---', '', '# Inbox', '', 'A place to capture ideas.'], 'head');
+        eq(inbox.head, ['---', 'layout: list', 'fields:', '  created: date = now', '---', '', '# Inbox', '', 'A place to capture ideas.'], 'head');
         eq(inbox.items.map(i => i.text), ['SQLite idea #idea [created:: 2026-10-07 14:22]', 'Read HIG article #read #gnome [created:: 2026-10-07 13:32]', 'Item without time']);
         eq(inbox.items[0].notes, ['note one', '', 'note two'], 'item notes');
         eq(inbox.outro, ['Plain closing'], 'outro');
     });
     test('serializeInbox(parseInbox(x)) = x for the standard inbox', () => eq(serializeInbox(parseInbox(INBOX)), INBOX));
     test('list bullets in the frontmatter are not items', () => {
-        const text = '---\ninbox: true\ntags:\n- a\n- b\n---\n\n- one\n';
+        const text = '---\nlayout: list\ntags:\n- a\n- b\n---\n\n- one\n';
         const inbox = parseInbox(text);
         eq(inbox.items.map(i => i.text), ['one']);
         eq(serializeInbox(inbox), text, 'frontmatter intact');
     });
     test('a new inbox is written and recognized again, without items', () => {
         const text = serializeInbox(newInbox());
-        ok(isInbox(text), 'not recognized');
+        ok(isList(text), 'not recognized');
         eq(parseInbox(text).items, []);
         eq(serializeInbox(parseInbox(text)), text, 'stable');
     });
@@ -68,14 +62,14 @@ export function inboxModelTests(): void {
     });
 
     test('captureItem gives a new item the default of every field it does not set; without defaults it adds nothing', () => {
-        const withDefaults = parseInbox('---\ninbox: true\nfields:\n  created: date = now\n  status: select(antre, dibaca) = antre\n---\n\n- old\n');
+        const withDefaults = parseInbox('---\nlayout: list\nfields:\n  created: date = now\n  status: select(antre, dibaca) = antre\n---\n\n- old\n');
         eq(captureItem(withDefaults, 'New #x', new Date(2026, 9, 8, 9, 5)).items[0].text, 'New #x [created:: 2026-10-08 09:05] [status:: antre]');
         eq(captureItem(withDefaults, 'Set [status:: dibaca]', new Date(2026, 9, 8, 9, 5)).items[0].text, 'Set [status:: dibaca] [created:: 2026-10-08 09:05]', 'a field the text sets is left alone');
-        eq(captureItem(parseInbox('---\ninbox: true\n---\n\n- old\n'), 'Plain', new Date()).items[0].text, 'Plain', 'no declared default, no stamp');
-        eq(parseInbox(serializeInbox(newInbox())).head.slice(0, 5), ['---', 'inbox: true', 'fields:', '  created: date = now', '---'], 'New Inbox declares the capture time');
+        eq(captureItem(parseInbox('---\nlayout: list\n---\n\n- old\n'), 'Plain', new Date()).items[0].text, 'Plain', 'no declared default, no stamp');
+        eq(parseInbox(serializeInbox(newInbox())).head.slice(0, 5), ['---', 'layout: list', 'fields:', '  created: date = now', '---'], 'New Inbox declares the capture time');
     });
     test('inbox fields: the schema, chips without the capture time, missing fields, setting one, and adding an option', () => {
-        const inbox = parseInbox('---\ninbox: true\nfields:\n  tipe: select(ide, bacaan)\n  created: text\n  url: link\n---\n\n# Inbox\n\n- Satu #x [created:: 2026-10-07 14:22] [tipe:: ide]\n- Dua\n');
+        const inbox = parseInbox('---\nlayout: list\nfields:\n  tipe: select(ide, bacaan)\n  created: text\n  url: link\n---\n\n# Inbox\n\n- Satu #x [created:: 2026-10-07 14:22] [tipe:: ide]\n- Dua\n');
         const schema = inboxSchema(inbox);
         eq(schema.map(f => `${f.key}:${f.type}`), ['tipe:select', 'created:text', 'url:link'], 'only the declared fields');
         eq(itemFields(inbox.items[0].text, schema).map(c => [c.text, c.option]), [['ide', 0]], 'the capture time is shown as its age, not as a chip');

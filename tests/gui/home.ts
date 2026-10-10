@@ -22,9 +22,9 @@ export function homeTests(c: GuiContext): void {
     const path = (name: string) => GLib.build_filenamev([ws, ...name.split('/')]);
     const put = (name: string, text: string) => { GLib.file_set_contents(path(name), text); return path(name); };
     const day = (offset: number) => localDate(new Date(Date.now() + offset * 24 * 60 * 60 * 1000));
-    const BOARD = `---\nkanban: true\n---\n\n## Plan\n\n- [ ] Implement search #project/nyerat [due:: ${day(0)}]\n- [ ] Review architecture [due:: ${day(1)}]\n- [ ] Old report [due:: ${day(-2)}]\n- [ ] Later [due:: ${day(10)}]\n\n## Done\n\n- [x] Already done [due:: ${day(0)}]\n`;
+    const BOARD = `---\nlayout: board\n---\n\n## Plan\n\n- [ ] Implement search #project/nyerat [due:: ${day(0)}]\n- [ ] Review architecture [due:: ${day(1)}]\n- [ ] Old report [due:: ${day(-2)}]\n- [ ] Later [due:: ${day(10)}]\n\n## Done\n\n- [x] Already done [due:: ${day(0)}]\n`;
     const board = put('board.md', BOARD);
-    put('inbox.md', '---\ninbox: true\n---\n\n- Idea one\n- Idea two\n- [x] Already processed\n');
+    put('inbox.md', '---\nlayout: list\n---\n\n- Idea one\n- Idea two\n- [x] Already processed\n');
     const architecture = put('projects/delta/architecture.md', '# Architecture\n');
     const summary = put('projects/delta/summary.md', '# Summary\n');
     const journal = put('journal/2026-10-06.md', '# Journal\n');
@@ -148,7 +148,7 @@ export function homeTests(c: GuiContext): void {
         close(again.win);
     });
     test('more than seven due dates are summarized; the "Show" row opens the rest', () => {
-        const many = put('many.md', `---\nkanban: true\n---\n\n## Plan\n\n${Array.from({ length: 10 }, (_, i) => `- [ ] Task ${i} [due:: ${day(0)}]`).join('\n')}\n`);
+        const many = put('many.md', `---\nlayout: board\n---\n\n## Plan\n\n${Array.from({ length: 10 }, (_, i) => `- [ ] Task ${i} [due:: ${day(0)}]`).join('\n')}\n`);
         const { win } = open();
         const checks = () => descendants(win.home.widget).filter(x => x instanceof Gtk.CheckButton).length;
         eq(checks(), 7, 'due-date rows');
@@ -188,7 +188,7 @@ export function homeTests(c: GuiContext): void {
     test('an unsaved tab that becomes a board is counted; one that stops being a board is not', () => {
         const { win } = open();
         win.openFile(summary); settle();
-        win.editor.setText(`---\nkanban: true\n---\n\n## Plan\n\n- [ ] Write summary [due:: ${day(0)}]\n`);
+        win.editor.setText(`---\nlayout: board\n---\n\n## Plan\n\n- [ ] Write summary [due:: ${day(0)}]\n`);
         win.editor.buffer.set_modified(true);
         ok(win.homePage.data().tasks.some(t => t.title === 'Write summary' && t.file === 'projects/delta/summary.md'), 'the unsaved board is missing');
         win.openFile(board); settle();

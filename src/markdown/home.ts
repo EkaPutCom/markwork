@@ -3,8 +3,9 @@
 // The source of truth remains the Markdown files, so there is no index or database that can go stale:
 // everything is recomputed every time Home is shown.
 
-import { cardMeta, dueStatus, isKanban, parseBoard, type Board, type Card, type DueStatus, type Position } from './kanban.js';
-import { isInbox, parseInbox } from './inbox.js';
+import { cardMeta, dueStatus, parseBoard, type Board, type Card, type DueStatus, type Position } from './kanban.js';
+import { isBoard, isList } from './layout.js';
+import { parseInbox } from './inbox.js';
 
 export interface HomeFile {
     name: string;    // relative to the work folder
@@ -35,7 +36,7 @@ const daysBetween = (from: string, to: string): number =>
 export function dueTasks(files: HomeFile[], today: string, projectOf: (board: Board, card: Card) => string | null = () => null): Task[] {
     const tasks: Task[] = [];
     for (const file of files) {
-        if (!isKanban(file.text)) continue;
+        if (!isBoard(file.text)) continue;
         const board = parseBoard(file.text);
         board.columns.forEach((column, c) => {
             if (DONE_COLUMN.test(column.title.trim())) return;
@@ -63,7 +64,7 @@ export interface InboxCount {
 // Inboxes that still have unprocessed items, the largest first.
 export function openInboxes(files: HomeFile[]): InboxCount[] {
     return files
-        .filter(f => isInbox(f.text))
+        .filter(f => isList(f.text))
         .map(f => ({ file: f.name, open: parseInbox(f.text).items.filter(i => i.done !== true).length }))
         .filter(i => i.open > 0)
         .sort((a, b) => b.open - a.open || a.file.localeCompare(b.file));

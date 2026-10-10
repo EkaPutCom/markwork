@@ -26,7 +26,7 @@ const verify = call('verify_work', { checks: [
 ] });
 
 const initial = (): SourceFile[] => [{ name: 'plan.md', text: '# Plan\nRelease November 15\n' },
-    { name: 'board.md', text: '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n' }];
+    { name: 'board.md', text: '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n' }];
 
 function harness() {
     const disk = new Map(initial().map(f => [f.name, f.text]));

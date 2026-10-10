@@ -1,5 +1,5 @@
 ---
-kanban: true
+layout: board
 ---
 
 ## Plan

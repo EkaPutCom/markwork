@@ -8,8 +8,9 @@ import GLib from 'gi://GLib';
 import type Gtk from 'gi://Gtk?version=4.0';
 import { readTextFile, writeTextFile, flushWrites } from '../files.js';
 import { TEXT_ACTIONS } from '../actions.js';
-import { isInbox, newInbox, parseInbox, serializeInbox, type Inbox } from '../markdown/inbox.js';
-import { countCards, isKanban, newBoard, parseBoard, serializeBoard, type Board } from '../markdown/kanban.js';
+import { isBoard, isList } from '../markdown/layout.js';
+import { newInbox, parseInbox, serializeInbox, type Inbox } from '../markdown/inbox.js';
+import { countCards, newBoard, parseBoard, serializeBoard, type Board } from '../markdown/kanban.js';
 import type { KanbanBoard } from '../ui/kanban.js';
 import type { InboxView } from '../ui/inbox.js';
 import type { HomeView } from '../ui/home.js';
@@ -79,7 +80,7 @@ export class ViewController {
         }
         const text = doc.editor.getText();
         const structured = !this.state(doc).textOverride;
-        this.show(structured && isKanban(text) ? 'board' : structured && isInbox(text) ? 'inbox' : 'text');
+        this.show(structured && isBoard(text) ? 'board' : structured && isList(text) ? 'inbox' : 'text');
     }
 
     show(view: View): void {
@@ -144,8 +145,8 @@ export class ViewController {
     toggle(on: boolean): void {
         const doc = this.host.active();
         const text = doc.editor.getText();
-        if (on && !isKanban(text) && !isInbox(text)) {
-            this.host.toast(_('This document is not a kanban board or inbox (it needs "kanban: true" or "inbox: true" in the frontmatter)'));
+        if (on && !isBoard(text) && !isList(text)) {
+            this.host.toast(_('This document is not a board or list (it needs "layout: board" or "layout: list" in the frontmatter)'));
             this.show('text');
             return;
         }
@@ -183,7 +184,7 @@ export class ViewController {
         try {
             if (!doc) flushWrites(file);
             const text = doc ? doc.editor.getText() : readTextFile(file);
-            if (!isKanban(text)) return 'the board file is no longer a kanban board';
+            if (!isBoard(text)) return 'the board file is no longer a board (its frontmatter has no "layout: board")';
             const board = parseBoard(text);
             const next = edit(board);
             if (next === board) return null;
@@ -218,7 +219,7 @@ export class ViewController {
         const state = this.state(doc);
         const text = doc.editor.getText();
         if (!(this.boardMode || this.inboxMode) || text === state.boardText) return;
-        if (!(this.boardMode ? isKanban(text) : isInbox(text))) {
+        if (!(this.boardMode ? isBoard(text) : isList(text))) {
             state.textOverride = true;   // no longer a board/inbox (for example the frontmatter was removed)
             this.show('text');
             return;

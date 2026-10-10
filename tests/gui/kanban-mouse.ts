@@ -10,7 +10,7 @@ import { MouseInput } from './mouse-input.js';
 import { countPointerEvents, descendants, screenPoint } from '../widgets.js';
 import type { GuiContext } from './context.js';
 
-const BOARD = '---\nkanban: true\n---\n\n## Source\n\n- [ ] Card A 🎉\n  Note A\n- [ ] Card B\n\n## Target\n\n- [ ] Card C\n\n## Empty\n';
+const BOARD = '---\nlayout: board\n---\n\n## Source\n\n- [ ] Card A 🎉\n  Note A\n- [ ] Card B\n\n## Target\n\n- [ ] Card C\n\n## Empty\n';
 
 export function kanbanMouseTests(c: GuiContext): void {
     const { w, buf, pump, text, action } = c;
@@ -124,7 +124,7 @@ export function kanbanMouseTests(c: GuiContext): void {
             eq(text(), BOARD);
         });
         test('a mouse click on a field chip opens its popover, not the edit dialog, and does not start a drag', () => {
-            reset('---\nkanban: true\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n---\n\n## Plan\n\n- [ ] Card [prioritas:: sedang]\n');
+            reset('---\nlayout: board\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n---\n\n## Plan\n\n- [ ] Card [prioritas:: sedang]\n');
             const chip = descendants(kb.columns[0].cards[0]).find((x): x is Gtk.Label => x instanceof Gtk.Label && x.label === 'sedang')!;
             ok(chip, 'the chip is not shown');
             move(...point(chip, chip.get_allocated_height() / 2));
@@ -135,7 +135,7 @@ export function kanbanMouseTests(c: GuiContext): void {
             ok(descendants(kb.widget).some(x => x instanceof Gtk.Popover && x.get_mapped()), 'the popover is shown');
         });
         test('a mouse click on a field chip in an inbox row opens its popover, not the note dialog', () => {
-            reset('---\ninbox: true\nfields:\n  tipe: select(ide, bacaan)\n---\n\n# Inbox\n\n- Satu [tipe:: ide]\n');
+            reset('---\nlayout: list\nfields:\n  tipe: select(ide, bacaan)\n---\n\n# Inbox\n\n- Satu [tipe:: ide]\n');
             let noteEdits = 0;
             const inboxDialogs = w.inbox.dialogs;
             w.inbox.dialogs = { editNote: () => { noteEdits++; return null; } };

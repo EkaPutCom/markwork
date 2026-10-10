@@ -1,6 +1,7 @@
 // Kanban board model tests.
 
-import { addCard, addColumn, boardSchema, cardFields, cardMeta, cardMissingFields, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { addCard, addColumn, boardSchema, cardFields, cardMeta, cardMissingFields, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { isBoard } from '../../src/markdown/layout.js';
 import { section, test, eq, ok } from '../framework.js';
 import { BOARD } from '../fixtures.js';
 
@@ -9,28 +10,10 @@ export function kanbanModelTests(): void {
     const titles = (b: Board) => b.columns.map(c => c.title);
     const cardsOf = (b: Board, col: number) => b.columns[col].cards.map(c => c.text);
 
-    test('isKanban: only if the frontmatter contains the board marker', () => {
-        eq([isKanban(BOARD), isKanban('# Plain\n\ntext'), isKanban('---\ntitle: a\n---\n\ntext'),
-            isKanban('text\n\nkanban: true'), isKanban('---\n\ntext\n\n---\nkanban: true')], [true, false, false, false, false]);
-    });
-    test('isKanban: kanban: true, the old kanban-plugin, and values that are not markers', () => {
-        const doc = (line: string) => `---\n${line}\n---\n\n## A`;
-        eq(['kanban: true', 'kanban: "true"', 'KANBAN: True', 'kanban-plugin: basic', 'kanban-plugin: board'].map(l => isKanban(doc(l))),
-            [true, true, true, true, true], 'recognized markers');
-        eq(['kanban: false', 'kanban: no', 'kanban:', 'kanban-plugin:', 'kanbans: true'].map(l => isKanban(doc(l))),
-            [false, false, false, false, false], 'not a marker');
-        eq(isKanban('---\ntitle: x\nkanban: true\ntag: y\n---'), true, 'a marker among other frontmatter keys');
-    });
-    test('a board with the old marker (kanban-plugin) is kept as is when written', () => {
-        const legacy = BOARD.replace('---\nkanban: true\n---', '---\n\nkanban-plugin: basic\n\n---');
-        ok(legacy !== BOARD && legacy.includes('kanban-plugin: basic'), 'test material');
-        eq(serializeBoard(parseBoard(legacy)), legacy, 'old frontmatter intact');
-        ok(isKanban(legacy), 'still recognized');
-    });
     test('parseBoard: lists, cards, notes, intro, outro, and footer', () => {
         const b = parseBoard(BOARD);
         eq(titles(b), ['Plan', 'In Progress', 'Done'], 'lists');
-        eq(b.head, ['---', 'kanban: true', '---'], 'head');
+        eq(b.head, ['---', 'layout: board', '---'], 'head');
         eq(b.columns[0].cards[0], { done: false, text: 'Write report #important [due:: 2026-10-20]', notes: ['note one', '', 'note two'] }, 'card with notes');
         eq(b.columns[1].intro, ['**Active**'], 'intro');
         eq(b.columns[2].cards.map(c => c.done), [true, null], 'done and a plain item');
@@ -39,7 +22,7 @@ export function kanbanModelTests(): void {
     });
     test('serializeBoard(parseBoard(x)) = x for the standard board', () => eq(serializeBoard(parseBoard(BOARD)), BOARD));
     test('a messy board is tidied up and the result is stable', () => {
-        const messy = '---\r\nkanban-plugin: board\r\n---\r\n# Board title\r\n\r\n\r\n##   A  \r\n* [X] one\r\n    note with four spaces\r\n\r\n\r\n- two\r\n## B\r\n';
+        const messy = '---\r\nlayout: board\r\n---\r\n# Board title\r\n\r\n\r\n##   A  \r\n* [X] one\r\n    note with four spaces\r\n\r\n\r\n- two\r\n## B\r\n';
         const once = serializeBoard(parseBoard(messy));
         eq(serializeBoard(parseBoard(once)), once, 'idempotent');
         const b = parseBoard(messy);
@@ -49,8 +32,8 @@ export function kanbanModelTests(): void {
     });
     test('a new board can be written and recognized again', () => {
         const text = serializeBoard(newBoard(['X', 'Y']));
-        ok(text.startsWith('---\nkanban: true\n---\n\n## X\n'), 'new marker');
-        ok(isKanban(text), 'not recognized');
+        ok(text.startsWith('---\nlayout: board\n---\n\n## X\n'), 'new marker');
+        ok(isBoard(text), 'not recognized');
         eq(titles(parseBoard(text)), ['X', 'Y']);
     });
     test('addCard / updateCard / toggleDone / deleteCard', () => {
@@ -104,14 +87,14 @@ export function kanbanModelTests(): void {
         eq(cardMeta('Send [due:: besok]').due, null, 'it is not a due date');
     });
     test('boardSchema: the built-in fields plus the frontmatter fields; cardFields leaves due and agent to their badges', () => {
-        const board = parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah)\n  due: text\n---\n\n## Plan\n\n- [ ] A [prioritas:: tinggi] [due:: 2026-10-20] [agent:: pi] [x:: 1]\n');
+        const board = parseBoard('---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah)\n  due: text\n---\n\n## Plan\n\n- [ ] A [prioritas:: tinggi] [due:: 2026-10-20] [agent:: pi] [x:: 1]\n');
         const schema = boardSchema(board);
         eq(schema.map(f => `${f.key}:${f.type}`), ['due:date', 'agent:agent', 'prioritas:select'], 'a built-in key cannot be redeclared');
         eq(cardFields(board.columns[0].cards[0].text, schema).map(c => c.text), ['tinggi', 'x: 1']);
         eq(boardSchema(newBoard()).length, 2, 'a board without a fields block');
     });
     test('setCardField sets, replaces, and clears one field; a value that does not fit changes nothing', () => {
-        const board = parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah)\n---\n\n## Plan\n\n- [ ] A #x [prioritas:: rendah] [owner:: Eka]\n');
+        const board = parseBoard('---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah)\n---\n\n## Plan\n\n- [ ] A #x [prioritas:: rendah] [owner:: Eka]\n');
         const prio = boardSchema(board).find(f => f.key === 'prioritas')!;
         const text = (b: Board) => b.columns[0].cards[0].text;
         eq(text(setCardField(board, { column: 0, index: 0 }, prio, 'TINGGI')), 'A #x [prioritas:: tinggi] [owner:: Eka]');
@@ -120,7 +103,7 @@ export function kanbanModelTests(): void {
         ok(setCardField(board, { column: 3, index: 0 }, prio, 'tinggi') === board, 'no such card');
     });
     test('withFieldOption adds an option to the frontmatter line only', () => {
-        const board = parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah)\n  due2: date\n---\n\n# Sprint\n\n## Plan\n\n- [ ] A\n');
+        const board = parseBoard('---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah)\n  due2: date\n---\n\n# Sprint\n\n## Plan\n\n- [ ] A\n');
         const next = withFieldOption(board, 'prioritas', 'urgent');
         eq(next.head.length, board.head.length, 'same lines');
         eq(boardSchema(next).find(f => f.key === 'prioritas')?.options, ['tinggi', 'rendah', 'urgent']);
@@ -128,13 +111,13 @@ export function kanbanModelTests(): void {
         ok(withFieldOption(board, 'prioritas', 'tinggi') === board && withFieldOption(board, 'due2', 'x') === board && withFieldOption(board, 'nope', 'x') === board, 'nothing to add');
     });
     test('cardMissingFields: due and the declared fields without a value; the agent is left to its own menu', () => {
-        const schema = boardSchema(parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah)\n  progres: progress\n---\n'));
+        const schema = boardSchema(parseBoard('---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah)\n  progres: progress\n---\n'));
         eq(cardMissingFields('A', schema).map(f => f.key), ['due', 'prioritas', 'progres']);
         eq(cardMissingFields('A [prioritas:: tinggi] [due:: 2026-10-20] [agent:: pi]', schema).map(f => f.key), ['progres']);
         eq(cardMissingFields('A [prioritas:: tinggi] [due:: 2026-10-20] [progres:: 1/2]', schema), []);
     });
     test('addCard with a time gives the card the defaults the board declares; without one it adds nothing', () => {
-        const board = parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah) = rendah\n  dibuat: date = today\n---\n\n## Plan\n');
+        const board = parseBoard('---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah) = rendah\n  dibuat: date = today\n---\n\n## Plan\n');
         const now = new Date(2026, 9, 8, 9, 5);
         eq(addCard(board, 0, 'A [prioritas:: tinggi]', Infinity, now).columns[0].cards[0].text, 'A [prioritas:: tinggi] [dibuat:: 2026-10-08]');
         eq(addCard(board, 0, 'B').columns[0].cards[0].text, 'B');
