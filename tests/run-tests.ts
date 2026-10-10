@@ -35,6 +35,7 @@ import { settingsTests } from './unit/settings.js';
 import { tableTests } from './unit/table.js';
 import { kanbanModelTests } from './unit/kanban.js';
 import { inboxModelTests } from './unit/inbox.js';
+import { fieldsModelTests } from './unit/fields.js';
 import { homeModelTests } from './unit/home.js';
 import { journalModelTests } from './unit/journal.js';
 import { codeLanguageTests } from './unit/codelang.js';
@@ -93,6 +94,7 @@ function runUnitTests(): void {
     tableTests();
     kanbanModelTests();
     inboxModelTests();
+    fieldsModelTests();
     homeModelTests();
     journalModelTests();
     codeLanguageTests();

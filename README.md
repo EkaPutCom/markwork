@@ -424,6 +424,7 @@ src/
 │   ├── table.ts          tables: recognizing blocks, splitting cells, tidying, adding/removing rows and columns
 │   ├── kanban.ts         kanban boards: reading/writing Markdown, card and list operations, tags, dates, and @harness assignment
 │   ├── inbox.ts          inbox: reading/writing Markdown, capturing/editing/deleting notes, tags, capture time and age
+│   ├── fields.ts         typed fields on an item (`[key:: value]`) and the `fields:` schema in the frontmatter: parsing, formatting, writing one field in place
 │   ├── home.ts           Home data: deadlines from boards, unprocessed inbox, recent files, greeting
 │   ├── journal.ts        daily journal: template, quick capture, merging Activity, board events, the JSONL activity log
 │   ├── pango.ts          table cell contents (inline Markdown) → Pango markup for Gtk.Label
