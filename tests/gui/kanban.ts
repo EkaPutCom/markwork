@@ -60,6 +60,71 @@ export function kanbanBoardTests(c: GuiContext): void {
         openBoard();
     });
 
+    // Change a field in place from its popover.
+    const FIELD_BOARD = '---\nkanban: true\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Parser [prioritas:: sedang] [due:: 2026-10-20 09:00]\n';
+    const popoverOf = (key: string, column = 0, index = 0): Gtk.Popover => {
+        const popover = kb.editField(column, index, key);
+        ok(popover, `no popover for ${key}`);
+        settleK();
+        return popover;
+    };
+    const popButtons = (popover: Gtk.Popover) => descendants(popover).filter((x): x is Gtk.Button => x instanceof Gtk.Button);
+    const popButton = (popover: Gtk.Popover, label: string) => popButtons(popover).find(b => b.label === label) ?? (() => { throw new Error(`no button "${label}"`); })();
+    const popEntry = (popover: Gtk.Popover) => descendants(popover).find((x): x is Gtk.Entry => x instanceof Gtk.Entry)!;
+
+    test('a select popover lists the options and sets one; Clear removes the field', () => {
+        GLib.file_set_contents(board, FIELD_BOARD); w.load(board); settleK();
+        let pop = popoverOf('prioritas');
+        eq(popButtons(pop).filter(b => b.get_visible()).map(b => b.label), ['tinggi', '✓ sedang', 'rendah', 'Clear'], 'the current option is marked');
+        popButton(pop, 'tinggi').emit('clicked'); settleK();
+        eq(kb.getBoard().columns[0].cards[0].text, 'Parser [prioritas:: tinggi] [due:: 2026-10-20 09:00]');
+        ok(text().includes('[prioritas:: tinggi]'), 'written to the document');
+        pop = popoverOf('prioritas');
+        popButton(pop, 'Clear').emit('clicked'); settleK();
+        eq(kb.getBoard().columns[0].cards[0].text, 'Parser [due:: 2026-10-20 09:00]');
+        eq(kb.editField(0, 0, 'nope'), null, 'a key that is not declared has no popover');
+    });
+
+    test('a typed select value: a close option is offered, a new one needs a confirmation and is one undo step', () => {
+        GLib.file_set_contents(board, FIELD_BOARD); w.load(board); settleK();
+        const before = text();
+        let pop = popoverOf('prioritas');
+        const entry = popEntry(pop);
+        const offer = () => popButtons(pop).find(b => b.get_visible() && /^(Use|Add) /.test(b.label ?? ''));
+        ok(!offer(), 'nothing is offered for an empty entry');
+        entry.set_text('tingi'); settleK();
+        eq(offer()?.label, 'Use “tinggi”', 'one typo away from an existing option');
+        entry.set_text('urgent'); settleK();
+        eq(offer()?.label, 'Add “urgent” to the list');
+        eq(text(), before, 'nothing is written before the confirmation');
+        offer()!.emit('clicked'); settleK();
+        ok(text().includes('prioritas: select(tinggi, sedang, rendah, urgent)'), 'the option is in the frontmatter');
+        ok(text().includes('[prioritas:: urgent]'), 'and the card uses it');
+        action('undo'); settleK();
+        eq(text(), before, 'one undo reverts the option and the value together');
+        pop = popoverOf('prioritas');
+        popEntry(pop).set_text('tingi'); settleK();
+        popButtons(pop).find(b => b.get_visible() && b.label === 'Use “tinggi”')!.emit('clicked'); settleK();
+        ok(text().includes('[prioritas:: tinggi]') && !text().includes('urgent'), 'using the close option adds nothing to the list');
+    });
+
+    test('a date popover keeps the time; an entry popover refuses a value that does not fit', () => {
+        GLib.file_set_contents(board, FIELD_BOARD); w.load(board); settleK();
+        let pop = popoverOf('due');
+        const calendar = descendants(pop).find((x): x is Gtk.Calendar => x instanceof Gtk.Calendar)!;
+        eq(calendar.get_date().format('%Y-%m-%d'), '2026-10-20', 'the calendar opens on the date in the field');
+        calendar.select_day(GLib.DateTime.new_local(2026, 11, 2, 0, 0, 0)); settleK();
+        eq(kb.getBoard().columns[0].cards[0].text, 'Parser [prioritas:: sedang] [due:: 2026-11-02 09:00]');
+        pop = popoverOf('progres');
+        const entry = popEntry(pop);
+        entry.set_text('nope'); entry.emit('activate'); settleK();
+        ok(entry.has_css_class('error'), 'marked');
+        ok(!kb.getBoard().columns[0].cards[0].text.includes('progres'), 'nothing written');
+        entry.set_text('4/5'); entry.emit('activate'); settleK();
+        ok(kb.getBoard().columns[0].cards[0].text.endsWith('[progres:: 4/5]'), kb.getBoard().columns[0].cards[0].text);
+        openBoard();
+    });
+
     test('a kanban document opens as a board, a plain document as text', () => {
         openBoard();
         ok(w.boardMode, 'the board is not shown');

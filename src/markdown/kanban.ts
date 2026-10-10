@@ -26,7 +26,7 @@
 // Pure TypeScript without GTK. All operations return a new board; the original board
 // is not changed, so it is easy to test.
 
-import { fieldChips, fieldInputText, findSegments, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { addOption, fieldChips, fieldInputText, findSegments, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 
 export interface Card {
     done: boolean | null;   // null = plain item without a checkbox ("- text")
@@ -263,6 +263,21 @@ export const DUE_INPUT = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2})?$/;
 export function boardSchema(board: Board): FieldDef[] {
     const declared = parseSchema(board.head.join('\n')).fields;
     return [...CARD_SCHEMA, ...declared.filter(f => !CARD_SCHEMA.some(c => c.key === f.key))];
+}
+
+// The card at `at` with its field `def` set from `raw` (empty removes it; a value that does not fit changes nothing).
+export function setCardField(board: Board, at: Position, def: FieldDef, raw: string): Board {
+    const card = board.columns[at.column]?.cards[at.index];
+    if (!card) return board;
+    const text = setField(card.text, def, raw);
+    return text === card.text ? board : updateCard(board, at, { text });
+}
+
+// The board with `option` added to the select field `key` in its frontmatter; unchanged if it cannot be added.
+export function withFieldOption(board: Board, key: string, option: string): Board {
+    const head = board.head.join('\n');
+    const next = addOption(head, key, option);
+    return next === head ? board : { ...board, head: next.split('\n') };
 }
 
 // The chips for a card's fields other than due and agent, which have their own badges.

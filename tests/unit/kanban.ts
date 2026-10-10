@@ -1,6 +1,6 @@
 // Kanban board model tests.
 
-import { addCard, addColumn, boardSchema, cardFields, cardMeta, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { addCard, addColumn, boardSchema, cardFields, cardMeta, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok } from '../framework.js';
 import { BOARD } from '../fixtures.js';
 
@@ -109,6 +109,23 @@ export function kanbanModelTests(): void {
         eq(schema.map(f => `${f.key}:${f.type}`), ['due:date', 'agent:agent', 'prioritas:select'], 'a built-in key cannot be redeclared');
         eq(cardFields(board.columns[0].cards[0].text, schema).map(c => c.text), ['tinggi', 'x: 1']);
         eq(boardSchema(newBoard()).length, 2, 'a board without a fields block');
+    });
+    test('setCardField sets, replaces, and clears one field; a value that does not fit changes nothing', () => {
+        const board = parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah)\n---\n\n## Plan\n\n- [ ] A #x [prioritas:: rendah] [owner:: Eka]\n');
+        const prio = boardSchema(board).find(f => f.key === 'prioritas')!;
+        const text = (b: Board) => b.columns[0].cards[0].text;
+        eq(text(setCardField(board, { column: 0, index: 0 }, prio, 'TINGGI')), 'A #x [prioritas:: tinggi] [owner:: Eka]');
+        eq(text(setCardField(board, { column: 0, index: 0 }, prio, '')), 'A #x [owner:: Eka]');
+        ok(setCardField(board, { column: 0, index: 0 }, prio, 'urgent') === board, 'an option that is not listed is rejected');
+        ok(setCardField(board, { column: 3, index: 0 }, prio, 'tinggi') === board, 'no such card');
+    });
+    test('withFieldOption adds an option to the frontmatter line only', () => {
+        const board = parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah)\n  due2: date\n---\n\n# Sprint\n\n## Plan\n\n- [ ] A\n');
+        const next = withFieldOption(board, 'prioritas', 'urgent');
+        eq(next.head.length, board.head.length, 'same lines');
+        eq(boardSchema(next).find(f => f.key === 'prioritas')?.options, ['tinggi', 'rendah', 'urgent']);
+        eq(next.columns, board.columns, 'cards untouched');
+        ok(withFieldOption(board, 'prioritas', 'tinggi') === board && withFieldOption(board, 'due2', 'x') === board && withFieldOption(board, 'nope', 'x') === board, 'nothing to add');
     });
     test('dueStatus and dropIndex', () => {
         eq(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-09'].map(d => dueStatus(d, '2026-10-03')), ['overdue', 'today', 'soon', 'later']);

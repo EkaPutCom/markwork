@@ -7,7 +7,7 @@ import { parseBoard } from '../../src/markdown/kanban.js';
 import { readTextFile } from '../../src/files.js';
 import { tmp, section, test, eq, ok } from '../framework.js';
 import { MouseInput } from './mouse-input.js';
-import { countPointerEvents, screenPoint } from '../widgets.js';
+import { countPointerEvents, descendants, screenPoint } from '../widgets.js';
 import type { GuiContext } from './context.js';
 
 const BOARD = '---\nkanban: true\n---\n\n## Source\n\n- [ ] Card A 🎉\n  Note A\n- [ ] Card B\n\n## Target\n\n- [ ] Card C\n\n## Empty\n';
@@ -36,8 +36,8 @@ export function kanbanMouseTests(c: GuiContext): void {
     let edits = 0;
     const dialogs = kb.dialogs;
     kb.dialogs = { ...dialogs, editCard: () => { edits++; return null; } };
-    const reset = () => {
-        GLib.file_set_contents(path, BOARD);
+    const reset = (content = BOARD) => {
+        GLib.file_set_contents(path, content);
         w.load(path);
         w.win.set_default_size(1100, 700);
         w.win.present_with_time(Gdk.CURRENT_TIME);
@@ -122,6 +122,17 @@ export function kanbanMouseTests(c: GuiContext): void {
             input.up(); held = false; settle();
             eq(edits, 1, 'edit dialog');
             eq(text(), BOARD);
+        });
+        test('a mouse click on a field chip opens its popover, not the edit dialog, and does not start a drag', () => {
+            reset('---\nkanban: true\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n---\n\n## Plan\n\n- [ ] Card [prioritas:: sedang]\n');
+            const chip = descendants(kb.columns[0].cards[0]).find((x): x is Gtk.Label => x instanceof Gtk.Label && x.label === 'sedang')!;
+            ok(chip, 'the chip is not shown');
+            move(...point(chip, chip.get_allocated_height() / 2));
+            input.down(); held = true; settle();
+            input.up(); held = false; settle();
+            eq(edits, 0, 'the card dialog did not open');
+            ok(!kb.dragging, 'no drag started');
+            ok(descendants(chip).some(x => x instanceof Gtk.Popover && x.get_mapped()), 'the popover is shown');
         });
     } finally {
         try {

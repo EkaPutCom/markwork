@@ -21,10 +21,11 @@ import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import {
-    addCard, addColumn, boardSchema, cardFields, cardMeta, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
+    addCard, addColumn, boardSchema, cardFields, cardMeta, setCardField, withFieldOption, DUE_FIELD, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
     newBoard, renameColumn, toggleDone, updateCard, type Board, type Card, type Position,
 } from '../markdown/kanban.js';
-import type { FieldChip, FieldDef } from '../markdown/fields.js';
+import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
+import { fieldPopover } from './fieldpopover.js';
 import { cellMarkup, escapeMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
 import { confirmDialog, editCardDialog, promptDialog, type CardDraft } from './dialogs.js';
@@ -264,7 +265,7 @@ export class KanbanBoard {
         // Links in the card notes are not visible in the title, so they are shown as clickable chips.
         const inTitle = new Set(wikiLinksIn(card.text).map(l => l.target.toLowerCase()));
         const noteLinks = card.notes.length ? wikiLinksIn(card.notes.join('\n')).filter(l => !inTitle.has(l.target.toLowerCase())) : [];
-        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, this.harness?.status(card) ?? null, fields);
+        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, this.harness?.status(card) ?? null, fields, (key, anchor) => this.editField(c, i, key, anchor));
         if (badges) inner.append(badges);
         // One row per link so many links do not widen the card.
         const linkBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
@@ -298,7 +299,7 @@ export class KanbanBoard {
         return widget;
     }
 
-    private buildBadges(hasNotes: boolean, tags: string[], due: string | null, agent: string | null = null, status: CardRunStatus | null = null, fields: FieldChip[] = []): Gtk.Box | null {
+    private buildBadges(hasNotes: boolean, tags: string[], due: string | null, agent: string | null = null, status: CardRunStatus | null = null, fields: FieldChip[] = [], edit: (key: string, anchor: Gtk.Widget) => void = () => {}): Gtk.Box | null {
         if (!hasNotes && !tags.length && !due && !agent && !fields.length) return null;
         const row = new Gtk.Box({ spacing: 4 });
         const chip = (text: string, ...classes: string[]) => {
@@ -308,9 +309,12 @@ export class KanbanBoard {
             return label;
         };
         if (agent) this.agentChip(chip, agent, status);
-        for (const f of fields) this.fieldChip(chip, f);
+        for (const f of fields) this.fieldChip(chip, f, edit);
         for (const tag of tags) chip(`#${tag}`, `kanban-tag-${this.tagColor(tag)}`);
-        if (due) chip(`📅 ${this.formatDue(due)}`, 'kanban-due', `kanban-due-${dueStatus(due, this.today())}`);
+        if (due) {
+            const dueChip = chip(`📅 ${this.formatDue(due)}`, 'kanban-due', `kanban-due-${dueStatus(due, this.today())}`);
+            this.clickable(dueChip, () => edit(DUE_FIELD.key, dueChip));
+        }
         if (hasNotes) chip('≡', 'kanban-notes');
         return row;
     }
@@ -321,9 +325,38 @@ export class KanbanBoard {
     }
 
     // A select option takes the color of its position; a value that does not fit its field is marked and explained.
-    private fieldChip(chip: (text: string, ...classes: string[]) => Gtk.Label, f: FieldChip): void {
+    private fieldChip(chip: (text: string, ...classes: string[]) => Gtk.Label, f: FieldChip, edit: (key: string, anchor: Gtk.Widget) => void): void {
         const label = chip(f.text, f.invalid ? 'kanban-field-invalid' : f.option !== null ? `kanban-tag-${f.option % TAG_COLORS}` : 'kanban-field');
         if (f.invalid) label.set_tooltip_text(fmt(_('“{key}” does not fit its field: {reason}. The text in the file is unchanged.'), { key: f.key, reason: f.invalid }));
+        if (f.type !== null) this.clickable(label, () => edit(f.key, label));
+    }
+
+    // A chip that opens its editor on a click. It claims the press, so the card does not start a drag or open its dialog.
+    private clickable(label: Gtk.Widget, run: () => void): void {
+        label.set_cursor_from_name('pointer');
+        const click = new Gtk.GestureClick({ button: 1 });
+        click.connect('pressed', () => click.set_state(Gtk.EventSequenceState.CLAIMED));
+        click.connect('released', () => run());
+        label.add_controller(click);
+    }
+
+    // Change one field of a card in place from a popover on `anchor`. A new select option and the value that uses it
+    // are written together, so they are one undo step.
+    editField(column: number, index: number, key: string, anchor?: Gtk.Widget): Gtk.Popover | null {
+        const card = this.board.columns[column]?.cards[index];
+        const def = this.schema().find(f => f.key === key);
+        const target = anchor ?? this.columns[column]?.cards[index];
+        if (!card || !def || !target) return null;
+        return fieldPopover(target, {
+            def,
+            current: fieldInputText(card.text, def),
+            apply: (raw, newOption) => {
+                if (this.board.columns[column]?.cards[index]?.text !== card.text) return;
+                // A new option is written first, and the value is checked against the list that now includes it.
+                const board = newOption ? withFieldOption(this.board, key, newOption) : this.board;
+                this.commit(setCardField(board, { column, index }, boardSchema(board).find(f => f.key === key) ?? def, raw));
+            },
+        });
     }
 
     // A fixed color for the same tag.
