@@ -21,11 +21,11 @@ import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import {
-    addCard, addColumn, boardSchema, cardFields, cardMeta, setCardField, withFieldOption, DUE_FIELD, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
+    addCard, addColumn, boardSchema, cardFields, cardMeta, cardMissingFields, setCardField, withFieldOption, DUE_FIELD, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
     newBoard, renameColumn, toggleDone, updateCard, type Board, type Card, type Position,
 } from '../markdown/kanban.js';
 import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
-import { fieldPopover } from './fieldpopover.js';
+import { fieldMenu, fieldPopover } from './fieldpopover.js';
 import { cellMarkup, escapeMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
 import { confirmDialog, editCardDialog, promptDialog, type CardDraft } from './dialogs.js';
@@ -259,6 +259,7 @@ export class KanbanBoard {
         const top = new Gtk.Box({ spacing: 8 });
         top.append(check);
         pack(top, label, true);
+        if (cardMissingFields(card.text, this.schema()).length) top.append(this.addFieldButton(c, i));
 
         const inner = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 6 });
         inner.append(top);
@@ -329,6 +330,23 @@ export class KanbanBoard {
         const label = chip(f.text, f.invalid ? 'kanban-field-invalid' : f.option !== null ? `kanban-tag-${f.option % TAG_COLORS}` : 'kanban-field');
         if (f.invalid) label.set_tooltip_text(fmt(_('“{key}” does not fit its field: {reason}. The text in the file is unchanged.'), { key: f.key, reason: f.invalid }));
         if (f.type !== null) this.clickable(label, () => edit(f.key, label));
+    }
+
+    // A small button on the card, shown while the pointer is over it, to give a field that has no value yet one.
+    private addFieldButton(column: number, index: number): Gtk.Button {
+        const button = new Gtk.Button({ icon_name: 'list-add-symbolic', has_frame: false, valign: Gtk.Align.START, tooltip_text: _('Add a field') });
+        button.add_css_class('kanban-add-field');
+        button.connect('clicked', () => this.addFieldMenu(column, index, button));
+        return button;
+    }
+
+    // The fields this card has no value for; choosing one opens its popover.
+    addFieldMenu(column: number, index: number, anchor?: Gtk.Widget): Gtk.Popover | null {
+        const card = this.board.columns[column]?.cards[index];
+        const target = anchor ?? this.columns[column]?.cards[index];
+        const missing = card ? cardMissingFields(card.text, this.schema()) : [];
+        if (!card || !target || !missing.length) return null;
+        return fieldMenu(target, missing, def => this.editField(column, index, def.key, target));
     }
 
     // A chip that opens its editor on a click. It claims the press, so the card does not start a drag or open its dialog.

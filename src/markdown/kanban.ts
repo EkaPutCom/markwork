@@ -26,7 +26,7 @@
 // Pure TypeScript without GTK. All operations return a new board; the original board
 // is not changed, so it is easy to test.
 
-import { addOption, fieldChips, fieldInputText, findSegments, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { addOption, fieldChips, fieldInputText, findSegments, missingFields, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 
 export interface Card {
     done: boolean | null;   // null = plain item without a checkbox ("- text")
@@ -263,6 +263,11 @@ export const DUE_INPUT = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2})?$/;
 export function boardSchema(board: Board): FieldDef[] {
     const declared = parseSchema(board.head.join('\n')).fields;
     return [...CARD_SCHEMA, ...declared.filter(f => !CARD_SCHEMA.some(c => c.key === f.key))];
+}
+
+// The fields a card has no value for yet, which can be filled in from the card. The agent has its own menu.
+export function cardMissingFields(text: string, schema: FieldDef[]): FieldDef[] {
+    return missingFields(readItem(text, schema), schema, [AGENT_FIELD.key]);
 }
 
 // The card at `at` with its field `def` set from `raw` (empty removes it; a value that does not fit changes nothing).

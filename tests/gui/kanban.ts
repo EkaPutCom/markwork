@@ -125,6 +125,26 @@ export function kanbanBoardTests(c: GuiContext): void {
         openBoard();
     });
 
+    test('a card offers the fields it has no value for; choosing one opens its popover and fills it in', () => {
+        const T = '---\nkanban: true\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Bare\n- [ ] Full [prioritas:: sedang] [progres:: 1/2] [due:: 2026-10-20]\n';
+        GLib.file_set_contents(board, T); w.load(board); settleK();
+        const addButton = (idx: number) => kbDescendants(kb.columns[0].cards[idx]).find((x): x is Gtk.Button => x instanceof Gtk.Button && x.has_css_class('kanban-add-field'));
+        ok(addButton(0), 'a card with fields to fill has the add button');
+        ok(!addButton(1), 'a card with every field filled has none');
+        eq(kb.addFieldMenu(1, 0), null, 'nothing to offer when every field has a value');
+        const menu = kb.addFieldMenu(0, 0)!;
+        settleK();
+        eq(popButtons(menu).filter(b => b.get_visible()).map(b => b.label), ['due', 'prioritas', 'progres'], 'the agent is not offered here');
+        popButton(menu, 'prioritas').emit('clicked'); settleK(); settleK();
+        const pop = kbDescendants(kb.columns[0].cards[0]).find((x): x is Gtk.Popover => x instanceof Gtk.Popover && x.get_mapped());
+        ok(pop, 'the popover of the chosen field opened');
+        popButton(pop, 'rendah').emit('clicked'); settleK();
+        eq(kb.getBoard().columns[0].cards[0].text, 'Bare [prioritas:: rendah]');
+        action('undo'); settleK();
+        eq(text(), T, 'one undo');
+        openBoard();
+    });
+
     test('a kanban document opens as a board, a plain document as text', () => {
         openBoard();
         ok(w.boardMode, 'the board is not shown');

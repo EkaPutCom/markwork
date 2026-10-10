@@ -340,3 +340,9 @@ export function fieldChips(item: Item, schema: FieldDef[], skip: readonly string
     for (const u of item.unknown) if (!skip.includes(u.key)) chips.push({ key: u.key, text: `${u.key}: ${u.raw}`, type: null, option: null, invalid: null });
     return chips;
 }
+
+// The fields of `schema` that `item` has no value for, in schema order. A value that does not fit its field
+// counts as present, so it is fixed rather than silently replaced. `skip` lists fields that are set some other way.
+export function missingFields(item: Item, schema: FieldDef[], skip: readonly string[] = []): FieldDef[] {
+    return schema.filter(def => !(def.key in item.fields) && !skip.includes(def.key));
+}

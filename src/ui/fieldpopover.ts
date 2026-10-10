@@ -110,3 +110,23 @@ export function fieldPopover(anchor: Gtk.Widget, options: FieldPopoverOptions): 
     popover.popup();
     return popover;
 }
+
+// A list of the fields that have no value yet; choosing one calls `choose` after the list has closed.
+export function fieldMenu(anchor: Gtk.Widget, defs: FieldDef[], choose: (def: FieldDef) => void): Gtk.Popover {
+    const popover = new Gtk.Popover();
+    const box = content();
+    for (const def of defs) {
+        box.append(flatButton(def.key, () => {
+            popover.popdown();
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => { choose(def); return GLib.SOURCE_REMOVE; });
+        }));
+    }
+    popover.set_child(box);
+    popover.set_parent(anchor);
+    popover.connect('closed', () => GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        if (popover.get_parent()) popover.unparent();
+        return GLib.SOURCE_REMOVE;
+    }));
+    popover.popup();
+    return popover;
+}

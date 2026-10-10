@@ -1,6 +1,6 @@
 // Kanban board model tests.
 
-import { addCard, addColumn, boardSchema, cardFields, cardMeta, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { addCard, addColumn, boardSchema, cardFields, cardMeta, cardMissingFields, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok } from '../framework.js';
 import { BOARD } from '../fixtures.js';
 
@@ -126,6 +126,12 @@ export function kanbanModelTests(): void {
         eq(boardSchema(next).find(f => f.key === 'prioritas')?.options, ['tinggi', 'rendah', 'urgent']);
         eq(next.columns, board.columns, 'cards untouched');
         ok(withFieldOption(board, 'prioritas', 'tinggi') === board && withFieldOption(board, 'due2', 'x') === board && withFieldOption(board, 'nope', 'x') === board, 'nothing to add');
+    });
+    test('cardMissingFields: due and the declared fields without a value; the agent is left to its own menu', () => {
+        const schema = boardSchema(parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah)\n  progres: progress\n---\n'));
+        eq(cardMissingFields('A', schema).map(f => f.key), ['due', 'prioritas', 'progres']);
+        eq(cardMissingFields('A [prioritas:: tinggi] [due:: 2026-10-20] [agent:: pi]', schema).map(f => f.key), ['progres']);
+        eq(cardMissingFields('A [prioritas:: tinggi] [due:: 2026-10-20] [progres:: 1/2]', schema), []);
     });
     test('dueStatus and dropIndex', () => {
         eq(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-09'].map(d => dueStatus(d, '2026-10-03')), ['overdue', 'today', 'soon', 'later']);
