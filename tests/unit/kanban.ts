@@ -1,6 +1,6 @@
 // Kanban board model tests.
 
-import { addCard, addColumn, deleteColumnKeepCards, boardSchema, declaredFields, fieldUses, reservedFields, withSchema, cardFields, cardMeta, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { addCard, addColumn, deleteColumnKeepCards, dropSpot, placeMove, type DropRow, boardSchema, declaredFields, fieldUses, reservedFields, withSchema, cardFields, cardMeta, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
 import { isBoard } from '../../src/markdown/layout.js';
 import { section, test, eq, ok } from '../framework.js';
 import { BOARD } from '../fixtures.js';
@@ -135,6 +135,35 @@ export function kanbanModelTests(): void {
         eq(shape(deleteColumnKeepCards(first, 0)), [['', ['one']], ['Later', ['two']]], 'the first titled group becomes the unnamed one');
         ok(deleteColumnKeepCards(doc, 0) === doc && deleteColumnKeepCards(doc, 7) === doc, 'the unnamed group, or no such group: unchanged');
         eq(doc.columns[2].cards.length, 2, 'the original is not changed');
+    });
+    test('dropSpot: halves of a note, halves of a section title, the gaps, and below the last row', () => {
+        // unnamed group: a, b | section 1: (title) c | section 2: (title, empty)
+        const rows: DropRow[] = [
+            { top: 0, bottom: 40, note: { column: 0, index: 0 }, section: -1 }, { top: 48, bottom: 88, note: { column: 0, index: 1 }, section: -1 },
+            { top: 96, bottom: 120, note: null, section: 1 }, { top: 128, bottom: 168, note: { column: 1, index: 0 }, section: -1 },
+            { top: 176, bottom: 200, note: null, section: 2 },
+        ];
+        const at = (y: number) => { const s = dropSpot(rows, y)!; return [s.point.column, s.point.index, s.row, s.side]; };
+        eq(at(5), [0, 0, 0, 'above'], 'top half of a note: before it');
+        eq(at(35), [0, 1, 0, 'below'], 'bottom half: after it');
+        eq(at(44), [0, 1, 1, 'above'], 'in the gap: before the next note');
+        eq(at(100), [0, 2, 1, 'below'], 'top half of a section title: the end of the group above');
+        eq(at(115), [1, 0, 2, 'below'], 'bottom half: the top of that section');
+        eq(at(190), [2, 0, 4, 'below'], 'bottom half of the title of an empty section');
+        eq(at(180), [1, 1, 3, 'below'], 'top half of a title: after the last note above it');
+        eq(at(500), [2, 0, 4, 'below'], 'below everything: after the last row');
+        eq(at(-20), [0, 0, 0, 'above'], 'above everything: before the first row');
+        eq(dropSpot([], 5), null, 'no rows');
+        eq(dropSpot([{ top: 0, bottom: 30, note: null, section: 0 }], 3)?.side, 'above', 'the first row is a title: the top of it');
+    });
+    test('placeMove: within a group the final position counts, across groups the note goes in front of the point, and no change is no board', () => {
+        const doc = parseBoard('---\nlayout: list\n---\n\n- a\n- b\n- c\n\n## Later\n\n- d\n- e\n');
+        const shape = (b: Board) => b.columns.map(c => c.cards.map(i => i.text).join(''));
+        eq(shape(placeMove(doc, { column: 0, index: 0 }, { column: 0, index: 3 })), ['bca', 'de'], 'after c: to the end');
+        eq(shape(placeMove(doc, { column: 0, index: 2 }, { column: 0, index: 0 })), ['cab', 'de'], 'before a');
+        eq(shape(placeMove(doc, { column: 0, index: 1 }, { column: 1, index: 1 })), ['ac', 'dbe'], 'into another group, between d and e');
+        eq(shape(placeMove(doc, { column: 1, index: 0 }, { column: 0, index: 0 })), ['dabc', 'e'], 'to the top of the first group');
+        ok(placeMove(doc, { column: 0, index: 1 }, { column: 0, index: 1 }) === doc && placeMove(doc, { column: 0, index: 1 }, { column: 0, index: 2 }) === doc, 'before or after itself: nothing');
     });
     test('dueStatus and dropIndex', () => {
         eq(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-09'].map(d => dueStatus(d, '2026-10-03')), ['overdue', 'today', 'soon', 'later']);

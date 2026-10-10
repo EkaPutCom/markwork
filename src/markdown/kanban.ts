@@ -360,6 +360,46 @@ export function dueStatus(due: string, today: string): DueStatus {
     return days < 0 ? 'overdue' : days === 0 ? 'today' : days <= 2 ? 'soon' : 'later';
 }
 
+// ---------- Dropping a note into a list ----------
+
+// A row of a list as it is drawn: a note (`note`), or the title of a section (`note` null, `section` = its group).
+// `top` and `bottom` are its vertical bounds.
+export interface DropRow { top: number; bottom: number; note: Position | null; section: number }
+
+// Where a dragged note would land: `point` is the position it goes in front of, counted before the note is taken out
+// (like a drop on a card in a column), and the mark is the edge of the row to draw the drop line on.
+export interface DropSpot { point: Position; row: number; side: 'above' | 'below' }
+
+// The place at height `y` among the rows of a list. The top half of a note puts the dragged note before it and the bottom
+// half after it; the top half of a section title puts it at the end of the section above (or the top of this one if it
+// is the first row) and the bottom half at the top of this section. Below the last row is after it. null if there are none.
+export function dropSpot(rows: DropRow[], y: number): DropSpot | null {
+    if (!rows.length) return null;
+    const found = rows.findIndex(r => y < r.bottom);
+    const i = found < 0 ? rows.length - 1 : found;
+    const r = rows[i];
+    const upper = found >= 0 && y < (r.top + r.bottom) / 2;
+    if (r.note) {
+        return upper ? { point: r.note, row: i, side: 'above' } : { point: { column: r.note.column, index: r.note.index + 1 }, row: i, side: 'below' };
+    }
+    const top: DropSpot = { point: { column: r.section, index: 0 }, row: i, side: 'below' };
+    if (!upper) return top;
+    return i === 0 ? { ...top, side: 'above' } : { ...endOfRow(rows[i - 1]), row: i - 1, side: 'below' };
+}
+
+// The place right after a row: after a note, or at the top of the section whose title it is.
+function endOfRow(r: DropRow): { point: Position } {
+    return { point: r.note ? { column: r.note.column, index: r.note.index + 1 } : { column: r.section, index: 0 } };
+}
+
+// The board with the note at `from` moved to `point` (see DropSpot); unchanged if it would end up where it is.
+export function placeMove(board: Board, from: Position, point: Position): Board {
+    const sameGroup = point.column === from.column;
+    const index = sameGroup && point.index > from.index ? point.index - 1 : point.index;
+    if (sameGroup && index === from.index) return board;
+    return moveCard(board, from, { column: point.column, index });
+}
+
 // ---------- Dragging ----------
 
 // Insertion position of the dragged card: the number of other cards whose midpoint is above the pointer.

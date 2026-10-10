@@ -14,11 +14,13 @@
 // (the Markdown text remains the single source of truth).
 
 import Adw from 'gi://Adw?version=1';
+import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import { ageOf, captureItem, itemFields, itemMeta, newList, type Age } from '../markdown/inbox.js';
-import { addColumn, boardSchema, deleteCard, deleteColumn, deleteColumnKeepCards, moveCard, moveColumn, renameColumn, setCardField, updateCard, withFieldOption, type Board, type Position } from '../markdown/kanban.js';
+import { addColumn, boardSchema, deleteCard, deleteColumn, deleteColumnKeepCards, dropSpot, moveCard, moveColumn, placeMove, renameColumn, setCardField, updateCard, withFieldOption, type Board, type DropRow, type DropSpot, type Position } from '../markdown/kanban.js';
 import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
@@ -49,6 +51,9 @@ export interface InboxDialogs {
     deleteSection(parent: Gtk.Window | null, title: string, count: number): Awaitable<'keep' | 'delete' | null>;
 }
 
+// A row of the list: a note, or the title of a section (the group at `section`).
+type ListRow = { note: Position } | { section: number };
+
 export class InboxView {
     readonly widget: Gtk.ScrolledWindow;
     onChange: (board: Board) => void = () => {};
@@ -58,7 +63,7 @@ export class InboxView {
     listNotes: (() => string[]) | null = null;
 
     private board: Board = newList();
-    private positions: (Position | null)[] = [];   // what each row of the list is: a note, or null for a section title
+    private rows: ListRow[] = [];   // what each row of the list is: a note, or the title of a section
     private colors: MarkupColors = { code: '#c7254e', codeBg: '#f3f4f4', link: '#1c71d8', mark: '#fff3a3' };
     private readonly page: Gtk.Box;
     private readonly entry: Gtk.Entry;
@@ -93,8 +98,8 @@ export class InboxView {
         this.list = new Gtk.ListBox({ selection_mode: Gtk.SelectionMode.NONE });
         this.list.add_css_class('inbox-list');
         this.list.connect('row-activated', (_l, row: Gtk.ListBoxRow) => {
-            const at = this.positions[row.get_index()];
-            if (at) this.editItem(at);
+            const r = this.rows[row.get_index()];
+            if (r && 'note' in r) this.editItem(r.note);
         });
         this.empty = new Adw.StatusPage({ icon_name: 'mail-inbox-symbolic', title: _('The inbox is empty'), description: _('Write something above to capture it.') });
         this.empty.add_css_class('compact');
@@ -108,6 +113,7 @@ export class InboxView {
         const clamp = new Adw.Clamp({ maximum_size: MAX_WIDTH, tightening_threshold: 560, child: this.page, valign: Gtk.Align.START });
         this.widget = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, hexpand: true, child: clamp });
         this.popovers = new FieldPopover(this.page);
+        this.setupDrag();
         this.widget.add_css_class('inbox-view');
     }
 
@@ -171,21 +177,21 @@ export class InboxView {
         this.description.set_label(description);
         this.description.set_visible(!!description);
         removeChildren(this.list);
-        this.positions = [];
+        this.rows = [];
         let count = 0;
         this.board.columns.forEach((column, c) => {
             if (column.title !== '') {
                 this.list.append(this.buildSection(c, column.title));
-                this.positions.push(null);
+                this.rows.push({ section: c });
             }
             column.cards.forEach((_card, i) => {
                 this.list.append(this.buildRow({ column: c, index: i }));
-                this.positions.push({ column: c, index: i });
+                this.rows.push({ note: { column: c, index: i } });
                 count++;
             });
         });
-        this.list.set_visible(this.positions.length > 0);
-        this.empty.set_visible(count === 0 && this.positions.length === 0);
+        this.list.set_visible(this.rows.length > 0);
+        this.empty.set_visible(count === 0 && this.rows.length === 0);
     }
 
     // A group with a title is shown as a section title above its notes; right-clicking it opens its menu.
@@ -252,6 +258,7 @@ export class InboxView {
         remove.connect('clicked', () => this.commit(deleteCard(this.board, at)));
         box.append(remove);
 
+        this.attachDrag(box, at);
         const row = new Gtk.ListBoxRow({ child: box, activatable: true });
         onClick(row, (_n, x, y) => {
             popupMenu(row, this.rowMenu(at), x, y);
@@ -274,6 +281,86 @@ export class InboxView {
         }
         if (f.type !== null) onChipClick(chip, () => this.editField(at, f.key, chip));
         return chip;
+    }
+
+    // ---------- Drag and drop: a note to another place in the list or to another section ----------
+
+    private dragFrom: Position | null = null;
+    private mark: { row: Gtk.Widget; cls: string } | null = null;
+
+    private setupDrag(): void {
+        const target = new Gtk.DropTarget({ actions: Gdk.DragAction.MOVE });
+        target.set_gtypes([GObject.TYPE_STRING]);
+        target.connect('motion', (_t, _x, y) => {
+            const spot = this.spotAt(y);
+            this.showMark(spot);
+            return spot ? Gdk.DragAction.MOVE : 0 as Gdk.DragAction;
+        });
+        target.connect('leave', () => this.showMark(null));
+        target.connect('drop', (_t, _value, _x, y) => {
+            const spot = this.spotAt(y);
+            this.showMark(null);
+            return spot !== null && this.dropNote(spot);
+        });
+        this.list.add_controller(target);
+    }
+
+    // A note can be dragged by its row. The source sits on the row's content: the list itself claims a press to
+    // activate a row, so a source on the list never gets to start.
+    private attachDrag(content: Gtk.Widget, at: Position): void {
+        const source = new Gtk.DragSource({ actions: Gdk.DragAction.MOVE });
+        source.connect('prepare', () => {
+            this.dragFrom = at;
+            // The icon of a note; a widget as the drag icon triggers a Gtk-CRITICAL when the drag ends in GTK 4.14.
+            const icon = Gtk.IconTheme.get_for_display(this.list.get_display()).lookup_icon('text-x-generic-symbolic', null, 32,
+                this.list.get_scale_factor(), Gtk.TextDirection.NONE, 0 as Gtk.IconLookupFlags);
+            source.set_icon(icon, 0, 0);
+            return Gdk.ContentProvider.new_for_value(`${at.column}.${at.index}`);
+        });
+        source.connect('drag-end', () => {
+            this.dragFrom = null;
+            this.showMark(null);
+        });
+        content.add_controller(source);
+    }
+
+    // The bounds of every row in the coordinates of the list.
+    private dropRows(): DropRow[] {
+        return this.rows.map((r, i) => {
+            const rect = this.list.get_row_at_index(i)?.compute_bounds(this.list)?.[1];
+            const top = rect?.get_y() ?? 0;
+            return { top, bottom: top + (rect?.get_height() ?? 0), note: 'note' in r ? r.note : null, section: 'section' in r ? r.section : -1 };
+        });
+    }
+
+    // Where the dragged note would land at height `y`, or null if nothing is dragged from here or it would not move.
+    spotAt(y: number): DropSpot | null {
+        const from = this.dragFrom;
+        const spot = from ? dropSpot(this.dropRows(), y) : null;
+        return from && spot && placeMove(this.board, from, spot.point) !== this.board ? spot : null;
+    }
+
+    // The dragged note moves to the spot, in one undo step.
+    dropNote(spot: DropSpot): boolean {
+        if (!this.dragFrom) return false;
+        const next = placeMove(this.board, this.dragFrom, spot.point);
+        this.dragFrom = null;
+        this.commit(next);
+        return true;
+    }
+
+    // The line that shows where the note will go: a shadow on the edge of the row it is dropped next to.
+    private showMark(spot: DropSpot | null): void {
+        const row = spot ? this.list.get_row_at_index(spot.row) : null;
+        const cls = spot ? (spot.side === 'above' ? 'inbox-drop-above' : 'inbox-drop-below') : '';
+        if (this.mark && (this.mark.row !== row || this.mark.cls !== cls)) {
+            this.mark.row.remove_css_class(this.mark.cls);
+            this.mark = null;
+        }
+        if (row && !this.mark) {
+            row.add_css_class(cls);
+            this.mark = { row, cls };
+        }
     }
 
     // The menu of a note (right click): edit it, move it to another section or up and down within its section, delete it.
@@ -349,7 +436,7 @@ export class InboxView {
 
     // The widget a chip or button is clicked on: the given one, or the content of the note's row.
     private sourceFor(at: Position, source?: Gtk.Widget): Gtk.Widget | null {
-        const row = this.positions.findIndex(p => p?.column === at.column && p.index === at.index);
+        const row = this.rows.findIndex(r => 'note' in r && r.note.column === at.column && r.note.index === at.index);
         return source ?? this.list.get_row_at_index(row)?.get_child() ?? null;
     }
 

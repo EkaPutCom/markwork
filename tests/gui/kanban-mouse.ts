@@ -148,8 +148,40 @@ export function kanbanMouseTests(c: GuiContext): void {
                 eq(noteEdits, 0, 'the note dialog did not open');
                 ok(descendants(w.inbox.widget).some(x => x instanceof Gtk.Popover && x.get_mapped()), 'the popover is shown');
             } finally {
+                // An open popover would take the next press to close itself, so it is closed here.
+                for (const popover of descendants(w.inbox.widget).filter((x): x is Gtk.Popover => x instanceof Gtk.Popover)) popover.popdown();
+                settle();
                 w.inbox.dialogs = inboxDialogs;
             }
+        });
+        test('dragging a note in a list: to another section, before a note, onto a section title, and a drop where it is changes nothing', () => {
+            const LIST = '---\nlayout: list\n---\n\n- loose\n\n## Now\n\n- one\n- two\n\n## Later\n\n- three\n';
+            reset(LIST);
+            const groups = () => parseBoard(text()).columns.map(g => `${g.title}:${g.cards.map(i => i.text).join(',')}`);
+            const rowOf = (label: string) => descendants(w.inbox.widget).filter((x): x is Gtk.ListBoxRow => x instanceof Gtk.ListBoxRow)
+                .find(r => descendants(r).some(l => l instanceof Gtk.Label && l.label === label))!;
+            // Press on the left of the row (its title), drag in steps, and release at `fraction` of the height of the target row.
+            const drag = (from: Gtk.ListBoxRow, to: Gtk.ListBoxRow, fraction: number) => {
+                const start = screenPoint(from, 60, from.get_allocated_height() / 2, (xid, x, y) => input.toRoot(xid, x, y));
+                const end = screenPoint(to, 60, to.get_allocated_height() * fraction, (xid, x, y) => input.toRoot(xid, x, y));
+                move(...start);
+                input.down(); held = true; settle();
+                move(start[0] + 12, start[1] + 6);
+                for (let i = 1; i <= 10; i++) move(start[0] + 12 + (end[0] - start[0] - 12) * i / 10, start[1] + 6 + (end[1] - start[1] - 6) * i / 10);
+                for (let i = 0; i < 3; i++) move(...end);
+                input.up(); held = false; settle(); settle();
+            };
+            ok(w.inbox.widget.get_mapped(), 'the list is not shown');
+            drag(rowOf('one'), rowOf('three'), 0.8);
+            eq(groups(), [':loose', 'Now:two', 'Later:three,one'], 'the lower half of a note: after it, in another section');
+            drag(rowOf('one'), rowOf('two'), 0.2);
+            eq(groups(), [':loose', 'Now:one,two', 'Later:three'], 'the upper half of a note: before it');
+            drag(rowOf('loose'), rowOf('Later'), 0.8);
+            eq(groups(), ['Now:one,two', 'Later:loose,three'], 'the lower half of a section title: the top of that section');
+            const before = text();
+            drag(rowOf('two'), rowOf('two'), 0.8);
+            eq(text(), before, 'dropping next to itself changes nothing');
+            ok(descendants(w.inbox.widget).every(x => !x.has_css_class('inbox-drop-above') && !x.has_css_class('inbox-drop-below')), 'no drop line is left on any row');
         });
     } finally {
         try {
