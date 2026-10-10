@@ -15,11 +15,10 @@
 // a time are still valid. Pure TypeScript without
 // GTK; all operations return a new inbox.
 
-import { addOption, fieldChips, findSegments, missingFields, parseSchema, readItem, setField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { addOption, applyDefaults, fieldChips, findSegments, missingFields, parseSchema, readItem, setField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 import { parseColumn, trimBlankEnds, type Card } from './kanban.js';
 
 export const CREATED_FIELD: FieldDef = { key: 'created', type: 'date', multiple: false, options: [] };
-export const INBOX_SCHEMA: FieldDef[] = [CREATED_FIELD];
 
 export type InboxItem = Card;
 
@@ -29,7 +28,7 @@ export interface Inbox {
     outro: string[];       // plain lines after the last item, kept as is
 }
 
-export const DEFAULT_HEAD = ['---', 'inbox: true', '---'];
+export const DEFAULT_HEAD = ['---', 'inbox: true', 'fields:', '  created: date = now', '---'];
 
 const MARKER = /^inbox:\s*["']?(?:true|yes)["']?\s*$/i;
 const ITEM = /^[-*+]\s/;
@@ -75,18 +74,12 @@ export function newInbox(title = 'Inbox'): Inbox {
 
 // ---------- Operations ----------
 
-const pad = (n: number): string => String(n).padStart(2, '0');
-
-// "2026-10-07 14:32" for the local time of `date`.
-export const stamp = (date: Date): string =>
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-
-// New item at the very top with capture time `now`. Text that already contains a capture time → used as is.
+// New item at the very top, with the default of every field of the inbox that the text does not set itself
+// (the capture time, for an inbox that declares `created: date = now`).
 export function captureItem(inbox: Inbox, text: string, now: Date, notes: string[] = []): Inbox {
     const body = text.trim();
     if (!body) return inbox;
-    const full = findSegments(body).some(s => s.key === CREATED_FIELD.key) ? body : setField(body, CREATED_FIELD, stamp(now));
-    return { ...inbox, items: [{ done: null, text: full, notes }, ...inbox.items] };
+    return { ...inbox, items: [{ done: null, text: applyDefaults(body, inboxSchema(inbox), now), notes }, ...inbox.items] };
 }
 
 export function updateItem(inbox: Inbox, index: number, patch: Partial<InboxItem>): Inbox {
@@ -98,11 +91,8 @@ export const deleteItem = (inbox: Inbox, index: number): Inbox =>
 
 // ---------- Fields ----------
 
-// The fields every note understands plus those the inbox declares in its frontmatter `fields:` block.
-export function inboxSchema(inbox: Inbox): FieldDef[] {
-    const declared = parseSchema(inbox.head.join('\n')).fields;
-    return [...INBOX_SCHEMA, ...declared.filter(f => f.key !== CREATED_FIELD.key)];
-}
+// The fields the inbox declares in its frontmatter `fields:` block.
+export const inboxSchema = (inbox: Inbox): FieldDef[] => parseSchema(inbox.head.join('\n')).fields;
 
 // The chips for a note's fields; the capture time is shown as its age instead.
 export const itemFields = (text: string, schema: FieldDef[]): FieldChip[] =>
@@ -136,7 +126,7 @@ export interface ItemMeta {
 }
 
 export function itemMeta(text: string): ItemMeta {
-    const item = readItem(text, INBOX_SCHEMA);
+    const item = readItem(text, [CREATED_FIELD]);
     const created = item.fields.created;
     let captured: Date | null = null;
     if (created?.ok) {

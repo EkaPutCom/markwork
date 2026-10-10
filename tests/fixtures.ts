@@ -13,7 +13,7 @@ export const BOARD = [
 
 // The standard inbox for the model tests and the GUI tests.
 export const INBOX = [
-    '---', 'inbox: true', '---', '',
+    '---', 'inbox: true', 'fields:', '  created: date = now', '---', '',
     '# Inbox', '',
     'A place to capture ideas.', '',
     '- SQLite idea #idea [created:: 2026-10-07 14:22]', '  note one', '', '  note two',

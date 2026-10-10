@@ -16,7 +16,7 @@ export function inboxModelTests(): void {
     });
     test('parseInbox: head, items, notes, and outro', () => {
         const inbox = parseInbox(INBOX);
-        eq(inbox.head, ['---', 'inbox: true', '---', '', '# Inbox', '', 'A place to capture ideas.'], 'head');
+        eq(inbox.head, ['---', 'inbox: true', 'fields:', '  created: date = now', '---', '', '# Inbox', '', 'A place to capture ideas.'], 'head');
         eq(inbox.items.map(i => i.text), ['SQLite idea #idea [created:: 2026-10-07 14:22]', 'Read HIG article #read #gnome [created:: 2026-10-07 13:32]', 'Item without time']);
         eq(inbox.items[0].notes, ['note one', '', 'note two'], 'item notes');
         eq(inbox.outro, ['Plain closing'], 'outro');
@@ -67,18 +67,25 @@ export function inboxModelTests(): void {
             [{ unit: 'now', n: 0 }, { unit: 'minutes', n: 10 }, { unit: 'hours', n: 1 }, { unit: 'hours', n: 2 }, { unit: 'days', n: 3 }, { unit: 'date', n: 0 }]);
     });
 
+    test('captureItem gives a new item the default of every field it does not set; without defaults it adds nothing', () => {
+        const withDefaults = parseInbox('---\ninbox: true\nfields:\n  created: date = now\n  status: select(antre, dibaca) = antre\n---\n\n- old\n');
+        eq(captureItem(withDefaults, 'New #x', new Date(2026, 9, 8, 9, 5)).items[0].text, 'New #x [created:: 2026-10-08 09:05] [status:: antre]');
+        eq(captureItem(withDefaults, 'Set [status:: dibaca]', new Date(2026, 9, 8, 9, 5)).items[0].text, 'Set [status:: dibaca] [created:: 2026-10-08 09:05]', 'a field the text sets is left alone');
+        eq(captureItem(parseInbox('---\ninbox: true\n---\n\n- old\n'), 'Plain', new Date()).items[0].text, 'Plain', 'no declared default, no stamp');
+        eq(parseInbox(serializeInbox(newInbox())).head.slice(0, 5), ['---', 'inbox: true', 'fields:', '  created: date = now', '---'], 'New Inbox declares the capture time');
+    });
     test('inbox fields: the schema, chips without the capture time, missing fields, setting one, and adding an option', () => {
         const inbox = parseInbox('---\ninbox: true\nfields:\n  tipe: select(ide, bacaan)\n  created: text\n  url: link\n---\n\n# Inbox\n\n- Satu #x [created:: 2026-10-07 14:22] [tipe:: ide]\n- Dua\n');
         const schema = inboxSchema(inbox);
-        eq(schema.map(f => `${f.key}:${f.type}`), ['created:date', 'tipe:select', 'url:link'], 'created cannot be redeclared');
+        eq(schema.map(f => `${f.key}:${f.type}`), ['tipe:select', 'created:text', 'url:link'], 'only the declared fields');
         eq(itemFields(inbox.items[0].text, schema).map(c => [c.text, c.option]), [['ide', 0]], 'the capture time is shown as its age, not as a chip');
-        eq(itemMissingFields(inbox.items[1].text, schema).map(f => f.key), ['tipe', 'url'], 'created is set by capturing');
-        const tipe = schema[1];
+        eq(itemMissingFields(inbox.items[1].text, schema).map(f => f.key), ['tipe', 'url'], 'created is set by capturing, not by hand');
+        const tipe = schema[0];
         eq(setItemField(inbox, 1, tipe, 'BACAAN').items[1].text, 'Dua [tipe:: bacaan]');
         eq(setItemField(inbox, 0, tipe, '').items[0].text, 'Satu #x [created:: 2026-10-07 14:22]');
         ok(setItemField(inbox, 1, tipe, 'urgent') === inbox && setItemField(inbox, 5, tipe, 'ide') === inbox, 'a value that does not fit, or no such note, changes nothing');
         const next = withInboxOption(inbox, 'tipe', 'urgent');
-        eq(inboxSchema(next)[1].options, ['ide', 'bacaan', 'urgent']);
+        eq(inboxSchema(next)[0].options, ['ide', 'bacaan', 'urgent']);
         eq(next.items, inbox.items, 'notes untouched');
         ok(withInboxOption(inbox, 'tipe', 'ide') === inbox && withInboxOption(inbox, 'url', 'x') === inbox, 'nothing to add');
     });

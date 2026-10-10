@@ -1,6 +1,6 @@
 // Typed field tests (markdown/fields.ts).
 
-import { addOption, fieldChips, fieldInputText, findSegments, formatValue, missingFields, nearestOption, parseSchema, parseValue, readItem, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
+import { addOption, applyDefaults, fieldChips, fieldInputText, findSegments, formatValue, missingFields, nearestOption, parseSchema, parseValue, readItem, resolveDefault, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
 import { section, test, eq, ok } from '../framework.js';
 
 const DOC = [
@@ -119,6 +119,26 @@ export function fieldsModelTests(): void {
         const item = readItem('A [prioritas:: urgent] [due:: besok] [foo:: 1] [halaman:: 3]', SCHEMA);
         eq(missingFields(item, SCHEMA).map(f => f.key), ['progres', 'pemilik', 'agent', 'terkait']);
         eq(missingFields(item, SCHEMA, ['agent', 'terkait']).map(f => f.key), ['progres', 'pemilik']);
+    });
+
+    test('a default after the type: dates take now and today, other types a value of the field; a bad default is reported', () => {
+        const { fields, problems } = parseSchema('---\nfields:\n  created: date = now\n  day: date = today\n  status: select(a, b) = a\n  n: number = 3\n  bad: select(a, b) = c\n  worse: number = now\n  who: person[] = Eka, Rina\n---\n');
+        eq(fields.map(f => [f.key, f.default]), [['created', 'now'], ['day', 'today'], ['status', 'a'], ['n', '3'], ['who', 'Eka, Rina']]);
+        eq(problems.length, 2, 'a default that does not fit is reported, and the field is left out');
+        eq(fields.find(f => f.key === 'status')!.options, ['a', 'b'], 'options are not mistaken for the default');
+    });
+
+    test('resolveDefault and applyDefaults: now and today in local time, existing fields kept, order of the schema', () => {
+        const { fields } = parseSchema('---\nfields:\n  created: date = now\n  day: date = today\n  status: select(a, b) = a\n  free: text\n---\n');
+        const now = new Date(2026, 0, 2, 3, 4);
+        eq(fields.map(f => resolveDefault(f, now)), ['2026-01-02 03:04', '2026-01-02', 'a', null]);
+        eq(applyDefaults('T [status:: b]', fields, now), 'T [status:: b] [created:: 2026-01-02 03:04] [day:: 2026-01-02]');
+        eq(applyDefaults('T', [], now), 'T');
+    });
+
+    test('addOption keeps the default of the field', () => {
+        const doc = '---\nfields:\n  status: select(a, b) = a\n---\n';
+        eq(addOption(doc, 'status', 'c'), '---\nfields:\n  status: select(a, b, c) = a\n---\n');
     });
 
     test('addOption adds an option to the frontmatter line and nothing else', () => {

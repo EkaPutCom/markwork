@@ -100,6 +100,7 @@ export class KanbanBoard {
     onChange: (board: Board) => void = () => {};
     dialogs: BoardDialogs = { editCard: editCardDialog, prompt: promptDialog, confirm: confirmDialog };
     today: () => string = () => GLib.DateTime.new_now_local().format('%Y-%m-%d') ?? '';
+    now: () => Date = () => new Date();
     harness: BoardHarness | null = null;
     // a [[note]] on a card was clicked, and the file list for [[ suggestions in the card dialog (filled in by the window).
     onOpenNote: (link: WikiLink) => void = () => {};
@@ -433,7 +434,7 @@ export class KanbanBoard {
         void after(this.dialogs.editCard(this.parent, { text: '', notes: [] }, _('Add Card'), this.listNotes ?? undefined, this.schema()), draft => {
             if (!draft?.text) return;
             const index = this.board.columns[column]?.cards.length ?? 0;
-            const added = addCard(this.board, column, draft.text);
+            const added = addCard(this.board, column, draft.text, Infinity, this.now());
             this.commit(updateCard(added, { column, index }, { notes: draft.notes }));
         });
     }

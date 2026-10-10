@@ -8,13 +8,14 @@
 //     due: date
 //     progres: progress
 //     pemilik: person[]
+//     created: date = now
 //   ---
 //
 // and an item carries its values in the first line, after the title, as `[key:: value]`:
 //
 //   - [ ] Write the parser #design [prioritas:: tinggi] [due:: 2026-10-24 09:00] [progres:: 3/5]
 //
-// `#tag` is the only other marker. Types: text, number, select, date, progress, person, agent, link; a
+// `= value` after the type is the default a new item gets (`now` and `today` for a date). `#tag` is the only other marker. Types: text, number, select, date, progress, person, agent, link; a
 // `[]` after the type (`person[]`, `select[](a, b)`) allows several comma-separated values.
 //
 // The functions are pure. They never reject and never rewrite text they do not understand: a value that
@@ -29,6 +30,7 @@ export interface FieldDef {
     type: FieldType;
     multiple: boolean;
     options: string[];   // select only; empty = any value
+    default?: string;    // what a new item gets: a value of the field, or `now` / `today` for a date
 }
 
 export interface DateValue { date: string; time: string | null }   // "YYYY-MM-DD", "HH:MM"
@@ -71,14 +73,39 @@ function frontmatterLines(text: string): string[] | null {
 const FIELD_LINE = /^[ \t]+([^:\s][^:]*?):\s*(.*?)\s*$/;
 const TYPE_SPEC = /^([a-z]+)(\[\])?(?:\((.*)\))?$/;
 
+// Index of the first `=` that is not inside parentheses, or -1.
+function topLevelEquals(spec: string): number {
+    let depth = 0;
+    for (let i = 0; i < spec.length; i++) {
+        if (spec[i] === '(') depth++;
+        else if (spec[i] === ')') depth = Math.max(0, depth - 1);
+        else if (spec[i] === '=' && depth === 0) return i;
+    }
+    return -1;
+}
+
+const DATE_DEFAULTS: readonly string[] = ['now', 'today'];
+
+// Why `value` cannot be the default of `def`, or null.
+function defaultProblem(def: FieldDef, value: string): string | null {
+    if (def.type === 'date' && DATE_DEFAULTS.includes(value)) return null;
+    const parsed = parseValue(def, value);
+    return parsed.ok ? null : `${def.key}: the default "${value}" does not fit the field (${parsed.error})`;
+}
+
 function parseDef(key: string, spec: string): FieldDef | string {
     if (!KEY.test(key)) return `"${key}" is not a valid field name`;
-    const m = TYPE_SPEC.exec(spec);
+    const eq = topLevelEquals(spec);
+    const typeSpec = (eq < 0 ? spec : spec.slice(0, eq)).trim();
+    const m = TYPE_SPEC.exec(typeSpec);
     const type = m?.[1] as FieldType | undefined;
-    if (!m || !type || !FIELD_TYPES.includes(type)) return `${key}: unknown type "${spec}"`;
+    if (!m || !type || !FIELD_TYPES.includes(type)) return `${key}: unknown type "${typeSpec}"`;
     const options = (m[3] ?? '').split(',').map(o => o.trim()).filter(Boolean);
     if (options.length && type !== 'select') return `${key}: only select takes options`;
-    return { key, type, multiple: m[2] === '[]', options };
+    const def: FieldDef = { key, type, multiple: m[2] === '[]', options };
+    const value = eq < 0 ? '' : spec.slice(eq + 1).trim();
+    if (!value) return def;
+    return defaultProblem(def, value) ?? { ...def, default: value };
 }
 
 // The fields declared in the `fields:` block of the frontmatter, in order. A line that cannot be read is
@@ -102,7 +129,7 @@ export function parseSchema(text: string): SchemaResult {
 
 export function describeDef(def: FieldDef): string {
     const args = def.options.length ? `(${def.options.join(', ')})` : '';
-    return `${def.type}${def.multiple ? '[]' : ''}${args}`;
+    return `${def.type}${def.multiple ? '[]' : ''}${args}${def.default ? ` = ${def.default}` : ''}`;
 }
 
 // The frontmatter with `option` added to the select field `key`, or the text unchanged if there is no such
@@ -345,4 +372,27 @@ export function fieldChips(item: Item, schema: FieldDef[], skip: readonly string
 // counts as present, so it is fixed rather than silently replaced. `skip` lists fields that are set some other way.
 export function missingFields(item: Item, schema: FieldDef[], skip: readonly string[] = []): FieldDef[] {
     return schema.filter(def => !(def.key in item.fields) && !skip.includes(def.key));
+}
+
+// ---------- Defaults for new items ----------
+
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+// The text a new item gets for `def` at time `now`, or null if the field has no default.
+export function resolveDefault(def: FieldDef, now: Date): string | null {
+    if (!def.default) return null;
+    const day = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+    if (def.type === 'date' && def.default === 'now') return `${day} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+    if (def.type === 'date' && def.default === 'today') return day;
+    return def.default;
+}
+
+// `text` with the default of every field of `schema` that it has no value for yet (written or not), added at the
+// end in schema order. A field the text already has is left alone, whatever its value.
+export function applyDefaults(text: string, schema: FieldDef[], now: Date): string {
+    const present = new Set(findSegments(text).map(s => s.key));
+    return schema.reduce((t, def) => {
+        const value = present.has(def.key) ? null : resolveDefault(def, now);
+        return value === null ? t : setField(t, def, value);
+    }, text);
 }

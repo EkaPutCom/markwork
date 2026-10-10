@@ -133,6 +133,12 @@ export function kanbanModelTests(): void {
         eq(cardMissingFields('A [prioritas:: tinggi] [due:: 2026-10-20] [agent:: pi]', schema).map(f => f.key), ['progres']);
         eq(cardMissingFields('A [prioritas:: tinggi] [due:: 2026-10-20] [progres:: 1/2]', schema), []);
     });
+    test('addCard with a time gives the card the defaults the board declares; without one it adds nothing', () => {
+        const board = parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah) = rendah\n  dibuat: date = today\n---\n\n## Plan\n');
+        const now = new Date(2026, 9, 8, 9, 5);
+        eq(addCard(board, 0, 'A [prioritas:: tinggi]', Infinity, now).columns[0].cards[0].text, 'A [prioritas:: tinggi] [dibuat:: 2026-10-08]');
+        eq(addCard(board, 0, 'B').columns[0].cards[0].text, 'B');
+    });
     test('dueStatus and dropIndex', () => {
         eq(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-09'].map(d => dueStatus(d, '2026-10-03')), ['overdue', 'today', 'soon', 'later']);
         eq([dropIndex([10, 50, 90], 0), dropIndex([10, 50, 90], 60), dropIndex([10, 50, 90], 200), dropIndex([], 5)], [0, 2, 3, 0]);

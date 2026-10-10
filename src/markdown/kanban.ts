@@ -26,7 +26,7 @@
 // Pure TypeScript without GTK. All operations return a new board; the original board
 // is not changed, so it is easy to test.
 
-import { addOption, fieldChips, fieldInputText, findSegments, missingFields, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { addOption, applyDefaults, fieldChips, fieldInputText, findSegments, missingFields, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 
 export interface Card {
     done: boolean | null;   // null = plain item without a checkbox ("- text")
@@ -162,13 +162,15 @@ function withColumn(board: Board, column: number, change: (c: Column) => Column)
     return { ...board, columns: board.columns.map((c, i) => (i === column ? change(c) : c)) };
 }
 
-// Insert a card at `index` (default: at the bottom).
-export function addCard(board: Board, column: number, text: string, index = Infinity): Board {
+// Insert a card at `index` (default: at the bottom). With `now`, the card also gets the default of every field the
+// board declares that its text does not set.
+export function addCard(board: Board, column: number, text: string, index = Infinity, now: Date | null = null): Board {
     const title = text.trim();
     if (!title) return board;
+    const full = now ? applyDefaults(title, boardSchema(board), now) : title;
     return withColumn(board, column, c => {
         const cards = [...c.cards];
-        cards.splice(clamp(index, 0, cards.length), 0, { done: false, text: title, notes: [] });
+        cards.splice(clamp(index, 0, cards.length), 0, { done: false, text: full, notes: [] });
         return { ...c, cards };
     });
 }

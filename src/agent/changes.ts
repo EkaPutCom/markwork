@@ -304,7 +304,7 @@ const KANBAN_ACTIONS: Record<string, (k: KanbanTarget) => Board | PlanResult> = 
         const column = k.column();
         if (failed(column)) return column;
         if (k.cardText.includes('\n')) return fail('The text of a new card must be a single line.', 'invalid card');
-        return addCard(k.board, column, k.cardText);
+        return addCard(k.board, column, k.cardText, Infinity, new Date());
     },
     move: k => {
         const from = k.card();
