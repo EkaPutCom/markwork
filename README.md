@@ -347,6 +347,14 @@ The tests use a temporary settings folder, so your settings are not touched.
 gjs -m dist/nyerat.js tests/samples/all-formats.md
 ```
 
+The other samples show the board and list layouts with typed fields. A test keeps them valid (the layout is recognized, the schema reads without problems, every value fits its field, and saving changes nothing):
+
+```bash
+gjs -m dist/nyerat.js tests/samples/kanban-board.md   # a board: colored select, progress, person, link, an agent card
+gjs -m dist/nyerat.js tests/samples/inbox.md          # an inbox: quick capture at the top, capture time by default
+gjs -m dist/nyerat.js tests/samples/reading-list.md   # a list with sections, new items at the bottom
+```
+
 This file is also used by the automatic tests, so if you add a new format, add its example here too.
 
 ## Architecture
@@ -501,8 +509,9 @@ tests/
 │   └── mouse-input.ts    TypeScript X11/XTest client through Gio
 └── samples/
     ├── all-formats.md    a document with all the formats, for tests and manual checks
-    ├── kanban-board.md   a sample kanban board to try out
-    ├── inbox.md          a sample inbox to try out
+    ├── kanban-board.md   a sample board to try out: select fields with colors, progress, person, number, link, a default, an agent card
+    ├── inbox.md          a sample inbox to try out: `add: top`, a capture time by default, a colored select
+    ├── reading-list.md   a sample list with sections and `add: bottom`; change `layout: list` to `layout: board` to see it as a board
     └── images/example.png  the local image referenced by that document
 ```
 
