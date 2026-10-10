@@ -6,6 +6,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import { FONT_MONO, FONT_TEXT } from '../config.js';
 import { PALETTES, type Palette } from '../colors.js';
+import { OPTION_COLORS, type OptionColor } from '../markdown/fields.js';
 
 // The dark/light choice from the system settings (GNOME: Dark Style), before the app forces one of them.
 export const systemPrefersDark = (): boolean => Adw.StyleManager.get_default().dark;
@@ -14,6 +15,25 @@ export const systemPrefersDark = (): boolean => Adw.StyleManager.get_default().d
 // rendering need real color values, and the `hidden` tag must be exactly the same as the editor background. The rest
 // (sidebar, assistant panel, board, status bar, status colors) use named Adwaita colors, so they
 // follow the system accent and high contrast mode without extra CSS.
+// The colors of the options of a select, by name: [background, text] of a chip in light and in dark mode. The dot that
+// picks a color uses the text color.
+const OPTION_CHIP: Record<'light' | 'dark', Record<OptionColor, [string, string]>> = {
+    light: {
+        red: ['#f8dad8', '#a1241e'], amber: ['#f8e7c8', '#8a5200'], green: ['#d8f0e1', '#176b3b'], blue: ['#dce8fb', '#1f58b8'],
+        purple: ['#e6dff7', '#5a3fa8'], teal: ['#d3efee', '#14706f'], pink: ['#f8dbe9', '#a3225f'], gray: ['#e6e6e2', '#4c525b'],
+    },
+    dark: {
+        red: ['#4d2523', '#f4a29c'], amber: ['#473819', '#e8bd6a'], green: ['#1f3d2c', '#7fd6a0'], blue: ['#25395c', '#8db6f7'],
+        purple: ['#392f5c', '#bfb0f2'], teal: ['#1d4140', '#7fd4d1'], pink: ['#4d2338', '#f2a3c8'], gray: ['#3a3d42', '#b4b9c2'],
+    },
+};
+
+// `.opt-red` colors a chip and `.opt-dot-red` a color button, for every name; listed last so they win over the base chip.
+const optionCss = (dark: boolean): string => OPTION_COLORS.map(name => {
+    const [bg, fg] = OPTION_CHIP[dark ? 'dark' : 'light'][name];
+    return `.opt-${name} { background-color: ${bg}; color: ${fg}; } .opt-dot-${name} { background-color: ${fg}; }`;
+}).join('\n    ');
+
 const buildCss = (p: Palette): string => `
     .editor, .editor text { background-color: ${p.bg}; color: ${p.fg}; }
     .editor { font-family: ${FONT_TEXT}; font-size: 16px; caret-color: ${p.accent}; }
@@ -106,6 +126,11 @@ const buildCss = (p: Palette): string => `
     .image-viewer, .image-viewer viewport { background-color: #1c1d20; }
     .image-note { color: ${p.faint}; font-style: italic; font-size: 14px; }
     .statusbar { background-color: ${p.bg}; color: alpha(${p.fg}, 0.55); font-size: 12px; padding: 4px 14px; }
+    .opt-chip { border-radius: 9px; padding: 1px 8px; font-size: 11px; font-weight: bold; background-color: alpha(currentColor, 0.12); }
+    .opt-dot { min-width: 16px; min-height: 16px; padding: 0; border-radius: 8px; border: 2px solid transparent; }
+    .opt-dot-auto { background-color: transparent; border: 2px dashed alpha(currentColor, 0.45); }
+    .opt-dot-chosen { border-color: @accent_color; }
+    ${optionCss(p.dark)}
 `;
 
 let provider: Gtk.CssProvider | null = null;

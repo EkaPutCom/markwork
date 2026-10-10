@@ -174,4 +174,22 @@ export function fieldsModelTests(): void {
         const texts = ['A [prio:: tinggi]', 'B [prio:: Tinggi]', 'C [prio:: rendah]', 'D', 'E [who:: "Putra, Eka", Rina]'];
         eq([countUses(texts, 'prio'), countUses(texts, 'prio', 'tinggi'), countUses(texts, 'prio', 'sedang'), countUses(texts, 'who', 'Rina'), countUses(texts, 'who', 'Putra, Eka'), countUses([], 'prio')], [3, 2, 0, 1, 1, 0]);
     });
+
+    test('option colors: `text:color` with a known color name; anything else stays part of the option', () => {
+        const { fields } = parseSchema('---\nfields:\n  p: select(tinggi:red, sedang:Amber, Q3: rilis, ok:nope, rendah, :red, x:  gray )\n---\n');
+        eq(fields[0].options, ['tinggi', 'sedang', 'Q3: rilis', 'ok:nope', 'rendah', ':red', 'x']);
+        eq(fields[0].colors, { tinggi: 'red', sedang: 'amber', x: 'gray' }, 'case is ignored, spaces are trimmed');
+        eq(parseSchema('---\nfields:\n  p: select(a, b)\n---\n').fields[0].colors, undefined, 'no colors, no property');
+    });
+
+    test('option colors are written back, kept when an option is added, and shown on the chip', () => {
+        const doc = '---\nfields:\n  p: select(tinggi:red, sedang, rendah:gray) = sedang\n---\n';
+        const def = parseSchema(doc).fields[0];
+        eq(writeSchema(doc, [def]), doc, 'read and written as it was');
+        eq(addOption(doc, 'p', 'urgent'), '---\nfields:\n  p: select(tinggi:red, sedang, rendah:gray, urgent) = sedang\n---\n');
+        const chips = fieldChips(readItem('A [p:: Tinggi] [p2:: x]', [def]), [def]);
+        eq([chips[0].text, chips[0].color, chips[0].option], ['tinggi', 'red', 0]);
+        eq(fieldChips(readItem('A [p:: sedang]', [def]), [def])[0].color, null, 'an option without a color has none, and is colored by its position');
+        eq(optionProblem('a:red', []), 'invalid', 'a new option cannot contain a colon');
+    });
 }

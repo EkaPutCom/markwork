@@ -257,6 +257,8 @@ export class InboxView {
         if (f.invalid) {
             chip.add_css_class('inbox-field-invalid');
             chip.set_tooltip_text(fmt(_('“{key}” does not fit its field: {reason}. The text in the file is unchanged.'), { key: f.key, reason: f.invalid }));
+        } else if (f.color) {
+            chip.add_css_class(`opt-${f.color}`);
         } else if (f.option !== null) {
             chip.add_css_class(`inbox-field-${f.option % 8}`);
         }

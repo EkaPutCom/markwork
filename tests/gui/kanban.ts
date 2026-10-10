@@ -172,6 +172,20 @@ export function kanbanBoardTests(c: GuiContext): void {
         openBoard();
     });
 
+    test('an option with a color keeps it on the chip and in the popover wherever it sits; one without is colored by its position', () => {
+        const T = '---\nlayout: board\nfields:\n  prioritas: select(rendah:gray, sedang, tinggi:red)\n---\n\n## Plan\n\n- [ ] A [prioritas:: tinggi]\n- [ ] B [prioritas:: sedang]\n';
+        GLib.file_set_contents(board, T); w.load(board); settleK();
+        const chip = (idx: number) => kbDescendants(kb.columns[0].cards[idx]).find((x): x is Gtk.Label => x instanceof Gtk.Label && x.has_css_class('kanban-chip'))!;
+        ok(chip(0).has_css_class('opt-red') && !chip(0).has_css_class('kanban-tag-2'), 'a chosen color wins over the position');
+        ok(chip(1).has_css_class('kanban-tag-1') && !chip(1).has_css_class('opt-gray'), 'no color: the color of its position');
+        const pop = kb.editField(0, 0, 'prioritas')!; settleK();
+        const optionChip = (label: string) => popButtons(pop).find(b => b.label === label || b.label === `✓ ${label}`)!.get_child() as Gtk.Label;
+        ok(optionChip('tinggi').has_css_class('opt-red') && optionChip('rendah').has_css_class('opt-gray'), 'the options in the popover have their colors');
+        ok(!optionChip('sedang').has_css_class('opt-red'), 'an option without a color has none');
+        popButton(pop, 'Clear').emit('clicked'); settleK();
+        openBoard();
+    });
+
     test('a kanban document opens as a board, a plain document as text', () => {
         openBoard();
         ok(w.boardMode, 'the board is not shown');

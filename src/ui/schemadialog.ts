@@ -1,11 +1,11 @@
 // The "Fields" dialog: the fields a board or list declares in its frontmatter, as a form. Fields can be added and
-// reordered, and the options of a select can be added, edited, removed, and reordered. A field that already exists keeps
+// reordered, and the options of a select can be added, edited, removed, reordered, and given a color. A field that already exists keeps
 // its name and type, so no value on a card is ever cut off from its field here. The caller writes the result into the
 // frontmatter (markdown/fields.ts writeSchema); nothing here touches the text.
 
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
-import { fieldNameProblem, optionProblem, type FieldDef, type FieldType, type NameProblem } from '../markdown/fields.js';
+import { fieldNameProblem, OPTION_COLORS, optionProblem, type FieldDef, type FieldType, type NameProblem, type OptionColor } from '../markdown/fields.js';
 import { removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
 import { formDialog } from './dialogs.js';
@@ -27,7 +27,14 @@ const PROBLEM: Record<NameProblem, () => string> = {
     taken: () => _('That name is already used'),
 };
 
-interface DraftField { def: FieldDef; fresh: boolean }
+const OPTION_PROBLEM: Record<NameProblem, () => string> = {
+    ...PROBLEM,
+    invalid: () => _('No comma, colon, or parentheses'),
+};
+
+interface DraftOption { text: string; color: OptionColor | null }
+// A field being edited: its options and their colors are kept here, and put back into `def` by result().
+interface DraftField { def: FieldDef; fresh: boolean; options: DraftOption[] }
 
 const flat = (icon: string, tooltip: string, run: () => void, sensitive = true): Gtk.Button => {
     const button = new Gtk.Button({ icon_name: icon, has_frame: false, tooltip_text: tooltip, sensitive, valign: Gtk.Align.CENTER });
@@ -51,7 +58,7 @@ class SchemaForm {
         scroll.set_child(this.list);
         const add = new Gtk.Button({ label: _('+ Add field'), has_frame: false, halign: Gtk.Align.START });
         add.connect('clicked', () => {
-            this.draft.push({ def: { key: '', type: 'text', multiple: false, options: [] }, fresh: true });
+            this.draft.push({ def: { key: '', type: 'text', multiple: false, options: [] }, fresh: true, options: [] });
             this.queueRefresh(() => this.names.get(this.draft.length - 1)?.grab_focus());
         });
         this.widget = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8 });
@@ -62,22 +69,28 @@ class SchemaForm {
 
     // The fields as they are now, in order.
     result(): FieldDef[] {
-        return this.draft.map(({ def }) => ({ ...def, key: def.key.trim(), options: def.options.map(o => o.trim()) }));
+        return this.draft.map(({ def, options }) => {
+            const texts = options.map(o => o.text.trim());
+            const colors: Record<string, OptionColor> = {};
+            options.forEach((o, i) => { if (o.color) colors[texts[i]] = o.color; });
+            const { colors: _old, ...rest } = def;
+            return { ...rest, key: def.key.trim(), options: texts, ...(Object.keys(colors).length ? { colors } : {}) };
+        });
     }
 
     // Marks what does not fit and moves focus to it; false = something is wrong.
     validate(): boolean {
         let first: Gtk.Entry | null = null;
-        const mark = (entry: Gtk.Entry | undefined, problem: NameProblem | null) => {
+        const mark = (entry: Gtk.Entry | undefined, problem: NameProblem | null, messages = PROBLEM) => {
             if (!entry || !problem) return;
             entry.add_css_class('error');
-            entry.set_tooltip_text(PROBLEM[problem]());
+            entry.set_tooltip_text(messages[problem]());
             first ??= entry;
         };
         const keys = this.draft.map(d => d.def.key.trim());
         this.draft.forEach((d, i) => {
             if (d.fresh) mark(this.names.get(i), fieldNameProblem(d.def.key, [...this.options.reserved, ...keys.filter((_k, j) => j !== i)]));
-            d.def.options.forEach((o, j) => mark(this.optionEntries.get(`${i}.${j}`), optionProblem(o, d.def.options.filter((_o, k) => k !== j))));
+            d.options.forEach((o, j) => mark(this.optionEntries.get(`${i}.${j}`), optionProblem(o.text, d.options.filter((_o, k) => k !== j).map(x => x.text)), OPTION_PROBLEM));
         });
         (first as Gtk.Entry | null)?.grab_focus();
         return first === null;
@@ -156,22 +169,22 @@ class SchemaForm {
         const dropdown = new Gtk.DropDown({ model: Gtk.StringList.new(TYPES.map(t => TYPE_LABEL[t]())), selected: TYPES.indexOf(def.type) });
         dropdown.connect('notify::selected', () => {
             def.type = TYPES[dropdown.selected] ?? 'text';
-            if (def.type !== 'select') def.options = [];
+            if (def.type !== 'select') this.draft[i].options = [];
             this.queueRefresh();
         });
         return dropdown;
     }
 
     private optionsEditor(i: number): Gtk.Box {
-        const def = this.draft[i].def;
+        const options = this.draft[i].options;
         const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, margin_start: 36 });
-        def.options.forEach((option, j) => box.append(this.optionRow(i, j, option)));
+        options.forEach((_o, j) => box.append(this.optionRow(i, j)));
         const entry = new Gtk.Entry({ placeholder_text: _('Add an option…'), hexpand: true });
         const add = () => {
             const text = entry.text.trim();
             if (!text) return;
-            if (optionProblem(text, def.options)) { entry.add_css_class('error'); return; }
-            def.options.push(text);
+            if (optionProblem(text, options.map(o => o.text))) { entry.add_css_class('error'); return; }
+            options.push({ text, color: null });
             this.queueRefresh();
         };
         entry.connect('changed', () => entry.remove_css_class('error'));
@@ -183,33 +196,76 @@ class SchemaForm {
         return box;
     }
 
-    private optionRow(i: number, j: number, option: string): Gtk.Box {
-        const def = this.draft[i].def;
+    // The option whose color row is open, as "field.option", or null.
+    private colorOpen: string | null = null;
+
+    private optionRow(i: number, j: number): Gtk.Box {
+        const { def, fresh, options } = this.draft[i];
+        const option = options[j];
+        const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4 });
         const line = new Gtk.Box({ spacing: 6 });
-        line.append(this.mover(def.options, j));
-        const entry = new Gtk.Entry({ text: option, hexpand: true });
+        line.append(this.mover(options, j));
+        line.append(this.colorDot(`${i}.${j}`, option));
+        const entry = new Gtk.Entry({ text: option.text, hexpand: true });
         entry.connect('changed', () => {
-            def.options[j] = entry.text;
+            option.text = entry.text;
             entry.remove_css_class('error');
             entry.set_tooltip_text(null);
         });
         this.optionEntries.set(`${i}.${j}`, entry);
         line.append(entry);
-        const uses = this.draft[i].fresh ? 0 : this.options.uses(def.key, option);
+        const uses = fresh ? 0 : this.options.uses(def.key, option.text);
         if (uses > 0) {
             const count = new Gtk.Label({ label: fmt(ngettext('{n} note', '{n} notes', uses), { n: uses }), valign: Gtk.Align.CENTER });
             count.add_css_class('dim-label');
             count.add_css_class('caption');
             line.append(count);
         }
-        line.append(flat('window-close-symbolic', _('Remove option'), () => { def.options.splice(j, 1); this.queueRefresh(); }));
-        return line;
+        line.append(flat('window-close-symbolic', _('Remove option'), () => { options.splice(j, 1); this.queueRefresh(); }));
+        box.append(line);
+        if (this.colorOpen === `${i}.${j}`) box.append(this.colorChoices(option));
+        return box;
+    }
+
+    // The dot shows the color of the option (dashed = none: it is colored by its position); a click opens the choices.
+    private colorDot(id: string, option: DraftOption): Gtk.Button {
+        const dot = new Gtk.Button({ valign: Gtk.Align.CENTER, tooltip_text: _('Color of this option') });
+        dot.update_property([Gtk.AccessibleProperty.LABEL], [_('Color of this option')]);
+        for (const cls of ['opt-dot', 'circular', option.color ? `opt-dot-${option.color}` : 'opt-dot-auto']) dot.add_css_class(cls);
+        if (this.colorOpen === id) dot.add_css_class('opt-dot-chosen');
+        dot.connect('clicked', () => {
+            this.colorOpen = this.colorOpen === id ? null : id;
+            this.queueRefresh();
+        });
+        return dot;
+    }
+
+    // A row of the colors, and one to go back to the automatic color. Choosing one closes the row.
+    private colorChoices(option: DraftOption): Gtk.Box {
+        const row = new Gtk.Box({ spacing: 8, margin_start: 56, margin_bottom: 4 });
+        const choose = (color: OptionColor | null) => {
+            option.color = color;
+            this.colorOpen = null;
+            this.queueRefresh();
+        };
+        for (const color of OPTION_COLORS) {
+            const dot = new Gtk.Button({ valign: Gtk.Align.CENTER, tooltip_text: color });
+            dot.update_property([Gtk.AccessibleProperty.LABEL], [color]);
+            for (const cls of ['opt-dot', 'circular', `opt-dot-${color}`]) dot.add_css_class(cls);
+            if (option.color === color) dot.add_css_class('opt-dot-chosen');
+            dot.connect('clicked', () => choose(color));
+            row.append(dot);
+        }
+        const auto = new Gtk.Button({ label: _('Automatic'), has_frame: false });
+        auto.connect('clicked', () => choose(null));
+        row.append(auto);
+        return row;
     }
 }
 
 // Asks for the fields of a board or list. null if cancelled.
 export async function editSchemaDialog(parent: Gtk.Window | null, options: SchemaDialogOptions): Promise<FieldDef[] | null> {
-    const draft = options.fields.map(def => ({ def: { ...def, options: [...def.options] }, fresh: false }));
+    const draft: DraftField[] = options.fields.map(def => ({ def: { ...def }, fresh: false, options: def.options.map(text => ({ text, color: def.colors?.[text] ?? null })) }));
     const form = new SchemaForm(draft, options);
     const accepted = await formDialog(parent, _('Fields'), 560, form.widget, _('Save'), () => form.validate());
     return accepted ? form.result() : null;

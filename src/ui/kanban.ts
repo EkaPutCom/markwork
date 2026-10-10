@@ -331,7 +331,7 @@ export class KanbanBoard {
 
     // A select option takes the color of its position; a value that does not fit its field is marked and explained.
     private fieldChip(chip: (text: string, ...classes: string[]) => Gtk.Label, f: FieldChip, edit: (key: string, anchor: Gtk.Widget) => void): void {
-        const label = chip(f.text, f.invalid ? 'kanban-field-invalid' : f.option !== null ? `kanban-tag-${f.option % TAG_COLORS}` : 'kanban-field');
+        const label = chip(f.text, f.invalid ? 'kanban-field-invalid' : f.color ? `opt-${f.color}` : f.option !== null ? `kanban-tag-${f.option % TAG_COLORS}` : 'kanban-field');
         if (f.invalid) label.set_tooltip_text(fmt(_('“{key}” does not fit its field: {reason}. The text in the file is unchanged.'), { key: f.key, reason: f.invalid }));
         if (f.type !== null) onChipClick(label, () => edit(f.key, label));
     }

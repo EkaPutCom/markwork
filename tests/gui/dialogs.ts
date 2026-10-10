@@ -112,6 +112,28 @@ export function dialogTests(c: GuiContext): void {
         eq(drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: () => 0 }), d => button(d, 'Cancel').emit('clicked')), null);
     });
 
+    test('fields dialog: a color is chosen from the dot of an option (and taken back with Automatic); a colon in an option blocks saving', () => {
+        const existing = parseSchema('---\nfields:\n  prio: select(a, b:blue)\n---\n').fields;
+        const seen: Record<string, unknown> = {};
+        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: () => 0 }), d => {
+            const buttons = (tip: string) => descendants(d).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.tooltip_text === tip);
+            seen.dotClasses = buttons('Color of this option').map(b => b.has_css_class('opt-dot-blue') ? 'blue' : b.has_css_class('opt-dot-auto') ? 'auto' : '?');
+            buttons('Color of this option')[0].emit('clicked'); c.pump();
+            buttons('green')[0].emit('clicked'); c.pump();
+            buttons('Color of this option')[1].emit('clicked'); c.pump();
+            button(d, 'Automatic').emit('clicked'); c.pump();
+            const first = descendants(d).find((x): x is Gtk.Entry => x instanceof Gtk.Entry && x.text === 'a')!;
+            first.set_text('a:red');
+            button(d, 'Save').emit('clicked');
+            seen.blocked = first.has_css_class('error') && !!findDialog('Fields');
+            first.set_text('a');
+            button(d, 'Save').emit('clicked');
+        });
+        eq(seen, { dotClasses: ['auto', 'blue'], blocked: true }, 'the dots show the colors; a colon in an option is refused');
+        eq(result?.[0].options, ['a', 'b']);
+        eq(result?.[0].colors, { a: 'green' }, 'a was colored, the color of b was taken back');
+    });
+
     test('prompt: Cancel and Escape (close) return null', () => {
         eq(drive('Name',  () => promptDialog(w.win, { title: 'Name', label: 'x', value: 'a' }), d => button(d, 'Cancel').emit('clicked')), null);
         eq(drive('Name',  () => promptDialog(w.win, { title: 'Name', label: 'x', value: 'a' }), close), null);

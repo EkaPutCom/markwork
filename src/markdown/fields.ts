@@ -4,7 +4,7 @@
 //
 //   ---
 //   fields:
-//     prioritas: select(tinggi, sedang, rendah)
+//     prioritas: select(tinggi:red, sedang:amber, rendah)
 //     due: date
 //     progres: progress
 //     pemilik: person[]
@@ -15,7 +15,8 @@
 //
 //   - [ ] Write the parser #design [prioritas:: tinggi] [due:: 2026-10-24 09:00] [progres:: 3/5]
 //
-// `= value` after the type is the default a new item gets (`now` and `today` for a date). `#tag` is the only other marker. Types: text, number, select, date, progress, person, agent, link; a
+// `option:color` gives an option of a select a color (red, amber, green, blue, purple, teal, pink, gray); an option
+// without one is colored by its position. `= value` after the type is the default a new item gets (`now` and `today` for a date). `#tag` is the only other marker. Types: text, number, select, date, progress, person, agent, link; a
 // `[]` after the type (`person[]`, `select[](a, b)`) allows several comma-separated values.
 //
 // The functions are pure. They never reject and never rewrite text they do not understand: a value that
@@ -25,11 +26,17 @@
 
 export type FieldType = 'text' | 'number' | 'select' | 'date' | 'progress' | 'person' | 'agent' | 'link';
 
+// The colors an option of a select can have, by name; the theme turns a name into colors that read in light and dark.
+export const OPTION_COLORS = ['red', 'amber', 'green', 'blue', 'purple', 'teal', 'pink', 'gray'] as const;
+export type OptionColor = typeof OPTION_COLORS[number];
+export const isOptionColor = (name: string): name is OptionColor => (OPTION_COLORS as readonly string[]).includes(name);
+
 export interface FieldDef {
     key: string;
     type: FieldType;
     multiple: boolean;
     options: string[];   // select only; empty = any value
+    colors?: Record<string, OptionColor>;   // select only: the color chosen for an option, by its text
     default?: string;    // what a new item gets: a value of the field, or `now` / `today` for a date
 }
 
@@ -84,8 +91,8 @@ function topLevelEquals(spec: string): number {
     return -1;
 }
 
-// What an option of a select may look like: no comma or parenthesis, which the `select(…)` syntax uses.
-export const OPTION_TEXT = /^[^,()]+$/;
+// What a new option of a select may look like: no comma, parenthesis, or colon, which the `select(a:red, b)` syntax uses.
+export const OPTION_TEXT = /^[^,():]+$/;
 
 const DATE_DEFAULTS: readonly string[] = ['now', 'today'];
 
@@ -96,6 +103,24 @@ function defaultProblem(def: FieldDef, value: string): string | null {
     return parsed.ok ? null : `${def.key}: the default "${value}" does not fit the field (${parsed.error})`;
 }
 
+// The options inside `select(…)`: `text`, or `text:color` when what follows the last colon is a color name (so an
+// option such as "Q3: release" is still read as text).
+function parseOptions(raw: string): { options: string[]; colors: Record<string, OptionColor> } {
+    const options: string[] = [], colors: Record<string, OptionColor> = {};
+    for (const piece of raw.split(',').map(o => o.trim()).filter(Boolean)) {
+        const at = piece.lastIndexOf(':');
+        const color = at > 0 ? piece.slice(at + 1).trim().toLowerCase() : '';
+        const text = at > 0 ? piece.slice(0, at).trim() : '';
+        if (text && isOptionColor(color)) {
+            options.push(text);
+            colors[text] = color;
+        } else {
+            options.push(piece);
+        }
+    }
+    return { options, colors };
+}
+
 function parseDef(key: string, spec: string): FieldDef | string {
     if (!KEY.test(key)) return `"${key}" is not a valid field name`;
     const eq = topLevelEquals(spec);
@@ -103,9 +128,9 @@ function parseDef(key: string, spec: string): FieldDef | string {
     const m = TYPE_SPEC.exec(typeSpec);
     const type = m?.[1] as FieldType | undefined;
     if (!m || !type || !FIELD_TYPES.includes(type)) return `${key}: unknown type "${typeSpec}"`;
-    const options = (m[3] ?? '').split(',').map(o => o.trim()).filter(Boolean);
+    const { options, colors } = parseOptions(m[3] ?? '');
     if (options.length && type !== 'select') return `${key}: only select takes options`;
-    const def: FieldDef = { key, type, multiple: m[2] === '[]', options };
+    const def: FieldDef = { key, type, multiple: m[2] === '[]', options, ...(Object.keys(colors).length ? { colors } : {}) };
     const value = eq < 0 ? '' : spec.slice(eq + 1).trim();
     if (!value) return def;
     return defaultProblem(def, value) ?? { ...def, default: value };
@@ -131,7 +156,7 @@ export function parseSchema(text: string): SchemaResult {
 }
 
 export function describeDef(def: FieldDef): string {
-    const args = def.options.length ? `(${def.options.join(', ')})` : '';
+    const args = def.options.length ? `(${def.options.map(o => (def.colors?.[o] ? `${o}:${def.colors[o]}` : o)).join(', ')})` : '';
     return `${def.type}${def.multiple ? '[]' : ''}${args}${def.default ? ` = ${def.default}` : ''}`;
 }
 
@@ -347,7 +372,8 @@ export interface FieldChip {
     key: string;
     text: string;
     type: FieldType | null;     // null = a key that is not in the schema
-    option: number | null;      // select: the index of the chosen option, for its color
+    option: number | null;      // select: the index of the chosen option, for its color when it has none of its own
+    color: OptionColor | null;  // select: the color chosen for the option
     invalid: string | null;     // why the value does not fit its field
 }
 
@@ -362,12 +388,13 @@ export function fieldChips(item: Item, schema: FieldDef[], skip: readonly string
     for (const def of schema) {
         const parsed = item.fields[def.key];
         if (!parsed || skip.includes(def.key)) continue;
-        if (!parsed.ok) { chips.push({ key: def.key, text: `${def.key}: ${parsed.raw}`, type: def.type, option: null, invalid: parsed.error }); continue; }
+        if (!parsed.ok) { chips.push({ key: def.key, text: `${def.key}: ${parsed.raw}`, type: def.type, option: null, color: null, invalid: parsed.error }); continue; }
         const text = displayValue(def, parsed.value);
         const option = def.type === 'select' && !def.multiple ? def.options.indexOf(text) : -1;
-        chips.push({ key: def.key, text: def.type === 'select' ? text : `${def.key}: ${text}`, type: def.type, option: option >= 0 ? option : null, invalid: null });
+        const color = option >= 0 ? def.colors?.[text] ?? null : null;
+        chips.push({ key: def.key, text: def.type === 'select' ? text : `${def.key}: ${text}`, type: def.type, option: option >= 0 ? option : null, color, invalid: null });
     }
-    for (const u of item.unknown) if (!skip.includes(u.key)) chips.push({ key: u.key, text: `${u.key}: ${u.raw}`, type: null, option: null, invalid: null });
+    for (const u of item.unknown) if (!skip.includes(u.key)) chips.push({ key: u.key, text: `${u.key}: ${u.raw}`, type: null, option: null, color: null, invalid: null });
     return chips;
 }
 

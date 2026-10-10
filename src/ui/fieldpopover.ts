@@ -28,11 +28,23 @@ function flatButton(label: string, run: () => void, checked = false): Gtk.Button
     return button;
 }
 
+// An option as a button whose text is a chip in the color of the option (see theme.ts), like on the card.
+function optionButton(def: FieldDef, option: string, run: () => void, checked: boolean): Gtk.Button {
+    const button = flatButton(option, run, checked);
+    const chip = button.get_child() as Gtk.Label | null;
+    if (!chip) return button;
+    chip.set_halign(Gtk.Align.START);
+    chip.add_css_class('opt-chip');
+    const color = def.colors?.[option];
+    if (color) chip.add_css_class(`opt-${color}`);
+    return button;
+}
+
 // The options as buttons, then an entry for a different value: the closest listed option is offered first, and a
 // value that is new is added to the list only after its own button is pressed.
 function selectContent({ def, current, apply }: FieldPopoverOptions): Gtk.Box {
     const box = content();
-    for (const option of def.options) box.append(flatButton(option, () => apply(option), option === current));
+    for (const option of def.options) box.append(optionButton(def, option, () => apply(option), option === current));
     box.append(flatButton(_('Clear'), () => apply('')));
     box.append(new Gtk.Separator());
     const entry = new Gtk.Entry({ placeholder_text: _('Another value…'), activates_default: false });

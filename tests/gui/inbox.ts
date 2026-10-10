@@ -218,4 +218,11 @@ export function inboxTests(c: GuiContext): void {
         eq(text(), FIELD_INBOX, 'one undo');
         open();
     });
+
+    test('a list chip takes the color chosen for its option', () => {
+        open('---\nlayout: list\nfields:\n  tipe: select(ide, bacaan:purple)\n---\n\n- Satu [tipe:: bacaan]\n- Dua [tipe:: ide]\n');
+        ok(chips(0)[0].has_css_class('opt-purple'), 'the chosen color');
+        ok(chips(1)[0].has_css_class('inbox-field-0') && !chips(1)[0].has_css_class('opt-purple'), 'no color: the color of its position');
+        open();
+    });
 }
