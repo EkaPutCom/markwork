@@ -18,13 +18,14 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import { ageOf, captureItem, itemFields, itemMeta, newList, type Age } from '../markdown/inbox.js';
-import { boardSchema, deleteCard, setCardField, updateCard, withFieldOption, type Board, type Position } from '../markdown/kanban.js';
+import { boardSchema, deleteCard, moveCard, setCardField, updateCard, withFieldOption, type Board, type Position } from '../markdown/kanban.js';
 import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
 import { editNoteDialog, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
-import { after, onChipClick, removeChildren, type Awaitable } from '../gtkutil.js';
+import { after, onChipClick, onClick, removeChildren, type Awaitable } from '../gtkutil.js';
+import { popupMenu, separator, type MenuEntry } from './menu.js';
 import { FieldPopover } from './fieldpopover.js';
 import { _, fmt, ngettext } from '../i18n.js';
 
@@ -246,6 +247,10 @@ export class InboxView {
         box.append(remove);
 
         const row = new Gtk.ListBoxRow({ child: box, activatable: true });
+        onClick(row, (_n, x, y) => {
+            popupMenu(row, this.rowMenu(at), x, y);
+            return true;
+        }, 3);
         return row;
     }
 
@@ -263,6 +268,23 @@ export class InboxView {
         }
         if (f.type !== null) onChipClick(chip, () => this.editField(at, f.key, chip));
         return chip;
+    }
+
+    // The menu of a note (right click): edit it, move it to another section or up and down within its section, delete it.
+    rowMenu(at: Position): MenuEntry[] {
+        const column = this.board.columns[at.column];
+        const sections = this.board.columns
+            .map((target, t): MenuEntry | null => t === at.column ? null
+                : { label: target.title || _('No section'), run: () => this.commit(moveCard(this.board, at, { column: t, index: Infinity })) })
+            .filter((e): e is MenuEntry => e !== null);
+        return [
+            { label: _('Edit…'), run: () => this.editItem(at) },
+            { label: _('Move to'), enabled: sections.length > 0, submenu: sections },
+            { label: _('Move Up'), enabled: at.index > 0, run: () => this.commit(moveCard(this.board, at, { column: at.column, index: at.index - 1 })) },
+            { label: _('Move Down'), enabled: at.index < (column?.cards.length ?? 0) - 1, run: () => this.commit(moveCard(this.board, at, { column: at.column, index: at.index + 1 })) },
+            separator(),
+            { label: _('Delete'), run: () => this.commit(deleteCard(this.board, at)) },
+        ];
     }
 
     private cardAt(at: Position) {

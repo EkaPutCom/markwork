@@ -4,6 +4,7 @@ import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import { parseBoard } from '../../src/markdown/kanban.js';
 import { findDialog } from '../../src/ui/dialogs.js';
+import { findEntry } from '../../src/ui/menu.js';
 import { isList } from '../../src/markdown/layout.js';
 import { descendants, whenDialogReady, widgetPixbuf } from '../widgets.js';
 import { section, test, eq, ok, tmp, optVal } from '../framework.js';
@@ -205,5 +206,26 @@ export function inboxTests(c: GuiContext): void {
         ok(chips(0)[0].has_css_class('opt-purple'), 'the chosen color');
         ok(chips(1)[0].has_css_class('inbox-field-0') && !chips(1)[0].has_css_class('opt-purple'), 'no color: the color of its position');
         open();
+    });
+
+    test('the row menu moves a note to another section, up and down within its section, or deletes it', () => {
+        const TEXT = '---\nlayout: list\n---\n\n- loose\n\n## Now\n\n- one\n- two\n\n## Later\n\n- three\n';
+        const groups = () => parseBoard(text()).columns.map(c => [c.title, c.cards.map(i => i.text)]);
+        const menu = (column: number, index: number) => w.inbox.rowMenu({ column, index });
+        const entry = (column: number, index: number, label: string) => findEntry(menu(column, index), label)!;
+        open(TEXT);
+        eq(entry(0, 0, 'Move to').submenu!.map(e => e.label), ['Now', 'Later'], 'every other section; the unnamed one is called "No section" when it is a target');
+        entry(0, 0, 'Move to').submenu!.find(e => e.label === 'Later')!.run!(); settle();
+        eq(groups(), [['Now', ['one', 'two']], ['Later', ['three', 'loose']]], 'at the end of the other section; the emptied unnamed group writes nothing');
+        eq(entry(1, 0, 'Move to').submenu!.map(e => e.label), ['No section', 'Later'], 'the unnamed group is called "No section" as a target');
+        eq([entry(1, 0, 'Move Up').enabled, entry(1, 0, 'Move Down').enabled, entry(1, 1, 'Move Up').enabled, entry(1, 1, 'Move Down').enabled], [false, true, true, false]);
+        entry(1, 0, 'Move Down').run!(); settle();
+        eq(groups()[0], ['Now', ['two', 'one']], 'moved down within the section');
+        entry(1, 0, 'Delete').run!(); settle();
+        eq(groups()[0], ['Now', ['one']], 'deleted');
+        c.action('undo'); c.action('undo'); c.action('undo'); settle();
+        eq(text(), TEXT, 'every step is one undo');
+        open();
+        eq(findEntry(w.inbox.rowMenu({ column: 0, index: 0 }), 'Move to')!.enabled, false, 'a list with one group has nowhere to move to');
     });
 }
