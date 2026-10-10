@@ -138,7 +138,7 @@ export function kanbanMouseTests(c: GuiContext): void {
             reset('---\nlayout: list\nfields:\n  tipe: select(ide, bacaan)\n---\n\n# Inbox\n\n- Satu [tipe:: ide]\n');
             let noteEdits = 0;
             const inboxDialogs = w.inbox.dialogs;
-            w.inbox.dialogs = { editNote: () => { noteEdits++; return null; } };
+            w.inbox.dialogs = { ...inboxDialogs, editNote: () => { noteEdits++; return null; } };
             try {
                 const chip = descendants(w.inbox.widget).find((x): x is Gtk.Label => x instanceof Gtk.Label && x.label === 'ide')!;
                 ok(chip, 'the chip is not shown');

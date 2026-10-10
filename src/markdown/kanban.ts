@@ -222,6 +222,16 @@ export function renameColumn(board: Board, column: number, title: string): Board
 export const deleteColumn = (board: Board, column: number): Board =>
     ({ ...board, columns: board.columns.filter((_, i) => i !== column) });
 
+// Delete a group but keep its notes: they go to the end of the group above it, or, for the first group, the group
+// itself stays and only loses its heading (its notes become the unnamed group).
+export function deleteColumnKeepCards(board: Board, column: number): Board {
+    const gone = board.columns[column];
+    if (!gone) return board;
+    if (column === 0) return gone.title === '' ? board : withColumn(board, 0, c => ({ ...c, title: '' }));
+    const columns = board.columns.filter((_, i) => i !== column);
+    return { ...board, columns: columns.map((c, i) => (i === column - 1 ? { ...c, cards: [...c.cards, ...gone.cards] } : c)) };
+}
+
 export function moveColumn(board: Board, from: number, to: number): Board {
     const column = board.columns[from];
     if (!column || column.title === '') return board;   // the unnamed group stays first

@@ -18,11 +18,11 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import { ageOf, captureItem, itemFields, itemMeta, newList, type Age } from '../markdown/inbox.js';
-import { boardSchema, deleteCard, moveCard, setCardField, updateCard, withFieldOption, type Board, type Position } from '../markdown/kanban.js';
+import { addColumn, boardSchema, deleteCard, deleteColumn, deleteColumnKeepCards, moveCard, moveColumn, renameColumn, setCardField, updateCard, withFieldOption, type Board, type Position } from '../markdown/kanban.js';
 import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
-import { editNoteDialog, type CardDraft } from './dialogs.js';
+import { deleteSectionDialog, editNoteDialog, promptDialog, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
 import { after, onChipClick, onClick, removeChildren, type Awaitable } from '../gtkutil.js';
 import { popupMenu, separator, type MenuEntry } from './menu.js';
@@ -45,12 +45,14 @@ export function ageLabel(captured: Date, now: Date): string {
 
 export interface InboxDialogs {
     editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
+    prompt(parent: Gtk.Window | null, options: { title: string; label: string; value?: string }): Awaitable<string | null>;
+    deleteSection(parent: Gtk.Window | null, title: string, count: number): Awaitable<'keep' | 'delete' | null>;
 }
 
 export class InboxView {
     readonly widget: Gtk.ScrolledWindow;
     onChange: (board: Board) => void = () => {};
-    dialogs: InboxDialogs = { editNote: editNoteDialog };
+    dialogs: InboxDialogs = { editNote: editNoteDialog, prompt: promptDialog, deleteSection: deleteSectionDialog };
     now: () => Date = () => new Date();
     onOpenNote: (link: WikiLink) => void = () => {};
     listNotes: (() => string[]) | null = null;
@@ -173,7 +175,7 @@ export class InboxView {
         let count = 0;
         this.board.columns.forEach((column, c) => {
             if (column.title !== '') {
-                this.list.append(this.buildSection(column.title));
+                this.list.append(this.buildSection(c, column.title));
                 this.positions.push(null);
             }
             column.cards.forEach((_card, i) => {
@@ -186,12 +188,16 @@ export class InboxView {
         this.empty.set_visible(count === 0 && this.positions.length === 0);
     }
 
-    // A group with a title is shown as a section title above its notes.
-    private buildSection(title: string): Gtk.ListBoxRow {
+    // A group with a title is shown as a section title above its notes; right-clicking it opens its menu.
+    private buildSection(column: number, title: string): Gtk.ListBoxRow {
         const label = new Gtk.Label({ label: title, xalign: 0, margin_top: 8, margin_bottom: 4, margin_start: 14 });
         label.add_css_class('heading');
         const row = new Gtk.ListBoxRow({ child: label, activatable: false, selectable: false });
         row.add_css_class('inbox-section');
+        onClick(row, (_n, x, y) => {
+            popupMenu(row, this.sectionMenu(column), x, y);
+            return true;
+        }, 3);
         return row;
     }
 
@@ -277,14 +283,64 @@ export class InboxView {
             .map((target, t): MenuEntry | null => t === at.column ? null
                 : { label: target.title || _('No section'), run: () => this.commit(moveCard(this.board, at, { column: t, index: Infinity })) })
             .filter((e): e is MenuEntry => e !== null);
+        const submenu = [...sections, ...(sections.length ? [separator()] : []), { label: _('New section…'), run: () => this.newSectionFor(at) }];
         return [
             { label: _('Edit…'), run: () => this.editItem(at) },
-            { label: _('Move to'), enabled: sections.length > 0, submenu: sections },
+            { label: _('Move to'), submenu },
             { label: _('Move Up'), enabled: at.index > 0, run: () => this.commit(moveCard(this.board, at, { column: at.column, index: at.index - 1 })) },
             { label: _('Move Down'), enabled: at.index < (column?.cards.length ?? 0) - 1, run: () => this.commit(moveCard(this.board, at, { column: at.column, index: at.index + 1 })) },
             separator(),
             { label: _('Delete'), run: () => this.commit(deleteCard(this.board, at)) },
         ];
+    }
+
+    // A new section at the end, named by the user, with the note moved into it in the same undo step. A name that is
+    // already a section (ignoring case) moves the note into that one instead of making a second.
+    newSectionFor(at: Position): void {
+        const card = this.cardAt(at);
+        if (!card) return;
+        void after(this.dialogs.prompt(this.parent, { title: _('New Section'), label: _('Section name') }), name => {
+            const title = name?.trim();
+            if (!title || this.cardAt(at)?.text !== card.text) return;
+            const existing = this.board.columns.findIndex(c => c.title.toLowerCase() === title.toLowerCase());
+            const board = existing >= 0 ? this.board : addColumn(this.board, title);
+            const into = existing >= 0 ? existing : board.columns.length - 1;
+            this.commit(into === at.column ? board : moveCard(board, at, { column: into, index: Infinity }));
+        });
+    }
+
+    // The menu of a section title (right click): rename it, move it up or down among the sections, delete it.
+    sectionMenu(column: number): MenuEntry[] {
+        const first = this.board.columns[0]?.title === '' ? 1 : 0;   // the unnamed group stays first
+        return [
+            { label: _('Rename…'), run: () => this.renameSection(column) },
+            { label: _('Move Up'), enabled: column > first, run: () => this.commit(moveColumn(this.board, column, column - 1)) },
+            { label: _('Move Down'), enabled: column < this.board.columns.length - 1, run: () => this.commit(moveColumn(this.board, column, column + 1)) },
+            separator(),
+            { label: _('Delete Section…'), run: () => this.deleteSection(column) },
+        ];
+    }
+
+    renameSection(column: number): void {
+        const current = this.board.columns[column]?.title;
+        if (!current) return;
+        void after(this.dialogs.prompt(this.parent, { title: _('Rename Section'), label: _('Section name'), value: current }), name => {
+            if (name?.trim() && this.board.columns[column]?.title === current) this.commit(renameColumn(this.board, column, name));
+        });
+    }
+
+    // An empty section goes without a question; one with notes asks whether to keep them (in the section above) or delete them too.
+    deleteSection(column: number): void {
+        const section = this.board.columns[column];
+        if (!section || section.title === '') return;
+        if (!section.cards.length) {
+            this.commit(deleteColumn(this.board, column));
+            return;
+        }
+        void after(this.dialogs.deleteSection(this.parent, section.title, section.cards.length), choice => {
+            if (!choice || this.board.columns[column]?.title !== section.title) return;
+            this.commit(choice === 'keep' ? deleteColumnKeepCards(this.board, column) : deleteColumn(this.board, column));
+        });
     }
 
     private cardAt(at: Position) {

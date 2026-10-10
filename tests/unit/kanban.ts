@@ -1,6 +1,6 @@
 // Kanban board model tests.
 
-import { addCard, addColumn, boardSchema, declaredFields, fieldUses, reservedFields, withSchema, cardFields, cardMeta, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { addCard, addColumn, deleteColumnKeepCards, boardSchema, declaredFields, fieldUses, reservedFields, withSchema, cardFields, cardMeta, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
 import { isBoard } from '../../src/markdown/layout.js';
 import { section, test, eq, ok } from '../framework.js';
 import { BOARD } from '../fixtures.js';
@@ -125,6 +125,16 @@ export function kanbanModelTests(): void {
         eq(declaredFields(next).map(f => f.key), ['prio', 'n']);
         eq(next.columns, board.columns, 'cards untouched');
         ok(withSchema(board, declaredFields(board)) === board, 'no difference, no new board');
+    });
+    test('deleteColumnKeepCards: the notes go to the group above; the first group only loses its heading', () => {
+        const doc = parseBoard('---\nlayout: list\n---\n\n- loose\n\n## Now\n\n- one\n\n## Later\n\n- two\n- three\n');
+        const shape = (b: Board) => b.columns.map(c => [c.title, c.cards.map(i => i.text)]);
+        eq(shape(deleteColumnKeepCards(doc, 2)), [['', ['loose']], ['Now', ['one', 'two', 'three']]], 'to the end of the group above');
+        eq(shape(deleteColumnKeepCards(doc, 1)), [['', ['loose', 'one']], ['Later', ['two', 'three']]], 'into the unnamed group above');
+        const first = parseBoard('---\nlayout: list\n---\n\n## Now\n\n- one\n\n## Later\n\n- two\n');
+        eq(shape(deleteColumnKeepCards(first, 0)), [['', ['one']], ['Later', ['two']]], 'the first titled group becomes the unnamed one');
+        ok(deleteColumnKeepCards(doc, 0) === doc && deleteColumnKeepCards(doc, 7) === doc, 'the unnamed group, or no such group: unchanged');
+        eq(doc.columns[2].cards.length, 2, 'the original is not changed');
     });
     test('dueStatus and dropIndex', () => {
         eq(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-09'].map(d => dueStatus(d, '2026-10-03')), ['overdue', 'today', 'soon', 'later']);

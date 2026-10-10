@@ -77,7 +77,7 @@ export function inboxTests(c: GuiContext): void {
     test('a new note and editing through the dialog; the capture time is kept', () => {
         open();
         const calls: string[] = [];
-        w.inbox.dialogs = { editNote: (_p, item, title) => { calls.push(title ?? 'edit'); return { text: item.text ? `${item.text} #new` : 'From dialog #d', notes: ['content'] }; } };
+        w.inbox.dialogs = { ...w.inbox.dialogs, editNote: (_p, item, title) => { calls.push(title ?? 'edit'); return { text: item.text ? `${item.text} #new` : 'From dialog #d', notes: ['content'] }; } };
         w.inbox.showAddNote();
         settle();
         eq(calls, ['New Note']);
@@ -88,7 +88,7 @@ export function inboxTests(c: GuiContext): void {
         settle();
         eq(calls[1], 'edit');
         eq(parseBoard(text()).columns.flatMap(c => c.cards)[1].text, 'SQLite idea #idea [created:: 2026-10-07 14:22] #new');
-        w.inbox.dialogs = { editNote: () => null };
+        w.inbox.dialogs = { ...w.inbox.dialogs, editNote: () => null };
         const before = text();
         w.inbox.editItem({ column: 0, index: 0 });
         settle();
@@ -214,10 +214,10 @@ export function inboxTests(c: GuiContext): void {
         const menu = (column: number, index: number) => w.inbox.rowMenu({ column, index });
         const entry = (column: number, index: number, label: string) => findEntry(menu(column, index), label)!;
         open(TEXT);
-        eq(entry(0, 0, 'Move to').submenu!.map(e => e.label), ['Now', 'Later'], 'every other section; the unnamed one is called "No section" when it is a target');
+        eq(entry(0, 0, 'Move to').submenu!.map(e => e.label), ['Now', 'Later', '', 'New section…'], 'every other section, then New section…');
         entry(0, 0, 'Move to').submenu!.find(e => e.label === 'Later')!.run!(); settle();
         eq(groups(), [['Now', ['one', 'two']], ['Later', ['three', 'loose']]], 'at the end of the other section; the emptied unnamed group writes nothing');
-        eq(entry(1, 0, 'Move to').submenu!.map(e => e.label), ['No section', 'Later'], 'the unnamed group is called "No section" as a target');
+        eq(entry(1, 0, 'Move to').submenu!.map(e => e.label), ['No section', 'Later', '', 'New section…'], 'the unnamed group is called "No section" as a target');
         eq([entry(1, 0, 'Move Up').enabled, entry(1, 0, 'Move Down').enabled, entry(1, 1, 'Move Up').enabled, entry(1, 1, 'Move Down').enabled], [false, true, true, false]);
         entry(1, 0, 'Move Down').run!(); settle();
         eq(groups()[0], ['Now', ['two', 'one']], 'moved down within the section');
@@ -226,6 +226,63 @@ export function inboxTests(c: GuiContext): void {
         c.action('undo'); c.action('undo'); c.action('undo'); settle();
         eq(text(), TEXT, 'every step is one undo');
         open();
-        eq(findEntry(w.inbox.rowMenu({ column: 0, index: 0 }), 'Move to')!.enabled, false, 'a list with one group has nowhere to move to');
+        eq(findEntry(w.inbox.rowMenu({ column: 0, index: 0 }), 'Move to')!.submenu!.map(e => e.label), ['New section…'], 'a list with one group can still make a section');
+    });
+
+    // Sections made, renamed, reordered, and deleted from the UI (dialogs replaced by stand-ins).
+    const SECTIONS = '---\nlayout: list\n---\n\n- loose\n\n## Now\n\n- one\n- two\n\n## Later\n\n- three\n';
+    const groupsOf = () => parseBoard(text()).columns.map(c => [c.title, c.cards.map(i => i.text)]);
+    const sectionEntry = (column: number, label: string) => findEntry(w.inbox.sectionMenu(column), label)!;
+    const answer = (over: Partial<typeof w.inbox.dialogs>) => { w.inbox.dialogs = { ...w.inbox.dialogs, ...over }; };
+
+    test('New section… makes a section at the end and moves the note into it in one undo step; an existing name is reused', () => {
+        open(SECTIONS);
+        const asked: string[] = [];
+        answer({ prompt: (_p, o) => { asked.push(o.title); return ' Archive '; } });
+        findEntry(w.inbox.rowMenu({ column: 1, index: 0 }), 'New section…')!.run!(); settle();
+        eq(groupsOf(), [['', ['loose']], ['Now', ['two']], ['Later', ['three']], ['Archive', ['one']]], 'a trimmed name, a new last section, the note in it');
+        eq(asked, ['New Section']);
+        answer({ prompt: () => 'later' });
+        findEntry(w.inbox.rowMenu({ column: 0, index: 0 }), 'New section…')!.run!(); settle();
+        eq(groupsOf().map(g => g[0]), ['Now', 'Later', 'Archive'], 'no second "Later"; the emptied unnamed group writes nothing');
+        eq(groupsOf()[1], ['Later', ['three', 'loose']], 'the note went into the existing section');
+        answer({ prompt: () => '  ' });
+        const before = text();
+        findEntry(w.inbox.rowMenu({ column: 1, index: 0 }), 'New section…')!.run!(); settle();
+        eq(text(), before, 'an empty name changes nothing');
+        c.action('undo'); c.action('undo'); settle();
+        eq(text(), SECTIONS, 'one undo for each section made');
+        open();
+    });
+
+    test('the section menu renames, moves, and deletes a section; the unnamed group stays first and has no menu', () => {
+        open(SECTIONS);
+        eq([sectionEntry(1, 'Move Up').enabled, sectionEntry(1, 'Move Down').enabled, sectionEntry(2, 'Move Up').enabled, sectionEntry(2, 'Move Down').enabled], [false, true, true, false], 'the first titled section cannot go above the unnamed group');
+        answer({ prompt: (_p, o) => (o.value === 'Now' ? 'Soon' : null) });
+        sectionEntry(1, 'Rename…').run!(); settle();
+        eq(groupsOf().map(g => g[0]), ['', 'Soon', 'Later'], 'renamed');
+        sectionEntry(2, 'Move Up').run!(); settle();
+        eq(groupsOf().map(g => g[0]), ['', 'Later', 'Soon'], 'moved up');
+        c.action('undo'); c.action('undo'); settle();
+        eq(text(), SECTIONS, 'one undo each');
+        open();
+    });
+
+    test('deleting a section: an empty one goes at once; one with notes asks, and keeps the notes above or deletes them', () => {
+        const asked: [string, number][] = [];
+        const choose = (what: 'keep' | 'delete' | null) => answer({ deleteSection: (_p, title, count) => { asked.push([title, count]); return what; } });
+        open(SECTIONS + '\n## Empty\n');
+        choose(null);
+        sectionEntry(3, 'Delete Section…').run!(); settle();
+        eq([groupsOf().map(g => g[0]), asked], [['', 'Now', 'Later'], []], 'an empty section is deleted without asking');
+        sectionEntry(2, 'Delete Section…').run!(); settle();
+        eq([asked, groupsOf().map(g => g[0])], [[['Later', 1]], ['', 'Now', 'Later']], 'cancelled: asked once, nothing changed');
+        choose('keep');
+        sectionEntry(2, 'Delete Section…').run!(); settle();
+        eq(groupsOf(), [['', ['loose']], ['Now', ['one', 'two', 'three']]], 'kept: the notes joined the section above');
+        choose('delete');
+        sectionEntry(1, 'Delete Section…').run!(); settle();
+        eq(groupsOf(), [['', ['loose']]], 'deleted with its notes');
+        open();
     });
 }

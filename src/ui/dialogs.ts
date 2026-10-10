@@ -16,7 +16,7 @@ import { composeItem, itemMeta } from '../markdown/inbox.js';
 import { fieldInputText, parseValue, setField, type FieldDef, type FieldType } from '../markdown/fields.js';
 import { AGENT_NAME, CARD_SCHEMA, composeCard, DUE_INPUT, splitCard, withDueDate } from '../markdown/kanban.js';
 import type { HarnessAsk, HarnessReply } from '../agent/harness.js';
-import { _, fmt } from '../i18n.js';
+import { _, fmt, ngettext } from '../i18n.js';
 
 type FilterSetup = [label: string, setup: (filter: Gtk.FileFilter) => void];
 
@@ -397,6 +397,15 @@ export async function promptDialog(parent: Gtk.Window | null, options: { title: 
     const accepted = await formDialog(parent, options.title, 360, box, options.accept ?? _('OK'));
     const value = entry.text.trim();
     return accepted && value ? value : null;
+}
+
+// What to do with the notes of a section that is deleted: keep them (they go to the section above), delete them too, or
+// cancel. Asked only for a section that has notes.
+export async function deleteSectionDialog(parent: Gtk.Window | null, title: string, count: number): Promise<'keep' | 'delete' | null> {
+    const answer = await alert(parent, fmt(_('Delete the section “{title}”?'), { title }),
+        fmt(ngettext('It has {count} note.', 'It has {count} notes.', count), { count }),
+        [_('Cancel'), _('Keep the Notes'), _('Delete the Notes')], 0, 1, 2);
+    return answer === 1 ? 'keep' : answer === 2 ? 'delete' : null;
 }
 
 export async function confirmDialog(parent: Gtk.Window | null, message: string, detail?: string): Promise<boolean> {
