@@ -1,6 +1,6 @@
 // List model tests: the notes of a `layout: list` document, on the same model as a board.
 
-import { addTarget, ageOf, captureItem, composeItem, itemFields, itemMeta, itemMissingFields, newList } from '../../src/markdown/inbox.js';
+import { addTarget, ageOf, captureItem, composeItem, itemFields, itemMeta, newList } from '../../src/markdown/inbox.js';
 import { addColumn, boardSchema, deleteCard, moveColumn, parseBoard, serializeBoard, setCardField, updateCard, withFieldOption } from '../../src/markdown/kanban.js';
 import { isList } from '../../src/markdown/layout.js';
 import { section, test, eq, ok } from '../framework.js';
@@ -119,7 +119,6 @@ export function inboxModelTests(): void {
         eq(boardSchema(parseBoard(list.head.join('\n').replace('layout: list', 'layout: board'))).map(f => f.key).slice(0, 2), ['due', 'agent'], 'a board has the built-in ones too');
         const cards = list.columns[0].cards;
         eq(itemFields(cards[0].text, schema).map(c => [c.text, c.option]), [['ide', 0]], 'the capture time is shown as its age, not as a chip');
-        eq(itemMissingFields(cards[1].text, schema).map(f => f.key), ['tipe', 'url'], 'created is set by capturing, not by hand');
         const tipe = schema.find(f => f.key === 'tipe')!;
         eq(setCardField(list, { column: 0, index: 1 }, tipe, 'BACAAN').columns[0].cards[1].text, 'Dua [tipe:: bacaan]');
         eq(setCardField(list, { column: 0, index: 0 }, tipe, '').columns[0].cards[0].text, 'Satu #x [created:: 2026-10-07 14:22]');

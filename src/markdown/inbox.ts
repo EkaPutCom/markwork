@@ -18,7 +18,7 @@
 // One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without a time are
 // still valid. Pure TypeScript without GTK; all operations return a new board.
 
-import { applyDefaults, fieldChips, findSegments, missingFields, readItem, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { applyDefaults, fieldChips, findSegments, readItem, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 import { boardSchema, type Board, type Card, type Column } from './kanban.js';
 import { optionOf } from './layout.js';
 
@@ -72,10 +72,6 @@ export function captureItem(board: Board, text: string, now: Date, notes: string
 // The chips for a note's fields; the capture time is shown as its age instead.
 export const itemFields = (text: string, schema: FieldDef[]): FieldChip[] =>
     fieldChips(readItem(text, schema), schema, [CREATED_FIELD.key]);
-
-// The fields a note has no value for yet. The capture time is set by capturing, and an agent has its own menu.
-export const itemMissingFields = (text: string, schema: FieldDef[]): FieldDef[] =>
-    missingFields(readItem(text, schema), schema, [CREATED_FIELD.key, 'agent']);
 
 // ---------- Item content ----------
 

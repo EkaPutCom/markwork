@@ -26,7 +26,7 @@
 // is not changed, so it is easy to test.
 
 import { layoutOf } from './layout.js';
-import { addOption, applyDefaults, countUses, fieldChips, fieldInputText, findSegments, missingFields, parseSchema, readItem, setField, writeField, writeSchema, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { addOption, applyDefaults, countUses, fieldChips, fieldInputText, findSegments, parseSchema, readItem, setField, writeField, writeSchema, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 
 export interface Card {
     done: boolean | null;   // null = plain item without a checkbox ("- text")
@@ -292,11 +292,6 @@ export function withSchema(board: Board, defs: FieldDef[]): Board {
 // How many cards have a value for field `key` (or that option of it), counted over every group.
 export const fieldUses = (board: Board, key: string, option?: string): number =>
     countUses(board.columns.flatMap(c => c.cards.map(card => card.text)), key, option);
-
-// The fields a card has no value for yet, which can be filled in from the card. The agent has its own menu.
-export function cardMissingFields(text: string, schema: FieldDef[]): FieldDef[] {
-    return missingFields(readItem(text, schema), schema, [AGENT_FIELD.key]);
-}
 
 // The card at `at` with its field `def` set from `raw` (empty removes it; a value that does not fit changes nothing).
 export function setCardField(board: Board, at: Position, def: FieldDef, raw: string): Board {

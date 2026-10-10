@@ -122,13 +122,6 @@ export class FieldPopover {
             : def.type === 'select' && !def.multiple && def.options.length ? selectContent(wrapped) : entryContent(wrapped));
     }
 
-    // A list of the fields that have no value yet; choosing one calls `choose` after the list has closed.
-    menu(source: Gtk.Widget, defs: FieldDef[], choose: (def: FieldDef) => void): Gtk.Popover | null {
-        const box = content();
-        for (const def of defs) box.append(flatButton(def.key, () => this.finish(() => choose(def))));
-        return this.show(source, box);
-    }
-
     private finish(run: () => void): void {
         this.pending = run;
         this.popover?.popdown();

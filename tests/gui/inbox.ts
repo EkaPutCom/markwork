@@ -154,25 +154,6 @@ export function inboxTests(c: GuiContext): void {
         eq(w.inbox.editField({ column: 0, index: 0 }, 'nope'), null, 'a key that is not declared has no popover');
     });
 
-    test('the + button offers the fields a note has no value for; the capture time is not one of them', () => {
-        open(FIELD_INBOX);
-        const add = (row: number) => descendants(rows()[row]).find((x): x is Gtk.Button => x instanceof Gtk.Button && x.has_css_class('inbox-add-field'));
-        ok(add(0) && add(1), 'notes with a field to fill have the button');
-        ok(!add(2), 'a note with every field filled has none');
-        eq(w.inbox.addFieldMenu({ column: 0, index: 2 }), null);
-        const menu = w.inbox.addFieldMenu({ column: 0, index: 0 })!; settle();
-        eq(popButtons(menu).filter(b => b.get_visible()).map(b => b.label), ['progres']);
-        popButton(menu, 'progres').emit('clicked'); settle(); settle();
-        const pop = descendants(w.inbox.widget).find((x): x is Gtk.Popover => x instanceof Gtk.Popover && x.get_mapped());
-        ok(pop, 'the popover of the chosen field opened');
-        const entry = descendants(pop).find((x): x is Gtk.Entry => x instanceof Gtk.Entry)!;
-        entry.set_text('nope'); entry.emit('activate'); settle();
-        ok(entry.has_css_class('error'), 'a value that does not fit is refused');
-        entry.set_text('2/4'); entry.emit('activate'); settle();
-        eq(w.inbox.getBoard().columns[0].cards[0].text, 'Satu [tipe:: ide] [created:: 2026-10-07 14:22] [progres:: 2/4]');
-        open();
-    });
-
     test('a list with headings shows them as sections; the same file with layout: board shows them as columns, without a conversion', () => {
         const TEXT = '---\nlayout: list\n---\n\n# Reading\n\n- loose\n\n## Now\n\n- one\n- two\n\n## Later\n\n- three\n';
         open(TEXT);

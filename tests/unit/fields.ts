@@ -1,6 +1,6 @@
 // Typed field tests (markdown/fields.ts).
 
-import { addOption, applyDefaults, countUses, fieldNameProblem, optionProblem, writeSchema, fieldChips, fieldInputText, findSegments, formatValue, missingFields, nearestOption, parseSchema, parseValue, readItem, resolveDefault, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
+import { addOption, applyDefaults, countUses, fieldNameProblem, optionProblem, writeSchema, fieldChips, fieldInputText, findSegments, formatValue, nearestOption, parseSchema, parseValue, readItem, resolveDefault, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
 import { section, test, eq, ok } from '../framework.js';
 
 const DOC = [
@@ -113,12 +113,6 @@ export function fieldsModelTests(): void {
             [['sedang', 1, false], ['due: besok', null, true], ['progres: 3/5', null, false], ['terkait: Skema', null, false], ['foo: bar', null, false]]);
         eq(fieldChips(item, SCHEMA, ['due', 'foo']).map(c => c.key), ['prioritas', 'progres', 'terkait']);
         eq(fieldChips(readItem('A [prioritas:: urgent]', SCHEMA), SCHEMA)[0].invalid, 'not one of: tinggi, sedang, rendah');
-    });
-
-    test('missingFields: declared fields without a value, in schema order; an invalid value counts as present', () => {
-        const item = readItem('A [prioritas:: urgent] [due:: besok] [foo:: 1] [halaman:: 3]', SCHEMA);
-        eq(missingFields(item, SCHEMA).map(f => f.key), ['progres', 'pemilik', 'agent', 'terkait']);
-        eq(missingFields(item, SCHEMA, ['agent', 'terkait']).map(f => f.key), ['progres', 'pemilik']);
     });
 
     test('a default after the type: dates take now and today, other types a value of the field; a bad default is reported', () => {

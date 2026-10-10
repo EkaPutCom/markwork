@@ -17,7 +17,7 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
-import { ageOf, captureItem, itemFields, itemMeta, itemMissingFields, newList, type Age } from '../markdown/inbox.js';
+import { ageOf, captureItem, itemFields, itemMeta, newList, type Age } from '../markdown/inbox.js';
 import { boardSchema, deleteCard, setCardField, updateCard, withFieldOption, type Board, type Position } from '../markdown/kanban.js';
 import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
@@ -238,7 +238,6 @@ export class InboxView {
             chip.add_css_class('inbox-tag');
             box.append(chip);
         }
-        if (itemMissingFields(item.text, this.schema()).length) box.append(this.addFieldButton(at));
         const remove = new Gtk.Button({ icon_name: 'window-close-symbolic', valign: Gtk.Align.CENTER, tooltip_text: _('Delete note') });
         remove.add_css_class('flat');
         remove.add_css_class('circular');
@@ -266,16 +265,6 @@ export class InboxView {
         return chip;
     }
 
-    // A small button on the row, shown while the pointer is over it, to give a field that has no value yet one.
-    private addFieldButton(at: Position): Gtk.Button {
-        const button = new Gtk.Button({ icon_name: 'list-add-symbolic', valign: Gtk.Align.CENTER, tooltip_text: _('Add a field') });
-        button.add_css_class('flat');
-        button.add_css_class('circular');
-        button.add_css_class('inbox-add-field');
-        button.connect('clicked', () => this.addFieldMenu(at, button));
-        return button;
-    }
-
     private cardAt(at: Position) {
         return this.board.columns[at.column]?.cards[at.index];
     }
@@ -284,15 +273,6 @@ export class InboxView {
     private sourceFor(at: Position, source?: Gtk.Widget): Gtk.Widget | null {
         const row = this.positions.findIndex(p => p?.column === at.column && p.index === at.index);
         return source ?? this.list.get_row_at_index(row)?.get_child() ?? null;
-    }
-
-    // The fields this note has no value for; choosing one opens its popover.
-    addFieldMenu(at: Position, source?: Gtk.Widget): Gtk.Popover | null {
-        const item = this.cardAt(at);
-        const from = this.sourceFor(at, source);
-        const missing = item ? itemMissingFields(item.text, this.schema()) : [];
-        if (!item || !from || !missing.length) return null;
-        return this.popovers.menu(from, missing, def => this.editField(at, def.key, source));
     }
 
     // Change one field of a note in place from a popover that points at `source`. A new select option and the value

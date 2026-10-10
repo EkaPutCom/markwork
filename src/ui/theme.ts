@@ -98,15 +98,11 @@ const buildCss = (p: Palette): string => `
     .inbox-field-2 { background-color: #8e5bd6; color: #ffffff; } .inbox-field-3 { background-color: #d6602e; color: #ffffff; }
     .inbox-field-4 { background-color: #c2417a; color: #ffffff; } .inbox-field-5 { background-color: #2f8f99; color: #ffffff; }
     .inbox-field-6 { background-color: #8a7a1c; color: #ffffff; } .inbox-field-7 { background-color: #5e6c84; color: #ffffff; }
-    .inbox-add-field { opacity: 0; }
-    list.inbox-list > row:hover .inbox-add-field, .inbox-add-field:focus { opacity: 1; }
     .inbox-tag { border-radius: 9px; padding: 1px 8px; font-size: 11px; background-color: alpha(@accent_bg_color, 0.18); color: @accent_color; }
     .kanban-chip { border-radius: 9px; padding: 0 8px; font-size: 11px; color: #ffffff; background-color: #6b7280; }
     .kanban-notes { background-color: transparent; color: alpha(currentColor, 0.55); padding: 0 2px; }
     .kanban-card-text link, .kanban-note-link link { color: @accent_color; }
     .kanban-note-link { font-size: 12px; }
-    .kanban-add-field { opacity: 0; min-height: 0; min-width: 0; padding: 0 4px; }
-    .kanban-card:hover .kanban-add-field, .kanban-add-field:focus { opacity: 1; }
     .kanban-field { background-color: alpha(currentColor, 0.12); color: @card_fg_color; }
     .kanban-field-invalid { background-color: alpha(@warning_bg_color, 0.35); color: @card_fg_color; border: 1px dashed @warning_bg_color; }
     .kanban-due { background-color: alpha(currentColor, 0.12); color: @card_fg_color; }
