@@ -9,7 +9,7 @@ import { descendants, whenDialogReady } from '../widgets.js';
 import { section, test, eq, ok, settle } from '../framework.js';
 import { PreferencesDialog } from '../../src/ui/preferences.js';
 import { CommandPalette } from '../../src/ui/palette.js';
-import { confirmDialog, editCardDialog, findDialog, promptDialog } from '../../src/ui/dialogs.js';
+import { confirmDialog, editCardDialog, editNoteDialog, findDialog, promptDialog } from '../../src/ui/dialogs.js';
 import { parseSchema } from '../../src/markdown/fields.js';
 import type { GuiContext } from './context.js';
 
@@ -62,6 +62,16 @@ export function dialogTests(c: GuiContext): void {
         });
         eq(seen, { selected: 2, blocked: true }, 'the current option is selected, and the dialog stayed open on a bad value');
         eq(result?.text, 'Task #x [prioritas:: tinggi] [owner:: Eka] [progres:: 3/5]', 'the other field is kept, the new values are written');
+    });
+
+    test('edit note with a schema: fields get controls, the capture time stays as it was', () => {
+        const schema = parseSchema('---\nfields:\n  tipe: select(ide, bacaan)\n---\n').fields;
+        const result = drive('Edit Note', () => editNoteDialog(w.win, { text: 'Idea [created:: 2026-10-07 14:22]', notes: [] }, 'Edit Note', undefined, [{ key: 'created', type: 'date', multiple: false, options: [] }, ...schema]), d => {
+            const dropdown = descendants(d).find(x => x instanceof Gtk.DropDown) as Gtk.DropDown;
+            dropdown.selected = 2;
+            button(d, 'Save').emit('clicked');
+        });
+        eq(result?.text, 'Idea [created:: 2026-10-07 14:22] [tipe:: bacaan]');
     });
 
     test('prompt: Cancel and Escape (close) return null', () => {

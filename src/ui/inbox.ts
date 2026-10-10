@@ -16,12 +16,14 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
-import { ageOf, captureItem, deleteItem, itemMeta, newInbox, updateItem, type Age, type Inbox } from '../markdown/inbox.js';
+import { ageOf, captureItem, deleteItem, inboxSchema, itemFields, itemMeta, itemMissingFields, newInbox, setItemField, updateItem, withInboxOption, type Age, type Inbox } from '../markdown/inbox.js';
+import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
 import { editNoteDialog, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
-import { after, removeChildren, type Awaitable } from '../gtkutil.js';
+import { after, onChipClick, removeChildren, type Awaitable } from '../gtkutil.js';
+import { FieldPopover } from './fieldpopover.js';
 import { _, fmt, ngettext } from '../i18n.js';
 
 const MAX_WIDTH = 720;
@@ -39,7 +41,7 @@ export function ageLabel(captured: Date, now: Date): string {
 }
 
 export interface InboxDialogs {
-    editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[]): Awaitable<CardDraft | null>;
+    editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
 }
 
 export class InboxView {
@@ -59,6 +61,7 @@ export class InboxView {
     private readonly title: Gtk.Label;
     private readonly description: Gtk.Label;
     private renderQueued = false;
+    private readonly popovers: FieldPopover;
 
     constructor() {
         this.title = new Gtk.Label({ xalign: 0, hexpand: true, wrap: true });
@@ -95,6 +98,7 @@ export class InboxView {
 
         const clamp = new Adw.Clamp({ maximum_size: MAX_WIDTH, tightening_threshold: 560, child: this.page, valign: Gtk.Align.START });
         this.widget = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, hexpand: true, child: clamp });
+        this.popovers = new FieldPopover(this.page);
         this.widget.add_css_class('inbox-view');
     }
 
@@ -102,6 +106,18 @@ export class InboxView {
 
     getInbox(): Inbox {
         return this.inbox;
+    }
+
+    // The fields of this inbox (the built-in ones plus the frontmatter `fields:` block), read again only when the head changes.
+    private schemaKey = '';
+    private schemaCache: FieldDef[] = [];
+    schema(): FieldDef[] {
+        const key = this.inbox.head.join('\n');
+        if (key !== this.schemaKey) {
+            this.schemaKey = key;
+            this.schemaCache = inboxSchema(this.inbox);
+        }
+        return this.schemaCache;
     }
 
     // Replace the contents (document opened or undo) without calling onChange.
@@ -189,11 +205,13 @@ export class InboxView {
 
         const box = new Gtk.Box({ spacing: 8, margin_top: 10, margin_bottom: 10, margin_start: 14, margin_end: 8 });
         box.append(text);
+        for (const f of itemFields(item.text, this.schema())) box.append(this.fieldChip(i, f));
         for (const tag of meta.tags) {
             const chip = new Gtk.Label({ label: `#${tag}`, valign: Gtk.Align.CENTER });
             chip.add_css_class('inbox-tag');
             box.append(chip);
         }
+        if (itemMissingFields(item.text, this.schema()).length) box.append(this.addFieldButton(i));
         const remove = new Gtk.Button({ icon_name: 'window-close-symbolic', valign: Gtk.Align.CENTER, tooltip_text: _('Delete note') });
         remove.add_css_class('flat');
         remove.add_css_class('circular');
@@ -203,6 +221,62 @@ export class InboxView {
 
         const row = new Gtk.ListBoxRow({ child: box, activatable: true });
         return row;
+    }
+
+    // A declared field as a chip: a select option takes the color of its position, a value that does not fit is marked.
+    private fieldChip(index: number, f: FieldChip): Gtk.Label {
+        const chip = new Gtk.Label({ label: f.text, valign: Gtk.Align.CENTER });
+        chip.add_css_class('inbox-field');
+        if (f.invalid) {
+            chip.add_css_class('inbox-field-invalid');
+            chip.set_tooltip_text(fmt(_('“{key}” does not fit its field: {reason}. The text in the file is unchanged.'), { key: f.key, reason: f.invalid }));
+        } else if (f.option !== null) {
+            chip.add_css_class(`inbox-field-${f.option % 8}`);
+        }
+        if (f.type !== null) onChipClick(chip, () => this.editField(index, f.key, chip));
+        return chip;
+    }
+
+    // A small button on the row, shown while the pointer is over it, to give a field that has no value yet one.
+    private addFieldButton(index: number): Gtk.Button {
+        const button = new Gtk.Button({ icon_name: 'list-add-symbolic', valign: Gtk.Align.CENTER, tooltip_text: _('Add a field') });
+        button.add_css_class('flat');
+        button.add_css_class('circular');
+        button.add_css_class('inbox-add-field');
+        button.connect('clicked', () => this.addFieldMenu(index, button));
+        return button;
+    }
+
+    // The widget a chip or button is clicked on: the given one, or the content of the note's row.
+    private sourceFor(index: number, source?: Gtk.Widget): Gtk.Widget | null {
+        return source ?? this.list.get_row_at_index(index)?.get_child() ?? null;
+    }
+
+    // The fields this note has no value for; choosing one opens its popover.
+    addFieldMenu(index: number, source?: Gtk.Widget): Gtk.Popover | null {
+        const item = this.inbox.items[index];
+        const from = this.sourceFor(index, source);
+        const missing = item ? itemMissingFields(item.text, this.schema()) : [];
+        if (!item || !from || !missing.length) return null;
+        return this.popovers.menu(from, missing, def => this.editField(index, def.key, source));
+    }
+
+    // Change one field of a note in place from a popover that points at `source`. A new select option and the value
+    // that uses it are written together, so they are one undo step.
+    editField(index: number, key: string, source?: Gtk.Widget): Gtk.Popover | null {
+        const item = this.inbox.items[index];
+        const def = this.schema().find(f => f.key === key);
+        const from = this.sourceFor(index, source);
+        if (!item || !def || !from) return null;
+        return this.popovers.edit(from, {
+            def,
+            current: fieldInputText(item.text, def),
+            apply: (raw, newOption) => {
+                if (this.inbox.items[index]?.text !== item.text) return;
+                const inbox = newOption ? withInboxOption(this.inbox, key, newOption) : this.inbox;
+                this.commit(setItemField(inbox, index, inboxSchema(inbox).find(f => f.key === key) ?? def, raw));
+            },
+        });
     }
 
     private activateNote(uri: string): boolean {
@@ -223,7 +297,7 @@ export class InboxView {
 
     // A new note through the dialog, with tags and notes.
     showAddNote(): void {
-        void after(this.dialogs.editNote(this.parent, { text: '', notes: [] }, _('New Note'), this.listNotes ?? undefined), draft => {
+        void after(this.dialogs.editNote(this.parent, { text: '', notes: [] }, _('New Note'), this.listNotes ?? undefined, this.schema()), draft => {
             if (draft?.text) this.commit(captureItem(this.inbox, draft.text, this.now(), draft.notes));
         });
     }
@@ -231,7 +305,7 @@ export class InboxView {
     editItem(index: number): void {
         const item = this.inbox.items[index];
         if (!item) return;
-        void after(this.dialogs.editNote(this.parent, { text: item.text, notes: item.notes }, undefined, this.listNotes ?? undefined), result => {
+        void after(this.dialogs.editNote(this.parent, { text: item.text, notes: item.notes }, undefined, this.listNotes ?? undefined, this.schema()), result => {
             // The inbox can change while the dialog is open; the same item is found again through its position.
             if (result?.text && this.inbox.items[index]?.text === item.text)
                 this.commit(updateItem(this.inbox, index, { text: result.text, notes: result.notes }));

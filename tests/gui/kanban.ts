@@ -136,7 +136,7 @@ export function kanbanBoardTests(c: GuiContext): void {
         settleK();
         eq(popButtons(menu).filter(b => b.get_visible()).map(b => b.label), ['due', 'prioritas', 'progres'], 'the agent is not offered here');
         popButton(menu, 'prioritas').emit('clicked'); settleK(); settleK();
-        const pop = kbDescendants(kb.columns[0].cards[0]).find((x): x is Gtk.Popover => x instanceof Gtk.Popover && x.get_mapped());
+        const pop = kbDescendants(kb.widget).find((x): x is Gtk.Popover => x instanceof Gtk.Popover && x.get_mapped());
         ok(pop, 'the popover of the chosen field opened');
         popButton(pop, 'rendah').emit('clicked'); settleK();
         eq(kb.getBoard().columns[0].cards[0].text, 'Bare [prioritas:: rendah]');

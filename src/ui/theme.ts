@@ -72,6 +72,14 @@ const buildCss = (p: Palette): string => `
     list.inbox-list { background-color: transparent; }
     list.inbox-list > row { background-color: @card_bg_color; color: @card_fg_color; border: 1px solid alpha(@card_fg_color, 0.12); border-radius: 10px; margin-bottom: 8px; }
     list.inbox-list > row:hover { border-color: @accent_color; }
+    .inbox-field { border-radius: 9px; padding: 1px 8px; font-size: 11px; background-color: alpha(currentColor, 0.12); color: @card_fg_color; }
+    .inbox-field-invalid { background-color: alpha(@warning_bg_color, 0.35); border: 1px dashed @warning_bg_color; }
+    .inbox-field-0 { background-color: #4c9a6a; color: #ffffff; } .inbox-field-1 { background-color: #3b7dd8; color: #ffffff; }
+    .inbox-field-2 { background-color: #8e5bd6; color: #ffffff; } .inbox-field-3 { background-color: #d6602e; color: #ffffff; }
+    .inbox-field-4 { background-color: #c2417a; color: #ffffff; } .inbox-field-5 { background-color: #2f8f99; color: #ffffff; }
+    .inbox-field-6 { background-color: #8a7a1c; color: #ffffff; } .inbox-field-7 { background-color: #5e6c84; color: #ffffff; }
+    .inbox-add-field { opacity: 0; }
+    list.inbox-list > row:hover .inbox-add-field, .inbox-add-field:focus { opacity: 1; }
     .inbox-tag { border-radius: 9px; padding: 1px 8px; font-size: 11px; background-color: alpha(@accent_bg_color, 0.18); color: @accent_color; }
     .kanban-chip { border-radius: 9px; padding: 0 8px; font-size: 11px; color: #ffffff; background-color: #6b7280; }
     .kanban-notes { background-color: transparent; color: alpha(currentColor, 0.55); padding: 0 2px; }

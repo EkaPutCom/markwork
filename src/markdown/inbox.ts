@@ -15,7 +15,7 @@
 // a time are still valid. Pure TypeScript without
 // GTK; all operations return a new inbox.
 
-import { findSegments, readItem, setField, type DateValue, type FieldDef } from './fields.js';
+import { addOption, fieldChips, findSegments, missingFields, parseSchema, readItem, setField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 import { parseColumn, trimBlankEnds, type Card } from './kanban.js';
 
 export const CREATED_FIELD: FieldDef = { key: 'created', type: 'date', multiple: false, options: [] };
@@ -95,6 +95,37 @@ export function updateItem(inbox: Inbox, index: number, patch: Partial<InboxItem
 
 export const deleteItem = (inbox: Inbox, index: number): Inbox =>
     ({ ...inbox, items: inbox.items.filter((_, i) => i !== index) });
+
+// ---------- Fields ----------
+
+// The fields every note understands plus those the inbox declares in its frontmatter `fields:` block.
+export function inboxSchema(inbox: Inbox): FieldDef[] {
+    const declared = parseSchema(inbox.head.join('\n')).fields;
+    return [...INBOX_SCHEMA, ...declared.filter(f => f.key !== CREATED_FIELD.key)];
+}
+
+// The chips for a note's fields; the capture time is shown as its age instead.
+export const itemFields = (text: string, schema: FieldDef[]): FieldChip[] =>
+    fieldChips(readItem(text, schema), schema, [CREATED_FIELD.key]);
+
+// The fields a note has no value for yet. The capture time is set by capturing, not by hand.
+export const itemMissingFields = (text: string, schema: FieldDef[]): FieldDef[] =>
+    missingFields(readItem(text, schema), schema, [CREATED_FIELD.key]);
+
+// The note at `index` with its field `def` set from `raw` (empty removes it; a value that does not fit changes nothing).
+export function setItemField(inbox: Inbox, index: number, def: FieldDef, raw: string): Inbox {
+    const item = inbox.items[index];
+    if (!item) return inbox;
+    const text = setField(item.text, def, raw);
+    return text === item.text ? inbox : updateItem(inbox, index, { text });
+}
+
+// The inbox with `option` added to the select field `key` in its frontmatter; unchanged if it cannot be added.
+export function withInboxOption(inbox: Inbox, key: string, option: string): Inbox {
+    const head = inbox.head.join('\n');
+    const next = addOption(head, key, option);
+    return next === head ? inbox : { ...inbox, head: next.split('\n') };
+}
 
 // ---------- Item content ----------
 

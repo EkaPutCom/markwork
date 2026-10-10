@@ -273,6 +273,16 @@ function firstInvalid(controls: FieldControl[]): FieldControl | null {
 
 const applyFields = (text: string, controls: FieldControl[]): string => controls.reduce((t, c) => setField(t, c.def, c.text()), text);
 
+// One labelled control per field of `schema` (except the keys in `skip`) in `box`, filled from `text`.
+function addFieldRows(box: Gtk.Box, schema: FieldDef[], skip: readonly string[], text: string): FieldControl[] {
+    const controls = schema.filter(f => !skip.includes(f.key)).map(f => fieldControl(f, fieldInputText(text, f)));
+    for (const control of controls) {
+        box.append(new Gtk.Label({ label: control.def.key, xalign: 0 }));
+        box.append(control.widget);
+    }
+    return controls;
+}
+
 // Edit card dialog: title (one line), the fields of the board's schema, and notes (multiple lines).
 // Returns the new contents, or null if cancelled.
 // listNotes: Markdown files in the work folder, for suggestions when typing [[ in the notes.
@@ -284,7 +294,6 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
     const due = dueInput.entry;
     const agent = new Gtk.Entry({ text: parts.agent ?? '', activates_default: true, hexpand: true, placeholder_text: _('e.g. pi (empty = not assigned)') });
     agent.connect('changed', () => agent.remove_css_class('error'));
-    const controls = schema.filter(f => !CARD_SCHEMA.some(c => c.key === f.key)).map(f => fieldControl(f, fieldInputText(card.text, f)));
     const notes = new Gtk.TextView({ wrap_mode: Gtk.WrapMode.WORD_CHAR, left_margin: 6, right_margin: 6, top_margin: 6, bottom_margin: 6 });
     notes.buffer.set_text(card.notes.join('\n'), -1);
     const frame = new Gtk.ScrolledWindow({ min_content_height: 140, has_frame: true, hexpand: true, vexpand: true });
@@ -300,10 +309,7 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
     box.append(dueInput.widget);
     box.append(new Gtk.Label({ label: _('Assigned to'), xalign: 0 }));
     box.append(agent);
-    for (const control of controls) {
-        box.append(new Gtk.Label({ label: control.def.key, xalign: 0 }));
-        box.append(control.widget);
-    }
+    const controls = addFieldRows(box, schema, CARD_SCHEMA.map(f => f.key), card.text);
     box.append(new Gtk.Label({ label: listNotes ? _('Notes · [[Name]] links another note as agent context') : _('Notes'), xalign: 0, wrap: true }));
     box.append(frame);
 
@@ -339,7 +345,7 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
 }
 
 // Edit an inbox note: title, tags, and notes. `item.text` null = a new note.
-export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft, heading = _('Edit Note'), listNotes?: () => string[]): Promise<CardDraft | null> {
+export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft, heading = _('Edit Note'), listNotes?: () => string[], schema: FieldDef[] = []): Promise<CardDraft | null> {
     const meta = itemMeta(item.text);
     const title = new Gtk.Entry({ text: meta.title, activates_default: true, hexpand: true, placeholder_text: _('Idea, link, or quick note') });
     const tags = new Gtk.Entry({ text: meta.tags.join(' '), activates_default: true, hexpand: true, placeholder_text: _('tag1 tag2') });
@@ -354,6 +360,7 @@ export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft,
     box.append(title);
     box.append(new Gtk.Label({ label: _('Tags (separated by spaces)'), xalign: 0 }));
     box.append(tags);
+    const controls = addFieldRows(box, schema, ['created'], item.text);
     box.append(new Gtk.Label({ label: _('Notes'), xalign: 0 }));
     box.append(frame);
 
@@ -365,16 +372,18 @@ export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft,
     }, Gtk.PropagationPhase.CAPTURE);
 
     const accepted = await formDialog(parent, heading, 440, box, _('Save'), () => {
-        if (title.text.trim()) return true;
-        title.add_css_class('error');
-        title.grab_focus();
-        return false;
+        if (!title.text.trim()) {
+            title.add_css_class('error');
+            title.grab_focus();
+            return false;
+        }
+        return firstInvalid(controls) === null;
     });
     completer?.destroy();
     if (!accepted) return null;
     const [start, end] = notes.buffer.get_bounds();
     return {
-        text: composeItem(title.text, tags.text.split(/[\s,]+/), item.text),
+        text: applyFields(composeItem(title.text, tags.text.split(/[\s,]+/), item.text), controls),
         notes: notes.buffer.get_text(start, end, true).replace(/\s+$/, '').split('\n').filter((l, i, all) => all.length > 1 || l !== ''),
     };
 }

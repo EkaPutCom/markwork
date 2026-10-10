@@ -2,6 +2,7 @@
 // an option that is not in the list yet), a calendar for a date, and an entry with validation for the rest.
 // It only collects the new text; the caller writes it into the document (one undo step).
 
+import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import { nearestOption, parseValue, type FieldDef } from '../markdown/fields.js';
@@ -51,6 +52,8 @@ function selectContent({ def, current, apply }: FieldPopoverOptions): Gtk.Box {
     entry.connect('activate', () => action?.());
     box.append(entry);
     box.append(offer);
+    // Typing can start at once; an entry that is left without focus in a closing popover also crashed GTK in tests.
+    box.connect('map', () => entry.grab_focus());
     return box;
 }
 
@@ -91,42 +94,61 @@ function entryContent({ def, current, apply }: FieldPopoverOptions): Gtk.Box {
     return box;
 }
 
-// The popover for `options.def`, attached to `anchor` and shown. It detaches itself after it closes.
-export function fieldPopover(anchor: Gtk.Widget, options: FieldPopoverOptions): Gtk.Popover {
-    const { def } = options;
-    const popover = new Gtk.Popover();
-    const finish = (raw: string, newOption?: string) => {
-        popover.popdown();
-        options.apply(raw, newOption);
-    };
-    const wrapped = { ...options, apply: finish };
-    popover.set_child(def.type === 'date' ? dateContent(wrapped)
-        : def.type === 'select' && !def.multiple && def.options.length ? selectContent(wrapped) : entryContent(wrapped));
-    popover.set_parent(anchor);
-    popover.connect('closed', () => GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-        if (popover.get_parent()) popover.unparent();
-        return GLib.SOURCE_REMOVE;
-    }));
-    popover.popup();
-    return popover;
-}
+// One popover that a view keeps for its whole life. It is a child of a widget that is never rebuilt (the view's own
+// widget) and points at the chip or button that was clicked, so redrawing the rows and cards under it never destroys a
+// popover. Creating and unparenting a popover for every click raced with its closing in GTK and crashed now and then.
+// A change is handed to `apply` only after the popover has closed, because applying it redraws the view.
+export class FieldPopover {
+    private popover: Gtk.Popover | null = null;
+    private pending: (() => void) | null = null;
 
-// A list of the fields that have no value yet; choosing one calls `choose` after the list has closed.
-export function fieldMenu(anchor: Gtk.Widget, defs: FieldDef[], choose: (def: FieldDef) => void): Gtk.Popover {
-    const popover = new Gtk.Popover();
-    const box = content();
-    for (const def of defs) {
-        box.append(flatButton(def.key, () => {
-            popover.popdown();
-            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => { choose(def); return GLib.SOURCE_REMOVE; });
-        }));
+    constructor(private readonly host: Gtk.Widget) {}
+
+    // The options of `options.def` (or a calendar, or an entry) in the popover, pointing at `source`.
+    edit(source: Gtk.Widget, options: FieldPopoverOptions): Gtk.Popover | null {
+        const { def } = options;
+        const wrapped = { ...options, apply: (raw: string, newOption?: string) => this.finish(() => options.apply(raw, newOption)) };
+        return this.show(source, def.type === 'date' ? dateContent(wrapped)
+            : def.type === 'select' && !def.multiple && def.options.length ? selectContent(wrapped) : entryContent(wrapped));
     }
-    popover.set_child(box);
-    popover.set_parent(anchor);
-    popover.connect('closed', () => GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-        if (popover.get_parent()) popover.unparent();
-        return GLib.SOURCE_REMOVE;
-    }));
-    popover.popup();
-    return popover;
+
+    // A list of the fields that have no value yet; choosing one calls `choose` after the list has closed.
+    menu(source: Gtk.Widget, defs: FieldDef[], choose: (def: FieldDef) => void): Gtk.Popover | null {
+        const box = content();
+        for (const def of defs) box.append(flatButton(def.key, () => this.finish(() => choose(def))));
+        return this.show(source, box);
+    }
+
+    private finish(run: () => void): void {
+        this.pending = run;
+        this.popover?.popdown();
+    }
+
+    private show(source: Gtk.Widget, child: Gtk.Widget): Gtk.Popover | null {
+        const at = source.translate_coordinates(this.host, 0, 0);
+        if (!at?.[0]) return null;
+        const popover = this.ensure();
+        if (popover.get_mapped()) popover.popdown();
+        this.pending = null;
+        popover.set_child(child);
+        popover.set_pointing_to(new Gdk.Rectangle({ x: Math.round(at[1]), y: Math.round(at[2]), width: source.get_width(), height: source.get_height() }));
+        popover.popup();
+        return popover;
+    }
+
+    private ensure(): Gtk.Popover {
+        if (this.popover) return this.popover;
+        const popover = new Gtk.Popover();
+        popover.set_parent(this.host);
+        popover.connect('closed', () => GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            const run = this.pending;
+            this.pending = null;
+            run?.();
+            return GLib.SOURCE_REMOVE;
+        }));
+        // A widget must not be finalized with a child popover left on it.
+        this.host.connect('destroy', () => { if (popover.get_parent()) popover.unparent(); });
+        this.popover = popover;
+        return popover;
+    }
 }

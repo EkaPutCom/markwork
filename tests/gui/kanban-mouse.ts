@@ -132,7 +132,24 @@ export function kanbanMouseTests(c: GuiContext): void {
             input.up(); held = false; settle();
             eq(edits, 0, 'the card dialog did not open');
             ok(!kb.dragging, 'no drag started');
-            ok(descendants(chip).some(x => x instanceof Gtk.Popover && x.get_mapped()), 'the popover is shown');
+            ok(descendants(kb.widget).some(x => x instanceof Gtk.Popover && x.get_mapped()), 'the popover is shown');
+        });
+        test('a mouse click on a field chip in an inbox row opens its popover, not the note dialog', () => {
+            reset('---\ninbox: true\nfields:\n  tipe: select(ide, bacaan)\n---\n\n# Inbox\n\n- Satu [tipe:: ide]\n');
+            let noteEdits = 0;
+            const inboxDialogs = w.inbox.dialogs;
+            w.inbox.dialogs = { editNote: () => { noteEdits++; return null; } };
+            try {
+                const chip = descendants(w.inbox.widget).find((x): x is Gtk.Label => x instanceof Gtk.Label && x.label === 'ide')!;
+                ok(chip, 'the chip is not shown');
+                move(...point(chip, chip.get_allocated_height() / 2));
+                input.down(); held = true; settle();
+                input.up(); held = false; settle();
+                eq(noteEdits, 0, 'the note dialog did not open');
+                ok(descendants(w.inbox.widget).some(x => x instanceof Gtk.Popover && x.get_mapped()), 'the popover is shown');
+            } finally {
+                w.inbox.dialogs = inboxDialogs;
+            }
         });
     } finally {
         try {

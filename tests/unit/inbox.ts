@@ -1,6 +1,6 @@
 // Inbox model tests.
 
-import { ageOf, captureItem, composeItem, deleteItem, isInbox, itemMeta, newInbox, parseInbox, serializeInbox, updateItem } from '../../src/markdown/inbox.js';
+import { ageOf, captureItem, composeItem, deleteItem, inboxSchema, isInbox, itemFields, itemMeta, itemMissingFields, newInbox, parseInbox, serializeInbox, setItemField, updateItem, withInboxOption } from '../../src/markdown/inbox.js';
 import { isKanban } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok } from '../framework.js';
 import { INBOX } from '../fixtures.js';
@@ -65,5 +65,21 @@ export function inboxModelTests(): void {
         const ago = (min: number) => ageOf(new Date(now.getTime() - min * 60000), now);
         eq([ago(0), ago(10), ago(60), ago(150), ago(60 * 24 * 3), ago(60 * 24 * 8)],
             [{ unit: 'now', n: 0 }, { unit: 'minutes', n: 10 }, { unit: 'hours', n: 1 }, { unit: 'hours', n: 2 }, { unit: 'days', n: 3 }, { unit: 'date', n: 0 }]);
+    });
+
+    test('inbox fields: the schema, chips without the capture time, missing fields, setting one, and adding an option', () => {
+        const inbox = parseInbox('---\ninbox: true\nfields:\n  tipe: select(ide, bacaan)\n  created: text\n  url: link\n---\n\n# Inbox\n\n- Satu #x [created:: 2026-10-07 14:22] [tipe:: ide]\n- Dua\n');
+        const schema = inboxSchema(inbox);
+        eq(schema.map(f => `${f.key}:${f.type}`), ['created:date', 'tipe:select', 'url:link'], 'created cannot be redeclared');
+        eq(itemFields(inbox.items[0].text, schema).map(c => [c.text, c.option]), [['ide', 0]], 'the capture time is shown as its age, not as a chip');
+        eq(itemMissingFields(inbox.items[1].text, schema).map(f => f.key), ['tipe', 'url'], 'created is set by capturing');
+        const tipe = schema[1];
+        eq(setItemField(inbox, 1, tipe, 'BACAAN').items[1].text, 'Dua [tipe:: bacaan]');
+        eq(setItemField(inbox, 0, tipe, '').items[0].text, 'Satu #x [created:: 2026-10-07 14:22]');
+        ok(setItemField(inbox, 1, tipe, 'urgent') === inbox && setItemField(inbox, 5, tipe, 'ide') === inbox, 'a value that does not fit, or no such note, changes nothing');
+        const next = withInboxOption(inbox, 'tipe', 'urgent');
+        eq(inboxSchema(next)[1].options, ['ide', 'bacaan', 'urgent']);
+        eq(next.items, inbox.items, 'notes untouched');
+        ok(withInboxOption(inbox, 'tipe', 'ide') === inbox && withInboxOption(inbox, 'url', 'x') === inbox, 'nothing to add');
     });
 }

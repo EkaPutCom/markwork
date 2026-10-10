@@ -117,4 +117,57 @@ export function inboxTests(c: GuiContext): void {
         }
         w.setOption('dark', false);
     });
+
+    // Fields declared in the frontmatter: chips, a popover on a chip, and the + button for a field with no value.
+    const FIELD_INBOX = '---\ninbox: true\nfields:\n  tipe: select(ide, bacaan)\n  progres: progress\n---\n\n# Inbox\n\n- Satu [tipe:: ide] [created:: 2026-10-07 14:22]\n- Dua [tipe:: urgent]\n- Tiga [tipe:: bacaan] [progres:: 1/2]\n';
+    const popButtons = (popover: Gtk.Popover) => descendants(popover).filter((x): x is Gtk.Button => x instanceof Gtk.Button);
+    const popButton = (popover: Gtk.Popover, label: string) => popButtons(popover).find(b => b.label === label) ?? (() => { throw new Error(`no button "${label}"`); })();
+    const chips = (row: number) => descendants(rows()[row]).filter((x): x is Gtk.Label => x instanceof Gtk.Label && x.has_css_class('inbox-field'));
+
+    test('declared fields are shown as chips; a value that does not fit is marked and its text is unchanged', () => {
+        open(FIELD_INBOX);
+        eq(chips(0).map(l => l.label), ['ide']);
+        ok(chips(0)[0].has_css_class('inbox-field-0'), 'a select option takes the color of its position');
+        eq(chips(1).map(l => [l.label, l.has_css_class('inbox-field-invalid')]), [['tipe: urgent', true]]);
+        eq(w.inbox.getInbox().items[1].text, 'Dua [tipe:: urgent]');
+        eq(text(), FIELD_INBOX, 'opening the inbox did not change the text');
+    });
+
+    test('a chip popover changes the value; a new option is added only after confirmation, and is one undo step', () => {
+        open(FIELD_INBOX);
+        let pop = w.inbox.editField(0, 'tipe')!;
+        settle();
+        eq(popButtons(pop).filter(b => b.get_visible()).map(b => b.label), ['✓ ide', 'bacaan', 'Clear']);
+        popButton(pop, 'bacaan').emit('clicked'); settle();
+        eq(w.inbox.getInbox().items[0].text, 'Satu [tipe:: bacaan] [created:: 2026-10-07 14:22]');
+        open(FIELD_INBOX);
+        pop = w.inbox.editField(1, 'tipe')!; settle();
+        const entry = descendants(pop).find((x): x is Gtk.Entry => x instanceof Gtk.Entry)!;
+        entry.set_text('video'); settle();
+        eq(text(), FIELD_INBOX, 'nothing is written before the confirmation');
+        popButtons(pop).find(b => b.get_visible() && b.label === 'Add “video” to the list')!.emit('clicked'); settle();
+        ok(text().includes('tipe: select(ide, bacaan, video)') && text().includes('Dua [tipe:: video]'), text());
+        c.action('undo'); settle();
+        eq(text(), FIELD_INBOX, 'one undo reverts the option and the value');
+        eq(w.inbox.editField(0, 'nope'), null, 'a key that is not declared has no popover');
+    });
+
+    test('the + button offers the fields a note has no value for; the capture time is not one of them', () => {
+        open(FIELD_INBOX);
+        const add = (row: number) => descendants(rows()[row]).find((x): x is Gtk.Button => x instanceof Gtk.Button && x.has_css_class('inbox-add-field'));
+        ok(add(0) && add(1), 'notes with a field to fill have the button');
+        ok(!add(2), 'a note with every field filled has none');
+        eq(w.inbox.addFieldMenu(2), null);
+        const menu = w.inbox.addFieldMenu(0)!; settle();
+        eq(popButtons(menu).filter(b => b.get_visible()).map(b => b.label), ['progres']);
+        popButton(menu, 'progres').emit('clicked'); settle(); settle();
+        const pop = descendants(w.inbox.widget).find((x): x is Gtk.Popover => x instanceof Gtk.Popover && x.get_mapped());
+        ok(pop, 'the popover of the chosen field opened');
+        const entry = descendants(pop).find((x): x is Gtk.Entry => x instanceof Gtk.Entry)!;
+        entry.set_text('nope'); entry.emit('activate'); settle();
+        ok(entry.has_css_class('error'), 'a value that does not fit is refused');
+        entry.set_text('2/4'); entry.emit('activate'); settle();
+        eq(w.inbox.getInbox().items[0].text, 'Satu [tipe:: ide] [created:: 2026-10-07 14:22] [progres:: 2/4]');
+        open();
+    });
 }

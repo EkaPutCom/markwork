@@ -25,12 +25,12 @@ import {
     newBoard, renameColumn, toggleDone, updateCard, type Board, type Card, type Position,
 } from '../markdown/kanban.js';
 import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
-import { fieldMenu, fieldPopover } from './fieldpopover.js';
+import { FieldPopover } from './fieldpopover.js';
 import { cellMarkup, escapeMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
 import { confirmDialog, editCardDialog, promptDialog, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
-import { after, childrenOf, onClick, onKeyPress, pack, removeChildren, type Awaitable } from '../gtkutil.js';
+import { after, childrenOf, onChipClick, onClick, onKeyPress, pack, removeChildren, type Awaitable } from '../gtkutil.js';
 import { popupMenu, separator, type MenuEntry } from './menu.js';
 import { _, fmt, pgettext } from '../i18n.js';
 
@@ -95,6 +95,7 @@ export class KanbanBoard {
     readonly widget: Gtk.Overlay;
     readonly scroller: Gtk.ScrolledWindow;
     private readonly ghostLayer: Gtk.Fixed;   // where the ghost card lives while dragging
+    private readonly popovers: FieldPopover;
     columns: ColumnView[] = [];
     onChange: (board: Board) => void = () => {};
     dialogs: BoardDialogs = { editCard: editCardDialog, prompt: promptDialog, confirm: confirmDialog };
@@ -123,6 +124,7 @@ export class KanbanBoard {
         // The ghost card layer does not receive clicks, so the pointer still reaches the board.
         this.ghostLayer = new Gtk.Fixed({ can_target: false });
         this.widget = new Gtk.Overlay({ child: this.scroller });
+        this.popovers = new FieldPopover(this.widget);
         this.widget.add_overlay(this.ghostLayer);
     }
 
@@ -314,7 +316,7 @@ export class KanbanBoard {
         for (const tag of tags) chip(`#${tag}`, `kanban-tag-${this.tagColor(tag)}`);
         if (due) {
             const dueChip = chip(`📅 ${this.formatDue(due)}`, 'kanban-due', `kanban-due-${dueStatus(due, this.today())}`);
-            this.clickable(dueChip, () => edit(DUE_FIELD.key, dueChip));
+            onChipClick(dueChip, () => edit(DUE_FIELD.key, dueChip));
         }
         if (hasNotes) chip('≡', 'kanban-notes');
         return row;
@@ -329,7 +331,7 @@ export class KanbanBoard {
     private fieldChip(chip: (text: string, ...classes: string[]) => Gtk.Label, f: FieldChip, edit: (key: string, anchor: Gtk.Widget) => void): void {
         const label = chip(f.text, f.invalid ? 'kanban-field-invalid' : f.option !== null ? `kanban-tag-${f.option % TAG_COLORS}` : 'kanban-field');
         if (f.invalid) label.set_tooltip_text(fmt(_('“{key}” does not fit its field: {reason}. The text in the file is unchanged.'), { key: f.key, reason: f.invalid }));
-        if (f.type !== null) this.clickable(label, () => edit(f.key, label));
+        if (f.type !== null) onChipClick(label, () => edit(f.key, label));
     }
 
     // A small button on the card, shown while the pointer is over it, to give a field that has no value yet one.
@@ -346,16 +348,7 @@ export class KanbanBoard {
         const target = anchor ?? this.columns[column]?.cards[index];
         const missing = card ? cardMissingFields(card.text, this.schema()) : [];
         if (!card || !target || !missing.length) return null;
-        return fieldMenu(target, missing, def => this.editField(column, index, def.key, target));
-    }
-
-    // A chip that opens its editor on a click. It claims the press, so the card does not start a drag or open its dialog.
-    private clickable(label: Gtk.Widget, run: () => void): void {
-        label.set_cursor_from_name('pointer');
-        const click = new Gtk.GestureClick({ button: 1 });
-        click.connect('pressed', () => click.set_state(Gtk.EventSequenceState.CLAIMED));
-        click.connect('released', () => run());
-        label.add_controller(click);
+        return this.popovers.menu(target, missing, def => this.editField(column, index, def.key, target));
     }
 
     // Change one field of a card in place from a popover on `anchor`. A new select option and the value that uses it
@@ -365,7 +358,7 @@ export class KanbanBoard {
         const def = this.schema().find(f => f.key === key);
         const target = anchor ?? this.columns[column]?.cards[index];
         if (!card || !def || !target) return null;
-        return fieldPopover(target, {
+        return this.popovers.edit(target, {
             def,
             current: fieldInputText(card.text, def),
             apply: (raw, newOption) => {
