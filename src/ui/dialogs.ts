@@ -179,7 +179,7 @@ export function showAbout(parent: Gtk.Window): void {
 
 // A modal form window: contents on top, Cancel/`accept` buttons at the bottom. `validate` is called
 // when the primary button is pressed; false = the window stays open. true = accepted.
-async function formDialog(parent: Gtk.Window | null, title: string, width: number, content: Gtk.Widget, accept: string, validate: () => boolean = () => true): Promise<boolean> {
+export async function formDialog(parent: Gtk.Window | null, title: string, width: number, content: Gtk.Widget, accept: string, validate: () => boolean = () => true): Promise<boolean> {
     return await modalWindow(parent, title, width, content, [_('Cancel'), accept], 0, 1, i => i === 0 || validate()) === 1;
 }
 

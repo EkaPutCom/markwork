@@ -10,7 +10,10 @@ import { readTextFile, writeTextFile, flushWrites } from '../files.js';
 import { TEXT_ACTIONS } from '../actions.js';
 import { isBoard, isList } from '../markdown/layout.js';
 import { newList } from '../markdown/inbox.js';
-import { countCards, newBoard, parseBoard, serializeBoard, type Board } from '../markdown/kanban.js';
+import { countCards, declaredFields, fieldUses, newBoard, parseBoard, reservedFields, serializeBoard, withSchema, type Board } from '../markdown/kanban.js';
+import type { FieldDef } from '../markdown/fields.js';
+import { editSchemaDialog, type SchemaDialogOptions } from '../ui/schemadialog.js';
+import { after, type Awaitable } from '../gtkutil.js';
 import type { KanbanBoard } from '../ui/kanban.js';
 import type { InboxView } from '../ui/inbox.js';
 import type { HomeView } from '../ui/home.js';
@@ -23,6 +26,13 @@ import type { JournalController } from './journal.js';
 
 // Actions that are meaningless on Home (there is no text to save or undo).
 const DOCUMENT_ACTIONS = ['save', 'save-as', 'export-html', 'undo', 'redo', 'kanban-view'];
+// Actions that need a board or a list to act on.
+const STRUCTURED_ACTIONS = ['fields-edit'];
+
+// The dialogs of this controller; tests replace them.
+export interface ViewDialogs {
+    editSchema(parent: Gtk.Window | null, options: SchemaDialogOptions): Awaitable<FieldDef[] | null>;
+}
 
 export type View = 'board' | 'inbox' | 'home' | 'text';
 
@@ -48,6 +58,7 @@ interface ViewState {
 
 export class ViewController {
     private readonly states = new WeakMap<Doc, ViewState>();
+    dialogs: ViewDialogs = { editSchema: editSchemaDialog };
 
     private state(doc: Doc): ViewState {
         let state = this.states.get(doc);
@@ -139,6 +150,18 @@ export class ViewController {
         };
         enable(TEXT_ACTIONS, !structured);
         enable(DOCUMENT_ACTIONS, !home);
+        enable(STRUCTURED_ACTIONS, this.boardMode || this.inboxMode);
+    }
+
+    // The "Fields…" menu: change the fields the board or list declares, written back into its frontmatter (one undo step).
+    editFields(): void {
+        const view = this.boardMode ? this.host.board : this.inboxMode ? this.host.inbox : null;
+        if (!view) return;
+        const board = view.getBoard();
+        const options: SchemaDialogOptions = { fields: declaredFields(board), reserved: reservedFields(board), uses: (key, option) => fieldUses(board, key, option) };
+        void after(this.dialogs.editSchema(this.host.app.get_active_window(), options), fields => {
+            if (fields) view.commit(withSchema(view.getBoard(), fields));
+        });
     }
 
     // The "Board View" menu/shortcut: toggles between board/inbox and text for a kanban or inbox document.

@@ -3,8 +3,9 @@
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import { parseBoard } from '../../src/markdown/kanban.js';
+import { findDialog } from '../../src/ui/dialogs.js';
 import { isList } from '../../src/markdown/layout.js';
-import { descendants, widgetPixbuf } from '../widgets.js';
+import { descendants, whenDialogReady, widgetPixbuf } from '../widgets.js';
 import { section, test, eq, ok, tmp, optVal } from '../framework.js';
 import { BOARD, INBOX } from '../fixtures.js';
 import type { GuiContext } from './context.js';
@@ -197,6 +198,24 @@ export function inboxTests(c: GuiContext): void {
         w.inbox.capture('typed'); settle();
         eq(texts(), [['old'], ['typed', 'one']], 'the top of the named group');
         ok(text().includes('[created:: '), 'the capture time is still added');
+        open();
+    });
+
+    test('Fields… on a list: a name a board keeps for itself is free here, and the new field is used by the notes at once', () => {
+        open(FIELD_INBOX);
+        whenDialogReady(() => findDialog('Fields'), dialog => {
+            (descendants(dialog).find(x => x instanceof Gtk.Button && (x as Gtk.Button).label === '+ Add field') as Gtk.Button).emit('clicked'); pump();
+            (descendants(dialog).find(x => x instanceof Gtk.Entry && (x as Gtk.Entry).placeholder_text === 'Field name') as Gtk.Entry).set_text('due');
+            (descendants(dialog).find(x => x instanceof Gtk.DropDown) as Gtk.DropDown).selected = 3; pump();   // Date
+            (descendants(dialog).find(x => x instanceof Gtk.Button && (x as Gtk.Button).label === 'Save') as Gtk.Button).emit('clicked');
+        });
+        w.editFields();
+        for (let i = 0; i < 100 && w.win.get_visible_dialog(); i++) { pump(); GLib.usleep(20000); }
+        settle();
+        ok(text().includes('  progres: progress\n  due: date\n'), text());
+        ok(w.inbox.schema().some(f => f.key === 'due'), 'the list reads the new field');
+        c.action('undo'); settle();
+        eq(text(), FIELD_INBOX, 'one undo');
         open();
     });
 }

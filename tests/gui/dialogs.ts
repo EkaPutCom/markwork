@@ -11,6 +11,7 @@ import { PreferencesDialog } from '../../src/ui/preferences.js';
 import { CommandPalette } from '../../src/ui/palette.js';
 import { confirmDialog, editCardDialog, editNoteDialog, findDialog, promptDialog } from '../../src/ui/dialogs.js';
 import { parseSchema } from '../../src/markdown/fields.js';
+import { editSchemaDialog } from '../../src/ui/schemadialog.js';
 import type { GuiContext } from './context.js';
 
 export function dialogTests(c: GuiContext): void {
@@ -72,6 +73,43 @@ export function dialogTests(c: GuiContext): void {
             button(d, 'Save').emit('clicked');
         });
         eq(result?.text, 'Idea [created:: 2026-10-07 14:22] [tipe:: bacaan]');
+    });
+
+    test('fields dialog: a new field gets a name, a type, and options; a taken name blocks saving; existing fields are kept in order', () => {
+        const existing = parseSchema('---\nfields:\n  prio: select(a, b)\n---\n').fields;
+        const seen: Record<string, unknown> = {};
+        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: ['due'], uses: (key, option) => (key === 'prio' && option === 'a' ? 3 : 0) }), d => {
+            const labels = () => descendants(d).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.label);
+            // the last one: the new field is at the end, and every select field has its own entry for adding an option
+            const entryBy = (placeholder: string) => descendants(d).filter((x): x is Gtk.Entry => x instanceof Gtk.Entry && x.placeholder_text === placeholder).at(-1)!;
+            seen.uses = labels().includes('3 notes');
+            button(d, '+ Add field').emit('clicked'); c.pump();
+            entryBy('Field name').set_text('due');
+            button(d, 'Save').emit('clicked');
+            seen.blocked = entryBy('Field name').has_css_class('error') && !!findDialog('Fields');
+            entryBy('Field name').set_text('estimasi');
+            (descendants(d).find(x => x instanceof Gtk.DropDown) as Gtk.DropDown).selected = 2; c.pump();   // Choice
+            const option = entryBy('Add an option…');
+            option.set_text('kecil'); option.emit('activate'); c.pump();
+            entryBy('Add an option…').set_text('besar'); entryBy('Add an option…').emit('activate'); c.pump();
+            seen.options = descendants(d).filter((x): x is Gtk.Entry => x instanceof Gtk.Entry && ['kecil', 'besar'].includes(x.text)).map(e => e.text);
+            button(d, 'Save').emit('clicked');
+        });
+        eq(seen, { uses: true, blocked: true, options: ['kecil', 'besar'] }, 'usage is shown, the dialog stayed open on a bad name, the options were added');
+        eq(result?.map(f => [f.key, f.type, f.options]), [['prio', 'select', ['a', 'b']], ['estimasi', 'select', ['kecil', 'besar']]]);
+    });
+
+    test('fields dialog: options and fields can be moved and removed; Cancel returns null', () => {
+        const existing = parseSchema('---\nfields:\n  one: select(a, b, c)\n  two: text\n---\n').fields;
+        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: () => 0 }), d => {
+            const moveDown = descendants(d).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.tooltip_text === 'Move down');
+            moveDown[0].emit('clicked'); c.pump();   // the first field goes below the second
+            const remove = descendants(d).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.tooltip_text === 'Remove option');
+            remove[0].emit('clicked'); c.pump();     // option "a" of the field that is now second
+            button(d, 'Save').emit('clicked');
+        });
+        eq(result?.map(f => [f.key, f.options]), [['two', []], ['one', ['b', 'c']]]);
+        eq(drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: () => 0 }), d => button(d, 'Cancel').emit('clicked')), null);
     });
 
     test('prompt: Cancel and Escape (close) return null', () => {

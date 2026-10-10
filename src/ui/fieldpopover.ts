@@ -5,7 +5,7 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
-import { nearestOption, parseValue, type FieldDef } from '../markdown/fields.js';
+import { nearestOption, OPTION_TEXT, parseValue, type FieldDef } from '../markdown/fields.js';
 import { withDueDate } from '../markdown/kanban.js';
 import { _ } from '../i18n.js';
 
@@ -14,8 +14,6 @@ export interface FieldPopoverOptions {
     current: string;                                  // the field's text now, empty if the item has no value
     apply(raw: string, newOption?: string): void;     // raw '' clears the field; newOption is added to the field's list first
 }
-
-const OPTION_TEXT = /^[^,()]+$/;
 
 function content(): Gtk.Box {
     const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, margin_top: 6, margin_bottom: 6, margin_start: 6, margin_end: 6 });

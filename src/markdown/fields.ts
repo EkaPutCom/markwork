@@ -84,6 +84,9 @@ function topLevelEquals(spec: string): number {
     return -1;
 }
 
+// What an option of a select may look like: no comma or parenthesis, which the `select(…)` syntax uses.
+export const OPTION_TEXT = /^[^,()]+$/;
+
 const DATE_DEFAULTS: readonly string[] = ['now', 'today'];
 
 // Why `value` cannot be the default of `def`, or null.
@@ -137,7 +140,7 @@ export function describeDef(def: FieldDef): string {
 export function addOption(text: string, key: string, option: string): string {
     const def = parseSchema(text).fields.find(f => f.key === key);
     const value = option.trim();
-    if (!def || def.type !== 'select' || !value || /[,()]/.test(value) || def.options.includes(value)) return text;
+    if (!def || def.type !== 'select' || !value || !OPTION_TEXT.test(value) || def.options.includes(value)) return text;
     const lines = text.split('\n');
     const at = lines.findIndex(l => FIELD_LINE.exec(l)?.[1] === key);
     if (at < 0) return text;
@@ -395,4 +398,55 @@ export function applyDefaults(text: string, schema: FieldDef[], now: Date): stri
         const value = present.has(def.key) ? null : resolveDefault(def, now);
         return value === null ? t : setField(t, def, value);
     }, text);
+}
+
+// ---------- Editing the schema ----------
+
+export type NameProblem = 'empty' | 'invalid' | 'taken';
+
+// Why `name` cannot be a new field name, or null. `taken` lists the names in use (compared ignoring case).
+export function fieldNameProblem(name: string, taken: readonly string[]): NameProblem | null {
+    const text = name.trim();
+    if (!text) return 'empty';
+    if (!KEY.test(text)) return 'invalid';
+    return taken.some(t => t.toLowerCase() === text.toLowerCase()) ? 'taken' : null;
+}
+
+// Why `option` cannot be an option of a select, or null. `others` are the other options of the same field.
+export function optionProblem(option: string, others: readonly string[]): NameProblem | null {
+    const text = option.trim();
+    if (!text) return 'empty';
+    if (!OPTION_TEXT.test(text)) return 'invalid';
+    return others.some(o => o.toLowerCase() === text.toLowerCase()) ? 'taken' : null;
+}
+
+// The document with the `fields:` block of its frontmatter written from `defs` (the block is removed when there are
+// none, and made when there was none). Every other line of the frontmatter, and the body, stay as they are.
+export function writeSchema(text: string, defs: FieldDef[]): string {
+    const lines = text.split('\n');
+    const close = lines[0]?.trim() === '---' ? lines.findIndex((l, i) => i > 0 && l.trim() === '---') : -1;
+    if (close < 0) return text;
+    const at = lines.findIndex((l, i) => i > 0 && i < close && /^fields:\s*$/.test(l));
+    const block = defs.length ? ['fields:', ...defs.map(d => `  ${d.key}: ${describeDef(d)}`)] : [];
+    if (at < 0) {
+        lines.splice(close, 0, ...block);
+        return lines.join('\n');
+    }
+    let end = at + 1;
+    while (end < close && (!lines[end].trim() || FIELD_LINE.test(lines[end]))) end++;
+    while (end > at + 1 && !lines[end - 1].trim()) end--;
+    lines.splice(at, end - at, ...block);
+    return lines.join('\n');
+}
+
+// How many of `texts` have a value for field `key` (or, with `option`, that option among their values).
+export function countUses(texts: Iterable<string>, key: string, option?: string): number {
+    let count = 0;
+    for (const text of texts) {
+        const segment = findSegments(text).find(s => s.key === key);
+        if (!segment) continue;
+        const wanted = option?.toLowerCase();
+        if (wanted === undefined || splitList(segment.raw).some(v => unquote(v).toLowerCase() === wanted)) count++;
+    }
+    return count;
 }

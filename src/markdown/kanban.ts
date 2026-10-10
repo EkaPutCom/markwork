@@ -26,7 +26,7 @@
 // is not changed, so it is easy to test.
 
 import { layoutOf } from './layout.js';
-import { addOption, applyDefaults, fieldChips, fieldInputText, findSegments, missingFields, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { addOption, applyDefaults, countUses, fieldChips, fieldInputText, findSegments, missingFields, parseSchema, readItem, setField, writeField, writeSchema, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 
 export interface Card {
     done: boolean | null;   // null = plain item without a checkbox ("- text")
@@ -274,6 +274,24 @@ export function boardSchema(board: Board): FieldDef[] {
     if (layoutOf(head) === 'list') return declared;
     return [...CARD_SCHEMA, ...declared.filter(f => !CARD_SCHEMA.some(c => c.key === f.key))];
 }
+
+// The fields the document declares in its frontmatter, in order (without the built-in ones of a board).
+export const declaredFields = (board: Board): FieldDef[] => parseSchema(board.head.join('\n')).fields;
+
+// The names a board uses itself (due, agent); a list has none.
+export const reservedFields = (board: Board): string[] =>
+    layoutOf(board.head.join('\n')) === 'list' ? [] : CARD_SCHEMA.map(f => f.key);
+
+// The board with its `fields:` block written from `defs`; unchanged if that makes no difference.
+export function withSchema(board: Board, defs: FieldDef[]): Board {
+    const head = board.head.join('\n');
+    const next = writeSchema(head, defs);
+    return next === head ? board : { ...board, head: next.split('\n') };
+}
+
+// How many cards have a value for field `key` (or that option of it), counted over every group.
+export const fieldUses = (board: Board, key: string, option?: string): number =>
+    countUses(board.columns.flatMap(c => c.cards.map(card => card.text)), key, option);
 
 // The fields a card has no value for yet, which can be filled in from the card. The agent has its own menu.
 export function cardMissingFields(text: string, schema: FieldDef[]): FieldDef[] {

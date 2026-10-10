@@ -1,6 +1,6 @@
 // Typed field tests (markdown/fields.ts).
 
-import { addOption, applyDefaults, fieldChips, fieldInputText, findSegments, formatValue, missingFields, nearestOption, parseSchema, parseValue, readItem, resolveDefault, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
+import { addOption, applyDefaults, countUses, fieldNameProblem, optionProblem, writeSchema, fieldChips, fieldInputText, findSegments, formatValue, missingFields, nearestOption, parseSchema, parseValue, readItem, resolveDefault, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
 import { section, test, eq, ok } from '../framework.js';
 
 const DOC = [
@@ -152,5 +152,26 @@ export function fieldsModelTests(): void {
         const p = def('prioritas');
         eq([nearestOption(p, 'TINGGI'), nearestOption(p, 'tingi'), nearestOption(p, 'tinggii'), nearestOption(p, 'sedamg'), nearestOption(p, 'urgent'), nearestOption(p, '')],
             ['tinggi', 'tinggi', 'tinggi', 'sedang', null, null]);
+    });
+
+    test('fieldNameProblem and optionProblem: empty, not allowed, or taken (ignoring case)', () => {
+        eq(['', ' ', '9x', 'a b', 'due', 'Due', 'prioritas', 'p-1'].map(n => fieldNameProblem(n, ['due', 'agent'])), ['empty', 'empty', 'invalid', 'invalid', 'taken', 'taken', null, null]);
+        eq(['', 'a,b', 'a(b', 'Tinggi', 'urgent'].map(o => optionProblem(o, ['tinggi', 'sedang'])), ['empty', 'invalid', 'invalid', 'taken', null]);
+    });
+
+    test('writeSchema replaces the fields block and nothing else; it makes the block when there is none and removes it when empty', () => {
+        const doc = '---\nlayout: board\nfields:\n  a: text\n  b: select(x, y) = x\n\ntitle: after\n---\n\nbody\n';
+        const a = parseSchema(doc).fields, b = a[1];
+        eq(writeSchema(doc, [b, a[0]]), '---\nlayout: board\nfields:\n  b: select(x, y) = x\n  a: text\n\ntitle: after\n---\n\nbody\n', 'reordered; the lines after the block and the body are untouched');
+        eq(writeSchema(doc, [...a, { key: 'c', type: 'date', multiple: false, options: [], default: 'today' }]).split('\n').slice(2, 8), ['fields:', '  a: text', '  b: select(x, y) = x', '  c: date = today', '', 'title: after']);
+        eq(writeSchema(doc, []), '---\nlayout: board\n\ntitle: after\n---\n\nbody\n', 'no fields: no block');
+        eq(writeSchema('---\nlayout: list\n---\n\n- one\n', a), '---\nlayout: list\nfields:\n  a: text\n  b: select(x, y) = x\n---\n\n- one\n', 'a block is made before the closing line');
+        eq(writeSchema('no frontmatter', a), 'no frontmatter');
+        eq(parseSchema(writeSchema(doc, a)).fields, a, 'what is written is read back as it was');
+    });
+
+    test('countUses: notes with a value for the field, or with that option among their values', () => {
+        const texts = ['A [prio:: tinggi]', 'B [prio:: Tinggi]', 'C [prio:: rendah]', 'D', 'E [who:: "Putra, Eka", Rina]'];
+        eq([countUses(texts, 'prio'), countUses(texts, 'prio', 'tinggi'), countUses(texts, 'prio', 'sedang'), countUses(texts, 'who', 'Rina'), countUses(texts, 'who', 'Putra, Eka'), countUses([], 'prio')], [3, 2, 0, 1, 1, 0]);
     });
 }

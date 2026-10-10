@@ -121,6 +121,10 @@
         <attribute name="label" translatable="yes">Board/Inbox View</attribute>
         <attribute name="action">app.kanban-view</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">Fields…</attribute>
+        <attribute name="action">app.fields-edit</attribute>
+      </item>
     </section>
     <section>
       <item>

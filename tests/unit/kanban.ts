@@ -1,6 +1,6 @@
 // Kanban board model tests.
 
-import { addCard, addColumn, boardSchema, cardFields, cardMeta, cardMissingFields, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { addCard, addColumn, boardSchema, declaredFields, fieldUses, reservedFields, withSchema, cardFields, cardMeta, cardMissingFields, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
 import { isBoard } from '../../src/markdown/layout.js';
 import { section, test, eq, ok } from '../framework.js';
 import { BOARD } from '../fixtures.js';
@@ -121,6 +121,16 @@ export function kanbanModelTests(): void {
         const now = new Date(2026, 9, 8, 9, 5);
         eq(addCard(board, 0, 'A [prioritas:: tinggi]', Infinity, now).columns[0].cards[0].text, 'A [prioritas:: tinggi] [dibuat:: 2026-10-08]');
         eq(addCard(board, 0, 'B').columns[0].cards[0].text, 'B');
+    });
+    test('declaredFields, reservedFields, withSchema, and fieldUses on a board and on a list', () => {
+        const board = parseBoard('---\nlayout: board\nfields:\n  prio: select(a, b)\n---\n\n## Plan\n\n- [ ] X [prio:: a]\n- [ ] Y [prio:: b]\n\n## Done\n\n- [x] Z [prio:: a]\n');
+        eq(declaredFields(board).map(f => f.key), ['prio'], 'without the built-in ones');
+        eq([reservedFields(board), reservedFields(parseBoard('---\nlayout: list\n---\n'))], [['due', 'agent'], []]);
+        eq([fieldUses(board, 'prio'), fieldUses(board, 'prio', 'a'), fieldUses(board, 'prio', 'c')], [3, 2, 0], 'counted over every group');
+        const next = withSchema(board, [...declaredFields(board), { key: 'n', type: 'number', multiple: false, options: [] }]);
+        eq(declaredFields(next).map(f => f.key), ['prio', 'n']);
+        eq(next.columns, board.columns, 'cards untouched');
+        ok(withSchema(board, declaredFields(board)) === board, 'no difference, no new board');
     });
     test('dueStatus and dropIndex', () => {
         eq(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-09'].map(d => dueStatus(d, '2026-10-03')), ['overdue', 'today', 'soon', 'later']);

@@ -146,6 +146,32 @@ export function kanbanBoardTests(c: GuiContext): void {
         openBoard();
     });
 
+    test('Fields… edits the fields the board declares: written to the frontmatter in one undo step; unavailable on a plain document', () => {
+        const fieldsAction = () => c.app.lookup_action('fields-edit') as { enabled: boolean };
+        GLib.file_set_contents(board, FIELD_BOARD); w.load(board); settleK();
+        ok(fieldsAction().enabled, 'enabled while a board is shown');
+        const before = text();
+        whenDialogReady(() => findDialog('Fields'), dialog => {
+            const entries = descendants(dialog).filter((x): x is Gtk.Entry => x instanceof Gtk.Entry);
+            ok(entries.some(e => e.text === 'sedang'), 'the options of the select are listed');
+            (descendants(dialog).find(x => x instanceof Gtk.Button && (x as Gtk.Button).label === '+ Add field') as Gtk.Button).emit('clicked'); pump();
+            (descendants(dialog).find(x => x instanceof Gtk.Entry && (x as Gtk.Entry).placeholder_text === 'Field name') as Gtk.Entry).set_text('estimasi');
+            (descendants(dialog).find(x => x instanceof Gtk.DropDown) as Gtk.DropDown).selected = 1; pump();   // Number
+            (descendants(dialog).find(x => x instanceof Gtk.Button && (x as Gtk.Button).label === 'Save') as Gtk.Button).emit('clicked');
+        });
+        w.editFields();
+        for (let i = 0; i < 100 && w.win.get_visible_dialog(); i++) { pump(); GLib.usleep(20000); }
+        settleK();
+        ok(text().includes('fields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n  estimasi: number\n'), text());
+        ok(text().includes('- [ ] Parser [prioritas:: sedang]'), 'the cards are untouched');
+        ok(kb.schema().some(f => f.key === 'estimasi'), 'the board uses the new field at once');
+        action('undo'); settleK();
+        eq(text(), before, 'one undo');
+        GLib.file_set_contents(board, '# Plain\n\ntext'); w.load(board); settleK();
+        ok(!fieldsAction().enabled, 'disabled on a plain document');
+        openBoard();
+    });
+
     test('a kanban document opens as a board, a plain document as text', () => {
         openBoard();
         ok(w.boardMode, 'the board is not shown');
