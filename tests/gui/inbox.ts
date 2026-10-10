@@ -186,4 +186,17 @@ export function inboxTests(c: GuiContext): void {
         eq(text(), TEXT.replace('layout: list', 'layout: board'), 'the text was not rewritten by being opened');
         open();
     });
+
+    test('add: bottom puts a quick capture and a note from the dialog at the end; add-to: names the group', () => {
+        const base = (extra: string) => `---\nlayout: list\n${extra}fields:\n  created: date = now\n---\n\n- old\n\n## Now\n\n- one\n`;
+        const texts = () => parseBoard(text()).columns.map(c => c.cards.map(i => i.text.replace(/ \[created:: [^\]]+\]/, '')));
+        open(base('add: bottom\n'));
+        w.inbox.capture('typed'); settle();
+        eq(texts(), [['old'], ['one', 'typed']], 'the end of the last group');
+        open(base('add-to: Now\n'));
+        w.inbox.capture('typed'); settle();
+        eq(texts(), [['old'], ['typed', 'one']], 'the top of the named group');
+        ok(text().includes('[created:: '), 'the capture time is still added');
+        open();
+    });
 }

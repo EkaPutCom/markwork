@@ -4,6 +4,7 @@
 //
 //   ---
 //   layout: list
+//   add: top             ← where a new note goes: top (default) or bottom
 //   fields:
 //     created: date = now
 //   ---
@@ -19,10 +20,11 @@
 
 import { applyDefaults, fieldChips, findSegments, missingFields, readItem, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 import { boardSchema, type Board, type Card, type Column } from './kanban.js';
+import { optionOf } from './layout.js';
 
 export const CREATED_FIELD: FieldDef = { key: 'created', type: 'date', multiple: false, options: [] };
 
-export const DEFAULT_HEAD = ['---', 'layout: list', 'fields:', '  created: date = now', '---'];
+export const DEFAULT_HEAD = ['---', 'layout: list', 'add: top', 'fields:', '  created: date = now', '---'];
 
 // An empty list: the frontmatter and a title, no notes.
 export function newList(title = 'Inbox'): Board {
@@ -33,15 +35,36 @@ export function newList(title = 'Inbox'): Board {
 
 const emptyGroup = (): Column => ({ title: '', intro: [], cards: [], outro: [] });
 
-// New item at the very top of the first group (a group without a name is made if there is none), with the default of
-// every field of the document that the text does not set itself (the capture time, for a list that declares
-// `created: date = now`).
+// Where a new note goes: `add: top` (the default) or `add: bottom`, and `add-to: Name` for the group of that name
+// instead of the first (top) or last (bottom) group of the document.
+export interface AddTarget { position: 'top' | 'bottom'; group: string | null }
+
+export function addTarget(board: Board): AddTarget {
+    const head = board.head.join('\n');
+    return { position: optionOf(head, 'add')?.toLowerCase() === 'bottom' ? 'bottom' : 'top', group: optionOf(head, 'add-to') };
+}
+
+// The index of the group a new note goes into: the one named by `add-to` if there is one, else the first group (top)
+// or the last (bottom).
+function targetGroup(columns: Column[], target: AddTarget): number {
+    const named = target.group === null ? -1 : columns.findIndex(c => c.title.toLowerCase() === target.group!.toLowerCase());
+    return named >= 0 ? named : target.position === 'top' ? 0 : columns.length - 1;
+}
+
+// A new note, put where the document says (see addTarget; at the very top of the first group by default; a group
+// without a name is made if there is none), with the default of every field of the document that the text does not
+// set itself (the capture time, for a list that declares `created: date = now`).
 export function captureItem(board: Board, text: string, now: Date, notes: string[] = []): Board {
     const body = text.trim();
     if (!body) return board;
     const item: Card = { done: null, text: applyDefaults(body, boardSchema(board), now), notes };
     const columns = board.columns.length ? board.columns : [emptyGroup()];
-    return { ...board, columns: columns.map((c, i) => (i === 0 ? { ...c, cards: [item, ...c.cards] } : c)) };
+    const target = addTarget(board);
+    const into = targetGroup(columns, target);
+    return {
+        ...board,
+        columns: columns.map((c, i) => (i !== into ? c : { ...c, cards: target.position === 'top' ? [item, ...c.cards] : [...c.cards, item] })),
+    };
 }
 
 // ---------- Fields ----------

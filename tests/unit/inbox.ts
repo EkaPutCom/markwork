@@ -1,6 +1,6 @@
 // List model tests: the notes of a `layout: list` document, on the same model as a board.
 
-import { ageOf, captureItem, composeItem, itemFields, itemMeta, itemMissingFields, newList } from '../../src/markdown/inbox.js';
+import { addTarget, ageOf, captureItem, composeItem, itemFields, itemMeta, itemMissingFields, newList } from '../../src/markdown/inbox.js';
 import { addColumn, boardSchema, deleteCard, moveColumn, parseBoard, serializeBoard, setCardField, updateCard, withFieldOption } from '../../src/markdown/kanban.js';
 import { isList } from '../../src/markdown/layout.js';
 import { section, test, eq, ok } from '../framework.js';
@@ -67,6 +67,18 @@ export function inboxModelTests(): void {
         const withHeadings = parseBoard('---\nlayout: list\n---\n\n## Now\n\n- one\n\n## Later\n');
         eq(captureItem(withHeadings, 'Top', new Date()).columns[0].cards.map(i => i.text), ['Top', 'one']);
     });
+    test('add: says where a new note goes: top (default) or bottom, and add-to: names the group', () => {
+        const head = (extra: string) => `---\nlayout: list\n${extra}---\n\n- loose\n\n## Now\n\n- one\n\n## Later\n\n- two\n`;
+        const at = (text: string) => parseBoard(text).columns.map(c => c.cards.map(i => i.text));
+        const add = (extra: string) => at(serializeBoard(captureItem(parseBoard(head(extra)), 'NEW', new Date())));
+        eq(add(''), [['NEW', 'loose'], ['one'], ['two']], 'no option: the top of the first group');
+        eq(add('add: top\n'), [['NEW', 'loose'], ['one'], ['two']]);
+        eq(add('add: bottom\n'), [['loose'], ['one'], ['two', 'NEW']], 'bottom: the end of the last group');
+        eq(add('add-to: Now\n'), [['loose'], ['NEW', 'one'], ['two']], 'a named group, at its top');
+        eq(add('add: bottom\nadd-to: now\n'), [['loose'], ['one', 'NEW'], ['two']], 'a named group, at its end, any case');
+        eq(add('add-to: Missing\nadd: bottom\n'), [['loose'], ['one'], ['two', 'NEW']], 'an unknown group falls back to the position');
+        eq([addTarget(parseBoard(head('add: BOTTOM\n'))).position, addTarget(parseBoard(head('add: sideways\n'))).position], ['bottom', 'top'], 'case is ignored, anything else is top');
+    });
     test('updateCard and deleteCard do not change the original list', () => {
         const a = parseBoard(INBOX);
         const b = updateCard(a, { column: 0, index: 2 }, { text: 'Changed' });
@@ -98,7 +110,7 @@ export function inboxModelTests(): void {
         eq(first(captureItem(withDefaults, 'New #x', new Date(2026, 9, 8, 9, 5))), 'New #x [created:: 2026-10-08 09:05] [status:: antre]');
         eq(first(captureItem(withDefaults, 'Set [status:: dibaca]', new Date(2026, 9, 8, 9, 5))), 'Set [status:: dibaca] [created:: 2026-10-08 09:05]', 'a field the text sets is left alone');
         eq(first(captureItem(parseBoard('---\nlayout: list\n---\n\n- old\n'), 'Plain', new Date())), 'Plain', 'no declared default, no stamp');
-        eq(parseBoard(serializeBoard(newList())).head.slice(0, 5), ['---', 'layout: list', 'fields:', '  created: date = now', '---'], 'New Inbox declares the capture time');
+        eq(parseBoard(serializeBoard(newList())).head.slice(0, 6), ['---', 'layout: list', 'add: top', 'fields:', '  created: date = now', '---'], 'New Inbox declares where notes go and the capture time');
     });
     test('list fields: chips without the capture time, missing fields, setting one, and adding an option', () => {
         const list = parseBoard('---\nlayout: list\nfields:\n  tipe: select(ide, bacaan)\n  created: text\n  url: link\n---\n\n# Inbox\n\n- Satu #x [created:: 2026-10-07 14:22] [tipe:: ide]\n- Dua\n');
