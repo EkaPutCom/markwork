@@ -77,6 +77,8 @@ const buildCss = (p: Palette): string => `
     .kanban-notes { background-color: transparent; color: alpha(currentColor, 0.55); padding: 0 2px; }
     .kanban-card-text link, .kanban-note-link link { color: @accent_color; }
     .kanban-note-link { font-size: 12px; }
+    .kanban-field { background-color: alpha(currentColor, 0.12); color: @card_fg_color; }
+    .kanban-field-invalid { background-color: alpha(@warning_bg_color, 0.35); color: @card_fg_color; border: 1px dashed @warning_bg_color; }
     .kanban-due { background-color: alpha(currentColor, 0.12); color: @card_fg_color; }
     .kanban-due-overdue { background-color: @error_bg_color; color: @error_fg_color; }
     .kanban-due-today { background-color: @warning_bg_color; color: @warning_fg_color; }

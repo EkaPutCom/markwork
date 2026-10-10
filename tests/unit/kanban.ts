@@ -1,6 +1,6 @@
 // Kanban board model tests.
 
-import { addCard, addColumn, cardMeta, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
+import { addCard, addColumn, boardSchema, cardFields, cardMeta, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, isKanban, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok } from '../framework.js';
 import { BOARD } from '../fixtures.js';
 
@@ -102,6 +102,13 @@ export function kanbanModelTests(): void {
     test('splitCard keeps a due text that is not a date, so editing a card does not lose it', () => {
         eq(splitCard('Send [due:: besok]').due, 'besok');
         eq(cardMeta('Send [due:: besok]').due, null, 'it is not a due date');
+    });
+    test('boardSchema: the built-in fields plus the frontmatter fields; cardFields leaves due and agent to their badges', () => {
+        const board = parseBoard('---\nkanban: true\nfields:\n  prioritas: select(tinggi, rendah)\n  due: text\n---\n\n## Plan\n\n- [ ] A [prioritas:: tinggi] [due:: 2026-10-20] [agent:: pi] [x:: 1]\n');
+        const schema = boardSchema(board);
+        eq(schema.map(f => `${f.key}:${f.type}`), ['due:date', 'agent:agent', 'prioritas:select'], 'a built-in key cannot be redeclared');
+        eq(cardFields(board.columns[0].cards[0].text, schema).map(c => c.text), ['tinggi', 'x: 1']);
+        eq(boardSchema(newBoard()).length, 2, 'a board without a fields block');
     });
     test('dueStatus and dropIndex', () => {
         eq(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-09'].map(d => dueStatus(d, '2026-10-03')), ['overdue', 'today', 'soon', 'later']);

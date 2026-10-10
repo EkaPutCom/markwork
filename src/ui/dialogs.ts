@@ -13,7 +13,8 @@ import { attachWikiCompleter } from '../editor/wikicomplete.js';
 import { childrenOf, modal, onKeyPress } from '../gtkutil.js';
 import { APP_ID, APP_NAME, APP_VERSION } from '../config.js';
 import { composeItem, itemMeta } from '../markdown/inbox.js';
-import { AGENT_NAME, composeCard, DUE_INPUT, splitCard, withDueDate } from '../markdown/kanban.js';
+import { fieldInputText, parseValue, setField, type FieldDef, type FieldType } from '../markdown/fields.js';
+import { AGENT_NAME, CARD_SCHEMA, composeCard, DUE_INPUT, splitCard, withDueDate } from '../markdown/kanban.js';
 import type { HarnessAsk, HarnessReply } from '../agent/harness.js';
 import { _, fmt } from '../i18n.js';
 
@@ -237,10 +238,45 @@ export function dueField(text: string): DueField {
     return { widget, entry, button, calendar };
 }
 
-// Edit card dialog: title (one line) and notes (multiple lines).
+// One edit control for a schema field: a drop-down for a select with options, a calendar field for a date, an entry
+// for the rest. `text()` is what the user chose or typed; an empty text removes the field.
+interface FieldControl { def: FieldDef; widget: Gtk.Widget; entry: Gtk.Entry | null; text(): string }
+
+const FIELD_HINT: Record<FieldType, () => string> = {
+    text: () => '', number: () => _('A number'), select: () => _('Comma-separated options'), date: () => _('YYYY-MM-DD'),
+    progress: () => _('3/5 or 60%'), person: () => _('A name'), agent: () => _('e.g. pi'), link: () => _('[[Note]]'),
+};
+
+function fieldControl(def: FieldDef, current: string): FieldControl {
+    if (def.type === 'select' && !def.multiple && def.options.length) {
+        // A value the schema does not list stays selectable, so opening and saving the dialog does not lose it.
+        const choices = ['', ...def.options, ...(current && !def.options.includes(current) ? [current] : [])];
+        const dropdown = new Gtk.DropDown({ model: Gtk.StringList.new(choices.map(c => c || '—')), selected: Math.max(0, choices.indexOf(current)), hexpand: true });
+        return { def, widget: dropdown, entry: null, text: () => choices[dropdown.selected] ?? '' };
+    }
+    if (def.type === 'date') {
+        const due = dueField(current);
+        return { def, widget: due.widget, entry: due.entry, text: () => due.entry.text };
+    }
+    const entry = new Gtk.Entry({ text: current, activates_default: true, hexpand: true, placeholder_text: FIELD_HINT[def.type]() });
+    entry.connect('changed', () => entry.remove_css_class('error'));
+    return { def, widget: entry, entry, text: () => entry.text };
+}
+
+// The first control whose text does not fit its field (marked and focused), or null.
+function firstInvalid(controls: FieldControl[]): FieldControl | null {
+    const bad = controls.find(c => c.entry && c.text().trim() !== '' && !parseValue(c.def, c.text().trim()).ok) ?? null;
+    bad?.entry?.add_css_class('error');
+    bad?.entry?.grab_focus();
+    return bad;
+}
+
+const applyFields = (text: string, controls: FieldControl[]): string => controls.reduce((t, c) => setField(t, c.def, c.text()), text);
+
+// Edit card dialog: title (one line), the fields of the board's schema, and notes (multiple lines).
 // Returns the new contents, or null if cancelled.
 // listNotes: Markdown files in the work folder, for suggestions when typing [[ in the notes.
-export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft, heading = _('Edit Card'), listNotes?: () => string[]): Promise<CardDraft | null> {
+export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft, heading = _('Edit Card'), listNotes?: () => string[], schema: FieldDef[] = []): Promise<CardDraft | null> {
     const parts = splitCard(card.text);
     const title = new Gtk.Entry({ text: parts.title, activates_default: true, hexpand: true });
     const tags = new Gtk.Entry({ text: parts.tags.join(' '), activates_default: true, hexpand: true, placeholder_text: _('tag1 tag2') });
@@ -248,6 +284,7 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
     const due = dueInput.entry;
     const agent = new Gtk.Entry({ text: parts.agent ?? '', activates_default: true, hexpand: true, placeholder_text: _('e.g. pi (empty = not assigned)') });
     agent.connect('changed', () => agent.remove_css_class('error'));
+    const controls = schema.filter(f => !CARD_SCHEMA.some(c => c.key === f.key)).map(f => fieldControl(f, fieldInputText(card.text, f)));
     const notes = new Gtk.TextView({ wrap_mode: Gtk.WrapMode.WORD_CHAR, left_margin: 6, right_margin: 6, top_margin: 6, bottom_margin: 6 });
     notes.buffer.set_text(card.notes.join('\n'), -1);
     const frame = new Gtk.ScrolledWindow({ min_content_height: 140, has_frame: true, hexpand: true, vexpand: true });
@@ -263,6 +300,10 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
     box.append(dueInput.widget);
     box.append(new Gtk.Label({ label: _('Assigned to'), xalign: 0 }));
     box.append(agent);
+    for (const control of controls) {
+        box.append(new Gtk.Label({ label: control.def.key, xalign: 0 }));
+        box.append(control.widget);
+    }
     box.append(new Gtk.Label({ label: listNotes ? _('Notes · [[Name]] links another note as agent context') : _('Notes'), xalign: 0, wrap: true }));
     box.append(frame);
 
@@ -281,16 +322,18 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
             agent.grab_focus();
             return false;
         }
-        if (!due.text.trim() || DUE_INPUT.test(due.text.trim())) return true;
-        due.add_css_class('error');
-        due.grab_focus();
-        return false;
+        if (due.text.trim() && !DUE_INPUT.test(due.text.trim())) {
+            due.add_css_class('error');
+            due.grab_focus();
+            return false;
+        }
+        return firstInvalid(controls) === null;
     });
     completer?.destroy();
     if (!accepted) return null;
     const [start, end] = notes.buffer.get_bounds();
     return {
-        text: composeCard({ title: title.text, tags: tags.text.split(/[\s,]+/), due: due.text, agent: agent.text }, card.text),
+        text: applyFields(composeCard({ title: title.text, tags: tags.text.split(/[\s,]+/), due: due.text, agent: agent.text }, card.text), controls),
         notes: notes.buffer.get_text(start, end, true).replace(/\s+$/, '').split('\n').filter((l, i, all) => all.length > 1 || l !== ''),
     };
 }

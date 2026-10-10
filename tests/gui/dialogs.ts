@@ -9,7 +9,8 @@ import { descendants, whenDialogReady } from '../widgets.js';
 import { section, test, eq, ok, settle } from '../framework.js';
 import { PreferencesDialog } from '../../src/ui/preferences.js';
 import { CommandPalette } from '../../src/ui/palette.js';
-import { confirmDialog, findDialog, promptDialog } from '../../src/ui/dialogs.js';
+import { confirmDialog, editCardDialog, findDialog, promptDialog } from '../../src/ui/dialogs.js';
+import { parseSchema } from '../../src/markdown/fields.js';
 import type { GuiContext } from './context.js';
 
 export function dialogTests(c: GuiContext): void {
@@ -43,6 +44,24 @@ export function dialogTests(c: GuiContext): void {
         eq(drive('Name',  () => promptDialog(w.win, { title: 'Name', label: 'New name', value: 'via enter' }), d => {
             (descendants(d).find(x => x instanceof Gtk.Entry) as Gtk.Entry).emit('activate');
         }), 'via enter', 'Enter runs the default button');
+    });
+
+    test('edit card with a schema: select = drop-down, other fields = entries; a value that does not fit blocks saving; other fields are kept', () => {
+        const schema = parseSchema('---\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n').fields;
+        const seen: { selected?: number; blocked?: boolean } = {};
+        const result = drive('Edit Card', () => editCardDialog(w.win, { text: 'Task #x [prioritas:: sedang] [owner:: Eka]', notes: [] }, 'Edit Card', undefined, schema), d => {
+            const dropdown = descendants(d).find(x => x instanceof Gtk.DropDown) as Gtk.DropDown;
+            seen.selected = dropdown.selected;
+            dropdown.selected = 1;
+            const progress = descendants(d).find(x => x instanceof Gtk.Entry && x.placeholder_text === '3/5 or 60%') as Gtk.Entry;
+            progress.set_text('nope');
+            button(d, 'Save').emit('clicked');
+            seen.blocked = progress.has_css_class('error') && !!findDialog('Edit Card');
+            progress.set_text('3/5');
+            button(d, 'Save').emit('clicked');
+        });
+        eq(seen, { selected: 2, blocked: true }, 'the current option is selected, and the dialog stayed open on a bad value');
+        eq(result?.text, 'Task #x [prioritas:: tinggi] [owner:: Eka] [progres:: 3/5]', 'the other field is kept, the new values are written');
     });
 
     test('prompt: Cancel and Escape (close) return null', () => {

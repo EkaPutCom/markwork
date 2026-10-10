@@ -21,9 +21,10 @@ import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import {
-    addCard, addColumn, cardMeta, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
+    addCard, addColumn, boardSchema, cardFields, cardMeta, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
     newBoard, renameColumn, toggleDone, updateCard, type Board, type Card, type Position,
 } from '../markdown/kanban.js';
+import type { FieldChip, FieldDef } from '../markdown/fields.js';
 import { cellMarkup, escapeMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
 import { confirmDialog, editCardDialog, promptDialog, type CardDraft } from './dialogs.js';
@@ -48,7 +49,7 @@ const MONTHS = (): string[] => [
 
 // Dialogs can be replaced (for example in tests with immediate answers); the real dialog answers through a Promise.
 export interface BoardDialogs {
-    editCard(parent: Gtk.Window | null, card: CardDraft, title?: string, listNotes?: () => string[]): Awaitable<CardDraft | null>;
+    editCard(parent: Gtk.Window | null, card: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
     prompt(parent: Gtk.Window | null, options: { title: string; label: string; value?: string }): Awaitable<string | null>;
     confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
 }
@@ -226,9 +227,22 @@ export class KanbanBoard {
         return { box, scroller, cardsBox, cards, footer };
     }
 
+    // The fields of this board (the built-in ones plus the frontmatter `fields:` block), read again only when the head changes.
+    private schemaKey = '';
+    private schemaCache: FieldDef[] = [];
+    schema(): FieldDef[] {
+        const key = this.board.head.join('\n');
+        if (key !== this.schemaKey) {
+            this.schemaKey = key;
+            this.schemaCache = boardSchema(this.board);
+        }
+        return this.schemaCache;
+    }
+
     private buildCard(c: number, i: number): Gtk.Box {
         const card = this.board.columns[c].cards[i];
         const meta = cardMeta(card.text);
+        const fields = cardFields(card.text, this.schema());
 
         const widget = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
         widget.add_css_class('kanban-card');
@@ -250,7 +264,7 @@ export class KanbanBoard {
         // Links in the card notes are not visible in the title, so they are shown as clickable chips.
         const inTitle = new Set(wikiLinksIn(card.text).map(l => l.target.toLowerCase()));
         const noteLinks = card.notes.length ? wikiLinksIn(card.notes.join('\n')).filter(l => !inTitle.has(l.target.toLowerCase())) : [];
-        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, this.harness?.status(card) ?? null);
+        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, this.harness?.status(card) ?? null, fields);
         if (badges) inner.append(badges);
         // One row per link so many links do not widen the card.
         const linkBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
@@ -284,8 +298,8 @@ export class KanbanBoard {
         return widget;
     }
 
-    private buildBadges(hasNotes: boolean, tags: string[], due: string | null, agent: string | null = null, status: CardRunStatus | null = null): Gtk.Box | null {
-        if (!hasNotes && !tags.length && !due && !agent) return null;
+    private buildBadges(hasNotes: boolean, tags: string[], due: string | null, agent: string | null = null, status: CardRunStatus | null = null, fields: FieldChip[] = []): Gtk.Box | null {
+        if (!hasNotes && !tags.length && !due && !agent && !fields.length) return null;
         const row = new Gtk.Box({ spacing: 4 });
         const chip = (text: string, ...classes: string[]) => {
             const label = new Gtk.Label({ label: text });
@@ -293,14 +307,23 @@ export class KanbanBoard {
             row.append(label);
             return label;
         };
-        if (agent) {
-            const label = chip(`${status ? RUN_ICON[status] : '◇'} ${agent}${status ? ` · ${RUN_LABEL[status]}` : ''}`, 'kanban-agent', `kanban-agent-${status ?? 'idle'}`);
-            label.set_tooltip_text(status === 'waiting' ? fmt(_('{agent} is waiting for your answer: right click the card → Answer {agent}…'), { agent }) : status ? fmt(_('{agent}: {status} (right click the card for the log)'), { agent, status: RUN_LABEL[status] }) : fmt(_('Assigned to {agent}; right click the card → Work on it with {agent}'), { agent }));
-        }
+        if (agent) this.agentChip(chip, agent, status);
+        for (const f of fields) this.fieldChip(chip, f);
         for (const tag of tags) chip(`#${tag}`, `kanban-tag-${this.tagColor(tag)}`);
         if (due) chip(`📅 ${this.formatDue(due)}`, 'kanban-due', `kanban-due-${dueStatus(due, this.today())}`);
         if (hasNotes) chip('≡', 'kanban-notes');
         return row;
+    }
+
+    private agentChip(chip: (text: string, ...classes: string[]) => Gtk.Label, agent: string, status: CardRunStatus | null): void {
+        const label = chip(`${status ? RUN_ICON[status] : '◇'} ${agent}${status ? ` · ${RUN_LABEL[status]}` : ''}`, 'kanban-agent', `kanban-agent-${status ?? 'idle'}`);
+        label.set_tooltip_text(status === 'waiting' ? fmt(_('{agent} is waiting for your answer: right click the card → Answer {agent}…'), { agent }) : status ? fmt(_('{agent}: {status} (right click the card for the log)'), { agent, status: RUN_LABEL[status] }) : fmt(_('Assigned to {agent}; right click the card → Work on it with {agent}'), { agent }));
+    }
+
+    // A select option takes the color of its position; a value that does not fit its field is marked and explained.
+    private fieldChip(chip: (text: string, ...classes: string[]) => Gtk.Label, f: FieldChip): void {
+        const label = chip(f.text, f.invalid ? 'kanban-field-invalid' : f.option !== null ? `kanban-tag-${f.option % TAG_COLORS}` : 'kanban-field');
+        if (f.invalid) label.set_tooltip_text(fmt(_('“{key}” does not fit its field: {reason}. The text in the file is unchanged.'), { key: f.key, reason: f.invalid }));
     }
 
     // A fixed color for the same tag.
@@ -363,7 +386,7 @@ export class KanbanBoard {
 
     // A new card is filled in through the same dialog as editing a card.
     showAddCard(column: number): void {
-        void after(this.dialogs.editCard(this.parent, { text: '', notes: [] }, _('Add Card'), this.listNotes ?? undefined), draft => {
+        void after(this.dialogs.editCard(this.parent, { text: '', notes: [] }, _('Add Card'), this.listNotes ?? undefined, this.schema()), draft => {
             if (!draft?.text) return;
             const index = this.board.columns[column]?.cards.length ?? 0;
             const added = addCard(this.board, column, draft.text);
@@ -400,7 +423,7 @@ export class KanbanBoard {
     editCard(column: number, index: number): void {
         const card = this.board.columns[column]?.cards[index];
         if (!card) return;
-        void after(this.dialogs.editCard(this.parent, { text: card.text, notes: card.notes }, undefined, this.listNotes ?? undefined), result => {
+        void after(this.dialogs.editCard(this.parent, { text: card.text, notes: card.notes }, undefined, this.listNotes ?? undefined, this.schema()), result => {
             // The board can change while the dialog is open; the same card is found again through its position.
             if (result?.text && this.board.columns[column]?.cards[index]?.text === card.text)
                 this.commit(updateCard(this.board, { column, index }, { text: result.text, notes: result.notes }));

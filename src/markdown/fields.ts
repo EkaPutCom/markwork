@@ -301,3 +301,42 @@ export function setField(text: string, def: FieldDef, raw: string): string {
     const parsed = parseValue(def, raw);
     return parsed.ok ? writeField(text, def, parsed.value) : text;
 }
+
+// ---------- Showing and editing fields ----------
+
+// The text a field has in `text` for an edit control: its normal form if it is valid, what was written if
+// not, empty if absent.
+export function fieldInputText(text: string, def: FieldDef): string {
+    const parsed = readItem(text, [def]).fields[def.key];
+    if (!parsed) return '';
+    return parsed.ok ? formatValue(def, parsed.value) : parsed.raw;
+}
+
+// One small label for a field on a card or row.
+export interface FieldChip {
+    key: string;
+    text: string;
+    type: FieldType | null;     // null = a key that is not in the schema
+    option: number | null;      // select: the index of the chosen option, for its color
+    invalid: string | null;     // why the value does not fit its field
+}
+
+function displayValue(def: FieldDef, value: Value): string {
+    return [value].flat().map(v => formatScalar(def, v).replace(/^\[\[(.+)\]\]$/, '$1')).join(', ');
+}
+
+// The chips to show for the fields of `item`, in schema order, then unknown keys. `skip` lists fields that
+// are shown some other way (a due date, an assigned agent).
+export function fieldChips(item: Item, schema: FieldDef[], skip: readonly string[] = []): FieldChip[] {
+    const chips: FieldChip[] = [];
+    for (const def of schema) {
+        const parsed = item.fields[def.key];
+        if (!parsed || skip.includes(def.key)) continue;
+        if (!parsed.ok) { chips.push({ key: def.key, text: `${def.key}: ${parsed.raw}`, type: def.type, option: null, invalid: parsed.error }); continue; }
+        const text = displayValue(def, parsed.value);
+        const option = def.type === 'select' && !def.multiple ? def.options.indexOf(text) : -1;
+        chips.push({ key: def.key, text: def.type === 'select' ? text : `${def.key}: ${text}`, type: def.type, option: option >= 0 ? option : null, invalid: null });
+    }
+    for (const u of item.unknown) if (!skip.includes(u.key)) chips.push({ key: u.key, text: `${u.key}: ${u.raw}`, type: null, option: null, invalid: null });
+    return chips;
+}

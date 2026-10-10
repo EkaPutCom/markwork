@@ -1,6 +1,6 @@
 // Typed field tests (markdown/fields.ts).
 
-import { addOption, findSegments, formatValue, nearestOption, parseSchema, parseValue, readItem, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
+import { addOption, fieldChips, fieldInputText, findSegments, formatValue, nearestOption, parseSchema, parseValue, readItem, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
 import { section, test, eq, ok } from '../framework.js';
 
 const DOC = [
@@ -100,6 +100,19 @@ export function fieldsModelTests(): void {
         eq(setField(text, def('due'), '  '), 'A [pemilik:: Eka]');
         eq(setField(text, def('due'), 'besok'), text, 'invalid');
         eq(setField('A', def('prioritas'), 'TINGGI'), 'A [prioritas:: tinggi]', 'select is written in its canonical case');
+    });
+
+    test('fieldInputText: normal form when valid, the written text when not, empty when absent', () => {
+        eq(['A [prioritas:: TINGGI]', 'A [due:: besok]', 'A [due:: 2026-10-24 9:05]', 'A', 'A [pemilik:: Eka, Rina]'].map((t, i) => fieldInputText(t, [def('prioritas'), def('due'), def('due'), def('due'), def('pemilik')][i])),
+            ['tinggi', 'besok', '2026-10-24 09:05', '', 'Eka, Rina']);
+    });
+
+    test('fieldChips: schema order, select by option position, invalid marked, unknown last, skipped keys left out', () => {
+        const item = readItem('A [progres:: 3/5] [prioritas:: sedang] [due:: besok] [foo:: bar] [terkait:: [[Skema]]]', SCHEMA);
+        eq(fieldChips(item, SCHEMA, ['agent']).map(c => [c.text, c.option, c.invalid !== null]),
+            [['sedang', 1, false], ['due: besok', null, true], ['progres: 3/5', null, false], ['terkait: Skema', null, false], ['foo: bar', null, false]]);
+        eq(fieldChips(item, SCHEMA, ['due', 'foo']).map(c => c.key), ['prioritas', 'progres', 'terkait']);
+        eq(fieldChips(readItem('A [prioritas:: urgent]', SCHEMA), SCHEMA)[0].invalid, 'not one of: tinggi, sedang, rendah');
     });
 
     test('addOption adds an option to the frontmatter line and nothing else', () => {

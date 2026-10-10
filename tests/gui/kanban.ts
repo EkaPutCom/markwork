@@ -47,6 +47,19 @@ export function kanbanBoardTests(c: GuiContext): void {
     };
     const openBoard = () => { GLib.file_set_contents(board, BOARD); w.load(board); settleK(); };
 
+    test('fields declared in the frontmatter are shown as chips; a value that does not fit is marked and its text is unchanged', () => {
+        const text = '---\nkanban: true\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Parser [prioritas:: sedang] [progres:: 3/5] [due:: 2026-10-20]\n- [ ] Broken [prioritas:: urgent] [owner:: Eka]\n';
+        GLib.file_set_contents(board, text); w.load(board); settleK();
+        const chips = (idx: number) => kbDescendants(kb.columns[0].cards[idx]).filter((x): x is Gtk.Label => x instanceof Gtk.Label && x.has_css_class('kanban-chip'));
+        eq(chips(0).slice(0, 2).map(c => c.label), ['sedang', 'progres: 3/5'], 'select value, then progress; the due badge follows');
+        ok(chips(0).at(-1)!.has_css_class('kanban-due'), 'the due badge is still its own chip');
+        ok(chips(0)[0].has_css_class('kanban-tag-1'), 'a select option takes the color of its position');
+        eq(chips(1).map(c => [c.label, c.has_css_class('kanban-field-invalid')]), [['prioritas: urgent', true], ['owner: Eka', false]]);
+        ok(chips(1)[0].get_tooltip_text()?.includes('not one of: tinggi, sedang, rendah'), 'the reason is in the tooltip');
+        eq(kb.getBoard().columns[0].cards[1].text, 'Broken [prioritas:: urgent] [owner:: Eka]', 'the text of the card is unchanged');
+        openBoard();
+    });
+
     test('a kanban document opens as a board, a plain document as text', () => {
         openBoard();
         ok(w.boardMode, 'the board is not shown');

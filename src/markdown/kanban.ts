@@ -26,7 +26,7 @@
 // Pure TypeScript without GTK. All operations return a new board; the original board
 // is not changed, so it is easy to test.
 
-import { findSegments, formatValue, readItem, setField, writeField, type DateValue, type FieldDef } from './fields.js';
+import { fieldChips, fieldInputText, findSegments, parseSchema, readItem, setField, writeField, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 
 export interface Card {
     done: boolean | null;   // null = plain item without a checkbox ("- text")
@@ -259,11 +259,15 @@ export interface CardParts {
 
 export const DUE_INPUT = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2})?$/;
 
-// The text a field has in `text`: its normal form if it is valid, what was written if not, empty if absent.
-function fieldText(text: string, def: FieldDef): string {
-    const parsed = readItem(text, CARD_SCHEMA).fields[def.key];
-    if (!parsed) return '';
-    return parsed.ok ? formatValue(def, parsed.value) : parsed.raw;
+// The fields every card understands plus those the board declares in its frontmatter `fields:` block.
+export function boardSchema(board: Board): FieldDef[] {
+    const declared = parseSchema(board.head.join('\n')).fields;
+    return [...CARD_SCHEMA, ...declared.filter(f => !CARD_SCHEMA.some(c => c.key === f.key))];
+}
+
+// The chips for a card's fields other than due and agent, which have their own badges.
+export function cardFields(text: string, schema: FieldDef[]): FieldChip[] {
+    return fieldChips(readItem(text, schema), schema, CARD_SCHEMA.map(f => f.key));
 }
 
 // Replace the due date part with `date` (YYYY-MM-DD) from the date picker; a time already typed is kept.
@@ -273,7 +277,7 @@ export function withDueDate(due: string, date: string): string {
 }
 
 export function splitCard(text: string): CardParts {
-    return { title: cardMeta(text).title, tags: cardMeta(text).tags, due: fieldText(text, DUE_FIELD), agent: fieldText(text, AGENT_FIELD) };
+    return { title: cardMeta(text).title, tags: cardMeta(text).tags, due: fieldInputText(text, DUE_FIELD), agent: fieldInputText(text, AGENT_FIELD) };
 }
 
 // Put the parts back into card text. Fields that are not due or agent are taken over from `old`, so
