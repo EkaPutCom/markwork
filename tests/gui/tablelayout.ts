@@ -102,6 +102,11 @@ export function tableLayoutGuiTests(c: GuiContext): void {
         eq(items()[0], 'Zulu [status:: todo]', 'at the top, with the default status');
         ok(titles()[0] === 'Zulu' || titles().includes('Zulu'), 'shown');
         const remove = buttonIn(cell(5, 1));
+        let yes = false;
+        w.table.dialogs = { ...w.table.dialogs, confirm: () => yes };
+        remove.emit('clicked'); settle();
+        eq(items().length, 5, 'declined: nothing is deleted');
+        yes = true;
         remove.emit('clicked'); settle();
         eq(items().length, 4, 'deleted');
         c.action('undo'); c.action('undo'); settle();

@@ -21,10 +21,10 @@ import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import { ageOf, captureItem, itemFields, itemMeta, newList, type Age } from '../markdown/inbox.js';
 import { addColumn, boardSchema, deleteCard, deleteColumn, deleteColumnKeepCards, dropSpot, moveCard, moveColumn, placeMove, renameColumn, setCardField, updateCard, withFieldOption, type Board, type DropRow, type DropSpot, type Position } from '../markdown/kanban.js';
-import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
+import { fieldInputText, readItem, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
-import { deleteSectionDialog, editNoteDialog, promptDialog, type CardDraft } from './dialogs.js';
+import { confirmDialog, deleteSectionDialog, editNoteDialog, promptDialog, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
 import { after, onChipClick, onClick, removeChildren, type Awaitable } from '../gtkutil.js';
 import { popupMenu, separator, type MenuEntry } from './menu.js';
@@ -49,6 +49,7 @@ export interface InboxDialogs {
     editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
     prompt(parent: Gtk.Window | null, options: { title: string; label: string; value?: string }): Awaitable<string | null>;
     deleteSection(parent: Gtk.Window | null, title: string, count: number): Awaitable<'keep' | 'delete' | null>;
+    confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
 }
 
 // A row of the list: a note, or the title of a section (the group at `section`).
@@ -57,7 +58,7 @@ type ListRow = { note: Position } | { section: number };
 export class InboxView {
     readonly widget: Gtk.ScrolledWindow;
     onChange: (board: Board) => void = () => {};
-    dialogs: InboxDialogs = { editNote: editNoteDialog, prompt: promptDialog, deleteSection: deleteSectionDialog };
+    dialogs: InboxDialogs = { editNote: editNoteDialog, prompt: promptDialog, deleteSection: deleteSectionDialog, confirm: confirmDialog };
     now: () => Date = () => new Date();
     onOpenNote: (link: WikiLink) => void = () => {};
     listNotes: (() => string[]) | null = null;
@@ -255,7 +256,7 @@ export class InboxView {
         remove.add_css_class('flat');
         remove.add_css_class('circular');
         remove.update_property([Gtk.AccessibleProperty.LABEL], [fmt(_('Delete note: {title}'), { title: meta.title })]);
-        remove.connect('clicked', () => this.commit(deleteCard(this.board, at)));
+        remove.connect('clicked', () => this.deleteNoteConfirm(at));
         box.append(remove);
 
         this.attachDrag(box, at);
@@ -377,7 +378,7 @@ export class InboxView {
             { label: _('Move Up'), enabled: at.index > 0, run: () => this.commit(moveCard(this.board, at, { column: at.column, index: at.index - 1 })) },
             { label: _('Move Down'), enabled: at.index < (column?.cards.length ?? 0) - 1, run: () => this.commit(moveCard(this.board, at, { column: at.column, index: at.index + 1 })) },
             separator(),
-            { label: _('Delete'), run: () => this.commit(deleteCard(this.board, at)) },
+            { label: _('Delete'), run: () => this.deleteNoteConfirm(at) },
         ];
     }
 
@@ -427,6 +428,15 @@ export class InboxView {
         void after(this.dialogs.deleteSection(this.parent, section.title, section.cards.length), choice => {
             if (!choice || this.board.columns[column]?.title !== section.title) return;
             this.commit(choice === 'keep' ? deleteColumnKeepCards(this.board, column) : deleteColumn(this.board, column));
+        });
+    }
+
+    deleteNoteConfirm(at: Position): void {
+        const card = this.cardAt(at);
+        if (!card) return;
+        const title = readItem(card.text, this.schema()).title;
+        void after(this.dialogs.confirm(this.parent, fmt(_('Delete the note “{title}”?'), { title }), undefined), yes => {
+            if (yes && this.cardAt(at)?.text === card.text) this.commit(deleteCard(this.board, at));
         });
     }
 

@@ -6,15 +6,15 @@ import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk?version=4.0';
-import { boardSchema, updateCard, type Board, type Position } from '../markdown/kanban.js';
+import { boardSchema, deleteCard, updateCard, type Board, type Position } from '../markdown/kanban.js';
 import { captureItem } from '../markdown/inbox.js';
 import { readItem, type FieldDef } from '../markdown/fields.js';
 import type { WikiLink } from '../markdown/wikilink.js';
 import type { Palette } from '../colors.js';
 import type { MarkupColors } from '../markdown/pango.js';
-import { editNoteDialog, type CardDraft } from './dialogs.js';
+import { confirmDialog, editNoteDialog, type CardDraft } from './dialogs.js';
 import { after, type Awaitable } from '../gtkutil.js';
-import { _ } from '../i18n.js';
+import { _, fmt } from '../i18n.js';
 
 // What the window needs from a view of a document: the model in, the changes out.
 export interface StructuredView {
@@ -30,6 +30,7 @@ export interface StructuredView {
 
 export interface NoteDialogs {
     editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
+    confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
 }
 
 // A date "YYYY-MM-DD" in the format of GLib.DateTime ("%B %Y", "%a", "%e %b").
@@ -41,7 +42,7 @@ export function formatDate(date: string, pattern: string): string {
 export abstract class LayoutView implements StructuredView {
     abstract readonly widget: Gtk.Widget;
     onChange: (board: Board) => void = () => {};
-    dialogs: NoteDialogs = { editNote: editNoteDialog };
+    dialogs: NoteDialogs = { editNote: editNoteDialog, confirm: confirmDialog };
     now: () => Date = () => new Date();
     today: () => string = () => GLib.DateTime.new_now_local().format('%Y-%m-%d') ?? '';
     onOpenNote: (link: WikiLink) => void = () => {};
@@ -73,6 +74,16 @@ export abstract class LayoutView implements StructuredView {
         this.board = board;
         this.schemaKey = null;
         this.render();
+    }
+
+    // Ask before a note is deleted; the note is deleted only if it is still the same one after the answer.
+    protected deleteNoteConfirm(at: Position): void {
+        const card = this.board.columns[at.column]?.cards[at.index];
+        if (!card) return;
+        const title = readItem(card.text, this.schema()).title;
+        void after(this.dialogs.confirm(this.parent, fmt(_('Delete the note “{title}”?'), { title }), undefined), yes => {
+            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.commit(deleteCard(this.board, at));
+        });
     }
 
     // The head (frontmatter and title) is different: forget what the view chose by itself (a zoom, a month).

@@ -223,8 +223,14 @@ export function kanbanBoardTests(c: GuiContext): void {
         eq([kb.cardTexts(0).length, kb.cardTexts(2).at(-1)], [1, 'Send invitations'], 'moved to the end of the target list');
         kbMenu(kb.cardMenu(2, 2), 'Mark Done').activate(); settleK();
         eq(kb.getBoard().columns[2].cards[2].done, true, 'mark done');
+        let yes = false;
+        const asked = stubDialogs({ confirm: () => yes });
+        kbMenu(kb.cardMenu(2, 2), 'Delete').activate(); settleK();
+        eq(kb.cardTexts(2).length, 3, 'declined: nothing is deleted');
+        yes = true;
         kbMenu(kb.cardMenu(2, 2), 'Delete').activate(); settleK();
         eq(kb.cardTexts(2).length, 2, 'delete');
+        void asked;
     });
     test('list menu: rename, move, delete with confirmation', () => {
         openBoard();

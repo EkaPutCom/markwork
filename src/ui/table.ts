@@ -20,7 +20,7 @@ import { displayValue, fieldInputText, readItem, type FieldDef, type Parsed } fr
 import { newTable, nextSort, sortSpec, SECTION_COLUMN, TITLE_COLUMN, tableColumns, tableRows, type SortSpec, type TableRow } from '../markdown/tablelayout.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
-import { editNoteDialog, type CardDraft } from './dialogs.js';
+import { confirmDialog, editNoteDialog, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
 import { after, onChipClick, removeChildren, type Awaitable } from '../gtkutil.js';
 import { FieldPopover } from './fieldpopover.js';
@@ -28,12 +28,13 @@ import { _, fmt } from '../i18n.js';
 
 export interface TableDialogs {
     editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
+    confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
 }
 
 export class TableView {
     readonly widget: Gtk.ScrolledWindow;
     onChange: (board: Board) => void = () => {};
-    dialogs: TableDialogs = { editNote: editNoteDialog };
+    dialogs: TableDialogs = { editNote: editNoteDialog, confirm: confirmDialog };
     now: () => Date = () => new Date();
     today: () => string = () => GLib.DateTime.new_now_local().format('%Y-%m-%d') ?? '';
     onOpenNote: (link: WikiLink) => void = () => {};
@@ -237,12 +238,21 @@ export class TableView {
         return box;
     }
 
+    private deleteNoteConfirm(at: Position): void {
+        const card = this.board.columns[at.column]?.cards[at.index];
+        if (!card) return;
+        const title = readItem(card.text, this.schema()).title;
+        void after(this.dialogs.confirm(this.parent, fmt(_('Delete the note “{title}”?'), { title }), undefined), yes => {
+            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.commit(deleteCard(this.board, at));
+        });
+    }
+
     private deleteCell(row: TableRow): Gtk.Widget {
         const remove = new Gtk.Button({ icon_name: 'window-close-symbolic', valign: Gtk.Align.CENTER, tooltip_text: _('Delete row') });
         remove.add_css_class('flat');
         remove.add_css_class('circular');
         remove.update_property([Gtk.AccessibleProperty.LABEL], [fmt(_('Delete row: {title}'), { title: readItem(row.card.text, this.schema()).title })]);
-        remove.connect('clicked', () => this.commit(deleteCard(this.board, row.at)));
+        remove.connect('clicked', () => this.deleteNoteConfirm(row.at));
         return this.boxed(remove);
     }
 

@@ -65,6 +65,12 @@ export function inboxTests(c: GuiContext): void {
     });
     test('the delete button removes the item; undo restores it', () => {
         open();
+        let yes = false;
+        w.inbox.dialogs = { ...w.inbox.dialogs, confirm: () => yes };
+        removeButton(1).emit('clicked');
+        settle();
+        eq(rows().length, 3, 'declined: nothing is deleted');
+        yes = true;
         removeButton(1).emit('clicked');
         settle();
         eq(rows().length, 2, 'rows after deleting');
@@ -221,6 +227,13 @@ export function inboxTests(c: GuiContext): void {
         eq([entry(1, 0, 'Move Up').enabled, entry(1, 0, 'Move Down').enabled, entry(1, 1, 'Move Up').enabled, entry(1, 1, 'Move Down').enabled], [false, true, true, false]);
         entry(1, 0, 'Move Down').run!(); settle();
         eq(groups()[0], ['Now', ['two', 'one']], 'moved down within the section');
+        const asked: string[] = [];
+        let yes = false;
+        w.inbox.dialogs = { ...w.inbox.dialogs, confirm: (_p, m) => { asked.push(m); return yes; } };
+        entry(1, 0, 'Delete').run!(); settle();
+        eq(groups()[0], ['Now', ['two', 'one']], 'declined: nothing is deleted');
+        eq(asked, ['Delete the note “two”?'], 'asks first');
+        yes = true;
         entry(1, 0, 'Delete').run!(); settle();
         eq(groups()[0], ['Now', ['one']], 'deleted');
         c.action('undo'); c.action('undo'); c.action('undo'); settle();
