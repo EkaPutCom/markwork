@@ -1,5 +1,5 @@
 ---
-layout: board
+layout: table
 fields:
   priority: select(high:red, medium:amber, low:gray)
   progress: progress

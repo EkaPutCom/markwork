@@ -13,7 +13,6 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import { CARD_WIDTH, GALLERY_SIZES, galleryCards, gallerySize, type GalleryCard, type GallerySize } from '../markdown/gallery.js';
-import { deleteCard } from '../markdown/kanban.js';
 import { displayValue, readItem } from '../markdown/fields.js';
 import { onChipClick, removeChildren } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
@@ -101,7 +100,7 @@ export class GalleryView extends LayoutView {
         remove.add_css_class('circular');
         remove.add_css_class('osd');
         remove.update_property([Gtk.AccessibleProperty.LABEL], [fmt(_('Delete note: {title}'), { title: card.title })]);
-        remove.connect('clicked', () => this.commit(deleteCard(this.board, card.at)));
+        remove.connect('clicked', () => this.deleteNoteConfirm(card.at));
         cover.add_overlay(remove);
         box.append(cover);
 

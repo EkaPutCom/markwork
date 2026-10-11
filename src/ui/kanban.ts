@@ -24,7 +24,7 @@ import {
     addCard, addColumn, boardSchema, cardFields, cardMeta, setCardField, withFieldOption, DUE_FIELD, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
     newBoard, renameColumn, toggleDone, updateCard, type Board, type Card, type Position,
 } from '../markdown/kanban.js';
-import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
+import { fieldInputText, readItem, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { FieldPopover } from './fieldpopover.js';
 import { cellMarkup, escapeMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
@@ -481,6 +481,15 @@ export class KanbanBoard {
         });
     }
 
+    deleteCardConfirm(at: Position): void {
+        const card = this.board.columns[at.column]?.cards[at.index];
+        if (!card) return;
+        const title = readItem(card.text, boardSchema(this.board)).title;
+        void after(this.dialogs.confirm(this.parent, fmt(_('Delete the card “{title}”?'), { title }), undefined), yes => {
+            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.commit(deleteCard(this.board, at));
+        });
+    }
+
     deleteColumnConfirm(column: number): void {
         const col = this.board.columns[column];
         if (!col) return;
@@ -508,7 +517,7 @@ export class KanbanBoard {
             { label: _('Move Down'), enabled: index < col.cards.length - 1, run: () => this.commit(moveCard(this.board, at, { column, index: index + 1 })) },
             ...(this.harness && this.agentsEnabled ? [separator(), ...this.harness.menu(card, at)] : []),
             separator(),
-            { label: _('Delete'), run: () => this.commit(deleteCard(this.board, at)) },
+            { label: _('Delete'), run: () => this.deleteCardConfirm(at) },
         ];
     }
 
