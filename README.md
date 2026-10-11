@@ -1,12 +1,12 @@
 # Markwork
 
-Markwork is a **personal workbench for humans and AI agents** on the Linux desktop: a personal workspace where you and an AI agent work on notes, documents, research, plans, and tasks with the same context. The agent does not stop at an answer: it browses your files, then proposes real actions (creating a file, changing text, moving a task card) as a diff that you review and approve first. Its foundation is a Markdown editor with a live formatted view, a kanban board, and Git history. Built with **GTK 4**, **GtkSourceView 5**, and **GJS** (JavaScript for GNOME). The code is written in **TypeScript** and bundled with **Vite**.
+Markwork is a **Markdown workspace for humans and AI agents** on the Linux desktop: a personal workspace where you and an AI agent work on notes, documents, research, plans, and tasks with the same context. The agent does not stop at an answer: it browses your files, then proposes real actions (creating a file, changing text, moving a task card) as a diff that you review and approve first. Its foundation is a Markdown editor with a live formatted view, a kanban board, and Git history. Built with **GTK 4**, **GtkSourceView 5**, and **GJS** (JavaScript for GNOME). The code is written in **TypeScript** and bundled with **Vite**.
 
 There is no separate preview panel: the text is shown formatted right away. Markdown syntax such as `#`, `**`, `` ` `` and `[](url)` is hidden, and appears again when the cursor is on that line.
 
 Its landing page is in [`docs/`](docs/index.html) and only shows the agent features; the complete feature documentation per topic is in [`docs/docs/`](docs/docs/index.html) (static HTML; enable GitHub Pages from the `/docs` folder of the `main` branch to publish it). The screenshots are made by [`scripts/capture.ts`](scripts/capture.ts).
 
-## Goal: personal workbench for humans and AI agents
+## Goal: Markdown workspace for humans and AI agents
 
 The goal of Markwork is to be a personal workspace where the user and an AI agent work with the same context: notes, documents, research, decisions, plans, and tasks in one work folder. The agent helps to understand information, make plans, and finish work with results that the user can check. Writing remains one of the main workflows. The principles of its development:
 

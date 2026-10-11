@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Markwork
-GenericName=Personal Workbench
+GenericName=Markdown Workspace
 Comment=Notes, documents, research, and plans together with AI agents
 Exec=markwork %F
 Icon=com.ekaput.Markwork

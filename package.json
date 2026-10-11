@@ -1,7 +1,7 @@
 {
   "name": "markwork",
   "version": "1.0.0",
-  "description": "Personal workbench for humans and AI agents, with GTK 4 and GJS",
+  "description": "Markdown workspace for humans and AI agents, with GTK 4 and GJS",
   "private": true,
   "type": "module",
   "license": "MIT",
