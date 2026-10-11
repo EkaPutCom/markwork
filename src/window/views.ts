@@ -23,9 +23,9 @@ import type { StructuredView } from '../ui/structured.js';
 import type { HomeView } from '../ui/home.js';
 import type { StatusBar } from '../ui/statusbar.js';
 import type { FindBar } from '../ui/findbar.js';
-import { _ } from '../i18n.js';
+import { _, fmt } from '../i18n.js';
 import { missingField, withField } from '../markdown/layouthint.js';
-import type { HeaderBar } from '../ui/headerbar.js';
+import { LAYOUT_CHOICES, type HeaderBar } from '../ui/headerbar.js';
 import { errorMessage, type Doc, type DocumentHost } from './doc.js';
 import type { HomeController } from './home.js';
 import type { JournalController } from './journal.js';
@@ -44,11 +44,6 @@ export type LayoutPage = 'calendar' | 'timeline' | 'gallery' | 'chart';
 export type View = 'board' | 'inbox' | 'table' | LayoutPage | 'home' | 'text';
 
 // The page that shows each layout.
-const LAYOUT_LABEL: Record<Layout, () => string> = {
-    board: () => _('Board'), list: () => _('List'), table: () => _('Table'), calendar: () => _('Calendar'),
-    timeline: () => _('Timeline'), gallery: () => _('Gallery'), chart: () => _('Chart'),
-};
-
 const PAGE_OF: Record<Layout, View> = { board: 'board', list: 'inbox', table: 'table', calendar: 'calendar', timeline: 'timeline', gallery: 'gallery', chart: 'chart' };
 const STRUCTURED_PAGES: readonly View[] = Object.values(PAGE_OF);
 const isStructuredPage = (name: string | null): name is Exclude<View, 'home' | 'text'> => STRUCTURED_PAGES.includes(name as View);
@@ -160,7 +155,8 @@ export class ViewController {
         const layout = view === 'home' || view === 'text' ? null : layoutOf(this.host.active().editor.getText());
         const action = this.host.app.lookup_action('layout');
         if (action instanceof Gio.SimpleAction) action.set_state(GLib.Variant.new_string(layout ?? ''));
-        this.host.header.setLayoutLabel(view === 'home' ? null : layout ? LAYOUT_LABEL[layout]() : _('Text'));
+        const choice = LAYOUT_CHOICES.find(c => c.target === (layout ?? ''))!;
+        this.host.header.setLayoutButton(view === 'home' ? null : { label: choice.label(), icon: choice.icon });
     }
 
     // The layout menu: write the layout into the frontmatter (one undo step) and show the document as that layout.
@@ -186,7 +182,7 @@ export class ViewController {
             ? _('This layout places notes by a date field, and the document has none')
             : _('This layout groups notes by a select field, and the document has none');
         this.host.toast(message, {
-            label: _('Add “%s”').format(def.key),
+            label: fmt(_('Add “{field}”'), { field: def.key }),
             run: () => {
                 if (!this.host.docs().includes(doc)) return;
                 const next = withField(parseBoard(doc.editor.getText()), def);

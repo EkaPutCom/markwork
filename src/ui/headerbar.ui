@@ -1,51 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <menu id="layoutMenu">
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">Table</attribute>
-        <attribute name="action">app.layout</attribute>
-        <attribute name="target" type="s">'table'</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Board</attribute>
-        <attribute name="action">app.layout</attribute>
-        <attribute name="target" type="s">'board'</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">List</attribute>
-        <attribute name="action">app.layout</attribute>
-        <attribute name="target" type="s">'list'</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Calendar</attribute>
-        <attribute name="action">app.layout</attribute>
-        <attribute name="target" type="s">'calendar'</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Timeline</attribute>
-        <attribute name="action">app.layout</attribute>
-        <attribute name="target" type="s">'timeline'</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Gallery</attribute>
-        <attribute name="action">app.layout</attribute>
-        <attribute name="target" type="s">'gallery'</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Chart</attribute>
-        <attribute name="action">app.layout</attribute>
-        <attribute name="target" type="s">'chart'</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">Text</attribute>
-        <attribute name="action">app.layout</attribute>
-        <attribute name="target" type="s">''</attribute>
-      </item>
-    </section>
-  </menu>
   <menu id="mainMenu">
     <section>
       <item>
@@ -252,8 +206,15 @@
     <child type="end">
       <object class="GtkMenuButton" id="layoutButton">
         <property name="tooltip-text" translatable="yes">Layout</property>
-        <property name="menu-model">layoutMenu</property>
         <property name="visible">False</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="spacing">6</property>
+            <child><object class="GtkImage" id="layoutIcon"/></child>
+            <child><object class="GtkLabel" id="layoutLabel"/></child>
+            <child><object class="GtkImage"><property name="icon-name">pan-down-symbolic</property></object></child>
+          </object>
+        </property>
       </object>
     </child>
     <child type="end">

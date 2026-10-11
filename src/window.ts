@@ -91,6 +91,7 @@ export class MainWindow {
     readonly findBar: FindBar;
     // The last notification text (for tests; the toast itself disappears on its own).
     lastToast = '';
+    lastToastAction: ToastAction | null = null;
     private readonly toasts = new Adw.ToastOverlay();
     readonly statusBar: StatusBar;
     readonly tabBar: TabBar;
@@ -358,6 +359,7 @@ export class MainWindow {
     // A short notification that disappears on its own (Adw.Toast).
     toast(message: string, action?: ToastAction): void {
         this.lastToast = message;
+        this.lastToastAction = action ?? null;
         const toast = new Adw.Toast({ title: message, timeout: action ? 8 : 3 });
         if (action) {
             toast.set_button_label(action.label);
@@ -391,7 +393,7 @@ export class MainWindow {
             active: () => this.doc,
             docs: () => this.docs,
             openInTab: path => this.openInTab(path),
-            toast: message => this.toast(message),
+            toast: (message, action) => this.toast(message, action),
             write: (path, text) => this.documents.write(path, text),
             refreshTree: () => { if (this.fileTree.root) this.fileTree.refresh(this.fileTree.root); },
             refreshHome: () => this.refreshHome(),
@@ -448,7 +450,7 @@ export class MainWindow {
             get settings() { return w.settings; },
             get autosaver() { return w.autosaver; },
             root: () => this.fileTree.root,
-            toast: message => this.toast(message),
+            toast: (message, action) => this.toast(message, action),
             attach: doc => this.attach(doc),
             detach: doc => {
                 this.tabBar.remove(doc.id);
