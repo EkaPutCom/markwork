@@ -61,7 +61,7 @@ export function changeTests(): void {
         const r = plan('create_file', { name: 'tasks/week-1', content: '# Week 1', reason: 'task list' });
         ok(r.ok, "proposal rejected");
         if (r.ok) { eq(r.change.kind, 'create'); eq(r.change.file, 'tasks/week-1.md'); eq(r.change.after, '# Week 1\n'); eq(r.change.before, ''); }
-        for (const name of ['plan.md', 'PLAN', '../outside.md', '/etc/x.md', '.nyerat/x.md', 'a//b.md', 'a\\b.md', '']) {
+        for (const name of ['plan.md', 'PLAN', '../outside.md', '/etc/x.md', '.markwork/x.md', 'a//b.md', 'a\\b.md', '']) {
             ok(!plan('create_file', { name, content: 'x', reason: 'x' }).ok, `accepted: "${name}"`);
         }
         ok(!plan('create_file', { name: 'empty.md', content: '  ', reason: 'x' }).ok, 'empty content accepted');

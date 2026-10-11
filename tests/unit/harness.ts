@@ -63,12 +63,12 @@ export function harnessTests(): void {
         eq(boardProject(parseBoard('---\nlayout: board\n---\n\nproject: outside\n\n## A\n')), null, 'outside the frontmatter is ignored');
     });
 
-    test('the project folder must not be the Nyerat work folder, its contents, or its parent', () => {
-        eq(checkProjectFolder('/home/eka/web', '/home/eka/nyerat'), null);
-        eq(checkProjectFolder('/home/eka/nyerat-other', '/home/eka/nyerat'), null, 'the same name prefix does not mean inside');
-        ok(checkProjectFolder('/home/eka/nyerat', '/home/eka/nyerat/'), 'the work folder itself');
-        ok(checkProjectFolder('/home/eka/nyerat/code', '/home/eka/nyerat'), 'inside the work folder');
-        ok(checkProjectFolder('/home/eka', '/home/eka/nyerat'), 'the parent of the work folder');
+    test('the project folder must not be the Markwork work folder, its contents, or its parent', () => {
+        eq(checkProjectFolder('/home/eka/web', '/home/eka/markwork'), null);
+        eq(checkProjectFolder('/home/eka/markwork-other', '/home/eka/markwork'), null, 'the same name prefix does not mean inside');
+        ok(checkProjectFolder('/home/eka/markwork', '/home/eka/markwork/'), 'the work folder itself');
+        ok(checkProjectFolder('/home/eka/markwork/code', '/home/eka/markwork'), 'inside the work folder');
+        ok(checkProjectFolder('/home/eka', '/home/eka/markwork'), 'the parent of the work folder');
         ok(checkProjectFolder('relative/web', null), 'relative path');
         ok(checkProjectFolder('/', null), 'root');
     });
@@ -103,10 +103,10 @@ export function harnessTests(): void {
             { link: link('Design', 'Color'), file: 'Design.md', text: null },
             { link: link('Long'), file: 'Long.md', text: 'x'.repeat(NOTE_CHARS + 50) },
         ]);
-        contains(p, '## Related notes from Nyerat');
+        contains(p, '## Related notes from Markwork');
         contains(p, '### [[Specification]] — docs/Specification.md');
         contains(p, '````markdown\n# Spec\n\nUse ```js``` in the example.\n````');
-        contains(p, '### [[Missing]]\n\n(not found in the Nyerat work folder)');
+        contains(p, '### [[Missing]]\n\n(not found in the Markwork work folder)');
         contains(p, '(the section "Color" was not found in this file)');
         contains(p, '…(truncated, 50 more characters)');
         ok(p.indexOf('## Related notes') < p.indexOf('Do this task'), 'context before the task boundary');
@@ -189,7 +189,7 @@ export function harnessTests(): void {
         eq(JSON.parse(rpcUiResponse('u1', { confirmed: false })), { type: 'extension_ui_response', id: 'u1', confirmed: false });
         eq(JSON.parse(rpcUiResponse('u2', { cancelled: true })), { type: 'extension_ui_response', id: 'u2', cancelled: true });
         const r = new PiReader(new AgentTrace());
-        eq(r.line(JSON.stringify({ id: 'nyerat-state', type: 'response', command: 'get_state', success: true, data: { sessionId: 's-9' } })), null);
+        eq(r.line(JSON.stringify({ id: 'markwork-state', type: 'response', command: 'get_state', success: true, data: { sessionId: 's-9' } })), null);
         eq(r.session, 's-9');
         eq(r.line(JSON.stringify({ id: 'p', type: 'response', command: 'prompt', success: false, error: 'no such model' })), { type: 'rejected', error: 'no such model' });
         eq(r.line(JSON.stringify({ type: 'agent_settled' })), { type: 'settled' });

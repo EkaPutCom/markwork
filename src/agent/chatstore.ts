@@ -1,4 +1,4 @@
-// Conversation history on disk: one Markdown file per conversation in <manuscript folder>/.nyerat/chats/.
+// Conversation history on disk: one Markdown file per conversation in <manuscript folder>/.markwork/chats/.
 // The file format is in transcript.ts. Dot folders are not read as manuscripts by the assistant
 // (project.ts) and do not show in the Files tree, so history does not get mixed with the manuscript.
 
@@ -17,7 +17,7 @@ export interface ChatSummary {
     turns: number;
 }
 
-export const chatsDir = (root: string): string => GLib.build_filenamev([root, '.nyerat', 'chats']);
+export const chatsDir = (root: string): string => GLib.build_filenamev([root, '.markwork', 'chats']);
 
 // Current local time to record in the file, e.g. 2026-10-04T14:20:00.
 export const nowStamp = (): string => GLib.DateTime.new_now_local().format('%Y-%m-%dT%H:%M:%S') ?? '';
@@ -29,7 +29,7 @@ export function saveChat(root: string, chat: SavedChat, path: string | null): st
     const dir = chatsDir(root);
     GLib.mkdir_with_parents(dir, 0o755);
     // History contains manuscript quotes: do not get committed by accident. Delete this file to allow it.
-    const ignore = GLib.build_filenamev([root, '.nyerat', '.gitignore']);
+    const ignore = GLib.build_filenamev([root, '.markwork', '.gitignore']);
     if (!GLib.file_test(ignore, GLib.FileTest.EXISTS)) writeTextFile(ignore, '*\n');
     let target = path;
     if (!target) {

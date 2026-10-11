@@ -1,4 +1,4 @@
-// Performance tests for Nyerat. Bundled by Vite into dist/bench.js.
+// Performance tests for Markwork. Bundled by Vite into dist/bench.js.
 //
 //   npm run bench                        build, then measure under Xvfb
 //   gjs -m dist/bench.js --no-gui        only the Markdown module (no window)
@@ -340,7 +340,7 @@ async function runGuiBench(app: Adw.Application, n: number): Promise<void> {
         }
     }));
     // Autosave writes the whole document once per typing pause; the keystroke itself only records the time.
-    const saveDir = GLib.dir_make_tmp('nyerat-bench-XXXXXX');
+    const saveDir = GLib.dir_make_tmp('markwork-bench-XXXXXX');
     w.file = GLib.build_filenamev([saveDir, 'dok.md']);
     w.settings.autosave = true;
     report('autosave (write file)', await operation(() => edit(() => buf.insert_at_cursor('x', -1)), async () => {
@@ -374,7 +374,7 @@ async function runGuiBench(app: Adw.Application, n: number): Promise<void> {
 const CHILD = opt('child');
 
 function runGuiInProcess(): void {
-    const app = new Adw.Application({ application_id: 'com.ekaput.Nyerat.Bench', flags: Gio.ApplicationFlags.NON_UNIQUE });
+    const app = new Adw.Application({ application_id: 'com.ekaput.Markwork.Bench', flags: Gio.ApplicationFlags.NON_UNIQUE });
     app.connect('activate', () => {
         app.hold();
         void (async () => {
@@ -396,7 +396,7 @@ function runGuiInProcess(): void {
 // silently dies, so the next size is measured much faster than it really is.
 function runGuiInChildren(): void {
     const script = GLib.filename_from_uri(import.meta.url)[0];
-    const dir = GLib.dir_make_tmp('nyerat-bench-XXXXXX');
+    const dir = GLib.dir_make_tmp('markwork-bench-XXXXXX');
     for (const n of GUI_SIZES) {
         const out = GLib.build_filenamev([dir, `${n}.json`]);
         const argv = ['timeout', '--kill-after=5s', `${TIMEOUT}s`, 'gjs', '-m', script, '--child', `--sizes=${n}`, `--size=${SIZE}`, `--runs=${RUNS}`, `--fixture=${FIXTURE}`, `--save=${out}`];

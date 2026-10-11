@@ -44,7 +44,7 @@ export function tabTests(c: GuiContext): void {
         eq(w.file, ch2, 'active file');
         eq(w.editor.getText().startsWith('# Chapter Two'), true, 'active tab contents');
         eq(ed.getText().startsWith('# Chapter One'), true, 'first tab contents');
-        eq(w.win.get_title(), 'chapter-2.md — Nyerat', 'window title');
+        eq(w.win.get_title(), 'chapter-2.md — Markwork', 'window title');
     });
     test('the outline and the word count follow the active tab', () => {
         eq(w.outline.count, 2, 'chapter 2 headings');

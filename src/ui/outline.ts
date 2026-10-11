@@ -15,7 +15,7 @@ import { _ } from '../i18n.js';
 export class HeadingItem extends GObject.Object {
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratHeadingItem',
+            GTypeName: 'MarkworkHeadingItem',
             Properties: {
                 level: GObject.ParamSpec.int('level', null, null, GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT_ONLY, 1, 6, 1),
                 text: GObject.ParamSpec.string('text', null, null, GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT_ONLY, ''),

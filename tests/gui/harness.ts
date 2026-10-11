@@ -40,7 +40,7 @@ printf '%s\\n' "$*" >> "${dir}/args"
 printf '%s\\n' "$PWD" >> "${dir}/cwd"
 printf 'start %s\\n' "$4" >> "${dir}/order"
 read -r cmd
-echo '{"id":"nyerat-state","type":"response","command":"get_state","success":true,"data":{"sessionId":"test-session"}}'
+echo '{"id":"markwork-state","type":"response","command":"get_state","success":true,"data":{"sessionId":"test-session"}}'
 read -r cmd
 printf '%s' "$cmd" > "${dir}/prompt"
 echo '{"type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}'
@@ -71,8 +71,8 @@ export function harnessTests(c: GuiContext): void {
     section('External harness (board)');
 
     const kb = w.board;
-    const dir = GLib.dir_make_tmp('nyerat-pi-XXXXXX');           // control files of the fake pi
-    const project = GLib.dir_make_tmp('nyerat-shop-XXXXXX');     // the project "repo", outside the work folder
+    const dir = GLib.dir_make_tmp('markwork-pi-XXXXXX');           // control files of the fake pi
+    const project = GLib.dir_make_tmp('markwork-shop-XXXXXX');     // the project "repo", outside the work folder
     const script = GLib.build_filenamev([dir, 'pi']);
     GLib.file_set_contents(script, fakePi(dir));
     GLib.spawn_command_line_sync(`chmod +x ${script}`);
@@ -219,7 +219,7 @@ export function harnessTests(c: GuiContext): void {
         mode('ok');
         open();
         w.settings.projects = {};
-        const other = GLib.dir_make_tmp('nyerat-other-XXXXXX');
+        const other = GLib.dir_make_tmp('markwork-other-XXXXXX');
         // A board without project frontmatter.
         GLib.file_set_contents(board, BOARD.replace('project: shop\n', ''));
         w.load(board);
@@ -259,7 +259,7 @@ export function harnessTests(c: GuiContext): void {
         pump();
     });
 
-    test('pi asks for permission: the card waits, is answered from Nyerat, then pi continues', () => {
+    test('pi asks for permission: the card waits, is answered from Markwork, then pi continues', () => {
         mode('permission');
         w.settings.projects = { shop: project };
         open();
@@ -366,7 +366,7 @@ export function harnessTests(c: GuiContext): void {
         kb.render();
         const widget = kb.columns[0].cards[at('Checkout').index];
         const text = descendants(widget).find(x => x.has_css_class('kanban-card-text')) as Gtk.Label;
-        contains(text.get_label(), '<a href="nyerat-note:Spec%23Colors">');
+        contains(text.get_label(), '<a href="markwork-note:Spec%23Colors">');
         eq(descendants(widget).filter(x => x.has_css_class('kanban-note-link')).map(x => (x as Gtk.Label).get_text()), ['↗ meeting notes', '↗ Missing']);
 
         // --shot-kanban-wiki=<prefix>: a card with [[ ]] links in the light and dark themes (<prefix>-light.png, -dark.png).
@@ -385,7 +385,7 @@ export function harnessTests(c: GuiContext): void {
         kb.dialogs = { ...kb.dialogs, editCard: (_p, card) => { edited.push(card.text); return null; } };
         const { column, index } = at('Checkout');
         kb.onCardPress(column, index, widget, 5, 5);
-        ok(text.emit('activate-link', 'nyerat-note:meeting%20notes'), 'the link was not handled');
+        ok(text.emit('activate-link', 'markwork-note:meeting%20notes'), 'the link was not handled');
         kb.onCardRelease();
         kb.dialogs = { ...kb.dialogs, editCard: savedEdit };
         eq(edited, [], 'the edit dialog opened too');
@@ -397,12 +397,12 @@ export function harnessTests(c: GuiContext): void {
         const wikiRun = () => w.harness.orchestrator.queue.find(board, kb.getBoard().columns[at('Checkout').column].cards[at('Checkout').index].text);
         ok(waitFor(() => wikiRun()?.status === 'done'), `status: ${wikiRun()?.status}`);
         const prompt = JSON.parse(read('prompt')).message as string;
-        contains(prompt, '## Related notes from Nyerat');
+        contains(prompt, '## Related notes from Markwork');
         contains(prompt, '### [[Spec#Colors]] — specs/Spec.md');
         contains(prompt, 'The pay button is green #1a7f37.');
         ok(!prompt.includes('Other secret.'), 'another section was copied too');
         contains(prompt, 'The client asked for dynamic QRIS.');
-        contains(prompt, '### [[Missing]]\n\n(not found in the Nyerat work folder)');
+        contains(prompt, '### [[Missing]]\n\n(not found in the Markwork work folder)');
         contains(wikiRun()!.trace.text(), 'The pay button is green');
     });
 

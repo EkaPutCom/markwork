@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="NyeratFindBar" parent="GtkSearchBar">
+  <template class="MarkworkFindBar" parent="GtkSearchBar">
     <property name="show-close-button">true</property>
     <property name="child">
       <object class="GtkBox">

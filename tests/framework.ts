@@ -16,7 +16,7 @@ export function setRoot(url: string): void {
 
 // Settings and test files are put in a temporary folder, not ~/.config. It is safe to set
 // after the import because settings.ts only reads XDG_CONFIG_HOME when called.
-export const tmp = GLib.dir_make_tmp('nyerat-test-XXXXXX');
+export const tmp = GLib.dir_make_tmp('markwork-test-XXXXXX');
 GLib.setenv('XDG_CONFIG_HOME', tmp, true);
 
 export const errorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e);

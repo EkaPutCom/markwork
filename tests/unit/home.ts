@@ -68,9 +68,9 @@ export function homeModelTests(): void {
     });
     test('splitRecent: one card per folder, the rest go to the list', () => {
         const at = (path: string, time: number) => ({ path, time });
-        const list = [at('/k/delta/a.md', 9), at('/k/delta/b.md', 8), at('/k/nyerat/c.md', 7), at('/k/d.md', 6), at('/k/nyerat/e.md', 5)];
+        const list = [at('/k/delta/a.md', 9), at('/k/delta/b.md', 8), at('/k/markwork/c.md', 7), at('/k/d.md', 6), at('/k/markwork/e.md', 5)];
         const { resume, others } = splitRecent(list, 2, 2);
-        eq(resume.map(r => r.path), ['/k/delta/a.md', '/k/nyerat/c.md']);
+        eq(resume.map(r => r.path), ['/k/delta/a.md', '/k/markwork/c.md']);
         eq(others.map(r => r.path), ['/k/delta/b.md', '/k/d.md']);
     });
     test('dayPart and localDate', () => {

@@ -72,7 +72,7 @@ export function wikiLinkGuiTests(c: GuiContext): void {
         ok(!GLib.file_test(abs('Journal', 'New Note.md'), GLib.FileTest.EXISTS), 'the file was already written');
         backToFirstTab();
     });
-    test('Ctrl+click on a relative Markdown link to an .md file opens in Nyerat', () => {
+    test('Ctrl+click on a relative Markdown link to an .md file opens in Markwork', () => {
         const s = 'see [plan](Plan.md)\n\nx';
         setText(s);
         placeAtEnd();

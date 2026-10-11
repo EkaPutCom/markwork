@@ -1,5 +1,5 @@
 {
-  "name": "nyerat",
+  "name": "markwork",
   "version": "1.0.0",
   "description": "Personal workbench for humans and AI agents, with GTK 4 and GJS",
   "private": true,
@@ -12,7 +12,7 @@
     "watch": "vite build --watch",
     "typecheck": "tsc --noEmit && node scripts/layers.mjs",
     "layers": "node scripts/layers.mjs",
-    "start": "npm run build && gjs -m dist/nyerat.js",
+    "start": "npm run build && gjs -m dist/markwork.js",
     "test": "npm run build && xvfb-run -a -s '-screen 0 1280x800x24' env GDK_BACKEND=x11 LIBGL_ALWAYS_SOFTWARE=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 gjs -m dist/run-tests.js --with-kanban-mouse",
     "test:ui": "npm run build && env GDK_BACKEND=x11 gjs -m dist/run-tests.js --with-kanban-mouse",
     "bench": "npm run build && xvfb-run -a -s '-screen 0 1280x800x24' env GDK_BACKEND=x11 gjs -m dist/bench.js",

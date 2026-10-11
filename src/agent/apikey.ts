@@ -1,5 +1,5 @@
 // API key storage. Order: the DEEPSEEK_API_KEY environment variable, then the system keyring (libsecret),
-// then the file ~/.config/nyerat/deepseek.key (mode 0600) if the keyring is unavailable (e.g. a desktop without gnome-keyring).
+// then the file ~/.config/markwork/deepseek.key (mode 0600) if the keyring is unavailable (e.g. a desktop without gnome-keyring).
 // The key is never written to settings.json.
 
 import GLib from 'gi://GLib';
@@ -15,7 +15,7 @@ export interface KeyStore {
 }
 
 const ATTRIBUTES = { provider: 'deepseek' };
-const keyFile = () => GLib.build_filenamev([GLib.get_user_config_dir(), 'nyerat', 'deepseek.key']);
+const keyFile = () => GLib.build_filenamev([GLib.get_user_config_dir(), 'markwork', 'deepseek.key']);
 
 // libsecret is loaded when needed; a missing typelib or a dead keyring service must not kill the app.
 function removeKeyFile(): void {
@@ -25,7 +25,7 @@ function removeKeyFile(): void {
 async function loadSecret() {
     try {
         const Secret = (await import('gi://Secret')).default;
-        const schema = Secret.Schema.new('com.ekaput.nyerat', Secret.SchemaFlags.NONE, { provider: Secret.SchemaAttributeType.STRING });
+        const schema = Secret.Schema.new('com.ekaput.markwork', Secret.SchemaFlags.NONE, { provider: Secret.SchemaAttributeType.STRING });
         return { Secret, schema };
     } catch (e) {
         return null;
@@ -54,7 +54,7 @@ export const systemKeyStore: KeyStore = {
         const secret = await loadSecret();
         if (secret) {
             try {
-                if (secret.Secret.password_store_sync(secret.schema, ATTRIBUTES, secret.Secret.COLLECTION_DEFAULT, 'Nyerat: DeepSeek API key', key, null)) {
+                if (secret.Secret.password_store_sync(secret.schema, ATTRIBUTES, secret.Secret.COLLECTION_DEFAULT, 'Markwork: DeepSeek API key', key, null)) {
                     removeKeyFile();
                     return 'keyring';
                 }

@@ -392,7 +392,7 @@ export function chatTests(c: GuiContext): void {
         for (const chat of savedFiles()) GLib.unlink(chat.path);
     };
 
-    test('the conversation is saved as Markdown in .nyerat/chats and that folder is not part of Git', () => {
+    test('the conversation is saved as Markdown in .markwork/chats and that folder is not part of Git', () => {
         rmChats();
         panel.reset();
         settle(panel.ask('History question one'));
@@ -405,7 +405,7 @@ export function chatTests(c: GuiContext): void {
         contains(text, '## You\nHistory question one');
         contains(text, '## Assistant\n');
         contains(text, 'model: deepseek-flash');
-        eq(readTextFile(GLib.build_filenamev([book, '.nyerat', '.gitignore'])), '*\n');
+        eq(readTextFile(GLib.build_filenamev([book, '.markwork', '.gitignore'])), '*\n');
     });
 
     test('the next turn appends to the same file', () => {
@@ -416,7 +416,7 @@ export function chatTests(c: GuiContext): void {
 
     test('the history is not read by the assistant as manuscript', () => {
         w.openFolder(book, false);
-        ok(!w.chat.host.files().some(f => f.name.includes('.nyerat')), 'the history entered the manuscript file list');
+        ok(!w.chat.host.files().some(f => f.name.includes('.markwork')), 'the history entered the manuscript file list');
     });
 
     test('New conversation creates a new file; the list contains both, newest first', () => {

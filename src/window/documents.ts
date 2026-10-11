@@ -22,7 +22,7 @@ import type { Autosaver } from './autosave.js';
 export const UNTITLED = _('Untitled');
 export const HOME = _('Home');
 // The marker of the Home tab in the saved tab list (not a file path).
-const HOME_TAB = 'nyerat:home';
+const HOME_TAB = 'markwork:home';
 
 export interface DocumentsHost {
     readonly win: Gtk.Window;

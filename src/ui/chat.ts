@@ -64,7 +64,7 @@ interface Bubble {
 export class ChatPanel extends Gtk.Box implements ChatView {
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratChatPanel',
+            GTypeName: 'MarkworkChatPanel',
             Template: uiTemplate(template),
             Children: [
                 'input', 'sendButton', 'messages', 'scroller', 'contextButton', 'settingsButton', 'historyButton',

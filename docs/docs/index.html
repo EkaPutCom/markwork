@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quick start · Nyerat Documentation</title>
-<meta name="description" content="Install and run Nyerat, a personal workbench for humans and AI agents on the Linux desktop, then start working with an agent in your folder.">
+<title>Quick start · Markwork Documentation</title>
+<meta name="description" content="Install and run Markwork, a personal workbench for humans and AI agents on the Linux desktop, then start working with an agent in your folder.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M9 23V9h3l8 10V9h3v14h-3L12 13v10z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="docs.css">
 </head>
@@ -14,7 +14,7 @@
   <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
   <a class="brand" href="../index.html">
     <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 23V9h3l8 10V9h3v14h-3L12 13v10z" fill="var(--accent-text)"/></svg>
-    Nyerat <span>Docs</span>
+    Markwork <span>Docs</span>
   </a>
   <nav>
     <a href="index.html" aria-current="true">Docs</a>
@@ -28,10 +28,10 @@
 <main class="doc">
 <p class="eyebrow">Getting started</p>
 <h1>Quick start</h1>
-<p class="lead">Nyerat is a personal workbench for humans and AI agents on the Linux desktop. You and the agent work in the same folder: the agent browses your notes, plans, and task boards, then proposes changes that are only written after you approve the diff.</p>
+<p class="lead">Markwork is a personal workbench for humans and AI agents on the Linux desktop. You and the agent work in the same folder: the agent browses your notes, plans, and task boards, then proposes changes that are only written after you approve the diff.</p>
 
 <h2 id="install">Install</h2>
-<p>Nyerat is run by GJS, not Node.js. Node.js is only needed once, to build the code. On Ubuntu or Debian:</p>
+<p>Markwork is run by GJS, not Node.js. Node.js is only needed once, to build the code. On Ubuntu or Debian:</p>
 <pre><span class="c"># required: GJS, GTK 4, libadwaita, and GtkSourceView 5</span>
 sudo apt install gjs gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gtksource-5
 
@@ -45,20 +45,20 @@ sudo apt install gir1.2-webkit-6.0</pre>
 <h2 id="build">Get the code and run it</h2>
 <p>Node.js 20.19+ or 22.12+ is needed for the build.</p>
 <pre>git clone https://github.com/EkaPutCom/nyerat.git
-cd nyerat
+cd markwork
 npm install
 npm start</pre>
 <p>After it is built, the app can be opened directly with a file or a folder:</p>
-<pre>gjs -m dist/nyerat.js ~/notes            <span class="c"># open a work folder</span>
-gjs -m dist/nyerat.js plan.md            <span class="c"># open one file</span></pre>
+<pre>gjs -m dist/markwork.js ~/notes            <span class="c"># open a work folder</span>
+gjs -m dist/markwork.js plan.md            <span class="c"># open one file</span></pre>
 
 <h2 id="app-menu">Install into the application menu (optional)</h2>
-<p><code>npm start</code> runs Nyerat straight from the <code>dist/</code> folder. To make it appear in the application menu with its icon and to open Markdown files from the file manager, install it with Meson after the build:</p>
+<p><code>npm start</code> runs Markwork straight from the <code>dist/</code> folder. To make it appear in the application menu with its icon and to open Markdown files from the file manager, install it with Meson after the build:</p>
 <pre>npm run build
 meson setup _build --prefix=/usr
 sudo meson install -C _build</pre>
 <p>To use the latest libadwaita without depending on the distro version, build it as a Flatpak with the GNOME 50 runtime:</p>
-<pre>flatpak-builder --user --install --force-clean _flatpak build-aux/flatpak/com.ekaput.Nyerat.json</pre>
+<pre>flatpak-builder --user --install --force-clean _flatpak build-aux/flatpak/com.ekaput.Markwork.json</pre>
 <p>Installing through Meson and Flatpak has not been tested yet (see <a href="limitations.html#gnome">Limitations</a>).</p>
 
 <h2 id="api-key">Connect the agent</h2>
@@ -69,11 +69,11 @@ sudo meson install -C _build</pre>
 </ol>
 
 <h2 id="try">Try a first flow</h2>
-<p>Nyerat follows one flow through the day, all in plain Markdown files in your work folder:</p>
+<p>Markwork follows one flow through the day, all in plain Markdown files in your work folder:</p>
 <ol>
 <li><strong>Home.</strong> Start on <a href="home.html">Home</a>: what to continue, today's journal, running agents, due dates, and the unprocessed inbox.</li>
 <li><strong>Inbox.</strong> Capture ideas and quick notes in the <a href="inbox.html">inbox</a>, then turn the worthwhile ones into cards.</li>
-<li><strong>Journal.</strong> Write short notes in the <a href="journal.html">journal</a>; Nyerat adds the day's activity for you.</li>
+<li><strong>Journal.</strong> Write short notes in the <a href="journal.html">journal</a>; Markwork adds the day's activity for you.</li>
 <li><strong>Kanban.</strong> Plan the work on a <a href="kanban.html">board</a>. Due dates show up on Home.</li>
 <li><strong>Agent.</strong> Ask in the Assistant panel, for example “Update the release date and move the release material card to In Progress.” The agent proposes the changes, the review window shows the diff, and you press <em>Apply</em> or <em>Reject</em>.</li>
 </ol>

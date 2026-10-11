@@ -9,13 +9,13 @@ import gettext from 'gettext';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-export const GETTEXT_DOMAIN = 'nyerat';
+export const GETTEXT_DOMAIN = 'markwork';
 
-// Locale folder: installed = <prefix>/share/locale (bundle in <prefix>/share/nyerat), from dist/ =
+// Locale folder: installed = <prefix>/share/locale (bundle in <prefix>/share/markwork), from dist/ =
 // <repo>/locale which usually does not exist, so the source text is shown as is.
 function localeDir(): string {
     let dir = Gio.File.new_for_uri(import.meta.url).get_parent();
-    if (dir && !dir.get_child('nyerat.js').query_exists(null)) dir = dir.get_parent();   // from dist/chunks/
+    if (dir && !dir.get_child('markwork.js').query_exists(null)) dir = dir.get_parent();   // from dist/chunks/
     return GLib.build_filenamev([dir?.get_parent()?.get_path() ?? '.', 'locale']);
 }
 

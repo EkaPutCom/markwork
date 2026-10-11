@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="NyeratCommandPalette" parent="AdwDialog">
+  <template class="MarkworkCommandPalette" parent="AdwDialog">
     <property name="title" translatable="yes">Command Palette</property>
     <property name="content-width">520</property>
     <property name="content-height">420</property>

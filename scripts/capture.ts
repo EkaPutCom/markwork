@@ -27,7 +27,7 @@ import { localDate } from '../src/markdown/home.js';
 // A sample work folder for the Assistant panel screenshots (a fake provider; no network and no API key):
 // a product launch project with a plan, meeting notes, research, and a task board.
 const WORK: Record<string, string> = {
-    'plans/launch.md': '# Nyerat 1.0 Launch Plan\n\n## Goal\n\nRelease Nyerat 1.0 for Linux users, complete with folder syncing.\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n- Evaluation: 30 November\n\n## Budget\n\nTotal $3,000, including the redesign and a test server.\n',
+    'plans/launch.md': '# Markwork 1.0 Launch Plan\n\n## Goal\n\nRelease Markwork 1.0 for Linux users, complete with folder syncing.\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n- Evaluation: 30 November\n\n## Budget\n\nTotal $3,000, including the redesign and a test server.\n',
     'notes/meeting-1-oct.md': '# Weekly meeting, 1 October\n\n## Decisions\n\n- The public release is postponed to **22 November** because the sync testing is not finished.\n- The budget does not change.\n- Sari prepares the release material.\n\n## Follow-up\n\n- [ ] Budi fixes the sync bug\n- [ ] Dewi schedules the beta trial\n',
     'notes/meeting-8-oct.md': '# Weekly meeting, 8 October\n\nThe sync bug is still open. The closed beta stays on 20 October.\n',
     'research/competitors.md': '# Competitor research\n\nThree similar note apps; all of them are paid and closed.\n',
@@ -72,7 +72,7 @@ project: web-ecommerce
 const fakePi = (dir: string) => `#!/bin/sh
 mode=$(cat "${dir}/mode")
 read -r cmd
-echo '{"id":"nyerat-state","type":"response","command":"get_state","success":true,"data":{"sessionId":"7f3c2a91"}}'
+echo '{"id":"markwork-state","type":"response","command":"get_state","success":true,"data":{"sessionId":"7f3c2a91"}}'
 read -r cmd
 echo '{"type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}'
 echo '{"type":"turn_start"}'
@@ -95,7 +95,7 @@ while read -r x; do :; done
 const GIF_WIDTH = 900;   // the original PNG is larger
 const GIF_STEP = 140;    // ms per frame
 const GIF_COLORS = 128;
-const OUT = GLib.getenv('NYERAT_OUT') ?? 'docs/assets';
+const OUT = GLib.getenv('MARKWORK_OUT') ?? 'docs/assets';
 
 const DOC = `# Product Meeting Notes
 
@@ -200,7 +200,7 @@ layout: board
 
 ## Done
 
-- [x] Choose the project name: Nyerat
+- [x] Choose the project name: Markwork
 - [x] Set up the GitHub repository #infra
 `;
 
@@ -576,7 +576,7 @@ class Capture {
     assistant(): void {
         const w = this.w;
         // The folder name is shown in the Files tab and the window title, so give it a sensible name (not a temporary one).
-        this.proj = GLib.build_filenamev([GLib.dir_make_tmp('nyerat-work-XXXXXX'), 'nyerat-launch']);
+        this.proj = GLib.build_filenamev([GLib.dir_make_tmp('markwork-work-XXXXXX'), 'markwork-launch']);
         GLib.mkdir_with_parents(this.proj, 0o755);
         this.plan = GLib.build_filenamev([this.proj, 'plans', 'launch.md']);
         this.openWork();
@@ -648,7 +648,7 @@ class Capture {
     // Git history of a small repo, light and dark, and the commit reading window.
     gitHistory(): void {
         const w = this.w;
-        const repo = this.repo = GLib.dir_make_tmp('nyerat-history-XXXXXX');
+        const repo = this.repo = GLib.dir_make_tmp('markwork-history-XXXXXX');
         const env = [...GLib.get_environ(), 'GIT_CONFIG_GLOBAL=/dev/null', 'GIT_CONFIG_SYSTEM=/dev/null'];
         const git = (...args: string[]) => {
             const [, , err, status] = GLib.spawn_sync(repo, ['git', '-c', 'user.name=Eka Putra', '-c', 'user.email=eka@example.com', ...args], env, GLib.SpawnFlags.SEARCH_PATH, null);
@@ -656,9 +656,9 @@ class Capture {
         };
         const note = this.note = GLib.build_filenamev([repo, 'plan.md']);
         const versions = [
-            ['Create the plan outline', '# Launch Plan\n\n## Goal\n\nRelease Nyerat 1.0.\n'],
-            ['Add a schedule section', '# Launch Plan\n\n## Goal\n\nRelease Nyerat 1.0.\n\n## Schedule\n\n- Closed beta: October\n'],
-            ['Clarify the goal and the dates', '# Launch Plan\n\n## Goal\n\nRelease Nyerat 1.0 for Linux users, complete with folder syncing.\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n'],
+            ['Create the plan outline', '# Launch Plan\n\n## Goal\n\nRelease Markwork 1.0.\n'],
+            ['Add a schedule section', '# Launch Plan\n\n## Goal\n\nRelease Markwork 1.0.\n\n## Schedule\n\n- Closed beta: October\n'],
+            ['Clarify the goal and the dates', '# Launch Plan\n\n## Goal\n\nRelease Markwork 1.0 for Linux users, complete with folder syncing.\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n'],
         ];
         git('init', '-q');
         for (const [msg, text] of versions) {
@@ -856,8 +856,8 @@ class Capture {
     // The orchestrator: cards worked on by pi (a fake RPC, no API).
     orchestrator(): void {
         const w = this.w;
-        const piDir = GLib.dir_make_tmp('nyerat-pi-XXXXXX');
-        const shop = GLib.build_filenamev([GLib.dir_make_tmp('nyerat-repo-XXXXXX'), 'web-ecommerce']);
+        const piDir = GLib.dir_make_tmp('markwork-pi-XXXXXX');
+        const shop = GLib.build_filenamev([GLib.dir_make_tmp('markwork-repo-XXXXXX'), 'web-ecommerce']);
         GLib.mkdir_with_parents(shop, 0o755);
         const piScript = GLib.build_filenamev([piDir, 'pi']);
         GLib.file_set_contents(piScript, fakePi(piDir));
@@ -936,7 +936,7 @@ class Capture {
     dailyFlow(): void {
         const w = this.w;
         const day = (offset: number) => { const d = new Date(); d.setDate(d.getDate() + offset); return localDate(d); };
-        const flowDir = GLib.build_filenamev([GLib.dir_make_tmp('nyerat-flow-XXXXXX'), 'nyerat-launch']);
+        const flowDir = GLib.build_filenamev([GLib.dir_make_tmp('markwork-flow-XXXXXX'), 'markwork-launch']);
         for (const [rel, text] of Object.entries(WORK)) this.put(rel, text, flowDir);
         const flowBoard = this.put('tasks.md', `---\nlayout: board\nproject: launch\n---\n\n## Plan\n\n- [ ] Prepare the release material #marketing [due:: ${day(1)}]\n- [ ] Write the release notes #docs [due:: ${day(2)}]\n\n## In Progress\n\n- [ ] Fix the sync bug #bug #important [due:: ${day(0)}]\n\n## Done\n\n- [x] Redesign the home page #design\n`, flowDir);
         const flowInbox = this.put('inbox.md', `---\nlayout: list\n---\n\n# Inbox\n\nA place to capture ideas, notes, and things to process later.\n\n- Read the article about the GNOME HIG #read [created:: ${day(0)} 08:10]\n- Idea: offer a PDF export #idea [created:: ${day(-1)} 17:45]\n`, flowDir);
@@ -1008,7 +1008,7 @@ class Capture {
     }
 }
 
-const app = new Adw.Application({ application_id: 'com.ekaput.Nyerat.Capture', flags: Gio.ApplicationFlags.NON_UNIQUE });
+const app = new Adw.Application({ application_id: 'com.ekaput.Markwork.Capture', flags: Gio.ApplicationFlags.NON_UNIQUE });
 app.connect('activate', () => {
     app.hold();
     GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {

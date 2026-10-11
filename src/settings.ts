@@ -1,4 +1,4 @@
-// User settings in GSettings (schema: data/com.ekaput.Nyerat.gschema.xml).
+// User settings in GSettings (schema: data/com.ekaput.Markwork.gschema.xml).
 //
 // AppSettings only wraps Gio.Settings with typed properties, so other code still
 // writes `settings.autosave = true`. Every write is saved immediately; there is no save().

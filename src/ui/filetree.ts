@@ -32,7 +32,7 @@ const REFRESH_DELAY = 150;  // ms; consecutive changes on disk are merged into o
 
 // One file or folder in the tree.
 class FileNode extends GObject.Object {
-    static { GObject.registerClass({ GTypeName: 'NyeratFileNode' }, this); }
+    static { GObject.registerClass({ GTypeName: 'MarkworkFileNode' }, this); }
     name = '';
     path = '';
     isDir = false;

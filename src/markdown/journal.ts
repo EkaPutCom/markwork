@@ -17,7 +17,7 @@
 //   ## Summary
 //
 // Activity (cards moved, agent changes, harness results) is recorded throughout the day to a JSONL log in
-// .nyerat/activity, then merged into the Activity section when the journal is opened. Merging only adds lines
+// .markwork/activity, then merged into the Activity section when the journal is opened. Merging only adds lines
 // that are not there yet, so the user's edits in that section are never overwritten.
 //
 // Pure TypeScript without GTK. Section titles are document content, not interface text, so they are not translated.

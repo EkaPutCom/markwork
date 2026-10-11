@@ -11,7 +11,7 @@ import template from './findbar.ui?raw';
 export class FindBar extends Gtk.SearchBar {
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratFindBar',
+            GTypeName: 'MarkworkFindBar',
             Template: uiTemplate(template),
             InternalChildren: ['entry', 'previous', 'next'],
         }, this);

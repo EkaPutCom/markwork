@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learning GTK with Nyerat</title>
-<meta name="description" content="Learning notes on how Nyerat grew from a GTK 3 TextView into a GTK 4 + libadwaita GNOME app: which GTK features each Nyerat feature uses, why, and which code never touches GTK.">
+<title>Learning GTK with Markwork</title>
+<meta name="description" content="Learning notes on how Markwork grew from a GTK 3 TextView into a GTK 4 + libadwaita GNOME app: which GTK features each Markwork feature uses, why, and which code never touches GTK.">
 <style>
 :root {
   color-scheme: light;
@@ -524,10 +524,10 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
 
 <div class="wrap">
 <header class="hero">
-  <div class="eyebrow"><a href="index.html">← Nyerat</a> · Learning notes · October 3–8, 2026</div>
-  <h1>Learning GTK from Nyerat</h1>
-  <p class="lede">Nyerat began as a single <code>GtkSourceView</code> in a GTK 3 window that hid Markdown syntax. Five days later it is a GNOME app on <b>GTK 4 + libadwaita</b> with tabs, panels that fold on narrow windows, dialogs that return a Promise, GSettings, list models, <code>.ui</code> templates, translations, and a Flatpak manifest. This page follows that path commit by commit. For each Nyerat feature it names the GTK pieces it uses and explains why. It also covers the third of the code that <b>never touches GTK</b>, which is why most of the app can be tested without a window.</p>
-  <p class="lede" style="font-size:1rem">Because this page is about <b>building interfaces</b>, every chapter draws the widgets it talks about: Adwaita-style mock-ups you can click, resize, and inspect, with the GTK type of every part named next to it. Start with the <a href="#anatomy">window anatomy</a>, which maps each region of Nyerat's window to the widget that draws it.</p>
+  <div class="eyebrow"><a href="index.html">← Markwork</a> · Learning notes · October 3–8, 2026</div>
+  <h1>Learning GTK from Markwork</h1>
+  <p class="lede">Markwork began as a single <code>GtkSourceView</code> in a GTK 3 window that hid Markdown syntax. Five days later it is a GNOME app on <b>GTK 4 + libadwaita</b> with tabs, panels that fold on narrow windows, dialogs that return a Promise, GSettings, list models, <code>.ui</code> templates, translations, and a Flatpak manifest. This page follows that path commit by commit. For each Markwork feature it names the GTK pieces it uses and explains why. It also covers the third of the code that <b>never touches GTK</b>, which is why most of the app can be tested without a window.</p>
+  <p class="lede" style="font-size:1rem">Because this page is about <b>building interfaces</b>, every chapter draws the widgets it talks about: Adwaita-style mock-ups you can click, resize, and inspect, with the GTK type of every part named next to it. Start with the <a href="#anatomy">window anatomy</a>, which maps each region of Markwork's window to the widget that draws it.</p>
   <div class="kpis">
     <div class="kpi"><div class="what">Lines in files that import GTK/Adw</div><div class="big">11,521</div><div class="from">from 1,235 · 6a0f03d → 1bac3b8</div></div>
     <div class="kpi"><div class="what">Lines without any GTK import</div><div class="big">5,055</div><div class="from">pure TypeScript in <code>markdown/</code>, <code>agent/</code>, …; plus 3,397 lines that use only Gio/GLib</div></div>
@@ -560,7 +560,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
 <section class="chapter" id="journey">
   <div class="chapnum">The big picture</div>
   <h2>The journey: three eras of the same app</h2>
-  <p>Each row is a commit that changed how Nyerat uses GTK. The bar splits the <code>src/</code> lines into three layers: files that import <b>GTK/Adw/GtkSourceView/WebKit</b>, files that import only <b>Gio/GLib</b> (files, processes, settings), and files with <b>no <code>gi://</code> import at all</b>. Hover over a row to see the numbers. The counts come from <code>git show &lt;commit&gt;:&lt;file&gt;</code> for each file, so they are real measurements, not estimates.</p>
+  <p>Each row is a commit that changed how Markwork uses GTK. The bar splits the <code>src/</code> lines into three layers: files that import <b>GTK/Adw/GtkSourceView/WebKit</b>, files that import only <b>Gio/GLib</b> (files, processes, settings), and files with <b>no <code>gi://</code> import at all</b>. Hover over a row to see the numbers. The counts come from <code>git show &lt;commit&gt;:&lt;file&gt;</code> for each file, so they are real measurements, not estimates.</p>
   <div class="legend"><span style="--c:var(--before)">Imports GTK / Adw</span><span style="--c:var(--after)">Only Gio / GLib</span><span style="--c:var(--third)">No GI import (pure)</span></div>
   <svg class="chart" id="chart-layers" viewBox="0 0 900 600" role="img" aria-label="Lines of code per layer for each milestone commit"></svg>
   <ol class="timeline-steps">
@@ -587,7 +587,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">ad0f095</span><span><span class="era">Adw</span><b>Chapter 7</b> · <code>Adw.TabView</code>/<code>TabBar</code> for tabs and <code>Adw.OverlaySplitView</code> for the side panels.</span></li>
     <li><span class="h">1f364e4</span><span><span class="era">Adw</span><b>Chapter 10</b> · Header bar, status bar, find bar, and chat panel move to <code>Gtk.Template</code>.</span></li>
     <li><span class="h">b51c43b</span><span><span class="era">Adw</span><b>Chapter 9</b> · Manual lists replaced by <code>Gio.ListStore</code> + <code>Gtk.ListView</code>; the file tree uses <code>TreeListModel</code>.</span></li>
-    <li><span class="h">1a1a716</span><span><span class="era">Adw</span><b>Chapter 11</b> · App ID <code>com.ekaput.Nyerat</code>, desktop file, metainfo, icons, Meson, Flatpak.</span></li>
+    <li><span class="h">1a1a716</span><span><span class="era">Adw</span><b>Chapter 11</b> · App ID <code>com.ekaput.Markwork</code>, desktop file, metainfo, icons, Meson, Flatpak.</span></li>
     <li><span class="h">9750175</span><span><span class="era">Adw</span><b>Chapters 7, 11</b> · GNOME HIG pass: Promise dialogs, <code>Adw.Breakpoint</code>, shortcuts dialog, Adwaita colors, gettext.</span></li>
     <li><span class="h">b31556d</span><span><span class="era">Adw</span><b>Chapter 7</b> · Agent plan checklist with <code>Adw.Spinner</code> and a <code>Gtk.Spinner</code> fallback.</span></li>
     <li><span class="h">efecb82</span><span><span class="era">Adw</span><b>Chapter 2</b> · Hanging indent for list items: negative <code>indent</code> tags made on demand.</span></li>
@@ -607,7 +607,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
 <section class="chapter" id="layers">
   <div class="chapnum">Before reading the chapters</div>
   <h2>Three layers, one direction</h2>
-  <p>The most important GTK decision in Nyerat is not a widget. It is <b>where GTK is allowed to appear</b>. The rule has held since the first commit: Markdown rules live in <code>src/markdown/</code> and never import GTK; the editor engine reports through callbacks and knows nothing about files or menus; <code>window.ts</code> is the only place that connects the components.</p>
+  <p>The most important GTK decision in Markwork is not a widget. It is <b>where GTK is allowed to appear</b>. The rule has held since the first commit: Markdown rules live in <code>src/markdown/</code> and never import GTK; the editor engine reports through callbacks and knows nothing about files or menus; <code>window.ts</code> is the only place that connects the components.</p>
   <div class="principle">
     <div class="panel"><h4><span class="tag old">GTK</span></h4><p><code>editor/</code>, <code>ui/</code>, <code>window.ts</code>, <code>actions.ts</code>, <code>window/doc.ts</code> (types only). Widgets, text tags, event controllers, dialogs. Tested with a real window on Xvfb (<code>tests/gui/</code>).</p></div>
     <div class="panel"><h4><span class="tag new">Gio / GLib</span></h4><p><code>files.ts</code>, <code>fileops.ts</code>, <code>git.ts</code>, <code>settings.ts</code>, <code>orchestrator.ts</code>, <code>activity.ts</code>, the <code>window/</code> controllers, the network part of <code>agent/</code>. No widgets, but the GLib main loop and its async I/O.</p></div>
@@ -630,7 +630,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
 <section class="chapter" id="anatomy">
   <div class="chapnum">Before reading the chapters · <code>window.ts</code> (the “Layout” block of the constructor), <code>ui/sidebar.ts</code>, <code>ui/headerbar.ui</code></div>
   <h2>Anatomy of the window: every region is a widget</h2>
-  <p>A GTK window is a <b>tree of widgets</b>. Each widget owns a rectangle, and each container decides where its children go. The mock-up below is Nyerat's main window drawn as HTML. The tree on the right is copied from the code that builds it. Hover over (or tap) a region or a line in the tree to see which widget draws which part. The buttons change the window the same way the real actions do.</p>
+  <p>A GTK window is a <b>tree of widgets</b>. Each widget owns a rectangle, and each container decides where its children go. The mock-up below is Markwork's main window drawn as HTML. The tree on the right is copied from the code that builds it. Hover over (or tap) a region or a line in the tree to see which widget draws which part. The buttons change the window the same way the real actions do.</p>
   <div class="ill-bar" id="anat-bar">
     <button type="button" class="ghost" data-act="side" aria-pressed="true">Sidebar</button>
     <button type="button" class="ghost" data-act="chat" aria-pressed="true">Assistant</button>
@@ -645,7 +645,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <button type="button" class="ghost" data-page="home" aria-pressed="false">home</button>
   </div>
   <div class="anat">
-    <div class="mock" id="anat-win" data-n="win" aria-label="Mock-up of the Nyerat main window">
+    <div class="mock" id="anat-win" data-n="win" aria-label="Mock-up of the Markwork main window">
       <div class="m-header" data-n="header">
         <button type="button" class="m-btn on" data-n="hstart" data-act="side" title="app.sidebar"><svg class="ic"><use href="#i-side"/></svg></button>
         <span class="m-btn" data-n="hstart"><svg class="ic"><use href="#i-doc"/></svg></span>
@@ -710,7 +710,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
       <li><span class="nd" data-t="win"><code>Adw.ApplicationWindow</code></span>
         <ul><li><span class="nd" data-t="win"><code>Adw.ToolbarView</code></span>
           <ul>
-            <li><span class="slot">top-bar</span><span class="nd" data-t="header"><code>NyeratHeaderBar</code><small>Adw.Bin → Adw.HeaderBar</small></span>
+            <li><span class="slot">top-bar</span><span class="nd" data-t="header"><code>MarkworkHeaderBar</code><small>Adw.Bin → Adw.HeaderBar</small></span>
               <ul>
                 <li><span class="slot">start</span><span class="nd" data-t="hstart"><code>Gtk.ToggleButton</code>, <code>Gtk.Button</code> ×3</span></li>
                 <li><span class="slot">title</span><span class="nd" data-t="title"><code>Adw.WindowTitle</code></span></li>
@@ -729,9 +729,9 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
                       <li><span class="slot">content</span><span class="nd" data-t="column"><code>Gtk.Box</code><small>vertical</small></span>
                         <ul>
                           <li><span class="nd" data-t="tabbar"><code>Adw.TabBar</code><small>autohide</small></span></li>
-                          <li><span class="nd" data-t="findbar"><code>NyeratFindBar</code><small>template</small></span></li>
+                          <li><span class="nd" data-t="findbar"><code>MarkworkFindBar</code><small>template</small></span></li>
                           <li><span class="nd" data-t="content"><code>Gtk.Stack</code><small>editor · board · inbox · home</small></span></li>
-                          <li><span class="nd" data-t="statusbar"><code>NyeratStatusBar</code><small>template</small></span></li>
+                          <li><span class="nd" data-t="statusbar"><code>MarkworkStatusBar</code><small>template</small></span></li>
                         </ul></li>
                       <li><span class="slot">sidebar</span><span class="nd" data-t="chat"><code>ChatPanel</code><small>template</small></span></li>
                     </ul></li>
@@ -800,7 +800,7 @@ app.connect('activate', () =&gt; {
 <section class="chapter" id="ch2">
   <div class="chapnum">Chapter 2 · commits 6a0f03d, 8e3ce86, 50dd86b, efecb82 · <code>editor/tags.ts</code>, <code>editor/tagsync.ts</code>, <code>editor/offsets.ts</code></div>
   <h2>The editor is one TextBuffer and many TextTags</h2>
-  <p><b>The idea.</b> Nyerat shows formatted Markdown while the file stays plain text. There is no separate preview widget: the <code>GtkSource.Buffer</code> holds the exact file contents, and <b><code>Gtk.TextTag</code>s</b> change how ranges look. A heading gets a tag with <code>scale: 2.0</code>; the <code>##</code> marker gets a tag that makes it almost invisible, except on the line with the cursor.</p>
+  <p><b>The idea.</b> Markwork shows formatted Markdown while the file stays plain text. There is no separate preview widget: the <code>GtkSource.Buffer</code> holds the exact file contents, and <b><code>Gtk.TextTag</code>s</b> change how ranges look. A heading gets a tag with <code>scale: 2.0</code>; the <code>##</code> marker gets a tag that makes it almost invisible, except on the line with the cursor.</p>
   <div class="grid2">
     <div class="panel">
       <h4>Tags as data</h4>
@@ -818,12 +818,12 @@ app.connect('activate', () =&gt; {
     <div class="panel">
       <h4>What GTK features this uses</h4>
       <div class="widgets"><code>GtkSource.Buffer</code><code>GtkSource.View</code><code>Gtk.TextTag</code><code>Gtk.TextIter</code><code>Gtk.TextMark</code><code>Pango.Weight</code><code>GtkSource.SearchContext</code><code>GtkSource.LanguageManager</code><code>GtkSource.StyleSchemeManager</code></div>
-      <p class="note">GtkSourceView adds undo grouping, search with highlighting (find bar), and per-language highlighting that Nyerat reuses for code block contents (<code>editor/codehighlight.ts</code>).</p>
+      <p class="note">GtkSourceView adds undo grouping, search with highlighting (find bar), and per-language highlighting that Markwork reuses for code block contents (<code>editor/codehighlight.ts</code>).</p>
     </div>
   </div>
   <h3>Three things the TextBuffer teaches you</h3>
   <p><b>1. Positions are code points.</b> <code>Gtk.TextIter</code> counts Unicode characters; JavaScript strings count UTF-16 units. An emoji is 1 in GTK and 2 in JS. The Markdown parser works on JS strings, so every offset is converted right before it touches the buffer with <code>makeCpMap()</code>. Try it below.</p>
-  <p><b>2. Hiding text is a layout question.</b> The <code>invisible</code> tag property crashed GTK 3 (“Byte index is off the end of the line”). Nyerat hides markers with a tiny font instead. That size was 1 at first; commit 8e3ce86 raised it to 256 Pango units (<code>TINY</code>) because a 1-unit emoji font fails to draw.</p>
+  <p><b>2. Hiding text is a layout question.</b> The <code>invisible</code> tag property crashed GTK 3 (“Byte index is off the end of the line”). Markwork hides markers with a tiny font instead. That size was 1 at first; commit 8e3ce86 raised it to 256 Pango units (<code>TINY</code>) because a 1-unit emoji font fails to draw.</p>
   <p><b>3. Tags that change size cost a relayout.</b> Removing a tag from the whole buffer and applying it again makes GTK lay out every line again. In a 30 KB document that once cost about 300 ms per keystroke. Commit 50dd86b introduced <code>setTagRanges()</code>: read where the tag is now, compute the difference with where it should be, and touch only that. The second simulation runs this exact code. <a href="learn-performance.html">Learn performance</a> has the measurements.</p>
   <div class="ill">
     <h3>Illustration: one buffer, many tags <span class="kind">what the user sees vs. what GTK holds</span></h3>
@@ -905,7 +905,7 @@ app.connect('activate', () =&gt; {
 <section class="chapter" id="ch4">
   <div class="chapnum">Chapter 4 · commits 6a0f03d, 8e3ce86, 7f32cc8, 9079384, d21cfb0 · <code>editor/overlays.ts</code>, <code>images.ts</code>, <code>tablelayer.ts</code>, <code>codelayer.ts</code>, <code>mermaid.ts</code></div>
   <h2>Widgets above the text without touching the text</h2>
-  <p><b>The need.</b> Images, table grids, diagrams, and scrollable code blocks are widgets, but the document must stay plain Markdown. A <code>GtkTextChildAnchor</code> would put an object character into the buffer and into the undo history, so Nyerat never uses one.</p>
+  <p><b>The need.</b> Images, table grids, diagrams, and scrollable code blocks are widgets, but the document must stay plain Markdown. A <code>GtkTextChildAnchor</code> would put an object character into the buffer and into the undo history, so Markwork never uses one.</p>
   <p><b>The technique.</b> The lines a block covers are shrunk with a hidden tag, empty space is reserved below them with <code>pixels_below_lines</code>, and the widget is placed in that space at buffer coordinates. When the cursor enters the block, the widget hides and the raw text returns for editing.</p>
   <div class="grid2">
     <div class="panel">
@@ -974,7 +974,7 @@ slots.release(slot);           // empty + hide,
 <section class="chapter" id="ch5">
   <div class="chapnum">Chapter 5 · commits fc7592a, c0fb9d4, 5999e22, 295d7b9 · <code>gtkutil.ts</code>, <code>ui/kanban.ts</code>, <code>ui/filetree.ts</code>, <code>ui/imageviewer.ts</code></div>
   <h2>Input: from event signals to controllers</h2>
-  <p>GTK 3 widgets emitted <code>button-press-event</code> and <code>key-press-event</code>. GTK 4 removed those signals; input is handled by <b>event controllers</b> attached to a widget. Nyerat wraps the common cases in <code>gtkutil.ts</code> so every layer writes them the same way:</p>
+  <p>GTK 3 widgets emitted <code>button-press-event</code> and <code>key-press-event</code>. GTK 4 removed those signals; input is handled by <b>event controllers</b> attached to a widget. Markwork wraps the common cases in <code>gtkutil.ts</code> so every layer writes them the same way:</p>
 <pre><code>export function onClick(widget, handler, button = 1): Gtk.GestureClick {
     const gesture = new Gtk.GestureClick({ button });
     gesture.connect('pressed', (g, count, x, y) =&gt; {
@@ -1026,10 +1026,10 @@ slots.release(slot);           // empty + hide,
 <section class="chapter" id="ch6">
   <div class="chapnum">Chapter 6 · commits 295d7b9, 9079384, eda4a32 · <code>docs/audit-gtk4.md</code></div>
   <h2>GTK 3 → GTK 4: what changed in practice</h2>
-  <p>The migration was one commit touching 63 files, followed by an audit that listed the GTK 3 patterns that still worked but were no longer the GTK 4 way. These are the replacements Nyerat made, in the order you are likely to meet them:</p>
+  <p>The migration was one commit touching 63 files, followed by an audit that listed the GTK 3 patterns that still worked but were no longer the GTK 4 way. These are the replacements Markwork made, in the order you are likely to meet them:</p>
   <div class="scroll-x">
   <table class="data cards">
-    <thead><tr><th>GTK 3</th><th>GTK 4 in Nyerat</th><th class="wrap">Where</th></tr></thead>
+    <thead><tr><th>GTK 3</th><th>GTK 4 in Markwork</th><th class="wrap">Where</th></tr></thead>
     <tbody>
       <tr><td><code>container.add()</code>, <code>pack_start()</code></td><td data-k="GTK 4"><code>box.append()</code>, <code>set_child()</code>, <code>pack()</code> helper</td><td data-k="Where" class="wrap"><code>gtkutil.ts</code></td></tr>
       <tr><td><code>get_children()</code>, <code>destroy()</code> on a child</td><td data-k="GTK 4"><code>childrenOf()</code>, <code>removeWidget()</code>, <code>removeChildren()</code></td><td data-k="Where" class="wrap"><code>gtkutil.ts</code>; a ListBox is emptied row by row because <code>remove_all()</code> also removes the placeholder</td></tr>
@@ -1075,23 +1075,23 @@ slots.release(slot);           // empty + hide,
 <section class="chapter" id="ch7">
   <div class="chapnum">Chapter 7 · commits c85aa0d, 3fe7fdd, ad0f095, 90699c3, 9750175, b31556d · <code>window.ts</code>, <code>ui/dialogs.ts</code>, <code>ui/tabbar.ts</code></div>
   <h2>libadwaita: the GNOME layer on top of GTK</h2>
-  <p>GTK gives widgets; libadwaita gives the <b>GNOME patterns</b>: header bars, dialogs that are bottom sheets on phones, toasts, tab views, split views, breakpoints, and the Adwaita style with named colors. Nyerat moved to it in one day, one pattern per commit.</p>
+  <p>GTK gives widgets; libadwaita gives the <b>GNOME patterns</b>: header bars, dialogs that are bottom sheets on phones, toasts, tab views, split views, breakpoints, and the Adwaita style with named colors. Markwork moved to it in one day, one pattern per commit.</p>
   <table class="data cards">
-    <thead><tr><th>Pattern</th><th class="wrap">libadwaita API</th><th class="wrap">In Nyerat</th></tr></thead>
+    <thead><tr><th>Pattern</th><th class="wrap">libadwaita API</th><th class="wrap">In Markwork</th></tr></thead>
     <tbody>
-      <tr><td>Window</td><td data-k="API" class="wrap"><code>Adw.ApplicationWindow</code>, <code>Adw.ToolbarView</code>, <code>Adw.HeaderBar</code>, <code>Adw.WindowTitle</code></td><td data-k="In Nyerat" class="wrap">Main window; secondary windows (history, image viewer, proposals, agent log) use <code>Adw.Window</code> + <code>ToolbarView</code>, not <code>set_titlebar()</code>.</td></tr>
-      <tr><td>Theme</td><td data-k="API" class="wrap"><code>Adw.StyleManager</code>, <code>Adw.ColorScheme</code></td><td data-k="In Nyerat" class="wrap">Follow system / light / dark; interface CSS uses <code>@accent_color</code>, <code>@card_bg_color</code>, … Only document surfaces (tags, tables, diagrams) keep hex colors.</td></tr>
-      <tr><td>Dialogs</td><td data-k="API" class="wrap"><code>Adw.Dialog</code>, <code>Adw.AlertDialog</code>, <code>Adw.AboutDialog</code>, <code>Adw.PreferencesDialog</code></td><td data-k="In Nyerat" class="wrap">Card editor, confirmations (destructive response appearance), About, Preferences.</td></tr>
-      <tr><td>Notifications</td><td data-k="API" class="wrap"><code>Adw.ToastOverlay</code>, <code>Adw.Toast</code></td><td data-k="In Nyerat" class="wrap">“Committed successfully” and other messages that need no answer.</td></tr>
-      <tr><td>Tabs</td><td data-k="API" class="wrap"><code>Adw.TabView</code>, <code>Adw.TabBar</code>, <code>Adw.TabPage</code></td><td data-k="In Nyerat" class="wrap">One page per document or Home; a page is only a marker, the window's own <code>Gtk.Stack</code> shows the editor or the board. The bar autohides with one tab.</td></tr>
-      <tr><td>Side panels</td><td data-k="API" class="wrap"><code>Adw.OverlaySplitView</code></td><td data-k="In Nyerat" class="wrap">Sidebar (Files/Outline/History) and the Assistant panel, bound to GSettings.</td></tr>
-      <tr><td>Adaptive</td><td data-k="API" class="wrap"><code>Adw.Breakpoint</code>, <code>Adw.BreakpointCondition</code></td><td data-k="In Nyerat" class="wrap">Assistant folds below 900 sp, sidebar below 600 sp. Try the simulation.</td></tr>
-      <tr><td>Pages</td><td data-k="API" class="wrap"><code>Adw.Clamp</code>, <code>Adw.StatusPage</code>, <code>Adw.ActionRow</code>, <code>Adw.ButtonContent</code></td><td data-k="In Nyerat" class="wrap">Home and Inbox (Chapter 12).</td></tr>
-      <tr><td>Progress</td><td data-k="API" class="wrap"><code>Adw.Spinner</code> (1.6+)</td><td data-k="In Nyerat" class="wrap">Agent plan checklist; <code>Gtk.Spinner</code> when the system libadwaita is older.</td></tr>
+      <tr><td>Window</td><td data-k="API" class="wrap"><code>Adw.ApplicationWindow</code>, <code>Adw.ToolbarView</code>, <code>Adw.HeaderBar</code>, <code>Adw.WindowTitle</code></td><td data-k="In Markwork" class="wrap">Main window; secondary windows (history, image viewer, proposals, agent log) use <code>Adw.Window</code> + <code>ToolbarView</code>, not <code>set_titlebar()</code>.</td></tr>
+      <tr><td>Theme</td><td data-k="API" class="wrap"><code>Adw.StyleManager</code>, <code>Adw.ColorScheme</code></td><td data-k="In Markwork" class="wrap">Follow system / light / dark; interface CSS uses <code>@accent_color</code>, <code>@card_bg_color</code>, … Only document surfaces (tags, tables, diagrams) keep hex colors.</td></tr>
+      <tr><td>Dialogs</td><td data-k="API" class="wrap"><code>Adw.Dialog</code>, <code>Adw.AlertDialog</code>, <code>Adw.AboutDialog</code>, <code>Adw.PreferencesDialog</code></td><td data-k="In Markwork" class="wrap">Card editor, confirmations (destructive response appearance), About, Preferences.</td></tr>
+      <tr><td>Notifications</td><td data-k="API" class="wrap"><code>Adw.ToastOverlay</code>, <code>Adw.Toast</code></td><td data-k="In Markwork" class="wrap">“Committed successfully” and other messages that need no answer.</td></tr>
+      <tr><td>Tabs</td><td data-k="API" class="wrap"><code>Adw.TabView</code>, <code>Adw.TabBar</code>, <code>Adw.TabPage</code></td><td data-k="In Markwork" class="wrap">One page per document or Home; a page is only a marker, the window's own <code>Gtk.Stack</code> shows the editor or the board. The bar autohides with one tab.</td></tr>
+      <tr><td>Side panels</td><td data-k="API" class="wrap"><code>Adw.OverlaySplitView</code></td><td data-k="In Markwork" class="wrap">Sidebar (Files/Outline/History) and the Assistant panel, bound to GSettings.</td></tr>
+      <tr><td>Adaptive</td><td data-k="API" class="wrap"><code>Adw.Breakpoint</code>, <code>Adw.BreakpointCondition</code></td><td data-k="In Markwork" class="wrap">Assistant folds below 900 sp, sidebar below 600 sp. Try the simulation.</td></tr>
+      <tr><td>Pages</td><td data-k="API" class="wrap"><code>Adw.Clamp</code>, <code>Adw.StatusPage</code>, <code>Adw.ActionRow</code>, <code>Adw.ButtonContent</code></td><td data-k="In Markwork" class="wrap">Home and Inbox (Chapter 12).</td></tr>
+      <tr><td>Progress</td><td data-k="API" class="wrap"><code>Adw.Spinner</code> (1.6+)</td><td data-k="In Markwork" class="wrap">Agent plan checklist; <code>Gtk.Spinner</code> when the system libadwaita is older.</td></tr>
     </tbody>
   </table>
-  <h3>Gallery: the libadwaita widgets Nyerat uses, drawn</h3>
-  <p class="note">Each card draws one widget as it looks in Nyerat, with the API under it. The small buttons change the widget's state the way its properties do.</p>
+  <h3>Gallery: the libadwaita widgets Markwork uses, drawn</h3>
+  <p class="note">Each card draws one widget as it looks in Markwork, with the API under it. The small buttons change the widget's state the way its properties do.</p>
   <div class="gal">
     <figure>
       <div class="stage" style="padding:0;min-height:0">
@@ -1140,7 +1140,7 @@ slots.release(slot);           // empty + hide,
         </div>
       </div>
       <div class="mini"><button type="button" class="ghost" id="g-dlg-narrow" aria-pressed="false">Phone width</button></div>
-      <figcaption><b><code>Adw.Dialog</code></b>The kanban card editor. A floating dialog on a wide window, a <b>bottom sheet</b> on a narrow one, with no code in Nyerat for either.</figcaption>
+      <figcaption><b><code>Adw.Dialog</code></b>The kanban card editor. A floating dialog on a wide window, a <b>bottom sheet</b> on a narrow one, with no code in Markwork for either.</figcaption>
     </figure>
     <figure>
       <div class="stage" style="background:var(--m-view)">
@@ -1198,7 +1198,7 @@ slots.release(slot);           // empty + hide,
     <figure>
       <div class="stage" style="padding:0;min-height:0">
         <div class="mock" id="g-scheme" data-scheme="light" style="box-shadow:none;border-radius:10px">
-          <div class="m-header" style="min-height:32px"><span class="m-title"><b>Nyerat</b></span></div>
+          <div class="m-header" style="min-height:32px"><span class="m-title"><b>Markwork</b></span></div>
           <div style="background:var(--m-view);padding:8px 10px"><b>Decisions</b><div class="m-dim m-small">Interface CSS uses <span style="color:var(--m-link)">@accent_color</span>, <span>@card_bg_color</span>…</div><div class="m-card" style="margin-top:6px">A card</div></div>
         </div>
       </div>
@@ -1208,7 +1208,7 @@ slots.release(slot);           // empty + hide,
   </div>
 
   <h3>Dialogs without a nested main loop</h3>
-  <p>GTK 4 removed <code>gtk_dialog_run()</code> on purpose: a main loop inside a handler lets other code run in the middle of that handler. Nyerat's GTK 3 dialogs returned their answer synchronously; commit 9750175 changed them to return a <code>Promise</code> through <code>modal()</code>. To keep tests and question-free paths synchronous, callers continue with <code>after()</code>, which accepts either a value or a Promise:</p>
+  <p>GTK 4 removed <code>gtk_dialog_run()</code> on purpose: a main loop inside a handler lets other code run in the middle of that handler. Markwork's GTK 3 dialogs returned their answer synchronously; commit 9750175 changed them to return a <code>Promise</code> through <code>modal()</code>. To keep tests and question-free paths synchronous, callers continue with <code>after()</code>, which accepts either a value or a Promise:</p>
 <pre><code>export type Awaitable&lt;T&gt; = T | Promise&lt;T&gt;;
 export function after&lt;T, R&gt;(value: Awaitable&lt;T&gt;, next: (v: T) =&gt; Awaitable&lt;R&gt;): Awaitable&lt;R&gt; {
     return value instanceof Promise ? value.then(next) : next(value);
@@ -1225,7 +1225,7 @@ export function after&lt;T, R&gt;(value: Awaitable&lt;T&gt;, next: (v: T) =&gt; 
       <button type="button" class="ghost" id="bp-side">Toggle sidebar</button>
       <button type="button" class="ghost" id="bp-chat">Toggle Assistant</button>
     </div>
-    <div class="winsim" id="bp-win"><div class="hb">Nyerat</div><div class="body" id="bp-body"></div></div>
+    <div class="winsim" id="bp-win"><div class="hb">Markwork</div><div class="body" id="bp-body"></div></div>
     <div class="stats" id="bp-stats"></div>
     <p class="note">Narrow the window with both panels open, then widen it again: the panels come back because <code>bindPanel()</code> stored the setting from before the fold. Close a panel while wide and it stays closed after a fold and unfold. Without the pin, <code>OverlaySplitView</code> would always reopen it.</p>
   </div>
@@ -1263,7 +1263,7 @@ action('journal-capture', ['&lt;Control&gt;&lt;Shift&gt;j'], () =&gt; w.journal.
       </div>
     </div>
   </div>
-  <p><b>Settings.</b> A JSON file in <code>~/.config</code> became a GSettings schema (<code>data/com.ekaput.Nyerat.gschema.xml</code>), compiled at build time and loaded from next to the bundle when running from <code>dist/</code>. Three GSettings features remove whole classes of code:</p>
+  <p><b>Settings.</b> A JSON file in <code>~/.config</code> became a GSettings schema (<code>data/com.ekaput.Markwork.gschema.xml</code>), compiled at build time and loaded from next to the bundle when running from <code>dist/</code>. Three GSettings features remove whole classes of code:</p>
   <ul>
     <li><code>gsettings.create_action(key)</code>: a stateful toggle action whose state <i>is</i> the key (sidebar, Assistant, focus mode, typewriter, autosave).</li>
     <li><code>gsettings.bind(key, widget, 'property', DEFAULT)</code>: the split view's <code>show-sidebar</code> and the preference switches follow the key both ways.</li>
@@ -1289,7 +1289,7 @@ action('journal-capture', ['&lt;Control&gt;&lt;Shift&gt;j'], () =&gt; w.journal.
       <h4>Items are GObjects</h4>
 <pre><code>class FileNode extends GObject.Object {
   static { GObject.registerClass(
-    { GTypeName: 'NyeratFileNode' }, this); }
+    { GTypeName: 'MarkworkFileNode' }, this); }
   name = ''; path = ''; isDir = false;
 }</code></pre>
       <p class="note">A list model holds GObjects, so plain JS data is wrapped once in a registered class.</p>
@@ -1320,7 +1320,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
       </div>
     </div>
   </div>
-  <p>Where a list is short and every row is different (Home sections, Inbox items, the kanban columns), Nyerat still uses <code>Gtk.ListBox</code> with the <code>boxed-list</code> style or plain boxes. ListView pays off for long, uniform lists: the outline of a book, Git history, the file tree, the palette.</p>
+  <p>Where a list is short and every row is different (Home sections, Inbox items, the kanban columns), Markwork still uses <code>Gtk.ListBox</code> with the <code>boxed-list</code> style or plain boxes. ListView pays off for long, uniform lists: the outline of a book, Git history, the file tree, the palette.</p>
   <div class="lesson"><b>Lesson</b>Filtering or sorting a model is a property change, not a rebuild. The palette's search only calls <code>filter.changed()</code>; no row widgets are created or discarded by hand.</div>
 </section>
 
@@ -1332,7 +1332,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
 <pre><code>export class HeaderBar extends Adw.Bin {          // Adw.HeaderBar is final: wrap it
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratHeaderBar',
+            GTypeName: 'MarkworkHeaderBar',
             Template: uiTemplate(template),       // Uint8Array of the XML
             InternalChildren: ['windowTitle'],    // → this._windowTitle
         }, this);
@@ -1349,7 +1349,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
     <h3>Illustration: the XML and what it draws <span class="kind">shortened from <code>ui/headerbar.ui</code></span></h3>
     <p class="note">Hover over a line of XML or a part of the header bar. Every <code>&lt;child type="start"&gt;</code> lands left of the title in the order written, every <code>type="end"</code> lands right of it, starting from the edge. The buttons need no click handlers: <code>action-name</code> connects them to <code>Gio.Action</code>s.</p>
     <div class="tpl" id="tpl">
-<pre><code><span data-x="tpl">&lt;template class="NyeratHeaderBar" parent="AdwBin"&gt;</span><span data-x="hb">  &lt;object class="AdwHeaderBar"&gt;</span><span data-x="title">    &lt;property name="title-widget"&gt;
+<pre><code><span data-x="tpl">&lt;template class="MarkworkHeaderBar" parent="AdwBin"&gt;</span><span data-x="hb">  &lt;object class="AdwHeaderBar"&gt;</span><span data-x="title">    &lt;property name="title-widget"&gt;
       &lt;object class="AdwWindowTitle" id="windowTitle"/&gt;</span><span data-x="s1">    &lt;child type="start"&gt; GtkToggleButton
       icon-name: format-justify-left-symbolic
       action-name: app.sidebar</span><span data-x="s2">    &lt;child type="start"&gt; GtkButton  app.open</span><span data-x="s3">    &lt;child type="start"&gt; GtkButton  app.open-folder</span><span data-x="s4">    &lt;child type="start"&gt; GtkButton  app.new</span><span data-x="e1">    &lt;child type="end"&gt; GtkMenuButton
@@ -1372,7 +1372,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
       </div>
     </div>
   </div>
-  <div class="lesson"><b>Lesson</b>Final classes such as <code>Adw.HeaderBar</code> cannot be subclassed; wrap them in <code>Adw.Bin</code>. A <code>GTypeName</code> must be unique per process, so prefix it (<code>Nyerat…</code>).</div>
+  <div class="lesson"><b>Lesson</b>Final classes such as <code>Adw.HeaderBar</code> cannot be subclassed; wrap them in <code>Adw.Bin</code>. A <code>GTypeName</code> must be unique per process, so prefix it (<code>Markwork…</code>).</div>
 </section>
 
 <!-- ============================================================ -->
@@ -1380,7 +1380,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
   <div class="chapnum">Chapter 11 · commits 1a1a716, 9750175 · <code>i18n.ts</code>, <code>data/</code>, <code>meson.build</code>, <code>build-aux/flatpak/</code></div>
   <h2>Becoming a GNOME citizen: ID, translations, accessibility, packaging</h2>
   <ul>
-    <li><b>App ID</b> <code>com.ekaput.Nyerat</code> names the D-Bus service, the GSettings schema, the desktop file, the metainfo, and the icons. The About dialog and the window icon use it too.</li>
+    <li><b>App ID</b> <code>com.ekaput.Markwork</code> names the D-Bus service, the GSettings schema, the desktop file, the metainfo, and the icons. The About dialog and the window icon use it too.</li>
     <li><b>gettext</b>: <code>_()</code>, <code>ngettext()</code>, <code>pgettext()</code> from <code>src/i18n.ts</code>. Text with values uses <code>fmt(_('… {name} …'), { name })</code>, never a template literal, so xgettext can extract it and translators can reorder words. <code>i18n.ts</code> is imported first in <code>main.ts</code> because ES modules evaluate dependencies first, and some labels are built at module top level.</li>
     <li><b>Accessibility</b>: a status is never only a color or icon. Rows get <code>accessible_role</code> and <code>update_property(Gtk.AccessibleProperty.LABEL, …)</code>; everything is reachable by keyboard; the shortcuts dialog (Ctrl+?) lists the accelerators.</li>
     <li><b>Packaging</b>: Meson installs the bundle, the schema, the icons (<code>hicolor/scalable</code> + <code>symbolic</code>), the desktop file, and the metainfo; the Flatpak manifest targets the GNOME 50 runtime. When running from <code>dist/</code>, <code>addBundledIcons()</code> adds the icon folder to <code>Gtk.IconTheme</code>.</li>
@@ -1397,11 +1397,11 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
     <thead><tr><th>Feature</th><th class="wrap">Pure model (no GTK)</th><th class="wrap">GTK / Adw pieces</th></tr></thead>
     <tbody>
       <tr><td>Kanban board</td><td data-k="Model" class="wrap"><code>markdown/kanban.ts</code>: frontmatter <code>layout: board</code>, <code>##</code> lists, <code>- [ ]</code> cards, tags, due dates</td><td data-k="GTK" class="wrap"><code>Gtk.Stack</code> (text ↔ board), <code>GestureDrag</code>, <code>Gtk.Fixed</code>, <code>WidgetPaintable</code>; card editor in an <code>Adw.Dialog</code> with a <code>Gtk.Calendar</code> due-date picker in a popover</td></tr>
-      <tr><td><code>[[note]]</code> links</td><td data-k="Model" class="wrap"><code>markdown/wikilink.ts</code>: parse, resolve by file name (case-insensitive, <code>folder/Note#Section</code>)</td><td data-k="GTK" class="wrap"><code>editor/wikicomplete.ts</code>: a <code>Gtk.Popover</code> pointed at the cursor rectangle (<code>buffer_to_window_coords</code>), focus stays in the TextView; table cells use <code>nyerat-note:</code> URIs on <code>activate-link</code></td></tr>
+      <tr><td><code>[[note]]</code> links</td><td data-k="Model" class="wrap"><code>markdown/wikilink.ts</code>: parse, resolve by file name (case-insensitive, <code>folder/Note#Section</code>)</td><td data-k="GTK" class="wrap"><code>editor/wikicomplete.ts</code>: a <code>Gtk.Popover</code> pointed at the cursor rectangle (<code>buffer_to_window_coords</code>), focus stays in the TextView; table cells use <code>markwork-note:</code> URIs on <code>activate-link</code></td></tr>
       <tr><td>Inbox</td><td data-k="Model" class="wrap"><code>markdown/inbox.ts</code>: frontmatter <code>layout: list</code>, one bullet per item, <code>➕ date time</code></td><td data-k="GTK" class="wrap"><code>Adw.Clamp</code>, <code>Adw.StatusPage</code> for the empty state, <code>Gtk.Entry</code> quick capture, <code>Gtk.ListBox</code> rows, <code>Adw.ButtonContent</code></td></tr>
       <tr><td>Home</td><td data-k="Model" class="wrap"><code>markdown/home.ts</code>: due cards, unprocessed inbox items, recent files, greeting</td><td data-k="GTK" class="wrap"><code>Gtk.FlowBox</code> of folder cards (<code>card</code> style), <code>Adw.ActionRow</code>s, <code>Gtk.CheckButton</code> to finish a card in place, its own <code>Adw.TabPage</code></td></tr>
-      <tr><td>Daily journal</td><td data-k="Model" class="wrap"><code>markdown/journal.ts</code> + <code>activity.ts</code> (JSONL log in <code>.nyerat/activity</code>, merged into the Activity section)</td><td data-k="GTK" class="wrap">Quick capture through an action (Ctrl+Shift+J) and a small <code>Adw.Dialog</code>; the journal itself is a normal editor tab</td></tr>
-      <tr><td>Commit message writer</td><td data-k="Model" class="wrap"><code>agent/commitmessage.ts</code>: the diff budget, the prompt, and <code>cleanMessage()</code>; git and the key come in as <code>CommitSources</code></td><td data-k="GTK" class="wrap"><code>ui/messagewriter.ts</code>: a <code>Gtk.Button</code> holding a <code>Gtk.Stack</code> (a bundled <code>com.ekaput.Nyerat-sparkle-symbolic</code> icon ↔ a <code>Gtk.Overlay</code> of <code>Adw.Spinner</code> and a stop icon), a capture-phase <code>Gtk.EventControllerKey</code> on the entry, a status <code>Gtk.Label</code> with <code>error</code> and an <code>activate-link</code> markup link; used by the History tab and the single-file window</td></tr>
+      <tr><td>Daily journal</td><td data-k="Model" class="wrap"><code>markdown/journal.ts</code> + <code>activity.ts</code> (JSONL log in <code>.markwork/activity</code>, merged into the Activity section)</td><td data-k="GTK" class="wrap">Quick capture through an action (Ctrl+Shift+J) and a small <code>Adw.Dialog</code>; the journal itself is a normal editor tab</td></tr>
+      <tr><td>Commit message writer</td><td data-k="Model" class="wrap"><code>agent/commitmessage.ts</code>: the diff budget, the prompt, and <code>cleanMessage()</code>; git and the key come in as <code>CommitSources</code></td><td data-k="GTK" class="wrap"><code>ui/messagewriter.ts</code>: a <code>Gtk.Button</code> holding a <code>Gtk.Stack</code> (a bundled <code>com.ekaput.Markwork-sparkle-symbolic</code> icon ↔ a <code>Gtk.Overlay</code> of <code>Adw.Spinner</code> and a stop icon), a capture-phase <code>Gtk.EventControllerKey</code> on the entry, a status <code>Gtk.Label</code> with <code>error</code> and an <code>activate-link</code> markup link; used by the History tab and the single-file window</td></tr>
       <tr><td>Images in the file tree</td><td data-k="Model" class="wrap"><code>isImageFile()</code></td><td data-k="GTK" class="wrap">Same <code>ListView</code> rows; activation opens the <code>ImageViewer</code> (<code>Adw.Window</code>) instead of a tab</td></tr>
     </tbody>
   </table>
@@ -1533,7 +1533,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
 <!-- ============================================================ -->
 <section class="chapter" id="pitfalls">
   <div class="chapnum">Reference</div>
-  <h2>GTK pitfalls Nyerat hit, and the rule it kept</h2>
+  <h2>GTK pitfalls Markwork hit, and the rule it kept</h2>
   <div class="scroll-x">
   <table class="data cards">
     <thead><tr><th>Symptom</th><th class="wrap">Cause</th><th class="wrap">Rule</th></tr></thead>
@@ -1575,7 +1575,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
   <p class="note">Related pages: <a href="learn-performance.html">Learn performance</a> (measurements behind Chapters 2–4) and <a href="learn-agent.html">Learn agents</a> (the pure <code>agent/</code> layer from Chapter 13).</p>
 </section>
 
-<footer>Nyerat · learning notes generated from the Git history of <a href="https://github.com/EkaPutCom/nyerat">EkaPutCom/nyerat</a>. Line counts per layer come from <code>git show</code> at each commit; the simulations say whether they copy real Nyerat code or model it.</footer>
+<footer>Markwork · learning notes generated from the Git history of <a href="https://github.com/EkaPutCom/nyerat">EkaPutCom/markwork</a>. Line counts per layer come from <code>git show</code> at each commit; the simulations say whether they copy real Markwork code or model it.</footer>
 </div>
 
 <script>
@@ -2050,7 +2050,7 @@ lv.addEventListener('scroll', () => { if (!lvRaf) lvRaf = requestAnimationFrame(
 
 /* ---------- template ↔ rendered ---------- */
 const tplDesc = {
-  tpl: '<code>&lt;template&gt;</code>: the class <code>NyeratHeaderBar</code> itself, an <code>Adw.Bin</code> holding one child.',
+  tpl: '<code>&lt;template&gt;</code>: the class <code>MarkworkHeaderBar</code> itself, an <code>Adw.Bin</code> holding one child.',
   hb: '<code>AdwHeaderBar</code>: final, so it is the Bin\'s child instead of a parent class.',
   title: '<code>title-widget</code> → <code>Adw.WindowTitle</code>, reachable as <code>this._windowTitle</code> through <code>InternalChildren</code>.',
   s1: 'First <code>start</code> child: leftmost. A toggle button whose pressed state follows the stateful <code>app.sidebar</code> action.',

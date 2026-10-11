@@ -616,7 +616,7 @@ export class MarkdownView {
         if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) {
             const bare = url.replace(/[#?].*$/, '');
             const path = GLib.path_is_absolute(bare) ? bare : GLib.build_filenamev([this.getBaseDir(), decodeURI(bare)]);
-            // Links to other Markdown notes are opened in Nyerat itself, like [[wikilink]].
+            // Links to other Markdown notes are opened in Markwork itself, like [[wikilink]].
             if (/\.(md|markdown|mdown|mkd)$/i.test(path) && this.onOpenDocument(path)) return;
             uri = Gio.File.new_for_path(path).get_uri();
         }

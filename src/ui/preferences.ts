@@ -17,7 +17,7 @@ const SCHEMES = ['system', 'light', 'dark'];
 export class PreferencesDialog extends Adw.PreferencesDialog {
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratPreferencesDialog',
+            GTypeName: 'MarkworkPreferencesDialog',
             Template: uiTemplate(template),
             InternalChildren: ['colorScheme', 'focus', 'typewriter', 'home', 'autosave', 'chatModel', 'chatModels', 'chatThinking', 'chatSave'],
         }, this);

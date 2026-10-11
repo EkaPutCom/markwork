@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learning Performance with Nyerat</title>
-<meta name="description" content="Learning notes on the performance of the Nyerat editor: the data structures that changed, the before/after benchmark results, and simulations of their effects.">
+<title>Learning Performance with Markwork</title>
+<meta name="description" content="Learning notes on the performance of the Markwork editor: the data structures that changed, the before/after benchmark results, and simulations of their effects.">
 <style>
 :root {
   color-scheme: light;
@@ -209,8 +209,8 @@ footer { color: var(--text-3); font-size: .82rem; padding: 30px 0 60px; }
 
 <div class="wrap">
 <header class="hero">
-  <div class="eyebrow"><a href="index.html">← Nyerat</a> · Learning notes · October 3–4, 2026</div>
-  <h1>Learning performance from the Nyerat editor</h1>
+  <div class="eyebrow"><a href="index.html">← Markwork</a> · Learning notes · October 3–4, 2026</div>
+  <h1>Learning performance from the Markwork editor</h1>
   <p class="lede">In two days, typing one character in a 30 KB document dropped from about <b>286 ms</b> to about <b>1.5 ms</b>. Almost all of that drop came from <b>changing data structures</b>, not from a faster machine. This page dissects each change: the structure before and after, the benchmark numbers, and small simulations you can run yourself.</p>
   <div class="kpis">
     <div class="kpi"><div class="what">Typing per character, mixed 100 blocks</div><div class="big">±1.5 ms</div><div class="from">from ±286 ms · 541a967 → 8d976da</div></div>
@@ -439,7 +439,7 @@ words  = old.words - oldWords + part.words</code></pre>
       <div class="stat"><div class="k">Faster by</div><div class="v" id="s2-x">–</div><div class="s" id="s2-ok"></div></div>
     </div>
     <svg class="chart" id="s2-chart" viewBox="0 0 900 180" aria-label="Time per keystroke"></svg>
-    <p class="note">Try moving the number of lines. The "full" time grows almost linearly, while the "incremental" one is almost flat. The remaining incremental cost comes from copying arrays the size of the document (<code>starts</code>, <code>spans</code>), the same as in Nyerat: "adjusting the offset/metadata arrays is still proportional to the number of lines".</p>
+    <p class="note">Try moving the number of lines. The "full" time grows almost linearly, while the "incremental" one is almost flat. The remaining incremental cost comes from copying arrays the size of the document (<code>starts</code>, <code>spans</code>), the same as in Markwork: "adjusting the offset/metadata arrays is still proportional to the number of lines".</p>
   </div>
 </section>
 
@@ -736,16 +736,16 @@ cellSizes: Map&lt;cellMarkup, [w, h]&gt;     // ≤1,024 cells</code></pre>
   <h2>Patterns that carry over to other code</h2>
   <div class="scroll-x">
   <table class="data cards">
-    <thead><tr><th>Pattern</th><th>Data structure</th><th>Cost per edit</th><th>In Nyerat</th></tr></thead>
+    <thead><tr><th>Pattern</th><th>Data structure</th><th>Cost per edit</th><th>In Markwork</th></tr></thead>
     <tbody>
-      <tr><td data-k="Pattern">Remember the last state, apply the difference</td><td data-k="Data structure"><code>(LineSpan[] | null)[]</code></td><td data-k="Cost per edit">O(N) → O(changed lines)</td><td data-k="In Nyerat"><code>LineTagger</code>, <code>setTagRanges</code></td></tr>
-      <tr><td data-k="Pattern">Bound the reach of the effect</td><td data-k="Data structure"><code>checkpoints: number[]</code> + binary search</td><td data-k="Cost per edit">O(N) → O(segment)</td><td data-k="In Nyerat"><code>HighlightCache.update</code></td></tr>
-      <tr><td data-k="Pattern">A cache keyed by contents, relative offsets</td><td data-k="Data structure"><code>Map&lt;string, CachedLine&gt;</code> with two generations</td><td data-k="Cost per edit">re-parse → lookup</td><td data-k="In Nyerat"><code>HighlightCache</code></td></tr>
-      <tr><td data-k="Pattern">Only what may have changed</td><td data-k="Data structure"><code>active[]</code>, <code>recheck[]</code></td><td data-k="Cost per edit">N arrays → 2–3 lines</td><td data-k="In Nyerat"><code>MarkerConcealer</code></td></tr>
-      <tr><td data-k="Pattern">Copy once, shift in place</td><td data-k="Data structure"><code>new Array(n)</code> + mutation</td><td data-k="Cost per edit">3–4 copies → 1</td><td data-k="In Nyerat"><code>splice</code>, <code>spliceByLine</code></td></tr>
-      <tr><td data-k="Pattern">Split up long work</td><td data-k="Data structure"><code>deferFrom</code> + idle ≤8 ms</td><td data-k="Cost per edit">pause 162 → 71 ms</td><td data-k="In Nyerat"><code>LineTagger.fill</code></td></tr>
-      <tr><td data-k="Pattern">Lazy: create when visible</td><td data-k="Data structure"><code>widget: Widget | null</code> + a bounded size cache</td><td data-k="Cost per edit">1,000 builds → 1</td><td data-k="In Nyerat"><code>TableLayer</code></td></tr>
-      <tr><td data-k="Pattern">I/O off the main thread</td><td data-k="Data structure">a single timer + <code>lastEdit</code></td><td data-k="Cost per edit">fsync → queued</td><td data-k="In Nyerat"><code>autosave()</code></td></tr>
+      <tr><td data-k="Pattern">Remember the last state, apply the difference</td><td data-k="Data structure"><code>(LineSpan[] | null)[]</code></td><td data-k="Cost per edit">O(N) → O(changed lines)</td><td data-k="In Markwork"><code>LineTagger</code>, <code>setTagRanges</code></td></tr>
+      <tr><td data-k="Pattern">Bound the reach of the effect</td><td data-k="Data structure"><code>checkpoints: number[]</code> + binary search</td><td data-k="Cost per edit">O(N) → O(segment)</td><td data-k="In Markwork"><code>HighlightCache.update</code></td></tr>
+      <tr><td data-k="Pattern">A cache keyed by contents, relative offsets</td><td data-k="Data structure"><code>Map&lt;string, CachedLine&gt;</code> with two generations</td><td data-k="Cost per edit">re-parse → lookup</td><td data-k="In Markwork"><code>HighlightCache</code></td></tr>
+      <tr><td data-k="Pattern">Only what may have changed</td><td data-k="Data structure"><code>active[]</code>, <code>recheck[]</code></td><td data-k="Cost per edit">N arrays → 2–3 lines</td><td data-k="In Markwork"><code>MarkerConcealer</code></td></tr>
+      <tr><td data-k="Pattern">Copy once, shift in place</td><td data-k="Data structure"><code>new Array(n)</code> + mutation</td><td data-k="Cost per edit">3–4 copies → 1</td><td data-k="In Markwork"><code>splice</code>, <code>spliceByLine</code></td></tr>
+      <tr><td data-k="Pattern">Split up long work</td><td data-k="Data structure"><code>deferFrom</code> + idle ≤8 ms</td><td data-k="Cost per edit">pause 162 → 71 ms</td><td data-k="In Markwork"><code>LineTagger.fill</code></td></tr>
+      <tr><td data-k="Pattern">Lazy: create when visible</td><td data-k="Data structure"><code>widget: Widget | null</code> + a bounded size cache</td><td data-k="Cost per edit">1,000 builds → 1</td><td data-k="In Markwork"><code>TableLayer</code></td></tr>
+      <tr><td data-k="Pattern">I/O off the main thread</td><td data-k="Data structure">a single timer + <code>lastEdit</code></td><td data-k="Cost per edit">fsync → queued</td><td data-k="In Markwork"><code>autosave()</code></td></tr>
     </tbody>
   </table>
   </div>
@@ -758,7 +758,7 @@ cellSizes: Map&lt;cellMarkup, [w, h]&gt;     // ≤1,024 cells</code></pre>
   <p>Sources: <a href="https://github.com/EkaPutCom/nyerat/blob/main/bench/PERFORMANCE.md">PERFORMANCE.md</a>, <a href="https://github.com/EkaPutCom/nyerat/blob/main/bench/GC-DIAGNOSIS.md">GC-DIAGNOSIS.md</a>, <a href="https://github.com/EkaPutCom/nyerat/blob/main/bench/baseline.json">baseline.json</a>, <a href="https://github.com/EkaPutCom/nyerat/blob/main/bench/baseline-book.json">baseline-book.json</a>, <a href="https://github.com/EkaPutCom/nyerat/blob/main/bench/tables-500.json">tables-500.json</a>, <a href="https://github.com/EkaPutCom/nyerat/blob/main/bench/table-opening-profile.json">table-opening-profile.json</a>, and the git history of <code>bench/baseline.json</code>.</p>
 </section>
 
-<footer>Simulations 2 and 3 measure mini JavaScript code in your browser, not Nyerat in GJS. The numbers depend on the machine and the JS engine, but the shape of the curves follows the data structures. Simulations 1, 4, and 5 are models whose numbers are calibrated from the benchmark results above.</footer>
+<footer>Simulations 2 and 3 measure mini JavaScript code in your browser, not Markwork in GJS. The numbers depend on the machine and the JS engine, but the shape of the curves follows the data structures. Simulations 1, 4, and 5 are models whose numbers are calibrated from the benchmark results above.</footer>
 </div>
 <script>
 (() => {

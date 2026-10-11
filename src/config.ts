@@ -1,7 +1,7 @@
 // Application identity and shared constants.
 
-export const APP_ID = 'com.ekaput.Nyerat';
-export const APP_NAME = 'Nyerat';
+export const APP_ID = 'com.ekaput.Markwork';
+export const APP_NAME = 'Markwork';
 export const APP_VERSION = '1.0';
 
 // Size of table cells rendered as a grid (editor/tablelayer.ts), in pixels.

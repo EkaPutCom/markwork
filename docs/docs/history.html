@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>History, journal, and log · Nyerat Documentation</title>
-<meta name="description" content="The Nyerat conversation history per folder, the action journal and recovery of interrupted work, and the Agent log window for watching every model round and tool call.">
+<title>History, journal, and log · Markwork Documentation</title>
+<meta name="description" content="The Markwork conversation history per folder, the action journal and recovery of interrupted work, and the Agent log window for watching every model round and tool call.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M9 23V9h3l8 10V9h3v14h-3L12 13v10z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="docs.css">
 </head>
@@ -14,7 +14,7 @@
   <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
   <a class="brand" href="../index.html">
     <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 23V9h3l8 10V9h3v14h-3L12 13v10z" fill="var(--accent-text)"/></svg>
-    Nyerat <span>Docs</span>
+    Markwork <span>Docs</span>
   </a>
   <nav>
     <a href="index.html" aria-current="true">Docs</a>
@@ -31,11 +31,11 @@
 <p class="lead">Your conversations and decisions are saved as Markdown in the work folder, and every step of the agent can be watched live.</p>
 
 <h2 id="conversations">Conversation history per folder</h2>
-<p>Every conversation is written as one Markdown file in <code>&lt;work folder&gt;/.nyerat/chats/</code>, e.g. <code>2026-10-04-is-there-a-meeting-decision-not-yet-in-the-plan.md</code>. The file is updated after every turn and at action checkpoints.</p>
+<p>Every conversation is written as one Markdown file in <code>&lt;work folder&gt;/.markwork/chats/</code>, e.g. <code>2026-10-04-is-there-a-meeting-decision-not-yet-in-the-plan.md</code>. The file is updated after every turn and at action checkpoints.</p>
 <ul>
   <li>The clock button in the panel header opens the list of conversations in that folder, newest first. Click one to restore and continue it; its history is sent to the model too.</li>
   <li>The trash icon moves a conversation to the Trash. The broom icon starts a new conversation.</li>
-  <li><code>.nyerat/</code> automatically gets a <code>.gitignore</code> containing <code>*</code> because it holds quotes from the manuscript. Delete that file if you want to commit the history.</li>
+  <li><code>.markwork/</code> automatically gets a <code>.gitignore</code> containing <code>*</code> because it holds quotes from the manuscript. Delete that file if you want to commit the history.</li>
   <li>The <em>Save conversation history in the folder</em> switch in the panel settings turns it off. Without an open folder, nothing is saved.</li>
 </ul>
 <figure><img src="../assets/chat-history.png" width="1332" height="867" loading="lazy" alt="The Assistant panel with the list of previous conversations saved in the work folder"><figcaption>The list of conversations saved in the work folder</figcaption></figure>
@@ -45,7 +45,7 @@
 <p>The frontmatter of a conversation file stores <code>work</code> (the goal, steps, and verification) and <code>actions</code> (proposals, decisions, notes, and snapshots before and after). From it you can look at the diff of an old action again without applying it again, and <em>Undo</em> remains available.</p>
 
 <h2 id="recovery">Recovery</h2>
-<p>A proposal is recorded in the journal before it is reviewed, and its decision after it is applied. If the process is interrupted, for example the app is closed while the review window is open, Nyerat compares the journal with the real contents of the files when the conversation is opened again:</p>
+<p>A proposal is recorded in the journal before it is reviewed, and its decision after it is applied. If the process is interrupted, for example the app is closed while the review window is open, Markwork compares the journal with the real contents of the files when the conversation is opened again:</p>
 <div class="table-wrap"><table>
   <tr><th>File contents</th><th>Recognized as</th></tr>
   <tr><td>Same as the result of the proposal</td><td>Already applied</td></tr>
@@ -65,7 +65,7 @@
   <li>Errors and stops</li>
 </ul>
 <p>Folding a round hides its steps. Selecting a step shows its metrics (duration, result size, share of the turn's time, tokens) and the tabs <em>Summary</em>, <em>Arguments</em>, <em>Result</em>, and <em>Raw</em>; the detail follows the newest step until you pick one yourself.</p>
-<p>The filters <em>All</em>, <em>Tools</em>, <em>Reasoning</em>, and <em>Model</em>, plus the <em>Copy all</em> and <em>Clear</em> buttons. The log keeps at most 2,000 events and is not sent to the model. For the assistant it is saved next to the conversation (<code>.nyerat/chats/&lt;name&gt;.log.jsonl</code>) and comes back when you reopen that conversation; <em>New conversation</em> empties the view. The pi log only exists while the app runs. The same window is used for the <a href="orchestrator.html#log">pi log</a>.</p>
+<p>The filters <em>All</em>, <em>Tools</em>, <em>Reasoning</em>, and <em>Model</em>, plus the <em>Copy all</em> and <em>Clear</em> buttons. The log keeps at most 2,000 events and is not sent to the model. For the assistant it is saved next to the conversation (<code>.markwork/chats/&lt;name&gt;.log.jsonl</code>) and comes back when you reopen that conversation; <em>New conversation</em> empties the view. The pi log only exists while the app runs. The same window is used for the <a href="orchestrator.html#log">pi log</a>.</p>
 </main>
 <aside class="toc" id="toc" aria-label="Table of contents"></aside>
 </div>

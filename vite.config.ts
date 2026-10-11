@@ -20,7 +20,7 @@ const compileSchemas = (): Plugin => ({
     name: 'compile-gschemas',
     writeBundle(options) {
         const dir = options.dir ?? 'dist';
-        copyFileSync('data/com.ekaput.Nyerat.gschema.xml', `${dir}/com.ekaput.Nyerat.gschema.xml`);
+        copyFileSync('data/com.ekaput.Markwork.gschema.xml', `${dir}/com.ekaput.Markwork.gschema.xml`);
         execFileSync('glib-compile-schemas', ['--strict', dir]);
     },
 });
@@ -45,7 +45,7 @@ export default defineConfig({
         sourcemap: false,
         lib: {
             entry: {
-                nyerat: 'src/main.ts',
+                markwork: 'src/main.ts',
                 'run-tests': 'tests/run-tests.ts',
                 capture: 'scripts/capture.ts',
                 bench: 'tests/bench.ts',

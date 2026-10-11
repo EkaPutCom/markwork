@@ -1,6 +1,6 @@
 # Markdown All-Formats Test
 
-This document contains every format Nyerat supports, plus the tricky cases. Open it in the editor and move the cursor to each line: the syntax must be hidden on other lines and appear on the active line.
+This document contains every format Markwork supports, plus the tricky cases. Open it in the editor and move the cursor to each line: the syntax must be hidden on other lines and appear on the active line.
 
 ## 1. Heading
 
@@ -35,7 +35,7 @@ Single letter: **a**, *b*, ~~c~~, ==d==.
 
 ## 3. Inline code
 
-The command `gjs -m nyerat.js` is run in the terminal.
+The command `gjs -m markwork.js` is run in the terminal.
 
 Code with a backtick inside it: ``console.log(`hello`)``.
 

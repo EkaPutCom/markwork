@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="NyeratStatusBar" parent="GtkBox">
+  <template class="MarkworkStatusBar" parent="GtkBox">
     <property name="spacing">12</property>
     <style>
       <class name="statusbar"/>

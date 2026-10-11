@@ -29,7 +29,7 @@ let app = null;          // the gjs process that is running
 let restarting = false;
 
 function startApp() {
-    const child = spawn('gjs', ['-m', 'dist/nyerat.js', ...APP_ARGS], { cwd: ROOT, stdio: 'inherit' });
+    const child = spawn('gjs', ['-m', 'dist/markwork.js', ...APP_ARGS], { cwd: ROOT, stdio: 'inherit' });
     app = child;
     child.on('exit', (code, signal) => {
         if (app !== child) return;  // old process that was deliberately stopped during restart

@@ -13,7 +13,7 @@
 //
 //   - Read the GNOME HIG article #read [created:: 2026-10-07 14:32]
 //     item note (indented)           ← an indented line = item note
-//   - [x] Workbench name idea #nyerat [created:: 2026-10-07 09:10]
+//   - [x] Workbench name idea #markwork [created:: 2026-10-07 09:10]
 //
 // One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without a time are
 // still valid. Pure TypeScript without GTK; all operations return a new board.

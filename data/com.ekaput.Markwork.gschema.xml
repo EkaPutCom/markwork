@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <enum id="com.ekaput.Nyerat.ColorScheme">
+  <enum id="com.ekaput.Markwork.ColorScheme">
     <value nick="system" value="0"/>
     <value nick="light" value="1"/>
     <value nick="dark" value="2"/>
   </enum>
-  <enum id="com.ekaput.Nyerat.SidebarPage">
+  <enum id="com.ekaput.Markwork.SidebarPage">
     <value nick="files" value="0"/>
     <value nick="outline" value="1"/>
     <value nick="history" value="2"/>
   </enum>
 
-  <schema id="com.ekaput.Nyerat" path="/com/ekaput/Nyerat/">
-    <key name="color-scheme" enum="com.ekaput.Nyerat.ColorScheme">
+  <schema id="com.ekaput.Markwork" path="/com/ekaput/Markwork/">
+    <key name="color-scheme" enum="com.ekaput.Markwork.ColorScheme">
       <default>'system'</default>
       <summary>Color scheme</summary>
       <description>system follows the system theme; light or dark forces one theme.</description>
@@ -34,7 +34,7 @@
       <default>true</default>
       <summary>Sidebar open</summary>
     </key>
-    <key name="sidebar-page" enum="com.ekaput.Nyerat.SidebarPage">
+    <key name="sidebar-page" enum="com.ekaput.Markwork.SidebarPage">
       <default>'outline'</default>
       <summary>Active sidebar page</summary>
     </key>
@@ -52,7 +52,7 @@
     </key>
     <key name="chat-save" type="b">
       <default>true</default>
-      <summary>Save conversation history in folder/.nyerat/chats</summary>
+      <summary>Save conversation history in folder/.markwork/chats</summary>
     </key>
 
     <key name="folder" type="s">

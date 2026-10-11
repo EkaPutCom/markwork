@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learning Agents with Nyerat</title>
-<meta name="description" content="Learning notes on how the Nyerat agent evolved: from a read-only chat to plans, approved batches of changes, verification, and recovery, with the data structures and small simulations.">
+<title>Learning Agents with Markwork</title>
+<meta name="description" content="Learning notes on how the Markwork agent evolved: from a read-only chat to plans, approved batches of changes, verification, and recovery, with the data structures and small simulations.">
 <style>
 :root {
   color-scheme: light;
@@ -304,9 +304,9 @@ input[type=text] { width: 100%; }
 
 <div class="wrap">
 <header class="hero">
-  <div class="eyebrow"><a href="index.html">← Nyerat</a> · Learning notes · October 4–5, 2026</div>
-  <h1>Learning to build an agent from Nyerat</h1>
-  <p class="lede">In two days, the Nyerat assistant grew from a chat panel with <b>4 read tools</b> into an agent with <b>16 tools</b>. It can now plan work, propose batches of changes, check the result, and pick the work back up after an interruption. One principle has been held since the first commit: <b>the agent may read freely, but every file change must be approved by the user first</b>. The last chapter shows the next step: Nyerat assigns kanban cards to another agent (pi) that works in a separate project folder, while Nyerat only holds the board. This page explains how that principle is kept at every stage. It covers data structures, the loop flow, safety limits, costs, and small simulations you can try yourself.</p>
+  <div class="eyebrow"><a href="index.html">← Markwork</a> · Learning notes · October 4–5, 2026</div>
+  <h1>Learning to build an agent from Markwork</h1>
+  <p class="lede">In two days, the Markwork assistant grew from a chat panel with <b>4 read tools</b> into an agent with <b>16 tools</b>. It can now plan work, propose batches of changes, check the result, and pick the work back up after an interruption. One principle has been held since the first commit: <b>the agent may read freely, but every file change must be approved by the user first</b>. The last chapter shows the next step: Markwork assigns kanban cards to another agent (pi) that works in a separate project folder, while Markwork only holds the board. This page explains how that principle is kept at every stage. It covers data structures, the loop flow, safety limits, costs, and small simulations you can try yourself.</p>
   <div class="kpis">
     <div class="kpi"><div class="what">Tools offered to the model</div><div class="big">16</div><div class="from">from 4 · f6a4cc7 → 8d0cdec</div></div>
     <div class="kpi"><div class="what">Assistant tests (unit + GUI)</div><div class="big">212</div><div class="from">from 65 · all without a paid API</div></div>
@@ -340,7 +340,7 @@ input[type=text] { width: 100%; }
   <svg class="chart" id="chart-tools" viewBox="0 0 900 300" role="img" aria-label="Number of agent tools per commit"></svg>
   <ol class="timeline-steps">
     <li><span class="h">f6a4cc7</span><span><b>Chapters 1, 2</b> · The DeepSeek Assistant panel: context within a token budget, a stable prefix for the cache, BM25, an agent loop with 4 read-only tools.</span></li>
-    <li><span class="h">2d0150f</span><span><b>Chapter 3</b> · Conversation history is saved as Markdown in <code>.nyerat/chats</code> and can be resumed.</span></li>
+    <li><span class="h">2d0150f</span><span><b>Chapter 3</b> · Conversation history is saved as Markdown in <code>.markwork/chats</code> and can be resumed.</span></li>
     <li><span class="h">49021f3</span><span><b>Chapter 3</b> · The prompt and identity are aligned with the personal workbench vision, no longer specific to book manuscripts.</span></li>
     <li><span class="h">3f387e6</span><span><b>Chapter 3</b> · <code>search_manuscript</code> → <code>search_documents</code>; the tool descriptions are neutralized.</span></li>
     <li><span class="h">5a64789</span><span><b>Chapter 4</b> · The first write tools (<code>create_file</code>, <code>edit_file</code>), which only produce proposals and wait for Apply/Reject.</span></li>
@@ -351,7 +351,7 @@ input[type=text] { width: 100%; }
     <li><span class="h">1c90735</span><span><b>Chapter 7</b> · The Agent log window for monitoring rounds, reasoning, tools, and their results.</span></li>
     <li><span class="h">90c28bb</span><span><b>Chapter 8</b> · Insert, delete, move, replace all, partial approval, Undo, Git history tools, and structure verification.</span></li>
     <li><span class="h">b1ab712</span><span><b>Chapter 9</b> · The harness orchestrator: <code>@pi</code> cards are worked on by pi in another project folder, a queue per folder, the pi log, cards move to In Progress/Review.</span></li>
-    <li><span class="h">0db63d2</span><span><b>Chapter 9d</b> · pi through RPC mode: a ⏸ waiting status when pi asks or an extension requests permission, answered from Nyerat; steering while working and replies that continue the session.</span></li>
+    <li><span class="h">0db63d2</span><span><b>Chapter 9d</b> · pi through RPC mode: a ⏸ waiting status when pi asks or an extension requests permission, answered from Markwork; steering while working and replies that continue the session.</span></li>
     <li><span class="h">8d0cdec</span><span><b>Chapter 9f</b> · A <code>[[note]]</code> on a card becomes pi prompt context: the note contents from the work folder are copied into the prompt, limited per note and in total.</span></li>
     <li><span class="h">b31556d</span><span><b>Chapter 5d</b> · The <code>set_work</code> plan is shown as a checklist (<code>WorkList</code>): progress, a spinner on the step being worked on, turn duration; tidied to GNOME idioms in 4a35bc8 (<code>Adw.Spinner</code>, accessible labels).</span></li>
     <li><span class="h">a8dd69a</span><span><b>Chapter 5d</b> · The Assistant message box: the send button inside the message frame (6037ab4), the context summary appears immediately when the panel is open from the start.</span></li>
@@ -424,14 +424,14 @@ buildQuery: question ×1, selection ×0.5,
       <label>Excerpt budget <input type="range" id="s1-b" min="60" max="900" step="20" value="260"><output id="s1-b-out"></output></label>
     </div>
     <div class="rank" id="s1-rank"></div>
-    <p class="note">The budget is counted with the same estimate (3 characters ≈ 1 token). In Nyerat, excerpts compete with the selection, the active document, and the project map within a 48,000-token budget. Here the budget is deliberately small so that the effect is visible.</p>
+    <p class="note">The budget is counted with the same estimate (3 characters ≈ 1 token). In Markwork, excerpts compete with the selection, the active document, and the project map within a 48,000-token budget. Here the budget is deliberately small so that the effect is visible.</p>
   </div>
 
   <h3>Why the order matters: the prefix cache</h3>
   <p>Providers such as DeepSeek keep a cache for a message prefix that is exactly the same as in the previous request. A single different character at the start is enough to break the cache for the whole message after it. That is why the cursor position and the selection (which change with every question) <b>must not</b> be placed in <code>system</code>.</p>
   <div class="sim" id="sim2">
     <h3>Simulation 2: tokens from the cache over one session <span class="kind">Interactive · model</span></h3>
-    <p>Compare two arrangements. Left: the cursor position is slipped into <code>system</code>. Right: Nyerat's arrangement, with every part that changes going into the <code>note</code> at the end. A bar shows the input tokens per question. Blue marks tokens that can be served from the cache.</p>
+    <p>Compare two arrangements. Left: the cursor position is slipped into <code>system</code>. Right: Markwork's arrangement, with every part that changes going into the <code>note</code> at the end. A bar shows the input tokens per question. Blue marks tokens that can be served from the cache.</p>
     <div class="controls">
       <label>Number of questions <input type="range" id="s2-n" min="2" max="16" step="1" value="8"><output id="s2-n-out"></output></label>
       <label>System size <input type="range" id="s2-s" min="4000" max="40000" step="1000" value="24000"><output id="s2-s-out"></output></label>
@@ -439,7 +439,7 @@ buildQuery: question ×1, selection ×0.5,
     <div class="legend"><span style="--c:var(--after)">From cache</span><span style="--c:var(--before)">Reprocessed</span></div>
     <div class="grid2">
       <div><div class="track-label"><span class="tag old">Cursor in system</span></div><svg class="chart" id="s2-bad" viewBox="0 0 440 160" aria-label="Tokens per question, the bad arrangement"></svg></div>
-      <div><div class="track-label"><span class="tag new">Cursor in note (Nyerat)</span></div><svg class="chart" id="s2-good" viewBox="0 0 440 160" aria-label="Tokens per question, Nyerat's arrangement"></svg></div>
+      <div><div class="track-label"><span class="tag new">Cursor in note (Markwork)</span></div><svg class="chart" id="s2-good" viewBox="0 0 440 160" aria-label="Tokens per question, Markwork's arrangement"></svg></div>
     </div>
     <div class="stats">
       <div class="stat old"><div class="k">Cursor in system: from cache</div><div class="v" id="s2-bad-v">–</div><div class="s" id="s2-bad-s"></div></div>
@@ -447,7 +447,7 @@ buildQuery: question ×1, selection ×0.5,
     </div>
     <p class="note">This model assumes the manuscript does not change, the note is ±2,500 tokens, and each turn adds ±600 tokens of history. In the left arrangement, the cursor position is written right after the instructions (±1,500 tokens), so only the instructions stay the same as in the previous request. This is not a DeepSeek measurement. The real numbers per round (input tokens, from cache, output) can be seen in the <a href="#ch7">Agent log</a>. When the manuscript changes, the active document in <code>system</code> changes too and the cache really does have to be rebuilt.</p>
   </div>
-  <div class="lesson"><b>Lesson</b>Context is the main interface to the model. Split the context by how often its contents change, give each part a budget, and show the breakdown to the user. In Nyerat, the Context button shows each part along with its token count.</div>
+  <div class="lesson"><b>Lesson</b>Context is the main interface to the model. Split the context by how often its contents change, give each part a budget, and show the breakdown to the user. In Markwork, the Context button shows each part along with its token count.</div>
 </section>
 
 <!-- ============================================================ -->
@@ -505,20 +505,20 @@ buildQuery: question ×1, selection ×0.5,
   <div class="chapnum">Chapter 3 · commits 2d0150f, 49021f3, 3f387e6 · <code>chatstore.ts</code>, <code>transcript.ts</code>, <code>context.ts</code>, <code>tools.ts</code></div>
   <h2>Memory a human can read, and names that do not mislead</h2>
   <h3>3a. A conversation as a Markdown file</h3>
-  <p>Each conversation is saved as one file in <code>&lt;folder&gt;/.nyerat/chats/</code>, with frontmatter (<code>title</code>, <code>model</code>, <code>created</code>) and then <code>## You</code> / <code>## Assistant</code> sections. The format is deliberately readable and editable by humans, not a hidden database.</p>
+  <p>Each conversation is saved as one file in <code>&lt;folder&gt;/.markwork/chats/</code>, with frontmatter (<code>title</code>, <code>model</code>, <code>created</code>) and then <code>## You</code> / <code>## Assistant</code> sections. The format is deliberately readable and editable by humans, not a hidden database.</p>
   <div class="grid2">
     <div class="panel">
       <h4>What is saved</h4>
-      <p style="margin:0;font-size:.88rem">Questions and answers. Starting in Chapter 5, also <code>work</code> (the goal, steps, verification) and <code>actions</code> (the journal along with before/after snapshots). The <code>.nyerat/</code> folder automatically gets a <code>.gitignore</code> containing <code>*</code>, because its contents include document excerpts.</p>
+      <p style="margin:0;font-size:.88rem">Questions and answers. Starting in Chapter 5, also <code>work</code> (the goal, steps, verification) and <code>actions</code> (the journal along with before/after snapshots). The <code>.markwork/</code> folder automatically gets a <code>.gitignore</code> containing <code>*</code>, because its contents include document excerpts.</p>
     </div>
     <div class="panel">
       <h4>What is deliberately not saved</h4>
       <p style="margin:0;font-size:.88rem">The model's thinking process, the context breakdown, the full read results, and token usage. The document context is rebuilt every turn (file contents may change), so the history stays small.</p>
     </div>
   </div>
-  <div class="caveat"><b>A trap that is avoided:</b> the agent must not browse its own history as a document. <code>WorkspaceRepository</code> does not read dot folders, so <code>.nyerat/</code> never shows up in <code>search_documents</code> results. Without this rule, an old answer could be read as a "fact" from a document.</div>
+  <div class="caveat"><b>A trap that is avoided:</b> the agent must not browse its own history as a document. <code>WorkspaceRepository</code> does not read dot folders, so <code>.markwork/</code> never shows up in <code>search_documents</code> results. Without this rule, an old answer could be read as a "fact" from a document.</div>
   <h3>3b. Tool names are part of the prompt</h3>
-  <p>Nyerat was originally designed for writing books, so its prompt and tools talked about the "manuscript". After the vision was widened into a personal workbench (notes, meetings, research, plans), the name <code>search_manuscript</code> was changed to <code>search_documents</code> and all the tool descriptions were neutralized. The model picks tools by their names and descriptions. A name that is too narrow makes the model hesitate to use the tool for meeting minutes.</p>
+  <p>Markwork was originally designed for writing books, so its prompt and tools talked about the "manuscript". After the vision was widened into a personal workbench (notes, meetings, research, plans), the name <code>search_manuscript</code> was changed to <code>search_documents</code> and all the tool descriptions were neutralized. The model picks tools by their names and descriptions. A name that is too narrow makes the model hesitate to use the tool for meeting minutes.</p>
   <div class="lesson"><b>Lesson</b>Treat tool names and descriptions like interface text for a very literal user. When the scope of the product changes, re-check the prompt and the tool descriptions, not just the UI.</div>
 </section>
 
@@ -659,7 +659,7 @@ current = running &amp;&amp; work.status === 'running'
   ? steps.findIndex(s =&gt; s.status === 'pending') : -1</code></pre>
     </div>
   </div>
-  <p>There is no new status. <code>WorkList</code> only reads the existing <code>WorkState</code>, so a turn that is running and a conversation reopened from <code>.nyerat/chats</code> look the same. The only piece of information that does not come from the model is <b>the step in progress</b>: the first <code>pending</code> step, only while the turn is running. As soon as the turn finishes, the spinner disappears and the status goes back to the saved status (<code>paused</code>, <code>failed</code>, or <code>done and verified</code>), so the display never claims progress that was not recorded. The "Work plan" line in the tool step list is hidden when the plan is valid; a plan rejected by <code>parseWork</code> still appears as an error line.</p>
+  <p>There is no new status. <code>WorkList</code> only reads the existing <code>WorkState</code>, so a turn that is running and a conversation reopened from <code>.markwork/chats</code> look the same. The only piece of information that does not come from the model is <b>the step in progress</b>: the first <code>pending</code> step, only while the turn is running. As soon as the turn finishes, the spinner disappears and the status goes back to the saved status (<code>paused</code>, <code>failed</code>, or <code>done and verified</code>), so the display never claims progress that was not recorded. The "Work plan" line in the tool step list is hidden when the plan is valid; a plan rejected by <code>parseWork</code> still appears as an error line.</p>
   <p>The display follows GNOME idioms (see AGENT.md, "The UI must follow GNOME standards"): symbolic icons, the <code>@success_bg_color</code>/<code>@success_fg_color</code> color pair, <code>Adw.Spinner</code> when libadwaita ≥ 1.6 with a <code>Gtk.Spinner</code> fallback, and every row has the <i>list item</i> role with an accessible label "text — status", so that the status is not conveyed through color alone.</p>
   <figure>
     <img src="assets/plan.png" alt="The Assistant panel showing the plan as a checklist: three steps with green checks, 3/3 steps, done and verified" loading="lazy" style="max-width:360px">
@@ -677,7 +677,7 @@ current = running &amp;&amp; work.status === 'running'
       <div class="worklist" id="s9-view" role="list"></div>
       <pre><code id="s9-text"></code></pre>
     </div>
-    <p class="note">The spinner appears only when the turn is running <em>and</em> the saved status is <code>running</code>. In Nyerat the status <code>complete</code> can only be reached through verification (5c); here it can be chosen directly to see how it looks.</p>
+    <p class="note">The spinner appears only when the turn is running <em>and</em> the saved status is <code>running</code>. In Markwork the status <code>complete</code> can only be reached through verification (5c); here it can be chosen directly to see how it looks.</p>
   </div>
   <div class="lesson"><b>Lesson</b>The same state may have two views: a compact text for the model, a widget for humans. Draw the human view from the saved data, not from the model's text, and limit the "live" additions (spinner, duration) to what is really known at that moment.</div>
 </section>
@@ -787,8 +787,8 @@ The offending callback was AsyncReadyCallback().</code></pre>
 <!-- ============================================================ -->
 <section class="chapter" id="ch9">
   <div class="chapnum">Chapter 9 · commit b1ab712 · <code>agent/harness.ts</code>, <code>orchestrator.ts</code></div>
-  <h2>Nyerat as an orchestrator: another agent works, Nyerat holds the board</h2>
-  <p><b>The need.</b> Project code (for example <code>~/web-ecommerce</code>) does not live in Nyerat's work folder, and the work needs an agent that can run commands, edit code, and run tests. That is not a job for the Nyerat agent, which deliberately never writes by itself. The answer: let another agent (<a href="https://pi.dev">pi</a>) do the work, and make the Nyerat kanban board the <b>control plane</b>. The card states the task, <code>@pi</code> states who does it, and the list states its status.</p>
+  <h2>Markwork as an orchestrator: another agent works, Markwork holds the board</h2>
+  <p><b>The need.</b> Project code (for example <code>~/web-ecommerce</code>) does not live in Markwork's work folder, and the work needs an agent that can run commands, edit code, and run tests. That is not a job for the Markwork agent, which deliberately never writes by itself. The answer: let another agent (<a href="https://pi.dev">pi</a>) do the work, and make the Markwork kanban board the <b>control plane</b>. The card states the task, <code>@pi</code> states who does it, and the list states its status.</p>
   <div class="grid2">
     <div class="panel">
 <pre><code>## Plan
@@ -827,10 +827,10 @@ The offending callback was AsyncReadyCallback().</code></pre>
   <table class="data cards">
     <thead><tr><th>Risk</th><th>Safeguard</th></tr></thead>
     <tbody>
-      <tr><td data-k="Risk">A card, a note, or the Nyerat agent points the harness at an arbitrary folder</td><td data-k="Safeguard">Markdown only mentions the project <b>name</b>. The name is mapped to a folder in <code>settings.projects</code>, which is only filled in by the user through the folder chooser dialog.</td></tr>
-      <tr><td data-k="Risk">The harness writes into Nyerat's work folder without a review window</td><td data-k="Safeguard"><code>checkProjectFolder()</code> rejects the work folder, its contents, its parents, the root, and relative paths.</td></tr>
+      <tr><td data-k="Risk">A card, a note, or the Markwork agent points the harness at an arbitrary folder</td><td data-k="Safeguard">Markdown only mentions the project <b>name</b>. The name is mapped to a folder in <code>settings.projects</code>, which is only filled in by the user through the folder chooser dialog.</td></tr>
+      <tr><td data-k="Risk">The harness writes into Markwork's work folder without a review window</td><td data-k="Safeguard"><code>checkProjectFolder()</code> rejects the work folder, its contents, its parents, the root, and relative paths.</td></tr>
       <tr><td data-k="Risk">Two harnesses overwrite one repo</td><td data-k="Safeguard"><code>RunQueue</code>: one <code>working</code> run per folder, the rest <code>queued</code> in order.</td></tr>
-      <tr><td data-k="Risk">The harness waits for input and nobody knows</td><td data-k="Safeguard">A permission/input request becomes a ⏸ <i>waiting</i> status on the card and is answered from Nyerat (9d). After a turn finishes without a question, stdin is closed so that pi exits.</td></tr>
+      <tr><td data-k="Risk">The harness waits for input and nobody knows</td><td data-k="Safeguard">A permission/input request becomes a ⏸ <i>waiting</i> status on the card and is answered from Markwork (9d). After a turn finishes without a question, stdin is closed so that pi exits.</td></tr>
       <tr><td data-k="Risk">A grandchild process holds the pipe, the run never finishes</td><td data-k="Safeguard">After the process exits, the remaining output gets a 1.5-second grace period and is then abandoned. <i>Stop</i> = SIGTERM, then SIGKILL after 5 seconds. Closing the window stops all runs.</td></tr>
       <tr><td data-k="Risk">Changes come in without being reviewed</td><td data-k="Safeguard">The prompt asks pi not to commit/push. The card stops at <i>Review</i>, and the diff is reviewed in the project repo.</td></tr>
     </tbody>
@@ -853,16 +853,16 @@ The offending callback was AsyncReadyCallback().</code></pre>
   <p><b>The design.</b> pi is started with <code>--mode rpc</code>. Its process stays alive for the run, receives commands through stdin, and sends the same events as the JSON mode, plus two new things:</p>
   <div class="grid2">
     <div class="panel">
-<pre><code>// stdout → Nyerat
+<pre><code>// stdout → Markwork
 {"type":"extension_ui_request","id":"u1",
  "method":"confirm","title":"Allow the bash command?",
  "message":"rm -rf build"}
 {"type":"agent_settled"}    // the turn is finished
 
-// Nyerat → stdin
+// Markwork → stdin
 {"type":"extension_ui_response","id":"u1","confirmed":true}
-{"id":"nyerat-2","type":"prompt","message":"Use SDK A"}
-{"id":"nyerat-steer","type":"steer","message":"…"}</code></pre>
+{"id":"markwork-2","type":"prompt","message":"Use SDK A"}
+{"id":"markwork-steer","type":"steer","message":"…"}</code></pre>
     </div>
     <div class="panel">
 <pre><code>PiSignal = { type: 'ask', ask: HarnessAsk }
@@ -884,7 +884,7 @@ HarnessAsk {
     <span class="node user">Answer pi… (Allow / Deny / text / Later)</span><span class="to">→</span>
     <span class="node">extension_ui_response / prompt through stdin</span>
   </div>
-  <p>There are two kinds of "waiting" with different answer channels. An <b>extension dialog</b> has an id and is answered with <code>extension_ui_response</code>. A <b>model question</b> has no special protocol: pi just stops with some text. Nyerat treats it as a question if the last answer ends with <code>?</code>, and the reply is sent as the next <code>prompt</code> to the same process. The reader discards the old turn state through <code>restart()</code> so that an error or answer from before is not carried over. This heuristic can miss, so every finished run can still be replied to through <i>Reply to pi…</i>, which runs pi again with <code>--session &lt;id&gt;</code> and the same log.</p>
+  <p>There are two kinds of "waiting" with different answer channels. An <b>extension dialog</b> has an id and is answered with <code>extension_ui_response</code>. A <b>model question</b> has no special protocol: pi just stops with some text. Markwork treats it as a question if the last answer ends with <code>?</code>, and the reply is sent as the next <code>prompt</code> to the same process. The reader discards the old turn state through <code>restart()</code> so that an error or answer from before is not carried over. This heuristic can miss, so every finished run can still be replied to through <i>Reply to pi…</i>, which runs pi again with <code>--session &lt;id&gt;</code> and the same log.</p>
   <div class="sim" id="sim7">
     <h3>Simulation 7: is pi asking a question? <span class="kind">Interactive · real logic</span></h3>
     <p>Write pi's last answer. A copy of <code>endsWithQuestion()</code> decides whether the card waits for your reply or stdin is closed so that the card goes into Review.</p>
@@ -907,8 +907,8 @@ Do you want to use the official SDK or the API directly?</textarea>
   <div class="caveat"><b>Measured with a real pi (once):</b> a card that asked it to ask a question first went into the waiting status with the question "What is the note file's name?". After it was answered, a scratch extension asked for permission for <code>ls</code>, permission was given from a script, and then pi created the file and the card went into Review (8,699 tokens, ±$0.0037). That is a single run, not an evaluation. Your own pi does not have a permission extension yet, so without installing one only questions will appear. The <code>custom()</code> dialog (TUI only) is not supported by RPC mode, and there is no interactive terminal yet.</div>
   <div class="lesson"><b>Lesson</b>Good delegation still needs a return channel. Tell apart requests that have a protocol (an id + a structured answer) from those that are only implied in text (a model question). The first is answered exactly. The second is guessed simply, and then give a way out when the guess misses (<i>Reply</i>).</div>
   <h3>9f. Notes as context: the contents are sent, the access is not</h3>
-  <p><b>The need.</b> Design decisions, specifications, and meeting minutes live in Nyerat's work folder, while pi works in the project repo. The boundary in 9a deliberately makes pi unable to read the work folder. As a result, the card "Checkout with QRIS" only carries a single title line. Users had to copy the specification into the card note by hand, and that copy went stale quickly.</p>
-  <p><b>The design.</b> A card links notes with the syntax already used in the editor, <code>[[Specification#Payment]]</code>. On <i>Work on it with pi</i>, Nyerat resolves the link and copies its <b>contents</b> into the prompt. Pi still gets no path to the work folder, and the boundary in 9a does not change.</p>
+  <p><b>The need.</b> Design decisions, specifications, and meeting minutes live in Markwork's work folder, while pi works in the project repo. The boundary in 9a deliberately makes pi unable to read the work folder. As a result, the card "Checkout with QRIS" only carries a single title line. Users had to copy the specification into the card note by hand, and that copy went stale quickly.</p>
+  <p><b>The design.</b> A card links notes with the syntax already used in the editor, <code>[[Specification#Payment]]</code>. On <i>Work on it with pi</i>, Markwork resolves the link and copies its <b>contents</b> into the prompt. Pi still gets no path to the work folder, and the boundary in 9a does not change.</p>
   <div class="grid2">
     <div class="panel">
 <pre><code>// pure: agent/harness.ts + markdown/wikilink.ts
@@ -976,7 +976,7 @@ Not decided yet.</textarea>
   <div class="lesson"><b>Lesson</b>When a delegated agent needs data from territory that is deliberately closed to it, do not open the access. Send the contents: the host resolves the reference with the same rules as for the user, limits its size, wraps it so it is not read as a command, and records exactly what was sent.</div>
   <h3>9e. Testing: a real process, a fake harness</h3>
   <p>The GUI tests run a shell script that pretends to be pi, through the same process path. These tests check the cwd and the prompt, a card moving to <i>In Progress</i> and then <i>Review</i> with a note, a queue that is truly in order (the script records <code>start</code>/<code>end</code>), <i>Stop</i> on a process stuck for 30 seconds, a failure with a message from stderr, a project folder that is asked for once and then remembered, and a closed board that is updated on disk. For RPC mode, the fake script reads <code>get_state</code> and <code>prompt</code> from stdin, sends a permission request or a question, and then records the answer it received. The tests check the exact answer that arrives (<code>{"type":"extension_ui_response","id":"ui-1","confirmed":true}</code>), <i>Later</i> still waiting, <i>End without replying</i>, steering that arrives as <code>steer</code>, and a reply that runs with <code>--session test-session</code> in the same log. The unit tests cover <code>@name</code> assignment (not an email or <code>@{date}</code>), the project, folder rejection, the prompt, <code>PiReader</code>, the result note, and the queue. There are 23 tests, all without a real pi or API.</p>
-  <div class="caveat"><b>What has been measured and what has not:</b> one end-to-end test with a real pi 1.0.3 (DeepSeek, the task "create HALO.txt" in a sample repo) succeeded. The file was created in the project repo without a commit, the work folder stayed empty, the card moved to Review, and the run used 4,248 tokens (±$0.0038). That is a single run, not an evaluation. Parsing <code>@name</code> adds ±0.35 ms per 500 cards in <code>cardMeta()</code> (±0.7 µs per card). Not there yet: the <i>waiting</i> status when the harness asks for permission, an interactive terminal, a worktree per card (cards in the same project queue up), and a diff view of the harness result in Nyerat. The run status only exists while the app is open; what persists is the card position and the <code>↳</code> note.</div>
+  <div class="caveat"><b>What has been measured and what has not:</b> one end-to-end test with a real pi 1.0.3 (DeepSeek, the task "create HALO.txt" in a sample repo) succeeded. The file was created in the project repo without a commit, the work folder stayed empty, the card moved to Review, and the run used 4,248 tokens (±$0.0038). That is a single run, not an evaluation. Parsing <code>@name</code> adds ±0.35 ms per 500 cards in <code>cardMeta()</code> (±0.7 µs per card). Not there yet: the <i>waiting</i> status when the harness asks for permission, an interactive terminal, a worktree per card (cards in the same project queue up), and a diff view of the harness result in Markwork. The run status only exists while the app is open; what persists is the card position and the <code>↳</code> note.</div>
   <div class="lesson"><b>Lesson</b>When delegating to another agent, do not pretend to be able to review every step. Move the boundary to a place that can be guarded: <b>where</b> it may work (a name → a folder chosen by the user), <b>how many</b> at a time (a queue per folder), and <b>when to stop</b> (EOF, grace period, SIGKILL). Then make the result visible where the user already works: the card, the note, and the log.</div>
 </section>
 
@@ -1045,25 +1045,25 @@ writeCommitMessage(sources, files, onText, cancellable)
   <h2>Patterns that carry over to other agents</h2>
   <div class="scroll-x">
   <table class="data cards">
-    <thead><tr><th>Pattern</th><th>Structure</th><th>In Nyerat</th></tr></thead>
+    <thead><tr><th>Pattern</th><th>Structure</th><th>In Markwork</th></tr></thead>
     <tbody>
-      <tr><td data-k="Pattern">Context split by how often it changes</td><td data-k="Structure">stable <code>system</code> + changing <code>note</code></td><td data-k="In Nyerat"><code>buildContext</code>, <code>buildMessages</code></td></tr>
-      <tr><td data-k="Pattern">A loop with hard limits</td><td data-k="Structure"><code>MAX_ROUNDS</code>, <code>toolBudget</code>, the last round without tools</td><td data-k="In Nyerat"><code>ChatSession.ask</code></td></tr>
-      <tr><td data-k="Pattern">Pure tools that do not throw</td><td data-k="Structure"><code>(args, SourceFile[]) → { content, summary }</code></td><td data-k="In Nyerat"><code>runTool</code>, <code>formatGit</code></td></tr>
-      <tr><td data-k="Pattern">Changes as data</td><td data-k="Structure"><code>Change { before, after }</code></td><td data-k="In Nyerat"><code>planChange</code>, <code>onProposal</code></td></tr>
-      <tr><td data-k="Pattern">Re-check right before writing</td><td data-k="Structure"><code>preflight(c, read)</code></td><td data-k="In Nyerat"><code>applyBatch</code>, Undo</td></tr>
-      <tr><td data-k="Pattern">Plan on a virtual copy</td><td data-k="Structure">a copy of <code>SourceFile[]</code> + locks</td><td data-k="In Nyerat"><code>planBatch</code></td></tr>
-      <tr><td data-k="Pattern">Done = passes the checks</td><td data-k="Structure"><code>WorkState.status</code> + <code>Verification</code></td><td data-k="In Nyerat"><code>verifyWork</code>, <code>structureCheck</code></td></tr>
-      <tr><td data-k="Pattern">One state, two readers</td><td data-k="Structure">stored data → text for the model, a widget for humans</td><td data-k="In Nyerat"><code>workText</code>, <code>WorkList</code></td></tr>
-      <tr><td data-k="Pattern">Record the intent before acting</td><td data-k="Structure"><code>ActionEvent</code>, three-outcome reconciliation</td><td data-k="In Nyerat"><code>reconcileEvents</code></td></tr>
-      <tr><td data-k="Pattern">Observability separate from context</td><td data-k="Structure">a bounded in-memory log</td><td data-k="In Nyerat"><code>AgentTrace</code></td></tr>
-      <tr><td data-k="Pattern">Delegation through a process contract</td><td data-k="Structure">arguments → JSONL → exit code, mapped to the same log</td><td data-k="In Nyerat"><code>PiReader</code>, <code>spawnHarness</code></td></tr>
-      <tr><td data-k="Pattern">Names, not paths, for dangerous places</td><td data-k="Structure">a name in the data, the mapping only from the user</td><td data-k="In Nyerat"><code>settings.projects</code>, <code>checkProjectFolder</code></td></tr>
-      <tr><td data-k="Pattern">A return channel for the delegated agent</td><td data-k="Structure">requests with an id are answered exactly; text questions are guessed + a way out</td><td data-k="In Nyerat"><code>HarnessAsk</code>, <code>answer</code>, <code>resume</code></td></tr>
-      <tr><td data-k="Pattern">Context sent as contents, not access</td><td data-k="Structure">links in the data are resolved by the host, the contents copied with limits</td><td data-k="In Nyerat"><code>linkedNotes</code>, <code>linkedNotesSection</code></td></tr>
-      <tr><td data-k="Pattern">One writer per resource</td><td data-k="Structure">a queue per key (folder)</td><td data-k="In Nyerat"><code>RunQueue</code></td></tr>
-      <tr><td data-k="Pattern">The smallest call that does the job</td><td data-k="Structure">one request without tools, a hard input budget, the answer only fills a field the user reviews</td><td data-k="In Nyerat"><code>writeCommitMessage</code>, <code>fitDiffs</code>, <code>MessageWriter</code></td></tr>
-      <tr><td data-k="Pattern">Every wait has its own end</td><td data-k="Structure">a watchdog that does not depend on the awaited callback; the first to finish wins</td><td data-k="In Nyerat"><code>runGit</code>, <code>gitLimits</code></td></tr>
+      <tr><td data-k="Pattern">Context split by how often it changes</td><td data-k="Structure">stable <code>system</code> + changing <code>note</code></td><td data-k="In Markwork"><code>buildContext</code>, <code>buildMessages</code></td></tr>
+      <tr><td data-k="Pattern">A loop with hard limits</td><td data-k="Structure"><code>MAX_ROUNDS</code>, <code>toolBudget</code>, the last round without tools</td><td data-k="In Markwork"><code>ChatSession.ask</code></td></tr>
+      <tr><td data-k="Pattern">Pure tools that do not throw</td><td data-k="Structure"><code>(args, SourceFile[]) → { content, summary }</code></td><td data-k="In Markwork"><code>runTool</code>, <code>formatGit</code></td></tr>
+      <tr><td data-k="Pattern">Changes as data</td><td data-k="Structure"><code>Change { before, after }</code></td><td data-k="In Markwork"><code>planChange</code>, <code>onProposal</code></td></tr>
+      <tr><td data-k="Pattern">Re-check right before writing</td><td data-k="Structure"><code>preflight(c, read)</code></td><td data-k="In Markwork"><code>applyBatch</code>, Undo</td></tr>
+      <tr><td data-k="Pattern">Plan on a virtual copy</td><td data-k="Structure">a copy of <code>SourceFile[]</code> + locks</td><td data-k="In Markwork"><code>planBatch</code></td></tr>
+      <tr><td data-k="Pattern">Done = passes the checks</td><td data-k="Structure"><code>WorkState.status</code> + <code>Verification</code></td><td data-k="In Markwork"><code>verifyWork</code>, <code>structureCheck</code></td></tr>
+      <tr><td data-k="Pattern">One state, two readers</td><td data-k="Structure">stored data → text for the model, a widget for humans</td><td data-k="In Markwork"><code>workText</code>, <code>WorkList</code></td></tr>
+      <tr><td data-k="Pattern">Record the intent before acting</td><td data-k="Structure"><code>ActionEvent</code>, three-outcome reconciliation</td><td data-k="In Markwork"><code>reconcileEvents</code></td></tr>
+      <tr><td data-k="Pattern">Observability separate from context</td><td data-k="Structure">a bounded in-memory log</td><td data-k="In Markwork"><code>AgentTrace</code></td></tr>
+      <tr><td data-k="Pattern">Delegation through a process contract</td><td data-k="Structure">arguments → JSONL → exit code, mapped to the same log</td><td data-k="In Markwork"><code>PiReader</code>, <code>spawnHarness</code></td></tr>
+      <tr><td data-k="Pattern">Names, not paths, for dangerous places</td><td data-k="Structure">a name in the data, the mapping only from the user</td><td data-k="In Markwork"><code>settings.projects</code>, <code>checkProjectFolder</code></td></tr>
+      <tr><td data-k="Pattern">A return channel for the delegated agent</td><td data-k="Structure">requests with an id are answered exactly; text questions are guessed + a way out</td><td data-k="In Markwork"><code>HarnessAsk</code>, <code>answer</code>, <code>resume</code></td></tr>
+      <tr><td data-k="Pattern">Context sent as contents, not access</td><td data-k="Structure">links in the data are resolved by the host, the contents copied with limits</td><td data-k="In Markwork"><code>linkedNotes</code>, <code>linkedNotesSection</code></td></tr>
+      <tr><td data-k="Pattern">One writer per resource</td><td data-k="Structure">a queue per key (folder)</td><td data-k="In Markwork"><code>RunQueue</code></td></tr>
+      <tr><td data-k="Pattern">The smallest call that does the job</td><td data-k="Structure">one request without tools, a hard input budget, the answer only fills a field the user reviews</td><td data-k="In Markwork"><code>writeCommitMessage</code>, <code>fitDiffs</code>, <code>MessageWriter</code></td></tr>
+      <tr><td data-k="Pattern">Every wait has its own end</td><td data-k="Structure">a watchdog that does not depend on the awaited callback; the first to finish wins</td><td data-k="In Markwork"><code>runGit</code>, <code>gitLimits</code></td></tr>
     </tbody>
   </table>
   </div>
@@ -1074,10 +1074,10 @@ writeCommitMessage(sources, files, onText, cancellable)
     4) How is the result verified, and how does this capability recover after an interruption?
     5) Write tests with a fake <code>Provider</code>, measure the cost with <code>bench:agentic</code>, and then update this page.
   </div>
-  <p>Sources: <a href="https://github.com/EkaPutCom/nyerat/blob/main/README.md">README.md</a> (the "How the assistant works" section), <a href="https://github.com/EkaPutCom/nyerat/blob/main/bench/AGENTIC.md">AGENTIC.md</a>, <a href="https://github.com/EkaPutCom/nyerat/tree/main/src/agent">src/agent/</a>, and the git commit history from f6a4cc7 to 90c28bb, plus the harness orchestrator (Chapter 9). See also <a href="learn-performance.html">learning performance from the Nyerat editor</a>.</p>
+  <p>Sources: <a href="https://github.com/EkaPutCom/nyerat/blob/main/README.md">README.md</a> (the "How the assistant works" section), <a href="https://github.com/EkaPutCom/nyerat/blob/main/bench/AGENTIC.md">AGENTIC.md</a>, <a href="https://github.com/EkaPutCom/nyerat/tree/main/src/agent">src/agent/</a>, and the git commit history from f6a4cc7 to 90c28bb, plus the harness orchestrator (Chapter 9). See also <a href="learn-performance.html">learning performance from the Markwork editor</a>.</p>
 </section>
 
-<footer>Simulations 1, 4, 5, 6, 7, 8, and 9 run copies of Nyerat's logic in your browser (WorkList, tokenizer and BM25, preflight and Undo, journal reconciliation, the harness queue, question detection, related notes in the prompt). Simulation 2 is a simple model without provider measurements. Simulation 3 is a walkthrough with a written scenario, not real model output.</footer>
+<footer>Simulations 1, 4, 5, 6, 7, 8, and 9 run copies of Markwork's logic in your browser (WorkList, tokenizer and BM25, preflight and Undo, journal reconciliation, the harness queue, question detection, related notes in the prompt). Simulation 2 is a simple model without provider measurements. Simulation 3 is a walkthrough with a written scenario, not real model output.</footer>
 </div>
 <script>
 (() => {
@@ -1323,7 +1323,7 @@ function sim2() {
   const rows = [];
   for (let i = 1; i <= n; i++) {
     const total = S + PER_TURN * (i - 1) + NOTE;
-    // Nyerat: system + the history up to the previous turn is exactly the same as in the previous request.
+    // Markwork: system + the history up to the previous turn is exactly the same as in the previous request.
     const good = i === 1 ? 0 : S + PER_TURN * (i - 2);
     // The cursor is written in system after the instructions: only the instructions stay the same.
     const bad = i === 1 ? 0 : INSTR;
@@ -1681,10 +1681,10 @@ function s8fenced(text) {
 function s8sectionText(notes) {
   if (!notes.length) return ['(the card links no notes: the prompt has no context section)'];
   const name = l => '[[' + l.target + (l.heading ? '#' + l.heading : '') + ']]';
-  const lines = ['## Related notes from Nyerat', '', 'This card links the following notes. Their contents are copied from the Nyerat work folder …'];
+  const lines = ['## Related notes from Markwork', '', 'This card links the following notes. Their contents are copied from the Markwork work folder …'];
   let budget = S8_CONTEXT_CHARS;
   for (const note of notes) {
-    if (!note.file) { lines.push('', '### ' + name(note.link), '', '(not found in the Nyerat work folder)'); continue; }
+    if (!note.file) { lines.push('', '### ' + name(note.link), '', '(not found in the Markwork work folder)'); continue; }
     const title = '### ' + name(note.link) + ' — ' + note.file;
     if (note.text === null) { lines.push('', title, '', '(the section "' + note.link.heading + '" was not found in this file)'); continue; }
     if (budget <= 0) { lines.push('', title, '', '(skipped: the related notes context limit has been reached)'); continue; }

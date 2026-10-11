@@ -7,7 +7,7 @@ import { ESCAPE_OR_CODE } from './syntax.js';
 import { WIKILINK } from './wikilink.js';
 
 // URI scheme of [[note]] links in markup; labels that use it handle the activate-link signal.
-export const NOTE_URI = 'nyerat-note:';
+export const NOTE_URI = 'markwork-note:';
 
 export interface MarkupColors {
     code: string;
@@ -50,7 +50,7 @@ function wikiRanges(text: string): Map<number, [number, string]> {
     return ranges;
 }
 
-// links = true: [[note]] is wrapped in <a href="nyerat-note:…"> so it can be clicked in a Gtk.Label.
+// links = true: [[note]] is wrapped in <a href="markwork-note:…"> so it can be clicked in a Gtk.Label.
 export function cellMarkup(text: string, colors: MarkupColors, links = false): string {
     // One style marker per UTF-16 unit; overlapping styles (bold inside italic) are merged.
     const flags = new Uint8Array(text.length);

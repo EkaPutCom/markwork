@@ -19,7 +19,7 @@ import template from './palette.ui?raw';
 export class Command extends GObject.Object {
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratCommand',
+            GTypeName: 'MarkworkCommand',
             Properties: {
                 name: GObject.ParamSpec.string('name', null, null, GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT_ONLY, ''),
                 label: GObject.ParamSpec.string('label', null, null, GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT_ONLY, ''),
@@ -47,7 +47,7 @@ export function commandStore(app: Gtk.Application): Gio.ListStore {
 export class CommandPalette extends Adw.Dialog {
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratCommandPalette',
+            GTypeName: 'MarkworkCommandPalette',
             Template: uiTemplate(template),
             InternalChildren: ['search', 'list'],
         }, this);

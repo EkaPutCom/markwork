@@ -1,4 +1,4 @@
-// Daily activity log for the journal: one JSONL file per day in <work folder>/.nyerat/activity/.
+// Daily activity log for the journal: one JSONL file per day in <work folder>/.markwork/activity/.
 // Append-only, so no index can go stale and an interrupted write corrupts at most
 // one line (skipped when read). Dot folders are not read by the workspace (workspace.ts), so the agent does not
 // traverse them; their contents reach the agent only through the Activity section of the journal file.
@@ -11,7 +11,7 @@ import { localDate } from './markdown/home.js';
 
 const enc = new TextEncoder();
 
-export const activityDir = (root: string): string => GLib.build_filenamev([root, '.nyerat', 'activity']);
+export const activityDir = (root: string): string => GLib.build_filenamev([root, '.markwork', 'activity']);
 const logPath = (root: string, date: string) => GLib.build_filenamev([activityDir(root), `${date}.jsonl`]);
 
 // Record one activity in that day's log (by its time). A failed write must not disturb the work
@@ -20,7 +20,7 @@ export function recordActivity(root: string, activity: Activity): boolean {
     try {
         GLib.mkdir_with_parents(activityDir(root), 0o755);
         // Same as conversation history: do not get committed by accident.
-        const ignore = GLib.build_filenamev([root, '.nyerat', '.gitignore']);
+        const ignore = GLib.build_filenamev([root, '.markwork', '.gitignore']);
         if (!GLib.file_test(ignore, GLib.FileTest.EXISTS)) writeTextFile(ignore, '*\n');
         const file = Gio.File.new_for_path(logPath(root, localDate(new Date(activity.time * 1000))));
         const stream = file.append_to(Gio.FileCreateFlags.NONE, null);

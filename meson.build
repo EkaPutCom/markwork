@@ -1,4 +1,4 @@
-# Installing Nyerat on the system or as a Flatpak.
+# Installing Markwork on the system or as a Flatpak.
 #
 # The TypeScript code is bundled by Vite, not Meson: run `npm ci && npm run build` first,
 # and then Meson installs the contents of dist/ along with the desktop file, metainfo, icons, schema, and translations.
@@ -6,13 +6,13 @@
 #   meson setup _build --prefix=/usr
 #   meson install -C _build
 
-project('nyerat',
+project('markwork',
   version: '1.0',
   license: 'MIT',
   meson_version: '>= 1.0.0',
 )
 
-app_id = 'com.ekaput.Nyerat'
+app_id = 'com.ekaput.Markwork'
 gnome = import('gnome')
 i18n = import('i18n')
 
@@ -20,8 +20,8 @@ prefix = get_option('prefix')
 datadir = get_option('datadir')
 pkgdatadir = datadir / meson.project_name()
 
-if not import('fs').exists('dist/nyerat.js')
-  error('dist/nyerat.js does not exist: run `npm ci && npm run build` before meson setup')
+if not import('fs').exists('dist/markwork.js')
+  error('dist/markwork.js does not exist: run `npm ci && npm run build` before meson setup')
 endif
 
 # The app bundle. The test/benchmark bundles and the schema compiled for dev are not installed;
@@ -38,8 +38,8 @@ install_subdir('dist',
 
 gjs = find_program('gjs', dirs: ['/usr/bin'])
 configure_file(
-  input: 'data/nyerat.in',
-  output: 'nyerat',
+  input: 'data/markwork.in',
+  output: 'markwork',
   configuration: {
     'GJS': gjs.full_path(),
     'PKGDATADIR': prefix / pkgdatadir,
