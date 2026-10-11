@@ -169,7 +169,7 @@ export function showAbout(parent: Gtk.Window): void {
         application_name: APP_NAME, version: APP_VERSION, application_icon: APP_ID,
         developer_name: 'Eka Putra', license_type: Gtk.License.MIT_X11,
         comments: _('Personal workbench for humans and AI agents, built with GTK 4, libadwaita, and GJS.'),
-        website: 'https://nyerat.ekaput.com/', support_url: 'https://nyerat.ekaput.com/docs/',
+        website: 'https://markwork.ekaput.com/', support_url: 'https://markwork.ekaput.com/docs/',
         developers: ['Eka Putra'], copyright: '© 2026 Eka Putra',
         // Translators: replace with your name (one per line), e.g. "Name <email>".
         translator_credits: _('translator-credits'),

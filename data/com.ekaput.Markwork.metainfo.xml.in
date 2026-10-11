@@ -21,8 +21,8 @@
     <name>Eka Putra</name>
   </developer>
   <launchable type="desktop-id">com.ekaput.Markwork.desktop</launchable>
-  <url type="homepage">https://nyerat.ekaput.com/</url>
-  <url type="help">https://nyerat.ekaput.com/docs/</url>
+  <url type="homepage">https://markwork.ekaput.com/</url>
+  <url type="help">https://markwork.ekaput.com/docs/</url>
   <content_rating type="oars-1.1"/>
   <supports>
     <control>keyboard</control>
@@ -41,15 +41,15 @@
   <screenshots>
     <screenshot type="default">
       <caption>Editor with the assistant</caption>
-      <image>https://nyerat.ekaput.com/assets/assistant-light.png</image>
+      <image>https://markwork.ekaput.com/assets/assistant-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Kanban board</caption>
-      <image>https://nyerat.ekaput.com/assets/kanban.png</image>
+      <image>https://markwork.ekaput.com/assets/kanban.png</image>
     </screenshot>
     <screenshot>
       <caption>Editor in dark mode</caption>
-      <image>https://nyerat.ekaput.com/assets/editor-dark.png</image>
+      <image>https://markwork.ekaput.com/assets/editor-dark.png</image>
     </screenshot>
   </screenshots>
   <releases>
