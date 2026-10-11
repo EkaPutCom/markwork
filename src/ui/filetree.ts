@@ -16,6 +16,7 @@ import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import { copyEntry, createFile, createFolder, moveEntry, renameEntry, trashEntry } from '../fileops.js';
 import { newList } from '../markdown/inbox.js';
+import { newTable } from '../markdown/tablelayout.js';
 import { newBoard, serializeBoard } from '../markdown/kanban.js';
 import { confirmDialog, promptDialog, showError } from './dialogs.js';
 import { after, onClick, pack, type Awaitable } from '../gtkutil.js';
@@ -375,17 +376,17 @@ export class FileTree {
 
     // Ask for a name and then create the file/folder in dir. A new file is opened in the editor right away.
     // `board`: a file containing an empty kanban board, shown right away as a board when opened.
-    create(kind: 'file' | 'folder' | 'board' | 'inbox', dir: string): Awaitable<string | null> {
-        const title = kind === 'file' ? _('New File') : kind === 'board' ? _('New Kanban Board') : kind === 'inbox' ? _('New Inbox') : _('New Folder');
+    create(kind: 'file' | 'folder' | 'board' | 'inbox' | 'table', dir: string): Awaitable<string | null> {
+        const title = kind === 'file' ? _('New File') : kind === 'board' ? _('New Kanban Board') : kind === 'inbox' ? _('New Inbox') : kind === 'table' ? _('New Table') : _('New Folder');
         return after(this.dialogs.prompt(title, kind === 'folder' ? _('Folder name') : _('File name')), name => this.createNamed(kind, dir, name));
     }
 
-    private createNamed(kind: 'file' | 'folder' | 'board' | 'inbox', dir: string, name: string | null): string | null {
+    private createNamed(kind: 'file' | 'folder' | 'board' | 'inbox' | 'table', dir: string, name: string | null): string | null {
         if (name === null) return null;
         let path: string;
         try {
             path = kind === 'folder' ? createFolder(dir, name)
-                : createFile(dir, name, kind === 'board' ? serializeBoard(newBoard()) : kind === 'inbox' ? serializeBoard(newList()) : '');
+                : createFile(dir, name, kind === 'board' ? serializeBoard(newBoard()) : kind === 'inbox' ? serializeBoard(newList()) : kind === 'table' ? serializeBoard(newTable()) : '');
         } catch (e) {
             this.dialogs.error((e as Error).message);
             return null;
@@ -446,6 +447,7 @@ export class FileTree {
             { label: _('New Folder…'), enabled: dir !== null, run: () => { if (dir) this.create('folder', dir); } },
             { label: _('New Kanban Board…'), enabled: dir !== null, run: () => { if (dir) this.create('board', dir); } },
             { label: _('New Inbox…'), enabled: dir !== null, run: () => { if (dir) this.create('inbox', dir); } },
+            { label: _('New Table…'), enabled: dir !== null, run: () => { if (dir) this.create('table', dir); } },
         ];
         if (rowPath) {
             entries.push(separator());

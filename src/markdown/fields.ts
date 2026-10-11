@@ -377,7 +377,8 @@ export interface FieldChip {
     invalid: string | null;     // why the value does not fit its field
 }
 
-function displayValue(def: FieldDef, value: Value): string {
+// A value as it is shown (a link without its brackets, several values joined).
+export function displayValue(def: FieldDef, value: Value): string {
     return [value].flat().map(v => formatScalar(def, v).replace(/^\[\[(.+)\]\]$/, '$1')).join(', ');
 }
 

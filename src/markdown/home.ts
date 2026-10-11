@@ -4,7 +4,7 @@
 // everything is recomputed every time Home is shown.
 
 import { cardMeta, dueStatus, parseBoard, type Board, type Card, type DueStatus, type Position } from './kanban.js';
-import { isBoard, isList } from './layout.js';
+import { isList, isStructured } from './layout.js';
 
 export interface HomeFile {
     name: string;    // relative to the work folder
@@ -30,12 +30,12 @@ const DAY = 24 * 60 * 60 * 1000;
 const daysBetween = (from: string, to: string): number =>
     Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY);
 
-// Unfinished cards (of a board or a list) whose due date is overdue, today, or within the next two days, ordered by due date.
+// Unfinished cards (of a board, a list, or a table) whose due date is overdue, today, or within the next two days, ordered by due date.
 // projectOf determines the card's project name (see cardProject in agent/harness.ts); this layer does not know about it.
 export function dueTasks(files: HomeFile[], today: string, projectOf: (board: Board, card: Card) => string | null = () => null): Task[] {
     const tasks: Task[] = [];
     for (const file of files) {
-        if (!isBoard(file.text) && !isList(file.text)) continue;
+        if (!isStructured(file.text)) continue;
         const board = parseBoard(file.text);
         board.columns.forEach((column, c) => {
             if (DONE_COLUMN.test(column.title.trim())) return;

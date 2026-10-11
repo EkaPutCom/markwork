@@ -37,6 +37,7 @@ import { kanbanModelTests } from './unit/kanban.js';
 import { inboxModelTests } from './unit/inbox.js';
 import { fieldsModelTests } from './unit/fields.js';
 import { layoutTests } from './unit/layout.js';
+import { tableLayoutTests } from './unit/tablelayout.js';
 import { sampleDocumentTests } from './unit/samples.js';
 import { homeModelTests } from './unit/home.js';
 import { journalModelTests } from './unit/journal.js';
@@ -73,6 +74,7 @@ import { tableGridTests } from './gui/table.js';
 import { codeBlockTests } from './gui/codeblock.js';
 import { kanbanBoardTests } from './gui/kanban.js';
 import { inboxTests } from './gui/inbox.js';
+import { tableLayoutGuiTests } from './gui/tablelayout.js';
 import { kanbanMouseTests } from './gui/kanban-mouse.js';
 import { folderTests } from './gui/folder.js';
 import { folderMouseTests } from './gui/folder-mouse.js';
@@ -98,6 +100,7 @@ function runUnitTests(): void {
     inboxModelTests();
     fieldsModelTests();
     layoutTests();
+    tableLayoutTests();
     sampleDocumentTests();
     homeModelTests();
     journalModelTests();
@@ -177,6 +180,7 @@ function runGuiTests(app: Adw.Application): void {
     mermaidTests(c);
     kanbanBoardTests(c);
     inboxTests(c);
+    tableLayoutGuiTests(c);
     harnessTests(c);
     dialogTests(c);
     // The folder tests create another window and replace the app actions. Check undo/redo

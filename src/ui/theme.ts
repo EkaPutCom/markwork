@@ -100,6 +100,12 @@ const buildCss = (p: Palette): string => `
     .inbox-field-6 { background-color: #8a7a1c; color: #ffffff; } .inbox-field-7 { background-color: #5e6c84; color: #ffffff; }
     list.inbox-list > row.inbox-drop-above { box-shadow: 0 -3px 0 0 @accent_color; }
     list.inbox-list > row.inbox-drop-below { box-shadow: 0 3px 0 0 @accent_color; }
+    .table-view { background-color: transparent; }
+    .table-cell { padding: 7px 12px; border-bottom: 1px solid alpha(currentColor, 0.12); }
+    .table-head { border-bottom: 2px solid alpha(currentColor, 0.2); padding-top: 4px; padding-bottom: 4px; }
+    .table-head-button { font-size: 11px; font-weight: bold; letter-spacing: 0.5px; padding: 2px 0; min-height: 0; }
+    .table-late { color: @error_color; font-weight: bold; }
+    .table-grid progressbar trough, .table-grid progressbar progress { min-height: 6px; }
     .inbox-tag { border-radius: 9px; padding: 1px 8px; font-size: 11px; background-color: alpha(@accent_bg_color, 0.18); color: @accent_color; }
     .kanban-chip { border-radius: 9px; padding: 0 8px; font-size: 11px; color: #ffffff; background-color: #6b7280; }
     .kanban-notes { background-color: transparent; color: alpha(currentColor, 0.55); padding: 0 2px; }
