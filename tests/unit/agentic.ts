@@ -59,8 +59,8 @@ function harness() {
 export function agenticTests(): void {
     section('Agent evaluation: work through to a verified result');
     test('the folder boundary rejects creating files through a symlink', () => {
-        const root = GLib.dir_make_tmp('nyerat-path-XXXXXX');
-        const outside = GLib.dir_make_tmp('nyerat-outside-XXXXXX');
+        const root = GLib.dir_make_tmp('markwork-path-XXXXXX');
+        const outside = GLib.dir_make_tmp('markwork-outside-XXXXXX');
         const link = Gio.File.new_for_path(GLib.build_filenamev([root, 'link']));
         try {
             link.make_symbolic_link(outside, null);
@@ -71,7 +71,7 @@ export function agenticTests(): void {
         } finally { link.delete(null); GLib.rmdir(root); GLib.rmdir(outside); }
     });
     test('verification re-reads a same-size change and skips source symlinks', () => {
-        const root = GLib.dir_make_tmp('nyerat-fresh-XXXXXX');
+        const root = GLib.dir_make_tmp('markwork-fresh-XXXXXX');
         const file = Gio.File.new_for_path(GLib.build_filenamev([root, 'a.md']));
         const link = Gio.File.new_for_path(GLib.build_filenamev([root, 'alias.md']));
         const workspace = new WorkspaceRepository();

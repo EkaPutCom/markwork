@@ -1,7 +1,7 @@
 # Files containing translatable text (source language: English).
-data/com.ekaput.Nyerat.desktop.in
-data/com.ekaput.Nyerat.metainfo.xml.in
-data/com.ekaput.Nyerat.gschema.xml
+data/com.ekaput.Markwork.desktop.in
+data/com.ekaput.Markwork.metainfo.xml.in
+data/com.ekaput.Markwork.gschema.xml
 src/commands.ts
 src/editor/images.ts
 src/editor/mermaidrender.ts

@@ -10,7 +10,7 @@ import { _, fmt } from '../i18n.js';
 const SOURCE_TEXT: Record<KeySource, string> = {
     env: _('Using the key from the DEEPSEEK_API_KEY environment variable.'),
     keyring: _('The key is stored in the system keyring.'),
-    file: _('The key is stored in ~/.config/nyerat/deepseek.key (keyring unavailable).'),
+    file: _('The key is stored in ~/.config/markwork/deepseek.key (keyring unavailable).'),
 };
 
 export interface SettingsWidgets {

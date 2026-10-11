@@ -27,7 +27,7 @@ export const LAYOUT_CHOICES: readonly LayoutChoice[] = [
 export class HeaderBar extends Adw.Bin {
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratHeaderBar',
+            GTypeName: 'MarkworkHeaderBar',
             Template: uiTemplate(template),
             InternalChildren: ['windowTitle', 'layoutButton', 'layoutIcon', 'layoutLabel'],
         }, this);

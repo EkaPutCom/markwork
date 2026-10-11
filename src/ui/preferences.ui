@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="NyeratPreferencesDialog" parent="AdwPreferencesDialog">
+  <template class="MarkworkPreferencesDialog" parent="AdwPreferencesDialog">
     <property name="title" translatable="yes">Preferences</property>
     <child>
       <object class="AdwPreferencesPage">
@@ -79,7 +79,7 @@
             <child>
               <object class="AdwSwitchRow" id="chatSave">
                 <property name="title" translatable="yes">Save conversation history</property>
-                <property name="subtitle" translatable="yes">Saved in the work folder, in .nyerat/chats</property>
+                <property name="subtitle" translatable="yes">Saved in the work folder, in .markwork/chats</property>
               </object>
             </child>
           </object>

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.ekaput.Nyerat</id>
+  <id>com.ekaput.Markwork</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
-  <name>Nyerat</name>
+  <name>Markwork</name>
   <summary>Personal workbench for humans and AI agents</summary>
   <description>
     <p>
-      Nyerat is a personal workspace for notes, documents, research, plans, and tasks
+      Markwork is a personal workspace for notes, documents, research, plans, and tasks
       alongside AI agents that understand the context of your work.
     </p>
     <ul>
@@ -20,7 +20,7 @@
   <developer id="com.ekaput">
     <name>Eka Putra</name>
   </developer>
-  <launchable type="desktop-id">com.ekaput.Nyerat.desktop</launchable>
+  <launchable type="desktop-id">com.ekaput.Markwork.desktop</launchable>
   <url type="homepage">https://nyerat.ekaput.com/</url>
   <url type="help">https://nyerat.ekaput.com/docs/</url>
   <content_rating type="oars-1.1"/>

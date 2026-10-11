@@ -3,12 +3,12 @@
 //   Good morning, Eka
 //   Wednesday, October 7, 2026
 //
-//   Continue            ┌ estuary ───┐ ┌ nyerat ────┐      one card per folder
+//   Continue            ┌ estuary ───┐ ┌ markwork ────┐      one card per folder
 //                       │ arch.md    │ │ roadmap.md │
 //                       └────────────┘ └────────────┘
 //   Journal             ┌ Today's journal  2 notes · 4 activities  [+] ┐
 //   Agent               ┌ pi · Fix checkout   Waiting for your answer  ┐
-//   Due dates           ┌ ☐ Implement search   Nyerat · Today          ┐
+//   Due dates           ┌ ☐ Implement search   Markwork · Today          ┐
 //   Inbox               ┌ inbox.md                 5 unprocessed       ┐
 //   Recent files        ┌ journal/2026-10-06.md        2 hours ago     ┐
 //

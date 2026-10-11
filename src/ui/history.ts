@@ -26,7 +26,7 @@ const KIND_MARK: Record<ChangeKind, string> = { modified: 'M', added: 'A', delet
 
 // One commit list row. The data is plain fields; the display is read by the ListView when the row is bound.
 class CommitItem extends GObject.Object {
-    static { GObject.registerClass({ GTypeName: 'NyeratCommitItem' }, this); }
+    static { GObject.registerClass({ GTypeName: 'MarkworkCommitItem' }, this); }
     commit!: Commit;
     now = 0;
 }

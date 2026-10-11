@@ -42,7 +42,7 @@ interface Focus { ix: number; iy: number; vx: number; vy: number }
 // Image area: the texture is drawn filling the widget size (size request = image size × zoom).
 // Replacement for DrawingArea + Gdk.cairo_set_source_pixbuf(), deprecated since GTK 4.20.
 class ZoomArea extends Gtk.Widget {
-    static { GObject.registerClass({ GTypeName: 'NyeratZoomArea' }, this); }
+    static { GObject.registerClass({ GTypeName: 'MarkworkZoomArea' }, this); }
     texture: Gdk.Texture | null = null;
     zoom = 1;
 

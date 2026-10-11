@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="NyeratChatPanel" parent="GtkBox">
+  <template class="MarkworkChatPanel" parent="GtkBox">
     <property name="orientation">vertical</property>
     <property name="width-request">360</property>
     <style>
@@ -169,7 +169,7 @@
                     <child>
                       <object class="GtkCheckButton" id="saveCheck">
                         <property name="label" translatable="yes">Save conversation history in the folder</property>
-                        <property name="tooltip-text" translatable="yes">Each conversation is written as a Markdown file in &lt;work folder&gt;/.nyerat/chats. It contains document quotes; the .nyerat folder is not included in Git unless you delete .nyerat/.gitignore</property>
+                        <property name="tooltip-text" translatable="yes">Each conversation is written as a Markdown file in &lt;work folder&gt;/.markwork/chats. It contains document quotes; the .markwork folder is not included in Git unless you delete .markwork/.gitignore</property>
                       </object>
                     </child>
                     <child>

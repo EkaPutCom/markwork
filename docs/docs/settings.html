@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Settings · Nyerat Documentation</title>
-<meta name="description" content="Where Nyerat stores its settings, the API key, the harness project folders, and the conversation history, with their default values.">
+<title>Settings · Markwork Documentation</title>
+<meta name="description" content="Where Markwork stores its settings, the API key, the harness project folders, and the conversation history, with their default values.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M9 23V9h3l8 10V9h3v14h-3L12 13v10z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="docs.css">
 </head>
@@ -14,7 +14,7 @@
   <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
   <a class="brand" href="../index.html">
     <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 23V9h3l8 10V9h3v14h-3L12 13v10z" fill="var(--accent-text)"/></svg>
-    Nyerat <span>Docs</span>
+    Markwork <span>Docs</span>
   </a>
   <nav>
     <a href="index.html" aria-current="true">Docs</a>
@@ -33,10 +33,10 @@
 <h2 id="locations">File locations</h2>
 <div class="table-wrap"><table>
   <tr><th>File</th><th>Contents</th></tr>
-  <tr><td>GSettings (<code>com.ekaput.Nyerat</code>)</td><td>The app settings, stored in dconf. A previous version used <code>id.eka.Nyerat</code>; the old settings are not migrated</td></tr>
+  <tr><td>GSettings (<code>com.ekaput.Markwork</code>)</td><td>The app settings, stored in dconf. A previous version used <code>id.eka.Markwork</code>; the old settings are not migrated</td></tr>
   <tr><td>The system keyring</td><td>The DeepSeek API key</td></tr>
-  <tr><td><code>~/.config/nyerat/deepseek.key</code></td><td>The API key when the keyring is not available (mode 0600)</td></tr>
-  <tr><td><code>&lt;work folder&gt;/.nyerat/chats/</code></td><td>Conversation history, plans, and the action journal</td></tr>
+  <tr><td><code>~/.config/markwork/deepseek.key</code></td><td>The API key when the keyring is not available (mode 0600)</td></tr>
+  <tr><td><code>&lt;work folder&gt;/.markwork/chats/</code></td><td>Conversation history, plans, and the action journal</td></tr>
 </table></div>
 
 <h2 id="settings">What the settings hold</h2>
@@ -67,7 +67,7 @@
 </table></div>
 
 <h2 id="api-key">The API key</h2>
-<p>Nyerat looks for the API key in the <code>DEEPSEEK_API_KEY</code> environment variable, then in the keyring, then in the fallback file. Enter or replace the key from the gear icon in the Assistant panel.</p>
+<p>Markwork looks for the API key in the <code>DEEPSEEK_API_KEY</code> environment variable, then in the keyring, then in the fallback file. Enter or replace the key from the gear icon in the Assistant panel.</p>
 </main>
 <aside class="toc" id="toc" aria-label="Table of contents"></aside>
 </div>

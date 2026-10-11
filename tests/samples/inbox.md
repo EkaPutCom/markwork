@@ -14,4 +14,4 @@ A place to capture ideas, notes, and things to process later.
   Think about the migration schema too.
 - Read the article about the GNOME HIG #read [kind:: reading] [created:: 2026-10-07 13:32]
 - Check a library for PDF generation on Cloudflare Workers #idea [kind:: task] [created:: 2026-10-07 11:32]
-- Name ideas for a personal workbench #nyerat [created:: 2026-10-04 09:10]
+- Name ideas for a personal workbench #markwork [created:: 2026-10-04 09:10]

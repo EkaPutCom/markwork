@@ -65,7 +65,7 @@ export class ChatController {
     makeProvider: (key: string) => Provider = key => new DeepSeek(key);
     keyStore: KeyStore = systemKeyStore;
     model = DEEPSEEK_MODELS[0];
-    saveChats = true;   // save every turn to <folder>/.nyerat/chats
+    saveChats = true;   // save every turn to <folder>/.markwork/chats
     options: ContextOptions = { activeDocument: true, selection: true, project: true };
     budget = DEFAULT_BUDGET;
 
@@ -194,7 +194,7 @@ export class ChatController {
 
     // ---------- History on disk ----------
 
-    // Write the conversation to <folder>/.nyerat/chats after every turn. Without a folder, or when turned off, nothing is written.
+    // Write the conversation to <folder>/.markwork/chats after every turn. Without a folder, or when turned off, nothing is written.
     private persist(): void {
         const root = this.host.root();
         const history = this.session.history;

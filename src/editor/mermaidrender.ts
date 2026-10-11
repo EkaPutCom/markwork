@@ -169,8 +169,8 @@ export class MermaidRenderer {
         }
         const WebKit = this.webkit;
         const manager = new WebKit.UserContentManager();
-        manager.register_script_message_handler('nyerat', null);
-        manager.connect('script-message-received::nyerat', (_m, value) => this.onMessage(value));
+        manager.register_script_message_handler('markwork', null);
+        manager.connect('script-message-received::markwork', (_m, value) => this.onMessage(value));
 
         const view = new WebKit.WebView({ user_content_manager: manager });
         const settings = view.get_settings();
@@ -197,7 +197,7 @@ export class MermaidRenderer {
         const t = job.theme;
         // JSON.stringify produces a JavaScript literal that is safe for any code.
         const script = `(async () => {
-            const post = o => window.webkit.messageHandlers.nyerat.postMessage(JSON.stringify({ id: ${job.id}, ...o }));
+            const post = o => window.webkit.messageHandlers.markwork.postMessage(JSON.stringify({ id: ${job.id}, ...o }));
             try {
                 document.body.innerHTML = '';
                 document.documentElement.style.background = ${JSON.stringify(t.bg)};

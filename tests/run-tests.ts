@@ -1,4 +1,4 @@
-// Automated tests for Nyerat. Bundled by Vite into dist/run-tests.js.
+// Automated tests for Markwork. Bundled by Vite into dist/run-tests.js.
 //
 //   npm test                                         build, then all tests including the mouse in Xvfb
 //   npm run test:ui                                 build, then all tests including the mouse on the desktop
@@ -232,7 +232,7 @@ if (!opt('no-gui')) {
         if (opt('with-kanban-mouse')) recordFailure();
         print(`\n${DIM}GUI tests skipped: there is no display.${RESET}`);
     } else {
-        const app = new Adw.Application({ application_id: 'com.ekaput.Nyerat.Test', flags: Gio.ApplicationFlags.NON_UNIQUE });
+        const app = new Adw.Application({ application_id: 'com.ekaput.Markwork.Test', flags: Gio.ApplicationFlags.NON_UNIQUE });
         app.connect('activate', () => {
             app.hold();
             GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {

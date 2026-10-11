@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The pi orchestrator · Nyerat Documentation</title>
-<meta name="description" content="Assign Nyerat kanban cards to the pi harness working in another project folder, answer its questions and permission requests from the card, and watch its log.">
+<title>The pi orchestrator · Markwork Documentation</title>
+<meta name="description" content="Assign Markwork kanban cards to the pi harness working in another project folder, answer its questions and permission requests from the card, and watch its log.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M9 23V9h3l8 10V9h3v14h-3L12 13v10z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="docs.css">
 </head>
@@ -14,7 +14,7 @@
   <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
   <a class="brand" href="../index.html">
     <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 23V9h3l8 10V9h3v14h-3L12 13v10z" fill="var(--accent-text)"/></svg>
-    Nyerat <span>Docs</span>
+    Markwork <span>Docs</span>
   </a>
   <nav>
     <a href="index.html" aria-current="true">Docs</a>
@@ -28,7 +28,7 @@
 <main class="doc">
 <p class="eyebrow">Agent</p>
 <h1>The pi orchestrator</h1>
-<p class="lead">Nyerat can orchestrate an external harness: a kanban card assigned to <code>@pi</code> is worked on by <a href="https://pi.dev">pi</a> in another project folder, for example a code repo, not in the Nyerat work folder.</p>
+<p class="lead">Markwork can orchestrate an external harness: a kanban card assigned to <code>@pi</code> is worked on by <a href="https://pi.dev">pi</a> in another project folder, for example a code repo, not in the Markwork work folder.</p>
 
 <figure><img src="../assets/pi.gif" width="900" height="548" loading="lazy" alt="Animation of a kanban board: @pi cards are assigned, one works and one queues, both finish to Review, then a third card waits for an answer"><figcaption>@pi cards: assigned, working and queued, finished to Review, then waiting for an answer</figcaption></figure>
 
@@ -50,13 +50,13 @@ project: web-ecommerce         <span class="c">← the default project of the bo
 <p>When it starts, the card moves to the <em>In Progress</em> list. When it finishes, it moves to <em>Review</em> with the note <code>↳ pi done …: summary</code>. If it fails, the card stays where it is with the note <code>↳ pi failed …: reason</code>.</p>
 
 <h2 id="context">Notes as context</h2>
-<p>Pi works in the project folder, so it cannot read the notes in the Nyerat work folder. Link the notes on the card with <a href="editor.html#wikilink"><code>[[ ]]</code></a>, and Nyerat copies their contents into the prompt.</p>
+<p>Pi works in the project folder, so it cannot read the notes in the Markwork work folder. Link the notes on the card with <a href="editor.html#wikilink"><code>[[ ]]</code></a>, and Markwork copies their contents into the prompt.</p>
 <pre><code>- [ ] Checkout with QRIS [[Spec#Payment]] @pi
   Follow the decisions in [[Meeting Notes]].</code></pre>
 <ul>
   <li>Links in the title and in the notes of the card are both included, at most 10 per card. The names are looked up with the same rules as <kbd>Ctrl</kbd>+click in the editor.</li>
   <li><code>[[Note#Section]]</code> only copies the part under that heading, up to the next heading of the same level.</li>
-  <li>The contents go into the <em>Related notes from Nyerat</em> section of the prompt, wrapped in a code block. Every note is cut at 8,000 characters, and the total is 24,000 characters. A note that is not found is still named, so that pi knows something is missing.</li>
+  <li>The contents go into the <em>Related notes from Markwork</em> section of the prompt, wrapped in a code block. Every note is cut at 8,000 characters, and the total is 24,000 characters. A note that is not found is still named, so that pi knows something is missing.</li>
   <li>An open document is read from its editor, so unsaved edits are included.</li>
   <li>The complete prompt, including the contents of the notes, is visible in the <a href="#log">pi log</a>.</li>
   <li>The contents of the notes are taken at <em>Work on it with pi</em>. <em>Reply to pi</em> continues the same session without copying them again.</li>
@@ -77,7 +77,7 @@ project: web-ecommerce         <span class="c">← the default project of the bo
 
 
 <h2 id="answering">Answering pi</h2>
-<p>Pi runs in RPC mode, so its conversation can be continued from Nyerat:</p>
+<p>Pi runs in RPC mode, so its conversation can be continued from Markwork:</p>
 <ul>
   <li><strong>Questions.</strong> When the answer of pi ends with <code>?</code>, the card becomes ⏸ and stays in <em>In Progress</em>. Right-click → <em>Answer pi…</em> opens the question with an answer box.</li>
   <li><strong>Permission and input.</strong> A pi extension that asks for permission (e.g. a confirmation before <code>rm -rf</code>) appears in the same dialog: <em>Allow</em>/<em>Deny</em>, a choice, or an input.</li>
@@ -100,12 +100,12 @@ project: web-ecommerce         <span class="c">← the default project of the bo
 
 
 <h2 id="boundaries">Access boundaries</h2>
-<div class="callout warn"><strong>Pi writes freely in the project folder, without the Nyerat review window.</strong><p>Review the result in that project repo itself (pi is asked not to commit). Pi does not ask for tool permission by itself; permission requests come from the pi extensions you install, such as <code>permission-gate</code>.</p></div>
+<div class="callout warn"><strong>Pi writes freely in the project folder, without the Markwork review window.</strong><p>Review the result in that project repo itself (pi is asked not to commit). Pi does not ask for tool permission by itself; permission requests come from the pi extensions you install, such as <code>permission-gate</code>.</p></div>
 <ul>
   <li>The Markdown only names the <em>name</em> of the project. The name is mapped to a folder that can only be filled in through the choose-folder dialog, so a card or an agent cannot point the harness at an arbitrary folder.</li>
-  <li>The Nyerat work folder, its contents, its parents, the root, and relative paths are rejected as a project folder.</li>
-  <li>The contents of the notes linked with <code>[[ ]]</code> from the Nyerat work folder are sent to pi as part of the prompt (and to the model provider that pi uses). Do not link notes that must not leave. Only Markdown files in the work folder can be linked; dot folders, symlinks, and paths outside the work folder are not included.</li>
-  <li>Nyerat itself does not write to the project folder. Closing the window stops every harness that is running.</li>
+  <li>The Markwork work folder, its contents, its parents, the root, and relative paths are rejected as a project folder.</li>
+  <li>The contents of the notes linked with <code>[[ ]]</code> from the Markwork work folder are sent to pi as part of the prompt (and to the model provider that pi uses). Do not link notes that must not leave. Only Markdown files in the work folder can be linked; dot folders, symlinks, and paths outside the work folder are not included.</li>
+  <li>Markwork itself does not write to the project folder. Closing the window stops every harness that is running.</li>
 </ul>
 </main>
 <aside class="toc" id="toc" aria-label="Table of contents"></aside>

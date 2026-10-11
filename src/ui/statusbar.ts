@@ -13,7 +13,7 @@ import { _, fmt, ngettext } from '../i18n.js';
 export class StatusBar extends Gtk.Box {
     static {
         GObject.registerClass({
-            GTypeName: 'NyeratStatusBar',
+            GTypeName: 'MarkworkStatusBar',
             Template: uiTemplate(template),
             InternalChildren: ['left', 'right'],
         }, this);

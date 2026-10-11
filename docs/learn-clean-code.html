@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learning Clean Code with Nyerat</title>
-<meta name="description" content="Learning notes on keeping a GTK and GJS code base easy to change: layers checked by the build, small functions, cohesion, coupling, local reasoning, and proving that a refactor changed nothing, all taken from Nyerat's own refactors.">
+<title>Learning Clean Code with Markwork</title>
+<meta name="description" content="Learning notes on keeping a GTK and GJS code base easy to change: layers checked by the build, small functions, cohesion, coupling, local reasoning, and proving that a refactor changed nothing, all taken from Markwork's own refactors.">
 <style>
 :root {
   color-scheme: light;
@@ -171,7 +171,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
 <body>
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="index.html">Nyerat</a>
+    <a class="brand" href="index.html">Markwork</a>
     <nav>
       <a href="docs/">Documentation</a>
       <a href="learn-agent.html">Learn agents</a>
@@ -185,9 +185,9 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
 <main>
 <div class="wrap">
   <div class="hero">
-    <div class="eyebrow">Learning notes · from Nyerat's own refactors</div>
-    <h1>Learning clean code with Nyerat</h1>
-    <p class="lede">Clean code here means one practical thing: a change can be made by reading a small part of the code, and the build tells you when a change breaks a rule. Every chapter below starts from a real problem in Nyerat (a GTK 4 + GJS workbench in TypeScript), shows the code before and after, and states how we checked that the behavior did not change.</p>
+    <div class="eyebrow">Learning notes · from Markwork's own refactors</div>
+    <h1>Learning clean code with Markwork</h1>
+    <p class="lede">Clean code here means one practical thing: a change can be made by reading a small part of the code, and the build tells you when a change breaks a rule. Every chapter below starts from a real problem in Markwork (a GTK 4 + GJS workbench in TypeScript), shows the code before and after, and states how we checked that the behavior did not change.</p>
     <div class="kpis">
       <div class="kpi"><div class="what">Highest cyclomatic complexity of a function</div><div class="big">15</div><div class="from">from 132 (<code>ChatSession.ask</code>) · limit checked by the build</div></div>
       <div class="kpi"><div class="what">Functions in src/ and scripts/</div><div class="big">2,709</div><div class="from">median 1 · mean 2.44 · 90% at 5 or less</div></div>
@@ -211,7 +211,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
 <div class="wrap">
   <div class="chapnum">Chapter 1</div>
   <h2>Rules the build checks</h2>
-  <p>The README has always described Nyerat's layers: <code>markdown/</code> knows no GTK, <code>agent/</code> knows no widgets, controllers never see <code>MainWindow</code>. A rule that only lives in prose holds as long as every contributor remembers it. <code>scripts/layers.mjs</code> turns it into a check that runs in <code>npm run build</code> and <code>npm run typecheck</code>.</p>
+  <p>The README has always described Markwork's layers: <code>markdown/</code> knows no GTK, <code>agent/</code> knows no widgets, controllers never see <code>MainWindow</code>. A rule that only lives in prose holds as long as every contributor remembers it. <code>scripts/layers.mjs</code> turns it into a check that runs in <code>npm run build</code> and <code>npm run typecheck</code>.</p>
   <div class="layers" aria-label="Layers, from top to bottom">
     <div class="layer"><b>app.ts → window.ts</b><span>composes the widgets and connects them; the only place that knows every component</span></div>
     <div class="down">↓ may use</div>
@@ -247,11 +247,11 @@ const rules = [
   <h2>Small functions: complexity as a signal</h2>
   <p>Cyclomatic complexity counts the paths through a function: 1, plus one for every <code>if</code>, <code>?:</code>, <code>&amp;&amp;</code>, <code>||</code>, <code>??</code>, <code>case</code>, loop, and <code>catch</code>. It is the minimum number of tests needed to run every branch once. The usual reading:</p>
   <div class="scroll-x"><table>
-    <thead><tr><th>Complexity</th><th>Meaning</th><th class="num">Nyerat functions</th></tr></thead>
+    <thead><tr><th>Complexity</th><th>Meaning</th><th class="num">Markwork functions</th></tr></thead>
     <tbody>
       <tr><td>1–5</td><td>simple; easy to read and test</td><td class="num">2,398</td></tr>
       <tr><td>6–10</td><td>fine; McCabe's own limit (1976)</td><td class="num">210</td></tr>
-      <tr><td>11–15</td><td>worth a second look; Nyerat's build limit</td><td class="num">48</td></tr>
+      <tr><td>11–15</td><td>worth a second look; Markwork's build limit</td><td class="num">48</td></tr>
       <tr><td>above 15</td><td>refused by the build</td><td class="num">0</td></tr>
     </tbody>
   </table></div>
@@ -320,7 +320,7 @@ if (!action) return fail('The "action" argument must be one of: …', 'invalid a
   </div>
 
   <div class="lesson"><b>Lesson</b>Split a large function along the state it shares (a class for one turn, one parse, one board edit), not by line count. Dispatch on names with a table, and guard the lookup.</div>
-  <div class="caveat"><b>The number is a signal, not the goal.</b> A flat parser with complexity 14 can be clearer than four functions passing state between them. Nyerat's limit is 15, not 10: lowering it to 10 would refuse 48 functions, most of them parsers and event maps that read better whole.</div>
+  <div class="caveat"><b>The number is a signal, not the goal.</b> A flat parser with complexity 14 can be clearer than four functions passing state between them. Markwork's limit is 15, not 10: lowering it to 10 would refuse 48 functions, most of them parsers and event maps that read better whole.</div>
 </div>
 </section>
 
@@ -328,7 +328,7 @@ if (!action) return fail('The "action" argument must be one of: …', 'invalid a
 <div class="wrap">
   <div class="chapnum">Chapter 3</div>
   <h2>Prove the refactor changed nothing</h2>
-  <p>"The tests still pass" says that the tested paths still work. A refactor of a function with 42 paths needs more than that. Nyerat's refactors used <b>differential testing</b>: bundle the old version (from <code>git show HEAD:…</code>) and the new one side by side, feed both the same random inputs, and compare the outputs exactly.</p>
+  <p>"The tests still pass" says that the tested paths still work. A refactor of a function with 42 paths needs more than that. Markwork's refactors used <b>differential testing</b>: bundle the old version (from <code>git show HEAD:…</code>) and the new one side by side, feed both the same random inputs, and compare the outputs exactly.</p>
 <pre><code>// node eq.mjs &lt;src path&gt; &lt;generator.mjs&gt;
 for (let i = 0; i &lt; count; i++) {
     const input = gen.input(rnd, pick);
@@ -398,7 +398,7 @@ export class LineCache { begin() get() put() end() }</code></pre></div>
 <div class="wrap">
   <div class="chapnum">Chapter 5</div>
   <h2>Coupling: a narrow host, and one place that knows everyone</h2>
-  <p>Nyerat has no import cycle. Its fan-out is concentrated where it belongs: <code>window.ts</code> imports 33 modules because it is the <b>composition root</b>, the one place that creates the widgets and connects their callbacks. Everything else stays narrow.</p>
+  <p>Markwork has no import cycle. Its fan-out is concentrated where it belongs: <code>window.ts</code> imports 33 modules because it is the <b>composition root</b>, the one place that creates the widgets and connects their callbacks. Everything else stays narrow.</p>
   <p>A controller never receives <code>MainWindow</code>. It declares what it needs as a host interface, and the window builds that host from closures:</p>
 <pre><code>// window/views.ts
 export interface ViewHost extends DocumentHost {
@@ -447,7 +447,7 @@ private connectWriter(writer: MessageWriter): void {
 <div class="wrap">
   <div class="chapnum">Chapter 6</div>
   <h2>Local reasoning: one owner per piece of state</h2>
-  <p>You can reason locally when the code in front of you is enough to know what a value means. Nyerat's biggest obstacle was the <code>Doc</code> record for an open tab: ten fields, written by five modules. To know when <code>textOverride</code> is reset, or what <code>file === null</code> means after an agent deleted a file, you had to read all five.</p>
+  <p>You can reason locally when the code in front of you is enough to know what a value means. Markwork's biggest obstacle was the <code>Doc</code> record for an open tab: ten fields, written by five modules. To know when <code>textOverride</code> is reset, or what <code>file === null</code> means after an agent deleted a file, you had to read all five.</p>
   <div class="grid2">
     <div class="panel"><h4><span class="tag old">Before</span> any module writes any field</h4>
 <pre><code>export interface Doc {
@@ -520,7 +520,7 @@ if (open) host.fileMoved(open, to);</code></pre></div>
 <section class="chapter" id="ch8">
 <div class="wrap">
   <div class="chapnum">Chapter 8</div>
-  <h2>Checklist for a change in Nyerat</h2>
+  <h2>Checklist for a change in Markwork</h2>
   <ul class="checklist">
     <li><code>npm run typecheck</code> passes: it includes the layer rules and the complexity limit of 15.</li>
     <li>A new module has a place in the layer diagram in the README, and a rule in <code>scripts/layers.mjs</code> if its place is not obvious from its folder.</li>
@@ -551,7 +551,7 @@ if (open) host.fileMoved(open, to);</code></pre></div>
 
 <footer>
   <div class="wrap">
-    <span>Nyerat · learning notes for developers</span>
+    <span>Markwork · learning notes for developers</span>
     <span><a href="index.html">Home</a> · <a href="docs/">Documentation</a> · <a href="https://github.com/EkaPutCom/nyerat">GitHub</a></span>
   </div>
 </footer>
@@ -559,7 +559,7 @@ if (open) host.fileMoved(open, to);</code></pre></div>
 <script>
 // Theme toggle: follows the system until chosen; the choice is remembered when storage is available.
 (() => {
-  const root = document.documentElement, key = 'nyerat-learn-theme';
+  const root = document.documentElement, key = 'markwork-learn-theme';
   try { const saved = localStorage.getItem(key); if (saved) root.dataset.theme = saved; } catch (e) { /* no storage */ }
   document.getElementById('theme').addEventListener('click', () => {
     const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -648,7 +648,7 @@ function describe(name, a) {
     const pct = Math.min(100, total / 20 * 100);
     fill.style.width = pct + '%';
     fill.style.background = total > 15 ? 'var(--before)' : total > 10 ? 'var(--warn-line)' : 'var(--ok)';
-    verdict.textContent = total > 15 ? 'Refused by the Nyerat build (limit 15).' : total > 10 ? 'Allowed, but worth a second look.' : total > 5 ? 'Fine.' : 'Simple.';
+    verdict.textContent = total > 15 ? 'Refused by the Markwork build (limit 15).' : total > 10 ? 'Allowed, but worth a second look.' : total > 5 ? 'Fine.' : 'Simple.';
     chips.replaceChildren(...Object.entries(found).filter(([, n]) => n).map(([k, n]) => { const e = document.createElement('span'); e.textContent = `${k} × ${n}`; return e; }));
   };
   src.addEventListener('input', update);

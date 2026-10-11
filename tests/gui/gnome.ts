@@ -24,7 +24,7 @@ export function gnomeTests(c: GuiContext): void {
     section('GNOME guidelines');
 
     test('the window icon and the About dialog use the App ID', () => {
-        eq(APP_ID, 'com.ekaput.Nyerat');
+        eq(APP_ID, 'com.ekaput.Markwork');
         eq(w.win.get_icon_name(), APP_ID);
         const theme = Gtk.IconTheme.get_for_display(w.win.get_display());
         ok(theme.has_icon(APP_ID), 'the app icon was not found in the icon theme (dist/icons)');

@@ -11,7 +11,7 @@ export async function liveAgentic(provider: Provider, model: string, thinking: b
     let failures = 0;
     const workspace = new WorkspaceRepository();
     for (const decision of ['approve', 'reject', 'conflict'] as const) {
-        const root = GLib.dir_make_tmp('nyerat-eval-agentic-XXXXXX');
+        const root = GLib.dir_make_tmp('markwork-eval-agentic-XXXXXX');
         const path = (name: string) => GLib.build_filenamev([root, name]);
         const original = { 'meeting.md': '# Meeting decisions\nThe release is postponed from 15 November to 22 November. The release material starts being worked on.\n',
             'plan.md': '# Plan\nRelease date: 15 November\n',

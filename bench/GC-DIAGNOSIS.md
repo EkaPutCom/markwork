@@ -11,11 +11,11 @@ This check made no change to the runtime code or the baseline.
 
 - Environment: GJS 1.80.2 / SpiderMonkey 115, GLib 2.80.0, GTK 3.24.41,
   X11/Xvfb on the same machine.
-- The old logs `/tmp/nyerat-perf-large-no-gc.log` and
-  `/tmp/nyerat-perf-large-async-no-gc.log` contain `mark-set` on a
+- The old logs `/tmp/markwork-perf-large-no-gc.log` and
+  `/tmp/markwork-perf-large-async-no-gc.log` contain `mark-set` on a
   `GtkSourceBuffer`, `changed` on a `GtkAdjustment`, `size-allocate`, and a blocked
   `SourceFunc()`. That buffer and view were still used by the benchmark.
-- A checkout of commit `9f324c7` was extracted to `/tmp/nyerat-gc-old`, built with the
+- A checkout of commit `9f324c7` was extracted to `/tmp/markwork-gc-old`, built with the
   same dependencies, and then run through GDB with
   `G_DEBUG=fatal-criticals`. On mixed 500 blocks, 1 repetition, the first warning
   appeared after `highlight() again`, before the typing report finished.
@@ -24,14 +24,14 @@ This check made no change to the runtime code or the baseline.
   There is no `gtk_widget_destroy`, widget disposal, or GC finalizer frame
   on that main thread stack. This does not match the guess that the `destroy`
   callback of a widget being collected is the direct trigger.
-- That reproduction is in `/tmp/nyerat-gc-old-mixed-gdb.log`.
+- That reproduction is in `/tmp/markwork-gc-old-mixed-gdb.log`.
   The old version's run for long 2000 blocks, 3 repetitions, did finish under the
   debugger. The failure depends on the timing/state of the GC; it does not happen on every run.
 - A second reproduction on mixed 500 blocks also failed, this time after redo, in the
   `changed` of a `GtkAdjustment`. GDB identified the main loop source as having
   priority **120**, named **`[gtk+] gdk_frame_clock_paint_idle`**:
   GTK was running an ordinary frame/layout, not a `destroy` callback.
-  This evidence is in `/tmp/nyerat-gc-old-source-gdb.log`. So the affected path
+  This evidence is in `/tmp/markwork-gc-old-source-gdb.log`. So the affected path
   is not only the benchmark callbacks, but also GTK's layout signals.
 
 ## Runtime explanation and the limits of certainty
@@ -85,10 +85,10 @@ their timing numbers are not used to claim a before/after improvement.
 
 The latest logs and samples:
 
-- `/tmp/nyerat-gc-long2000.log`, `/tmp/nyerat-gc-long2000.json`
-- `/tmp/nyerat-gc-mixed500.log` (the run of 10 that timed out, an incomplete result)
-- `/tmp/nyerat-gc-mixed500-one.log`, `/tmp/nyerat-gc-mixed500-one.json`
-- `/tmp/nyerat-gc-minimal.log`
+- `/tmp/markwork-gc-long2000.log`, `/tmp/markwork-gc-long2000.json`
+- `/tmp/markwork-gc-mixed500.log` (the run of 10 that timed out, an incomplete result)
+- `/tmp/markwork-gc-mixed500-one.log`, `/tmp/markwork-gc-mixed500-one.json`
+- `/tmp/markwork-gc-minimal.log`
 
 The next check that would best tell the guesses apart is to capture the internal
 GC state at a refused callback, or to test the old reproduction with a

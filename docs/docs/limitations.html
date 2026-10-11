@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Limitations · Nyerat Documentation</title>
-<meta name="description" content="What Nyerat cannot do yet: the limits of the agent, the external harness, the kanban board, the editor, and the export.">
+<title>Limitations · Markwork Documentation</title>
+<meta name="description" content="What Markwork cannot do yet: the limits of the agent, the external harness, the kanban board, the editor, and the export.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M9 23V9h3l8 10V9h3v14h-3L12 13v10z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="docs.css">
 </head>
@@ -14,7 +14,7 @@
   <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
   <a class="brand" href="../index.html">
     <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 23V9h3l8 10V9h3v14h-3L12 13v10z" fill="var(--accent-text)"/></svg>
-    Nyerat <span>Docs</span>
+    Markwork <span>Docs</span>
   </a>
   <nav>
     <a href="index.html" aria-current="true">Docs</a>
@@ -34,12 +34,12 @@
 <ul>
   <li>DeepSeek is the only model provider so far.</li>
   <li>There is no automatic contradiction check yet; contradictions can be asked about through the chat.</li>
-  <li>The Nyerat agent only touches Markdown files in the work folder. Running commands is only done by an external harness from a kanban card.</li>
+  <li>The Markwork agent only touches Markdown files in the work folder. Running commands is only done by an external harness from a kanban card.</li>
   <li>A batch has at most 20 actions. Moving a file does not update links in other files; the agent must propose that separately.</li>
   <li>The search is keyword-based (BM25), not meaning-based; <code>search_text</code> does not recognize synonyms.</li>
   <li>The Git tools only read what has been committed.</li>
   <li>Undo restores a deleted file from the journal snapshot, not from the Trash.</li>
-  <li>The conversation history cannot be searched from the panel yet; search the files in <code>.nyerat/chats/</code>.</li>
+  <li>The conversation history cannot be searched from the panel yet; search the files in <code>.markwork/chats/</code>.</li>
   <li>The token estimate is rough (3 characters per token).</li>
 </ul>
 
@@ -50,7 +50,7 @@
   <li>A question is recognized by a <code>?</code> at the end of the answer.</li>
   <li>The <code>[[ ]]</code> notes on a card are copied only at <em>Work on it with pi</em>; <em>Reply to pi</em> does not copy them again. At most 10 notes, 8,000 characters per note and 24,000 in total. On the board, a link to a note that does not exist is shown the same as a normal link.</li>
   <li>Without a permission extension such as <code>permission-gate</code>, all the pi tools run right away.</li>
-  <li>There is no worktree per card, interactive terminal, or diff view of the harness result in Nyerat yet.</li>
+  <li>There is no worktree per card, interactive terminal, or diff view of the harness result in Markwork yet.</li>
 </ul>
 
 <h2 id="kanban">The kanban board</h2>
@@ -64,13 +64,13 @@
 <ul>
   <li>Due dates and the inbox are only read from the open work folder (at most 300 Markdown files).</li>
   <li>Clicking a task opens its board without highlighting its card.</li>
-  <li>Recent files are recorded by Nyerat itself, not through the GNOME recent files list, so they do not appear in other apps.</li>
+  <li>Recent files are recorded by Markwork itself, not through the GNOME recent files list, so they do not appear in other apps.</li>
 </ul>
 
 <h2 id="journal">The daily journal</h2>
 <ul>
   <li>One fixed journal folder (<code>journal/</code> in the work folder) with a fixed template; it cannot be set in Preferences yet.</li>
-  <li>Activity is only recorded while Nyerat is open and only for the open work folder. Cards moved by editing the board text, or boards changed outside Nyerat, are not recorded (their commits still appear).</li>
+  <li>Activity is only recorded while Markwork is open and only for the open work folder. Cards moved by editing the board text, or boards changed outside Markwork, are not recorded (their commits still appear).</li>
   <li>Activity is merged when the journal is opened with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd> or from Home, not while the journal is open. Opening the journal file from the file tree does not merge it.</li>
   <li>Commits are recognized by their short hash: an amended or rebased commit can appear twice. Commits on other branches are not included.</li>
   <li>Undoing an agent change is also recorded as an agent change.</li>

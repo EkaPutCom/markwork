@@ -26,7 +26,7 @@ export function sampleTests(c: GuiContext): void {
     test('inline formats get the right tag', () => {
         cursorTo(0);
         const cases: [string, TagName][] = [['bold with asterisks', 'bold'], ['italic with underscores', 'italic'], ['bold italic*', 'bolditalic'],
-            ['struck through', 'strike'], ['highlighted', 'mark'], ['gjs -m nyerat.js', 'code'], ['GTK](', 'link'], ['GTK logo', 'image']];
+            ['struck through', 'strike'], ['highlighted', 'mark'], ['gjs -m markwork.js', 'code'], ['GTK](', 'link'], ['GTK logo', 'image']];
         for (const [needle, tag] of cases) ok(tagAt(offsetOf(needle) + 1, tag), `"${needle}" is not tagged ${tag}`);
     });
     test('tricky cases are not mis-formatted', () => {

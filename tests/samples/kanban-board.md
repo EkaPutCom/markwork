@@ -28,5 +28,5 @@ fields:
 
 ## Done
 
-- [x] Choose the project name: Nyerat [priority:: low]
+- [x] Choose the project name: Markwork [priority:: low]
 - [x] Set up the GitHub repository #infra [progress:: 100%]

@@ -7,7 +7,7 @@ import { compactHistory } from '../src/agent/recovery.js';
 import { readTextFile, writeTextFile } from '../src/files.js';
 import type { ActionEvent } from '../src/agent/journal.js';
 
-const directory = GLib.dir_make_tmp('nyerat-bench-agentic-XXXXXX');
+const directory = GLib.dir_make_tmp('markwork-bench-agentic-XXXXXX');
 const checkpoint = GLib.build_filenamev([directory, 'checkpoint.md']);
 const measure = (name: string, action: () => void) => {
     for (let i = 0; i < 3; i++) action();

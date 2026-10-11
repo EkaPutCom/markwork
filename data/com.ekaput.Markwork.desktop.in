@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Nyerat
+Name=Markwork
 GenericName=Personal Workbench
 Comment=Notes, documents, research, and plans together with AI agents
-Exec=nyerat %F
-Icon=com.ekaput.Nyerat
+Exec=markwork %F
+Icon=com.ekaput.Markwork
 Terminal=false
 Categories=Office;TextEditor;GTK;GNOME;
 MimeType=text/markdown;text/x-markdown;inode/directory;

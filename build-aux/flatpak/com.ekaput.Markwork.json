@@ -1,10 +1,10 @@
 {
-    "id": "com.ekaput.Nyerat",
+    "id": "com.ekaput.Markwork",
     "runtime": "org.gnome.Platform",
     "runtime-version": "50",
     "sdk": "org.gnome.Sdk",
     "sdk-extensions": ["org.freedesktop.Sdk.Extension.node22"],
-    "command": "nyerat",
+    "command": "markwork",
     "finish-args": [
         "--share=ipc",
         "--socket=wayland",
@@ -17,12 +17,12 @@
     "cleanup": ["/include", "/lib/pkgconfig", "*.la", "*.a"],
     "modules": [
         {
-            "name": "nyerat",
+            "name": "markwork",
             "buildsystem": "simple",
             "build-options": {
                 "append-path": "/usr/lib/sdk/node22/bin",
                 "build-args": ["--share=network"],
-                "env": { "npm_config_cache": "/run/build/nyerat/npm-cache" }
+                "env": { "npm_config_cache": "/run/build/markwork/npm-cache" }
             },
             "build-commands": [
                 "npm ci",

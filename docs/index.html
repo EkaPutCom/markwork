@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nyerat — Personal workbench for humans and AI agents</title>
-<meta name="description" content="Nyerat is a personal workbench for humans and AI agents on the Linux desktop. The agent browses your notes, documents, research, and plans, then proposes real actions that you review and approve first. Its foundation is a Markdown editor that formats live. Built with GTK 4, GJS, and TypeScript.">
-<meta property="og:title" content="Nyerat — Personal workbench for humans and AI agents">
+<title>Markwork — Personal workbench for humans and AI agents</title>
+<meta name="description" content="Markwork is a personal workbench for humans and AI agents on the Linux desktop. The agent browses your notes, documents, research, and plans, then proposes real actions that you review and approve first. Its foundation is a Markdown editor that formats live. Built with GTK 4, GJS, and TypeScript.">
+<meta property="og:title" content="Markwork — Personal workbench for humans and AI agents">
 <meta property="og:description" content="An AI agent that works in your personal workspace: it reads the context, proposes changes, and writes only after you approve the diff. A Markdown editor, kanban, and Git history.">
 <meta property="og:image" content="https://nyerat.ekaput.com/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="631">
-<meta property="og:image:alt" content="Nyerat after the AI agent updated the release date in the plan and moved a task card, with the approval of the user">
+<meta property="og:image:alt" content="Markwork after the AI agent updated the release date in the plan and moved a task card, with the approval of the user">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://nyerat.ekaput.com/assets/og-image.png">
 <meta property="og:type" content="website">
@@ -147,7 +147,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
   <div class="wrap">
     <a class="brand" href="#top">
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 23V9h3l8 10V9h3v14h-3L12 13v10z" fill="var(--accent-text)"/></svg>
-      Nyerat
+      Markwork
     </a>
     <nav>
       <a class="hide-sm" href="#agent">Agent features</a>
@@ -172,7 +172,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
       <a class="btn ghost" href="https://github.com/EkaPutCom/nyerat">See the code on GitHub</a>
     </div>
     <figure class="shot">
-      <img src="assets/agent-done.png" width="1280" height="780" alt="The Nyerat window after the agent updated the release date in the launch plan and moved a task card, both with the approval of the user">
+      <img src="assets/agent-done.png" width="1280" height="780" alt="The Markwork window after the agent updated the release date in the launch plan and moved a task card, both with the approval of the user">
     </figure>
   </div>
 </div>
@@ -213,7 +213,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
     <h3 class="grid-head">Transparent and under control</h3>
     <div class="grid">
       <a class="card" href="docs/assistant.html"><div class="ico">✦</div><h3>The Assistant panel</h3><p>Streamed answers, the context and token details of every answer, a choice of DeepSeek models, and the <em>Deep thinking</em> mode.</p><span class="more">The Assistant panel →</span></a>
-      <a class="card" href="docs/history.html#conversations"><div class="ico">❐</div><h3>Conversation history per folder</h3><p>Conversations are saved as Markdown in <code>.nyerat/chats</code>. Open them again and continue at any time.</p><span class="more">History →</span></a>
+      <a class="card" href="docs/history.html#conversations"><div class="ico">❐</div><h3>Conversation history per folder</h3><p>Conversations are saved as Markdown in <code>.markwork/chats</code>. Open them again and continue at any time.</p><span class="more">History →</span></a>
       <a class="card" href="docs/history.html#agent-log"><div class="ico">▤</div><h3>The agent log</h3><p>A live timeline of every model round, the reasoning, the tool calls with their arguments and results, the tokens, and the duration.</p><span class="more">The agent log →</span></a>
       <a class="card" href="docs/orchestrator.html"><div class="ico">π</div><h3>The pi harness orchestrator</h3><p>A card marked <code>@pi</code> is worked on by the pi harness in another project repo. Answer its questions and permission requests straight from the card.</p><span class="more">The orchestrator →</span></a>
     </div>
@@ -233,7 +233,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
       <div class="text">
         <p class="eyebrow">1. Home</p>
         <h2>Start the day knowing what to continue.</h2>
-        <p class="sub" style="margin-bottom:18px">Open Nyerat and Home already shows where you left off.</p>
+        <p class="sub" style="margin-bottom:18px">Open Markwork and Home already shows where you left off.</p>
         <ul>
           <li>Recent files, today's journal, and agents that are running or waiting for you</li>
           <li>Due dates from every kanban board, and the inbox that still has unprocessed notes</li>
@@ -263,7 +263,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
       <div class="text">
         <p class="eyebrow">3. Journal</p>
         <h2>The day writes itself.</h2>
-        <p class="sub" style="margin-bottom:18px">You jot short notes; Nyerat adds what already happened.</p>
+        <p class="sub" style="margin-bottom:18px">You jot short notes; Markwork adds what already happened.</p>
         <ul>
           <li>Quick capture with <kbd>Ctrl+Shift+J</kbd> without leaving the document you are in</li>
           <li>Cards moved, agent changes applied, harness results, and Git commits are merged into the Activity section</li>
@@ -271,7 +271,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
         </ul>
         <p style="margin-top:18px"><a href="docs/docs/journal.html">About the journal →</a></p>
       </div>
-      <figure class="shot"><img src="assets/journal.gif" width="900" height="548" loading="lazy" alt="Animation of the daily journal: notes and the activity of a card that was moved, then a new note is added"><figcaption>Notes by you, activity by Nyerat, in one Markdown file</figcaption></figure>
+      <figure class="shot"><img src="assets/journal.gif" width="900" height="548" loading="lazy" alt="Animation of the daily journal: notes and the activity of a card that was moved, then a new note is added"><figcaption>Notes by you, activity by Markwork, in one Markdown file</figcaption></figure>
     </div>
 
     <div class="row flip">
@@ -313,7 +313,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
       <div class="text">
         <p class="eyebrow">Orchestrator</p>
         <h2>Assign cards to another agent.</h2>
-        <p class="sub" style="margin-bottom:18px">Write <code>@pi</code> on a kanban card, right-click, then <em>Work on it with pi</em>. The <a href="https://pi.dev">pi</a> harness works in the project repo that you choose, and Nyerat handles the rest.</p>
+        <p class="sub" style="margin-bottom:18px">Write <code>@pi</code> on a kanban card, right-click, then <em>Work on it with pi</em>. The <a href="https://pi.dev">pi</a> harness works in the project repo that you choose, and Markwork handles the rest.</p>
         <ul>
           <li>The card moves to In Progress on start and to Review when done, with a summary of the result</li>
           <li>Questions and permission requests from pi are answered from the card: <em>Answer pi…</em>, <em>Steer</em>, or <em>Reply</em></li>
@@ -330,13 +330,13 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
 <!-- ========== CTA ========== -->
 <section class="alt final">
   <div class="narrow">
-    <h2>Try Nyerat today</h2>
+    <h2>Try Markwork today</h2>
     <p class="sub">Free and open. Its foundation is a Markdown editor that formats live, with a kanban board, Mermaid diagrams, and Git history, all in a light GTK 4 window.</p>
     <div class="cta">
       <a class="btn" href="docs/">Install and start</a>
       <a class="btn ghost" href="docs/editor.html">Workspace features</a>
     </div>
-    <p class="note" style="margin-top:28px">For developers: <a href="learn-agent.html">learn to build an agent from Nyerat</a>, <a href="learn-performance.html">learn performance from its editor</a>, <a href="learn-gtk.html">learn GTK from how it grew</a>, and <a href="learn-clean-code.html">learn clean code from its refactors</a>.</p>
+    <p class="note" style="margin-top:28px">For developers: <a href="learn-agent.html">learn to build an agent from Markwork</a>, <a href="learn-performance.html">learn performance from its editor</a>, <a href="learn-gtk.html">learn GTK from how it grew</a>, and <a href="learn-clean-code.html">learn clean code from its refactors</a>.</p>
   </div>
 </section>
 
@@ -344,7 +344,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
 <footer>
   <div class="wrap">
-    <span>Nyerat · made by Eka Putra · MIT license</span>
+    <span>Markwork · made by Eka Putra · MIT license</span>
     <span><a href="docs/">Documentation</a> · <a href="learn-agent.html">Learn agents</a> · <a href="learn-performance.html">Learn performance</a> · <a href="learn-gtk.html">Learn GTK</a> · <a href="learn-clean-code.html">Learn clean code</a> · <a href="https://github.com/EkaPutCom/nyerat">GitHub</a></span>
   </div>
 </footer>

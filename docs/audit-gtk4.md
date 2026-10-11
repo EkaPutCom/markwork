@@ -1,6 +1,6 @@
-# Nyerat GTK4 audit — 5 October 2026
+# Markwork GTK4 audit — 5 October 2026
 
-Nyerat already uses the GTK4 runtime entirely: no GTK3/GDK3 imports, GtkSourceView 4,
+Markwork already uses the GTK4 runtime entirely: no GTK3/GDK3 imports, GtkSourceView 4,
 or WebKit2GTK were found in the application code, tests, scripts, and dependencies.
 However, the migration does not yet fully use the modern GTK4 patterns: some
 deprecated APIs and adaptations of GTK3 patterns are still kept.

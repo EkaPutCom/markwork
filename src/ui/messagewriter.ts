@@ -13,7 +13,7 @@ import { onKeyPress } from '../gtkutil.js';
 import type { MessageBox } from './messagebox.js';
 import { _, fmt, ngettext } from '../i18n.js';
 
-export const SPARKLE_ICON = 'com.ekaput.Nyerat-sparkle-symbolic';
+export const SPARKLE_ICON = 'com.ekaput.Markwork-sparkle-symbolic';
 
 export type WriteMessage = (files: string[], onText: (message: string) => void, cancellable: Gio.Cancellable) => Promise<WriteResult>;
 

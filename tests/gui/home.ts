@@ -22,7 +22,7 @@ export function homeTests(c: GuiContext): void {
     const path = (name: string) => GLib.build_filenamev([ws, ...name.split('/')]);
     const put = (name: string, text: string) => { GLib.file_set_contents(path(name), text); return path(name); };
     const day = (offset: number) => localDate(new Date(Date.now() + offset * 24 * 60 * 60 * 1000));
-    const BOARD = `---\nlayout: board\n---\n\n## Plan\n\n- [ ] Implement search #project/nyerat [due:: ${day(0)}]\n- [ ] Review architecture [due:: ${day(1)}]\n- [ ] Old report [due:: ${day(-2)}]\n- [ ] Later [due:: ${day(10)}]\n\n## Done\n\n- [x] Already done [due:: ${day(0)}]\n`;
+    const BOARD = `---\nlayout: board\n---\n\n## Plan\n\n- [ ] Implement search #project/markwork [due:: ${day(0)}]\n- [ ] Review architecture [due:: ${day(1)}]\n- [ ] Old report [due:: ${day(-2)}]\n- [ ] Later [due:: ${day(10)}]\n\n## Done\n\n- [x] Already done [due:: ${day(0)}]\n`;
     const board = put('board.md', BOARD);
     put('inbox.md', '---\nlayout: list\n---\n\n- Idea one\n- Idea two\n- [x] Already processed\n');
     const architecture = put('projects/delta/architecture.md', '# Architecture\n');
@@ -59,7 +59,7 @@ export function homeTests(c: GuiContext): void {
         eq(win.homePage.data().tasks.map(t => [t.title, t.status]), [['Old report', 'overdue'], ['Implement search', 'today'], ['Review architecture', 'soon']]);
         const all = labels(win);
         ok(all.includes('2 days overdue') && all.includes('Today') && all.includes('Tomorrow'), `due-date labels: ${all.join('|')}`);
-        ok(all.includes('nyerat · board'), 'project and board in the subtitle');
+        ok(all.includes('markwork · board'), 'project and board in the subtitle');
         ok(!rowTitles(win).includes('Later') && !rowTitles(win).includes('Already done'), 'a far/finished card is not shown');
         close(win);
     });
@@ -90,7 +90,7 @@ export function homeTests(c: GuiContext): void {
         const checks = () => descendants(win.home.widget).filter((x): x is Gtk.CheckButton => x instanceof Gtk.CheckButton);
         eq(checks().length, 3, 'checkboxes');
         checks()[1].active = true; settle();
-        ok(readTextFile(board).includes(`- [x] Implement search #project/nyerat [due:: ${day(0)}]`), 'the card was not checked on disk');
+        ok(readTextFile(board).includes(`- [x] Implement search #project/markwork [due:: ${day(0)}]`), 'the card was not checked on disk');
         ok(checks()[1].active, 'the check stays visible until redrawn');
         checks()[1].active = false; settle();
         eq(readTextFile(board), BOARD, 'unchecking did not restore the board');
@@ -140,7 +140,7 @@ export function homeTests(c: GuiContext): void {
         ok(win.homeMode && win.documentCount === 1, 'Home as the last tab cannot vanish');
         win.openFile(journal); settle();
         ok(win.onClose(), 'onClose() refused');
-        eq(s.tabs.map(t => t.file), ['nyerat:home', journal], 'saved tabs');
+        eq(s.tabs.map(t => t.file), ['markwork:home', journal], 'saved tabs');
         close(win);
         const again = open({ tabs: s.tabs, activeTab: 0 });
         ok(again.win.homeMode, 'Home was not restored as the active tab');

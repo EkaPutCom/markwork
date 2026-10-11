@@ -128,7 +128,7 @@ three reruns gave 7.2–8.0 ms (baseline 7.26 ms), so that was noise.
   been laid out. The first draw after `set_text` (the TextView pixel cache draws half a screen
   extra; `bottom_margin` lengthens the canvas) covers the area below the lines that are already laid out,
   so `gtk_text_layout_draw` lays out all the lines up to the end of the document at once. Proven
-  with a plain TextView (without Nyerat code): a `bottom_margin` of just 1 px is enough to trigger it.
+  with a plain TextView (without Markwork code): a `bottom_margin` of just 1 px is enough to trigger it.
   `replaceAllText()` zeroes the scroll and then queues a scroll to the cursor, so GTK first
   lays out the two screens around the cursor and the rest in the background. The remaining 162 ms is the
   synchronous full highlighting (once on opening). An experiment to temporarily remove `bottom_margin`
@@ -435,7 +435,7 @@ Findings and their causes:
   contents rose from about 27 ms (GTK 3) to about 45–58 ms (GTK 4). Turning off undo or using
   a non-undoable action does not change it; detaching the buffer from the view during `set_text()`
   gave unstable results and added a pause of about 25–46 ms afterwards, so it is not used.
-  This is the cost of GTK 4.14 itself, not Nyerat code.
+  This is the cost of GTK 4.14 itself, not Markwork code.
 - **The total of opening (until all the layout finishes) rose 2–2.8×** on the book. The background layout
   and the drawing run in idle; the window still responds (see the longest pause).
 - **Moving the cursor 20 lines rose about 3×** on the book with both renderers. Measured in a separate

@@ -1,7 +1,7 @@
-// Nyerat as a harness orchestrator: kanban cards that are assigned (e.g. "@pi") are worked on by an external agent program
+// Markwork as a harness orchestrator: kanban cards that are assigned (e.g. "@pi") are worked on by an external agent program
 // in its own project folder. Here the process is run (async), its output is read line by
 // line, permission/input requests are passed to the user and their answers sent back through stdin, and the card
-// is moved according to its status. The pure parts (prompt, RPC commands, JSON reader, queue) are in agent/harness.ts. Nyerat writes nothing to the project folder; only its own board is written.
+// is moved according to its status. The pure parts (prompt, RPC commands, JSON reader, queue) are in agent/harness.ts. Markwork writes nothing to the project folder; only its own board is written.
 
 import GLib from 'gi://GLib';
 import { assignCard, cardMeta, moveCard, updateCard, type Board, type Position } from './markdown/kanban.js';
@@ -216,7 +216,7 @@ export class Orchestrator {
         if (ask.kind === 'question') {
             if ('value' in reply && reply.value.trim()) {
                 live.reader.restart();
-                if (!live.proc.write(rpcPrompt(reply.value.trim(), `nyerat-${++this.prompts}`))) return 'pi no longer accepts input';
+                if (!live.proc.write(rpcPrompt(reply.value.trim(), `markwork-${++this.prompts}`))) return 'pi no longer accepts input';
                 run.trace.add('turn', _('Your answer'), reply.value.trim());
             } else {
                 // Not replied to: the run finishes as usual with pi's last answer.
@@ -299,7 +299,7 @@ export class Orchestrator {
             return;
         }
         live.proc.write(rpcGetState());
-        live.proc.write(rpcPrompt(run.prompt, `nyerat-${++this.prompts}`));
+        live.proc.write(rpcPrompt(run.prompt, `markwork-${++this.prompts}`));
         this.host.changed(run, fmt(_('{agent} started working on “{title}”'), { agent: spec.label, title: run.title }));
     }
 
