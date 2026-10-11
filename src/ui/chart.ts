@@ -6,11 +6,18 @@
 //   Created per week  ▂▅█▃         By status  ▕██ todo ▕█ doing ▕███ done
 //   By tag            #docs ████████ 8
 //
+// The panels are the ones `charts:` names, in that order (markdown/chart.ts), and the button at the top right edits that
+// list: it moves, removes, and adds panels and picks their fields, and writes the result back to the frontmatter.
+//
 // The distribution over a select field is a donut drawn with cairo in a Gtk.DrawingArea, with the total in the middle
 // and a legend (name, count, and a swatch of the same color) beside it, so the colors are never the only information.
 
+import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import { chartData, NO_VALUE, type ChartData, type Slice } from '../markdown/chart.js';
+import {
+    barData, chartData, chartItems, dateFields, donutData, selectFields, withCharts, NO_VALUE,
+    type ChartData, type ChartItem, type Period, type Slice,
+} from '../markdown/chart.js';
 import { removeChildren } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
 import { formatDate, LayoutView } from './structured.js';
@@ -37,14 +44,30 @@ const hexToRgb = (hex: string): [number, number, number] => [1, 3, 5].map(i => p
 const BAR_AREA = 120;   // height in pixels of the tallest vertical bar
 const TAG_BAR = 220;    // width in pixels of the longest horizontal bar
 
+const PANEL_NAMES: Record<ChartItem['kind'], () => string> = {
+    kpi: () => _('Numbers'), bar: () => _('Bars'), donut: () => _('Donut'), tags: () => _('Tags'),
+};
+const ADDABLE: ChartItem[] = [{ kind: 'kpi' }, { kind: 'bar', field: null, period: null }, { kind: 'donut', field: null }, { kind: 'tags' }];
+
+function countChildren(box: Gtk.Box): number {
+    let n = 0;
+    for (let child = box.get_first_child(); child; child = child.get_next_sibling()) n++;
+    return n;
+}
+
 export class ChartView extends LayoutView {
     readonly widget: Gtk.ScrolledWindow;
     private readonly body: Gtk.Box;
+    private readonly settings: Gtk.Popover;
 
     constructor() {
         super(_('Chart'));
         const page = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 16, margin_top: 24, margin_bottom: 24, margin_start: 16, margin_end: 16 });
-        page.append(this.headerBox());
+        this.settings = new Gtk.Popover();
+        const button = new Gtk.MenuButton({ icon_name: 'emblem-system-symbolic', popover: this.settings, valign: Gtk.Align.START });
+        button.set_tooltip_text(_('Choose the panels'));
+        button.update_property([Gtk.AccessibleProperty.LABEL], [_('Choose the panels')]);
+        page.append(this.headerBox(button));
         this.body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 12 });
         page.append(this.body);
         this.widget = new Gtk.ScrolledWindow({ vexpand: true, hexpand: true, child: page });
@@ -54,19 +77,123 @@ export class ChartView extends LayoutView {
     render(): void {
         this.updateHeading();
         removeChildren(this.body);
-        const data = chartData(this.board, this.today(), this.schema());
-        this.body.append(this.kpis(data));
+        this.fillSettings();
+        const schema = this.schema();
+        const data = chartData(this.board, this.today(), schema);
+        const items = chartItems(this.board, schema);
         if (data.total === 0) {
+            if (items.some(item => item.kind === 'kpi')) this.body.append(this.kpis(data));
             const empty = new Gtk.Label({ label: _('There are no notes to count yet.'), xalign: 0 });
             empty.add_css_class('dim-label');
             this.body.append(empty);
             return;
         }
-        const row = new Gtk.Box({ spacing: 12, homogeneous: false });
-        row.append(this.panel(data.period === 'week' ? _('Created per week') : _('Created per month'), this.periods(data)));
-        if (data.groupKey) row.append(this.panel(fmt(_('By {field}'), { field: data.groupKey }), this.distribution(data.byGroup)));
-        this.body.append(row);
-        if (data.byTag.length) this.body.append(this.panel(_('By tag'), this.tags(data.byTag)));
+        let row: Gtk.Box | null = null;   // the bars and donuts sit two to a row; the numbers and the tags take a row each
+        for (const item of items) {
+            if (item.kind === 'kpi') { this.body.append(this.kpis(data)); row = null; continue; }
+            const panel = this.panelFor(item, data);
+            if (!panel) continue;
+            if (item.kind === 'tags') { this.body.append(panel); row = null; continue; }
+            if (!row || countChildren(row) >= 2) {
+                row = new Gtk.Box({ spacing: 12, homogeneous: false });
+                this.body.append(row);
+            }
+            row.append(panel);
+        }
+    }
+
+    private panelFor(item: ChartItem, data: ChartData): Gtk.Widget | null {
+        const schema = this.schema();
+        if (item.kind === 'tags') return data.byTag.length ? this.panel(_('By tag'), this.tags(data.byTag)) : null;
+        if (item.kind === 'bar') {
+            const bars = barData(this.board, item.field, item.period, schema);
+            const title = bars.field === 'created' || bars.field === null
+                ? (bars.period === 'week' ? _('Created per week') : _('Created per month'))
+                : fmt(bars.period === 'week' ? _('{field} per week') : _('{field} per month'), { field: bars.field });
+            return this.panel(title, this.periods(bars.counts, bars.period));
+        }
+        if (item.kind === 'donut') {
+            const donut = donutData(this.board, item.field, schema);
+            return donut.field ? this.panel(fmt(_('By {field}'), { field: donut.field }), this.distribution(donut.slices)) : null;
+        }
+        return null;
+    }
+
+    // ---------- Settings: the list of panels ----------
+
+    private commitItems(items: ChartItem[] | null): void {
+        this.commit(withCharts(this.board, items));
+    }
+
+    // A row for each panel with its fields to pick and buttons to move and remove it, then the ones that can be added.
+    private fillSettings(): void {
+        const schema = this.schema();
+        const items = chartItems(this.board, schema);
+        const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8, margin_top: 10, margin_bottom: 10, margin_start: 10, margin_end: 10 });
+        const heading = new Gtk.Label({ label: _('Panels'), xalign: 0 });
+        heading.add_css_class('title-4');
+        box.append(heading);
+        const edit = (at: number, next: ChartItem | null): void => {
+            const list = [...items];
+            if (next) list[at] = next; else list.splice(at, 1);
+            this.commitItems(list);
+        };
+        const move = (at: number, by: number): void => {
+            const list = [...items];
+            [list[at], list[at + by]] = [list[at + by], list[at]];
+            this.commitItems(list);
+        };
+        items.forEach((item, at) => {
+            const row = new Gtk.Box({ spacing: 6 });
+            row.append(new Gtk.Label({ label: PANEL_NAMES[item.kind](), xalign: 0, hexpand: true, width_chars: 12 }));
+            if (item.kind === 'bar') {
+                const bars = barData(this.board, item.field, item.period, schema);
+                const keys = dateFields(schema).map(f => f.key);
+                if (keys.length) row.append(this.dropdown(keys, bars.field, key => edit(at, { ...item, field: key })));
+                row.append(this.dropdown([_('Week'), _('Month')], bars.period === 'week' ? _('Week') : _('Month'),
+                    name => edit(at, { ...item, field: bars.field, period: (name === _('Week') ? 'week' : 'month') as Period })));
+            } else if (item.kind === 'donut') {
+                const keys = selectFields(schema).map(f => f.key);
+                if (keys.length) row.append(this.dropdown(keys, donutData(this.board, item.field, schema).field, key => edit(at, { ...item, field: key })));
+            }
+            row.append(this.iconButton('go-up-symbolic', _('Move up'), at > 0, () => move(at, -1)));
+            row.append(this.iconButton('go-down-symbolic', _('Move down'), at < items.length - 1, () => move(at, 1)));
+            row.append(this.iconButton('list-remove-symbolic', _('Remove'), items.length > 1, () => edit(at, null)));
+            box.append(row);
+        });
+        box.append(new Gtk.Separator());
+        const add = new Gtk.Box({ spacing: 6 });
+        for (const next of ADDABLE) {
+            const button = new Gtk.Button({ child: new Adw.ButtonContent({ icon_name: 'list-add-symbolic', label: PANEL_NAMES[next.kind]() }) });
+            button.set_tooltip_text(fmt(_('Add {panel}'), { panel: PANEL_NAMES[next.kind]() }));
+            button.connect('clicked', () => this.commitItems([...items, next]));
+            add.append(button);
+        }
+        box.append(add);
+        const reset = new Gtk.Button({ label: _('Reset to default'), halign: Gtk.Align.START });
+        reset.add_css_class('flat');
+        reset.connect('clicked', () => this.commitItems(null));
+        box.append(reset);
+        this.settings.set_child(box);
+    }
+
+    private iconButton(icon: string, tooltip: string, enabled: boolean, run: () => void): Gtk.Button {
+        const button = new Gtk.Button({ icon_name: icon, sensitive: enabled });
+        button.add_css_class('flat');
+        button.set_tooltip_text(tooltip);
+        button.update_property([Gtk.AccessibleProperty.LABEL], [tooltip]);
+        button.connect('clicked', run);
+        return button;
+    }
+
+    private dropdown(names: string[], current: string | null, picked: (name: string) => void): Gtk.DropDown {
+        const dropdown = Gtk.DropDown.new_from_strings(names);
+        dropdown.set_selected(Math.max(0, current ? names.indexOf(current) : 0));
+        dropdown.connect('notify::selected', () => {
+            const name = names[dropdown.get_selected()];
+            if (name !== undefined && name !== current) picked(name);
+        });
+        return dropdown;
     }
 
     private panel(title: string, content: Gtk.Widget): Gtk.Widget {
@@ -104,24 +231,24 @@ export class ChartView extends LayoutView {
     }
 
     // Vertical bars, one per period, with the count above and the first day of the period below.
-    private periods(data: ChartData): Gtk.Widget {
+    private periods(counts: { start: string; count: number }[], period: Period): Gtk.Widget {
         const row = new Gtk.Box({ spacing: 10, homogeneous: true, valign: Gtk.Align.END });
-        const max = Math.max(1, ...data.perPeriod.map(p => p.count));
-        if (!data.perPeriod.length) {
+        const max = Math.max(1, ...counts.map(p => p.count));
+        if (!counts.length) {
             const none = new Gtk.Label({ label: _('No notes have a date in the “by” field.'), xalign: 0, wrap: true });
             none.add_css_class('dim-label');
             return none;
         }
-        for (const period of data.perPeriod) {
+        for (const entry of counts) {
             const column = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 2, valign: Gtk.Align.END });
-            const count = new Gtk.Label({ label: String(period.count) });
+            const count = new Gtk.Label({ label: String(entry.count) });
             count.add_css_class('caption');
-            const bar = new Gtk.Box({ height_request: Math.max(4, Math.round((period.count / max) * BAR_AREA)), valign: Gtk.Align.END });
+            const bar = new Gtk.Box({ height_request: Math.max(4, Math.round((entry.count / max) * BAR_AREA)), valign: Gtk.Align.END });
             bar.add_css_class('chart-bar');
-            const name = new Gtk.Label({ label: formatDate(period.start, data.period === 'week' ? '%e %b' : '%b %Y') });
+            const name = new Gtk.Label({ label: formatDate(entry.start, period === 'week' ? '%e %b' : '%b %Y') });
             name.add_css_class('dim-label');
             name.add_css_class('caption');
-            column.set_tooltip_text(fmt(_('{start}: {count}'), { start: period.start, count: period.count }));
+            column.set_tooltip_text(fmt(_('{start}: {count}'), { start: entry.start, count: entry.count }));
             column.append(count);
             column.append(bar);
             column.append(name);
