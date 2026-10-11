@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 files=$(grep -v '^#' po/POTFILES.in | grep -v '^$')
-common="--from-code=UTF-8 --add-comments=Translators: --package-name=markwork --msgid-bugs-address=https://nyerat.ekaput.com/"
+common="--from-code=UTF-8 --add-comments=Translators: --package-name=markwork --msgid-bugs-address=https://markwork.ekaput.com/"
 xgettext $common -L JavaScript --keyword=_ --keyword=pgettext:1c,2 --keyword=ngettext:1,2 -o "$tmp/ts.pot" $(echo "$files" | grep '\.ts$')
 xgettext $common -L Glade -o "$tmp/ui.pot" $(echo "$files" | grep '\.ui$')
 xgettext $common -o "$tmp/data.pot" $(echo "$files" | grep -E '\.(desktop\.in|metainfo\.xml\.in|gschema\.xml)$')

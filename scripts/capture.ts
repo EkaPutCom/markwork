@@ -105,7 +105,7 @@ Weekly meeting, **Friday morning**. Things that *need* follow-up are below, this
 
 - The \`1.0\` release is postponed by one week
 - [x] Fix the HTML export bug
-- [ ] Write the kanban feature [documentation](https://github.com/EkaPutCom/nyerat)
+- [ ] Write the kanban feature [documentation](https://github.com/EkaPutCom/markwork)
 
 > A quote from a user: "At last, an editor that stays out of the way."
 

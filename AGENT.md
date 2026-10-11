@@ -83,7 +83,7 @@ Language: code comments, commit messages, interface text, test names, and docume
 
 ## Installation and the app identity
 
-- The app ID is `com.ekaput.Markwork` (the domain nyerat.ekaput.com). The desktop/metainfo files (`data/*.in`), the icons (`data/icons/hicolor`), and the schema are installed by `meson.build` after `npm run build`; the Flatpak manifest is in `build-aux/flatpak/`. After changing the desktop or metainfo files, run `desktop-file-validate` and `appstreamcli validate --no-net` (through a copy without `.in`).
+- The app ID is `com.ekaput.Markwork` (the domain markwork.ekaput.com). The desktop/metainfo files (`data/*.in`), the icons (`data/icons/hicolor`), and the schema are installed by `meson.build` after `npm run build`; the Flatpak manifest is in `build-aux/flatpak/`. After changing the desktop or metainfo files, run `desktop-file-validate` and `appstreamcli validate --no-net` (through a copy without `.in`).
 - From `dist/`, the schema and the icons are read from the bundle folder (`settings.ts`, `addBundledIcons()`); an installed version uses the system directories. Keep both paths when changing the loading of resources.
 
 ## Structure and the layer rules
