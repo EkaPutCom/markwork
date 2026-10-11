@@ -8,7 +8,7 @@ import GLib from 'gi://GLib';
 import type Gtk from 'gi://Gtk?version=4.0';
 import { readTextFile, writeTextFile, flushWrites } from '../files.js';
 import { TEXT_ACTIONS } from '../actions.js';
-import { isStructured, layoutOf, type Layout } from '../markdown/layout.js';
+import { isStructured, layoutOf, withLayout, LAYOUTS, type Layout } from '../markdown/layout.js';
 import { groupBoard, groupFieldOf, ungroupBoard, type Grouped } from '../markdown/boardgroup.js';
 import { newList } from '../markdown/inbox.js';
 import { newTable } from '../markdown/tablelayout.js';
@@ -24,12 +24,13 @@ import type { HomeView } from '../ui/home.js';
 import type { StatusBar } from '../ui/statusbar.js';
 import type { FindBar } from '../ui/findbar.js';
 import { _ } from '../i18n.js';
+import type { HeaderBar } from '../ui/headerbar.js';
 import { errorMessage, type Doc, type DocumentHost } from './doc.js';
 import type { HomeController } from './home.js';
 import type { JournalController } from './journal.js';
 
 // Actions that are meaningless on Home (there is no text to save or undo).
-const DOCUMENT_ACTIONS = ['save', 'save-as', 'export-html', 'undo', 'redo', 'kanban-view'];
+const DOCUMENT_ACTIONS = ['save', 'save-as', 'export-html', 'undo', 'redo', 'kanban-view', 'layout'];
 // Actions that need a board or a list to act on.
 const STRUCTURED_ACTIONS = ['fields-edit'];
 
@@ -42,6 +43,11 @@ export type LayoutPage = 'calendar' | 'timeline' | 'gallery' | 'chart';
 export type View = 'board' | 'inbox' | 'table' | LayoutPage | 'home' | 'text';
 
 // The page that shows each layout.
+const LAYOUT_LABEL: Record<Layout, () => string> = {
+    board: () => _('Board'), list: () => _('List'), table: () => _('Table'), calendar: () => _('Calendar'),
+    timeline: () => _('Timeline'), gallery: () => _('Gallery'), chart: () => _('Chart'),
+};
+
 const PAGE_OF: Record<Layout, View> = { board: 'board', list: 'inbox', table: 'table', calendar: 'calendar', timeline: 'timeline', gallery: 'gallery', chart: 'chart' };
 const STRUCTURED_PAGES: readonly View[] = Object.values(PAGE_OF);
 const isStructuredPage = (name: string | null): name is Exclude<View, 'home' | 'text'> => STRUCTURED_PAGES.includes(name as View);
@@ -54,6 +60,7 @@ export interface ViewHost extends DocumentHost {
     readonly table: TableView;
     readonly layouts: Record<LayoutPage, StructuredView>;   // the calendar, timeline, gallery, and chart pages
     readonly home: HomeView;
+    readonly header: HeaderBar;
     readonly homePage: HomeController;
     readonly statusBar: StatusBar;
     readonly findBar: FindBar;
@@ -143,7 +150,29 @@ export class ViewController {
         }
         const action = host.app.lookup_action('kanban-view');
         if (action instanceof Gio.SimpleAction) action.set_state(GLib.Variant.new_boolean(isStructuredPage(view)));
+        this.syncLayoutMenu(view);
         this.syncActionsEnabled();
+    }
+
+    // The header bar's layout button and menu show the layout the document is in (Text for the text view, hidden for Home).
+    private syncLayoutMenu(view: View): void {
+        const layout = view === 'home' || view === 'text' ? null : layoutOf(this.host.active().editor.getText());
+        const action = this.host.app.lookup_action('layout');
+        if (action instanceof Gio.SimpleAction) action.set_state(GLib.Variant.new_string(layout ?? ''));
+        this.host.header.setLayoutLabel(view === 'home' ? null : layout ? LAYOUT_LABEL[layout]() : _('Text'));
+    }
+
+    // The layout menu: write the layout into the frontmatter (one undo step) and show the document as that layout.
+    // An empty name is the text view.
+    setLayout(name: string): void {
+        const doc = this.host.active();
+        const layout = LAYOUTS.find(l => l === name);
+        if (layout) {
+            const text = doc.editor.getText();
+            if (layoutOf(text) !== layout) doc.editor.replaceText(withLayout(text, layout));
+        }
+        this.state(doc).textOverride = !layout;
+        this.sync();
     }
 
     // The view that shows a board, a list, a table, or one of the other layouts (they all read the same model); null for the others.
@@ -307,9 +336,13 @@ export class ViewController {
         const view = this.currentView();
         if (!isStructuredPage(view) || text === state.boardText) return;
         const layout = layoutOf(text);
-        if (!layout || PAGE_OF[layout] !== view) {
-            state.textOverride = true;   // no longer the same layout (for example the frontmatter was removed)
+        if (!layout) {
+            state.textOverride = true;   // no longer a layout (the frontmatter was removed)
             this.show('text');
+            return;
+        }
+        if (PAGE_OF[layout] !== view) {
+            this.show(PAGE_OF[layout]);   // the layout was changed in the text (by an undo, or the assistant): follow it
             return;
         }
         state.boardText = text;

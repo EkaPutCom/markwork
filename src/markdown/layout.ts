@@ -65,3 +65,19 @@ export function optionOf(text: string, key: string): string | null {
     }
     return null;
 }
+
+// The text with its frontmatter naming `layout` instead: the `layout:` line is replaced, or added after the opening `---`,
+// or a frontmatter is put in front of a document that has none. Nothing else in the text changes.
+export function withLayout(text: string, layout: Layout): string {
+    const lines = text.split('\n');
+    if (lines[0]?.trim() !== '---') return `---\nlayout: ${layout}\n---\n${text.startsWith('\n') ? '' : '\n'}${text}`;
+    for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim() === '---') break;
+        if (MARKER.test(lines[i])) {
+            lines[i] = `layout: ${layout}`;
+            return lines.join('\n');
+        }
+    }
+    lines.splice(1, 0, `layout: ${layout}`);
+    return lines.join('\n');
+}

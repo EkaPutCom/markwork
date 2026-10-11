@@ -376,6 +376,7 @@ export class MainWindow {
             get table() { return w.table; },
             get layouts() { return w.layouts; },
             get home() { return w.home; },
+            get header() { return w.header; },
             get homePage() { return w.homePage; },
             get statusBar() { return w.statusBar; },
             get findBar() { return w.findBar; },
@@ -630,6 +631,11 @@ export class MainWindow {
     // The "Board View" menu/shortcut.
     toggleBoardView(on: boolean): void {
         this.views.toggle(on);
+    }
+
+    // The layout menu in the header bar.
+    setLayout(layout: string): void {
+        this.views.setLayout(layout);
     }
 
     // The "Fields…" menu for the board or list that is shown.
