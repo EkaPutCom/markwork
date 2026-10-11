@@ -8,16 +8,18 @@ import GLib from 'gi://GLib';
 import type Gtk from 'gi://Gtk?version=4.0';
 import { readTextFile, writeTextFile, flushWrites } from '../files.js';
 import { TEXT_ACTIONS } from '../actions.js';
-import { isBoard, isList, isStructured, isTable } from '../markdown/layout.js';
+import { isStructured, layoutOf, type Layout } from '../markdown/layout.js';
+import { groupBoard, groupFieldOf, ungroupBoard, type Grouped } from '../markdown/boardgroup.js';
 import { newList } from '../markdown/inbox.js';
 import { newTable } from '../markdown/tablelayout.js';
-import { countCards, declaredFields, fieldUses, newBoard, parseBoard, reservedFields, serializeBoard, withSchema, type Board } from '../markdown/kanban.js';
+import { boardSchema, countCards, declaredFields, fieldUses, newBoard, parseBoard, reservedFields, serializeBoard, withSchema, type Board } from '../markdown/kanban.js';
 import type { FieldDef } from '../markdown/fields.js';
 import { editSchemaDialog, type SchemaDialogOptions } from '../ui/schemadialog.js';
 import { after, type Awaitable } from '../gtkutil.js';
 import type { KanbanBoard } from '../ui/kanban.js';
 import type { InboxView } from '../ui/inbox.js';
 import type { TableView } from '../ui/table.js';
+import type { StructuredView } from '../ui/structured.js';
 import type { HomeView } from '../ui/home.js';
 import type { StatusBar } from '../ui/statusbar.js';
 import type { FindBar } from '../ui/findbar.js';
@@ -36,7 +38,13 @@ export interface ViewDialogs {
     editSchema(parent: Gtk.Window | null, options: SchemaDialogOptions): Awaitable<FieldDef[] | null>;
 }
 
-export type View = 'board' | 'inbox' | 'table' | 'home' | 'text';
+export type LayoutPage = 'calendar' | 'timeline' | 'gallery' | 'chart';
+export type View = 'board' | 'inbox' | 'table' | LayoutPage | 'home' | 'text';
+
+// The page that shows each layout.
+const PAGE_OF: Record<Layout, View> = { board: 'board', list: 'inbox', table: 'table', calendar: 'calendar', timeline: 'timeline', gallery: 'gallery', chart: 'chart' };
+const STRUCTURED_PAGES: readonly View[] = Object.values(PAGE_OF);
+const isStructuredPage = (name: string | null): name is Exclude<View, 'home' | 'text'> => STRUCTURED_PAGES.includes(name as View);
 
 export interface ViewHost extends DocumentHost {
     readonly app: Adw.Application;
@@ -44,6 +52,7 @@ export interface ViewHost extends DocumentHost {
     readonly board: KanbanBoard;
     readonly inbox: InboxView;
     readonly table: TableView;
+    readonly layouts: Record<LayoutPage, StructuredView>;   // the calendar, timeline, gallery, and chart pages
     readonly home: HomeView;
     readonly homePage: HomeController;
     readonly statusBar: StatusBar;
@@ -61,6 +70,8 @@ interface ViewState {
 
 export class ViewController {
     private readonly states = new WeakMap<Doc, ViewState>();
+    // While the board is grouped by a field (`group:`): the document's own board and the one the board view shows.
+    private grouped: { source: Board; view: Grouped; field: FieldDef } | null = null;
     dialogs: ViewDialogs = { editSchema: editSchemaDialog };
 
     private state(doc: Doc): ViewState {
@@ -70,20 +81,23 @@ export class ViewController {
     }
 
     constructor(private readonly host: ViewHost) {
-        host.board.onChange = board => this.writeBoard(board);
+        host.board.onChange = board => this.boardChanged(board);
         host.inbox.onChange = inbox => this.writeInbox(inbox);
         host.table.onChange = table => this.writeInbox(table);
+        for (const view of Object.values(host.layouts)) view.onChange = board => this.writeInbox(board);
     }
 
     get boardMode(): boolean { return this.host.content.visible_child_name === 'board'; }
     get inboxMode(): boolean { return this.host.content.visible_child_name === 'inbox'; }
     get tableMode(): boolean { return this.host.content.visible_child_name === 'table'; }
     get homeMode(): boolean { return this.host.content.visible_child_name === 'home'; }
+    // A board, inbox, table, calendar, timeline, gallery, or chart is shown (a view of the text, not the text itself).
+    get structuredMode(): boolean { return isStructuredPage(this.host.content.visible_child_name); }
 
     // The name of the page that is shown.
     private currentView(): View | null {
         const name = this.host.content.visible_child_name;
-        return name === 'board' || name === 'inbox' || name === 'table' || name === 'home' ? name : name ? 'text' : null;
+        return name === 'home' || isStructuredPage(name) ? name : name ? 'text' : null;
     }
 
     // New contents were put into doc (opened, emptied, made Home): it is shown as what it is again, not as the
@@ -101,8 +115,8 @@ export class ViewController {
             return;
         }
         const text = doc.editor.getText();
-        const structured = !this.state(doc).textOverride;
-        this.show(structured && isBoard(text) ? 'board' : structured && isList(text) ? 'inbox' : structured && isTable(text) ? 'table' : 'text');
+        const layout = layoutOf(text);
+        this.show(!this.state(doc).textOverride && layout ? PAGE_OF[layout] : 'text');
     }
 
     show(view: View): void {
@@ -128,18 +142,46 @@ export class ViewController {
             this.showCounts(view);
         }
         const action = host.app.lookup_action('kanban-view');
-        if (action instanceof Gio.SimpleAction) action.set_state(GLib.Variant.new_boolean(view === 'board' || view === 'inbox' || view === 'table'));
+        if (action instanceof Gio.SimpleAction) action.set_state(GLib.Variant.new_boolean(isStructuredPage(view)));
         this.syncActionsEnabled();
     }
 
-    // The view that shows a board, a list, or a table (they all read the same model); null for the other views.
+    // The view that shows a board, a list, a table, or one of the other layouts (they all read the same model); null for the others.
     private viewOf(view: View | null): { setBoard(board: Board): void; getBoard(): Board; commit(board: Board): void } | null {
-        return view === 'board' ? this.host.board : view === 'inbox' ? this.host.inbox : view === 'table' ? this.host.table : null;
+        if (view === 'board') return { setBoard: b => this.setBoardView(b), getBoard: () => this.grouped?.source ?? this.host.board.getBoard(), commit: b => this.commitBoardView(b) };
+        if (view === 'inbox') return this.host.inbox;
+        if (view === 'table') return this.host.table;
+        return view === 'calendar' || view === 'timeline' || view === 'gallery' || view === 'chart' ? this.host.layouts[view] : null;
     }
 
-    private showCounts(view: 'board' | 'inbox' | 'table'): void {
-        if (view === 'board') this.showBoardCounts(this.host.board.getBoard());
-        else this.host.statusBar.setInboxCounts(countCards((view === 'inbox' ? this.host.inbox : this.host.table).getBoard()));
+    // The board view gets the document's board, or the board made from the values of a field when the document says `group:`.
+    private setBoardView(source: Board): void {
+        const field = groupFieldOf(source, boardSchema(source));
+        this.grouped = field ? { source, view: groupBoard(source, field), field } : null;
+        this.host.board.agentsEnabled = !field;
+        this.host.board.groupField = field?.key ?? null;
+        this.host.board.setBoard(this.grouped?.view.board ?? source);
+    }
+
+    // A change from the board view; for a grouped board it is written back to the notes first.
+    private boardChanged(board: Board): void {
+        const grouped = this.grouped;
+        if (!grouped) { this.writeBoard(board); return; }
+        const source = ungroupBoard(grouped.source, grouped.view, board, grouped.field);
+        this.grouped = { ...grouped, source, view: groupBoard(source, grouped.field) };
+        this.host.board.replace(this.grouped.view.board);
+        this.writeBoard(source);
+    }
+
+    // A change made outside the board view (the Fields… dialog): shown and written.
+    private commitBoardView(board: Board): void {
+        this.setBoardView(board);
+        this.writeBoard(board);
+    }
+
+    private showCounts(view: Exclude<View, 'home' | 'text'>): void {
+        if (view === 'board') this.showBoardCounts(this.viewOf('board')!.getBoard());
+        else this.host.statusBar.setInboxCounts(countCards(this.viewOf(view)!.getBoard()));
     }
 
     // A new document containing an empty kanban board.
@@ -162,7 +204,7 @@ export class ViewController {
     // Text editor actions are disabled while a board, inbox, or Home is shown (its text is hidden).
     syncActionsEnabled(): void {
         const home = this.homeMode;
-        const structured = this.boardMode || this.inboxMode || this.tableMode || home;
+        const structured = this.structuredMode || home;
         const enable = (names: Iterable<string>, enabled: boolean) => {
             for (const name of names) {
                 const action = this.host.app.lookup_action(name);
@@ -171,7 +213,7 @@ export class ViewController {
         };
         enable(TEXT_ACTIONS, !structured);
         enable(DOCUMENT_ACTIONS, !home);
-        enable(STRUCTURED_ACTIONS, this.boardMode || this.inboxMode || this.tableMode);
+        enable(STRUCTURED_ACTIONS, this.structuredMode);
     }
 
     // The "Fields…" menu: change the fields the board or list declares, written back into its frontmatter (one undo step).
@@ -190,7 +232,7 @@ export class ViewController {
         const doc = this.host.active();
         const text = doc.editor.getText();
         if (on && !isStructured(text)) {
-            this.host.toast(_('This document is not a board, list, or table (it needs "layout: board", "layout: list", or "layout: table" in the frontmatter)'));
+            this.host.toast(_('This document has no layout (it needs "layout: board", "list", "table", "calendar", "timeline", "gallery", or "chart" in the frontmatter)'));
             this.show('text');
             return;
         }
@@ -233,7 +275,7 @@ export class ViewController {
             const next = edit(board);
             if (next === board) return null;
             if (doc === this.host.active() && this.boardMode) {
-                this.host.board.setBoard(next);
+                this.setBoardView(next);
                 this.writeBoard(next);   // records its own activity
                 return null;
             }
@@ -249,7 +291,7 @@ export class ViewController {
     // The text of a document shown as a board or inbox changed (undo, for example): read it back into the view.
     queueReload(doc: Doc): void {
         const state = this.state(doc);
-        if (doc !== this.host.active() || !(this.boardMode || this.inboxMode || this.tableMode) || state.reloadQueued) return;
+        if (doc !== this.host.active() || !this.structuredMode || state.reloadQueued) return;
         state.reloadQueued = true;
         // Deferred: undo changes the text in several steps, and what is read must be the final result.
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
@@ -263,9 +305,9 @@ export class ViewController {
         const state = this.state(doc);
         const text = doc.editor.getText();
         const view = this.currentView();
-        if (!(view === 'board' || view === 'inbox' || view === 'table') || text === state.boardText) return;
-        const stillThere = view === 'board' ? isBoard(text) : view === 'inbox' ? isList(text) : isTable(text);
-        if (!stillThere) {
+        if (!isStructuredPage(view) || text === state.boardText) return;
+        const layout = layoutOf(text);
+        if (!layout || PAGE_OF[layout] !== view) {
             state.textOverride = true;   // no longer the same layout (for example the frontmatter was removed)
             this.show('text');
             return;

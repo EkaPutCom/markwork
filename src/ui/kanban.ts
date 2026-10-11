@@ -102,6 +102,10 @@ export class KanbanBoard {
     today: () => string = () => GLib.DateTime.new_now_local().format('%Y-%m-%d') ?? '';
     now: () => Date = () => new Date();
     harness: BoardHarness | null = null;
+    // False while the board is grouped by a field: its positions are not the file's, so a card cannot be given to an agent.
+    agentsEnabled = true;
+    // The name of the field the columns are the values of (`group:`), for the title of the column without a value.
+    groupField: string | null = null;
     // a [[note]] on a card was clicked, and the file list for [[ suggestions in the card dialog (filled in by the window).
     onOpenNote: (link: WikiLink) => void = () => {};
     listNotes: (() => string[]) | null = null;
@@ -139,6 +143,17 @@ export class KanbanBoard {
     setBoard(board: Board): void {
         this.board = board;
         this.render();
+    }
+
+    // Replace the board after the owner changed what it shows (a board grouped by a field, written back): drawn at idle,
+    // without calling onChange.
+    replace(board: Board): void {
+        this.board = board;
+        this.queueRender();
+    }
+
+    private noValueLabel(): string {
+        return this.groupField ? fmt(_('No {field}'), { field: this.groupField }) : _('No list');
     }
 
     // Apply a change from the user: replace the model, redraw, and notify the owner.
@@ -199,7 +214,7 @@ export class KanbanBoard {
         box.add_css_class('kanban-column');
 
         // Title: double click to rename.
-        const title = new Gtk.Label({ label: column.title || _('No list'), xalign: 0, ellipsize: Pango.EllipsizeMode.END, hexpand: true });
+        const title = new Gtk.Label({ label: column.title || this.noValueLabel(), xalign: 0, ellipsize: Pango.EllipsizeMode.END, hexpand: true });
         title.add_css_class('kanban-column-title');
         if (column.title === '') title.add_css_class('dim-label');
         const titleBox = new Gtk.Box();
@@ -269,7 +284,7 @@ export class KanbanBoard {
         // Links in the card notes are not visible in the title, so they are shown as clickable chips.
         const inTitle = new Set(wikiLinksIn(card.text).map(l => l.target.toLowerCase()));
         const noteLinks = card.notes.length ? wikiLinksIn(card.notes.join('\n')).filter(l => !inTitle.has(l.target.toLowerCase())) : [];
-        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, this.harness?.status(card) ?? null, fields, (key, anchor) => this.editField(c, i, key, anchor));
+        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, (this.agentsEnabled ? this.harness : null)?.status(card) ?? null, fields, (key, anchor) => this.editField(c, i, key, anchor));
         if (badges) inner.append(badges);
         // One row per link so many links do not widen the card.
         const linkBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
@@ -491,7 +506,7 @@ export class KanbanBoard {
             { label: _('Move to'), enabled: this.board.columns.length > 1, submenu: move },
             { label: _('Move Up'), enabled: index > 0, run: () => this.commit(moveCard(this.board, at, { column, index: index - 1 })) },
             { label: _('Move Down'), enabled: index < col.cards.length - 1, run: () => this.commit(moveCard(this.board, at, { column, index: index + 1 })) },
-            ...(this.harness ? [separator(), ...this.harness.menu(card, at)] : []),
+            ...(this.harness && this.agentsEnabled ? [separator(), ...this.harness.menu(card, at)] : []),
             separator(),
             { label: _('Delete'), run: () => this.commit(deleteCard(this.board, at)) },
         ];

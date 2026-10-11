@@ -12,12 +12,21 @@
 //   layout: table        ← one row per note, one column per field
 //   ---
 //
+//   ---
+//   layout: calendar     ← a month grid; notes sit on the day of a date field (`date:`, default `due`)
+//   layout: timeline     ← a bar per note from `start:` to `end:` (defaults `start` and `due`)
+//   layout: gallery      ← cards with a cover (`cover:`, default `cover`)
+//   layout: chart        ← counts and charts over the notes (`by:`, `group:`)
+//   ---
+//
+// `layout: board` can also say `group: status` to make the columns the values of a select field.
+//
 // Any other value, or no `layout:` line, is an ordinary document. Other one-line options sit beside it (`add:`, see
 // inbox.ts) and are read with `optionOf`. Pure TypeScript without GTK.
 
-export type Layout = 'board' | 'list' | 'table';
+export type Layout = 'board' | 'list' | 'table' | 'calendar' | 'timeline' | 'gallery' | 'chart';
 
-const LAYOUTS: readonly Layout[] = ['board', 'list', 'table'];
+export const LAYOUTS: readonly Layout[] = ['board', 'list', 'table', 'calendar', 'timeline', 'gallery', 'chart'];
 const MARKER = /^layout:\s*["']?([A-Za-z-]+)["']?\s*$/i;
 
 // The layout in the frontmatter (looked for in its first 40 lines), or null for an ordinary document.
@@ -35,8 +44,12 @@ export function layoutOf(text: string): Layout | null {
 export const isBoard = (text: string): boolean => layoutOf(text) === 'board';
 export const isList = (text: string): boolean => layoutOf(text) === 'list';
 export const isTable = (text: string): boolean => layoutOf(text) === 'table';
+export const isCalendar = (text: string): boolean => layoutOf(text) === 'calendar';
+export const isTimeline = (text: string): boolean => layoutOf(text) === 'timeline';
+export const isGallery = (text: string): boolean => layoutOf(text) === 'gallery';
+export const isChart = (text: string): boolean => layoutOf(text) === 'chart';
 
-// Any of the layouts: the text is shown as a board, a list, or a table.
+// Any of the layouts: the text is shown as a board, a list, a table, a calendar, a timeline, a gallery, or a chart.
 export const isStructured = (text: string): boolean => layoutOf(text) !== null;
 
 // The value of a one-line option such as `add: top` in the frontmatter (the first 40 lines, before the closing `---`),
