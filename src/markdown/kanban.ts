@@ -277,7 +277,8 @@ export interface CardParts {
 export const DUE_INPUT = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2})?$/;
 
 // A list and a table have only the fields they declare; the built-in due and agent belong to boards.
-const isFieldsOnly = (head: string): boolean => layoutOf(head) === 'list' || layoutOf(head) === 'table';
+// Every layout except a board declares its own fields; only a board also understands `due` and `agent` on its own.
+const isFieldsOnly = (head: string): boolean => { const layout = layoutOf(head); return layout !== null && layout !== 'board'; };
 
 // The fields of a document: what it declares in its frontmatter `fields:` block, and for a board also the two every
 // card understands (due and agent). A list has only the fields it declares.

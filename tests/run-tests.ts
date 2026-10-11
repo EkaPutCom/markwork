@@ -14,6 +14,7 @@
 //   gjs -m dist/run-tests.js --shot-gnome=/tmp/g      save screenshots of the narrow window, shortcuts dialog, light/dark theme (/tmp/g-narrow.png, -shortcuts.png, -light.png, -dark.png)
 //   gjs -m dist/run-tests.js --shot-home=/tmp/b       save screenshots of Home light/dark/narrow (/tmp/b-light.png, -dark.png, -narrow.png)
 //   gjs -m dist/run-tests.js --shot-journal=/tmp/j     save screenshots of the journal light/dark, Home, and the quick capture dialog (/tmp/j-journal.png, -journal-dark.png, -home.png, -capture.png)
+//   gjs -m dist/run-tests.js --shot-layouts=/tmp/l   save screenshots of the calendar, timeline, gallery, chart, and board by field light/dark (/tmp/l-<layout>-light.png, -dark.png)
 //   gjs -m dist/run-tests.js --shot-due=/tmp/d        save screenshots of the due date calendar and the card dialog light/dark (/tmp/d-calendar.png, -dialog.png, -dialog-dark.png)
 //
 // GUI tests open real windows, so a desktop session (X11/Wayland) is needed.
@@ -39,6 +40,7 @@ import { fieldsModelTests } from './unit/fields.js';
 import { layoutTests } from './unit/layout.js';
 import { tableLayoutTests } from './unit/tablelayout.js';
 import { sampleDocumentTests } from './unit/samples.js';
+import { layoutsModelTests } from './unit/layouts.js';
 import { homeModelTests } from './unit/home.js';
 import { journalModelTests } from './unit/journal.js';
 import { codeLanguageTests } from './unit/codelang.js';
@@ -75,6 +77,7 @@ import { codeBlockTests } from './gui/codeblock.js';
 import { kanbanBoardTests } from './gui/kanban.js';
 import { inboxTests } from './gui/inbox.js';
 import { tableLayoutGuiTests } from './gui/tablelayout.js';
+import { layoutsGuiTests } from './gui/layouts.js';
 import { kanbanMouseTests } from './gui/kanban-mouse.js';
 import { folderTests } from './gui/folder.js';
 import { folderMouseTests } from './gui/folder-mouse.js';
@@ -101,6 +104,7 @@ function runUnitTests(): void {
     fieldsModelTests();
     layoutTests();
     tableLayoutTests();
+    layoutsModelTests();
     sampleDocumentTests();
     homeModelTests();
     journalModelTests();
@@ -181,6 +185,7 @@ function runGuiTests(app: Adw.Application): void {
     kanbanBoardTests(c);
     inboxTests(c);
     tableLayoutGuiTests(c);
+    layoutsGuiTests(c);
     harnessTests(c);
     dialogTests(c);
     // The folder tests create another window and replace the app actions. Check undo/redo

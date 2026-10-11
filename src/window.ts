@@ -49,6 +49,11 @@ import { ImageViewer } from './ui/imageviewer.js';
 import { KanbanBoard } from './ui/kanban.js';
 import { InboxView } from './ui/inbox.js';
 import { TableView } from './ui/table.js';
+import { CalendarView } from './ui/calendar.js';
+import { TimelineView } from './ui/timeline.js';
+import { GalleryView } from './ui/gallery.js';
+import { ChartView } from './ui/chart.js';
+import type { StructuredView } from './ui/structured.js';
 import { HomeView } from './ui/home.js';
 import { _, fmt } from './i18n.js';
 import type { Doc } from './window/doc.js';
@@ -91,6 +96,8 @@ export class MainWindow {
     readonly board: KanbanBoard;
     readonly inbox: InboxView;
     readonly table: TableView;
+    readonly gallery: GalleryView;
+    readonly layouts: Record<'calendar' | 'timeline' | 'gallery' | 'chart', StructuredView>;
     readonly home: HomeView;
     readonly journal: JournalController;
     readonly harness: HarnessController;
@@ -131,6 +138,8 @@ export class MainWindow {
         this.board = new KanbanBoard();
         this.inbox = new InboxView();
         this.table = new TableView();
+        this.gallery = new GalleryView();
+        this.layouts = { calendar: new CalendarView(), timeline: new TimelineView(), gallery: this.gallery, chart: new ChartView() };
         this.home = new HomeView();
         this.chat = new ChatPanel();
         this.header = new HeaderBar();
@@ -155,6 +164,11 @@ export class MainWindow {
         this.inbox.listNotes = () => this.notes.names(this.doc);
         this.table.onOpenNote = link => this.openNote(link);
         this.table.listNotes = () => this.notes.names(this.doc);
+        for (const view of Object.values(this.layouts)) {
+            view.onOpenNote = link => this.openNote(link);
+            view.listNotes = () => this.notes.names(this.doc);
+        }
+        this.gallery.baseDir = () => (this.doc.file ? GLib.path_get_dirname(this.doc.file) : null);
         this.home.onOpenFile = path => this.openInTab(path);
         this.home.onOpenTask = task => this.homePage.openWorkspaceFile(task.file);
         this.home.onToggleTask = (task, done) => this.homePage.toggleTask(task, done);
@@ -256,6 +270,7 @@ export class MainWindow {
         this.content.add_named(this.board.widget, 'board');
         this.content.add_named(this.inbox.widget, 'inbox');
         this.content.add_named(this.table.widget, 'table');
+        for (const [name, view] of Object.entries(this.layouts)) this.content.add_named(view.widget, name);
         this.content.add_named(this.home.widget, 'home');
         column.append(this.content);
         column.append(this.statusBar);
@@ -359,6 +374,7 @@ export class MainWindow {
             get content() { return w.content; },
             get inbox() { return w.inbox; },
             get table() { return w.table; },
+            get layouts() { return w.layouts; },
             get home() { return w.home; },
             get homePage() { return w.homePage; },
             get statusBar() { return w.statusBar; },
@@ -469,7 +485,7 @@ export class MainWindow {
         editor.onHighlighted = ({ headings, words, characters }) => {
             if (doc !== this.doc) return;
             this.outline.update(headings);
-            if (!this.boardMode && !this.inboxMode && !this.tableMode) this.statusBar.setDocumentCounts(words, characters);
+            if (!this.views.structuredMode) this.statusBar.setDocumentCounts(words, characters);
         };
         editor.onCursorMoved = (line, column) => {
             if (doc !== this.doc) return;
@@ -555,6 +571,7 @@ export class MainWindow {
         this.board.setPalette(palette);
         this.inbox.setPalette(palette);
         this.table.setPalette(palette);
+        for (const view of Object.values(this.layouts)) view.setPalette(palette);
         this.chat.setPalette(palette);
     }
 
@@ -577,7 +594,7 @@ export class MainWindow {
 
     // The assistant's answer goes into the open note at the cursor, as one undo step. false: no editable note is shown.
     private insertIntoNote(text: string): boolean {
-        if (this.boardMode || this.inboxMode || this.tableMode || this.homeMode) return false;
+        if (this.views.structuredMode || this.homeMode) return false;
         const buffer = this.editor.buffer;
         buffer.begin_user_action();
         const inserted = buffer.insert_interactive_at_cursor(`${text.trim()}\n`, -1, true);

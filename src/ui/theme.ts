@@ -106,6 +106,44 @@ const buildCss = (p: Palette): string => `
     .table-head-button { font-size: 11px; font-weight: bold; letter-spacing: 0.5px; padding: 2px 0; min-height: 0; }
     .table-late { color: @error_color; font-weight: bold; }
     .table-grid progressbar trough, .table-grid progressbar progress { min-height: 6px; }
+    .calendar-view, .timeline-chart, .gallery-view, .chart-view { background-color: transparent; }
+    .calendar-grid { border: 1px solid alpha(currentColor, 0.15); border-radius: 8px; }
+    .calendar-weekday { font-size: 11px; font-weight: bold; padding: 6px 0; background-color: alpha(currentColor, 0.06); }
+    .calendar-day { padding: 4px; border-top: 1px solid alpha(currentColor, 0.12); border-left: 1px solid alpha(currentColor, 0.12); }
+    .calendar-day-other { opacity: 0.55; }
+    .calendar-drop { background-color: alpha(@accent_bg_color, 0.25); }
+    .calendar-daynum { font-size: 11px; padding: 0 5px; }
+    .calendar-today { background-color: @accent_bg_color; color: @accent_fg_color; border-radius: 9px; font-weight: bold; }
+    .calendar-today-text { color: @accent_color; }
+    .calendar-event, .calendar-note { font-size: 11px; padding: 1px 6px; border-radius: 4px; border-left: 3px solid @accent_bg_color; background-color: alpha(@accent_bg_color, 0.18); }
+    .calendar-event-done { border-left-color: @success_color; background-color: alpha(@success_bg_color, 0.3); text-decoration: line-through; }
+    .calendar-event-late { border-left-color: @error_color; background-color: alpha(@error_bg_color, 0.3); }
+    .calendar-undated { padding: 8px; border-radius: 10px; background-color: alpha(@window_fg_color, 0.06); }
+    .calendar-note { border-left-color: alpha(currentColor, 0.4); background-color: @card_bg_color; padding: 4px 8px; }
+    .timeline-chart { border: 1px solid alpha(currentColor, 0.15); border-radius: 8px; }
+    .timeline-labels { border-right: 1px solid alpha(currentColor, 0.15); }
+    .timeline-label { padding: 0 10px; border-top: 1px solid alpha(currentColor, 0.1); }
+    .timeline-head { font-size: 11px; font-weight: bold; background-color: alpha(currentColor, 0.06); padding: 0 10px; }
+    .timeline-line { background-color: alpha(currentColor, 0.1); }
+    .timeline-today { background-color: @error_color; }
+    .timeline-bar { border-radius: 6px; background-color: @accent_bg_color; color: @accent_fg_color; }
+    .timeline-bar-done { background-color: @success_bg_color; color: @success_fg_color; }
+    .timeline-bar-late { background-color: @error_bg_color; color: @error_fg_color; }
+    .timeline-bar-title { font-size: 11px; padding: 0 4px; }
+    .timeline-handle { background-color: alpha(black, 0.18); border-radius: 6px; }
+    .timeline-fill { background-color: alpha(black, 0.28); border-radius: 6px; }
+    .gallery-card { padding: 0; }
+    .gallery-cover-none, .gallery-cover-missing { background-color: alpha(currentColor, 0.08); }
+    .gallery-cover-0 { background-color: #4c9a6a; } .gallery-cover-1 { background-color: #3b7dd8; }
+    .gallery-cover-2 { background-color: #8e5bd6; } .gallery-cover-3 { background-color: #d6602e; }
+    .gallery-cover-4 { background-color: #c2417a; } .gallery-cover-5 { background-color: #2f8f99; }
+    .gallery-cover-6 { background-color: #8a7a1c; } .gallery-cover-7 { background-color: #5e6c84; }
+    .chart-panel, .chart-kpi { padding: 12px; }
+    .chart-number { font-size: 26px; font-weight: bold; }
+    .chart-ok { color: @success_color; } .chart-late { color: @error_color; }
+    .chart-bar { background-color: @accent_bg_color; border-radius: 4px; }
+    .chart-stack { border-radius: 6px; }
+    .chart-segment { padding: 4px 0; font-size: 11px; font-weight: bold; }
     .inbox-tag { border-radius: 9px; padding: 1px 8px; font-size: 11px; background-color: alpha(@accent_bg_color, 0.18); color: @accent_color; }
     .kanban-chip { border-radius: 9px; padding: 0 8px; font-size: 11px; color: #ffffff; background-color: #6b7280; }
     .kanban-notes { background-color: transparent; color: alpha(currentColor, 0.55); padding: 0 2px; }

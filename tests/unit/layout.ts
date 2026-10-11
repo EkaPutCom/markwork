@@ -15,7 +15,7 @@ export function layoutTests(): void {
     test('layoutOf: case, quotes, other keys around it, and values that are not a layout', () => {
         const doc = (line: string) => `---\n${line}\n---\n\n## A`;
         eq(['layout: board', 'layout: "list"', 'LAYOUT: Board', "layout: 'List'"].map(l => layoutOf(doc(l))), ['board', 'list', 'board', 'list']);
-        eq(['layout: gallery', 'layout:', 'layout: board list', 'layouts: board', 'kanban: true', 'inbox: true'].map(l => layoutOf(doc(l))), [null, null, null, null, null, null]);
+        eq(['layout: mindmap', 'layout:', 'layout: board list', 'layouts: board', 'kanban: true', 'inbox: true'].map(l => layoutOf(doc(l))), [null, null, null, null, null, null]);
         eq(layoutOf('---\ntitle: x\nlayout: list\ntag: y\n---'), 'list', 'among other frontmatter keys');
         eq([isBoard(BOARD), isBoard(INBOX), isList(INBOX), isList(BOARD), isTable('---\nlayout: table\n---'), isTable(BOARD), isStructured(BOARD), isStructured('---\nlayout: table\n---'), isStructured('# Plain')], [true, false, true, false, true, false, true, true, false]);
     });

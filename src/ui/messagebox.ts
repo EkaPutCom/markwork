@@ -43,13 +43,15 @@ export class MessageBox {
             this.onActivate();
             return true;
         }, Gtk.PropagationPhase.CAPTURE);
-        this.onChanged(() => {
-            this.placeholder.set_visible(this.text === '');
-            if (this.flattening || !/[\r\n]/.test(this.text)) return;
+        this.onChanged(() => this.placeholder.set_visible(this.text === ''));
+        // Flatten before the text enters the buffer: changing it from 'changed' would invalidate the iterators of the
+        // insertion in progress.
+        this.view.buffer.connect('insert-text', (buffer, location, text) => {
+            if (this.flattening || !/[\r\n]/.test(text)) return;
             this.flattening = true;
-            this.text = this.text.replace(/\s*[\r\n]+\s*/g, ' ');
-            this.cursorToEnd();
+            buffer.insert(location, text.replace(/\s*[\r\n]+\s*/g, ' '), -1);
             this.flattening = false;
+            buffer.stop_emission_by_name('insert-text');
         });
     }
 
