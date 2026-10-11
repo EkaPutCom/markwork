@@ -7,6 +7,9 @@ import type { MarkdownView } from '../editor/view.js';
 
 // One open document (one tab). The file and Home flag change only through DocumentController (window/documents.ts);
 // the view and autosave state of a document is kept by ViewController and Autosaver themselves.
+// A button on a toast.
+export interface ToastAction { label: string; run: () => void }
+
 export interface Doc {
     readonly id: number;
     readonly editor: MarkdownView;
@@ -21,7 +24,7 @@ export interface DocumentHost {
     active(): Doc;
     docs(): readonly Doc[];
     openInTab(path: string): boolean;
-    toast(message: string): void;
+    toast(message: string, action?: ToastAction): void;
 }
 
 export const errorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e);

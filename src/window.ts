@@ -63,6 +63,7 @@ import { HarnessController, type HarnessHost } from './window/harness.js';
 import { HomeController, type HomeHost } from './window/home.js';
 import { ViewController, type ViewHost } from './window/views.js';
 import { NoteLinks, type NoteHost } from './window/notes.js';
+import type { ToastAction } from './window/doc.js';
 import { DocumentController, UNTITLED, type DocumentsHost } from './window/documents.js';
 import { applyChange, applyChangeBatch, type AgentWriteHost } from './window/agentwrites.js';
 
@@ -355,9 +356,14 @@ export class MainWindow {
     }
 
     // A short notification that disappears on its own (Adw.Toast).
-    toast(message: string): void {
+    toast(message: string, action?: ToastAction): void {
         this.lastToast = message;
-        this.toasts.add_toast(new Adw.Toast({ title: message, timeout: 3 }));
+        const toast = new Adw.Toast({ title: message, timeout: action ? 8 : 3 });
+        if (action) {
+            toast.set_button_label(action.label);
+            toast.connect('button-clicked', action.run);
+        }
+        this.toasts.add_toast(toast);
     }
 
     private makeHost(): WindowHost {

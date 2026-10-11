@@ -5,7 +5,7 @@ import GLib from 'gi://GLib';
 import { writeTextFile, writeTextFileAsync } from '../files.js';
 import type { AppSettings } from '../settings.js';
 import { _, fmt } from '../i18n.js';
-import { errorMessage, type Doc } from './doc.js';
+import { errorMessage, type Doc, type ToastAction } from './doc.js';
 
 // Pause without keystrokes before autosave writes to disk.
 const AUTOSAVE_DELAY_MS = 1000;
@@ -13,7 +13,7 @@ const AUTOSAVE_DELAY_MS = 1000;
 export interface AutosaveHost {
     readonly settings: AppSettings;
     docs(): readonly Doc[];
-    toast(message: string): void;
+    toast(message: string, action?: ToastAction): void;
 }
 
 // Autosave state of one document, kept here rather than on the document record.

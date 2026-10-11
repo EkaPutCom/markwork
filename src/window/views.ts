@@ -24,6 +24,7 @@ import type { HomeView } from '../ui/home.js';
 import type { StatusBar } from '../ui/statusbar.js';
 import type { FindBar } from '../ui/findbar.js';
 import { _ } from '../i18n.js';
+import { missingField, withField } from '../markdown/layouthint.js';
 import type { HeaderBar } from '../ui/headerbar.js';
 import { errorMessage, type Doc, type DocumentHost } from './doc.js';
 import type { HomeController } from './home.js';
@@ -173,6 +174,26 @@ export class ViewController {
         }
         this.state(doc).textOverride = !layout;
         this.sync();
+        if (layout) this.offerField(doc, layout);
+    }
+
+    // A layout that needs a field the document lacks (a date for the calendar, a select for the chart) offers to add it.
+    private offerField(doc: Doc, layout: Layout): void {
+        const board = parseBoard(doc.editor.getText());
+        const def = missingField(board, layout);
+        if (!def) return;
+        const message = def.type === 'date'
+            ? _('This layout places notes by a date field, and the document has none')
+            : _('This layout groups notes by a select field, and the document has none');
+        this.host.toast(message, {
+            label: _('Add “%s”').format(def.key),
+            run: () => {
+                if (!this.host.docs().includes(doc)) return;
+                const next = withField(parseBoard(doc.editor.getText()), def);
+                doc.editor.replaceText(serializeBoard(next));
+                if (doc === this.host.active()) this.reload(doc);
+            },
+        });
     }
 
     // The view that shows a board, a list, a table, or one of the other layouts (they all read the same model); null for the others.
