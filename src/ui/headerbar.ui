@@ -204,6 +204,20 @@
       </object>
     </child>
     <child type="end">
+      <object class="GtkMenuButton" id="layoutButton">
+        <property name="tooltip-text" translatable="yes">Layout</property>
+        <property name="visible">False</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="spacing">6</property>
+            <child><object class="GtkImage" id="layoutIcon"/></child>
+            <child><object class="GtkLabel" id="layoutLabel"/></child>
+            <child><object class="GtkImage"><property name="icon-name">pan-down-symbolic</property></object></child>
+          </object>
+        </property>
+      </object>
+    </child>
+    <child type="end">
       <object class="GtkMenuButton">
         <property name="icon-name">open-menu-symbolic</property>
         <property name="tooltip-text" translatable="yes">Menu</property>

@@ -1,6 +1,6 @@
 // Layout marker tests (markdown/layout.ts).
 
-import { isBoard, isList, isStructured, isTable, layoutOf, optionOf } from '../../src/markdown/layout.js';
+import { isBoard, isList, isStructured, isTable, layoutOf, optionOf, withLayout } from '../../src/markdown/layout.js';
 import { section, test, eq } from '../framework.js';
 import { BOARD, INBOX } from '../fixtures.js';
 
@@ -22,5 +22,12 @@ export function layoutTests(): void {
     test('optionOf: a one-line option in the frontmatter, without quotes; not from a block, the body, or a missing value', () => {
         const doc = '---\nlayout: list\nadd: "bottom"\nAdd-To: Now \nfields:\n  add: text\nempty:\n---\n\nadd: top\n';
         eq([optionOf(doc, 'add'), optionOf(doc, 'add-to'), optionOf(doc, 'empty'), optionOf(doc, 'nope'), optionOf('add: top', 'add')], ['bottom', 'Now', null, null, null]);
+    });
+    test('withLayout: replaces the line, adds it to a frontmatter, or adds a frontmatter; nothing else changes', () => {
+        eq(withLayout('---\ntitle: x\nlayout: "list"\nadd: top\n---\n\n## A\n- b', 'calendar'), '---\ntitle: x\nlayout: calendar\nadd: top\n---\n\n## A\n- b');
+        eq(withLayout('---\ntitle: x\n---\n\ntext', 'board'), '---\nlayout: board\ntitle: x\n---\n\ntext');
+        eq(withLayout('# Plain\n\n- a', 'table'), '---\nlayout: table\n---\n\n# Plain\n\n- a');
+        eq(withLayout('text\n\nlayout: list', 'chart'), '---\nlayout: chart\n---\n\ntext\n\nlayout: list', 'a body line is not the frontmatter');
+        eq(layoutOf(withLayout('# Plain', 'gallery')), 'gallery');
     });
 }

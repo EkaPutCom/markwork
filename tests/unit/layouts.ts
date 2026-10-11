@@ -11,6 +11,7 @@ import { chartData } from '../../src/markdown/chart.js';
 import { groupBoard, groupFieldOf, ungroupBoard } from '../../src/markdown/boardgroup.js';
 import { addCard, boardSchema, deleteCard, moveCard, parseBoard, serializeBoard, updateCard } from '../../src/markdown/kanban.js';
 import { isCalendar, isChart, isGallery, isTimeline, layoutOf } from '../../src/markdown/layout.js';
+import { missingField, withField } from '../../src/markdown/layouthint.js';
 import { ROOT, section, test, eq, ok } from '../framework.js';
 
 const sample = (name: string): string => readTextFile(GLib.build_filenamev([ROOT, 'tests', 'samples', name]));
@@ -173,5 +174,15 @@ export function layoutsModelTests(): void {
         ok(widened.head.join('\n').includes('blocked'), 'option added');
         ok(widened.columns[0].cards.some(c => c.text === 'Stuck [status:: blocked]'), 'card written with it');
         eq(serializeBoard(parseBoard(serializeBoard(widened))), serializeBoard(widened), 'stable text');
+    });
+
+    test('missingField: a calendar, timeline, or chart without its field offers one, and adding it makes the layout work', () => {
+        const plain = parseBoard('---\nlayout: list\n---\n\n- [ ] a\n- [ ] b');
+        eq([missingField(plain, 'calendar')?.key, missingField(plain, 'timeline')?.key, missingField(plain, 'chart')?.key, missingField(plain, 'board'), missingField(plain, 'gallery')], ['due', 'due', 'status', null, null]);
+        const withDue = withField(plain, missingField(plain, 'calendar')!);
+        eq([missingField(withDue, 'calendar'), missingField(withDue, 'timeline'), boardSchema(withDue).map(f => f.key)], [null, null, ['due']]);
+        const withStatus = withField(plain, missingField(plain, 'chart')!);
+        eq([missingField(withStatus, 'chart'), withField(withStatus, missingField(plain, 'chart')!) === withStatus], [null, true]);
+        eq(missingField(parseBoard(sample('calendar.md')), 'calendar'), null);
     });
 }

@@ -3,8 +3,10 @@
 
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
+import Gio from 'gi://Gio';
 import { readTextFile } from '../../src/files.js';
 import { descendants, widgetPixbuf } from '../widgets.js';
+import { layoutOf } from '../../src/markdown/layout.js';
 import { ROOT, optVal, section, test, eq, ok } from '../framework.js';
 import type { GuiContext } from './context.js';
 
@@ -79,5 +81,93 @@ export function layoutsGuiTests(c: GuiContext): void {
             }
         }
         w.setOption('dark', false);
+    });
+
+    section('Layout button (header bar)');
+    const button = () => descendants(w.header).find((x): x is Gtk.MenuButton => x instanceof Gtk.MenuButton && x.get_tooltip_text() === 'Layout')!;
+    const buttonLabel = () => (w.header as unknown as { _layoutLabel: Gtk.Label })._layoutLabel.label;
+    const choose = (layout: string) => { (w.app.lookup_action('layout') as Gio.SimpleAction).change_state(GLib.Variant.new_string(layout)); settle(); };
+    const checked = () => (w.app.lookup_action('layout') as Gio.SimpleAction).get_state()!.get_string()[0];
+
+    test('the button names the layout of the document, says Text in the text view, and is hidden on Home', () => {
+        open('sprint-table');
+        ok(button().get_visible(), 'visible');
+        eq([buttonLabel(), checked()], ['Table', 'table']);
+        eq((w.header as unknown as { _layoutIcon: Gtk.Image })._layoutIcon.icon_name, 'x-office-spreadsheet-symbolic');
+        open('calendar');
+        eq([buttonLabel(), checked()], ['Calendar', 'calendar']);
+        choose('');
+        eq([page() === 'calendar', buttonLabel(), checked()], [false, 'Text', '']);
+        w.openHome();
+        settle();
+        ok(!button().get_visible(), 'hidden on Home');
+        w.closeTab();   // Home is a tab of its own
+        settle();
+        ok(!w.homeMode, 'back from Home');
+    });
+
+    test('the popover lists every layout and Text with an icon, and checks the one the document is in', () => {
+        const rows = () => descendants(button().get_popover()!).filter((x): x is Gtk.ToggleButton => x instanceof Gtk.ToggleButton);
+        open('calendar');
+        const items = rows();
+        eq(items.map(r => (r.get_action_target_value() as GLib.Variant).get_string()[0]), ['table', 'board', 'list', 'calendar', 'timeline', 'gallery', 'chart', '']);
+        ok(items.every(r => descendants(r).some(x => x instanceof Gtk.Image && (x.icon_name ?? '').endsWith('-symbolic'))), 'an icon on every row');
+        eq(items.filter(r => r.active).map(r => labels(r)[0].label), ['Calendar']);
+        choose('chart');
+        eq(rows().filter(r => r.active).map(r => labels(r)[0].label), ['Chart']);
+    });
+
+    test('choosing a layout rewrites only the layout line, shows that page, and one undo brings the old layout back', () => {
+        open('sprint-table');
+        const before = text();
+        choose('board');
+        eq([page(), buttonLabel(), text()], ['board', 'Board', before.replace('layout: table', 'layout: board')]);
+        for (const name of ['list', 'calendar', 'timeline', 'gallery', 'chart', 'table']) {
+            choose(name);
+            eq([layoutOf(text()), buttonLabel().toLowerCase()], [name, name], name);
+        }
+        eq(text(), before, 'back to the first layout: the same text');
+        c.w.editor.buffer.undo();
+        settle();
+        ok(layoutOf(text()) !== 'table', 'undo went back one layout');
+    });
+
+    test('a document with no layout gets a frontmatter, and the layout menu works from the text view', () => {
+        w.load(sample('all-formats'));
+        settle();
+        eq([page() === 'calendar', buttonLabel()], [false, 'Text']);
+        const body = text();
+        choose('list');
+        eq([page(), text()], ['inbox', `---\nlayout: list\n---\n\n${body}`]);
+    });
+
+    test('a layout changed in the text (by an undo, or the assistant) is followed, not thrown out to the text view', () => {
+        open('sprint-table');
+        w.editor.replaceText(text().replace('layout: table', 'layout: gallery'));
+        settle();
+        eq([page(), buttonLabel()], ['gallery', 'Gallery']);
+        w.editor.replaceText(text().replace(/^---\n(?:.*\n)*?---\n/, '---\ntitle: x\n---\n'));
+        settle();
+        eq([page() === 'gallery', buttonLabel()], [false, 'Text']);
+    });
+
+    test('a layout that needs a field offers to add it, and the button adds it to the document', () => {
+        w.load(sample('all-formats'));
+        settle();
+        choose('calendar');
+        ok(w.lastToast.includes('date field'), w.lastToast);
+        ok(w.lastToastAction?.label.includes('due'), 'a button names the field');
+        w.lastToastAction!.run();
+        settle();
+        ok(/fields:\n {2}due: date/.test(text()), text().slice(0, 120));
+        w.lastToast = '';
+        choose('chart');
+        ok(w.lastToast.includes('select field'), w.lastToast);
+        w.lastToastAction!.run();
+        settle();
+        ok(/status: select\(todo, doing, done\)/.test(text()) || /status: select/.test(text()), text().slice(0, 160));
+        w.lastToast = '';
+        choose('table');
+        eq(w.lastToast, '', 'a table needs no field');
     });
 }

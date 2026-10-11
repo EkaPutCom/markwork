@@ -63,6 +63,7 @@ import { HarnessController, type HarnessHost } from './window/harness.js';
 import { HomeController, type HomeHost } from './window/home.js';
 import { ViewController, type ViewHost } from './window/views.js';
 import { NoteLinks, type NoteHost } from './window/notes.js';
+import type { ToastAction } from './window/doc.js';
 import { DocumentController, UNTITLED, type DocumentsHost } from './window/documents.js';
 import { applyChange, applyChangeBatch, type AgentWriteHost } from './window/agentwrites.js';
 
@@ -90,6 +91,7 @@ export class MainWindow {
     readonly findBar: FindBar;
     // The last notification text (for tests; the toast itself disappears on its own).
     lastToast = '';
+    lastToastAction: ToastAction | null = null;
     private readonly toasts = new Adw.ToastOverlay();
     readonly statusBar: StatusBar;
     readonly tabBar: TabBar;
@@ -355,9 +357,15 @@ export class MainWindow {
     }
 
     // A short notification that disappears on its own (Adw.Toast).
-    toast(message: string): void {
+    toast(message: string, action?: ToastAction): void {
         this.lastToast = message;
-        this.toasts.add_toast(new Adw.Toast({ title: message, timeout: 3 }));
+        this.lastToastAction = action ?? null;
+        const toast = new Adw.Toast({ title: message, timeout: action ? 8 : 3 });
+        if (action) {
+            toast.set_button_label(action.label);
+            toast.connect('button-clicked', action.run);
+        }
+        this.toasts.add_toast(toast);
     }
 
     private makeHost(): WindowHost {
@@ -376,6 +384,7 @@ export class MainWindow {
             get table() { return w.table; },
             get layouts() { return w.layouts; },
             get home() { return w.home; },
+            get header() { return w.header; },
             get homePage() { return w.homePage; },
             get statusBar() { return w.statusBar; },
             get findBar() { return w.findBar; },
@@ -384,7 +393,7 @@ export class MainWindow {
             active: () => this.doc,
             docs: () => this.docs,
             openInTab: path => this.openInTab(path),
-            toast: message => this.toast(message),
+            toast: (message, action) => this.toast(message, action),
             write: (path, text) => this.documents.write(path, text),
             refreshTree: () => { if (this.fileTree.root) this.fileTree.refresh(this.fileTree.root); },
             refreshHome: () => this.refreshHome(),
@@ -441,7 +450,7 @@ export class MainWindow {
             get settings() { return w.settings; },
             get autosaver() { return w.autosaver; },
             root: () => this.fileTree.root,
-            toast: message => this.toast(message),
+            toast: (message, action) => this.toast(message, action),
             attach: doc => this.attach(doc),
             detach: doc => {
                 this.tabBar.remove(doc.id);
@@ -630,6 +639,11 @@ export class MainWindow {
     // The "Board View" menu/shortcut.
     toggleBoardView(on: boolean): void {
         this.views.toggle(on);
+    }
+
+    // The layout menu in the header bar.
+    setLayout(layout: string): void {
+        this.views.setLayout(layout);
     }
 
     // The "Fields…" menu for the board or list that is shown.

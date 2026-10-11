@@ -16,7 +16,7 @@ import { moveRecent, rememberRecent } from '../markdown/home.js';
 import { markdownToHtml } from '../markdown/html.js';
 import { remapPath } from '../fileops.js';
 import { _, fmt, ngettext } from '../i18n.js';
-import { errorMessage, type Doc } from './doc.js';
+import { errorMessage, type Doc, type ToastAction } from './doc.js';
 import type { Autosaver } from './autosave.js';
 
 export const UNTITLED = _('Untitled');
@@ -29,7 +29,7 @@ export interface DocumentsHost {
     readonly settings: AppSettings;
     readonly autosaver: Autosaver;
     root(): string | null;
-    toast(message: string): void;
+    toast(message: string, action?: ToastAction): void;
     // A new document: connect its editor, and add its page and tab. Called before it joins the list, so the
     // active document is still the previous one (a new document inherits its modes).
     attach(doc: Doc): void;

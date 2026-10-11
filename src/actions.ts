@@ -45,6 +45,7 @@ export interface ActionHost {
     exportHtml(): Promise<void>;
     insertImage(): Promise<void>;
     toggleBoardView(on: boolean): void;
+    setLayout(layout: string): void;
     setOption(key: Option, value: boolean): void;
     syncActionsEnabled(): void;
 }
@@ -106,6 +107,10 @@ export function registerActions(app: Adw.Application, w: ActionHost): void {
     view.connect('change-state', (_a, value) => { if (value) w.toggleBoardView(value.get_boolean()); });
     app.add_action(view);
     app.set_accels_for_action('app.kanban-view', ['<Control><Shift>b']);
+    // The layout menu in the header bar: the state is the layout the document is shown in ('' for the text view).
+    const layout = Gio.SimpleAction.new_stateful('layout', GLib.VariantType.new('s'), GLib.Variant.new_string(''));
+    layout.connect('change-state', (_a, value) => { if (value) w.setLayout(value.get_string()[0]); });
+    app.add_action(layout);
     action('save-as', ['<Control><Shift>s'], () => w.saveAs());
     action('export-html', ['<Control><Shift>e'], () => w.exportHtml());
     action('quit', ['<Control>q'], () => w.win.close());
