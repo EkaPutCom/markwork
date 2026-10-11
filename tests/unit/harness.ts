@@ -9,15 +9,15 @@ import { AgentTrace } from '../../src/agent/trace.js';
 import { section, test, eq, ok, contains } from '../framework.js';
 
 const BOARD = `---
-kanban: true
+layout: board
 project: web-ecommerce
 ---
 
 ## Plan
 
-- [ ] Checkout with QRIS @pi #feature
+- [ ] Checkout with QRIS [agent:: pi] #feature
   Use the official SDK.
-- [ ] Cart test @pi #project/shop-admin @{2026-10-20}
+- [ ] Cart test [agent:: pi] #project/shop-admin [due:: 2026-10-20]
 
 ## In Progress
 
@@ -31,23 +31,27 @@ const lines = (...events: object[]) => events.map(e => JSON.stringify(e));
 export function harnessTests(): void {
     section('External harness (model)');
 
-    test('cardMeta: @name is an assignment, not an email or @{date}', () => {
-        eq(cardMeta('Checkout QRIS @pi #feature @{2026-10-20}'), { title: 'Checkout QRIS', tags: ['feature'], due: '2026-10-20', agent: 'pi' });
+    test('cardMeta: [agent:: name] is an assignment; a bare @name or an email address is just text', () => {
+        eq(cardMeta('Checkout QRIS [agent:: pi] #feature [due:: 2026-10-20]'), { title: 'Checkout QRIS', tags: ['feature'], due: '2026-10-20', agent: 'pi' });
         eq(cardMeta('Send to budi@example.com').agent, null, 'email address');
         eq(cardMeta('Send to budi@example.com').title, 'Send to budi@example.com');
-        eq(cardMeta('@pi').title, '@pi', 'text that is only an assignment is still shown');
-        eq(cardMeta('A @pi @claude').agent, 'pi', 'the first one is used');
+        eq(cardMeta('Ask @pi about it').agent, null, 'a bare @name is not an assignment');
+        eq(cardMeta('[agent:: pi]').title, '[agent:: pi]', 'text that is only a field is still shown');
+        eq(cardMeta('A [agent:: pi] [agent:: claude]').agent, 'pi', 'the first one is used');
+        eq(cardMeta('A [agent:: 9x]').agent, null, 'an invalid name is not an assignment');
     });
 
     test('assignCard and composeCard keep the other parts of the card', () => {
-        eq(assignCard('Checkout #feature @{2026-10-20}', 'pi'), 'Checkout @pi #feature @{2026-10-20}');
-        eq(assignCard('Checkout @pi #feature', 'pi'), 'Checkout @pi #feature', 'already assigned');
-        eq(assignCard('Checkout @pi #feature', null), 'Checkout #feature', 'remove the assignment');
-        eq(composeCard({ title: 'Checkout', tags: ['feature'], due: '', agent: '@Pi' }), 'Checkout @pi #feature');
+        eq(assignCard('Checkout #feature [due:: 2026-10-20]', 'pi'), 'Checkout #feature [due:: 2026-10-20] [agent:: pi]');
+        eq(assignCard('Checkout [agent:: pi] #feature', 'pi'), 'Checkout [agent:: pi] #feature', 'already assigned');
+        eq(assignCard('Checkout [agent:: claude] #feature', 'pi'), 'Checkout [agent:: pi] #feature', 'reassigned in place');
+        eq(assignCard('Checkout [agent:: pi] #feature', null), 'Checkout #feature', 'remove the assignment');
+        eq(composeCard({ title: 'Checkout', tags: ['feature'], due: '', agent: '@Pi' }), 'Checkout #feature [agent:: pi]');
         eq(composeCard({ title: 'Checkout', tags: [], due: '', agent: 'not a name!' }), 'Checkout', 'an invalid name is dropped');
-        const parts = splitCard('Checkout @pi #feature @{2026-10-20 09:00}');
+        const parts = splitCard('Checkout #feature [due:: 2026-10-20 09:00] [agent:: pi]');
         eq(parts, { title: 'Checkout', tags: ['feature'], due: '2026-10-20 09:00', agent: 'pi' });
-        eq(composeCard(parts), 'Checkout @pi #feature @{2026-10-20 09:00}', 'round trip through the edit dialog');
+        eq(composeCard(parts), 'Checkout #feature [due:: 2026-10-20 09:00] [agent:: pi]', 'round trip through the edit dialog');
+        eq(composeCard({ ...parts, title: 'Renamed' }, 'Checkout [owner:: Eka] [due:: 2026-10-20]'), 'Renamed #feature [owner:: Eka] [due:: 2026-10-20 09:00] [agent:: pi]', 'fields of other keys are kept');
     });
 
     test('project from the board frontmatter, a #project/… tag on the card wins', () => {
@@ -55,8 +59,8 @@ export function harnessTests(): void {
         eq(boardProject(b), 'web-ecommerce');
         eq(cardProject(b, b.columns[0].cards[0]), 'web-ecommerce');
         eq(cardProject(b, b.columns[0].cards[1]), 'shop-admin');
-        eq(boardProject(parseBoard('---\nkanban: true\nproject: "shop"\n---\n\n## A\n')), 'shop', 'quoted value');
-        eq(boardProject(parseBoard('---\nkanban: true\n---\n\nproject: outside\n\n## A\n')), null, 'outside the frontmatter is ignored');
+        eq(boardProject(parseBoard('---\nlayout: board\nproject: "shop"\n---\n\n## A\n')), 'shop', 'quoted value');
+        eq(boardProject(parseBoard('---\nlayout: board\n---\n\nproject: outside\n\n## A\n')), null, 'outside the frontmatter is ignored');
     });
 
     test('the project folder must not be the Nyerat work folder, its contents, or its parent', () => {
@@ -84,14 +88,14 @@ export function harnessTests(): void {
     });
 
     test('[[note]] links in the card title and notes become a list of context links without duplicates', () => {
-        const card = { done: false, text: 'Tidy up checkout [[Specification]] @pi', notes: ['See [[specification]] and [[Design#Color|color]].', '`[[not]]`'] };
+        const card = { done: false, text: 'Tidy up checkout [[Specification]] [agent:: pi]', notes: ['See [[specification]] and [[Design#Color|color]].', '`[[not]]`'] };
         eq(cardWikiLinks(card).map(l => [l.target, l.heading]), [['Specification', ''], ['Design', 'Color']]);
         const many = { done: false, text: 'x', notes: Array.from({ length: 15 }, (_, i) => `[[n${i}]]`) };
         eq(cardWikiLinks(many).length, MAX_LINKED_NOTES, 'link count limit');
     });
 
     test('the prompt copies the contents of related notes in a code block, marks missing ones, and truncates long ones', () => {
-        const card = { done: false, text: 'Tidy up checkout [[Specification]] @pi', notes: [] };
+        const card = { done: false, text: 'Tidy up checkout [[Specification]] [agent:: pi]', notes: [] };
         const link = (target: string, heading = '') => ({ target, heading, alias: '' });
         const p = buildPrompt(card, 'web', 'board.md', [
             { link: link('Specification'), file: 'docs/Specification.md', text: '# Spec\n\nUse ```js``` in the example.' },
@@ -120,10 +124,10 @@ export function harnessTests(): void {
     test('stageColumn and locateCard', () => {
         const b = parseBoard(BOARD);
         eq([stageColumn(b, 'doing'), stageColumn(b, 'review')], [1, 2]);
-        eq(stageColumn(parseBoard('---\nkanban: true\n---\n\n## A\n\n## B\n'), 'review'), -1);
-        eq(locateCard(b, 'Checkout with QRIS @pi #feature'), { column: 0, index: 0 });
+        eq(stageColumn(parseBoard('---\nlayout: board\n---\n\n## A\n\n## B\n'), 'review'), -1);
+        eq(locateCard(b, 'Checkout with QRIS [agent:: pi] #feature'), { column: 0, index: 0 });
         eq(locateCard(b, 'nonexistent'), null);
-        const dup = parseBoard('---\nkanban: true\n---\n\n## A\n\n- [ ] X\n- [ ] X\n');
+        const dup = parseBoard('---\nlayout: board\n---\n\n## A\n\n- [ ] X\n- [ ] X\n');
         eq(locateCard(dup, 'X'), null, 'duplicate cards are not picked arbitrarily');
     });
 

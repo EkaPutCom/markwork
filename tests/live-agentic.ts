@@ -15,7 +15,7 @@ export async function liveAgentic(provider: Provider, model: string, thinking: b
         const path = (name: string) => GLib.build_filenamev([root, name]);
         const original = { 'meeting.md': '# Meeting decisions\nThe release is postponed from 15 November to 22 November. The release material starts being worked on.\n',
             'plan.md': '# Plan\nRelease date: 15 November\n',
-            'tasks.md': '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n' };
+            'tasks.md': '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n' };
         try {
             for (const [name, text] of Object.entries(original)) writeTextFile(path(name), text);
             const session = new ChatSession(); session.thinking = thinking;

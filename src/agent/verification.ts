@@ -1,7 +1,8 @@
 // Deterministic checks of the actual contents; it does not claim to prove the meaning of the whole document.
 import type { SourceFile } from './context.js';
 import type { ToolSpec } from './provider.js';
-import { isKanban, parseBoard } from '../markdown/kanban.js';
+import { isBoard } from '../markdown/layout.js';
+import { parseBoard } from '../markdown/kanban.js';
 import { newIssues, resolveLink, scanDocument, type Issue } from '../markdown/lint.js';
 
 export interface Verification {
@@ -101,7 +102,7 @@ function fileCheck(c: any, text: string, file: SourceFile): Check {
 
 // Exactly one card with this text in the list, with the expected done status.
 function cardMatches(file: SourceFile, text: string, list: unknown, done: unknown): boolean {
-    if (!isKanban(file.text) || typeof list !== 'string' || typeof done !== 'boolean') return false;
+    if (!isBoard(file.text) || typeof list !== 'string' || typeof done !== 'boolean') return false;
     const cards = parseBoard(file.text).columns.filter(l => l.title === list).flatMap(l => l.cards).filter(card => card.text === text);
     return cards.length === 1 && cards[0].done === done;
 }

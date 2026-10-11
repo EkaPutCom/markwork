@@ -3,7 +3,8 @@
 // the user approves the diff (ui/chat.ts), so the model never changes files on its own.
 
 import { matchMention, type SourceFile } from './context.js';
-import { addCard, addColumn, deleteCard, deleteColumn, isKanban, moveCard, parseBoard, renameColumn, serializeBoard, updateCard, type Board, type Position } from '../markdown/kanban.js';
+import { addCard, addColumn, deleteCard, deleteColumn, moveCard, parseBoard, renameColumn, serializeBoard, updateCard, type Board, type Position } from '../markdown/kanban.js';
+import { isBoard } from '../markdown/layout.js';
 import type { ToolSpec } from './provider.js';
 
 export interface Change {
@@ -95,13 +96,13 @@ export const CHANGE_TOOLS: ToolSpec[] = [
     },
     {
         name: 'edit_kanban',
-        description: 'Propose a change to a kanban board (a Markdown file with "kanban: true" in the frontmatter). Safer than edit_file for boards. Card actions: add, move, mark (done/not done), edit (replace the card text), delete. List actions: add_list, rename_list, delete_list (empty lists only). It is not written right away: the user sees the diff and then applies or rejects it.',
+        description: 'Propose a change to a kanban board (a Markdown file with "layout: board" in the frontmatter). Safer than edit_file for boards. Card actions: add, move, mark (done/not done), edit (replace the card text), delete. List actions: add_list, rename_list, delete_list (empty lists only). It is not written right away: the user sees the diff and then applies or rejects it.',
         parameters: {
             type: 'object',
             properties: {
                 name: { type: 'string', description: 'Board file name as in list_files' },
                 action: { type: 'string', enum: ['add', 'move', 'mark', 'edit', 'delete', 'add_list', 'rename_list', 'delete_list'], description: 'add = new card at the end of a list; move = move a card to the end of another list; mark = change the done status; edit = replace the card text with new_text; delete = remove a card; add_list/rename_list/delete_list = manage lists' },
-                card: { type: 'string', description: 'add: text of the new card (may contain #tags and @{2026-10-20}). move/mark/edit/delete: a piece of the text of an existing card (must match exactly one card). Not used for list actions' },
+                card: { type: 'string', description: 'add: text of the new card (may contain #tags and fields such as [due:: 2026-10-20]). move/mark/edit/delete: a piece of the text of an existing card (must match exactly one card). Not used for list actions' },
                 list: { type: 'string', description: 'add/move: the destination list. add_list: name of the new list. rename_list/delete_list: the existing list. The exact name as the heading on the board (case-insensitive)' },
                 new_text: { type: 'string', description: 'edit: the replacement card text. rename_list: the new list name' },
                 done: { type: 'boolean', description: 'mark only: true = done, false = not done' },
@@ -304,7 +305,7 @@ const KANBAN_ACTIONS: Record<string, (k: KanbanTarget) => Board | PlanResult> = 
         const column = k.column();
         if (failed(column)) return column;
         if (k.cardText.includes('\n')) return fail('The text of a new card must be a single line.', 'invalid card');
-        return addCard(k.board, column, k.cardText);
+        return addCard(k.board, column, k.cardText, Infinity, new Date());
     },
     move: k => {
         const from = k.card();
@@ -356,7 +357,7 @@ const KANBAN_ACTIONS: Record<string, (k: KanbanTarget) => Board | PlanResult> = 
 };
 
 function planKanban(args: Record<string, unknown>, reason: string, file: SourceFile): PlanResult {
-    if (!isKanban(file.text)) return fail(`${file.name} is not a kanban board (frontmatter without "kanban: true"). Use edit_file for ordinary files.`, 'not a board');
+    if (!isBoard(file.text)) return fail(`${file.name} is not a board (frontmatter without "layout: board"). Use edit_file for ordinary files.`, 'not a board');
     const action = lookup(KANBAN_ACTIONS, asText(args.action));
     if (!action) return fail('The "action" argument must be one of: add, move, mark, edit, delete, add_list, rename_list, delete_list.', 'invalid action');
     const next = action(new KanbanTarget(parseBoard(file.text), args, file.name));

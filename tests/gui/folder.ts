@@ -1,7 +1,8 @@
 // Tes GUI: Folder.
 
 import GLib from 'gi://GLib';
-import { isKanban, parseBoard } from '../../src/markdown/kanban.js';
+import { parseBoard } from '../../src/markdown/kanban.js';
+import { isBoard } from '../../src/markdown/layout.js';
 import { AppSettings } from '../../src/settings.js';
 import { listFolder } from '../../src/ui/filetree.js';
 import { MainWindow } from '../../src/window.js';
@@ -194,7 +195,7 @@ export function folderTests(c: GuiContext): void {
         const path = GLib.build_filenamev([proj, 'sub', 'tasks.md']);
         ok(GLib.file_test(path, GLib.FileTest.EXISTS), 'the board file is not on disk');
         const text = new TextDecoder().decode(GLib.file_get_contents(path)[1]);
-        ok(isKanban(text), 'the file contents are not a kanban board');
+        ok(isBoard(text), 'the file contents are not a kanban board');
         eq(parseBoard(text).columns.map(c => c.title), ['Plan', 'In Progress', 'Done'], 'board lists');
         ok(childNames(abs0('sub')).includes('tasks.md'), 'the board file is not shown in the tree');
         eq(w.file, path, 'active tab file');

@@ -14,7 +14,8 @@ import System from 'system';
 
 import { AppSettings } from '../src/settings.js';
 import { MainWindow } from '../src/window.js';
-import { isKanban, moveCard, parseBoard } from '../src/markdown/kanban.js';
+import { moveCard, parseBoard } from '../src/markdown/kanban.js';
+import { isBoard } from '../src/markdown/layout.js';
 import type { Provider } from '../src/agent/provider.js';
 import { listChats, saveChat } from '../src/agent/chatstore.js';
 import { iterAtLine } from '../src/gtkutil.js';
@@ -31,7 +32,7 @@ const WORK: Record<string, string> = {
     'notes/meeting-8-oct.md': '# Weekly meeting, 8 October\n\nThe sync bug is still open. The closed beta stays on 20 October.\n',
     'research/competitors.md': '# Competitor research\n\nThree similar note apps; all of them are paid and closed.\n',
     'research/users.md': '# User interviews\n\nFive users want syncing without an account.\n',
-    'tasks.md': '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Prepare the release material #marketing @{2026-11-10}\n- [ ] Write the release notes #docs\n\n## In Progress\n\n- [ ] Fix the sync bug #bug #important @{2026-10-25}\n\n## Done\n\n- [x] Redesign the home page #design\n',
+    'tasks.md': '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Prepare the release material #marketing [due:: 2026-11-10]\n- [ ] Write the release notes #docs\n\n## In Progress\n\n- [ ] Fix the sync bug #bug #important [due:: 2026-10-25]\n\n## Done\n\n- [x] Redesign the home page #design\n',
     'ideas.md': '# Ideas\n\nA PDF export feature.\n',
 };
 const ASK_READ = 'Is there a meeting decision that has not made it into the launch plan yet?';
@@ -46,15 +47,15 @@ const ANSWER_ACT = 'Done. The release date in the plan is now **22 November**, a
 
 // A development board for the orchestrator scene: @pi cards are worked on in another project repo.
 const PI_BOARD = `---
-kanban: true
+layout: board
 project: web-ecommerce
 ---
 
 ## Plan
 
-- [ ] Checkout with QRIS @pi #feature
+- [ ] Checkout with QRIS [agent:: pi] #feature
   Use the official SDK.
-- [ ] Test the cart @pi #test
+- [ ] Test the cart [agent:: pi] #test
 - [ ] Tidy up the README #docs
 
 ## In Progress
@@ -178,20 +179,20 @@ Ref: tasks.project_id > projects.id
 `;
 
 const BOARD = `---
-kanban: true
+layout: board
 ---
 
 ## Plan
 
-- [ ] User research #research @{2026-10-10}
+- [ ] User research #research [due:: 2026-10-10]
   Interview five active users.
 - [ ] Redesign the home page #design
-- [ ] Write the **API** documentation #docs @{2026-10-25}
+- [ ] Write the **API** documentation #docs [due:: 2026-10-25]
 
 ## In Progress
 
 - [ ] Implement the kanban board #feature #important
-- [ ] Fix the \`HTML export\` bug #bug @{2026-10-03}
+- [ ] Fix the \`HTML export\` bug #bug [due:: 2026-10-03]
 
 ## Review
 
@@ -371,7 +372,7 @@ class Capture {
         w.setOption('sidebar', sidebar);
         w.file = null;
         ed.setText(text);
-        w.setBoardMode(isKanban(text));
+        w.setBoardMode(isBoard(text));
         buf.place_cursor(iterAtLine(buf, line));
         ed.view.scroll_to_iter(buf.get_start_iter(), 0, false, 0, 0);
         this.settle(20);
@@ -779,7 +780,7 @@ class Capture {
             [tool('p4', 'verify_work', { checks: [
                 { file: 'plans/launch.md', kind: 'present', text: 'Public release: 22 November' },
                 { file: '*', kind: 'absent', text: '15 November' },
-                { file: 'tasks.md', kind: 'kanban', text: 'Prepare the release material #marketing @{2026-11-10}', list: 'In Progress', done: false },
+                { file: 'tasks.md', kind: 'kanban', text: 'Prepare the release material #marketing [due:: 2026-11-10]', list: 'In Progress', done: false },
                 { file: 'notes/meeting-8-oct.md', kind: 'present', text: 'has been updated to 22 November' },
             ] })],
             [tool('p5', 'set_work', { goal, steps: steps('done', 'done', 'done'), note: 'All the checks passed.' })],
@@ -849,7 +850,7 @@ class Capture {
             widgetPixbuf(dialog)?.savev(`${OUT}/kanban-card.png`, 'png', [], []);
             dialog.close();
         });
-        this.waitPromise(editCardDialog(this.w.win, { text: 'User research #research @{2026-10-10 09:00}', notes: ['Interview five active users.'] }));
+        this.waitPromise(editCardDialog(this.w.win, { text: 'User research #research [due:: 2026-10-10 09:00]', notes: ['Interview five active users.'] }));
     }
 
     // The orchestrator: cards worked on by pi (a fake RPC, no API).
@@ -937,8 +938,8 @@ class Capture {
         const day = (offset: number) => { const d = new Date(); d.setDate(d.getDate() + offset); return localDate(d); };
         const flowDir = GLib.build_filenamev([GLib.dir_make_tmp('nyerat-flow-XXXXXX'), 'nyerat-launch']);
         for (const [rel, text] of Object.entries(WORK)) this.put(rel, text, flowDir);
-        const flowBoard = this.put('tasks.md', `---\nkanban: true\nproject: launch\n---\n\n## Plan\n\n- [ ] Prepare the release material #marketing @{${day(1)}}\n- [ ] Write the release notes #docs @{${day(2)}}\n\n## In Progress\n\n- [ ] Fix the sync bug #bug #important @{${day(0)}}\n\n## Done\n\n- [x] Redesign the home page #design\n`, flowDir);
-        const flowInbox = this.put('inbox.md', `---\ninbox: true\n---\n\n# Inbox\n\nA place to capture ideas, notes, and things to process later.\n\n- Read the article about the GNOME HIG #read ➕ ${day(0)} 08:10\n- Idea: offer a PDF export #idea ➕ ${day(-1)} 17:45\n`, flowDir);
+        const flowBoard = this.put('tasks.md', `---\nlayout: board\nproject: launch\n---\n\n## Plan\n\n- [ ] Prepare the release material #marketing [due:: ${day(1)}]\n- [ ] Write the release notes #docs [due:: ${day(2)}]\n\n## In Progress\n\n- [ ] Fix the sync bug #bug #important [due:: ${day(0)}]\n\n## Done\n\n- [x] Redesign the home page #design\n`, flowDir);
+        const flowInbox = this.put('inbox.md', `---\nlayout: list\n---\n\n# Inbox\n\nA place to capture ideas, notes, and things to process later.\n\n- Read the article about the GNOME HIG #read [created:: ${day(0)} 08:10]\n- Idea: offer a PDF export #idea [created:: ${day(-1)} 17:45]\n`, flowDir);
         w.openFolder(flowDir, false);
         w.setOption('chat', false);
         w.setOption('sidebar', true);

@@ -17,7 +17,7 @@ import { agentGit, gitLimits, runGit } from '../../src/git.js';
 import { section, test, eq, ok, contains, settle, tmp } from '../framework.js';
 
 const NOTES = '---\ntitle: meeting\n---\n# Meeting\n\nRelease November 15.\nNote: November 15 final.\n';
-const BOARD = '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n## Done\n\n- [x] Book venue\n';
+const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n## Done\n\n- [x] Book venue\n';
 const base = (): SourceFile[] => [{ name: 'meeting.md', text: NOTES }, { name: 'board.md', text: BOARD }, { name: 'archive/old.md', text: '# Old\n' }];
 
 const planned = (name: string, args: object, files = base()): Change => {

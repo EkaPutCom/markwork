@@ -13,9 +13,10 @@ import { attachWikiCompleter } from '../editor/wikicomplete.js';
 import { childrenOf, modal, onKeyPress } from '../gtkutil.js';
 import { APP_ID, APP_NAME, APP_VERSION } from '../config.js';
 import { composeItem, itemMeta } from '../markdown/inbox.js';
-import { AGENT_NAME, composeCard, DUE_INPUT, splitCard, withDueDate } from '../markdown/kanban.js';
+import { fieldInputText, parseValue, setField, type FieldDef, type FieldType } from '../markdown/fields.js';
+import { AGENT_NAME, CARD_SCHEMA, composeCard, DUE_INPUT, splitCard, withDueDate } from '../markdown/kanban.js';
 import type { HarnessAsk, HarnessReply } from '../agent/harness.js';
-import { _, fmt } from '../i18n.js';
+import { _, fmt, ngettext } from '../i18n.js';
 
 type FilterSetup = [label: string, setup: (filter: Gtk.FileFilter) => void];
 
@@ -178,7 +179,7 @@ export function showAbout(parent: Gtk.Window): void {
 
 // A modal form window: contents on top, Cancel/`accept` buttons at the bottom. `validate` is called
 // when the primary button is pressed; false = the window stays open. true = accepted.
-async function formDialog(parent: Gtk.Window | null, title: string, width: number, content: Gtk.Widget, accept: string, validate: () => boolean = () => true): Promise<boolean> {
+export async function formDialog(parent: Gtk.Window | null, title: string, width: number, content: Gtk.Widget, accept: string, validate: () => boolean = () => true): Promise<boolean> {
     return await modalWindow(parent, title, width, content, [_('Cancel'), accept], 0, 1, i => i === 0 || validate()) === 1;
 }
 
@@ -237,10 +238,55 @@ export function dueField(text: string): DueField {
     return { widget, entry, button, calendar };
 }
 
-// Edit card dialog: title (one line) and notes (multiple lines).
+// One edit control for a schema field: a drop-down for a select with options, a calendar field for a date, an entry
+// for the rest. `text()` is what the user chose or typed; an empty text removes the field.
+interface FieldControl { def: FieldDef; widget: Gtk.Widget; entry: Gtk.Entry | null; text(): string }
+
+const FIELD_HINT: Record<FieldType, () => string> = {
+    text: () => '', number: () => _('A number'), select: () => _('Comma-separated options'), date: () => _('YYYY-MM-DD'),
+    progress: () => _('3/5 or 60%'), person: () => _('A name'), agent: () => _('e.g. pi'), link: () => _('[[Note]]'),
+};
+
+function fieldControl(def: FieldDef, current: string): FieldControl {
+    if (def.type === 'select' && !def.multiple && def.options.length) {
+        // A value the schema does not list stays selectable, so opening and saving the dialog does not lose it.
+        const choices = ['', ...def.options, ...(current && !def.options.includes(current) ? [current] : [])];
+        const dropdown = new Gtk.DropDown({ model: Gtk.StringList.new(choices.map(c => c || '—')), selected: Math.max(0, choices.indexOf(current)), hexpand: true });
+        return { def, widget: dropdown, entry: null, text: () => choices[dropdown.selected] ?? '' };
+    }
+    if (def.type === 'date') {
+        const due = dueField(current);
+        return { def, widget: due.widget, entry: due.entry, text: () => due.entry.text };
+    }
+    const entry = new Gtk.Entry({ text: current, activates_default: true, hexpand: true, placeholder_text: FIELD_HINT[def.type]() });
+    entry.connect('changed', () => entry.remove_css_class('error'));
+    return { def, widget: entry, entry, text: () => entry.text };
+}
+
+// The first control whose text does not fit its field (marked and focused), or null.
+function firstInvalid(controls: FieldControl[]): FieldControl | null {
+    const bad = controls.find(c => c.entry && c.text().trim() !== '' && !parseValue(c.def, c.text().trim()).ok) ?? null;
+    bad?.entry?.add_css_class('error');
+    bad?.entry?.grab_focus();
+    return bad;
+}
+
+const applyFields = (text: string, controls: FieldControl[]): string => controls.reduce((t, c) => setField(t, c.def, c.text()), text);
+
+// One labelled control per field of `schema` (except the keys in `skip`) in `box`, filled from `text`.
+function addFieldRows(box: Gtk.Box, schema: FieldDef[], skip: readonly string[], text: string): FieldControl[] {
+    const controls = schema.filter(f => !skip.includes(f.key)).map(f => fieldControl(f, fieldInputText(text, f)));
+    for (const control of controls) {
+        box.append(new Gtk.Label({ label: control.def.key, xalign: 0 }));
+        box.append(control.widget);
+    }
+    return controls;
+}
+
+// Edit card dialog: title (one line), the fields of the board's schema, and notes (multiple lines).
 // Returns the new contents, or null if cancelled.
 // listNotes: Markdown files in the work folder, for suggestions when typing [[ in the notes.
-export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft, heading = _('Edit Card'), listNotes?: () => string[]): Promise<CardDraft | null> {
+export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft, heading = _('Edit Card'), listNotes?: () => string[], schema: FieldDef[] = []): Promise<CardDraft | null> {
     const parts = splitCard(card.text);
     const title = new Gtk.Entry({ text: parts.title, activates_default: true, hexpand: true });
     const tags = new Gtk.Entry({ text: parts.tags.join(' '), activates_default: true, hexpand: true, placeholder_text: _('tag1 tag2') });
@@ -263,6 +309,7 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
     box.append(dueInput.widget);
     box.append(new Gtk.Label({ label: _('Assigned to'), xalign: 0 }));
     box.append(agent);
+    const controls = addFieldRows(box, schema, CARD_SCHEMA.map(f => f.key), card.text);
     box.append(new Gtk.Label({ label: listNotes ? _('Notes · [[Name]] links another note as agent context') : _('Notes'), xalign: 0, wrap: true }));
     box.append(frame);
 
@@ -281,22 +328,24 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
             agent.grab_focus();
             return false;
         }
-        if (!due.text.trim() || DUE_INPUT.test(due.text.trim())) return true;
-        due.add_css_class('error');
-        due.grab_focus();
-        return false;
+        if (due.text.trim() && !DUE_INPUT.test(due.text.trim())) {
+            due.add_css_class('error');
+            due.grab_focus();
+            return false;
+        }
+        return firstInvalid(controls) === null;
     });
     completer?.destroy();
     if (!accepted) return null;
     const [start, end] = notes.buffer.get_bounds();
     return {
-        text: composeCard({ title: title.text, tags: tags.text.split(/[\s,]+/), due: due.text, agent: agent.text }),
+        text: applyFields(composeCard({ title: title.text, tags: tags.text.split(/[\s,]+/), due: due.text, agent: agent.text }, card.text), controls),
         notes: notes.buffer.get_text(start, end, true).replace(/\s+$/, '').split('\n').filter((l, i, all) => all.length > 1 || l !== ''),
     };
 }
 
 // Edit an inbox note: title, tags, and notes. `item.text` null = a new note.
-export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft, heading = _('Edit Note'), listNotes?: () => string[]): Promise<CardDraft | null> {
+export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft, heading = _('Edit Note'), listNotes?: () => string[], schema: FieldDef[] = []): Promise<CardDraft | null> {
     const meta = itemMeta(item.text);
     const title = new Gtk.Entry({ text: meta.title, activates_default: true, hexpand: true, placeholder_text: _('Idea, link, or quick note') });
     const tags = new Gtk.Entry({ text: meta.tags.join(' '), activates_default: true, hexpand: true, placeholder_text: _('tag1 tag2') });
@@ -311,6 +360,7 @@ export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft,
     box.append(title);
     box.append(new Gtk.Label({ label: _('Tags (separated by spaces)'), xalign: 0 }));
     box.append(tags);
+    const controls = addFieldRows(box, schema, ['created'], item.text);
     box.append(new Gtk.Label({ label: _('Notes'), xalign: 0 }));
     box.append(frame);
 
@@ -322,16 +372,18 @@ export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft,
     }, Gtk.PropagationPhase.CAPTURE);
 
     const accepted = await formDialog(parent, heading, 440, box, _('Save'), () => {
-        if (title.text.trim()) return true;
-        title.add_css_class('error');
-        title.grab_focus();
-        return false;
+        if (!title.text.trim()) {
+            title.add_css_class('error');
+            title.grab_focus();
+            return false;
+        }
+        return firstInvalid(controls) === null;
     });
     completer?.destroy();
     if (!accepted) return null;
     const [start, end] = notes.buffer.get_bounds();
     return {
-        text: composeItem(title.text, tags.text.split(/[\s,]+/), item.text),
+        text: applyFields(composeItem(title.text, tags.text.split(/[\s,]+/), item.text), controls),
         notes: notes.buffer.get_text(start, end, true).replace(/\s+$/, '').split('\n').filter((l, i, all) => all.length > 1 || l !== ''),
     };
 }
@@ -345,6 +397,15 @@ export async function promptDialog(parent: Gtk.Window | null, options: { title: 
     const accepted = await formDialog(parent, options.title, 360, box, options.accept ?? _('OK'));
     const value = entry.text.trim();
     return accepted && value ? value : null;
+}
+
+// What to do with the notes of a section that is deleted: keep them (they go to the section above), delete them too, or
+// cancel. Asked only for a section that has notes.
+export async function deleteSectionDialog(parent: Gtk.Window | null, title: string, count: number): Promise<'keep' | 'delete' | null> {
+    const answer = await alert(parent, fmt(_('Delete the section “{title}”?'), { title }),
+        fmt(ngettext('It has {count} note.', 'It has {count} notes.', count), { count }),
+        [_('Cancel'), _('Keep the Notes'), _('Delete the Notes')], 0, 1, 2);
+    return answer === 1 ? 'keep' : answer === 2 ? 'delete' : null;
 }
 
 export async function confirmDialog(parent: Gtk.Window | null, message: string, detail?: string): Promise<boolean> {

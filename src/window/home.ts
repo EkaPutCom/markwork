@@ -9,8 +9,8 @@ import { cardProject, isActive } from '../agent/harness.js';
 import { isDirectory } from '../ui/filetree.js';
 import { RESUME_CARDS, type HomeData, type HomeEntry } from '../ui/home.js';
 import { dueTasks, localDate, openInboxes, splitRecent, type RecentFile, type Task } from '../markdown/home.js';
-import { isInbox } from '../markdown/inbox.js';
-import { isKanban, updateCard, type Board } from '../markdown/kanban.js';
+import { isBoard, isList } from '../markdown/layout.js';
+import { updateCard, type Board } from '../markdown/kanban.js';
 import { _, fmt } from '../i18n.js';
 import type { DocumentHost } from './doc.js';
 import type { HarnessController } from './harness.js';
@@ -33,7 +33,7 @@ export class HomeController {
         const recent = this.host.settings.recentFiles.filter(r => fileExists(r.path) && !isDirectory(r.path));
         const { resume, others } = splitRecent(recent, RESUME_CARDS);
         // Boards and inboxes come from the workspace (cached by modification time; unsaved tabs from their editor).
-        const files = root ? this.host.workspace.files(root, { keep: text => isKanban(text) || isInbox(text) }) : [];
+        const files = root ? this.host.workspace.files(root, { keep: text => isBoard(text) || isList(text) }) : [];
         const realName = GLib.get_real_name();
         return {
             now,

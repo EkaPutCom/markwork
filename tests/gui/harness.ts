@@ -13,16 +13,16 @@ import type { HarnessAsk, HarnessReply } from '../../src/agent/harness.js';
 import type { GuiContext } from './context.js';
 
 const BOARD = `---
-kanban: true
+layout: board
 project: shop
 ---
 
 ## Plan
 
-- [ ] Checkout with QRIS @pi #feature
+- [ ] Checkout with QRIS [agent:: pi] #feature
   Use the official SDK.
 - [ ] Test the cart
-- [ ] Tidy up README @pi
+- [ ] Tidy up README [agent:: pi]
 
 ## In Progress
 
@@ -129,14 +129,14 @@ export function harnessTests(c: GuiContext): void {
     };
     const runOf = (text: string) => w.harness.orchestrator.queue.find(board, kb.getBoard().columns[at(text).column].cards[at(text).index].text);
 
-    test('an @pi card runs in the project folder, moves to In Progress and then Review with a result note', () => {
+    test('an [agent:: pi] card runs in the project folder, moves to In Progress and then Review with a result note', () => {
         w.settings.projects = { shop: project };
         mode('slow');
         open();
         contains(badge('Checkout'), 'pi');
         run('Checkout');
         ok(waitFor(() => read('order').includes('start')), 'the fake pi did not run');
-        eq(titles(1), ['Checkout with QRIS @pi #feature'], 'moved to In Progress on start');
+        eq(titles(1), ['Checkout with QRIS [agent:: pi] #feature'], 'moved to In Progress on start');
         contains(badge('Checkout'), 'working');
         eq(read('cwd').trim(), project, 'cwd = project folder');
         contains(read('prompt'), '# Checkout with QRIS');
@@ -144,7 +144,7 @@ export function harnessTests(c: GuiContext): void {
         eq(findEntry(kb.cardMenu(1, 0), 'Work on it with pi')?.enabled, false, 'cannot be run twice');
         GLib.file_set_contents(GLib.build_filenamev([dir, 'release']), '');
         ok(waitFor(() => runOf('Checkout')?.status === 'done'), `status: ${runOf('Checkout')?.status}`);
-        eq(titles(2), ['Checkout with QRIS @pi #feature'], 'moved to Review when done');
+        eq(titles(2), ['Checkout with QRIS [agent:: pi] #feature'], 'moved to Review when done');
         const card = kb.getBoard().columns[2].cards[0];
         ok(card.notes[card.notes.length - 1].startsWith('↳ pi done'), `notes: ${card.notes.join(' | ')}`);
         contains(card.notes[card.notes.length - 1], 'QRIS checkout added');
@@ -202,7 +202,7 @@ export function harnessTests(c: GuiContext): void {
         ok(waitFor(() => read('order').includes('start')), 'pi did not run');
         menu('Checkout', 'Stop pi').run!();
         ok(waitFor(() => runOf('Checkout')?.status === 'stopped'), `status: ${runOf('Checkout')?.status}`);
-        eq(titles(1), ['Checkout with QRIS @pi #feature']);
+        eq(titles(1), ['Checkout with QRIS [agent:: pi] #feature']);
         eq(kb.getBoard().columns[1].cards[0].notes, ['Use the official SDK.'], 'stopping adds no note');
 
         mode('fail');
@@ -233,7 +233,7 @@ export function harnessTests(c: GuiContext): void {
         const name = GLib.path_get_basename(other);
         eq(w.settings.projects[name], other, 'the mapping is saved');
         ok(waitFor(() => runOf('Test the cart')?.status === 'done'), `status: ${runOf('Test the cart')?.status}`);
-        eq(titles(2), [`Test the cart @pi #project/${name}`], 'the project tag and the assignment were added');
+        eq(titles(2), [`Test the cart #project/${name} [agent:: pi]`], 'the project tag and the assignment were added');
         eq(read('cwd').trim().split('\n').pop(), other);
     });
 
@@ -253,7 +253,7 @@ export function harnessTests(c: GuiContext): void {
         GLib.file_set_contents(GLib.build_filenamev([dir, 'release']), '');
         ok(waitFor(() => w.harness.orchestrator.queue.runs.every(r => r.status !== 'working')), 'the run did not finish');
         const disk = parseBoard(readTextFile(board));
-        eq(disk.columns[2].cards.map(x => x.text), ['Checkout with QRIS @pi #feature'], 'Review on disk');
+        eq(disk.columns[2].cards.map(x => x.text), ['Checkout with QRIS [agent:: pi] #feature'], 'Review on disk');
         ok(disk.columns[2].cards[0].notes.some(n => n.startsWith('↳ pi done')), 'the result note on disk');
         w.load(board);
         pump();
@@ -266,7 +266,7 @@ export function harnessTests(c: GuiContext): void {
         run('Checkout');
         ok(waitFor(() => runOf('Checkout')?.status === 'waiting'), `status: ${runOf('Checkout')?.status}`);
         contains(badge('Checkout'), 'waiting for an answer');
-        eq(titles(1), ['Checkout with QRIS @pi #feature'], 'the card waits in In Progress');
+        eq(titles(1), ['Checkout with QRIS [agent:: pi] #feature'], 'the card waits in In Progress');
         eq(runOf('Checkout')?.ask?.kind, 'confirm');
         eq(findEntry(kb.cardMenu(1, 0), 'Work on it with pi')?.enabled, false, 'cannot be run twice while waiting');
         const shot = optVal('shot-harness');
@@ -293,7 +293,7 @@ export function harnessTests(c: GuiContext): void {
         ok(waitFor(() => runOf('Checkout')?.status === 'done'), `status: ${runOf('Checkout')?.status}`);
         const reply = JSON.parse(read('answer').trim());
         eq(reply, { type: 'extension_ui_response', id: 'ui-1', confirmed: true });
-        eq(titles(2), ['Checkout with QRIS @pi #feature'], 'to Review after finishing');
+        eq(titles(2), ['Checkout with QRIS [agent:: pi] #feature'], 'to Review after finishing');
         const log = runOf('Checkout')!.trace.text();
         contains(log, 'pi is waiting: Allow the bash command?');
         contains(log, 'Answer: allowed');
@@ -345,7 +345,7 @@ export function harnessTests(c: GuiContext): void {
         eq(JSON.parse(read('prompt')).message, 'Also add the tests');
         eq(runOf('Checkout')!.trace, first.trace, 'the same log was continued');
         contains(first.trace.text(), 'Your reply');
-        eq(titles(2), ['Checkout with QRIS @pi #feature'], 'back to Review');
+        eq(titles(2), ['Checkout with QRIS [agent:: pi] #feature'], 'back to Review');
         eq(kb.getBoard().columns[2].cards[0].notes.filter(n => n.startsWith('↳ pi done')).length, 2, 'one note per run');
     });
 
@@ -355,8 +355,8 @@ export function harnessTests(c: GuiContext): void {
         GLib.file_set_contents(GLib.build_filenamev([folder, 'specs', 'Spec.md']), '# Spec\n\n## Colors\n\nThe pay button is green #1a7f37.\n\n## Other\n\nOther secret.\n');
         GLib.file_set_contents(GLib.build_filenamev([folder, 'Meeting Notes.md']), 'The client asked for dynamic QRIS.\n');
         const board = GLib.build_filenamev([folder, 'board.md']);
-        GLib.file_set_contents(board, BOARD.replace('- [ ] Checkout with QRIS @pi #feature\n  Use the official SDK.',
-            '- [ ] Checkout with QRIS [[Spec#Colors]] @pi #feature\n  Use the official SDK, see [[meeting notes]] and [[Missing]].'));
+        GLib.file_set_contents(board, BOARD.replace('- [ ] Checkout with QRIS [agent:: pi] #feature\n  Use the official SDK.',
+            '- [ ] Checkout with QRIS [[Spec#Colors]] [agent:: pi] #feature\n  Use the official SDK, see [[meeting notes]] and [[Missing]].'));
         for (const f of ['cwd', 'order', 'prompt', 'release', 'args', 'answer', 'rest']) GLib.unlink(GLib.build_filenamev([dir, f]));
         mode('ok');
         ok(w.load(board), 'load board');

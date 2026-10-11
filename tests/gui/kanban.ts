@@ -3,7 +3,8 @@
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import { readTextFile } from '../../src/files.js';
-import { addCard, isKanban, parseBoard } from '../../src/markdown/kanban.js';
+import { addCard, parseBoard } from '../../src/markdown/kanban.js';
+import { isBoard } from '../../src/markdown/layout.js';
 import { KanbanBoard } from '../../src/ui/kanban.js';
 import { dueField, editCardDialog, findDialog } from '../../src/ui/dialogs.js';
 import { findEntry, type MenuEntry } from '../../src/ui/menu.js';
@@ -46,6 +47,124 @@ export function kanbanBoardTests(c: GuiContext): void {
         return calls;
     };
     const openBoard = () => { GLib.file_set_contents(board, BOARD); w.load(board); settleK(); };
+
+    test('fields declared in the frontmatter are shown as chips; a value that does not fit is marked and its text is unchanged', () => {
+        const text = '---\nlayout: board\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Parser [prioritas:: sedang] [progres:: 3/5] [due:: 2026-10-20]\n- [ ] Broken [prioritas:: urgent] [owner:: Eka]\n';
+        GLib.file_set_contents(board, text); w.load(board); settleK();
+        const chips = (idx: number) => kbDescendants(kb.columns[0].cards[idx]).filter((x): x is Gtk.Label => x instanceof Gtk.Label && x.has_css_class('kanban-chip'));
+        eq(chips(0).slice(0, 2).map(c => c.label), ['sedang', 'progres: 3/5'], 'select value, then progress; the due badge follows');
+        ok(chips(0).at(-1)!.has_css_class('kanban-due'), 'the due badge is still its own chip');
+        ok(chips(0)[0].has_css_class('kanban-tag-1'), 'a select option takes the color of its position');
+        eq(chips(1).map(c => [c.label, c.has_css_class('kanban-field-invalid')]), [['prioritas: urgent', true], ['owner: Eka', false]]);
+        ok(chips(1)[0].get_tooltip_text()?.includes('not one of: tinggi, sedang, rendah'), 'the reason is in the tooltip');
+        eq(kb.getBoard().columns[0].cards[1].text, 'Broken [prioritas:: urgent] [owner:: Eka]', 'the text of the card is unchanged');
+        openBoard();
+    });
+
+    // Change a field in place from its popover.
+    const FIELD_BOARD = '---\nlayout: board\nfields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n---\n\n## Plan\n\n- [ ] Parser [prioritas:: sedang] [due:: 2026-10-20 09:00]\n';
+    const popoverOf = (key: string, column = 0, index = 0): Gtk.Popover => {
+        const popover = kb.editField(column, index, key);
+        ok(popover, `no popover for ${key}`);
+        settleK();
+        return popover;
+    };
+    const popButtons = (popover: Gtk.Popover) => descendants(popover).filter((x): x is Gtk.Button => x instanceof Gtk.Button);
+    const popButton = (popover: Gtk.Popover, label: string) => popButtons(popover).find(b => b.label === label) ?? (() => { throw new Error(`no button "${label}"`); })();
+    const popEntry = (popover: Gtk.Popover) => descendants(popover).find((x): x is Gtk.Entry => x instanceof Gtk.Entry)!;
+
+    test('a select popover lists the options and sets one; Clear removes the field', () => {
+        GLib.file_set_contents(board, FIELD_BOARD); w.load(board); settleK();
+        let pop = popoverOf('prioritas');
+        eq(popButtons(pop).filter(b => b.get_visible()).map(b => b.label), ['tinggi', '✓ sedang', 'rendah', 'Clear'], 'the current option is marked');
+        popButton(pop, 'tinggi').emit('clicked'); settleK();
+        eq(kb.getBoard().columns[0].cards[0].text, 'Parser [prioritas:: tinggi] [due:: 2026-10-20 09:00]');
+        ok(text().includes('[prioritas:: tinggi]'), 'written to the document');
+        pop = popoverOf('prioritas');
+        popButton(pop, 'Clear').emit('clicked'); settleK();
+        eq(kb.getBoard().columns[0].cards[0].text, 'Parser [due:: 2026-10-20 09:00]');
+        eq(kb.editField(0, 0, 'nope'), null, 'a key that is not declared has no popover');
+    });
+
+    test('a typed select value: a close option is offered, a new one needs a confirmation and is one undo step', () => {
+        GLib.file_set_contents(board, FIELD_BOARD); w.load(board); settleK();
+        const before = text();
+        let pop = popoverOf('prioritas');
+        const entry = popEntry(pop);
+        const offer = () => popButtons(pop).find(b => b.get_visible() && /^(Use|Add) /.test(b.label ?? ''));
+        ok(!offer(), 'nothing is offered for an empty entry');
+        entry.set_text('tingi'); settleK();
+        eq(offer()?.label, 'Use “tinggi”', 'one typo away from an existing option');
+        entry.set_text('urgent'); settleK();
+        eq(offer()?.label, 'Add “urgent” to the list');
+        eq(text(), before, 'nothing is written before the confirmation');
+        offer()!.emit('clicked'); settleK();
+        ok(text().includes('prioritas: select(tinggi, sedang, rendah, urgent)'), 'the option is in the frontmatter');
+        ok(text().includes('[prioritas:: urgent]'), 'and the card uses it');
+        action('undo'); settleK();
+        eq(text(), before, 'one undo reverts the option and the value together');
+        pop = popoverOf('prioritas');
+        popEntry(pop).set_text('tingi'); settleK();
+        popButtons(pop).find(b => b.get_visible() && b.label === 'Use “tinggi”')!.emit('clicked'); settleK();
+        ok(text().includes('[prioritas:: tinggi]') && !text().includes('urgent'), 'using the close option adds nothing to the list');
+    });
+
+    test('a date popover keeps the time; an entry popover refuses a value that does not fit', () => {
+        GLib.file_set_contents(board, FIELD_BOARD); w.load(board); settleK();
+        let pop = popoverOf('due');
+        const calendar = descendants(pop).find((x): x is Gtk.Calendar => x instanceof Gtk.Calendar)!;
+        eq(calendar.get_date().format('%Y-%m-%d'), '2026-10-20', 'the calendar opens on the date in the field');
+        calendar.select_day(GLib.DateTime.new_local(2026, 11, 2, 0, 0, 0)); settleK();
+        eq(kb.getBoard().columns[0].cards[0].text, 'Parser [prioritas:: sedang] [due:: 2026-11-02 09:00]');
+        pop = popoverOf('progres');
+        const entry = popEntry(pop);
+        entry.set_text('nope'); entry.emit('activate'); settleK();
+        ok(entry.has_css_class('error'), 'marked');
+        ok(!kb.getBoard().columns[0].cards[0].text.includes('progres'), 'nothing written');
+        entry.set_text('4/5'); entry.emit('activate'); settleK();
+        ok(kb.getBoard().columns[0].cards[0].text.endsWith('[progres:: 4/5]'), kb.getBoard().columns[0].cards[0].text);
+        openBoard();
+    });
+
+    test('Fields… edits the fields the board declares: written to the frontmatter in one undo step; unavailable on a plain document', () => {
+        const fieldsAction = () => c.app.lookup_action('fields-edit') as { enabled: boolean };
+        GLib.file_set_contents(board, FIELD_BOARD); w.load(board); settleK();
+        ok(fieldsAction().enabled, 'enabled while a board is shown');
+        const before = text();
+        whenDialogReady(() => findDialog('Fields'), dialog => {
+            const entries = descendants(dialog).filter((x): x is Gtk.Entry => x instanceof Gtk.Entry);
+            ok(entries.some(e => e.text === 'sedang'), 'the options of the select are listed');
+            (descendants(dialog).find(x => x instanceof Gtk.Button && (x as Gtk.Button).label === '+ Add field') as Gtk.Button).emit('clicked'); pump();
+            (descendants(dialog).find(x => x instanceof Gtk.Entry && (x as Gtk.Entry).placeholder_text === 'Field name') as Gtk.Entry).set_text('estimasi');
+            (descendants(dialog).find(x => x instanceof Gtk.DropDown) as Gtk.DropDown).selected = 1; pump();   // Number
+            (descendants(dialog).find(x => x instanceof Gtk.Button && (x as Gtk.Button).label === 'Save') as Gtk.Button).emit('clicked');
+        });
+        w.editFields();
+        for (let i = 0; i < 100 && w.win.get_visible_dialog(); i++) { pump(); GLib.usleep(20000); }
+        settleK();
+        ok(text().includes('fields:\n  prioritas: select(tinggi, sedang, rendah)\n  progres: progress\n  estimasi: number\n'), text());
+        ok(text().includes('- [ ] Parser [prioritas:: sedang]'), 'the cards are untouched');
+        ok(kb.schema().some(f => f.key === 'estimasi'), 'the board uses the new field at once');
+        action('undo'); settleK();
+        eq(text(), before, 'one undo');
+        GLib.file_set_contents(board, '# Plain\n\ntext'); w.load(board); settleK();
+        ok(!fieldsAction().enabled, 'disabled on a plain document');
+        openBoard();
+    });
+
+    test('an option with a color keeps it on the chip and in the popover wherever it sits; one without is colored by its position', () => {
+        const T = '---\nlayout: board\nfields:\n  prioritas: select(rendah:gray, sedang, tinggi:red)\n---\n\n## Plan\n\n- [ ] A [prioritas:: tinggi]\n- [ ] B [prioritas:: sedang]\n';
+        GLib.file_set_contents(board, T); w.load(board); settleK();
+        const chip = (idx: number) => kbDescendants(kb.columns[0].cards[idx]).find((x): x is Gtk.Label => x instanceof Gtk.Label && x.has_css_class('kanban-chip'))!;
+        ok(chip(0).has_css_class('opt-red') && !chip(0).has_css_class('kanban-tag-2'), 'a chosen color wins over the position');
+        ok(chip(1).has_css_class('kanban-tag-1') && !chip(1).has_css_class('opt-gray'), 'no color: the color of its position');
+        const pop = kb.editField(0, 0, 'prioritas')!; settleK();
+        const optionChip = (label: string) => popButtons(pop).find(b => b.label === label || b.label === `✓ ${label}`)!.get_child() as Gtk.Label;
+        ok(optionChip('tinggi').has_css_class('opt-red') && optionChip('rendah').has_css_class('opt-gray'), 'the options in the popover have their colors');
+        ok(!optionChip('sedang').has_css_class('opt-red'), 'an option without a color has none');
+        popButton(pop, 'Clear').emit('clicked'); settleK();
+        openBoard();
+    });
 
     test('a kanban document opens as a board, a plain document as text', () => {
         openBoard();
@@ -97,7 +216,7 @@ export function kanbanBoardTests(c: GuiContext): void {
         const menu = kb.cardMenu(0, 0);
         ok(!kbMenu(menu, 'Move Up').enabled && kbMenu(menu, 'Move Down').enabled, 'Move Up/Move Down on the first card');
         kbMenu(menu, 'Move Down').activate(); settleK();
-        eq(kb.cardTexts(0), ['Send invitations', 'Write report #important @{2026-10-20}'], 'down');
+        eq(kb.cardTexts(0), ['Send invitations', 'Write report #important [due:: 2026-10-20]'], 'down');
         const submenu = kbMenu(kb.cardMenu(0, 0), 'Move to').item.submenu!;
         eq(submenu.map(e => e.label), ['In Progress', 'Done'], 'the destinations do not include the source list');
         submenu.find(e => e.label === 'Done')!.run!(); settleK();
@@ -231,20 +350,20 @@ export function kanbanBoardTests(c: GuiContext): void {
         setText(BOARD.replace('- [ ] Send invitations', '- [ ] Send invitations\n- [ ] From text'));
         w.toggleBoardView(true); settleK();
         ok(w.boardMode, 'back to the board');
-        eq(kb.cardTexts(0), ['Write report #important @{2026-10-20}', 'Send invitations', 'From text']);
+        eq(kb.cardTexts(0), ['Write report #important [due:: 2026-10-20]', 'Send invitations', 'From text']);
     });
     test('the board view for a plain document is refused with a message', () => {
         GLib.file_set_contents(board, '# Plain');
         w.load(board); settleK();
         w.toggleBoardView(true);
         ok(!w.boardMode, 'a plain document was shown as a board');
-        ok(w.lastToast.includes('not a kanban board'), `message: ${w.lastToast}`);
+        ok(w.lastToast.includes('not a board or list'), `message: ${w.lastToast}`);
     });
     test('a new kanban board contains three empty lists', () => {
         w.newBoardDocument(); settleK();
         ok(w.boardMode && w.file === null, 'mode or file name');
         eq(kbTitles(), ['Plan', 'In Progress', 'Done']);
-        ok(isKanban(w.editor.getText()), 'the text is not a kanban board');
+        ok(isBoard(w.editor.getText()), 'the text is not a kanban board');
         // The new board opens in a new tab (the previous document has a file); close it so the other tests use the original editor.
         ok(w.closeTab(), 'closeTab() failed'); settleK();
         ok(w.editor === ed, 'the original editor is no longer active');
@@ -370,7 +489,7 @@ export function kanbanBoardTests(c: GuiContext): void {
                     widgetPixbuf(dialog)?.savev(`${shot}-dialog${dark ? '-dark' : ''}.png`, 'png', [], []);
                     dialog.close();
                 });
-                settle(editCardDialog(w.win, { text: 'Write report #work @{2026-10-20}', notes: ['Follow the decision in [[Meeting Notes]].'] }, 'Add Card', () => ['Meeting Notes.md']));
+                settle(editCardDialog(w.win, { text: 'Write report #work [due:: 2026-10-20]', notes: ['Follow the decision in [[Meeting Notes]].'] }, 'Add Card', () => ['Meeting Notes.md']));
             }
             w.setOption('dark', false);
             pump();

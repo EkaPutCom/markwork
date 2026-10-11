@@ -21,14 +21,16 @@ import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import {
-    addCard, addColumn, cardMeta, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
+    addCard, addColumn, boardSchema, cardFields, cardMeta, setCardField, withFieldOption, DUE_FIELD, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
     newBoard, renameColumn, toggleDone, updateCard, type Board, type Card, type Position,
 } from '../markdown/kanban.js';
+import { fieldInputText, type FieldChip, type FieldDef } from '../markdown/fields.js';
+import { FieldPopover } from './fieldpopover.js';
 import { cellMarkup, escapeMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
 import { confirmDialog, editCardDialog, promptDialog, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
-import { after, childrenOf, onClick, onKeyPress, pack, removeChildren, type Awaitable } from '../gtkutil.js';
+import { after, childrenOf, onChipClick, onClick, onKeyPress, pack, removeChildren, type Awaitable } from '../gtkutil.js';
 import { popupMenu, separator, type MenuEntry } from './menu.js';
 import { _, fmt, pgettext } from '../i18n.js';
 
@@ -48,7 +50,7 @@ const MONTHS = (): string[] => [
 
 // Dialogs can be replaced (for example in tests with immediate answers); the real dialog answers through a Promise.
 export interface BoardDialogs {
-    editCard(parent: Gtk.Window | null, card: CardDraft, title?: string, listNotes?: () => string[]): Awaitable<CardDraft | null>;
+    editCard(parent: Gtk.Window | null, card: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
     prompt(parent: Gtk.Window | null, options: { title: string; label: string; value?: string }): Awaitable<string | null>;
     confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
 }
@@ -93,10 +95,12 @@ export class KanbanBoard {
     readonly widget: Gtk.Overlay;
     readonly scroller: Gtk.ScrolledWindow;
     private readonly ghostLayer: Gtk.Fixed;   // where the ghost card lives while dragging
+    private readonly popovers: FieldPopover;
     columns: ColumnView[] = [];
     onChange: (board: Board) => void = () => {};
     dialogs: BoardDialogs = { editCard: editCardDialog, prompt: promptDialog, confirm: confirmDialog };
     today: () => string = () => GLib.DateTime.new_now_local().format('%Y-%m-%d') ?? '';
+    now: () => Date = () => new Date();
     harness: BoardHarness | null = null;
     // a [[note]] on a card was clicked, and the file list for [[ suggestions in the card dialog (filled in by the window).
     onOpenNote: (link: WikiLink) => void = () => {};
@@ -121,6 +125,7 @@ export class KanbanBoard {
         // The ghost card layer does not receive clicks, so the pointer still reaches the board.
         this.ghostLayer = new Gtk.Fixed({ can_target: false });
         this.widget = new Gtk.Overlay({ child: this.scroller });
+        this.popovers = new FieldPopover(this.widget);
         this.widget.add_overlay(this.ghostLayer);
     }
 
@@ -194,8 +199,9 @@ export class KanbanBoard {
         box.add_css_class('kanban-column');
 
         // Title: double click to rename.
-        const title = new Gtk.Label({ label: column.title, xalign: 0, ellipsize: Pango.EllipsizeMode.END, hexpand: true });
+        const title = new Gtk.Label({ label: column.title || _('No list'), xalign: 0, ellipsize: Pango.EllipsizeMode.END, hexpand: true });
         title.add_css_class('kanban-column-title');
+        if (column.title === '') title.add_css_class('dim-label');
         const titleBox = new Gtk.Box();
         titleBox.append(title);
         titleBox.set_tooltip_text(_('Double-click to rename'));
@@ -226,9 +232,22 @@ export class KanbanBoard {
         return { box, scroller, cardsBox, cards, footer };
     }
 
+    // The fields of this board (the built-in ones plus the frontmatter `fields:` block), read again only when the head changes.
+    private schemaKey = '';
+    private schemaCache: FieldDef[] = [];
+    schema(): FieldDef[] {
+        const key = this.board.head.join('\n');
+        if (key !== this.schemaKey) {
+            this.schemaKey = key;
+            this.schemaCache = boardSchema(this.board);
+        }
+        return this.schemaCache;
+    }
+
     private buildCard(c: number, i: number): Gtk.Box {
         const card = this.board.columns[c].cards[i];
         const meta = cardMeta(card.text);
+        const fields = cardFields(card.text, this.schema());
 
         const widget = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
         widget.add_css_class('kanban-card');
@@ -250,7 +269,7 @@ export class KanbanBoard {
         // Links in the card notes are not visible in the title, so they are shown as clickable chips.
         const inTitle = new Set(wikiLinksIn(card.text).map(l => l.target.toLowerCase()));
         const noteLinks = card.notes.length ? wikiLinksIn(card.notes.join('\n')).filter(l => !inTitle.has(l.target.toLowerCase())) : [];
-        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, this.harness?.status(card) ?? null);
+        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, this.harness?.status(card) ?? null, fields, (key, anchor) => this.editField(c, i, key, anchor));
         if (badges) inner.append(badges);
         // One row per link so many links do not widen the card.
         const linkBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
@@ -284,8 +303,8 @@ export class KanbanBoard {
         return widget;
     }
 
-    private buildBadges(hasNotes: boolean, tags: string[], due: string | null, agent: string | null = null, status: CardRunStatus | null = null): Gtk.Box | null {
-        if (!hasNotes && !tags.length && !due && !agent) return null;
+    private buildBadges(hasNotes: boolean, tags: string[], due: string | null, agent: string | null = null, status: CardRunStatus | null = null, fields: FieldChip[] = [], edit: (key: string, anchor: Gtk.Widget) => void = () => {}): Gtk.Box | null {
+        if (!hasNotes && !tags.length && !due && !agent && !fields.length) return null;
         const row = new Gtk.Box({ spacing: 4 });
         const chip = (text: string, ...classes: string[]) => {
             const label = new Gtk.Label({ label: text });
@@ -293,14 +312,46 @@ export class KanbanBoard {
             row.append(label);
             return label;
         };
-        if (agent) {
-            const label = chip(`${status ? RUN_ICON[status] : '◇'} ${agent}${status ? ` · ${RUN_LABEL[status]}` : ''}`, 'kanban-agent', `kanban-agent-${status ?? 'idle'}`);
-            label.set_tooltip_text(status === 'waiting' ? fmt(_('{agent} is waiting for your answer: right click the card → Answer {agent}…'), { agent }) : status ? fmt(_('{agent}: {status} (right click the card for the log)'), { agent, status: RUN_LABEL[status] }) : fmt(_('Assigned to {agent}; right click the card → Work on it with {agent}'), { agent }));
-        }
+        if (agent) this.agentChip(chip, agent, status);
+        for (const f of fields) this.fieldChip(chip, f, edit);
         for (const tag of tags) chip(`#${tag}`, `kanban-tag-${this.tagColor(tag)}`);
-        if (due) chip(`📅 ${this.formatDue(due)}`, 'kanban-due', `kanban-due-${dueStatus(due, this.today())}`);
+        if (due) {
+            const dueChip = chip(`📅 ${this.formatDue(due)}`, 'kanban-due', `kanban-due-${dueStatus(due, this.today())}`);
+            onChipClick(dueChip, () => edit(DUE_FIELD.key, dueChip));
+        }
         if (hasNotes) chip('≡', 'kanban-notes');
         return row;
+    }
+
+    private agentChip(chip: (text: string, ...classes: string[]) => Gtk.Label, agent: string, status: CardRunStatus | null): void {
+        const label = chip(`${status ? RUN_ICON[status] : '◇'} ${agent}${status ? ` · ${RUN_LABEL[status]}` : ''}`, 'kanban-agent', `kanban-agent-${status ?? 'idle'}`);
+        label.set_tooltip_text(status === 'waiting' ? fmt(_('{agent} is waiting for your answer: right click the card → Answer {agent}…'), { agent }) : status ? fmt(_('{agent}: {status} (right click the card for the log)'), { agent, status: RUN_LABEL[status] }) : fmt(_('Assigned to {agent}; right click the card → Work on it with {agent}'), { agent }));
+    }
+
+    // A select option takes the color of its position; a value that does not fit its field is marked and explained.
+    private fieldChip(chip: (text: string, ...classes: string[]) => Gtk.Label, f: FieldChip, edit: (key: string, anchor: Gtk.Widget) => void): void {
+        const label = chip(f.text, f.invalid ? 'kanban-field-invalid' : f.color ? `opt-${f.color}` : f.option !== null ? `kanban-tag-${f.option % TAG_COLORS}` : 'kanban-field');
+        if (f.invalid) label.set_tooltip_text(fmt(_('“{key}” does not fit its field: {reason}. The text in the file is unchanged.'), { key: f.key, reason: f.invalid }));
+        if (f.type !== null) onChipClick(label, () => edit(f.key, label));
+    }
+
+    // Change one field of a card in place from a popover on `anchor`. A new select option and the value that uses it
+    // are written together, so they are one undo step.
+    editField(column: number, index: number, key: string, anchor?: Gtk.Widget): Gtk.Popover | null {
+        const card = this.board.columns[column]?.cards[index];
+        const def = this.schema().find(f => f.key === key);
+        const target = anchor ?? this.columns[column]?.cards[index];
+        if (!card || !def || !target) return null;
+        return this.popovers.edit(target, {
+            def,
+            current: fieldInputText(card.text, def),
+            apply: (raw, newOption) => {
+                if (this.board.columns[column]?.cards[index]?.text !== card.text) return;
+                // A new option is written first, and the value is checked against the list that now includes it.
+                const board = newOption ? withFieldOption(this.board, key, newOption) : this.board;
+                this.commit(setCardField(board, { column, index }, boardSchema(board).find(f => f.key === key) ?? def, raw));
+            },
+        });
     }
 
     // A fixed color for the same tag.
@@ -363,10 +414,10 @@ export class KanbanBoard {
 
     // A new card is filled in through the same dialog as editing a card.
     showAddCard(column: number): void {
-        void after(this.dialogs.editCard(this.parent, { text: '', notes: [] }, _('Add Card'), this.listNotes ?? undefined), draft => {
+        void after(this.dialogs.editCard(this.parent, { text: '', notes: [] }, _('Add Card'), this.listNotes ?? undefined, this.schema()), draft => {
             if (!draft?.text) return;
             const index = this.board.columns[column]?.cards.length ?? 0;
-            const added = addCard(this.board, column, draft.text);
+            const added = addCard(this.board, column, draft.text, Infinity, this.now());
             this.commit(updateCard(added, { column, index }, { notes: draft.notes }));
         });
     }
@@ -400,7 +451,7 @@ export class KanbanBoard {
     editCard(column: number, index: number): void {
         const card = this.board.columns[column]?.cards[index];
         if (!card) return;
-        void after(this.dialogs.editCard(this.parent, { text: card.text, notes: card.notes }, undefined, this.listNotes ?? undefined), result => {
+        void after(this.dialogs.editCard(this.parent, { text: card.text, notes: card.notes }, undefined, this.listNotes ?? undefined, this.schema()), result => {
             // The board can change while the dialog is open; the same card is found again through its position.
             if (result?.text && this.board.columns[column]?.cards[index]?.text === card.text)
                 this.commit(updateCard(this.board, { column, index }, { text: result.text, notes: result.notes }));
@@ -419,7 +470,7 @@ export class KanbanBoard {
         const col = this.board.columns[column];
         if (!col) return;
         const detail = col.cards.length ? fmt(_('The {count} cards in it will also be deleted.'), { count: col.cards.length }) : undefined;
-        void after(this.dialogs.confirm(this.parent, fmt(_('Delete the list “{title}”?'), { title: col.title }), detail), yes => {
+        void after(this.dialogs.confirm(this.parent, fmt(_('Delete the list “{title}”?'), { title: col.title || _('No list') }), detail), yes => {
             if (yes && this.board.columns[column]?.title === col.title) this.commit(deleteColumn(this.board, column));
         });
     }
@@ -432,7 +483,7 @@ export class KanbanBoard {
         const at = { column, index };
         const move = this.board.columns
             .map((target, t): MenuEntry | null => t === column ? null
-                : { label: target.title, run: () => this.commit(moveCard(this.board, at, { column: t, index: Infinity })) })
+                : { label: target.title || _('No list'), run: () => this.commit(moveCard(this.board, at, { column: t, index: Infinity })) })
             .filter((e): e is MenuEntry => e !== null);
         return [
             { label: _('Edit…'), run: () => this.editCard(column, index) },
@@ -447,10 +498,13 @@ export class KanbanBoard {
     }
 
     columnMenu(column: number): MenuEntry[] {
+        // The group without a name stays first: it cannot be moved, and nothing is moved before it.
+        const first = this.board.columns[0]?.title === '' ? 1 : 0;
+        const movable = this.board.columns[column]?.title !== '';
         return [
             { label: _('Rename…'), run: () => this.renameColumnPrompt(column) },
-            { label: _('Move Left'), enabled: column > 0, run: () => this.commit(moveColumn(this.board, column, column - 1)) },
-            { label: _('Move Right'), enabled: column < this.board.columns.length - 1, run: () => this.commit(moveColumn(this.board, column, column + 1)) },
+            { label: _('Move Left'), enabled: movable && column > first, run: () => this.commit(moveColumn(this.board, column, column - 1)) },
+            { label: _('Move Right'), enabled: movable && column < this.board.columns.length - 1, run: () => this.commit(moveColumn(this.board, column, column + 1)) },
             separator(),
             { label: _('Delete List…'), run: () => this.deleteColumnConfirm(column) },
         ];

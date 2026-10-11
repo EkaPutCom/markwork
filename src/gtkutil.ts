@@ -95,6 +95,16 @@ export function onClick(widget: Gtk.Widget, handler: (count: number, x: number, 
     return gesture;
 }
 
+// Runs `run` when `widget` is clicked (on release). It claims the press, so a card or row around the widget
+// does not also start a drag or open its own editor.
+export function onChipClick(widget: Gtk.Widget, run: () => void): void {
+    widget.set_cursor_from_name('pointer');
+    const click = new Gtk.GestureClick({ button: 1 });
+    click.connect('pressed', () => click.set_state(Gtk.EventSequenceState.CLAIMED));
+    click.connect('released', () => run());
+    widget.add_controller(click);
+}
+
 // Keyboard key pressed while the widget (or its child) has focus. true = handled.
 export function onKeyPress(widget: Gtk.Widget, handler: (keyval: number, state: number) => boolean, phase = Gtk.PropagationPhase.BUBBLE): Gtk.EventControllerKey {
     const controller = new Gtk.EventControllerKey({ propagation_phase: phase });

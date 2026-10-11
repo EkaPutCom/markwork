@@ -4,25 +4,25 @@ import { dayPart, dueTasks, localDate, moveRecent, openInboxes, rememberRecent, 
 import { section, test, eq } from '../framework.js';
 
 const BOARD = `---
-kanban: true
+layout: board
 ---
 
 ## Plan
 
-- [ ] Overdue @{2026-10-05}
-- [ ] Today #project/estuary @{2026-10-07}
-- [ ] Next week @{2026-10-14}
+- [ ] Overdue [due:: 2026-10-05]
+- [ ] Today #project/estuary [due:: 2026-10-07]
+- [ ] Next week [due:: 2026-10-14]
 - [ ] No due date
-- [x] Already checked @{2026-10-07}
-- Plain bullet day after tomorrow @{2026-10-09 10:00}
+- [x] Already checked [due:: 2026-10-07]
+- Plain bullet day after tomorrow [due:: 2026-10-09 10:00]
 
 ## Done
 
-- Finished without a checkbox @{2026-10-07}
+- Finished without a checkbox [due:: 2026-10-07]
 `;
 
 const INBOX = `---
-inbox: true
+layout: list
 ---
 
 - one
@@ -34,10 +34,10 @@ export function homeModelTests(): void {
     section('Home (model)');
 
     test('dueTasks: unfinished overdue, today, and next two days, ordered by due date', () => {
-        const tasks = dueTasks([{ name: 'board.md', text: BOARD }, { name: 'notes.md', text: '# Plain\n\n- [ ] a @{2026-10-07}' }], '2026-10-07');
+        const tasks = dueTasks([{ name: 'board.md', text: BOARD }, { name: 'notes.md', text: '# Plain\n\n- [ ] a [due:: 2026-10-07]' }], '2026-10-07');
         eq(tasks.map(t => [t.title, t.status, t.days]), [['Overdue', 'overdue', -2], ['Today', 'today', 0], ['Plain bullet day after tomorrow', 'soon', 2]]);
         eq(tasks[1].at, { column: 0, index: 1 }, 'card position');
-        eq(tasks[1].card, 'Today #project/estuary @{2026-10-07}', 'original card text');
+        eq(tasks[1].card, 'Today #project/estuary [due:: 2026-10-07]', 'original card text');
         eq(tasks[0].file, 'board.md', 'board file');
     });
     test('dueTasks: project name from projectOf', () => {
@@ -45,8 +45,13 @@ export function homeModelTests(): void {
         eq(tasks.map(t => t.project), [null, 'estuary', null]);
     });
     test('openInboxes: only unchecked items, an empty inbox is skipped', () => {
-        eq(openInboxes([{ name: 'inbox.md', text: INBOX }, { name: 'empty.md', text: '---\ninbox: true\n---\n\n- [x] a\n' }, { name: 'board.md', text: BOARD }]),
+        eq(openInboxes([{ name: 'inbox.md', text: INBOX }, { name: 'empty.md', text: '---\nlayout: list\n---\n\n- [x] a\n' }, { name: 'board.md', text: BOARD }]),
             [{ file: 'inbox.md', open: 2 }]);
+    });
+    test('a list counts too: its due notes show up in dueTasks, and notes under headings count as open', () => {
+        const list = '---\nlayout: list\n---\n\n- loose [due:: 2026-10-07]\n\n## Later\n\n- [ ] one\n- [x] done\n';
+        eq(dueTasks([{ name: 'list.md', text: list }], '2026-10-07').map(t => [t.title, t.at]), [['loose', { column: 0, index: 0 }]]);
+        eq(openInboxes([{ name: 'list.md', text: list }]), [{ file: 'list.md', open: 2 }]);
     });
     test('rememberRecent: at the front, without duplicates, limited', () => {
         let list: RecentFile[] = [];

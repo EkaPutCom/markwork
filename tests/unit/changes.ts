@@ -11,7 +11,7 @@ import { section, test, eq, ok, contains, settle } from '../framework.js';
 const PLAN = '# Plan\n\n- First draft: October\n- Revision: November\n\n## Notes\n\nNone yet.\n';
 const files: SourceFile[] = [{ name: 'plan.md', text: PLAN }, { name: 'research/harbor.md', text: '# Harbor\n\nThere are two piers.\n' }];
 
-const BOARD = '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Write report #important\n  report note\n- [ ] Send invitations @{2026-10-20}\n\n## In Progress\n\n- [ ] Harbor research\n\n## Done\n\n- [x] Book venue\n';
+const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Write report #important\n  report note\n- [ ] Send invitations [due:: 2026-10-20]\n\n## In Progress\n\n- [ ] Harbor research\n\n## Done\n\n- [x] Book venue\n';
 const kfiles: SourceFile[] = [...files, { name: 'board.md', text: BOARD }];
 const kanban = (args: object) => planChange('edit_kanban', JSON.stringify({ name: 'board', reason: 'x', ...args }), kfiles);
 const kanbanAfter = (args: object): string => { const r = kanban(args); if (!r.ok) throw new Error(r.message); return r.change.after; };
@@ -105,7 +105,7 @@ export function changeTests(): void {
         const moved = kanbanAfter({ action: 'move', card: 'harbor research', list: 'Done' });
         eq(moved, BOARD.replace('## In Progress\n\n- [ ] Harbor research\n\n', '## In Progress\n\n').replace('- [x] Book venue\n', '- [x] Book venue\n- [ ] Harbor research\n'));
         const done = kanbanAfter({ action: 'mark', card: 'invitations', done: true });
-        contains(done, '- [x] Send invitations @{2026-10-20}');
+        contains(done, '- [x] Send invitations [due:: 2026-10-20]');
         contains(kanbanAfter({ action: 'mark', card: 'Book venue', done: false }), '- [ ] Book venue');
         contains(kanbanAfter({ action: 'mark', card: 'report', done: true }), '  report note');   // card notes stay
     });
@@ -116,14 +116,14 @@ export function changeTests(): void {
         eq([d.added, d.removed], [1, 1]);
         const u = unifiedDiff(BOARD, after);
         eq(u.split('\n').filter(l => l.startsWith('@@')).length, 2);
-        eq(u.split('\n').filter(l => /^[-+]/.test(l)), ['-- [ ] Send invitations @{2026-10-20}', '+- [ ] Send invitations @{2026-10-20}']);
+        eq(u.split('\n').filter(l => /^[-+]/.test(l)), ['-- [ ] Send invitations [due:: 2026-10-20]', '+- [ ] Send invitations [due:: 2026-10-20]']);
         ok(!u.includes('-## In Progress') && !u.includes('-- [ ] Harbor'), 'an unchanged part was marked too');
         eq(unifiedDiff('a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\n', 'a\nB\nc\nd\ne\nf\ng\nh\ni\nj\nK\nl\n').split('\n').filter(l => l.startsWith('@@')), ['@@ -1,5 +1,5 @@', '@@ -8,5 +8,5 @@']);
     });
 
     test('edit_kanban: clear errors for the model (not a board, list/card does not match, no change)', () => {
         const bad = (args: object, base = kanban): string => { const r = base(args); ok(!r.ok, 'should have failed'); return r.ok ? '' : r.message; };
-        contains(bad({ action: 'add', card: 'x', list: 'Plan', name: 'plan.md' }), 'not a kanban board');
+        contains(bad({ action: 'add', card: 'x', list: 'Plan', name: 'plan.md' }), 'not a board');
         contains(bad({ action: 'add', card: 'x', list: 'Postponed' }), 'Lists on the board: Plan, In Progress, Done');
         contains(bad({ action: 'add', card: 'x', list: '' }), '"list" argument is required');
         contains(bad({ action: 'move', card: 'nonexistent', list: 'Done' }), 'No card contains');

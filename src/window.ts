@@ -603,6 +603,11 @@ export class MainWindow {
         this.views.toggle(on);
     }
 
+    // The "Fields…" menu for the board or list that is shown.
+    editFields(): void {
+        this.views.editFields();
+    }
+
     // A new document containing an empty kanban board.
     newBoardDocument(): void {
         this.views.newBoard();

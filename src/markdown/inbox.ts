@@ -1,98 +1,77 @@
-// Inbox: a place to capture ideas, links, and quick notes in a Markdown file. Frontmatter
-// marks the document as an inbox:
+// The notes of a `layout: list` document (an inbox, a reading list, …). The model is the same as a board's
+// (kanban.ts): the notes before the first `##` heading are one unnamed group and every heading starts another, so a
+// document can be shown as a board or as a list without being converted. Frontmatter marks the document (layout.ts):
 //
 //   ---
-//   inbox: true
+//   layout: list
+//   add: top             ← where a new note goes: top (default) or bottom
+//   fields:
+//     created: date = now
 //   ---
 //
 //   # Inbox                          ← title and description (anything before the first item) are kept
 //
-//   - Read the GNOME HIG article #read ➕ 2026-10-07 14:32
+//   - Read the GNOME HIG article #read [created:: 2026-10-07 14:32]
 //     item note (indented)           ← an indented line = item note
-//   - [x] Workbench name idea #nyerat ➕ 2026-10-07 09:10
+//   - [x] Workbench name idea #nyerat [created:: 2026-10-07 09:10]
 //
-// One item = one list bullet; "➕ date time" is the capture time (same as the "created" marker in
-// the Obsidian Tasks plugin). Items without a time are still valid. Pure TypeScript without
-// GTK; all operations return a new inbox.
+// One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without a time are
+// still valid. Pure TypeScript without GTK; all operations return a new board.
 
-import { cardMeta, parseColumn, trimBlankEnds, type Card } from './kanban.js';
+import { applyDefaults, fieldChips, findSegments, readItem, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { boardSchema, type Board, type Card, type Column } from './kanban.js';
+import { optionOf } from './layout.js';
 
-export type InboxItem = Card;
+export const CREATED_FIELD: FieldDef = { key: 'created', type: 'date', multiple: false, options: [] };
 
-export interface Inbox {
-    head: string[];        // frontmatter, title, and description: all lines before the first item
-    items: InboxItem[];    // from the top; new items are inserted at the top
-    outro: string[];       // plain lines after the last item, kept as is
-}
+export const DEFAULT_HEAD = ['---', 'layout: list', 'add: top', 'fields:', '  created: date = now', '---'];
 
-export const DEFAULT_HEAD = ['---', 'inbox: true', '---'];
-
-const MARKER = /^inbox:\s*["']?(?:true|yes)["']?\s*$/i;
-const ITEM = /^[-*+]\s/;
-// Capture time; the time of day may be absent.
-const CAPTURED = /\s*➕\s*(\d{4}-\d{2}-\d{2})(?:[ T](\d{1,2}:\d{2}))?/;
-
-export function isInbox(text: string): boolean {
-    const lines = text.split('\n', 40);
-    if (lines[0]?.trim() !== '---') return false;
-    for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim() === '---') return false;
-        if (MARKER.test(lines[i])) return true;
-    }
-    return false;
-}
-
-export function parseInbox(text: string): Inbox {
-    const lines = text.replace(/\r\n?/g, '\n').split('\n');
-    // List bullets inside the frontmatter (e.g. "tags:\n- a") are not items.
-    let from = 0;
-    if (lines[0]?.trim() === '---') {
-        const close = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
-        from = close < 0 ? lines.length : close + 1;
-    }
-    const first = lines.findIndex((l, i) => i >= from && ITEM.test(l));
-    if (first < 0) return { head: trimBlankEnds(lines), items: [], outro: [] };
-    const column = parseColumn('', lines.slice(first));
-    return { head: trimBlankEnds(lines.slice(0, first)), items: column.cards, outro: column.outro };
-}
-
-export function serializeInbox(inbox: Inbox): string {
-    const out: string[] = [...(inbox.head.length ? inbox.head : DEFAULT_HEAD), ''];
-    for (const item of inbox.items) {
-        const box = item.done === null ? '' : item.done ? '[x] ' : '[ ] ';
-        out.push(`- ${box}${item.text}`, ...item.notes.map(n => (n ? `  ${n}` : '')));
-    }
-    if (inbox.items.length) out.push('');
-    if (inbox.outro.length) out.push(...inbox.outro, '');
-    return `${trimBlankEnds(out).join('\n')}\n`;
-}
-
-export function newInbox(title = 'Inbox'): Inbox {
-    return { head: [...DEFAULT_HEAD, '', `# ${title}`], items: [], outro: [] };
+// An empty list: the frontmatter and a title, no notes.
+export function newList(title = 'Inbox'): Board {
+    return { head: [...DEFAULT_HEAD, '', `# ${title}`], columns: [], footer: [] };
 }
 
 // ---------- Operations ----------
 
-const pad = (n: number): string => String(n).padStart(2, '0');
+const emptyGroup = (): Column => ({ title: '', intro: [], cards: [], outro: [] });
 
-// "2026-10-07 14:32" for the local time of `date`.
-export const stamp = (date: Date): string =>
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+// Where a new note goes: `add: top` (the default) or `add: bottom`, and `add-to: Name` for the group of that name
+// instead of the first (top) or last (bottom) group of the document.
+export interface AddTarget { position: 'top' | 'bottom'; group: string | null }
 
-// New item at the very top with capture time `now`. Text that already contains a capture time → used as is.
-export function captureItem(inbox: Inbox, text: string, now: Date, notes: string[] = []): Inbox {
+export function addTarget(board: Board): AddTarget {
+    const head = board.head.join('\n');
+    return { position: optionOf(head, 'add')?.toLowerCase() === 'bottom' ? 'bottom' : 'top', group: optionOf(head, 'add-to') };
+}
+
+// The index of the group a new note goes into: the one named by `add-to` if there is one, else the first group (top)
+// or the last (bottom).
+function targetGroup(columns: Column[], target: AddTarget): number {
+    const named = target.group === null ? -1 : columns.findIndex(c => c.title.toLowerCase() === target.group!.toLowerCase());
+    return named >= 0 ? named : target.position === 'top' ? 0 : columns.length - 1;
+}
+
+// A new note, put where the document says (see addTarget; at the very top of the first group by default; a group
+// without a name is made if there is none), with the default of every field of the document that the text does not
+// set itself (the capture time, for a list that declares `created: date = now`).
+export function captureItem(board: Board, text: string, now: Date, notes: string[] = []): Board {
     const body = text.trim();
-    if (!body) return inbox;
-    const full = CAPTURED.test(body) ? body : `${body} ➕ ${stamp(now)}`;
-    return { ...inbox, items: [{ done: null, text: full, notes }, ...inbox.items] };
+    if (!body) return board;
+    const item: Card = { done: null, text: applyDefaults(body, boardSchema(board), now), notes };
+    const columns = board.columns.length ? board.columns : [emptyGroup()];
+    const target = addTarget(board);
+    const into = targetGroup(columns, target);
+    return {
+        ...board,
+        columns: columns.map((c, i) => (i !== into ? c : { ...c, cards: target.position === 'top' ? [item, ...c.cards] : [...c.cards, item] })),
+    };
 }
 
-export function updateItem(inbox: Inbox, index: number, patch: Partial<InboxItem>): Inbox {
-    return { ...inbox, items: inbox.items.map((item, i) => (i === index ? { ...item, ...patch } : item)) };
-}
+// ---------- Fields ----------
 
-export const deleteItem = (inbox: Inbox, index: number): Inbox =>
-    ({ ...inbox, items: inbox.items.filter((_, i) => i !== index) });
+// The chips for a note's fields; the capture time is shown as its age instead.
+export const itemFields = (text: string, schema: FieldDef[]): FieldChip[] =>
+    fieldChips(readItem(text, schema), schema, [CREATED_FIELD.key]);
 
 // ---------- Item content ----------
 
@@ -103,23 +82,23 @@ export interface ItemMeta {
 }
 
 export function itemMeta(text: string): ItemMeta {
-    const m = CAPTURED.exec(text);
-    const meta = cardMeta(text.replace(CAPTURED, ''));
+    const item = readItem(text, [CREATED_FIELD]);
+    const created = item.fields.created;
     let captured: Date | null = null;
-    if (m) {
-        const [y, mo, d] = m[1].split('-').map(Number);
-        const [h, mi] = (m[2] ?? '0:0').split(':').map(Number);
+    if (created?.ok) {
+        const { date, time } = created.value as DateValue;
+        const [y, mo, d] = date.split('-').map(Number);
+        const [h, mi] = (time ?? '0:0').split(':').map(Number);
         captured = new Date(y, mo - 1, d, h, mi);
     }
-    return { title: meta.title, tags: meta.tags, captured };
+    return { title: item.title, tags: item.tags, captured };
 }
 
-// Compose the item text from an edited title and tags; the capture time from `oldText` is kept.
+// Compose the item text from an edited title and tags; every field in `oldText` (the capture time among them) is kept.
 export function composeItem(title: string, tags: string[], oldText = ''): string {
     const tagText = tags.map(t => t.replace(/^#+/, '')).filter(Boolean).map(t => `#${t}`);
-    const old = CAPTURED.exec(oldText);
-    const when = old ? `➕ ${old[1]}${old[2] ? ` ${old[2]}` : ''}` : '';
-    return [title.trim(), ...tagText, when].filter(Boolean).join(' ');
+    const fields = findSegments(oldText).map(s => oldText.slice(s.start, s.end));
+    return [title.trim(), ...tagText, ...fields].filter(Boolean).join(' ');
 }
 
 export type AgeUnit = 'now' | 'minutes' | 'hours' | 'days' | 'date';

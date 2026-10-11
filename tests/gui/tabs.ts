@@ -18,7 +18,7 @@ export function tabTests(c: GuiContext): void {
     const put = (name: string, text: string) => { GLib.file_set_contents(path(name), text); return path(name); };
     const ch1 = put('chapter-1.md', '# Chapter One\n\nRaka was twenty years old.\n');
     const ch2 = put('chapter-2.md', '# Chapter Two\n\n## Section\n\nThe contents of chapter two.\n');
-    const board = put('board.md', '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Card\n');
+    const board = put('board.md', '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Card\n');
     const settle = () => { for (let i = 0; i < 30; i++) { pump(); GLib.usleep(10000); } };
     const tabsShown = () => w.tabBar.widget.tabs_revealed;
 

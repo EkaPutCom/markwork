@@ -604,19 +604,19 @@ export function chatTests(c: GuiContext): void {
 
     test('kanban board proposal: adding and moving a card appears on the open board', () => {
         const board =  GLib.build_filenamev([book, 'tasks.md']);
-        GLib.file_set_contents(board, '---\nkanban: true\n---\n\n## Plan\n\n- [ ] Write report #important\n- [ ] Send invitations @{2026-10-20}\n\n## In Progress\n\n- [ ] Research the harbor\n\n## Done\n\n- [x] Book the venue\n');
+        GLib.file_set_contents(board, '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Write report #important\n- [ ] Send invitations [due:: 2026-10-20]\n\n## In Progress\n\n- [ ] Research the harbor\n\n## Done\n\n- [x] Book the venue\n');
         w.openFile(board);
         for (let i = 0; i < 40; i++) { pump(); GLib.usleep(8000); }
         ok(w.boardMode, 'the board did not open as a board');
 
         const press = (provider: Provider) => { proposeAndPress(provider, 'apply'); for (let i = 0; i < 40; i++) { pump(); GLib.usleep(8000); } };   // the board reloads in idle
         try {
-        press(proposalProvider('edit_kanban', { name: 'tasks', action: 'add', card: 'Draft the revision schedule @{2026-11-02}', list: 'in progress', reason: 'user request' }));
-        contains(lastDiff, '+- [ ] Draft the revision schedule @{2026-11-02}');
-        eq(w.board.getBoard().columns[1].cards.map(c => c.text), ['Research the harbor', 'Draft the revision schedule @{2026-11-02}']);
+        press(proposalProvider('edit_kanban', { name: 'tasks', action: 'add', card: 'Draft the revision schedule [due:: 2026-11-02]', list: 'in progress', reason: 'user request' }));
+        contains(lastDiff, '+- [ ] Draft the revision schedule [due:: 2026-11-02]');
+        eq(w.board.getBoard().columns[1].cards.map(c => c.text), ['Research the harbor', 'Draft the revision schedule [due:: 2026-11-02]']);
 
         press(proposalProvider('edit_kanban', { name: 'tasks', action: 'move', card: 'Send invitations', list: 'Done', reason: 'already sent' }));
-        eq(w.board.getBoard().columns[2].cards.map(c => c.text), ['Book the venue', 'Send invitations @{2026-10-20}']);
+        eq(w.board.getBoard().columns[2].cards.map(c => c.text), ['Book the venue', 'Send invitations [due:: 2026-10-20]']);
         eq(w.board.getBoard().columns[0].cards.map(c => c.text), ['Write report #important']);
         const prefix = optVal('shot-proposal');
         if (prefix) {
