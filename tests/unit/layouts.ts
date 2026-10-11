@@ -7,7 +7,7 @@ import { addDays, addMonths, dayNumber, daysBetween, monthWeeks, startOfWeek, we
 import { calendarData, dateField, moveToDate } from '../../src/markdown/calendar.js';
 import { barSpan, resizeRow, shiftRow, timelineRange, timelineRows, timelineTicks, timelineZoom } from '../../src/markdown/timeline.js';
 import { coverOf, galleryCards, gallerySize, tagColorIndex } from '../../src/markdown/gallery.js';
-import { chartData } from '../../src/markdown/chart.js';
+import { barData, chartData, chartItems, chartItemText, donutData, withCharts } from '../../src/markdown/chart.js';
 import { groupBoard, groupFieldOf, ungroupBoard } from '../../src/markdown/boardgroup.js';
 import { addCard, boardSchema, deleteCard, moveCard, parseBoard, serializeBoard, updateCard } from '../../src/markdown/kanban.js';
 import { isCalendar, isChart, isGallery, isTimeline, layoutOf } from '../../src/markdown/layout.js';
@@ -132,6 +132,35 @@ export function layoutsModelTests(): void {
         const plain = chartData(parseBoard('---\nlayout: chart\n---\n\n- [ ] a #x\n- [x] b #x\n'), '2026-10-12');
         eq([plain.total, plain.done, plain.byTag, plain.perPeriod.length], [2, 1, [{ name: '#x', count: 2, color: null }], 0]);
         eq(chartData(parseBoard('---\nlayout: chart\nperiod: month\nby: d\nfields:\n  d: date\n---\n\n- [ ] a [d:: 2026-10-30]\n- [ ] b [d:: 2026-11-02]\n'), '2026-11-05').perPeriod, [{ start: '2026-10-01', count: 1 }, { start: '2026-11-01', count: 1 }]);
+    });
+
+    test('charts: names the panels in order; unknown names and fields that do not fit are dropped; none is the default', () => {
+        const doc = (line: string) => parseBoard(`---\nlayout: chart\n${line}\nfields:\n  due: date\n  status: select(a, b)\n  tags: select(x, y)[]\n---\n\n- [ ] a [due:: 2026-10-12] [status:: a]\n`);
+        const texts = (line: string) => chartItems(doc(line)).map(chartItemText);
+        eq(texts('x: 1'), ['kpi', 'bar', 'donut', 'tags']);
+        eq(texts('charts: [tags, DONUT:status, bar:due:month, kpi]'), ['tags', 'donut:status', 'bar:due:month', 'kpi']);
+        eq(texts('charts: [donut:status, donut:nope, bar:status, pie, kpi:x, bar::week]'), ['donut:status', 'bar::week']);
+        eq(texts('charts: []'), ['kpi', 'bar', 'donut', 'tags']);
+        eq(texts('charts: [pie]'), ['kpi', 'bar', 'donut', 'tags']);
+    });
+    test('barData and donutData: a chosen field and period, else the ones by: and group: name', () => {
+        const board = parseBoard(sample('chart.md'));
+        eq(barData(board, null, null).field, 'created');
+        const due = barData(board, 'due', 'month');
+        eq([due.field, due.period, due.counts], ['due', 'month', [{ start: '2026-10-01', count: 7 }]]);
+        eq(barData(board, 'status', null).field, 'created');
+        eq(donutData(board, null).field, 'status');
+        eq(donutData(board, 'due').field, 'status');
+    });
+    test('withCharts: writes one line after layout:, replaces it, and the default (or null) removes it; the rest is untouched', () => {
+        const board = parseBoard(sample('chart.md'));
+        const custom = withCharts(board, [{ kind: 'tags' }, { kind: 'donut', field: 'status' }]);
+        eq(custom.head.join('\n').split('\n').slice(0, 3), ['---', 'layout: chart', 'charts: [tags, donut:status]']);
+        eq(chartItems(custom).map(chartItemText), ['tags', 'donut:status']);
+        eq(withCharts(custom, [{ kind: 'bar', field: null, period: null }]).head.filter(l => l.startsWith('charts:')), ['charts: [bar]']);
+        eq(withCharts(custom, null).head, board.head);
+        eq(withCharts(board, null), board);
+        eq(withCharts(custom, chartItems(board)).head, board.head);
     });
 
     section('Board grouped by a field (model)');

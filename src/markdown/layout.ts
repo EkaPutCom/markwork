@@ -81,3 +81,24 @@ export function withLayout(text: string, layout: Layout): string {
     lines.splice(1, 0, `layout: ${layout}`);
     return lines.join('\n');
 }
+
+// The text with the one-line option `key` set to `value` in its frontmatter, or removed if `value` is null: the line is
+// replaced, or added after the `layout:` line (else after the opening `---`). Nothing else in the text changes; a text
+// without a frontmatter is returned as it is.
+export function withOption(text: string, key: string, value: string | null): string {
+    const lines = text.split('\n');
+    if (lines[0]?.trim() !== '---') return text;
+    const line = new RegExp(`^${key}:[ \\t]*`, 'i');
+    let close = lines.length, layoutAt = 0;
+    for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim() === '---') { close = i; break; }
+        if (MARKER.test(lines[i])) layoutAt = i;
+    }
+    const at = lines.findIndex((l, i) => i > 0 && i < close && line.test(l));
+    if (at >= 0) {
+        if (value === null) lines.splice(at, 1); else lines[at] = `${key}: ${value}`;
+    } else if (value !== null) {
+        lines.splice(layoutAt + 1, 0, `${key}: ${value}`);
+    }
+    return lines.join('\n');
+}

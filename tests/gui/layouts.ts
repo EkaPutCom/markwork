@@ -68,6 +68,32 @@ export function layoutsGuiTests(c: GuiContext): void {
         ok(text().includes('Release notes [status:: review]'), text());
     });
 
+    test('chart: charts: picks and orders the panels, and the settings popover edits that list', () => {
+        open('chart');
+        const chart = w.layouts.chart as unknown as { widget: Gtk.Widget; settings: Gtk.Popover; render(): void };
+        const headings = () => withClass(chart.widget, 'heading').map(h => (h as Gtk.Label).label);
+        eq(headings(), ['Created per week', 'By status', 'By tag']);
+        const button = (tip: string, nth = 0) => descendants(chart.settings.get_child()!).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.get_tooltip_text() === tip)[nth];
+        // move the donut up: the donut comes before the bars, in the text and on the page
+        button('Move up', 2).emit('clicked');
+        settle();
+        ok(text().includes('charts: [kpi, donut, bar, tags]'), text());
+        eq(headings(), ['By status', 'Created per week', 'By tag']);
+        // remove the tags, then add a second donut and see it on the page
+        button('Remove', 3).emit('clicked');
+        settle();
+        eq(headings(), ['By status', 'Created per week']);
+        const add = descendants(chart.settings.get_child()!).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.get_tooltip_text() === 'Add Donut')[0];
+        add.emit('clicked');
+        settle();
+        eq(headings(), ['By status', 'Created per week', 'By status']);
+        // reset removes the line, so the file is as it was
+        descendants(chart.settings.get_child()!).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.get_label() === 'Reset to default')[0].emit('clicked');
+        settle();
+        eq(text(), readTextFile(sample('chart')));
+        eq(headings(), ['Created per week', 'By status', 'By tag']);
+    });
+
     test('screenshots of the layouts', () => {
         const shot = optVal('shot-layouts');
         if (!shot) return;
@@ -81,6 +107,12 @@ export function layoutsGuiTests(c: GuiContext): void {
             }
         }
         w.setOption('dark', false);
+        open('chart');
+        const settings = (w.layouts.chart as unknown as { settings: Gtk.Popover }).settings;
+        settings.popup();
+        settle();
+        widgetPixbuf(settings)?.savev(`${shot}-chart-settings.png`, 'png', [], []);
+        settings.popdown();
     });
 
     section('Layout button (header bar)');
