@@ -1,6 +1,6 @@
 // Layout marker tests (markdown/layout.ts).
 
-import { isBoard, isList, layoutOf, optionOf } from '../../src/markdown/layout.js';
+import { isBoard, isList, isStructured, isTable, layoutOf, optionOf } from '../../src/markdown/layout.js';
 import { section, test, eq } from '../framework.js';
 import { BOARD, INBOX } from '../fixtures.js';
 
@@ -15,9 +15,9 @@ export function layoutTests(): void {
     test('layoutOf: case, quotes, other keys around it, and values that are not a layout', () => {
         const doc = (line: string) => `---\n${line}\n---\n\n## A`;
         eq(['layout: board', 'layout: "list"', 'LAYOUT: Board', "layout: 'List'"].map(l => layoutOf(doc(l))), ['board', 'list', 'board', 'list']);
-        eq(['layout: table', 'layout:', 'layout: board list', 'layouts: board', 'kanban: true', 'inbox: true'].map(l => layoutOf(doc(l))), [null, null, null, null, null, null]);
+        eq(['layout: gallery', 'layout:', 'layout: board list', 'layouts: board', 'kanban: true', 'inbox: true'].map(l => layoutOf(doc(l))), [null, null, null, null, null, null]);
         eq(layoutOf('---\ntitle: x\nlayout: list\ntag: y\n---'), 'list', 'among other frontmatter keys');
-        eq([isBoard(BOARD), isBoard(INBOX), isList(INBOX), isList(BOARD)], [true, false, true, false]);
+        eq([isBoard(BOARD), isBoard(INBOX), isList(INBOX), isList(BOARD), isTable('---\nlayout: table\n---'), isTable(BOARD), isStructured(BOARD), isStructured('---\nlayout: table\n---'), isStructured('# Plain')], [true, false, true, false, true, false, true, true, false]);
     });
     test('optionOf: a one-line option in the frontmatter, without quotes; not from a block, the body, or a missing value', () => {
         const doc = '---\nlayout: list\nadd: "bottom"\nAdd-To: Now \nfields:\n  add: text\nempty:\n---\n\nadd: top\n';

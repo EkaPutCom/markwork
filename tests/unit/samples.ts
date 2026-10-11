@@ -8,7 +8,7 @@ import { boardSchema, parseBoard, serializeBoard } from '../../src/markdown/kanb
 import { layoutOf, type Layout } from '../../src/markdown/layout.js';
 import { ROOT, section, test, eq } from '../framework.js';
 
-const SAMPLES: [string, Layout][] = [['kanban-board.md', 'board'], ['inbox.md', 'list'], ['reading-list.md', 'list']];
+const SAMPLES: [string, Layout][] = [['kanban-board.md', 'board'], ['inbox.md', 'list'], ['reading-list.md', 'list'], ['sprint-table.md', 'table']];
 
 export function sampleDocumentTests(): void {
     section('Sample documents');

@@ -118,7 +118,11 @@
         <attribute name="action">app.inbox-new</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">Board/Inbox View</attribute>
+        <attribute name="label" translatable="yes">New Table</attribute>
+        <attribute name="action">app.table-new</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Board/List/Table View</attribute>
         <attribute name="action">app.kanban-view</attribute>
       </item>
       <item>

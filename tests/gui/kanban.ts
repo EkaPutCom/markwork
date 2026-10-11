@@ -357,7 +357,7 @@ export function kanbanBoardTests(c: GuiContext): void {
         w.load(board); settleK();
         w.toggleBoardView(true);
         ok(!w.boardMode, 'a plain document was shown as a board');
-        ok(w.lastToast.includes('not a board or list'), `message: ${w.lastToast}`);
+        ok(w.lastToast.includes('not a board, list, or table'), `message: ${w.lastToast}`);
     });
     test('a new kanban board contains three empty lists', () => {
         w.newBoardDocument(); settleK();

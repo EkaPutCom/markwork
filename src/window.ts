@@ -48,6 +48,7 @@ import { registerActions, type Option } from './actions.js';
 import { ImageViewer } from './ui/imageviewer.js';
 import { KanbanBoard } from './ui/kanban.js';
 import { InboxView } from './ui/inbox.js';
+import { TableView } from './ui/table.js';
 import { HomeView } from './ui/home.js';
 import { _, fmt } from './i18n.js';
 import type { Doc } from './window/doc.js';
@@ -89,6 +90,7 @@ export class MainWindow {
     readonly tabBar: TabBar;
     readonly board: KanbanBoard;
     readonly inbox: InboxView;
+    readonly table: TableView;
     readonly home: HomeView;
     readonly journal: JournalController;
     readonly harness: HarnessController;
@@ -128,6 +130,7 @@ export class MainWindow {
         this.statusBar = new StatusBar();
         this.board = new KanbanBoard();
         this.inbox = new InboxView();
+        this.table = new TableView();
         this.home = new HomeView();
         this.chat = new ChatPanel();
         this.header = new HeaderBar();
@@ -150,6 +153,8 @@ export class MainWindow {
         // The components do not know each other; the window is what connects them.
         this.inbox.onOpenNote = link => this.openNote(link);
         this.inbox.listNotes = () => this.notes.names(this.doc);
+        this.table.onOpenNote = link => this.openNote(link);
+        this.table.listNotes = () => this.notes.names(this.doc);
         this.home.onOpenFile = path => this.openInTab(path);
         this.home.onOpenTask = task => this.homePage.openWorkspaceFile(task.file);
         this.home.onToggleTask = (task, done) => this.homePage.toggleTask(task, done);
@@ -250,6 +255,7 @@ export class MainWindow {
         column.append(this.findBar);
         this.content.add_named(this.board.widget, 'board');
         this.content.add_named(this.inbox.widget, 'inbox');
+        this.content.add_named(this.table.widget, 'table');
         this.content.add_named(this.home.widget, 'home');
         column.append(this.content);
         column.append(this.statusBar);
@@ -352,6 +358,7 @@ export class MainWindow {
             get app() { return w.app; },
             get content() { return w.content; },
             get inbox() { return w.inbox; },
+            get table() { return w.table; },
             get home() { return w.home; },
             get homePage() { return w.homePage; },
             get statusBar() { return w.statusBar; },
@@ -462,7 +469,7 @@ export class MainWindow {
         editor.onHighlighted = ({ headings, words, characters }) => {
             if (doc !== this.doc) return;
             this.outline.update(headings);
-            if (!this.boardMode && !this.inboxMode) this.statusBar.setDocumentCounts(words, characters);
+            if (!this.boardMode && !this.inboxMode && !this.tableMode) this.statusBar.setDocumentCounts(words, characters);
         };
         editor.onCursorMoved = (line, column) => {
             if (doc !== this.doc) return;
@@ -547,6 +554,7 @@ export class MainWindow {
         for (const doc of this.docs) doc.editor.setPalette(palette);
         this.board.setPalette(palette);
         this.inbox.setPalette(palette);
+        this.table.setPalette(palette);
         this.chat.setPalette(palette);
     }
 
@@ -569,7 +577,7 @@ export class MainWindow {
 
     // The assistant's answer goes into the open note at the cursor, as one undo step. false: no editable note is shown.
     private insertIntoNote(text: string): boolean {
-        if (this.boardMode || this.inboxMode || this.homeMode) return false;
+        if (this.boardMode || this.inboxMode || this.tableMode || this.homeMode) return false;
         const buffer = this.editor.buffer;
         buffer.begin_user_action();
         const inserted = buffer.insert_interactive_at_cursor(`${text.trim()}\n`, -1, true);
@@ -583,6 +591,10 @@ export class MainWindow {
 
     get inboxMode(): boolean {
         return this.views.inboxMode;
+    }
+
+    get tableMode(): boolean {
+        return this.views.tableMode;
     }
 
     get homeMode(): boolean {
@@ -616,6 +628,11 @@ export class MainWindow {
     // A new document containing an empty inbox.
     newInboxDocument(): void {
         this.views.newInbox();
+    }
+
+    // A new document containing an empty table.
+    newTableDocument(): void {
+        this.views.newTable();
     }
 
     // ---------- Home ----------
