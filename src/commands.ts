@@ -16,7 +16,7 @@ export const COMMAND_LABELS: Record<string, string> = {
     'table-col-right': _('Table: Add Column to the Right'), 'table-col-left': _('Table: Add Column to the Left'), 'table-delete-col': _('Table: Delete Column'),
     'table-align-left': _('Table: Align Left'), 'table-align-center': _('Table: Align Center'), 'table-align-right': _('Table: Align Right'),
     'table-format': _('Table: Tidy Up'),
-    'kanban-new': _('New Kanban Board'), 'inbox-new': _('New Inbox'), 'table-new': _('New Table'), 'kanban-view': _('Board/List/Table View'), 'fields-edit': _('Fields…'),
+    'kanban-new': _('New Kanban Board'), 'inbox-new': _('New Inbox'), 'table-new': _('New Table'), 'kanban-view': _('Board/List/Table View'), 'fields-edit': _('Fields…'), 'send-changes': _('Send Changes as Pull Request…'),
     'sidebar': _('Sidebar'), 'chat': _('Assistant'), 'source': _('Source Mode'), 'focus': _('Focus Mode'), 'typewriter': _('Typewriter Mode'),
     'dark': _('Dark Mode'), 'autosave': _('Autosave'), 'preferences': _('Preferences'), 'shortcuts': _('Keyboard Shortcuts'), 'about': _('About Markwork'), 'quit': _('Quit'),
     'command-palette': _('Command Palette'),

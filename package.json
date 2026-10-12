@@ -19,6 +19,8 @@
     "bench:agentic": "npm run build && gjs -m dist/bench-agentic.js",
     "bench:save": "npm run build && xvfb-run -a -s '-screen 0 1280x800x24' env GDK_BACKEND=x11 gjs -m dist/bench.js --save=bench/$(date +%Y%m%d-%H%M%S).json",
     "bench:compare": "npm run build && xvfb-run -a -s '-screen 0 1280x800x24' env GDK_BACKEND=x11 gjs -m dist/bench.js --compare=bench/baseline.json",
+    "test:live:forgejo": "npm run build && set -a && { [ ! -f ./.env ] || . ./.env; } && set +a && xvfb-run -a -s '-screen 0 1280x800x24' env GDK_BACKEND=x11 LIBGL_ALWAYS_SOFTWARE=1 gjs -m dist/run-tests.js --only-forgejo",
+    "test:live:forge": "npm run build && set -a && { [ ! -f ./.env ] || . ./.env; } && set +a && gjs -m dist/live-forge.js",
     "test:live": "npm run build && set -a && . ./.env && set +a && gjs -m dist/live-test.js",
     "docs": "npm run build && XDG_CONFIG_HOME=$(mktemp -d) gjs -m dist/capture.js",
     "pot": "sh scripts/pot.sh"

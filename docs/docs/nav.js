@@ -23,6 +23,7 @@ const PAGES = [
     ['journal.html', 'The daily journal'],
     ['files.html', 'Files, tabs, and the sidebar'],
     ['git.html', 'Git history'],
+    ['collaboration.html', 'Collaboration'],
   ]],
   ['Reference', [
     ['tools.html', 'Agent tool list'],

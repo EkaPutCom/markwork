@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collaboration · Markwork Documentation</title>
+<meta name="description" content="Collaboration in Markwork: see the open pull requests of a Forgejo or Gitea repository in the sidebar, review a change as a note, comment, merge, resolve a conflict on your computer, and send your own changes as a pull request.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
+  <a class="brand" href="../index.html">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
+    Markwork <span>Docs</span>
+  </a>
+  <nav>
+    <a href="index.html" aria-current="true">Docs</a>
+    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
+    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
+  </nav>
+</header>
+
+<div class="layout">
+<aside class="side" id="side" aria-label="Documentation navigation"></aside>
+<main class="doc">
+<p class="eyebrow">Workspace</p>
+<h1>Collaboration</h1>
+<p class="lead">Review and merge the pull requests of your repository without leaving your notes, and send your own changes as a pull request. It works with a <strong>Forgejo</strong> or <strong>Gitea</strong> server, and the work folder has to be a clone of the repository.</p>
+
+<figure><img src="../assets/collab.gif" width="900" height="548" loading="lazy" alt="Animation of the pull requests tab: a pull request is opened, its change is read as a note and as a diff, the discussion is read, and a conflicting pull request is merged on the computer"><figcaption>The pull requests tab, the review page, a conflict resolved here, and the dialog to send changes</figcaption></figure>
+
+<h2 id="connect">Connect to a server</h2>
+<p>Markwork finds the server by itself: it reads the address of the <code>origin</code> remote of the work folder (<code>https://git.example.org/team/notes.git</code> means the server <code>git.example.org</code> and the repository <code>team/notes</code>). A remote over SSH (<code>git@git.example.org:team/notes.git</code>) is read the same way and talks to the server over <code>https</code> on its default port. A folder without a remote, or whose remote is not a hosted repository, says so in the tab.</p>
+<p>Only an access token is needed:</p>
+<ol>
+  <li>On the server, create an access token in your account settings (<em>Applications</em>) that may read and write repositories.</li>
+  <li>Open the fourth tab of the sidebar (the icon with the two connected people) and click the server line at the bottom of the tab.</li>
+  <li>Paste the token, press <em>Test connection</em> (it says how many pull requests it can see, or why the server refused), and press <em>Save</em>.</li>
+</ol>
+<p>The token is stored in the system keyring, one per server, and in a file with 0600 permissions (<code>~/.config/markwork/forge-&lt;server&gt;.token</code>) when there is no keyring. It is never written to the settings. The <code>MARKWORK_FORGE_TOKEN</code> environment variable is used first when it is set; the dialog then says so, because a token saved there would not be used. Saving the dialog with the field empty removes a saved token.</p>
+<figure><img src="../assets/collab-review.png" width="1280" height="780" loading="lazy" alt="The pull requests tab with three pull requests, and the review page of one of them showing the change to a launch plan as a note"><figcaption>The tab on the left; the review page replaces the editor</figcaption></figure>
+
+<h2 id="tab">The pull requests tab</h2>
+<ul>
+  <li>Every open pull request is a row: its title, then <em>#number · author · time of the last activity · comments</em>, newest activity first. The heading of the tab counts them.</li>
+  <li>The dot says what the server thinks: <strong>green</strong> can be merged, <strong>yellow</strong> conflicts with the base branch, <strong>gray</strong> the server has not worked it out yet.</li>
+  <li>Markwork asks the server for the list now and then (every 60 seconds; <a href="settings.html#settings">Preferences → Collaboration → Check every</a>, 30 seconds to an hour), and again when you press the refresh button. It only reads; nothing is sent without your click.</li>
+  <li>When a pull request is opened or updated, you get a toast if the window is in front and a desktop notification if it is not (<em>Desktop notifications</em> in the same preferences turns both off). The pull requests that were open when the folder was opened are not announced.</li>
+  <li>The button next to refresh sends your changes as a pull request (see <a href="#send">below</a>). The line at the bottom names the server and the repository.</li>
+</ul>
+
+<h2 id="review">Reviewing a pull request</h2>
+<p>Click a pull request. The review page opens in the area of the editor; the arrow at its top left goes back to your document, and opening another folder closes it. On the left are the changed files with their status (<em>A</em>dded, <em>M</em>odified, <em>D</em>eleted, <em>R</em>enamed) and the number of lines; on the right the change of the chosen file, in three tabs.</p>
+<ul>
+  <li><strong>Note.</strong> A Markdown file is shown the way a note is read: the <em>Fields</em> of its frontmatter that changed (<code>- date: 2026-10-12</code> then <code>+ date: 2026-10-14</code>), then the text with the lines that changed marked in red and green. A new note is all added, a deleted one all removed. A file that is not a note has no Note tab, and a note that is too large to compare says so there (the Diff tab still shows it).</li>
+  <li><strong>Diff.</strong> The unified diff of that file, as in the <a href="git.html">History</a> window.</li>
+  <li><strong>Discussion.</strong> The description of the pull request first, then its comments. Write a comment in the box at the bottom and press <em>Comment</em>; it stays in the box if the server did not take it.</li>
+</ul>
+<figure><img src="../assets/collab-diff.png" width="1280" height="780" loading="lazy" alt="The Diff tab of a pull request showing a changed line in a launch plan"><figcaption>The Diff tab of the same file</figcaption></figure>
+<figure><img src="../assets/collab-discussion.png" width="1280" height="780" loading="lazy" alt="The Discussion tab with the description of a pull request and two comments"><figcaption>The Discussion tab</figcaption></figure>
+<p>A pull request that is closed or merged says so in a banner at the top. A binary file says there is no text to compare, and the page asks the server for the text of both versions, so a file is shown a moment after you choose it.</p>
+
+<h2 id="merge">Merging</h2>
+<p>The <strong>Merge</strong> button at the top right merges the pull request on the server. Its arrow offers the three ways the server knows:</p>
+<ul>
+  <li><strong>Merge commit</strong>: keeps every commit of the pull request (the button itself).</li>
+  <li><strong>Squash and merge</strong>: combines them into one commit.</li>
+  <li><strong>Rebase and merge</strong>: puts them on top of the base branch without a merge commit.</li>
+</ul>
+<p>Merging changes the repository for everybody, so Markwork asks first and says which way. Afterwards, when the work folder is on the base branch (<code>main</code>), it is brought up to date with <code>git pull --ff-only</code> and the file tree is refreshed. A folder on another branch is left alone, and the toast says why; a pull that fails (for example because of local changes) is reported with git's reason, and the merge itself still counts. The button is off while the server says the pull request conflicts.</p>
+
+<h2 id="conflicts">A pull request that conflicts</h2>
+<p>A yellow pull request has a banner with <strong>Resolve locally…</strong>. It follows the way the server itself suggests for a manual merge:</p>
+<ol>
+  <li>The folder has to be on the base branch with nothing uncommitted (files git does not know are fine) and no merge in progress; if not, the toast says what to do first.</li>
+  <li>Markwork asks, then brings your base branch up to date from the server (only if it can move forward; a base that has diverged from the server stops here), fetches the pull request, and merges it into your base branch.</li>
+  <li>The files that conflict open in tabs in <strong>source mode</strong>, so the markers git left (<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code>, <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>) are plain text and not formatted as Markdown. Edit them as you like.</li>
+  <li>Open the pull request again from the tab. The banner counts the files that still have markers; when none is left, <strong>Finish and push</strong> saves the files, commits the merge, and pushes the base branch.</li>
+  <li>Markwork then records the pull request as merged on the server. Where the repository allows it (the <em>Manually merged</em> option of its Pull Requests settings, or autodetection), the pull request shows as merged; if the repository does not, the toast says so and what to turn on, and the pull request stays open until you close it.</li>
+</ol>
+<p><strong>Abort merge</strong> (top right while this is going on) undoes the merge in your folder, after asking. Edits you made to the conflicting files are lost.</p>
+<figure><img src="../assets/collab-resolve.png" width="1280" height="780" loading="lazy" alt="A file with git's conflict markers open in source mode next to the pull requests tab"><figcaption>The conflicting file in source mode</figcaption></figure>
+<div class="callout"><strong>The merge happens on your computer, and the push goes to the server.</strong><p>Nothing is pushed before you press <em>Finish and push</em>. The merge commit is made in your base branch, and the push needs the right to push there; a protected branch refuses it and the toast gives the server's reason.</p></div>
+
+<h2 id="send">Sending your changes as a pull request</h2>
+<p>Edit your notes as usual. Then choose <em>Send Changes as Pull Request…</em> in the ☰ menu (or the command palette), or the button in the pull requests tab. Open documents are saved first, and the dialog lists the files that changed in the repository, all checked.</p>
+<figure><img src="../assets/collab-send.png" width="1280" height="780" loading="lazy" alt="The dialog to send changes as a pull request, with a title, a description, a branch, how it is sent, and the changed files"><figcaption>The dialog: title, description, branch, how it is sent, and which changes</figcaption></figure>
+<ul>
+  <li><strong>Title and description.</strong> The title is also the commit message (the description its body). The <strong>branch</strong> is named from the title until you type in it.</li>
+  <li><strong>Through my fork</strong> (the default): the branch is pushed to your own copy of the repository, and the pull request asks to merge it into the original. The copy is made on the server if you do not have one; a repository of the same name that is not a fork stops it before anything is pushed.</li>
+  <li><strong>A branch in the repository</strong>: offered only when your token may push there. No fork is needed.</li>
+  <li><strong>AGit</strong>: the push itself opens the pull request, with no fork and no branch on the server. The server has to have AGit enabled, and a description of several lines is sent as one line.</li>
+</ul>
+<p>The steps are: create the branch from where the folder is, commit the checked files, push, and open the pull request (AGit has no last step; the pull request shows up in the tab). <strong>The folder stays on the new branch</strong> and the toast says so, so that further edits go on the same pull request. If a step fails, the others are not run and the toast names it; a failed push says that the commit is on the local branch.</p>
+<p>The token reaches git in the environment of the push, as a header: it is not in the command line, in the address of the remote, or in <code>.git/config</code>.</p>
+
+<h2 id="agent">The agent</h2>
+<p>The assistant does not use this feature, and nothing here is sent to the model. The pull requests are read by Markwork itself.</p>
+
+<h2 id="limits">What it does not do yet</h2>
+<p>Only Forgejo and Gitea are supported (the same API); GitHub and GitLab are not. There are no comments on a line and no review with an approval yet. See <a href="limitations.html#collaboration">Limitations</a>.</p>
+</main>
+<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+</div>
+
+<script src="nav.js"></script>
+</body>
+</html>

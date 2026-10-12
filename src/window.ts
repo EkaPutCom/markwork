@@ -27,6 +27,8 @@ import { type AppSettings } from './settings.js';
 import { WELCOME } from './welcome.js';
 import { MarkdownView, type Mode } from './editor/view.js';
 import { Outline } from './ui/outline.js';
+import { CollabPanel } from './ui/collab.js';
+import { PullView } from './ui/pullview.js';
 import { History } from './ui/history.js';
 import { HistoryViewer } from './ui/historyviewer.js';
 import { FileTree, isDirectory, isImageFile } from './ui/filetree.js';
@@ -58,6 +60,9 @@ import { HomeView } from './ui/home.js';
 import { _, fmt } from './i18n.js';
 import type { Doc } from './window/doc.js';
 import { Autosaver, type AutosaveHost } from './window/autosave.js';
+import { CollabController, type CollabHost } from './window/collab.js';
+import { ContributeController, type ContributeHost } from './window/contribute.js';
+import { PullReviewController, type PullHost } from './window/pulls.js';
 import { JournalController, type JournalHost } from './window/journal.js';
 import { HarnessController, type HarnessHost } from './window/harness.js';
 import { HomeController, type HomeHost } from './window/home.js';
@@ -79,7 +84,7 @@ function fitToScreen(width: number, height: number): [number, number] {
 const MODE_LABELS: Record<Mode, string> = { source: _('Source'), focus: _('Focus'), typewriter: _('Typewriter') };
 
 // The window as seen by its controllers; each controller is typed with only the part it needs.
-type WindowHost = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost & ViewHost & NoteHost;
+type WindowHost = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost & ViewHost & NoteHost & CollabHost & PullHost & ContributeHost;
 
 export class MainWindow {
     readonly app: Adw.Application;
@@ -102,6 +107,11 @@ export class MainWindow {
     readonly layouts: Record<'calendar' | 'timeline' | 'gallery' | 'chart', StructuredView>;
     readonly home: HomeView;
     readonly journal: JournalController;
+    readonly collab: CollabController;
+    readonly collabPanel: CollabPanel;
+    readonly pullView: PullView;
+    readonly pulls: PullReviewController;
+    readonly contribute: ContributeController;
     readonly harness: HarnessController;
     readonly homePage: HomeController;
     private readonly views: ViewController;
@@ -135,7 +145,9 @@ export class MainWindow {
         this.outline = new Outline();
         this.history = new History();
         this.fileTree = new FileTree();
-        this.sidebar = new Sidebar(this.fileTree.widget, this.outline.widget, this.history.widget);
+        this.collabPanel = new CollabPanel();
+        this.pullView = new PullView();
+        this.sidebar = new Sidebar(this.fileTree.widget, this.outline.widget, this.history.widget, this.collabPanel.widget);
         this.statusBar = new StatusBar();
         this.board = new KanbanBoard();
         this.inbox = new InboxView();
@@ -150,6 +162,11 @@ export class MainWindow {
         this.host = this.makeHost();
         this.autosaver = new Autosaver(this.host);
         this.journal = new JournalController(this.host);
+        this.collab = new CollabController(this.host);
+        this.pulls = new PullReviewController(this.host, { provider: () => this.collab.provider(), changed: () => void this.collab.refresh(), session: () => this.collab.session() });
+        this.collab.onOpenPull = pull => void this.pulls.open(pull);
+        this.contribute = new ContributeController(this.host, { session: () => this.collab.session(), refresh: () => void this.collab.refresh() });
+        this.collab.onSend = () => void this.contribute.start();
         this.harness = new HarnessController(this.host);
         this.homePage = new HomeController(this.host);
         this.views = new ViewController(this.host);
@@ -274,6 +291,7 @@ export class MainWindow {
         this.content.add_named(this.table.widget, 'table');
         for (const [name, view] of Object.entries(this.layouts)) this.content.add_named(view.widget, name);
         this.content.add_named(this.home.widget, 'home');
+        this.content.add_named(this.pullView.widget, 'pull');
         column.append(this.content);
         column.append(this.statusBar);
         // The Assistant panel on the right, a fixed width; the rest for the editor.
@@ -377,6 +395,10 @@ export class MainWindow {
             get board() { return w.board; },
             get harness() { return w.harness; },
             get journal() { return w.journal; },
+            get collabPanel() { return w.collabPanel; },
+            get pullView() { return w.pullView; },
+            showDocument: () => this.views.sync(),
+            saveAll: () => this.documents.saveOpenFiles(),
             get workspace() { return w.workspace; },
             get app() { return w.app; },
             get content() { return w.content; },
@@ -647,6 +669,10 @@ export class MainWindow {
     }
 
     // The "Fields…" menu for the board or list that is shown.
+    sendChanges(): void {
+        void this.contribute.start();
+    }
+
     editFields(): void {
         this.views.editFields();
     }
@@ -814,6 +840,8 @@ export class MainWindow {
         this.workspace.warm(absolute);
         this.fileTree.reveal(this.file);
         this.syncHistory();
+        this.pulls.folderChanged();
+        void this.collab.setFolder(absolute);
         this.settings.folder = absolute;
         if (this.doc.home) this.updateTitle();
         this.refreshHome();
@@ -867,6 +895,7 @@ export class MainWindow {
             doc.editor.destroy();
         }
         this.harness.dispose();
+        this.collab.dispose();
         this.chat.destroy();
         this.history.destroy();
         this.fileTree.destroy();

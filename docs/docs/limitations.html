@@ -77,6 +77,18 @@
   <li>Undoing an agent change is also recorded as an agent change.</li>
 </ul>
 
+<h2 id="collaboration">Collaboration</h2>
+<ul>
+  <li>Only Forgejo and Gitea (the same API) are supported; GitHub and GitLab are not. It has been tried against Forgejo 16 only; a Gitea server has not been tried, and neither has a server that is not on <code>localhost</code>.</li>
+  <li>One repository per work folder, found from its <code>origin</code> remote. A remote over SSH is reached over <code>https</code> on the default port, so a server whose web address is another one cannot be used through an SSH remote.</li>
+  <li>The list is read now and then (not pushed by the server), so a change shows up after the next check, or when you press refresh.</li>
+  <li>Comments are on the pull request as a whole; there are no comments on a line, no review with an approval or a request for changes, and no way to edit or delete a comment. The note view compares line by line, not word by word.</li>
+  <li>Only the first 250 pull requests and the first 250 changed files of a pull request are read.</li>
+  <li>Resolving a conflict here merges the pull request into your base branch and pushes that branch. It cannot push to the branch of the pull request itself. Recording the pull request as merged needs the repository to allow manually merged pull requests; otherwise the pull request stays open on the server until you close it.</li>
+  <li>Sending changes: the pull request goes to the default branch of the repository, you cannot pick another. Through a fork, the server may still be making the copy when the push comes (it has not been tried on a server that does this slowly). AGit needs the server to have it turned on, and sends a description of several lines as one line.</li>
+  <li>The desktop notification names the app <code>gjs</code> when Markwork is run from the source; an installed copy has its own name.</li>
+</ul>
+
 <h2 id="editor">The editor and export</h2>
 <ul>
   <li>An animated GIF only shows its first frame; an image changed on disk is reloaded after the app is opened again.</li>

@@ -30,6 +30,10 @@
         <attribute name="label" translatable="yes">Export HTML…</attribute>
         <attribute name="action">app.export-html</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">Send Changes as Pull Request…</attribute>
+        <attribute name="action">app.send-changes</attribute>
+      </item>
     </section>
     <section>
       <item>

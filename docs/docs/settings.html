@@ -34,7 +34,8 @@
 <div class="table-wrap"><table>
   <tr><th>File</th><th>Contents</th></tr>
   <tr><td>GSettings (<code>com.ekaput.Markwork</code>)</td><td>The app settings, stored in dconf. A previous version used <code>id.eka.Markwork</code>; the old settings are not migrated</td></tr>
-  <tr><td>The system keyring</td><td>The DeepSeek API key</td></tr>
+  <tr><td>The system keyring</td><td>The DeepSeek API key, and the access token of each Forgejo/Gitea server</td></tr>
+  <tr><td><code>~/.config/markwork/forge-&lt;server&gt;.token</code></td><td>The token of that server when the keyring is not available (mode 0600)</td></tr>
   <tr><td><code>~/.config/markwork/deepseek.key</code></td><td>The API key when the keyring is not available (mode 0600)</td></tr>
   <tr><td><code>&lt;work folder&gt;/.markwork/chats/</code></td><td>Conversation history, plans, and the action journal</td></tr>
 </table></div>
@@ -48,8 +49,9 @@
   <li>Focus mode, typewriter mode, and autosave; the window size</li>
   <li>The Assistant panel: open or not, the model, and thinking mode</li>
   <li><code>projects</code>: the mapping of project name → folder for external harnesses</li>
+  <li>Collaboration (Preferences → Collaboration): <code>forge-poll-seconds</code>, how often to look for pull requests (30 to 3600 seconds), and <code>forge-notify</code>, whether a new or updated pull request raises a notification. The server and the repository come from the git remote of the folder; the token is not in the settings. See <a href="collaboration.html">Collaboration</a></li>
 </ul>
-<p>The API key is never written to the settings.</p>
+<p>The API key and the access tokens of the servers are never written to the settings.</p>
 <p>In a narrow window (below about 900 pixels), the Assistant panel floats over the editor instead of docking on the right; below about 600 pixels the sidebar does too. The panels are closed when the window narrows, and your panel choices are restored when the window is widened again.</p>
 
 <h2 id="defaults">Default values</h2>
@@ -63,6 +65,7 @@
   <tr><td>Focus / typewriter</td><td>Off</td></tr>
   <tr><td>Autosave</td><td>On</td></tr>
   <tr><td>Home</td><td>On</td></tr>
+  <tr><td>Check for pull requests</td><td>Every 60 seconds, with notifications on</td></tr>
   <tr><td>Window size</td><td>1100 × 760 pixels</td></tr>
 </table></div>
 

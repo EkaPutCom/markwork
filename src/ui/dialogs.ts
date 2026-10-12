@@ -408,6 +408,16 @@ export async function deleteSectionDialog(parent: Gtk.Window | null, title: stri
     return answer === 1 ? 'keep' : answer === 2 ? 'delete' : null;
 }
 
+// Merging changes the shared repository for everybody, so it is asked first, with what will happen spelled out.
+export async function mergeDialog(parent: Gtk.Window | null, title: string, detail: string): Promise<boolean> {
+    return await alert(parent, title, detail, [_('Cancel'), _('Merge')], 0, 1) === 1;
+}
+
+// A question with one button that does it; `destructive` colors the button red.
+export async function decideDialog(parent: Gtk.Window | null, message: string, detail: string, accept: string, destructive = false): Promise<boolean> {
+    return await alert(parent, message, detail, [_('Cancel'), accept], 0, 1, destructive ? 1 : -1) === 1;
+}
+
 export async function confirmDialog(parent: Gtk.Window | null, message: string, detail?: string): Promise<boolean> {
     return await alert(parent, message, detail ?? null, [_('Cancel'), _('Delete')], 0, 1, 1) === 1;
 }

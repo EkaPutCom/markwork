@@ -18,6 +18,7 @@ const BASE = ['settings.ts', 'files.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 
 const rules = [
     [f => f.startsWith('markdown/'), t => t.startsWith('gi://') || !t.startsWith('markdown/'), 'markdown/ only holds string → data functions: no GI, nothing outside markdown/'],
     [f => f.startsWith('agent/'), t => GTK.test(t) || /^(ui|editor|window)\//.test(t) || t === 'window.ts', 'agent/ is free of GTK and knows nothing about the editor, widgets, or the window'],
+    [f => f.startsWith('forge/'), t => GTK.test(t) || /^(ui|editor|window|agent)\//.test(t) || t === 'window.ts', 'forge/ talks to Git hosting services: free of GTK and knows nothing about widgets, the editor, the window, or the agent'],
     [f => f.startsWith('editor/'), t => /^(ui|window|agent)\//.test(t) || t === 'window.ts', 'editor/ knows nothing about files, menus, the sidebar, or the agent'],
     [f => f.startsWith('ui/') || f.startsWith('window/') || f === 'actions.ts', t => t === 'window.ts', 'only app.ts composes MainWindow; components and controllers get a host interface'],
     [f => BASE.includes(f), t => /^(ui|editor|agent|window)\//.test(t) || t === 'window.ts', 'base modules do not reach up into the layers above them'],

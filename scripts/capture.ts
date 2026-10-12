@@ -19,10 +19,12 @@ import { isBoard } from '../src/markdown/layout.js';
 import type { Provider } from '../src/agent/provider.js';
 import { listChats, saveChat } from '../src/agent/chatstore.js';
 import { iterAtLine } from '../src/gtkutil.js';
-import { whenDialogReady, widgetPixbuf } from '../tests/widgets.js';
+import { descendants, whenDialogReady, widgetPixbuf } from '../tests/widgets.js';
 import { editCardDialog, findDialog, harnessAskDialog } from '../src/ui/dialogs.js';
 import { findEntry } from '../src/ui/menu.js';
 import { localDate } from '../src/markdown/home.js';
+import { sendChangesDialog } from '../src/ui/sendchanges.js';
+import type { HttpRequest, HttpResponse } from '../src/forge/types.js';
 
 // A sample work folder for the Assistant panel screenshots (a fake provider; no network and no API key):
 // a product launch project with a plan, meeting notes, research, and a task board.
@@ -234,7 +236,7 @@ const tool = (id: string, name: string, args: object): Call => ({ id, name, argu
 const SCENES: (keyof Capture & string)[] = [
     'screenshots', 'syntaxGif', 'typingGif', 'diagramGif', 'kanbanGif', 'layouts', 'themeGif', 'assistant', 'proposals', 'files',
     'gitHistory', 'imageZoom', 'tabs', 'chatHistory', 'contextPopover', 'workPlan', 'agentLog', 'agentGit', 'cardDialog',
-    'orchestrator', 'dailyFlow',
+    'orchestrator', 'dailyFlow', 'collab',
 ];
 
 function main(app: Adw.Application): void {
@@ -614,6 +616,152 @@ One file. Change the layout: line and the same notes become a list, a table, a c
         this.idle(300);
         this.frame('layouts', 8);
         w.editor.buffer.set_modified(false);
+    }
+
+    // Collaboration: the pull requests tab, the review page, the discussion, a conflict resolved here, and the send dialog. The forge is
+    // a fake that answers from a table, so no server is needed; git is real (a local bare repository stands for the server's).
+    collab(): void {
+        const w = this.w;
+        const sh = (cwd: string, ...args: string[]): string => {
+            const env = [...GLib.get_environ(), 'GIT_CONFIG_GLOBAL=/dev/null', 'GIT_CONFIG_SYSTEM=/dev/null'];
+            const [, out, err, status] = GLib.spawn_sync(cwd, ['git', '-c', 'user.name=Sari', '-c', 'user.email=sari@example.com', ...args], env, GLib.SpawnFlags.SEARCH_PATH, null);
+            if (status !== 0) throw new Error(`git ${args.join(' ')}: ${new TextDecoder().decode(err ?? undefined)}`);
+            return new TextDecoder().decode(out ?? undefined).trim();
+        };
+        const root = GLib.dir_make_tmp('markwork-collab-XXXXXX');
+        const bare = GLib.build_filenamev([root, 'forge.git']), work = GLib.build_filenamev([root, 'markwork-launch']), author = GLib.build_filenamev([root, 'author']);
+        GLib.mkdir_with_parents(bare, 0o755);
+        sh(bare, 'init', '-q', '--bare', '-b', 'main');
+        sh(root, 'clone', '-q', bare, work);
+        sh(work, 'checkout', '-q', '-B', 'main');
+        const SCHEDULE = '---\ntitle: Release schedule\nlayout: list\n---\n# Release schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n';
+        const RESEARCH = '# Competitor research\n\nThree similar note apps; all of them are paid and closed.\n';
+        for (const [rel, text] of [['plans/launch.md', WORK['plans/launch.md']], ['plans/schedule.md', SCHEDULE], ['notes/meeting-1-oct.md', WORK['notes/meeting-1-oct.md']], ['research/competitors.md', RESEARCH]]) this.put(rel, text, work);
+        sh(work, 'add', '-A');
+        sh(work, 'commit', '-q', '-m', 'Start the launch project');
+        sh(work, 'push', '-q', '-u', 'origin', 'main');
+        // Pull request 12 edits a line that main changes too, so it conflicts. A forge keeps its head under refs/pull/12/head.
+        sh(root, 'clone', '-q', bare, author);
+        sh(author, 'checkout', '-q', '-b', 'typo');
+        this.put('research/competitors.md', RESEARCH.replace('Three similar', 'Three similar, comparable'), author);
+        sh(author, 'commit', '-q', '-a', '-m', 'Fix the wording');
+        sh(author, 'push', '-q', 'origin', 'typo');
+        sh(bare, 'update-ref', 'refs/pull/12/head', sh(author, 'rev-parse', 'HEAD'));
+        this.put('research/competitors.md', RESEARCH.replace('Three similar note apps', 'Four similar note apps'), work);
+        sh(work, 'commit', '-q', '-a', '-m', 'Count the fourth app');
+        sh(work, 'push', '-q', 'origin', 'main');
+
+        const BASE = 'b'.repeat(40), HEAD = 'a'.repeat(40);
+        const ago = (hours: number) => new Date(Date.now() - hours * 3600_000).toISOString();
+        const HEADS: Record<number, string> = { 14: 'postpone-release', 13: 'calendar-schedule', 12: 'research-wording' };
+        const pull = (n: number, title: string, user: string, hours: number, extra: object = {}) => ({
+            number: n, title, state: 'open', merged: false, mergeable: true, user: { login: user }, head: { ref: HEADS[n], sha: HEAD }, base: { ref: 'main', sha: BASE },
+            comments: 0, body: '', created_at: ago(hours + 1), updated_at: ago(hours), html_url: `https://git.example.org/markwork/launch/pulls/${n}`, ...extra,
+        });
+        const pulls = [
+            pull(14, 'Postpone the public release to 22 November', 'sari', 2, { comments: 2, body: 'The 1 October meeting moved the release because the sync testing is not finished. This updates the plan and the schedule.' }),
+            pull(13, 'Show the release schedule as a calendar', 'budi', 26, { comments: 1, body: 'The schedule note becomes a calendar, so the beta and the release show up next to each other.' }),
+            pull(12, 'Fix the wording in the research notes', 'dewi', 70, { mergeable: false, body: 'A small wording fix.' }),
+        ];
+        const files: Record<number, object[]> = {
+            14: [{ filename: 'plans/launch.md', status: 'modified', additions: 1, deletions: 1 }, { filename: 'plans/schedule.md', status: 'modified', additions: 1, deletions: 1 }],
+            13: [{ filename: 'plans/schedule.md', status: 'modified', additions: 3, deletions: 1 }],
+            12: [{ filename: 'research/competitors.md', status: 'modified', additions: 1, deletions: 1 }],
+        };
+        const launch = WORK['plans/launch.md'];
+        const content: Record<string, string> = {
+            [`plans/launch.md@${BASE}`]: launch, [`plans/launch.md@${HEAD}`]: launch.replace('Public release: 15 November', 'Public release: 22 November'),
+            [`plans/schedule.md@${BASE}`]: SCHEDULE,
+            [`plans/schedule.md@${HEAD}`]: SCHEDULE.replace('layout: list', 'layout: calendar\ndate: due').replace('15 November', '22 November'),
+            [`research/competitors.md@${BASE}`]: RESEARCH, [`research/competitors.md@${HEAD}`]: RESEARCH.replace('Three similar', 'Three similar, comparable'),
+        };
+        const comments: Record<number, object[]> = {
+            14: [{ id: 1, body: 'Agreed. The sync fix needs two more weeks.', user: { login: 'budi' }, created_at: ago(1.5) }, { id: 2, body: 'I moved the beta note too, so the schedule stays in one piece.', user: { login: 'sari' }, created_at: ago(1) }],
+            13: [{ id: 3, body: 'The calendar reads better than the list. Merging after the release date is settled.', user: { login: 'dewi' }, created_at: ago(20) }],
+        };
+        const DIFF_14 = [
+            'diff --git a/plans/launch.md b/plans/launch.md', '--- a/plans/launch.md', '+++ b/plans/launch.md', '@@ -5,7 +5,7 @@ Release Markwork 1.0 for Linux users, complete with folder syncing.',
+            ' ## Schedule', ' ', ' - Closed beta: 20 October', '-- Public release: 15 November', '+- Public release: 22 November', ' - Evaluation: 30 November', '',
+            'diff --git a/plans/schedule.md b/plans/schedule.md', '--- a/plans/schedule.md', '+++ b/plans/schedule.md', '@@ -5,4 +5,4 @@ layout: list',
+            ' # Release schedule', ' ', ' - Closed beta: 20 October', '-- Public release: 15 November', '+- Public release: 22 November', '',
+        ].join('\n');
+        const API = 'https://git.example.org/api/v1/repos/markwork/launch';
+        const answer = (request: HttpRequest): HttpResponse => {
+            const json = (value: unknown): HttpResponse => ({ status: 200, body: JSON.stringify(value) });
+            if (request.url === 'https://git.example.org/api/v1/user') return json({ login: 'eka' });
+            const path = request.url.slice(API.length);
+            if (path === '') return json({ name: 'launch', owner: { login: 'markwork' }, clone_url: bare, default_branch: 'main', fork: false, permissions: { push: false } });
+            if (path.startsWith('/pulls?')) return json(pulls);
+            const n = Number(/\/(?:pulls|issues)\/(\d+)/.exec(path)?.[1]);
+            if (path.endsWith('/files') || path.includes('/files?')) return json(files[n] ?? []);
+            if (path === '/pulls/14.diff') return { status: 200, body: DIFF_14 };
+            if (path.endsWith('.diff')) return { status: 200, body: '' };
+            if (path.endsWith('/comments')) return json(comments[n] ?? []);
+            const raw = /^\/raw\/(.+)\?ref=([0-9a-f]{40})$/.exec(path);
+            if (raw) { const hit = content[`${decodeURIComponent(raw[1])}@${raw[2]}`]; return hit === undefined ? { status: 404, body: '{}' } : { status: 200, body: hit }; }
+            return { status: 404, body: '{"message":"not found"}' };
+        };
+        w.collab.services.tokens = { get: async () => ({ token: 'example', source: 'env' }), set: async () => 'env', clear: async () => {} };
+        w.collab.services.transport = async request => answer(request);
+        w.collab.services.remoteUrl = async () => 'https://git.example.org/markwork/launch.git';
+        w.settings.forgeNotify = false;
+
+        w.setOption('chat', false);
+        w.setOption('dark', false);
+        w.openFolder(work);
+        w.openFile(GLib.build_filenamev([work, 'plans', 'launch.md']));
+        this.idle(400);
+        w.sidebar.setPage('collab');
+        this.waitFor(() => w.collab.pulls.length === 3);
+        this.idle(300);
+        this.frame('collab', 8);
+
+        // Review: the note view, then the raw diff, then the discussion.
+        const view = w.pullView;
+        const open = (n: number) => { this.waitPromise(w.pulls.open(w.collab.pulls.find(p => p.number === n)!)); this.waitFor(() => !!view.files.get_row_at_index(0)); this.idle(500); };
+        open(14);
+        w.pulls.dialogs.merge = async () => false;
+        this.shot('collab-review');
+        this.frame('collab', 10);
+        view.rawButton.set_active(true);
+        this.idle(300);
+        this.shot('collab-diff');
+        this.frame('collab', 8);
+        view.discussionButton.set_active(true);
+        this.idle(300);
+        this.shot('collab-discussion');
+        this.frame('collab', 10);
+
+        // A pull request that conflicts is merged here: the file opens in source mode with git's markers.
+        open(12);
+        this.shot('collab-conflict');
+        this.frame('collab', 8);
+        w.pulls.dialogs.local = async () => true;
+        w.pulls.dialogs.abort = async () => true;
+        this.waitPromise(w.pulls.resolve());
+        this.idle(800);
+        this.shot('collab-resolve');
+        this.frame('collab', 12);
+        open(12);
+        this.waitPromise(w.pulls.abort());
+        this.idle(300);
+
+        // Sending the changes of the folder as a pull request, from the document (the toast of the undo has faded by then).
+        w.pulls.close();
+        w.openFile(GLib.build_filenamev([work, 'plans', 'launch.md']));
+        this.idle(4500);
+        this.put('plans/launch.md', launch.replace('Public release: 15 November', 'Public release: 22 November'), work);
+        const dialog = sendChangesDialog(w.win, { repository: 'markwork/launch', base: 'main', folder: work, changes: [{ path: GLib.build_filenamev([work, 'plans', 'launch.md']), kind: 'modified' }], canPush: false });
+        this.waitFor(() => !!w.win.get_visible_dialog());
+        const entry = descendants(w.win.get_visible_dialog() as Gtk.Widget).find((x): x is Gtk.Entry => x instanceof Gtk.Entry);
+        entry?.set_text('Move the public release to 22 November');
+        this.idle(600);
+        this.shot('collab-send');
+        this.frame('collab', 12);
+        w.win.get_visible_dialog()?.close();
+        this.waitPromise(dialog);
+        w.collab.dispose();
+        w.pulls.close();
     }
 
     // GIF 5: light ↔ dark mode.

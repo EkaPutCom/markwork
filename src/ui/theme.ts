@@ -43,6 +43,10 @@ const buildCss = (p: Palette): string => `
     .side-drop { background-color: alpha(@accent_bg_color, 0.25); }
     .sidebar-tabs button { padding: 3px 6px; min-width: 0; font-size: 12px; }
     .side-meta { font-size: 11px; color: alpha(currentColor, 0.55); }
+    .pull-avatar { border-radius: 50%; color: white; font-weight: bold; font-size: 14px; }
+    .pull-avatar-0 { background-color: @blue_4; } .pull-avatar-1 { background-color: @green_5; } .pull-avatar-2 { background-color: @orange_5; }
+    .pull-avatar-3 { background-color: @purple_4; } .pull-avatar-4 { background-color: @red_4; } .pull-avatar-5 { background-color: @brown_4; }
+    .pull-description { background-color: alpha(@accent_bg_color, 0.08); border-radius: 12px; }
     .chat-input, .chat-input text { background-color: @view_bg_color; color: @view_fg_color; font-size: 13px; }
     .chat-composer { background-color: @view_bg_color; border: 1px solid alpha(currentColor, 0.15); border-radius: 12px; }
     .chat-composer:focus-within { outline: 2px solid alpha(@accent_color, 0.5); outline-offset: -1px; }

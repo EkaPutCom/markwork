@@ -34,6 +34,7 @@ export interface ActionHost {
     newInboxDocument(): void;
     newTableDocument(): void;
     editFields(): void;
+    sendChanges(): void;
     closeTab(): Awaitable<boolean>;
     switchTab(step: number): void;
     openHome(): void;
@@ -103,6 +104,7 @@ export function registerActions(app: Adw.Application, w: ActionHost): void {
     action('inbox-new', null, () => w.newInboxDocument());
     action('table-new', null, () => w.newTableDocument());
     action('fields-edit', null, () => w.editFields());
+    action('send-changes', null, () => w.sendChanges());
     const view = Gio.SimpleAction.new_stateful('kanban-view', null, GLib.Variant.new_boolean(false));
     view.connect('change-state', (_a, value) => { if (value) w.toggleBoardView(value.get_boolean()); });
     app.add_action(view);
