@@ -131,6 +131,13 @@ export function forgeTests(): void {
         eq(JSON.parse(forge.seen[0].body ?? '{}'), { body: 'Thanks!' });
         eq([comment.id, comment.author, comment.body], [7, 'eka', 'Thanks!']);
     });
+    test('markMerged records a merge made outside the forge, with the commit that was pushed', () => {
+        const forge = fakeForge({ 'POST /pulls/9/merge': { status: 200, body: '' } });
+        settle(new GiteaProvider(REPO, 't', forge.transport).markMerged(9, 'abc123'));
+        eq(JSON.parse(forge.seen[0].body ?? '{}'), { Do: 'manually-merged', MergeCommitID: 'abc123' });
+        const refused = fakeForge({ 'POST /pulls/9/merge': json(405, { message: 'manually-merged is not an allowed merge style for this repository' }) });
+        eq(failure(new GiteaProvider(REPO, 't', refused.transport).markMerged(9, 'abc123')).failure, 'not-mergeable');
+    });
     test('merge posts the chosen method', () => {
         const forge = fakeForge({ 'POST /pulls/42/merge': { status: 200, body: '' } });
         settle(new GiteaProvider(REPO, 't', forge.transport).merge(42, 'squash'));

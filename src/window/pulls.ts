@@ -10,7 +10,7 @@ import { runGit } from '../git.js';
 import { parseDiff, type DiffLine } from '../gitlog.js';
 import type { GitRunner } from '../forge/contribute.js';
 import { fileDiff, isBinaryDiff } from '../forge/diff.js';
-import { abortLocalMerge, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../forge/resolve.js';
+import { abortLocalMerge, confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../forge/resolve.js';
 import { ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest, type RepoRef } from '../forge/types.js';
 import { diffNote, type NoteDiff } from '../markdown/notediff.js';
 import { decideDialog, mergeDialog } from '../ui/dialogs.js';
@@ -268,11 +268,15 @@ export class PullReviewController {
         this.local = null;
         this.host.pullView.setResolving(null);
         this.host.refreshTree();
-        this.access.changed();
         const provider = this.access.provider();
+        const head = (await this.git(local.merge.folder, ['rev-parse', 'HEAD']))?.out.trim() ?? '';
+        const recorded = provider && head ? await confirmMerged(provider, pull.number, head) : { ok: false as const, message: _('it is not connected to a server') };
+        this.access.changed();
         const merged = provider ? await provider.getPull(pull.number).catch(() => null) : null;
         if (merged && this.pull?.number === pull.number) { this.pull = merged; this.host.pullView.setPull(merged); }
-        this.host.toast(fmt(_('Pushed. Pull request #{number} is merged on the server.'), { number: pull.number }));
+        this.host.toast(recorded.ok
+            ? fmt(_('Pushed. Pull request #{number} is merged on the server.'), { number: pull.number })
+            : fmt(_('Pushed, but pull request #{number} is not marked as merged: {message}'), { number: pull.number, message: recorded.message }));
     }
 
     // Gives the folder back as it was before the local merge.

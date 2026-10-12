@@ -1,7 +1,8 @@
 // Tests for resolving a pull request's conflicts locally: real git against a local bare "forge" repository.
 
 import GLib from 'gi://GLib';
-import { finishLocalMerge, abortLocalMerge, conflictedFiles, hasMarkers, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
+import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasMarkers, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
+import { ForgeError, type ForgeProvider } from '../../src/forge/types.js';
 import { runGit } from '../../src/git.js';
 import { section, test, eq, ok, contains, settle, tmp } from '../framework.js';
 
@@ -144,6 +145,40 @@ export function resolveTests(): void {
         const { merge } = scenario(true);
         const start = settle(startLocalMerge(runGit, { ...merge, pull: 99 }));
         ok(!start.ok && start.message.includes('Could not fetch the pull request'), 'refused');
+    });
+
+    // The pull request has to be recorded as merged after the push; what the server answers decides what the user is told.
+    const forge = (states: Array<'open' | 'merged'>, mark: () => Promise<void>) => {
+        let reads = 0, marks = 0;
+        const provider = {
+            async getPull() { return { state: states[Math.min(reads++, states.length - 1)] }; },
+            async markMerged() { marks++; await mark(); },
+        } as unknown as ForgeProvider;
+        return { provider, marks: () => marks };
+    };
+    test('a pull request the server already shows as merged is left alone', () => {
+        const f = forge(['merged'], async () => {});
+        ok(settle(confirmMerged(f.provider, 7, 'abc')).ok, 'ok');
+        eq(f.marks(), 0);
+    });
+    test('an open pull request is recorded as merged with the pushed commit', () => {
+        const f = forge(['open'], async () => {});
+        ok(settle(confirmMerged(f.provider, 7, 'abc')).ok, 'ok');
+        eq(f.marks(), 1);
+    });
+    test('a repository that does not allow manual merges is explained, not hidden', () => {
+        const f = forge(['open'], async () => { throw new ForgeError('not-mergeable', 'not allowed', 405); });
+        const result = settle(confirmMerged(f.provider, 7, 'abc'));
+        ok(!result.ok && result.message.includes('Manually merged') && result.message.includes('still shows it as open'), 'explained');
+    });
+    test('a server that notices the merge by itself while it is being recorded counts as merged', () => {
+        const f = forge(['open', 'merged'], async () => { throw new ForgeError('not-mergeable', 'already merged', 405); });
+        ok(settle(confirmMerged(f.provider, 7, 'abc')).ok, 'ok');
+    });
+    test('any other failure is passed on as it is', () => {
+        const f = forge(['open'], async () => { throw new ForgeError('network', 'Cannot reach git.example.org'); });
+        const result = settle(confirmMerged(f.provider, 7, 'abc'));
+        ok(!result.ok && result.message === 'Cannot reach git.example.org', 'passed on');
     });
 
     for (const name of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) GLib.unsetenv(name);

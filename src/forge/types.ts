@@ -92,11 +92,13 @@ export interface ForgeProvider {
     // A file at a commit; null = it does not exist there (added or deleted by the pull request).
     getContent(path: string, ref: string): Promise<string | null>;
     merge(number: number, method: MergeMethod): Promise<void>;
+    // The pull request was merged outside the forge (the merge commit was pushed to the base branch): record it as merged.
+    markMerged(number: number, commit: string): Promise<void>;
 }
 
 // The HTTP seam: the real one is libsoup (http.ts); tests pass a fake that answers from a table.
 export interface HttpRequest {
-    method: 'GET' | 'POST';
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH';
     url: string;
     headers?: Record<string, string>;
     body?: string;

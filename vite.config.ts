@@ -51,6 +51,7 @@ export default defineConfig({
                 bench: 'tests/bench.ts',
                 'bench-agentic': 'tests/bench-agentic.ts',
                 'live-test': 'tests/live.ts',
+                'live-forge': 'tests/live-forge.ts',
             },
             formats: ['es'],
             fileName: (_format, name) => `${name}.js`,

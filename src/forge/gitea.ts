@@ -178,6 +178,12 @@ export class GiteaProvider implements ForgeProvider {
         }
     }
 
+    // Pushing the merge to the base branch does not close the pull request by itself unless the repository autodetects
+    // manual merges; this says so explicitly. The repository has to allow it, or the forge answers 405.
+    async markMerged(number: number, commit: string): Promise<void> {
+        await this.request('POST', `/pulls/${number}/merge`, { Do: 'manually-merged', MergeCommitID: commit });
+    }
+
     async merge(number: number, method: MergeMethod): Promise<void> {
         await this.request('POST', `/pulls/${number}/merge`, { Do: method });
     }

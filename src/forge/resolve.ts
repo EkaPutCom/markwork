@@ -4,6 +4,7 @@
 // same steps run against local bare repositories in the tests.
 
 import { credentialEnv, type GitRun, type GitRunner } from './contribute.js';
+import type { ForgeProvider } from './types.js';
 
 export interface LocalMerge {
     folder: string;
@@ -95,4 +96,21 @@ export async function abortLocalMerge(git: GitRunner, folder: string, before: st
     const inProgress = await out(git, folder, ['rev-parse', '-q', '--verify', 'MERGE_HEAD']);
     const run = await git(folder, inProgress ? ['merge', '--abort'] : ['reset', '--hard', before]);
     return run?.status === 0 ? { ok: true } : failed(`Could not undo the merge: ${reason(run)}`);
+}
+
+// After the merge was pushed: the pull request has to be recorded as merged. Some repositories notice by themselves
+// (autodetect); otherwise the forge is told, which only works where the repository allows manually merged pull requests.
+export async function confirmMerged(provider: ForgeProvider, pull: number, commit: string): Promise<Step> {
+    const merged = async (): Promise<boolean> => { try { return (await provider.getPull(pull)).state === 'merged'; } catch (e) { return false; } };
+    if (await merged()) return { ok: true };
+    try {
+        await provider.markMerged(pull, commit);
+        return { ok: true };
+    } catch (e) {
+        if (await merged()) return { ok: true };
+        const refused = (e as { failure?: string }).failure === 'not-mergeable';
+        return failed(refused
+            ? 'the repository does not allow manually merged pull requests, so the server still shows it as open. Turn on “Manually merged” in the repository\'s Pull Requests settings, or close the pull request by hand'
+            : e instanceof Error ? e.message : String(e));
+    }
 }
