@@ -163,7 +163,7 @@ export function collabTests(c: GuiContext): void {
 
     section('Pull request review');
     const BASE = 'b'.repeat(40), HEAD = 'h'.repeat(40);
-    const review = apiPull(42, { title: 'Add a calendar layout', head: { ref: 'calendar', sha: HEAD }, base: { ref: 'main', sha: BASE } });
+    const review = apiPull(42, { title: 'Add a calendar layout', body: 'Adds the calendar layout for the Agenda.', head: { ref: 'calendar', sha: HEAD }, base: { ref: 'main', sha: BASE } });
     const conflicted = apiPull(41, { title: 'Fix a typo', mergeable: false, head: { ref: 'typo', sha: HEAD }, base: { ref: 'main', sha: BASE } });
     const files = [
         { filename: 'agenda/rapat.md', status: 'modified', additions: 2, deletions: 2 },
@@ -179,11 +179,19 @@ export function collabTests(c: GuiContext): void {
     const NOTE_BEFORE = '---\ndate: 2026-10-12\n---\n# Rapat\n\nBahas rilis.\n';
     const NOTE_AFTER = '---\ndate: 2026-10-14\nowner: budi\n---\n# Rapat\n\nBahas kolaborasi.\n';
     const posts: HttpRequest[] = [];
+    const comments: object[] = [{ id: 1, body: 'Tried it on my machine, the calendar works.', user: { login: 'sari' }, created_at: '2026-10-12T08:00:00Z' }];
     let merged = false;
     const API = 'https://git.example.org/api/v1/repos/eka/notes';
     const routes = (request: HttpRequest): HttpResponse => {
         const path = request.url.slice(API.length);
+        if (request.method === 'POST' && path === '/issues/42/comments') {
+            posts.push(request);
+            const body = JSON.parse(request.body ?? '{}').body as string;
+            comments.push({ id: comments.length + 1, body, user: { login: 'eka' }, created_at: '2026-10-12T10:00:00Z' });
+            return { status: 201, body: JSON.stringify(comments[comments.length - 1]) };
+        }
         if (request.method === 'POST') { posts.push(request); return { status: 200, body: '' }; }
+        if (path === '/issues/42/comments') return { status: 200, body: JSON.stringify(comments) };
         if (path.startsWith('/pulls?state=open')) return { status: 200, body: JSON.stringify([review, conflicted]) };
         if (path === '/pulls/42') return { status: 200, body: JSON.stringify({ ...review, state: merged ? 'closed' : 'open', merged }) };
         if (path.startsWith('/pulls/42/files')) return { status: 200, body: JSON.stringify(files) };
@@ -252,6 +260,39 @@ export function collabTests(c: GuiContext): void {
         eq(view.banner.get_revealed(), true);
         contains(view.banner.get_title(), 'conflicts with main');
         w.pulls.close();
+    });
+
+    test('the discussion shows the description and the comments, and a new comment is sent and listed', () => {
+        w.pulls.close();
+        settle(w.pulls.open(w.collab.pulls[0]));
+        ok(waitFor(() => view.discussionButton.get_label() === 'Discussion (1)'), 'the count is on the tab');
+        view.discussionButton.set_active(true);
+        eq(view.showingDiscussion, true);
+        const text = descendants(view.discussion).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.get_label()).join('\n');
+        contains(text, 'budi · description');
+        contains(text, 'Adds the calendar layout for the Agenda.');
+        contains(text, 'sari · ');
+        contains(text, 'Tried it on my machine');
+        view.commentBox.buffer.set_text('  Thanks, merging after lunch.  ', -1);
+        settle(w.pulls.comment(view.commentText));
+        eq(JSON.parse(posts[posts.length - 1].body ?? '{}'), { body: 'Thanks, merging after lunch.' });
+        eq(view.discussionButton.get_label(), 'Discussion (2)');
+        eq(view.commentText, '');
+        eq(view.commentButton.get_sensitive(), true);
+        contains(descendants(view.discussion).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.get_label()).join('\n'), 'eka · ');
+        posts.length = 0;
+    });
+
+    test('choosing a file leaves the discussion for the file', () => {
+        view.files.select_row(view.files.get_row_at_index(1));
+        eq(view.showingDiscussion, false);
+        view.files.select_row(view.files.get_row_at_index(0));
+        ok(waitFor(() => diffText().includes('Fields')), 'the note again');
+    });
+
+    test('an empty comment is not sent', () => {
+        settle(w.pulls.comment('   '));
+        eq(posts.length, 0);
     });
 
     test('declining the confirmation merges nothing', () => {
@@ -357,6 +398,8 @@ export function collabTests(c: GuiContext): void {
         shot('note');
         view.rawButton.set_active(true);
         shot('raw');
+        view.discussionButton.set_active(true);
+        shot('discussion');
         view.renderedButton.set_active(true);
         w.pulls.open(w.collab.pulls[1]);
         waitFor(() => view.banner.get_revealed());

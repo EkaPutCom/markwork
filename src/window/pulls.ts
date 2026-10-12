@@ -7,7 +7,7 @@ import type Gtk from 'gi://Gtk?version=4.0';
 import { runGit } from '../git.js';
 import { parseDiff, type DiffLine } from '../gitlog.js';
 import { fileDiff, isBinaryDiff } from '../forge/diff.js';
-import { ForgeError, type ForgeProvider, type MergeMethod, type PullFile, type PullRequest } from '../forge/types.js';
+import { ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest } from '../forge/types.js';
 import { diffNote, type NoteDiff } from '../markdown/notediff.js';
 import { mergeDialog } from '../ui/dialogs.js';
 import type { FileView, PullView } from '../ui/pullview.js';
@@ -67,6 +67,7 @@ export class PullReviewController {
         view.onClose = () => this.close();
         view.onSelect = path => void this.select(path);
         view.onMerge = method => void this.merge(method);
+        view.onComment = text => void this.comment(text);
         view.onBrowser = () => { if (this.pull?.url) Gio.AppInfo.launch_default_for_uri(this.pull.url, null); };
     }
 
@@ -86,19 +87,53 @@ export class PullReviewController {
         this.diff = '';
         pullView.setPull(pull);
         pullView.setFiles([]);
+        pullView.setDiscussion(pull, []);
+        pullView.clearComment();
         pullView.setMessage(_('Loading…'));
         this.host.content.visible_child_name = 'pull';
         const provider = this.access.provider();
         if (!provider) return pullView.setMessage(_('Not connected to a server.'));
         try {
-            const [files, diff] = await Promise.all([provider.getFiles(pull.number), provider.getDiff(pull.number)]);
+            const [files, diff, comments] = await Promise.all([provider.getFiles(pull.number), provider.getDiff(pull.number), this.comments(provider, pull)]);
             if (generation !== this.generation) return;
             this.files = files;
             this.diff = diff;
+            pullView.setDiscussion(pull, comments);
             pullView.setFiles(files);
         } catch (e) {
             if (generation === this.generation) pullView.setMessage(e instanceof Error ? e.message : String(e));
         }
+    }
+
+    // A discussion that cannot be read does not keep the files from showing; the user is told and the list stays empty.
+    private async comments(provider: ForgeProvider, pull: PullRequest): Promise<PullComment[]> {
+        try {
+            return await provider.listComments(pull.number);
+        } catch (e) {
+            this.host.toast(fmt(_('Could not read the discussion: {message}'), { message: e instanceof Error ? e.message : String(e) }));
+            return [];
+        }
+    }
+
+    async comment(text: string): Promise<void> {
+        const pull = this.pull, provider = this.access.provider();
+        if (!pull || !provider || !text.trim()) return;
+        const { pullView } = this.host;
+        pullView.setCommenting(true);
+        try {
+            await provider.addComment(pull.number, text.trim());
+        } catch (e) {
+            pullView.setCommenting(false);
+            this.host.toast(fmt(_('The comment was not sent: {message}'), { message: e instanceof Error ? e.message : String(e) }));
+            return;
+        }
+        const comments = await this.comments(provider, pull);
+        if (this.pull?.number === pull.number) {
+            pullView.setDiscussion(pull, comments);
+            pullView.clearComment();
+        }
+        pullView.setCommenting(false);
+        this.access.changed();
     }
 
     // Shows one file of the open pull request.

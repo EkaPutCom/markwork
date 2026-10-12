@@ -32,7 +32,7 @@ function fakeForge(answers: Record<string, HttpResponse | (() => HttpResponse)>)
 }
 const json = (status: number, value: unknown): HttpResponse => ({ status, body: JSON.stringify(value) });
 const pull = (n: number, extra: Partial<PullRequest> = {}): PullRequest => ({
-    number: n, title: `PR ${n}`, author: 'budi', state: 'open', mergeable: true, headRef: 'f', baseRef: 'main', headSha: 'h1', baseSha: 'b1', comments: 0,
+    number: n, title: `PR ${n}`, author: 'budi', state: 'open', mergeable: true, headRef: 'f', baseRef: 'main', headSha: 'h1', baseSha: 'b1', body: '', comments: 0,
     createdAt: '2026-10-12T01:00:00Z', updatedAt: '2026-10-12T02:00:00Z', url: '', ...extra,
 });
 const failure = (promise: Promise<unknown>): ForgeError => {
@@ -115,6 +115,21 @@ export function forgeTests(): void {
         const forge = fakeForge({ 'GET /pulls/9': json(200, apiPull(9, { head: { ref: 'f', sha: 'h9' }, base: { ref: 'main', sha: 'b9' } })) });
         const p = settle(new GiteaProvider(REPO, 't', forge.transport).getPull(9));
         eq([p.headSha, p.baseSha], ['h9', 'b9']);
+    });
+    test('the description and the discussion of a pull request are read', () => {
+        const forge = fakeForge({
+            'GET /pulls/9': json(200, apiPull(9, { body: 'Adds the calendar layout.' })),
+            'GET /issues/9/comments': json(200, [{ id: 1, body: 'Looks good', user: { login: 'sari' }, created_at: '2026-10-12T03:00:00Z' }, { id: 2 }]),
+        });
+        const gitea = new GiteaProvider(REPO, 't', forge.transport);
+        eq(settle(gitea.getPull(9)).body, 'Adds the calendar layout.');
+        eq(settle(gitea.listComments(9)), [{ id: 1, author: 'sari', body: 'Looks good', createdAt: '2026-10-12T03:00:00Z' }, { id: 2, author: '', body: '', createdAt: '' }]);
+    });
+    test('a comment is posted as JSON and comes back', () => {
+        const forge = fakeForge({ 'POST /issues/9/comments': json(201, { id: 7, body: 'Thanks!', user: { login: 'eka' }, created_at: '2026-10-12T04:00:00Z' }) });
+        const comment = settle(new GiteaProvider(REPO, 't', forge.transport).addComment(9, 'Thanks!'));
+        eq(JSON.parse(forge.seen[0].body ?? '{}'), { body: 'Thanks!' });
+        eq([comment.id, comment.author, comment.body], [7, 'eka', 'Thanks!']);
     });
     test('merge posts the chosen method', () => {
         const forge = fakeForge({ 'POST /pulls/42/merge': { status: 200, body: '' } });

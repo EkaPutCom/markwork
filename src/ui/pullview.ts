@@ -9,7 +9,7 @@ import { relativeTime } from '../gitlog.js';
 import type { DiffLine } from '../gitlog.js';
 import { pack, removeChildren } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
-import type { MergeMethod, PullFile, PullRequest } from '../forge/types.js';
+import type { MergeMethod, PullComment, PullFile, PullRequest } from '../forge/types.js';
 import { createDiffView, fillDiff, setupDiffTags } from './historyviewer.js';
 
 const MARK = { added: 'A', modified: 'M', deleted: 'D', renamed: 'R' } as const;
@@ -32,15 +32,22 @@ export class PullView {
     readonly message: Gtk.Label;              // a sentence instead of the diff: loading, an error, a binary file
     readonly renderedButton: Gtk.ToggleButton;
     readonly rawButton: Gtk.ToggleButton;
+    readonly discussionButton: Gtk.ToggleButton;
+    readonly discussion: Gtk.Box;             // the description and comments, then the box to write one
+    readonly commentBox: Gtk.TextView;
+    readonly commentButton: Gtk.Button;
+    private readonly thread: Gtk.Box;
     private readonly pages: Gtk.Stack;
     private paths: string[] = [];
     private view: FileView | null = null;
     private wantsRaw = false;                // the user's choice; a file that is not a note shows raw without changing it
+    private discussing = false;
     private syncing = false;
     onClose: () => void = () => {};
     onSelect: (path: string) => void = () => {};
     onMerge: (method: MergeMethod) => void = () => {};
     onBrowser: () => void = () => {};
+    onComment: (text: string) => void = () => {};
 
     constructor() {
         this.banner = new Adw.Banner({ revealed: false });
@@ -71,21 +78,24 @@ export class PullView {
         this.files.add_css_class('navigation-sidebar');
         this.files.connect('row-selected', (_list, row) => {
             const path = row ? this.paths[row.get_index()] : undefined;
-            if (path) this.onSelect(path);
+            if (!path) return;
+            this.leaveDiscussion();
+            this.onSelect(path);
         });
         const fileScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, width_request: 240, child: this.files });
 
         this.renderedButton = new Gtk.ToggleButton({ label: _('Note'), active: true });
         this.rawButton = new Gtk.ToggleButton({ label: _('Diff'), group: this.renderedButton });
-        // Either button's change ends with the raw one in its new state; the other fires before that state is set.
-        this.rawButton.connect('toggled', () => {
-            if (!this.syncing) this.wantsRaw = this.rawButton.get_active();
-            this.showView();
-        });
+        this.discussionButton = new Gtk.ToggleButton({ label: _('Discussion'), group: this.renderedButton });
+        // Only the button that becomes active acts: when the group switches, the one that goes off also signals, first.
+        for (const button of [this.renderedButton, this.rawButton, this.discussionButton]) {
+            button.connect('toggled', () => { if (button.get_active() && !this.syncing) this.chosen(button); });
+        }
         const toggle = new Gtk.Box({ halign: Gtk.Align.START, margin_top: 8, margin_bottom: 8, margin_start: 12 });
         toggle.add_css_class('linked');
         toggle.append(this.renderedButton);
         toggle.append(this.rawButton);
+        toggle.append(this.discussionButton);
 
         this.diffView = createDiffView();
         this.message = new Gtk.Label({ wrap: true, xalign: 0, yalign: 0, margin_top: 16, margin_start: 16, margin_end: 16, max_width_chars: 60 });
@@ -93,6 +103,21 @@ export class PullView {
         this.pages = new Gtk.Stack({ vexpand: true, hexpand: true });
         this.pages.add_named(new Gtk.ScrolledWindow({ child: this.diffView }), 'diff');
         this.pages.add_named(this.message, 'message');
+        this.thread = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 12, margin_top: 4, margin_bottom: 12, margin_start: 16, margin_end: 16 });
+        this.commentBox = new Gtk.TextView({ wrap_mode: Gtk.WrapMode.WORD_CHAR, accepts_tab: false, left_margin: 8, right_margin: 8, top_margin: 6, bottom_margin: 6 });
+        this.commentBox.update_property([Gtk.AccessibleProperty.LABEL], [_('Write a comment…')]);
+        const commentScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, has_frame: true, min_content_height: 72, max_content_height: 160, propagate_natural_height: true, child: this.commentBox });
+        this.commentButton = new Gtk.Button({ label: _('Comment'), halign: Gtk.Align.END });
+        this.commentButton.add_css_class('suggested-action');
+        this.commentButton.connect('clicked', () => { if (this.commentText) this.onComment(this.commentText); });
+        const compose = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8, margin_top: 8, margin_bottom: 12, margin_start: 16, margin_end: 16 });
+        compose.append(commentScroll);
+        compose.append(this.commentButton);
+        this.discussion = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+        pack(this.discussion, new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, child: this.thread }), true);
+        this.discussion.append(new Gtk.Separator());
+        this.discussion.append(compose);
+        this.pages.add_named(this.discussion, 'discussion');
         this.pages.visible_child_name = 'message';
         const right = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, hexpand: true });
         right.append(toggle);
@@ -191,14 +216,35 @@ export class PullView {
         this.view = view;
         this.renderedButton.set_sensitive(view.rendered !== null);
         this.syncing = true;
-        this.rawButton.set_active(view.rendered === null || this.wantsRaw);
+        (view.rendered === null || this.wantsRaw ? this.rawButton : this.renderedButton).set_active(true);
         this.syncing = false;
+        this.discussing = false;
         this.showView();
     }
 
     get showingRaw(): boolean { return this.rawButton.get_active(); }
+    get showingDiscussion(): boolean { return this.discussing; }
+
+    private chosen(button: Gtk.ToggleButton): void {
+        this.discussing = button === this.discussionButton;
+        if (!this.discussing) this.wantsRaw = button === this.rawButton;
+        this.showView();
+    }
+
+    // Picking a file in the list leaves the discussion and shows that file the way the user last looked at files.
+    private leaveDiscussion(): void {
+        if (!this.discussing) return;
+        this.syncing = true;
+        (this.wantsRaw ? this.rawButton : this.renderedButton).set_active(true);
+        this.syncing = false;
+        this.discussing = false;
+    }
 
     private showView(): void {
+        if (this.discussing) {
+            this.pages.visible_child_name = 'discussion';
+            return;
+        }
         const view = this.view;
         if (!view) return;
         const lines = this.showingRaw || view.rendered === null ? view.raw : view.rendered;
@@ -206,6 +252,40 @@ export class PullView {
         setupDiffTags(this.diffView, Adw.StyleManager.get_default().get_dark());
         fillDiff(this.diffView, lines);
         this.pages.visible_child_name = 'diff';
+    }
+
+    get commentText(): string {
+        const [start, end] = this.commentBox.buffer.get_bounds();
+        return this.commentBox.buffer.get_text(start, end, true).trim();
+    }
+
+    // The description first, then the comments in the order they were written.
+    setDiscussion(pull: PullRequest, comments: readonly PullComment[], now = Math.floor(Date.now() / 1000)): void {
+        removeChildren(this.thread);
+        this.discussionButton.set_label(comments.length ? fmt(_('Discussion ({count})'), { count: comments.length }) : _('Discussion'));
+        const entries = [{ author: pull.author, body: pull.body.trim() || _('No description.'), time: pull.createdAt, description: true }, ...comments.map(c => ({ author: c.author, body: c.body, time: c.createdAt, description: false }))];
+        for (const entry of entries) this.thread.append(this.commentCard(entry.author, entry.body, entry.time, now, entry.description));
+    }
+
+    private commentCard(author: string, body: string, time: string, now: number, description: boolean): Gtk.Widget {
+        const head = new Gtk.Label({ label: description ? fmt(_('{author} · description'), { author }) : `${author} · ${relativeTime(Date.parse(time) / 1000, now)}`, xalign: 0 });
+        head.add_css_class('heading');
+        const text = new Gtk.Label({ label: body, xalign: 0, wrap: true, wrap_mode: Pango.WrapMode.WORD_CHAR, selectable: true, focusable: false, max_width_chars: 80 });
+        const card = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, margin_top: 8, margin_bottom: 8, margin_start: 12, margin_end: 12 });
+        card.add_css_class('card');
+        card.append(head);
+        card.append(text);
+        return card;
+    }
+
+    // A comment is being sent; it stays in the box until the forge has taken it.
+    setCommenting(busy: boolean): void {
+        this.commentButton.set_sensitive(!busy);
+        this.commentBox.set_sensitive(!busy);
+    }
+
+    clearComment(): void {
+        this.commentBox.buffer.set_text('', -1);
     }
 
     private setMessageKeepingView(text: string): void {

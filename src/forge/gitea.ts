@@ -2,7 +2,7 @@
 // so it runs the same against libsoup and against the fake of the tests.
 
 import {
-    ForgeError, type ForgeProvider, type MergeMethod, type PullFile, type PullRequest, type PullState, type RepoRef, type Transport,
+    ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest, type PullState, type RepoRef, type Transport,
 } from './types.js';
 
 const PAGE = 50;
@@ -11,8 +11,9 @@ const MAX_PAGES = 5;      // 250 pull requests; more than that are not a list an
 interface ApiPull {
     number: number; title: string; state: string; merged?: boolean; mergeable?: boolean | null;
     user?: { login?: string }; head?: { ref?: string; sha?: string }; base?: { ref?: string; sha?: string };
-    comments?: number; created_at?: string; updated_at?: string; html_url?: string;
+    body?: string; comments?: number; created_at?: string; updated_at?: string; html_url?: string;
 }
+interface ApiComment { id: number; body?: string; user?: { login?: string }; created_at?: string }
 interface ApiFile { filename: string; previous_filename?: string; status: string; additions?: number; deletions?: number }
 
 function pullState(p: ApiPull): PullState {
@@ -24,10 +25,12 @@ function toPull(p: ApiPull): PullRequest {
     return {
         number: p.number, title: p.title, author: p.user?.login ?? '', state: pullState(p),
         mergeable: typeof p.mergeable === 'boolean' ? p.mergeable : null,
-        headRef: p.head?.ref ?? '', baseRef: p.base?.ref ?? '', headSha: p.head?.sha ?? '', baseSha: p.base?.sha ?? '', comments: p.comments ?? 0,
+        headRef: p.head?.ref ?? '', baseRef: p.base?.ref ?? '', headSha: p.head?.sha ?? '', baseSha: p.base?.sha ?? '', body: p.body ?? '', comments: p.comments ?? 0,
         createdAt: p.created_at ?? '', updatedAt: p.updated_at ?? '', url: p.html_url ?? '',
     };
 }
+
+const toComment = (c: ApiComment): PullComment => ({ id: c.id, author: c.user?.login ?? '', body: c.body ?? '', createdAt: c.created_at ?? '' });
 
 const FILE_STATUS: Record<string, PullFile['status']> = { added: 'added', deleted: 'deleted', removed: 'deleted', renamed: 'renamed' };
 
@@ -92,6 +95,20 @@ export class GiteaProvider implements ForgeProvider {
             if (items.length < PAGE) break;
         }
         return files;
+    }
+
+    // A pull request is an issue to the forge: its discussion lives under /issues.
+    async listComments(number: number): Promise<PullComment[]> {
+        return (await this.json<ApiComment[]>(`/issues/${number}/comments`)).map(toComment);
+    }
+
+    async addComment(number: number, body: string): Promise<PullComment> {
+        const text = await this.request('POST', `/issues/${number}/comments`, { body });
+        try {
+            return toComment(JSON.parse(text) as ApiComment);
+        } catch (e) {
+            throw new ForgeError('server', `${this.repo.host} sent an answer that is not JSON`);
+        }
     }
 
     async getDiff(number: number): Promise<string> {
