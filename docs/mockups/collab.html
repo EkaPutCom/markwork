@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Markwork — Mockup Kolaborasi v2</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{
+  --bg:#fafafa;--card:#fff;--side:#f2f2f2;--head:#ebebeb;--fg:#241f31;--dim:#77767b;--line:#deddda;
+  --accent:#3584e4;--ok:#26a269;--warn:#cd9309;--bad:#c01c28;--hover:#0000000d;--sel:#3584e426;
+  --add:#e6f6ec;--del:#fdeaea;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#242424;--card:#303030;--side:#2a2a2a;--head:#303030;--fg:#f0f0f0;--dim:#9a9996;--line:#454545;
+  --accent:#78aeed;--ok:#57e389;--warn:#f8e45c;--bad:#ff7b63;--hover:#ffffff12;--sel:#78aeed30;
+  --add:#1f3a2a;--del:#442424;}}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 "Cantarell","Inter",system-ui,sans-serif;background:#555;color:var(--fg);
+  display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}
+.win{width:min(1120px,100%);height:min(720px,92vh);background:var(--bg);border-radius:12px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:0 10px 40px #0008;position:relative}
+/* headerbar */
+.hb{height:46px;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--head);border-bottom:1px solid var(--line);flex:none}
+.hb .t{font-weight:700;margin:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hb .sp{flex:1}
+.hb .wc{display:flex;gap:6px;margin-left:6px;color:var(--dim)}
+button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:7px;padding:4px 11px;cursor:pointer}
+button:hover{background:var(--hover)}
+button.flat{background:none;border-color:transparent}button.flat:hover{background:var(--hover)}
+button.pri{background:var(--accent);color:#fff;border-color:transparent}
+button.ok{background:var(--ok);color:#fff;border-color:transparent}
+.body{flex:1;display:flex;min-height:0}
+/* sidebar */
+.side{width:240px;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;flex:none}
+.sw{display:flex;margin:10px 8px;background:var(--hover);border-radius:8px;padding:2px;gap:2px}
+.sw span{flex:1;text-align:center;padding:4px 0;border-radius:6px;cursor:pointer;font-size:13px;position:relative;white-space:nowrap}
+.sw span.on{background:var(--card);box-shadow:0 1px 2px #0003;font-weight:700}
+.sw span.ic{flex:0 0 38px}
+.sw .bd{position:absolute;top:-5px;right:0;background:var(--accent);color:#fff;border-radius:99px;font-size:10px;padding:0 5px;font-weight:700;line-height:15px}
+.pg{flex:1;overflow:auto;display:none;padding:0 6px 8px}.pg.on{display:block}
+.fi{padding:5px 8px;border-radius:7px;cursor:pointer}.fi:hover{background:var(--hover)}.fi.on{background:var(--sel)}
+.fi.d{color:var(--dim);font-weight:700;margin-top:4px}
+/* sidebar: PR rows */
+.sec{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin:8px 8px 4px;display:flex;align-items:center}
+.sec span{margin-left:auto;cursor:pointer;text-transform:none;letter-spacing:0}
+.pr{padding:7px 8px;border-radius:8px;cursor:pointer;display:flex;gap:7px}
+.pr:hover{background:var(--hover)}.pr.on{background:var(--sel)}
+.pr .dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:none}
+.pr b{display:block;font-weight:600;line-height:1.3}.pr small{color:var(--dim)}
+.pr.new b::after{content:"●";color:var(--accent);margin-left:5px;font-size:9px}
+.srv{margin:auto 8px 8px;padding:6px 8px;color:var(--dim);font-size:12px;border-top:1px solid var(--line);cursor:pointer}
+/* content */
+.content{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.ed{padding:28px 44px;overflow:auto;flex:1}
+.ed h1{margin:0 0 8px}.ed .fm{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;margin:12px 0;max-width:520px}
+.fld{display:flex;gap:8px;padding:2px 0;align-items:baseline}.fld .k{width:90px;color:var(--dim)}
+.view{display:none;flex:1;flex-direction:column;min-height:0}.view.on{display:flex}
+.pbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--card)}
+.pbar .t{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pbar small{color:var(--dim);white-space:nowrap}.pbar .sp{flex:1}
+.dt{flex:1;display:grid;grid-template-columns:210px 1fr;min-height:0}
+.files{border-right:1px solid var(--line);padding:8px;overflow:auto}
+.files h4{margin:6px 8px;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.file{padding:6px 8px;border-radius:8px;cursor:pointer;display:flex;gap:6px;word-break:break-all}
+.file:hover{background:var(--hover)}.file.on{background:var(--sel)}
+.file i{font-style:normal;font-size:11px;font-weight:700;margin-left:auto}
+.pane{padding:14px 20px;overflow:auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.seg span{padding:4px 12px;cursor:pointer}.seg span.on{background:var(--accent);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.card h5{margin:0 0 6px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+ins{background:var(--add);color:var(--ok);text-decoration:none;padding:0 3px;border-radius:3px}
+del{background:var(--del);color:var(--bad);padding:0 3px;border-radius:3px}
+pre{margin:0;font:12.5px/1.5 "JetBrains Mono",monospace;white-space:pre-wrap}
+pre .a{background:var(--add);display:block}pre .d{background:var(--del);display:block}
+.banner{padding:8px 14px;background:#cd930922;border-bottom:1px solid var(--warn)}
+.cmt{display:flex;gap:8px;margin-bottom:8px}
+.av{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+textarea,input[type=text],input[type=password],select{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:6px 9px}
+.chip{font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.ok-c{color:var(--ok)}.warn-c{color:var(--warn)}.bad-c{color:var(--bad)}.dim-c{color:var(--dim)}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;background:var(--sel);margin:2px 4px 2px 0}
+.hide{display:none!important}
+/* popovers */
+.pop{position:absolute;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px #0005;padding:5px;min-width:230px;z-index:30;display:none}
+.pop.show{display:block}
+.pop div{padding:7px 11px;border-radius:7px;cursor:pointer}.pop div:hover{background:var(--hover)}
+.pop small{display:block;color:var(--dim)}.pop hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.split{display:inline-flex;position:relative}
+.split>button:first-child{border-radius:7px 0 0 7px}.split>button:last-child{border-radius:0 7px 7px 0;border-left:1px solid #fff5;padding:4px 8px}
+/* dialogs */
+.overlay{position:absolute;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:50}
+.overlay.show{display:flex}
+.dlg{background:var(--card);border-radius:14px;padding:18px 20px;width:440px;max-width:92%;box-shadow:0 10px 40px #0007}
+.dlg h3{margin:0 0 10px}.dlg label.l{display:block;margin:10px 0 4px;color:var(--dim);font-size:12px}
+.dlg .btns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.toast{position:absolute;top:54px;right:14px;background:#2a2a2a;color:#fff;border-radius:12px;padding:10px 14px;width:310px;
+  box-shadow:0 6px 24px #0007;transform:translateX(130%);transition:.35s;z-index:60;cursor:pointer}
+.toast.show{transform:none}.toast small{color:#bbb;display:block}
+.hint{position:fixed;bottom:6px;left:0;right:0;text-align:center;color:#ccc;font-size:12px}
+</style>
+</head>
+<body>
+<div class="win" id="win">
+  <div class="hb">
+    <button class="flat" title="Sidebar">☰▏</button>
+    <span class="t" id="title">Rapat mingguan.md</span>
+    <span class="sp"></span>
+    <button class="flat" id="layBtn">▦ Teks ▾</button>
+    <button class="flat" id="menuBtn" title="Menu utama">☰</button>
+    <span class="wc">–  ▢  ✕</span>
+  </div>
+
+  <div class="body">
+    <aside class="side">
+      <div class="sw" id="sw">
+        <span class="on" data-p="files">Files</span>
+        <span data-p="outline">Outline</span>
+        <span data-p="history">History</span>
+        <span class="ic" data-p="collab" title="Kolaborasi">⑂<b class="bd" id="badge">3</b></span>
+      </div>
+
+      <div class="pg on" id="p-files">
+        <div class="fi d">▾ agenda</div>
+        <div class="fi on" style="padding-left:22px">📄 rapat.md</div>
+        <div class="fi" style="padding-left:22px">📄 retro.md</div>
+        <div class="fi d">▾ jurnal</div>
+        <div class="fi" style="padding-left:22px">📄 2026-10-12.md</div>
+        <div class="fi d">▸ skema</div>
+      </div>
+      <div class="pg" id="p-outline"><div class="fi">Rapat mingguan</div><div class="fi" style="padding-left:20px">Agenda</div><div class="fi" style="padding-left:20px">Catatan</div></div>
+      <div class="pg" id="p-history"><div class="fi">● Rapikan frontmatter <small class="dim-c">kemarin</small></div><div class="fi">● Tambah skema agenda <small class="dim-c">3 hari</small></div></div>
+
+      <div class="pg" id="p-collab">
+        <div class="sec">Terbuka <span id="refresh" title="Segarkan">⟳</span></div>
+        <div id="plist"></div>
+        <div class="sec">Terakhir dimerge</div>
+        <div id="mlist"></div>
+        <div class="srv" id="srv">● git.contoh.id · eka/catatan</div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <!-- EDITOR -->
+      <div class="view on" id="v-ed"><div class="ed">
+        <h1>Rapat mingguan</h1>
+        <div class="fm"><div class="fld"><span class="k">tanggal</span>2026-10-12</div><div class="fld"><span class="k">layout</span>daftar</div></div>
+        <p>Agenda: bahas rilis dan peninjauan skema baru.</p>
+        <p class="dim-c">Pilih tab ⑂ di sidebar untuk melihat Pull Request.</p>
+      </div></div>
+
+      <!-- DETAIL PR (menggantikan editor) -->
+      <div class="view" id="v-pr">
+        <div class="pbar">
+          <button class="flat" id="close" title="Tutup, kembali ke editor">✕</button>
+          <span class="t" id="ptitle"></span><small id="pmeta"></small>
+          <span class="sp"></span><span id="pbtns"></span>
+        </div>
+        <div id="banner"></div>
+        <div class="dt">
+          <div class="files"><h4>Berkas (<span id="fcount"></span>)</h4><div id="flist"></div>
+            <h4 style="margin-top:14px">Diskusi</h4><div id="clist" style="padding:0 6px"></div>
+            <div style="padding:4px 6px"><textarea rows="2" placeholder="Tulis komentar…" id="ctext"></textarea>
+              <button style="margin-top:4px" id="csend">Kirim</button></div>
+          </div>
+          <div class="pane" id="fpane"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- popover menu ☰ -->
+  <div class="pop" id="mainMenu" style="top:44px;right:40px">
+    <div>Berkas baru…</div><div>Buka folder…</div><hr>
+    <div id="miSend">Kirim perubahan sebagai PR…<small>Fork, cabang, lalu buka Pull Request</small></div>
+    <div id="miSync">Tarik perubahan dari server<small>git pull</small></div>
+    <div id="miSrv">Server Git…<small>Alamat, token, notifikasi</small></div><hr>
+    <div>Pengaturan</div><div>Pintasan</div><div>Tentang Markwork</div>
+  </div>
+
+  <!-- dialog kirim PR -->
+  <div class="overlay" id="ov-send"><div class="dlg">
+    <h3>Kirim sebagai Pull Request</h3>
+    <label class="l">Judul</label><input type="text" id="sTitle" value="Perbaiki typo jurnal">
+    <label class="l">Deskripsi</label><textarea rows="3" placeholder="Apa yang berubah?"></textarea>
+    <label class="l">Cabang</label><input type="text" value="perbaikan-typo (baru)">
+    <label class="l">Dikirim lewat</label>
+    <div><label><input type="radio" name="via" checked> Fork saya</label> &nbsp; <label><input type="radio" name="via"> AGit (tanpa fork)</label></div>
+    <label class="l">Berkas yang ikut</label>
+    <div><span class="pill">jurnal/2026-10-11.md</span><span class="pill">jurnal/2026-10-12.md</span></div>
+    <div class="btns"><button data-close>Batal</button><button class="pri" id="doSend">Kirim PR</button></div>
+  </div></div>
+
+  <!-- dialog server -->
+  <div class="overlay" id="ov-srv"><div class="dlg">
+    <h3>Server Git</h3>
+    <label class="l">Jenis</label><select><option>Forgejo / Gitea</option><option>GitLab (segera)</option></select>
+    <label class="l">Alamat instance</label><input type="text" value="https://git.contoh.id">
+    <label class="l">Token akses (disimpan di libsecret)</label><input type="password" value="••••••••••••">
+    <label class="l">Interval polling</label><select><option>30 detik</option><option selected>60 detik</option><option>5 menit</option></select>
+    <label class="l">Metode merge bawaan</label><select><option>Merge commit</option><option>Squash</option><option>Rebase</option></select>
+    <div style="margin-top:10px"><label><input type="checkbox" checked> Notifikasi desktop</label></div>
+    <div class="btns"><span id="testr" style="margin-right:auto;align-self:center"></span><button id="test">Uji koneksi</button><button class="pri" data-close>Simpan</button></div>
+  </div></div>
+
+  <!-- dialog konflik -->
+  <div class="overlay" id="ov-conf"><div class="dlg">
+    <h3>Selesaikan konflik secara lokal</h3>
+    <p>Markwork mengambil cabang <code>sari:perbaiki-typo</code>, menggabungkannya ke <code>main</code> di komputer ini, lalu membuka berkas yang konflik di editor.</p>
+    <div class="btns"><button data-close>Batal</button><button class="pri" data-close>Ambil &amp; mulai</button></div>
+  </div></div>
+
+  <div class="toast" id="toast"></div>
+</div>
+<div class="hint">Mockup v2 — klik tab ⑂ di sidebar, pilih PR (tampil menggantikan editor), buka menu ☰ untuk “Kirim perubahan” dan “Server Git”.</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const AV={b:"B",d:"D",e:"E"};
+const PRS=[
+ {n:42,t:"Tambah layout kalender untuk Agenda",by:"budi",when:"2 jam lalu",st:"ok",state:"open",ci:"✓ lulus",isNew:true,
+  files:[["agenda/rapat.md","M"],["skema/agenda.yaml","M"],["img/kalender.png","A"]],c:[["b","Sudah dicoba di mesin saya, layout kalender jalan."]]},
+ {n:41,t:"Perbaiki typo di jurnal",by:"sari",when:"kemarin",st:"conflict",state:"open",ci:"✓ lulus",
+  files:[["jurnal/2026-10-09.md","M"]],c:[]},
+ {n:39,t:"Skema baru: Resep (6 field)",by:"dewi",when:"3 hari lalu",st:"ok",state:"open",ci:"– tanpa CI",
+  files:[["skema/resep.yaml","A"],["resep/nasi-goreng.md","A"]],c:[["d","Field durasi pakai menit atau jam?"],["e","Menit, nanti saya tambahkan satuan."]]},
+ {n:37,t:"Rapikan frontmatter proyek",by:"eka",when:"minggu lalu",st:"ok",state:"merged",ci:"✓ lulus",files:[["proyek/a.md","M"]],c:[]},
+];
+const DIFF={
+ "agenda/rapat.md":{
+  r:`<div class="card"><h5>Field</h5>
+     <div class="fld"><span class="k">judul</span>Rapat mingguan</div>
+     <div class="fld"><span class="k">tanggal</span><del>2026-10-12</del> <ins>2026-10-14</ins></div>
+     <div class="fld"><span class="k">layout</span><del>daftar</del> <ins>kalender</ins></div></div>
+     <div class="card"><h5>Teks</h5><p>Agenda: bahas <del>rilis</del> <ins>kolaborasi PR</ins> dan peninjauan skema baru.</p></div>`,
+  d:`<pre><span class="d">- tanggal: 2026-10-12</span><span class="a">+ tanggal: 2026-10-14</span><span class="d">- layout: daftar</span><span class="a">+ layout: kalender</span>  ---
+  Agenda: bahas <span class="d">- rilis</span><span class="a">+ kolaborasi PR</span></pre>`},
+ "skema/agenda.yaml":{
+  r:`<div class="card"><h5>Perubahan skema</h5>
+     <div class="fld"><ins>+ field</ins> <b>durasi</b> (angka, menit)</div>
+     <div class="fld"><span class="warn-c">~ layout</span> daftar → <b>kalender</b> (kolom tanggal: <code>tanggal</code>)</div>
+     <p class="dim-c">Berdampak pada 14 catatan di folder agenda/.</p></div>`,
+  d:`<pre><span class="a">+  - nama: durasi
++    tipe: angka</span>  layout:
+<span class="d">-   jenis: daftar</span><span class="a">+   jenis: kalender
++   kolom_tanggal: tanggal</span></pre>`},
+ "img/kalender.png":{r:`<div class="card"><h5>Gambar baru</h5><div style="height:160px;border-radius:8px;background:linear-gradient(135deg,#3584e4,#9141ac);display:grid;place-items:center;color:#fff">kalender.png · 52 KB</div></div>`,d:`<pre>Berkas biner — tidak ada diff teks.</pre>`},
+ "jurnal/2026-10-09.md":{
+  r:`<div class="card"><h5>Teks</h5><p>Hari ini saya <del>menulsi</del> <ins>menulis</ins> laporan <del>mingu</del> <ins>mingguan</ins>.</p></div>`,
+  d:`<pre><span class="d">- Hari ini saya menulsi laporan mingu.</span><span class="a">+ Hari ini saya menulis laporan mingguan.</span></pre>`},
+ "skema/resep.yaml":{r:`<div class="card"><h5>Skema baru: Resep</h5>${["judul (teks)","porsi (angka)","durasi (angka, menit)","bahan (daftar)","tingkat (pilihan)","foto (gambar)"].map(x=>`<div class="fld"><ins>+ field</ins> ${x}</div>`).join("")}</div>`,
+  d:`<pre><span class="a">+ nama: Resep
++ fields:
++   - judul: teks
++   - porsi: angka
++   ...</span></pre>`},
+ "resep/nasi-goreng.md":{r:`<div class="card"><h5>Catatan baru</h5><b>Nasi goreng</b><p>Porsi 2 · 20 menit</p></div>`,d:`<pre><span class="a">+ ---
++ judul: Nasi goreng
++ porsi: 2
++ ---</span></pre>`},
+ "proyek/a.md":{r:`<div class="card">Sudah di-merge.</div>`,d:`<pre>Sudah di-merge.</pre>`},
+};
+let cur=null, mode="r", selected=null;
+
+function setPage(p){
+  $$("#sw span").forEach(s=>s.classList.toggle("on",s.dataset.p===p));
+  $$(".pg").forEach(g=>g.classList.toggle("on",g.id==="p-"+p));
+}
+function showView(v){
+  $("#v-ed").classList.toggle("on",v==="ed"); $("#v-pr").classList.toggle("on",v==="pr");
+  $("#title").textContent = v==="pr" ? `Pull Request #${cur.n}` : "Rapat mingguan.md";
+}
+function prRow(p){
+  const c=p.state==='merged'?'dim':p.st==='conflict'?'warn':'ok';
+  return `<div class="pr ${p.isNew?'new':''} ${cur&&cur.n===p.n?'on':''}" data-n="${p.n}"><span class="dot" style="background:var(--${c})"></span>
+   <div><b>${p.t}</b><small>#${p.n} · ${p.by} · ${p.when}${p.st==='conflict'&&p.state==='open'?' · <span class="warn-c">konflik</span>':''}${p.c.length?` · 💬${p.c.length}`:''}</small></div></div>`;
+}
+function renderList(){
+  const open=PRS.filter(p=>p.state==="open"), merged=PRS.filter(p=>p.state==="merged");
+  $("#plist").innerHTML=open.map(prRow).join("")||`<div class="fi dim-c">Tidak ada PR terbuka.</div>`;
+  $("#mlist").innerHTML=merged.map(prRow).join("");
+  $$(".pr").forEach(r=>r.onclick=()=>openPR(+r.dataset.n));
+  $("#badge").textContent=open.length; $("#badge").classList.toggle("hide",!open.length);
+}
+function mergeBtn(){
+  if(cur.state==="merged") return `<span class="chip dim-c">Sudah di-merge</span>`;
+  if(cur.st==="conflict") return `<button class="pri" id="resolve">Selesaikan lokal…</button>`;
+  return `<span class="split"><button class="ok" id="mergeGo">Merge</button><button class="ok" id="mmBtn">▾</button></span>`;
+}
+function openPR(n){
+  cur=PRS.find(p=>p.n===n); cur.isNew=false; mode="r"; selected=cur.files[0][0];
+  $("#ptitle").textContent=`#${cur.n} ${cur.t}`;
+  $("#pmeta").textContent=`${cur.by} · ${cur.when} · CI ${cur.ci}`;
+  $("#pbtns").innerHTML=mergeBtn();
+  $("#banner").innerHTML = cur.st==="conflict"&&cur.state==="open" ? `<div class="banner">⚠ Cabang ini berkonflik dengan <code>main</code>. Selesaikan secara lokal sebelum merge.</div>`:"";
+  renderList(); renderDetail(); showView("pr");
+  const mg=$("#mergeGo"); if(mg) mg.onclick=()=>doMerge("Merge commit");
+  const mm=$("#mmBtn"); if(mm) mm.onclick=e=>{e.stopPropagation(); popAt("#mergeMenu",mm);};
+  const rs=$("#resolve"); if(rs) rs.onclick=()=>$("#ov-conf").classList.add("show");
+}
+function renderDetail(){
+  $("#fcount").textContent=cur.files.length;
+  $("#flist").innerHTML=cur.files.map(([f,s])=>`<div class="file ${f===selected?'on':''}" data-f="${f}">📄 ${f}<i class="${s==='A'?'ok-c':'warn-c'}">${s}</i></div>`).join("");
+  $$("#flist .file").forEach(e=>e.onclick=()=>{selected=e.dataset.f;renderDetail();});
+  $("#clist").innerHTML=cur.c.map(([a,t])=>`<div class="cmt"><div class="av">${AV[a]}</div><div>${t}</div></div>`).join("")||`<small class="dim-c">Belum ada komentar.</small>`;
+  const d=DIFF[selected]||{r:"",d:""};
+  $("#fpane").innerHTML=`<div class="seg"><span class="${mode==='r'?'on':''}" data-m="r">Rendered</span><span class="${mode==='d'?'on':''}" data-m="d">Diff mentah</span></div>`+d[mode];
+  $$("#fpane .seg span").forEach(s=>s.onclick=()=>{mode=s.dataset.m;renderDetail();});
+}
+function doMerge(m){
+  cur.state="merged"; renderList(); flash(`#${cur.n} di-merge (${m})`,"Menarik perubahan ke main… selesai");
+  openPR(cur.n);
+}
+function flash(msg,sub,fn){const t=$("#toast"); t.innerHTML=`<b>${msg}</b><small>${sub||""}</small>`; t.onclick=()=>{t.classList.remove("show"); fn&&fn();};
+  t.classList.add("show"); clearTimeout(flash.t); flash.t=setTimeout(()=>t.classList.remove("show"),4200);}
+
+/* popover merge — dibuat dinamis */
+const mm=document.createElement("div"); mm.className="pop"; mm.id="mergeMenu";
+mm.innerHTML=`<div data-m="Merge commit">Merge commit<small>Pertahankan semua commit</small></div><div data-m="Squash">Squash &amp; merge<small>Satukan jadi satu commit</small></div><div data-m="Rebase">Rebase &amp; merge<small>Riwayat lurus</small></div>`;
+$("#win").appendChild(mm);
+mm.querySelectorAll("div").forEach(d=>d.onclick=()=>doMerge(d.dataset.m));
+function popAt(sel,anchor){const w=$("#win").getBoundingClientRect(), a=anchor.getBoundingClientRect(), p=$(sel);
+  closePops(); p.style.top=(a.bottom-w.top+4)+"px"; p.style.right=(w.right-a.right)+"px"; p.style.left="auto"; p.classList.add("show");}
+function closePops(){$$(".pop").forEach(p=>p.classList.remove("show"));}
+document.addEventListener("click",closePops);
+
+$$("#sw span").forEach(s=>s.onclick=()=>setPage(s.dataset.p));
+$("#menuBtn").onclick=e=>{e.stopPropagation(); popAt("#mainMenu",e.currentTarget);};
+$("#layBtn").onclick=e=>flash("Layout","Menu layout tidak berubah (Tabel, Papan, Daftar, …)");
+$("#close").onclick=()=>{cur=null; renderList(); showView("ed");};
+$("#miSend").onclick=()=>$("#ov-send").classList.add("show");
+$("#miSrv").onclick=$("#srv").onclick=()=>$("#ov-srv").classList.add("show");
+$("#miSync").onclick=()=>flash("Diperbarui","Tidak ada perubahan baru dari server");
+$("#refresh").onclick=()=>flash("Disegarkan","Tidak ada PR baru");
+$$("[data-close]").forEach(b=>b.onclick=()=>b.closest(".overlay").classList.remove("show"));
+$("#doSend").onclick=()=>{$("#ov-send").classList.remove("show");
+  PRS.unshift({n:43,t:$("#sTitle").value||"Perubahan baru",by:"eka",when:"baru saja",st:"ok",state:"open",ci:"⏳ berjalan",files:[["jurnal/2026-10-09.md","M"]],c:[]});
+  setPage("collab"); renderList(); flash("PR #43 dibuat","Dikirim lewat fork eka/catatan");};
+$("#csend").onclick=()=>{const t=$("#ctext").value.trim(); if(!t||!cur) return; cur.c.push(["e",t]); $("#ctext").value=""; renderDetail();};
+$("#test").onclick=()=>{$("#testr").innerHTML='<span class="ok-c">✓ Terhubung sebagai eka</span>';};
+renderList();
+setTimeout(()=>flash("budi membuka PR #42","Tambah layout kalender untuk Agenda (klik untuk buka)",()=>{setPage("collab");openPR(42);}),1800);
+</script>
+</body>
+</html>
