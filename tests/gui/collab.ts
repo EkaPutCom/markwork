@@ -276,9 +276,10 @@ export function collabTests(c: GuiContext): void {
         view.discussionButton.set_active(true);
         eq(view.showingDiscussion, true);
         const text = descendants(view.discussion).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.get_label()).join('\n');
-        contains(text, 'budi · description');
+        contains(text, 'budi');
+        contains(text, 'opened this pull request');
         contains(text, 'Adds the calendar layout for the Agenda.');
-        contains(text, 'sari · ');
+        contains(text, 'sari');
         contains(text, 'Tried it on my machine');
         view.commentBox.buffer.set_text('  Thanks, merging after lunch.  ', -1);
         settle(w.pulls.comment(view.commentText));
@@ -286,7 +287,7 @@ export function collabTests(c: GuiContext): void {
         eq(view.discussionButton.get_label(), 'Discussion (2)');
         eq(view.commentText, '');
         eq(view.commentButton.get_sensitive(), true);
-        contains(descendants(view.discussion).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.get_label()).join('\n'), 'eka · ');
+        contains(descendants(view.discussion).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.get_label()).join('\n'), 'eka');
         posts.length = 0;
     });
 

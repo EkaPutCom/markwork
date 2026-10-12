@@ -115,20 +115,28 @@ export class PullView {
         this.pages = new Gtk.Stack({ vexpand: true, hexpand: true });
         this.pages.add_named(new Gtk.ScrolledWindow({ child: this.diffView }), 'diff');
         this.pages.add_named(this.message, 'message');
-        this.thread = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 12, margin_top: 4, margin_bottom: 12, margin_start: 16, margin_end: 16 });
-        this.commentBox = new Gtk.TextView({ wrap_mode: Gtk.WrapMode.WORD_CHAR, accepts_tab: false, left_margin: 8, right_margin: 8, top_margin: 6, bottom_margin: 6 });
+        this.thread = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 8, margin_bottom: 16, margin_start: 16, margin_end: 16 });
+        this.commentBox = new Gtk.TextView({ wrap_mode: Gtk.WrapMode.WORD_CHAR, accepts_tab: false, left_margin: 10, right_margin: 10, top_margin: 8, bottom_margin: 8 });
         this.commentBox.update_property([Gtk.AccessibleProperty.LABEL], [_('Write a comment…')]);
-        const commentScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, has_frame: true, min_content_height: 72, max_content_height: 160, propagate_natural_height: true, child: this.commentBox });
+        const commentScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, has_frame: true, min_content_height: 80, max_content_height: 180, propagate_natural_height: true, child: this.commentBox });
+        // A text view has no placeholder of its own: a label over it says what the box is for until something is typed.
+        const hint = new Gtk.Label({ label: _('Write a comment…'), xalign: 0, yalign: 0, can_target: false, margin_start: 11, margin_top: 9, halign: Gtk.Align.START, valign: Gtk.Align.START });
+        hint.add_css_class('dim-label');
+        this.commentBox.buffer.connect('changed', () => hint.set_visible(this.commentText === ''));
+        const commentField = new Gtk.Overlay({ child: commentScroll });
+        commentField.add_overlay(hint);
         this.commentButton = new Gtk.Button({ label: _('Comment'), halign: Gtk.Align.END });
         this.commentButton.add_css_class('suggested-action');
         this.commentButton.connect('clicked', () => { if (this.commentText) this.onComment(this.commentText); });
-        const compose = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8, margin_top: 8, margin_bottom: 12, margin_start: 16, margin_end: 16 });
-        compose.append(commentScroll);
+        const compose = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8, margin_top: 12, margin_bottom: 14 });
+        compose.append(commentField);
         compose.append(this.commentButton);
+        const composeClamp = new Adw.Clamp({ maximum_size: 760, tightening_threshold: 600, margin_start: 16, margin_end: 16, child: compose });
+        const threadClamp = new Adw.Clamp({ maximum_size: 760, tightening_threshold: 600, child: this.thread });
         this.discussion = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
-        pack(this.discussion, new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, child: this.thread }), true);
+        pack(this.discussion, new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, child: threadClamp }), true);
         this.discussion.append(new Gtk.Separator());
-        this.discussion.append(compose);
+        this.discussion.append(composeClamp);
         this.pages.add_named(this.discussion, 'discussion');
         this.pages.visible_child_name = 'message';
         const right = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, hexpand: true });
@@ -300,15 +308,36 @@ export class PullView {
         for (const entry of entries) this.thread.append(this.commentCard(entry.author, entry.body, entry.time, now, entry.description));
     }
 
+    // One message: the author's initial in a colored circle, the name and the time on one line, then the text. The description
+    // sits on a tinted background; the messages after it are told apart by a line.
     private commentCard(author: string, body: string, time: string, now: number, description: boolean): Gtk.Widget {
-        const head = new Gtk.Label({ label: description ? fmt(_('{author} · description'), { author }) : `${author} · ${relativeTime(Date.parse(time) / 1000, now)}`, xalign: 0 });
-        head.add_css_class('heading');
-        const text = new Gtk.Label({ label: body, xalign: 0, wrap: true, wrap_mode: Pango.WrapMode.WORD_CHAR, selectable: true, focusable: false, max_width_chars: 80 });
-        const card = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, margin_top: 8, margin_bottom: 8, margin_start: 12, margin_end: 12 });
-        card.add_css_class('card');
-        card.append(head);
-        card.append(text);
-        return card;
+        const ago = relativeTime(Date.parse(time) / 1000, now);
+        const initial = (Array.from(author.trim())[0] ?? '?').toUpperCase();
+        const avatar = new Gtk.Label({ label: initial, valign: Gtk.Align.START, halign: Gtk.Align.START, width_request: 32, height_request: 32 });
+        avatar.add_css_class('pull-avatar');
+        avatar.add_css_class(`pull-avatar-${Array.from(author).reduce((sum, ch) => sum + ch.codePointAt(0)!, 0) % 6}`);
+        const name = new Gtk.Label({ label: author, xalign: 0 });
+        name.add_css_class('heading');
+        const when = new Gtk.Label({ label: description ? fmt(_('opened this pull request · {time}'), { time: ago }) : ago, xalign: 0 });
+        when.add_css_class('dim-label');
+        const head = new Gtk.Box({ spacing: 8 });
+        head.append(name);
+        head.append(when);
+        const text = new Gtk.Label({ label: body, xalign: 0, wrap: true, wrap_mode: Pango.WrapMode.WORD_CHAR, selectable: true, focusable: false, hexpand: true });
+        const column = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 6, hexpand: true });
+        column.append(head);
+        column.append(text);
+        const row = new Gtk.Box({ spacing: 12, margin_top: 14, margin_bottom: 14, margin_start: 12, margin_end: 12 });
+        row.append(avatar);
+        row.append(column);
+        const entry = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+        if (description) entry.add_css_class('pull-description');
+        entry.append(row);
+        // A line under every message but the description, which has its own background.
+        const wrapper = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+        wrapper.append(entry);
+        if (!description) wrapper.append(new Gtk.Separator());
+        return wrapper;
     }
 
     // A comment is being sent; it stays in the box until the forge has taken it.
