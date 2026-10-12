@@ -8,7 +8,7 @@ import { GiteaProvider } from '../forge/gitea.js';
 import { soupTransport } from '../forge/http.js';
 import { PullMonitor, type PullEvent } from '../forge/monitor.js';
 import { parseRemote } from '../forge/remote.js';
-import { systemTokenStore, type TokenStore } from '../forge/token.js';
+import { systemTokenStore, type TokenSource, type TokenStore } from '../forge/token.js';
 import { ForgeError, type ForgeProvider, type PullRequest, type RepoRef, type Transport } from '../forge/types.js';
 import type { AppSettings } from '../settings.js';
 import type { CollabPanel } from '../ui/collab.js';
@@ -51,9 +51,9 @@ export class CollabController {
     private failing = false;                // the last round failed: report the next failure only after a success
     private notified = new Set<string>();
     // The token dialog; tests replace it with an immediate answer.
-    dialogs: { token: (repo: RepoRef, hasToken: boolean) => Promise<string | null> } = {
-        token: (repo, hasToken) => tokenDialog(this.host.win, {
-            host: repo.host, repository: `${repo.owner}/${repo.repo}`, hasToken,
+    dialogs: { token: (repo: RepoRef, hasToken: boolean, source?: TokenSource) => Promise<string | null> } = {
+        token: (repo, hasToken, source) => tokenDialog(this.host.win, {
+            host: repo.host, repository: `${repo.owner}/${repo.repo}`, hasToken, source,
             test: token => this.test(repo, token),
         }),
     };
@@ -179,8 +179,8 @@ export class CollabController {
     async editToken(): Promise<void> {
         const repo = this.repo ?? (this.folder ? parseRemote((await this.services.remoteUrl(this.folder)) ?? '') : null);
         if (!repo) return;
-        const hasToken = !!(await this.services.tokens.get(repo.host));
-        const answer = await this.dialogs.token(repo, hasToken);
+        const saved = await this.services.tokens.get(repo.host);
+        const answer = await this.dialogs.token(repo, !!saved, saved?.source);
         if (answer === null) return;
         if (answer === '') await this.services.tokens.clear(repo.host);
         else await this.services.tokens.set(repo.host, answer);

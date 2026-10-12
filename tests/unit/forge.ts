@@ -161,6 +161,12 @@ export function forgeTests(): void {
         contains(failure(gitea.merge(4, 'merge')).message, 'merge conflict');
         eq(failure(gitea.getPull(5)).failure, 'server');
     });
+    test('a server that explains itself over many lines is reported with its first line', () => {
+        const forge = fakeForge({ 'GET /pulls/1': json(401, { message: 'token is malformed: invalid number of segments\naccess token does not exist [sha: x]\nauthorized integration: parse JWT error' }) });
+        const error = failure(new GiteaProvider(REPO, 't', forge.transport).getPull(1));
+        contains(error.message, 'token is malformed: invalid number of segments');
+        ok(!error.message.includes('\n') && !error.message.includes('access token does not exist'), 'only the first line');
+    });
     test('no token fails before any request', () => {
         const forge = fakeForge({});
         eq(failure(new GiteaProvider(REPO, '', forge.transport).listPulls('open')).failure, 'auth');

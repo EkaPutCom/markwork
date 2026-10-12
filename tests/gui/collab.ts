@@ -7,6 +7,7 @@ import type { HttpRequest, HttpResponse } from '../../src/forge/types.js';
 import { section, test, eq, ok, contains, settle, optVal, tmp } from '../framework.js';
 import type { GuiContext } from './context.js';
 import { descendants, widgetPixbuf } from '../widgets.js';
+import { tokenDialog } from '../../src/ui/serverdialog.js';
 import { sendChangesDialog, type SendChangesAnswer, type SendChangesOptions } from '../../src/ui/sendchanges.js';
 
 const apiPull = (n: number, extra: object = {}) => ({
@@ -455,6 +456,23 @@ export function collabTests(c: GuiContext): void {
         ok(waitFor(() => !w.win.get_visible_dialog()), 'and again');
     });
 
+    test('the token dialog says when the token comes from the environment, and offers no removal then', () => {
+        const textOf = (root: Gtk.Widget) => descendants(root).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.get_label()).join('\n');
+        const shownFor = (source: 'env' | 'file') => {
+            const opened = tokenDialog(w.win, { host: 'git.example.org', repository: 'eka/notes', hasToken: true, source, test: async () => 'ok' });
+            ok(waitFor(() => !!w.win.get_visible_dialog()), 'the dialog is shown');
+            settleDialog();
+            const text = textOf(w.win.get_visible_dialog() as Gtk.Widget);
+            w.win.get_visible_dialog()?.close();
+            eq(settle(opened), null);
+            ok(waitFor(() => !w.win.get_visible_dialog()), 'the dialog went away');
+            return text;
+        };
+        contains(shownFor('env'), 'MARKWORK_FORGE_TOKEN environment variable');
+        ok(!shownFor('env').includes('remove the saved token'), 'no removal offered for an environment token');
+        contains(shownFor('file'), 'Save with the field empty to remove the saved token.');
+    });
+
     test('without a connection to a forge the user is told how to connect', () => {
         w.collab.dispose();
         contains(startAndWait(), 'Connect to a server');
@@ -521,6 +539,7 @@ export function collabTests(c: GuiContext): void {
         const toast = toastOf(() => w.pulls.resolve());
         contains(toast, '1 file has conflicts');
         eq(w.file, rsNote);
+        eq(w.editor.modes.source, true);   // the markers are shown as they are, not rendered as Markdown
         contains(new TextDecoder().decode(GLib.file_get_contents(rsNote)[1]), '<<<<<<<');
     });
 

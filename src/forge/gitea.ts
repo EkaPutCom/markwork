@@ -192,7 +192,8 @@ export class GiteaProvider implements ForgeProvider {
 // The forge explains itself in {"message": "..."}; fall back to the status when it does not.
 function httpError(status: number, body: string, host: string): ForgeError {
     let detail = '';
-    try { detail = String(JSON.parse(body).message ?? ''); } catch (e) { /* not JSON */ }
+    // Forgejo can answer with several lines of internals ("token is malformed", "access token does not exist", …); the first says it.
+    try { detail = String(JSON.parse(body).message ?? '').split('\n')[0].trim(); } catch (e) { /* not JSON */ }
     const suffix = detail ? `: ${detail}` : '';
     if (status === 401 || status === 403) return new ForgeError('auth', `${host} refused the access token (HTTP ${status})${suffix}`, status);
     if (status === 404) return new ForgeError('not-found', `Not found on ${host}${suffix}`, status);

@@ -16,7 +16,7 @@ import { diffNote, type NoteDiff } from '../markdown/notediff.js';
 import { decideDialog, mergeDialog } from '../ui/dialogs.js';
 import type { FileView, PullView } from '../ui/pullview.js';
 import { _, fmt, ngettext } from '../i18n.js';
-import type { DocumentHost } from './doc.js';
+import { docFor, type DocumentHost } from './doc.js';
 
 export interface PullHost extends DocumentHost {
     readonly content: Gtk.Stack;
@@ -249,7 +249,11 @@ export class PullReviewController {
         if (!started.ok) return this.host.toast(started.message);
         this.local = { merge, files: started.conflicts, before: started.before };
         this.host.refreshTree();
-        for (const file of started.conflicts) this.host.openInTab(file);
+        for (const file of started.conflicts) {
+            this.host.openInTab(file);
+            // The editor would otherwise render the markers as Markdown: `=======` becomes a heading underline and `>>>>>>>` a quote.
+            docFor(this.host, file)?.editor.setMode('source', true);
+        }
         // Opening the files puts a document in front of the review; the review is back from the list.
         this.host.toast(started.conflicts.length ? fmt(ngettext('{count} file has conflicts. Edit it, then open the pull request again and choose Finish and push.', '{count} files have conflicts. Edit them, then open the pull request again and choose Finish and push.', started.conflicts.length), { count: started.conflicts.length }) : _('Merged without conflicts. Choose Finish and push to send it to the server.'));
         if (!started.conflicts.length) this.host.pullView.setResolving(0);
