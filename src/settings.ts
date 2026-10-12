@@ -16,7 +16,7 @@ export interface SavedTab {
     cursor: number;          // cursor position (code points)
 }
 
-export type SidebarPage = 'files' | 'outline' | 'history';
+export type SidebarPage = 'files' | 'outline' | 'history' | 'collab';
 
 // When run from dist/, the compiled schema is next to the bundle (see vite.config.ts).
 // When installed (Meson/Flatpak), the schema is in the system schema directory and there is no copy next to the bundle.
@@ -53,6 +53,12 @@ export class AppSettings {
     set sidebar(value: boolean) { this.gsettings.set_boolean('sidebar', value); }
     get sidebarPage(): SidebarPage { return this.gsettings.get_string('sidebar-page') as SidebarPage; }
     set sidebarPage(value: SidebarPage) { this.gsettings.set_string('sidebar-page', value); }
+
+    // Collaboration: how often to ask the forge for pull requests, and whether a new one raises a desktop notification.
+    get forgePollSeconds(): number { return this.gsettings.get_uint('forge-poll-seconds'); }
+    set forgePollSeconds(value: number) { this.gsettings.set_uint('forge-poll-seconds', value); }
+    get forgeNotify(): boolean { return this.gsettings.get_boolean('forge-notify'); }
+    set forgeNotify(value: boolean) { this.gsettings.set_boolean('forge-notify', value); }
     get chat(): boolean { return this.gsettings.get_boolean('chat'); }
     set chat(value: boolean) { this.gsettings.set_boolean('chat', value); }
     get chatModel(): string { return this.gsettings.get_string('chat-model'); }

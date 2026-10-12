@@ -9,6 +9,7 @@
     <value nick="files" value="0"/>
     <value nick="outline" value="1"/>
     <value nick="history" value="2"/>
+    <value nick="collab" value="3"/>
   </enum>
 
   <schema id="com.ekaput.Markwork" path="/com/ekaput/Markwork/">
@@ -53,6 +54,16 @@
     <key name="chat-save" type="b">
       <default>true</default>
       <summary>Save conversation history in folder/.markwork/chats</summary>
+    </key>
+
+    <key name="forge-poll-seconds" type="u">
+      <range min="30" max="3600"/>
+      <default>60</default>
+      <summary>How often to look for new pull requests, in seconds</summary>
+    </key>
+    <key name="forge-notify" type="b">
+      <default>true</default>
+      <summary>Show a desktop notification for a new or updated pull request</summary>
     </key>
 
     <key name="folder" type="s">

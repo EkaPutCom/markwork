@@ -19,7 +19,7 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
         GObject.registerClass({
             GTypeName: 'MarkworkPreferencesDialog',
             Template: uiTemplate(template),
-            InternalChildren: ['colorScheme', 'focus', 'typewriter', 'home', 'autosave', 'chatModel', 'chatModels', 'chatThinking', 'chatSave'],
+            InternalChildren: ['colorScheme', 'focus', 'typewriter', 'home', 'autosave', 'chatModel', 'chatModels', 'chatThinking', 'chatSave', 'forgePoll', 'forgeNotify'],
         }, this);
     }
 
@@ -32,6 +32,8 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
     declare _chatModels: Gtk.StringList;
     declare _chatThinking: Adw.SwitchRow;
     declare _chatSave: Adw.SwitchRow;
+    declare _forgePoll: Adw.SpinRow;
+    declare _forgeNotify: Adw.SwitchRow;
 
     constructor(settings: AppSettings) {
         super();
@@ -43,6 +45,8 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
         gs.bind('autosave', this._autosave, 'active', flags);
         gs.bind('chat-thinking', this._chatThinking, 'active', flags);
         gs.bind('chat-save', this._chatSave, 'active', flags);
+        gs.bind('forge-poll-seconds', this._forgePoll, 'value', flags);
+        gs.bind('forge-notify', this._forgeNotify, 'active', flags);
 
         this.bindChoice(gs, 'color-scheme', this._colorScheme, SCHEMES);
         for (const model of DEEPSEEK_MODELS) this._chatModels.append(model);

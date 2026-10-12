@@ -60,6 +60,7 @@ import { workTests } from './unit/work.js';
 import { traceTests } from './unit/trace.js';
 import { changeTests } from './unit/changes.js';
 import { deepseekTests } from './unit/deepseek.js';
+import { forgeTests } from './unit/forge.js';
 import { commitMessageTests } from './unit/commitmessage.js';
 import { dialogTests } from './gui/dialogs.js';
 import { harnessTests as harnessModelTests } from './unit/harness.js';
@@ -88,6 +89,7 @@ import { windowSizeTests } from './gui/window.js';
 import { gnomeTests } from './gui/gnome.js';
 import { robustnessTests } from './gui/robust.js';
 import { historyTests } from './gui/history.js';
+import { collabTests } from './gui/collab.js';
 import { tabTests } from './gui/tabs.js';
 import { homeTests } from './gui/home.js';
 import { journalTests } from './gui/journal.js';
@@ -128,6 +130,7 @@ function runUnitTests(): void {
     agentActionTests();
     changeTests();
     deepseekTests();
+    forgeTests();
     commitMessageTests();
     harnessModelTests();
 }
@@ -203,6 +206,7 @@ function runGuiTests(app: Adw.Application): void {
     homeTests(c);
     journalTests(c);
     historyTests(c);
+    collabTests(c);
     chatTests(c);
     robustnessTests(c);
 
