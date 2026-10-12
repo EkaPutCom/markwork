@@ -163,7 +163,7 @@ export class MainWindow {
         this.autosaver = new Autosaver(this.host);
         this.journal = new JournalController(this.host);
         this.collab = new CollabController(this.host);
-        this.pulls = new PullReviewController(this.host, { provider: () => this.collab.provider(), changed: () => void this.collab.refresh() });
+        this.pulls = new PullReviewController(this.host, { provider: () => this.collab.provider(), changed: () => void this.collab.refresh(), session: () => this.collab.session() });
         this.collab.onOpenPull = pull => void this.pulls.open(pull);
         this.contribute = new ContributeController(this.host, { session: () => this.collab.session(), refresh: () => void this.collab.refresh() });
         this.collab.onSend = () => void this.contribute.start();
@@ -840,7 +840,7 @@ export class MainWindow {
         this.workspace.warm(absolute);
         this.fileTree.reveal(this.file);
         this.syncHistory();
-        if (this.pulls.current) this.pulls.close();
+        this.pulls.folderChanged();
         void this.collab.setFolder(absolute);
         this.settings.folder = absolute;
         if (this.doc.home) this.updateTitle();

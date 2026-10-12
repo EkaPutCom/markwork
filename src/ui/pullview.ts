@@ -8,7 +8,7 @@ import Pango from 'gi://Pango';
 import { relativeTime } from '../gitlog.js';
 import type { DiffLine } from '../gitlog.js';
 import { pack, removeChildren } from '../gtkutil.js';
-import { _, fmt } from '../i18n.js';
+import { _, fmt, ngettext } from '../i18n.js';
 import type { MergeMethod, PullComment, PullFile, PullRequest } from '../forge/types.js';
 import { createDiffView, fillDiff, setupDiffTags } from './historyviewer.js';
 
@@ -27,6 +27,7 @@ export class PullView {
     readonly title: Gtk.Label;
     readonly meta: Gtk.Label;
     readonly merge: Adw.SplitButton;
+    readonly abort: Gtk.Button;               // undoes the local merge while the conflicts are being resolved
     readonly files: Gtk.ListBox;
     readonly diffView: Gtk.TextView;
     readonly message: Gtk.Label;              // a sentence instead of the diff: loading, an error, a binary file
@@ -42,15 +43,23 @@ export class PullView {
     private view: FileView | null = null;
     private wantsRaw = false;                // the user's choice; a file that is not a note shows raw without changing it
     private discussing = false;
+    private resolving: number | null = null;   // files that still have conflict markers; null = not resolving here
+    private bannerText: string | null = null;
+    private canResolve = false;
     private syncing = false;
     onClose: () => void = () => {};
     onSelect: (path: string) => void = () => {};
     onMerge: (method: MergeMethod) => void = () => {};
     onBrowser: () => void = () => {};
     onComment: (text: string) => void = () => {};
+    onResolve: () => void = () => {};
+    onFinish: () => void = () => {};
+    onAbort: () => void = () => {};
 
     constructor() {
         this.banner = new Adw.Banner({ revealed: false });
+        // One button on the banner, whose job depends on the state: start resolving, or finish.
+        this.banner.connect('button-clicked', () => { if (this.resolving === null) this.onResolve(); else this.onFinish(); });
 
         const close = Gtk.Button.new_from_icon_name('go-previous-symbolic');
         close.set_has_frame(false);
@@ -71,6 +80,9 @@ export class PullView {
         const header = new Gtk.Box({ spacing: 8, margin_top: 8, margin_bottom: 8, margin_start: 8, margin_end: 12 });
         header.append(close);
         pack(header, titles, true);
+        this.abort = new Gtk.Button({ label: _('Abort merge'), visible: false, tooltip_text: _('Undo the merge in this folder and start over') });
+        this.abort.connect('clicked', () => this.onAbort());
+        header.append(this.abort);
         header.append(browser);
         header.append(this.merge);
 
@@ -168,12 +180,33 @@ export class PullView {
         }));
         const open = pull.state === 'open';
         this.merge.set_visible(open);
-        this.merge.set_sensitive(open && pull.mergeable !== false);
-        const banner = !open ? (pull.state === 'merged' ? _('This pull request has been merged.') : _('This pull request is closed.'))
-            : pull.mergeable === false ? fmt(_('This pull request conflicts with {base}. Resolve the conflicts first, for example with git on your computer.'), { base: pull.baseRef })
+        this.merge.set_sensitive(open && pull.mergeable !== false && this.resolving === null);
+        this.canResolve = open && pull.mergeable === false;
+        this.bannerText = !open ? (pull.state === 'merged' ? _('This pull request has been merged.') : _('This pull request is closed.'))
+            : pull.mergeable === false ? fmt(_('This pull request conflicts with {base}. Resolve the conflicts on this computer, or ask the author to.'), { base: pull.baseRef })
             : pull.mergeable === null ? _('Checking whether it can be merged…') : null;
-        this.banner.set_title(banner ?? '');
-        this.banner.set_revealed(banner !== null);
+        this.refreshBanner();
+    }
+
+    // null = the pull request is not being resolved here; a number = files that still have conflict markers.
+    setResolving(files: number | null): void {
+        this.resolving = files;
+        this.abort.set_visible(files !== null);
+        if (files !== null) this.merge.set_sensitive(false);
+        this.refreshBanner();
+    }
+
+    private refreshBanner(): void {
+        let title = this.bannerText, button: string | null = this.canResolve ? _('Resolve locally…') : null;
+        if (this.resolving !== null) {
+            title = this.resolving
+                ? fmt(ngettext('{n} file still has conflict markers. Edit it in its tab, then finish.', '{n} files still have conflict markers. Edit them in their tabs, then finish.', this.resolving), { n: this.resolving })
+                : _('The conflicts are resolved. Finish to push the merge to the server.');
+            button = _('Finish and push');
+        }
+        this.banner.set_title(title ?? '');
+        this.banner.set_button_label(button);
+        this.banner.set_revealed(title !== null);
     }
 
     // The merge is running: the button cannot be pressed twice.

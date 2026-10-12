@@ -181,13 +181,14 @@ export function collabTests(c: GuiContext): void {
     const NOTE_AFTER = '---\ndate: 2026-10-14\nowner: budi\n---\n# Rapat\n\nBahas kolaborasi.\n';
     const posts: HttpRequest[] = [];
     const sendOrigin = GLib.build_filenamev([tmp, 'send-origin.git']);
+    let cloneUrl = sendOrigin;
     const comments: object[] = [{ id: 1, body: 'Tried it on my machine, the calendar works.', user: { login: 'sari' }, created_at: '2026-10-12T08:00:00Z' }];
     let merged = false;
     const API = 'https://git.example.org/api/v1/repos/eka/notes';
     const routes = (request: HttpRequest): HttpResponse => {
         if (request.url === 'https://git.example.org/api/v1/user') return { status: 200, body: '{"login":"eka"}' };
         const path = request.url.slice(API.length);
-        if (path === '') return { status: 200, body: JSON.stringify({ name: 'notes', owner: { login: 'eka' }, clone_url: sendOrigin, default_branch: 'main', fork: false, permissions: { push: true } }) };
+        if (path === '') return { status: 200, body: JSON.stringify({ name: 'notes', owner: { login: 'eka' }, clone_url: cloneUrl, default_branch: 'main', fork: false, permissions: { push: true } }) };
         if (request.method === 'POST' && path === '/pulls') { posts.push(request); return { status: 201, body: JSON.stringify(apiPull(50, { title: JSON.parse(request.body ?? '{}').title })) }; }
         if (request.method === 'POST' && path === '/issues/42/comments') {
             posts.push(request);
@@ -460,6 +461,112 @@ export function collabTests(c: GuiContext): void {
     });
 
     for (const name of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) GLib.unsetenv(name);
+
+    w.collab.dispose();
+
+    section('Resolve a pull request locally');
+    for (const [name, value] of Object.entries({ GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 'tester@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 'tester@example.com' })) GLib.setenv(name, value, true);
+    const rsRoot = GLib.build_filenamev([tmp, 'resolve-gui']);
+    const rsBare = GLib.build_filenamev([rsRoot, 'forge.git']), rsWork = GLib.build_filenamev([rsRoot, 'work']), rsAuthor = GLib.build_filenamev([rsRoot, 'author']);
+    GLib.mkdir_with_parents(rsBare, 0o755);
+    git(rsBare, 'init', '-q', '--bare', '-b', 'main');
+    git(rsRoot, 'clone', '-q', rsBare, rsWork);
+    git(rsWork, 'checkout', '-q', '-B', 'main');
+    const rsNote = GLib.build_filenamev([rsWork, 'journal.md']);
+    GLib.file_set_contents(rsNote, '# Journal\n\nhello\n');
+    git(rsWork, 'add', 'journal.md');
+    git(rsWork, 'commit', '-q', '-m', 'First');
+    git(rsWork, 'push', '-q', '-u', 'origin', 'main');
+    git(rsRoot, 'clone', '-q', rsBare, rsAuthor);
+    git(rsAuthor, 'checkout', '-q', '-b', 'typo');
+    GLib.file_set_contents(GLib.build_filenamev([rsAuthor, 'journal.md']), '# Journal\n\nhello from the pull request\n');
+    git(rsAuthor, 'commit', '-q', '-a', '-m', 'Fix a typo');
+    git(rsAuthor, 'push', '-q', 'origin', 'typo');
+    const sha = (cwd: string, ref: string) => { const [, out] = GLib.spawn_sync(cwd, ['git', 'rev-parse', ref], env, GLib.SpawnFlags.SEARCH_PATH, null); return new TextDecoder().decode(out ?? undefined).trim(); };
+    git(rsBare, 'update-ref', 'refs/pull/41/head', sha(rsAuthor, 'HEAD'));
+    GLib.file_set_contents(rsNote, '# Journal\n\nhello from main\n');
+    git(rsWork, 'commit', '-q', '-a', '-m', 'Main moved on');
+    git(rsWork, 'push', '-q', 'origin', 'main');
+    cloneUrl = rsBare;
+    w.openFolder(rsWork);
+    ok(waitFor(() => w.collab.pulls.length === 2 && w.collab.session() !== null), 'the folder is connected');
+    let localAnswer = true, abortAnswer = true;
+    w.pulls.dialogs.local = async () => localAnswer;
+    w.pulls.dialogs.abort = async () => abortAnswer;
+    const toastOf = (run: () => unknown) => { const before = w.lastToast; w.lastToast = ''; settle(Promise.resolve(run()) as Promise<unknown>); const toast = w.lastToast; w.lastToast = before; return toast; };
+    const conflictedPull = () => w.collab.pulls.find(p => p.number === 41)!;
+
+    test('the banner of a pull request that conflicts offers to resolve it here', () => {
+        settle(w.pulls.open(conflictedPull()));
+        eq(view.banner.get_revealed(), true);
+        eq(view.banner.get_button_label(), 'Resolve locally…');
+        eq(view.abort.get_visible(), false);
+    });
+
+    test('a folder with uncommitted changes is not merged into', () => {
+        GLib.file_set_contents(rsNote, '# Journal\n\nedited by hand\n');
+        contains(toastOf(() => w.pulls.resolve()), 'not committed');
+        git(rsWork, 'checkout', '-q', '--', 'journal.md');
+    });
+
+    test('declining the question merges nothing', () => {
+        localAnswer = false;
+        toastOf(() => w.pulls.resolve());
+        eq(sha(rsWork, 'HEAD'), sha(rsBare, 'main'));
+        eq(w.pulls.current?.number, 41);
+        localAnswer = true;
+    });
+
+    test('resolving merges the pull request into the folder and opens the file that conflicts', () => {
+        const toast = toastOf(() => w.pulls.resolve());
+        contains(toast, '1 file has conflicts');
+        eq(w.file, rsNote);
+        contains(new TextDecoder().decode(GLib.file_get_contents(rsNote)[1]), '<<<<<<<');
+    });
+
+    test('opening the pull request again shows how many files are left, and Abort', () => {
+        settle(w.pulls.open(conflictedPull()));
+        eq(view.banner.get_button_label(), 'Finish and push');
+        contains(view.banner.get_title(), '1 file still has conflict markers');
+        eq(view.abort.get_visible(), true);
+        eq(view.merge.get_sensitive(), false);
+        const prefix = optVal('shot-collab');
+        if (prefix) {
+            for (let i = 0; i < 40; i++) { pump(); GLib.usleep(10000); }
+            widgetPixbuf(w.win)?.savev(`${prefix}-resolving.png`, 'png', [], []);
+        }
+    });
+
+    test('finishing with the markers still there is refused and pushes nothing', () => {
+        const before = sha(rsBare, 'main');
+        contains(toastOf(() => w.pulls.finish()), 'Still has conflict markers: journal.md');
+        eq(sha(rsBare, 'main'), before);
+    });
+
+    test('aborting asks first, and returns the folder to what it was', () => {
+        abortAnswer = false;
+        toastOf(() => w.pulls.abort());
+        eq(view.abort.get_visible(), true);
+        abortAnswer = true;
+        contains(toastOf(() => w.pulls.abort()), 'undone');
+        eq(view.abort.get_visible(), false);
+        eq(sha(rsWork, 'HEAD'), sha(rsBare, 'main'));
+    });
+
+    test('resolving again, editing the file, and finishing pushes the merge to the server', () => {
+        toastOf(() => w.pulls.resolve());
+        w.editor.replaceText('# Journal\n\nhello from main and the pull request\n');   // an edit, not a load: the document is modified and gets saved
+        settle(w.pulls.open(conflictedPull()));
+        const toast = toastOf(() => w.pulls.finish());
+        contains(toast, 'Pushed');
+        eq(sha(rsBare, 'main'), sha(rsWork, 'HEAD'));
+        const [, parents] = GLib.spawn_sync(rsBare, ['git', 'log', '-1', '--format=%P', 'main'], env, GLib.SpawnFlags.SEARCH_PATH, null);
+        eq(new TextDecoder().decode(parents ?? undefined).trim().split(' ').length, 2);
+        eq(view.abort.get_visible(), false);
+    });
+
+    for (const name of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) GLib.unsetenv(name);
+    cloneUrl = sendOrigin;
 
     w.collab.dispose();
     if (previousRoot) w.openFolder(previousRoot);
