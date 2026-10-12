@@ -139,6 +139,14 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
 .card .new { font-size: .7rem; font-weight: 700; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 0 .5em; margin-left: 6px; vertical-align: middle; }
 .grid-head { margin: 56px 0 16px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .grid-head:first-of-type { margin-top: 0; }
+
+/* One file, many layouts */
+.laygif { max-width: 900px; margin-inline: auto; }
+.laygif img { width: 100%; }
+.layshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px 22px; margin-top: 56px; }
+.layshots .shot img { width: 100%; }
+.layshots figcaption strong { color: var(--text); }
+.laynote { max-width: 760px; margin: 14px auto 0; }
 </style>
 </head>
 <body>
@@ -150,6 +158,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
       Markwork
     </a>
     <nav>
+      <a class="hide-sm" href="#layouts">Layouts</a>
       <a class="hide-sm" href="#agent">Agent features</a>
       <a class="hide-sm" href="#flow">How it works</a>
       <a class="hide-sm" href="#orchestrator">Orchestrator</a>
@@ -166,7 +175,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
   <div class="wrap">
     <span class="pill">Open source · MIT license · For the Linux desktop</span>
     <h1>Markdown workspace<br><em>for humans and AI agents.</em></h1>
-    <p class="lead">An AI agent that works in your folder of notes, plans, and task boards. It browses, plans, and proposes real changes, then waits for you to approve the diff before it writes anything.</p>
+    <p class="lead">An AI agent that works in your folder of notes, plans, and task boards. It browses, plans, and proposes real changes, then waits for you to approve the diff before it writes anything. And one Markdown file can be a board, a list, a table, a calendar, or a chart.</p>
     <div class="cta">
       <a class="btn" href="docs/">Start in the documentation</a>
       <a class="btn ghost" href="https://github.com/EkaPutCom/markwork">See the code on GitHub</a>
@@ -176,6 +185,30 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
     </figure>
   </div>
 </div>
+
+<!-- ========== LAYOUTS ========== -->
+<section class="alt" id="layouts">
+  <div class="wrap">
+    <div class="center">
+      <p class="eyebrow">Layouts</p>
+      <h2>One Markdown file, many layouts.</h2>
+      <p class="sub">A board, a list, a table, a calendar, a timeline, a gallery, or a chart is not a different file. It is one <code>layout:</code> line in the frontmatter. Change that line, or pick a layout from the header bar, and the same notes appear in a new shape. The text is never converted.</p>
+    </div>
+    <figure class="shot laygif">
+      <img src="assets/layouts.gif" width="900" height="548" loading="lazy" alt="Animation of one launch plan file switching between a board, a list, a table, a calendar, a timeline, a gallery, and a chart">
+      <figcaption>The same <code>launch-plan.md</code> as a board, list, table, calendar, timeline, gallery, and chart: only the <code>layout:</code> line changes</figcaption>
+    </figure>
+    <div class="layshots">
+      <figure class="shot"><a href="docs/docs/kanban.html"><img src="assets/layout-list.png" width="1280" height="780" loading="lazy" alt="The same launch plan file shown as a list"></a><figcaption><strong>List.</strong> Capture quickly; the same headings are sections.</figcaption></figure>
+      <figure class="shot"><a href="docs/docs/kanban.html"><img src="assets/layout-table.png" width="1280" height="780" loading="lazy" alt="The same launch plan file shown as a table"></a><figcaption><strong>Table.</strong> One row per note, one column per field; click a cell to edit it.</figcaption></figure>
+      <figure class="shot"><a href="docs/docs/kanban.html"><img src="assets/layout-calendar.png" width="1280" height="780" loading="lazy" alt="The same launch plan file shown as a calendar"></a><figcaption><strong>Calendar.</strong> Notes sit on the day of a date field; drag one to reschedule it.</figcaption></figure>
+      <figure class="shot"><a href="docs/docs/kanban.html"><img src="assets/layout-timeline.png" width="1280" height="780" loading="lazy" alt="The same launch plan file shown as a timeline"></a><figcaption><strong>Timeline.</strong> A bar from <code>start</code> to <code>due</code>; drag it to move both dates.</figcaption></figure>
+      <figure class="shot"><a href="docs/docs/kanban.html"><img src="assets/layout-gallery.png" width="1280" height="780" loading="lazy" alt="The same launch plan file shown as a gallery"></a><figcaption><strong>Gallery.</strong> A card per note with a cover, tags, and fields.</figcaption></figure>
+      <figure class="shot"><a href="docs/docs/kanban.html"><img src="assets/layout-chart.png" width="1280" height="780" loading="lazy" alt="The same launch plan file shown as a chart"></a><figcaption><strong>Chart.</strong> Counts the notes by status, tag, and week without changing them.</figcaption></figure>
+    </div>
+    <p class="note laynote center">Every layout edits the same Markdown text, with one undo step per change. The agent can add notes, fill in fields, and switch the layout too (<code>describe_schema</code>, <code>query_notes</code>, <code>edit_note</code>, <code>edit_schema</code>), as a diff you approve first.</p>
+  </div>
+</section>
 
 <!-- ========== AGENT FEATURES ========== -->
 <section id="agent">
