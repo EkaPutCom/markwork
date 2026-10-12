@@ -17,12 +17,12 @@ const goal = 'Sync the release date and the board';
 const plan = (done: boolean) => call('set_work', { goal, steps: [{ text: 'Sync the plan and the board', status: done ? 'done' : 'pending' }], note: '' });
 const batch = call('propose_batch', { actions: [
     { tool: 'edit_file', arguments: JSON.stringify({ name: 'plan.md', old_text: 'November 15', new_text: 'November 22', reason: 'Meeting decision' }) },
-    { tool: 'edit_kanban', arguments: JSON.stringify({ name: 'board.md', action: 'move', card: 'Release material', list: 'In Progress', reason: 'Start working' }) },
+    { tool: 'edit_note', arguments: JSON.stringify({ name: 'board.md', action: 'move', note: 'Release material', group: 'In Progress', reason: 'Start working' }) },
 ] });
 const verify = call('verify_work', { checks: [
     { file: 'plan.md', kind: 'present', text: 'November 22' },
     { file: 'plan.md', kind: 'absent', text: 'November 15' },
-    { file: 'board.md', kind: 'kanban', text: 'Release material', list: 'In Progress', done: false },
+    { file: 'board.md', kind: 'note', text: 'Release material', group: 'In Progress', done: false },
 ] });
 
 const initial = (): SourceFile[] => [{ name: 'plan.md', text: '# Plan\nRelease November 15\n' },

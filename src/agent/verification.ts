@@ -1,8 +1,7 @@
 // Deterministic checks of the actual contents; it does not claim to prove the meaning of the whole document.
 import type { SourceFile } from './context.js';
 import type { ToolSpec } from './provider.js';
-import { isBoard } from '../markdown/layout.js';
-import { parseBoard } from '../markdown/kanban.js';
+import { checkNote, checkNoteField, structuredIssues } from './notes.js';
 import { newIssues, resolveLink, scanDocument, type Issue } from '../markdown/lint.js';
 
 export interface Verification {
@@ -15,13 +14,16 @@ const MAX_LISTED = 8;
 
 export const VERIFY_TOOL: ToolSpec = {
     name: 'verify_work',
-    description: 'Check the actual result after changes. State the criteria from the user\'s request: text that must be present/absent, kanban cards in a given list and status, or Markdown structure (tables, headings, code blocks, links to other files) without new problems. file "*" means the whole folder, e.g. making sure an old date remains in no file. Check all changed files. A failed result means the work is not finished.',
+    description: 'Check the actual result after changes. State the criteria from the user\'s request: text that must be present/absent, a note in a structured document (kind note: text = the note, optionally in a group and done or not done), the value of a field of a note in a structured document (kind field: text = a piece of the note, field = the field name, value = the expected value, empty for no value), or Markdown structure (tables, headings, code blocks, links to other files, and for a structured document its field declarations and the values of its notes) without new problems. file "*" means the whole folder, e.g. making sure an old date remains in no file. Check all changed files. A failed result means the work is not finished.',
     parameters: { type: 'object', properties: {
         checks: { type: 'array', minItems: 1, maxItems: 40, items: { type: 'object', properties: {
             file: { type: 'string', description: 'File name, or "*" for the whole folder (present/absent only)' },
-            kind: { type: 'string', enum: ['present', 'absent', 'kanban', 'structure'] },
-            text: { type: 'string', description: 'present/absent: the exact text; kanban: the card text. Not used for structure' },
-            list: { type: 'string' }, done: { type: 'boolean' },
+            kind: { type: 'string', enum: ['present', 'absent', 'note', 'field', 'structure'] },
+            text: { type: 'string', description: 'present/absent: the exact text; note: a piece of the text of the note; field: a piece of the text of the note. Not used for structure' },
+            group: { type: 'string', description: 'note only: the group (the ## heading, the column of a board) the note must be in' },
+            done: { type: 'boolean', description: 'note only: the done status the note must have' },
+            field: { type: 'string', description: 'field only: the field name' },
+            value: { type: 'string', description: 'field only: the expected value (as written in the note); empty means the note must not have the field' },
         }, required: ['file', 'kind'], additionalProperties: false } },
     }, required: ['checks'], additionalProperties: false },
 };
@@ -43,6 +45,7 @@ export function fileIssues(name: string, text: string, files: SourceFile[]): Iss
         const path = resolveLink(name, link.target);
         if (path === null || !names.has(path)) issues.push({ line: link.line, key: `link:${link.target}`, text: `the link to "${link.target}" (line ${link.line}) does not point to a file in the folder` });
     }
+    issues.push(...structuredIssues(text));
     return issues;
 }
 
@@ -60,7 +63,7 @@ export function structureCheck(file: SourceFile, files: SourceFile[], baseline: 
 }
 
 type Check = Verification['checks'][number];
-const KINDS = ['present', 'absent', 'kanban', 'structure'];
+const KINDS = ['present', 'absent', 'note', 'field', 'structure'];
 
 export function verifyWork(raw: string, files: SourceFile[], baseline: (file: string) => string | null = () => null): Verification {
     try {
@@ -91,18 +94,17 @@ function folderCheck(kind: string, text: string, files: SourceFile[]): Check {
     return { file: '*', label: `${kind} in the whole folder: ${text}${hits.length && kind === 'absent' ? ` — still present in ${listLines(hits)}` : ''}`, passed };
 }
 
-// present, absent, or kanban in one file.
+// present, absent, note, or field in one file.
 function fileCheck(c: any, text: string, file: SourceFile): Check {
-    const passed = c.kind === 'present' ? file.text.includes(text)
-        : c.kind === 'absent' ? !file.text.includes(text)
-        : cardMatches(file, text, c.list, c.done);
+    if (c.kind === 'field') return fieldCheck(c, text, file);
+    if (c.kind === 'note') return { file: c.file, ...checkNote(file.text, text, typeof c.group === 'string' ? c.group : null, typeof c.done === 'boolean' ? c.done : null) };
+    const passed = c.kind === 'present' ? file.text.includes(text) : !file.text.includes(text);
     const where = !passed && c.kind === 'absent' ? ` — still present in ${listLines(occurrences(file, text))}` : '';
-    return { file: c.file, label: `${c.kind}: ${text}${c.kind === 'kanban' ? ` → ${c.list} (${c.done ? 'done' : 'not done'})` : ''}${where}`, passed };
+    return { file: c.file, label: `${c.kind}: ${text}${where}`, passed };
 }
 
-// Exactly one card with this text in the list, with the expected done status.
-function cardMatches(file: SourceFile, text: string, list: unknown, done: unknown): boolean {
-    if (!isBoard(file.text) || typeof list !== 'string' || typeof done !== 'boolean') return false;
-    const cards = parseBoard(file.text).columns.filter(l => l.title === list).flatMap(l => l.cards).filter(card => card.text === text);
-    return cards.length === 1 && cards[0].done === done;
+// The one note containing `text` has the expected value in the field.
+function fieldCheck(c: any, text: string, file: SourceFile): Check {
+    if (typeof c.field !== 'string' || !c.field.trim()) throw Error();
+    return { file: c.file, ...checkNoteField(file.text, text, c.field, typeof c.value === 'string' ? c.value : '') };
 }

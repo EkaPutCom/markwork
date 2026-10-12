@@ -306,11 +306,11 @@ input[type=text] { width: 100%; }
 <header class="hero">
   <div class="eyebrow"><a href="index.html">← Markwork</a> · Learning notes · October 4–5, 2026</div>
   <h1>Learning to build an agent from Markwork</h1>
-  <p class="lede">In two days, the Markwork assistant grew from a chat panel with <b>4 read tools</b> into an agent with <b>16 tools</b>. It can now plan work, propose batches of changes, check the result, and pick the work back up after an interruption. One principle has been held since the first commit: <b>the agent may read freely, but every file change must be approved by the user first</b>. The last chapter shows the next step: Markwork assigns kanban cards to another agent (pi) that works in a separate project folder, while Markwork only holds the board. This page explains how that principle is kept at every stage. It covers data structures, the loop flow, safety limits, costs, and small simulations you can try yourself.</p>
+  <p class="lede">In two days, the Markwork assistant grew from a chat panel with <b>4 read tools</b> into an agent with <b>19 tools</b>. It can now plan work, propose batches of changes, check the result, and pick the work back up after an interruption. One principle has been held since the first commit: <b>the agent may read freely, but every file change must be approved by the user first</b>. The last chapter shows the next step: Markwork assigns kanban cards to another agent (pi) that works in a separate project folder, while Markwork only holds the board. This page explains how that principle is kept at every stage. It covers data structures, the loop flow, safety limits, costs, and small simulations you can try yourself.</p>
   <div class="kpis">
-    <div class="kpi"><div class="what">Tools offered to the model</div><div class="big">16</div><div class="from">from 4 · f6a4cc7 → 8d0cdec</div></div>
-    <div class="kpi"><div class="what">Assistant tests (unit + GUI)</div><div class="big">212</div><div class="from">from 65 · all without a paid API</div></div>
-    <div class="kpi"><div class="what">Code in <code>src/agent/</code></div><div class="big">3,726 lines</div><div class="from">from 1,099 lines in 8 files → 21 files</div></div>
+    <div class="kpi"><div class="what">Tools offered to the model</div><div class="big">19</div><div class="from">from 4 · f6a4cc7 → 69d9151</div></div>
+    <div class="kpi"><div class="what">Assistant tests (unit + GUI)</div><div class="big">250</div><div class="from">from 65 · all without a paid API</div></div>
+    <div class="kpi"><div class="what">Code in <code>src/agent/</code></div><div class="big">4,699 lines</div><div class="from">from 1,099 lines in 8 files → 25 files</div></div>
     <div class="kpi"><div class="what">Work folder writes without approval</div><div class="big">0</div><div class="from">all through <code>Change</code> + preflight; the external harness only in another project folder (Chapter 9)</div></div>
   </div>
   <nav class="toc" aria-label="Table of contents">
@@ -326,6 +326,7 @@ input[type=text] { width: 100%; }
     <a href="#ch8">8 · Broader actions</a>
     <a href="#ch9">9 · Orchestrator</a>
     <a href="#ch10">10 · Commit messages</a>
+    <a href="#ch11">11 · Fields</a>
     <a href="#cost">Cost</a>
     <a href="#lessons">Lessons</a>
   </nav>
@@ -359,6 +360,7 @@ input[type=text] { width: 100%; }
     <li><span class="h">2dbf902</span><span><b>Four rules</b> · The conversation life cycle (send, stop, folder-change guards, saving and reopening history, undo) moves from the panel into <code>agent/chatcontroller.ts</code>; the panel only draws through <code>ChatView</code>. The workspace files now come from <code>WorkspaceRepository</code> (e4e3d91), with an explicit freshness per read.</span></li>
     <li><span class="h">84dccdd</span><span><b>Four rules</b> · The Assistant panel is split into its parts: settings, history, the context popover, and the proposal cards with their review window and Undo (<code>ui/proposalcard.ts</code>). Earlier commits split <code>ChatSession.ask</code> into a <code>TurnRun</code> with one method per tool (76acf0d), and <code>planChange</code>/<code>planKanban</code> into handlers per tool and action (1caf08a); every function is now at most complexity 15.</span></li>
     <li><span class="h">1bac3b8</span><span><b>Chapter 10</b> · The assistant writes the commit message: one request without tools from the checked files' diffs within a 30,000-character budget, streamed into the commit box, which the user still reviews and commits.</span></li>
+    <li><span class="h">69d9151</span><span><b>Chapter 11</b> · The typed fields and layouts reach the agent: <code>describe_schema</code> and <code>query_notes</code> to read them, <code>edit_note</code> and <code>edit_schema</code> to change them, every value checked against the document's own schema, and <code>verify_work</code> learns the <code>field</code> kind.</span></li>
   </ol>
 </section>
 
@@ -1014,6 +1016,30 @@ writeCommitMessage(sources, files, onText, cancellable)
 </section>
 
 <!-- ============================================================ -->
+<section class="chapter" id="ch11">
+  <div class="chapnum">Chapter 11 · commit 69d9151 · <code>agent/notes.ts</code>, <code>agent/schematools.ts</code>, <code>agent/notechanges.ts</code></div>
+  <h2>Fields and layouts: tools that know the document's schema</h2>
+  <p><b>The need.</b> A document with <code>layout:</code> in its frontmatter is no longer plain text. It declares typed fields (<code>status: select(todo, doing, done)</code>, <code>due: date</code>) and its notes carry values as <code>[status:: doing]</code>. Until now only boards had a tool (<code>edit_kanban</code>, now removed); a table, a calendar, or a list could only be changed with <code>edit_file</code>, which writes whatever text the model typed. A misspelled option or an impossible date went straight into the file, and the model had no way to ask "which fields does this document have?" or "which notes are due this week?" without reading every file.</p>
+  <div class="grid2">
+    <div class="panel"><h4><span class="tag new">Read</span></h4><p><code>describe_schema</code> returns the layout, the one-line options, every field with its type, select options, default, and how a value is written, and the groups with their note counts. <code>query_notes</code> filters (<code>eq</code>, <code>ne</code>, <code>lt</code>…<code>gte</code>, <code>contains</code>, <code>empty</code>), sorts, limits, or counts per value; <code>today</code> works for dates. <code>list_files</code> now marks a structured file with its layout so the model knows which files to ask about.</p></div>
+    <div class="panel"><h4><span class="tag old">Propose</span></h4><p><code>edit_note</code> adds, updates, moves, marks, or deletes one note of <i>any</i> layout, and adds, renames, or deletes (empty) groups; it replaces <code>edit_kanban</code>, whose card and list actions it covers. <code>edit_schema</code> adds or removes a field or a select option, reorders fields, switches the layout, and sets a layout option. Both only compute the new text; the user still reviews the diff, and both work inside <code>propose_batch</code>.</p></div>
+  </div>
+<pre><code>// agent/notechanges.ts: the value is parsed with the type the document declared for that field
+edit_note { action: 'update', note: 'Fix login', fields: { status: 'blocked', due: 'today' } }
+  def    = findField(doc, 'status')                    → none: "The document has no field … Its fields: status, due, owner"
+  parsed = parseValue(def, resolveWords(def, raw, now)) → not ok: "Field "status": "blocked" is not valid (not one of: todo, doing, done)."
+  text   = writeField(text, def, parsed.value)         → only that [status:: …] changes, in its normal form
+// edit_schema { action: 'remove_option', field: 'status', option: 'doing' }
+  countUses(notes, 'status', 'doing') &gt; 0            → "1 notes use "doing". Change those notes first (edit_note), then remove the option."</code></pre>
+  <p><b>One model for every layout.</b> A board, list, table, calendar, timeline, gallery, and chart are all the same <code>Board</code> model (<code>markdown/kanban.ts</code>), so one <code>structuredDoc(text)</code> serves every tool: it parses the notes, the declared fields (plus the built-in <code>due</code> and <code>agent</code> of a board), and, for a board with <code>group:</code>, the field whose values are the columns. There <code>move</code> sets the field instead of changing a heading, exactly like dragging in the app.</p>
+  <p><b>Errors are the interface.</b> Every refusal names what is acceptable: the fields of the document, the options of the select, the groups, the format of a date or a progress. The model fixes its call in the next round instead of the user fixing the file. A new select option is a schema change, so the model has to propose <code>edit_schema add_option</code> first (and in a batch the later action sees the earlier one, so both can be reviewed at once).</p>
+  <p><b>Boundaries.</b> <code>edit_schema</code> never rewrites notes: a field that notes still have values for, or an option they use, cannot be removed (<code>force</code> drops only the declaration and leaves the values as undeclared fields). A layout that needs a date or select field (calendar, timeline, chart) is refused until the document has one, the same rule as the layout button. Option values are checked against the document (<code>group</code> must be a select field, <code>sort</code> a field or <code>title</code>, <code>charts</code> panels must all be readable, because an unreadable panel would be left out silently).</p>
+  <p><b>Verification.</b> <code>verify_work</code> has a <code>field</code> kind (one note, one field, the expected value compared in its normal form, empty for "no value"), and the <code>structure</code> kind now also reports a broken field declaration, a value that does not fit its field, or a field the frontmatter does not declare. With a baseline only <i>new</i> problems fail, so an old document that was already inconsistent can still be edited. The board-only <code>kanban</code> kind became a <code>note</code> kind for every layout (a note by its title or text, optionally in a group, optionally done or not), because a note with fields no longer equals its title.</p>
+  <div class="caveat"><b>What has been measured and what has not:</b> 38 unit tests without a model (every action and refusal of both tools, the date words, grouped boards, batches that depend on an earlier action, the read tools, the project map, and the new verification) and 7 live scenarios against DeepSeek (<code>npm run test:live -- --structured-only</code>): a question answered with <code>query_notes</code>, counting per status, changing the fields of one note, adding a field and using it, a status that does not exist yet, moving a board card and setting its field, and switching to a calendar. The final version passed 7/7 in two consecutive runs. The failures in earlier runs were all checks that were too strict, not tool errors: the model explained why it left a task out of a list, set an extra <code>date: due</code> option when switching to a calendar, and once declined to invent a status and asked the user (the scenario now says to add it). Not measured: a model other than <code>deepseek-flash</code>, Deep thinking mode, and documents with hundreds of notes (the tools re-parse the file on every call).</div>
+  <div class="lesson"><b>Lesson</b>When the document has a schema, give the model the schema as a tool instead of making it infer the schema from text. Then validate against that same schema on the way in. The model gets precise errors, the file never holds a value the app cannot show, and the approval window stays a review of meaning, not of typos.</div>
+</section>
+
+<!-- ============================================================ -->
 <section class="chapter" id="cost">
   <div class="chapnum">Cost · <code>bench/AGENTIC.md</code> · <code>npm run bench:agentic</code></div>
   <h2>What does that safety cost?</h2>
@@ -1050,6 +1076,7 @@ writeCommitMessage(sources, files, onText, cancellable)
       <tr><td data-k="Pattern">Context split by how often it changes</td><td data-k="Structure">stable <code>system</code> + changing <code>note</code></td><td data-k="In Markwork"><code>buildContext</code>, <code>buildMessages</code></td></tr>
       <tr><td data-k="Pattern">A loop with hard limits</td><td data-k="Structure"><code>MAX_ROUNDS</code>, <code>toolBudget</code>, the last round without tools</td><td data-k="In Markwork"><code>ChatSession.ask</code></td></tr>
       <tr><td data-k="Pattern">Pure tools that do not throw</td><td data-k="Structure"><code>(args, SourceFile[]) → { content, summary }</code></td><td data-k="In Markwork"><code>runTool</code>, <code>formatGit</code></td></tr>
+      <tr><td data-k="Pattern">Validate against the document's own schema</td><td data-k="Structure">the tool parses the value with the field's type and answers with the accepted values</td><td data-k="In Markwork"><code>NoteTarget.withField</code>, <code>planSchema</code></td></tr>
       <tr><td data-k="Pattern">Changes as data</td><td data-k="Structure"><code>Change { before, after }</code></td><td data-k="In Markwork"><code>planChange</code>, <code>onProposal</code></td></tr>
       <tr><td data-k="Pattern">Re-check right before writing</td><td data-k="Structure"><code>preflight(c, read)</code></td><td data-k="In Markwork"><code>applyBatch</code>, Undo</td></tr>
       <tr><td data-k="Pattern">Plan on a virtual copy</td><td data-k="Structure">a copy of <code>SourceFile[]</code> + locks</td><td data-k="In Markwork"><code>planBatch</code></td></tr>
@@ -1179,6 +1206,7 @@ const journey = [
   { c: '2dbf902', t: 'ChatController without GTK', read: 7, propose: 7, control: 2, tests: 198, lines: 3266, files: 20 },
   { c: '84dccdd', t: 'panel split, complexity ≤ 15', read: 7, propose: 7, control: 2, tests: 200, lines: 3594, files: 20 },
   { c: '1bac3b8', t: 'commit message writer', read: 7, propose: 7, control: 2, tests: 212, lines: 3726, files: 21 },
+  { c: '69d9151', t: 'fields + layouts for the agent', read: 9, propose: 8, control: 2, tests: 250, lines: 4699, files: 25 },
 ];
 function toolsChart() {
   const svg = $('#chart-tools');
@@ -1368,7 +1396,7 @@ const intro = [
   { type: 'tool', name: 'read_file', args: '{ "name": "plans/october.md" }', result: numbered('plans/october.md', PLAN) },
   { type: 'tool', name: 'read_file', args: '{ "name": "tasks.md" }', result: numbered('tasks.md', TASKS) },
   { type: 'round', text: 'The model asks for 1 tool' },
-  { type: 'tool', name: 'propose_batch', args: '{ "actions": [\n  { "tool": "edit_file", "arguments": "{ name: plans/october.md, old_text: Wednesday, October 8, new_text: Thursday, October 9, … }" },\n  { "tool": "edit_kanban", "arguments": "{ name: tasks.md, action: edit, … }" } ] }', wait: true, free: true },
+  { type: 'tool', name: 'propose_batch', args: '{ "actions": [\n  { "tool": "edit_file", "arguments": "{ name: plans/october.md, old_text: Wednesday, October 8, new_text: Thursday, October 9, … }" },\n  { "tool": "edit_note", "arguments": "{ name: tasks.md, action: update, … }" } ] }', wait: true, free: true },
 ];
 const verifyArgs = '{ "checks": [ { "file": "*", "kind": "absent", "text": "Wednesday, October 8" },\n              { "file": "plans/october.md", "kind": "present", "text": "Thursday, October 9" } ] }';
 const endings = {

@@ -101,16 +101,18 @@ export function agentActionTests(): void {
         contains(refused('delete_file', { name: 'nonexistent' }), 'was not found');
     });
 
-    test('edit_kanban: change card text, delete a card, and manage lists; a list containing cards cannot be deleted', () => {
-        const kanban = (args: object) => planned('edit_kanban', { name: 'board', ...args }).after;
-        contains(kanban({ action: 'edit', card: 'Release', new_text: 'Release material v2 #important' }), '- [ ] Release material v2 #important');
-        ok(!kanban({ action: 'delete', card: 'Book venue' }).includes('Book venue'), 'the card was not deleted');
-        contains(kanban({ action: 'add_list', list: 'Postponed' }), '## Postponed');
-        contains(kanban({ action: 'rename_list', list: 'In Progress', new_text: 'Running' }), '## Running');
-        ok(!kanban({ action: 'delete_list', list: 'In Progress' }).includes('## In Progress'), 'the empty list was not deleted');
-        contains(refused('edit_kanban', { name: 'board', action: 'delete_list', list: 'Plan' }), 'still contains 1 cards');
-        contains(refused('edit_kanban', { name: 'board', action: 'add_list', list: 'done' }), 'already exists');
-        contains(refused('edit_kanban', { name: 'board', action: 'edit', card: 'Release' }), 'new_text');
+    test('edit_note on a board: change a card title, delete a card, and manage groups; a group containing cards cannot be deleted', () => {
+        const note = (args: object) => planned('edit_note', { name: 'board', ...args }).after;
+        contains(note({ action: 'update', note: 'Release', title: 'Release material v2', tags: ['important'] }), '- [ ] Release material v2 #important');
+        ok(!note({ action: 'delete', note: 'Book venue' }).includes('Book venue'), 'the card was not deleted');
+        contains(note({ action: 'add_group', group: 'Postponed' }), '## Postponed');
+        contains(note({ action: 'rename_group', group: 'In Progress', title: 'Running' }), '## Running');
+        ok(!note({ action: 'delete_group', group: 'In Progress' }).includes('## In Progress'), 'the empty group was not deleted');
+        contains(refused('edit_note', { name: 'board', action: 'delete_group', group: 'Plan' }), 'still contains 1 notes');
+        contains(refused('edit_note', { name: 'board', action: 'add_group', group: 'done' }), 'already exists');
+        contains(refused('edit_note', { name: 'board', action: 'rename_group', group: 'Done', title: 'plan' }), 'already exists');
+        contains(refused('edit_note', { name: 'board', action: 'rename_group', group: 'Done' }), '"title" argument');
+        contains(refused('edit_note', { name: 'board', action: 'update', note: 'Release' }), 'Give "title"');
     });
 
     test('the inverse of a change and the state check for each kind', () => {
@@ -202,7 +204,7 @@ export function agentActionTests(): void {
     const act = (tool: string, args: object) => ({ tool, arguments: JSON.stringify({ reason: 'x', ...args }) });
     const pack = call('propose_batch', { actions: [
         act('edit_file', { name: 'meeting', old_text: 'November 15', new_text: 'November 22', all: true }),
-        act('edit_kanban', { name: 'board', action: 'move', card: 'Release', list: 'In Progress' }),
+        act('edit_note', { name: 'board', action: 'move', note: 'Release', group: 'In Progress' }),
         act('delete_file', { name: 'archive/old' }),
     ] });
 

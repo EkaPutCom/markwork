@@ -13,7 +13,10 @@ const files: SourceFile[] = [{ name: 'plan.md', text: PLAN }, { name: 'research/
 
 const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Write report #important\n  report note\n- [ ] Send invitations [due:: 2026-10-20]\n\n## In Progress\n\n- [ ] Harbor research\n\n## Done\n\n- [x] Book venue\n';
 const kfiles: SourceFile[] = [...files, { name: 'board.md', text: BOARD }];
-const kanban = (args: object) => planChange('edit_kanban', JSON.stringify({ name: 'board', reason: 'x', ...args }), kfiles);
+// The arguments of an edit_note call for a board: a card is a note and a list is a group.
+const boardArgs = ({ card, list, ...rest }: { card?: string; list?: string; action?: string; done?: boolean }): object =>
+    rest.action === 'add' ? { ...rest, text: card, group: list } : { ...rest, note: card, group: list };
+const kanban = (args: { card?: string; list?: string; action?: string; done?: boolean }, name = 'board') => planChange('edit_note', JSON.stringify({ name, reason: 'x', ...boardArgs(args) }), kfiles);
 const kanbanAfter = (args: object): string => { const r = kanban(args); if (!r.ok) throw new Error(r.message); return r.change.after; };
 
 const plan = (name: string, args: object, over: SourceFile[] = files) => planChange(name, JSON.stringify(args), over);
@@ -94,14 +97,14 @@ export function changeTests(): void {
         eq(unifiedDiff('x\n', 'x\n'), '');
     });
 
-    test('edit_kanban: add a card at the end of a list, only that line changes', () => {
+    test('edit_note: add a card on a board at the end of a list, only that line changes', () => {
         const after = kanbanAfter({ action: 'add', card: 'Arrange schedule #plan', list: 'in progress' });
         eq(after, BOARD.replace('- [ ] Harbor research\n', '- [ ] Harbor research\n- [ ] Arrange schedule #plan\n'));
         const r = kanban({ action: 'add', card: 'Arrange schedule', list: 'In Progress' });
         ok(r.ok && r.change.kind === 'edit' && r.change.file === 'board.md', 'wrong proposal shape');
     });
 
-    test('edit_kanban: move a card to the end of another list and mark done/not done', () => {
+    test('edit_note: move a card to the end of another list and mark done/not done', () => {
         const moved = kanbanAfter({ action: 'move', card: 'harbor research', list: 'Done' });
         eq(moved, BOARD.replace('## In Progress\n\n- [ ] Harbor research\n\n', '## In Progress\n\n').replace('- [x] Book venue\n', '- [x] Book venue\n- [ ] Harbor research\n'));
         const done = kanbanAfter({ action: 'mark', card: 'invitations', done: true });
@@ -121,14 +124,14 @@ export function changeTests(): void {
         eq(unifiedDiff('a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\n', 'a\nB\nc\nd\ne\nf\ng\nh\ni\nj\nK\nl\n').split('\n').filter(l => l.startsWith('@@')), ['@@ -1,5 +1,5 @@', '@@ -8,5 +8,5 @@']);
     });
 
-    test('edit_kanban: clear errors for the model (not a board, list/card does not match, no change)', () => {
-        const bad = (args: object, base = kanban): string => { const r = base(args); ok(!r.ok, 'should have failed'); return r.ok ? '' : r.message; };
-        contains(bad({ action: 'add', card: 'x', list: 'Plan', name: 'plan.md' }), 'not a board');
-        contains(bad({ action: 'add', card: 'x', list: 'Postponed' }), 'Lists on the board: Plan, In Progress, Done');
-        contains(bad({ action: 'add', card: 'x', list: '' }), '"list" argument is required');
-        contains(bad({ action: 'move', card: 'nonexistent', list: 'Done' }), 'No card contains');
+    test('edit_note: clear errors for the model (not a structured file, group/note does not match, no change)', () => {
+        const bad = (args: { card?: string; list?: string; action?: string; done?: boolean }, name = 'board'): string => { const r = kanban(args, name); ok(!r.ok, 'should have failed'); return r.ok ? '' : r.message; };
+        contains(bad({ action: 'add', card: 'x', list: 'Plan' }, 'plan.md'), 'ordinary document');
+        contains(bad({ action: 'add', card: 'x', list: 'Postponed' }), 'Groups: Plan, In Progress, Done');
+        contains(bad({ action: 'add', card: 'x', list: '' }), '"group" argument is required');
+        contains(bad({ action: 'move', card: 'nonexistent', list: 'Done' }), 'No note contains');
         contains(bad({ action: 'move', card: 'a', list: 'Done' }), 'matches');   // many cards contain "a"
-        contains(bad({ action: 'move', card: 'Book venue', list: 'Done' }), 'already in that list');
+        contains(bad({ action: 'move', card: 'Book venue', list: 'Done' }), 'already in that group');
         contains(bad({ action: 'mark', card: 'Book venue', done: true }), 'already has that status');
         contains(bad({ action: 'mark', card: 'Book venue' }), '"done"');
         contains(bad({ action: 'archive', card: 'Book venue' }), 'must be one of');
@@ -139,7 +142,6 @@ export function changeTests(): void {
     test('describeCall for change tools', () => {
         eq(describeCall('create_file', '{"name":"a.md"}'), 'Proposing new file a.md');
         eq(describeCall('edit_file', '{"name":"a.md"}'), 'Proposing changes to a.md');
-        eq(describeCall('edit_kanban', '{"name":"board.md"}'), 'Proposing changes to board board.md');
     });
 
     section('Agent: change approval in a session');
@@ -255,6 +257,6 @@ export function changeTests(): void {
         const off = buildContext({ ...input(), recent: [] }).system;
         contains(on, 'edit_file');
         ok(!off.includes('edit_file'), 'proposal instructions present without permission');
-        eq(CHANGE_TOOLS.map(t => t.name), ['create_file', 'edit_file', 'insert_text', 'delete_file', 'move_file', 'edit_kanban']);
+        eq(CHANGE_TOOLS.map(t => t.name), ['create_file', 'edit_file', 'insert_text', 'delete_file', 'move_file', 'edit_note', 'edit_schema']);
     });
 }

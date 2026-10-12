@@ -4,6 +4,7 @@
 
 import { estimateTokens, matchMention, projectMap, rankChunks, splitChunks, tokenize, type SourceFile } from './context.js';
 import type { ToolSpec } from './provider.js';
+import { describeSchema, queryNotes, SCHEMA_TOOLS } from './schematools.js';
 
 // "1 line" / "2 lines": the short result summary shown in the interface.
 export const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
@@ -60,6 +61,7 @@ export const TOOLS: ToolSpec[] = [
             additionalProperties: false,
         },
     },
+    ...SCHEMA_TOOLS,
 ];
 
 export interface ToolOutcome {
@@ -165,6 +167,8 @@ export function runTool(name: string, rawArguments: string, files: SourceFile[])
         case 'search_documents': return searchDocuments(files, args);
         case 'search_text': return searchText(files, args);
         case 'read_file': return readFile(files, args);
+        case 'describe_schema': return describeSchema(files, args);
+        case 'query_notes': return queryNotes(files, args);
         default: return { content: `Tool "${name}" is not recognized. Available tools: ${TOOLS.map(t => t.name).join(', ')}.`, summary: 'unknown tool' };
     }
 }
@@ -183,7 +187,10 @@ const DESCRIBE: Record<string, (a: Record<string, unknown>) => string> = {
     read_file: a => `Reading ${asString(a.name) || 'file'}${asInt(a.from_line) ? ` (from line ${asInt(a.from_line)})` : ''}`,
     create_file: a => `Proposing new file ${asString(a.name)}`,
     edit_file: a => `Proposing changes to ${asString(a.name)}`,
-    edit_kanban: a => `Proposing changes to board ${asString(a.name)}`,
+    describe_schema: a => asString(a.name) ? `Reading the setup of ${asString(a.name)}` : 'Reading the setup of the structured documents',
+    query_notes: a => `Querying notes${asString(a.file) ? ` in ${asString(a.file)}` : ''}`,
+    edit_note: a => `Proposing a note change in ${asString(a.name)}`,
+    edit_schema: a => `Proposing a schema change in ${asString(a.name)}`,
     insert_text: a => `Proposing an insertion in ${asString(a.name)}`,
     delete_file: a => `Proposing to delete ${asString(a.name)}`,
     move_file: a => `Proposing to move ${asString(a.name)} to ${asString(a.destination)}`,

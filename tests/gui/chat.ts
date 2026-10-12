@@ -611,11 +611,11 @@ export function chatTests(c: GuiContext): void {
 
         const press = (provider: Provider) => { proposeAndPress(provider, 'apply'); for (let i = 0; i < 40; i++) { pump(); GLib.usleep(8000); } };   // the board reloads in idle
         try {
-        press(proposalProvider('edit_kanban', { name: 'tasks', action: 'add', card: 'Draft the revision schedule [due:: 2026-11-02]', list: 'in progress', reason: 'user request' }));
+        press(proposalProvider('edit_note', { name: 'tasks', action: 'add', text: 'Draft the revision schedule', fields: { due: '2026-11-02' }, group: 'in progress', reason: 'user request' }));
         contains(lastDiff, '+- [ ] Draft the revision schedule [due:: 2026-11-02]');
         eq(w.board.getBoard().columns[1].cards.map(c => c.text), ['Research the harbor', 'Draft the revision schedule [due:: 2026-11-02]']);
 
-        press(proposalProvider('edit_kanban', { name: 'tasks', action: 'move', card: 'Send invitations', list: 'Done', reason: 'already sent' }));
+        press(proposalProvider('edit_note', { name: 'tasks', action: 'move', note: 'Send invitations', group: 'Done', reason: 'already sent' }));
         eq(w.board.getBoard().columns[2].cards.map(c => c.text), ['Book the venue', 'Send invitations [due:: 2026-10-20]']);
         eq(w.board.getBoard().columns[0].cards.map(c => c.text), ['Write report #important']);
         const prefix = optVal('shot-proposal');

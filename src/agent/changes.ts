@@ -3,9 +3,8 @@
 // the user approves the diff (ui/chat.ts), so the model never changes files on its own.
 
 import { matchMention, type SourceFile } from './context.js';
-import { addCard, addColumn, deleteCard, deleteColumn, moveCard, parseBoard, renameColumn, serializeBoard, updateCard, type Board, type Position } from '../markdown/kanban.js';
-import { isBoard } from '../markdown/layout.js';
 import type { ToolSpec } from './provider.js';
+import { NOTE_TOOLS, planNote, planSchema, type Planned } from './notechanges.js';
 
 export interface Change {
     kind: 'create' | 'edit' | 'delete' | 'move';
@@ -94,24 +93,7 @@ export const CHANGE_TOOLS: ToolSpec[] = [
             additionalProperties: false,
         },
     },
-    {
-        name: 'edit_kanban',
-        description: 'Propose a change to a kanban board (a Markdown file with "layout: board" in the frontmatter). Safer than edit_file for boards. Card actions: add, move, mark (done/not done), edit (replace the card text), delete. List actions: add_list, rename_list, delete_list (empty lists only). It is not written right away: the user sees the diff and then applies or rejects it.',
-        parameters: {
-            type: 'object',
-            properties: {
-                name: { type: 'string', description: 'Board file name as in list_files' },
-                action: { type: 'string', enum: ['add', 'move', 'mark', 'edit', 'delete', 'add_list', 'rename_list', 'delete_list'], description: 'add = new card at the end of a list; move = move a card to the end of another list; mark = change the done status; edit = replace the card text with new_text; delete = remove a card; add_list/rename_list/delete_list = manage lists' },
-                card: { type: 'string', description: 'add: text of the new card (may contain #tags and fields such as [due:: 2026-10-20]). move/mark/edit/delete: a piece of the text of an existing card (must match exactly one card). Not used for list actions' },
-                list: { type: 'string', description: 'add/move: the destination list. add_list: name of the new list. rename_list/delete_list: the existing list. The exact name as the heading on the board (case-insensitive)' },
-                new_text: { type: 'string', description: 'edit: the replacement card text. rename_list: the new list name' },
-                done: { type: 'boolean', description: 'mark only: true = done, false = not done' },
-                reason: { type: 'string', description: 'One sentence: why this change' },
-            },
-            required: ['name', 'action', 'reason'],
-            additionalProperties: false,
-        },
-    },
+    ...NOTE_TOOLS,
 ];
 
 export const isChangeTool = (name: string): boolean => CHANGE_TOOLS.some(t => t.name === name);
@@ -163,8 +145,13 @@ const EXISTING_FILE_TOOLS: Record<string, (t: FileTarget) => PlanResult> = {
     insert_text: planInsert,
     delete_file: ({ file, reason }) => ({ ok: true, change: { kind: 'delete', file: file.name, before: file.text, after: '', reason } }),
     move_file: planMove,
-    edit_kanban: ({ args, reason, file }) => planKanban(args, reason, file),
+    edit_note: ({ args, file, edit }) => fromPlanned(planNote(args, file.name, file.text), edit),
+    edit_schema: ({ args, file, edit }) => fromPlanned(planSchema(args, file.name, file.text), edit),
 };
+
+// The result of a note or schema plan as a PlanResult.
+const fromPlanned = (planned: Planned, edit: (after: string) => PlanResult): PlanResult =>
+    planned.ok ? edit(planned.after) : fail(planned.message, planned.summary);
 
 // A handler from a table by a name the model chose; never an inherited property such as "toString".
 const lookup = <T>(table: Record<string, T>, key: string): T | undefined => Object.hasOwn(table, key) ? table[key] : undefined;
@@ -248,123 +235,6 @@ function planMove({ args, reason, file, files }: FileTarget): PlanResult {
     const taken = files.find(f => f.name.toLowerCase() === to.toLowerCase() && f !== file);
     if (taken) return fail(`File "${taken.name}" already exists; choose another destination.`, 'destination already exists');
     return { ok: true, change: { kind: 'move', file: file.name, to, before: file.text, after: file.text, reason } };
-}
-
-// ---------- Kanban board ----------
-
-// One edit_kanban call on a parsed board: the arguments and lookups every action uses.
-class KanbanTarget {
-    readonly titles: string;
-    readonly cardText: string;
-    readonly newText: string;
-    readonly listName: string;
-
-    constructor(readonly board: Board, readonly args: Record<string, unknown>, readonly fileName: string) {
-        this.titles = board.columns.map(c => c.title).join(', ') || '(no lists yet)';
-        this.cardText = asText(args.card).trim();
-        this.newText = asText(args.new_text).trim();
-        this.listName = asText(args.list);
-    }
-
-    // The list named by "list": an exact title, or else the only title that contains it; otherwise why not.
-    column(): number | PlanResult {
-        const wanted = this.listName;
-        const w = wanted.trim().toLowerCase();
-        if (!w) return fail('The "list" argument is required.', 'list does not match');
-        const columns = this.board.columns;
-        const exact = columns.map((c, i) => c.title.toLowerCase() === w ? i : -1).filter(i => i >= 0);
-        const hits = exact.length ? exact : columns.map((c, i) => c.title.toLowerCase().includes(w) ? i : -1).filter(i => i >= 0);
-        if (hits.length === 1) return hits[0];
-        return fail(`The list "${wanted}" ${hits.length ? 'matches more than one list' : 'does not exist'}. Lists on the board: ${this.titles}.`, 'list does not match');
-    }
-
-    // The only card whose text contains "card".
-    card(): Position | PlanResult {
-        const { board, cardText } = this;
-        if (!cardText) return fail('The "card" argument is required.', 'card does not match');
-        const w = cardText.toLowerCase();
-        const hits: Position[] = [];
-        board.columns.forEach((c, column) => c.cards.forEach((card, index) => { if (card.text.toLowerCase().includes(w)) hits.push({ column, index }); }));
-        if (hits.length === 1) return hits[0];
-        const list = hits.slice(0, 5).map(p => `"${board.columns[p.column].cards[p.index].text}" (${board.columns[p.column].title})`).join('; ');
-        return fail(hits.length ? `"${cardText}" matches ${hits.length} cards: ${list}. Extend the text until it is unique.` : `No card contains "${cardText}" in ${this.fileName}.`, 'card does not match');
-    }
-
-    hasList(title: string, except = -1): boolean {
-        return this.board.columns.some((c, i) => i !== except && c.title.toLowerCase() === title.toLowerCase());
-    }
-}
-
-const failed = (v: unknown): v is PlanResult => typeof v === 'object' && v !== null && 'ok' in v;
-const singleLine = (text: string): boolean => !!text && !text.includes('\n');
-
-// Each action returns the new board, or why it cannot be done.
-const KANBAN_ACTIONS: Record<string, (k: KanbanTarget) => Board | PlanResult> = {
-    add: k => {
-        if (!k.cardText) return fail('The "card" argument is required.', 'empty card');
-        const column = k.column();
-        if (failed(column)) return column;
-        if (k.cardText.includes('\n')) return fail('The text of a new card must be a single line.', 'invalid card');
-        return addCard(k.board, column, k.cardText, Infinity, new Date());
-    },
-    move: k => {
-        const from = k.card();
-        if (failed(from)) return from;
-        const column = k.column();
-        if (failed(column)) return column;
-        if (column === from.column) return fail('That card is already in that list.', 'no change');
-        return moveCard(k.board, from, { column, index: Infinity });
-    },
-    mark: k => {
-        const at = k.card();
-        if (failed(at)) return at;
-        const done = k.args.done;
-        if (typeof done !== 'boolean') return fail('The "done" argument (true/false) is required for the mark action.', 'empty done');
-        if (k.board.columns[at.column].cards[at.index].done === done) return fail('That card already has that status.', 'no change');
-        return updateCard(k.board, at, { done });
-    },
-    edit: k => {
-        const at = k.card();
-        if (failed(at)) return at;
-        if (!singleLine(k.newText)) return fail('The "new_text" argument is required and must be a single line.', 'invalid new_text');
-        return updateCard(k.board, at, { text: k.newText });
-    },
-    delete: k => {
-        const at = k.card();
-        return failed(at) ? at : deleteCard(k.board, at);
-    },
-    add_list: k => {
-        const title = k.listName.trim();
-        if (!singleLine(title)) return fail('The "list" argument must be filled with the name of the new list (a single line).', 'empty list');
-        if (k.hasList(title)) return fail(`The list "${title}" already exists. Lists on the board: ${k.titles}.`, 'list already exists');
-        return addColumn(k.board, title);
-    },
-    rename_list: k => {
-        const column = k.column();
-        if (failed(column)) return column;
-        if (!singleLine(k.newText)) return fail('The "new_text" argument must be filled with the new list name (a single line).', 'invalid new_text');
-        if (k.hasList(k.newText, column)) return fail(`The list "${k.newText}" already exists.`, 'list already exists');
-        return renameColumn(k.board, column, k.newText);
-    },
-    delete_list: k => {
-        const column = k.column();
-        if (failed(column)) return column;
-        // Cards must not silently disappear together with their list.
-        const cards = k.board.columns[column].cards.length;
-        if (cards) return fail(`The list "${k.board.columns[column].title}" still contains ${cards} cards. Move or delete the cards first.`, 'list is not empty');
-        return deleteColumn(k.board, column);
-    },
-};
-
-function planKanban(args: Record<string, unknown>, reason: string, file: SourceFile): PlanResult {
-    if (!isBoard(file.text)) return fail(`${file.name} is not a board (frontmatter without "layout: board"). Use edit_file for ordinary files.`, 'not a board');
-    const action = lookup(KANBAN_ACTIONS, asText(args.action));
-    if (!action) return fail('The "action" argument must be one of: add, move, mark, edit, delete, add_list, rename_list, delete_list.', 'invalid action');
-    const next = action(new KanbanTarget(parseBoard(file.text), args, file.name));
-    if (failed(next)) return next;
-    const after = serializeBoard(next);
-    if (after === file.text) return fail('Nothing changed on the board.', 'no change');
-    return { ok: true, change: { kind: 'edit', file: file.name, before: file.text, after, reason } };
 }
 
 export function describeChange(c: Change): string {
