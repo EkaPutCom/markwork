@@ -145,7 +145,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
 .laygif img { width: 100%; }
 .layshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px 22px; margin-top: 56px; }
 .layshots .shot img { width: 100%; }
-.layshots.two { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }   /* four shots: two by two */
+.layshots.two { grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }   /* four shots: two by two */
 .layshots figcaption strong { color: var(--text); }
 .laynote { max-width: 760px; margin: 14px auto 0; }
 </style>
