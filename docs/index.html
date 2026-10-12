@@ -145,6 +145,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
 .laygif img { width: 100%; }
 .layshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px 22px; margin-top: 56px; }
 .layshots .shot img { width: 100%; }
+.layshots.two { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }   /* four shots: two by two */
 .layshots figcaption strong { color: var(--text); }
 .laynote { max-width: 760px; margin: 14px auto 0; }
 </style>
@@ -159,6 +160,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
     </a>
     <nav>
       <a class="hide-sm" href="#layouts">Layouts</a>
+      <a class="hide-sm" href="#collaboration">Collaboration</a>
       <a class="hide-sm" href="#agent">Agent features</a>
       <a class="hide-sm" href="#flow">How it works</a>
       <a class="hide-sm" href="#orchestrator">Orchestrator</a>
@@ -207,6 +209,28 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
       <figure class="shot"><a href="docs/docs/kanban.html"><img src="assets/layout-chart.png" width="1280" height="780" loading="lazy" alt="The same launch plan file shown as a chart"></a><figcaption><strong>Chart.</strong> Counts the notes by status, tag, and week without changing them.</figcaption></figure>
     </div>
     <p class="note laynote center">Every layout edits the same Markdown text, with one undo step per change. The agent can add notes, fill in fields, and switch the layout too (<code>describe_schema</code>, <code>query_notes</code>, <code>edit_note</code>, <code>edit_schema</code>), as a diff you approve first.</p>
+  </div>
+</section>
+
+<!-- ========== COLLABORATION ========== -->
+<section id="collaboration">
+  <div class="wrap">
+    <div class="center">
+      <p class="eyebrow">Collaboration</p>
+      <h2>Review and merge pull requests next to your notes.</h2>
+      <p class="sub">Open a clone of a Forgejo or Gitea repository and its open pull requests appear in the sidebar. Read a change as a note, comment on it, merge it, resolve a conflict on your own computer, or send your edits as a pull request. A new pull request raises a desktop notification.</p>
+    </div>
+    <figure class="shot laygif">
+      <img src="assets/collab.gif" width="900" height="548" loading="lazy" alt="Animation of the pull requests tab: a pull request is opened and read as a note, as a diff, and as a discussion, a conflicting pull request is merged on the computer, and a dialog sends changes as a pull request">
+      <figcaption>The pull requests tab, the review page, a conflict resolved here, and the dialog that sends your changes</figcaption>
+    </figure>
+    <div class="layshots two">
+      <figure class="shot"><a href="docs/docs/collaboration.html#review"><img src="assets/collab-review.png" width="1280" height="780" loading="lazy" alt="The pull requests tab and a pull request read as a note, with the changed line marked in red and green"></a><figcaption><strong>Read it as a note.</strong> A Markdown file shows the frontmatter fields that changed and its text with the changed lines marked. The raw diff is one tab away.</figcaption></figure>
+      <figure class="shot"><a href="docs/docs/collaboration.html#review"><img src="assets/collab-discussion.png" width="1280" height="780" loading="lazy" alt="The discussion of a pull request: its description and two comments, with a box to write a comment"></a><figcaption><strong>Talk about it.</strong> The description and the comments are one tab; write a reply without leaving the app.</figcaption></figure>
+      <figure class="shot"><a href="docs/docs/collaboration.html#conflicts"><img src="assets/collab-resolve.png" width="1280" height="780" loading="lazy" alt="A file with git's conflict markers open in source mode next to the pull requests tab"></a><figcaption><strong>Resolve a conflict here.</strong> <em>Resolve locally</em> merges the pull request into your folder and opens the files that conflict in source mode. <em>Finish and push</em> sends the result; <em>Abort merge</em> undoes it.</figcaption></figure>
+      <figure class="shot"><a href="docs/docs/collaboration.html#send"><img src="assets/collab-send.png" width="1280" height="780" loading="lazy" alt="The dialog that sends the changes of the folder as a pull request, with a title, a branch, how it is sent, and the changed files"></a><figcaption><strong>Send your own changes.</strong> Pick the files, name the pull request, and send it through your fork, as a branch, or with AGit.</figcaption></figure>
+    </div>
+    <p class="note laynote center">Merging asks first (merge commit, squash, or rebase), and nothing is pushed before you press the button. The access token stays in the system keyring and reaches git only in the environment of a push. Forgejo and Gitea only for now; GitHub and GitLab are not supported yet. <a href="docs/docs/collaboration.html">Read the documentation</a>.</p>
   </div>
 </section>
 
