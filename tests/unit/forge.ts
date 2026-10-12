@@ -32,7 +32,7 @@ function fakeForge(answers: Record<string, HttpResponse | (() => HttpResponse)>)
 }
 const json = (status: number, value: unknown): HttpResponse => ({ status, body: JSON.stringify(value) });
 const pull = (n: number, extra: Partial<PullRequest> = {}): PullRequest => ({
-    number: n, title: `PR ${n}`, author: 'budi', state: 'open', mergeable: true, headRef: 'f', baseRef: 'main', comments: 0,
+    number: n, title: `PR ${n}`, author: 'budi', state: 'open', mergeable: true, headRef: 'f', baseRef: 'main', headSha: 'h1', baseSha: 'b1', comments: 0,
     createdAt: '2026-10-12T01:00:00Z', updatedAt: '2026-10-12T02:00:00Z', url: '', ...extra,
 });
 const failure = (promise: Promise<unknown>): ForgeError => {
@@ -99,6 +99,22 @@ export function forgeTests(): void {
             { path: 'c.md', previousPath: 'old.md', status: 'renamed', additions: 0, deletions: 0 },
             { path: 'd.md', status: 'deleted', additions: 0, deletions: 9 },
         ]);
+    });
+    test('getDiff asks for plain text and returns it as it is', () => {
+        const forge = fakeForge({ 'GET /pulls/42.diff': { status: 200, body: 'diff --git a/x b/x\n' } });
+        eq(settle(new GiteaProvider(REPO, 't', forge.transport).getDiff(42)), 'diff --git a/x b/x\n');
+        eq(forge.seen[0].headers?.Accept, 'text/plain');
+    });
+    test('getContent reads a file at a commit, escapes the path, and gives null when it is not there', () => {
+        const forge = fakeForge({ 'GET /raw/agenda/rapat%20a.md?ref=abc123': { status: 200, body: '# Rapat\n' } });
+        const gitea = new GiteaProvider(REPO, 't', forge.transport);
+        eq(settle(gitea.getContent('agenda/rapat a.md', 'abc123')), '# Rapat\n');
+        eq(settle(gitea.getContent('agenda/missing.md', 'abc123')), null);
+    });
+    test('the head and base commits of a pull request are read', () => {
+        const forge = fakeForge({ 'GET /pulls/9': json(200, apiPull(9, { head: { ref: 'f', sha: 'h9' }, base: { ref: 'main', sha: 'b9' } })) });
+        const p = settle(new GiteaProvider(REPO, 't', forge.transport).getPull(9));
+        eq([p.headSha, p.baseSha], ['h9', 'b9']);
     });
     test('merge posts the chosen method', () => {
         const forge = fakeForge({ 'POST /pulls/42/merge': { status: 200, body: '' } });

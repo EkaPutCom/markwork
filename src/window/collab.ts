@@ -9,7 +9,7 @@ import { soupTransport } from '../forge/http.js';
 import { PullMonitor, type PullEvent } from '../forge/monitor.js';
 import { parseRemote } from '../forge/remote.js';
 import { systemTokenStore, type TokenStore } from '../forge/token.js';
-import { ForgeError, type PullRequest, type RepoRef, type Transport } from '../forge/types.js';
+import { ForgeError, type ForgeProvider, type PullRequest, type RepoRef, type Transport } from '../forge/types.js';
 import type { AppSettings } from '../settings.js';
 import type { CollabPanel } from '../ui/collab.js';
 import { tokenDialog } from '../ui/serverdialog.js';
@@ -43,6 +43,7 @@ const LASTING: ReadonlySet<ForgeError['failure']> = new Set(['auth', 'not-found'
 
 export class CollabController {
     private monitor: PullMonitor | null = null;
+    private forge: ForgeProvider | null = null;
     private repo: RepoRef | null = null;
     private folder: string | null = null;
     private generation = 0;                 // a folder change makes the answers of the previous folder stale
@@ -60,11 +61,15 @@ export class CollabController {
         const panel = host.collabPanel;
         panel.onRefresh = () => void this.refresh();
         panel.onServer = () => void this.editToken();
-        panel.onOpen = pull => this.open(pull);
+        panel.onOpen = pull => this.onOpenPull(pull);
         host.settings.gsettings.connect('changed::forge-poll-seconds', () => this.monitor?.start(host.settings.forgePollSeconds));
     }
 
+    // A pull request was chosen in the list; the window connects this to the review (the browser page until then).
+    onOpenPull: (pull: PullRequest) => void = pull => { if (pull.url) Gio.AppInfo.launch_default_for_uri(pull.url, null); };
+
     get pulls(): readonly PullRequest[] { return this.monitor?.pulls ?? []; }
+    provider(): ForgeProvider | null { return this.forge; }
 
     // The work folder changed (or the window just opened one): look for its forge from scratch.
     async setFolder(folder: string | null): Promise<void> {
@@ -89,7 +94,9 @@ export class CollabController {
     }
 
     private connect(repo: RepoRef, token: string): void {
-        const monitor = new PullMonitor(new GiteaProvider(repo, token, this.services.transport));
+        const provider = new GiteaProvider(repo, token, this.services.transport);
+        this.forge = provider;
+        const monitor = new PullMonitor(provider);
         monitor.onChange = (pulls, events) => {
             this.failing = false;
             this.host.collabPanel.setPulls(pulls);
@@ -103,6 +110,7 @@ export class CollabController {
     private disconnect(): void {
         this.monitor?.stop();
         this.monitor = null;
+        this.forge = null;
         this.repo = null;
         this.failing = false;
         this.notified.clear();
@@ -166,10 +174,5 @@ export class CollabController {
         if (answer === '') await this.services.tokens.clear(repo.host);
         else await this.services.tokens.set(repo.host, answer);
         await this.setFolder(this.folder);
-    }
-
-    // Step 3 of the plan shows the pull request in the editor area; until then, the browser page is the detail.
-    private open(pull: PullRequest): void {
-        if (pull.url) Gio.AppInfo.launch_default_for_uri(pull.url, null);
     }
 }

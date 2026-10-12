@@ -10,7 +10,7 @@ const MAX_PAGES = 5;      // 250 pull requests; more than that are not a list an
 
 interface ApiPull {
     number: number; title: string; state: string; merged?: boolean; mergeable?: boolean | null;
-    user?: { login?: string }; head?: { ref?: string }; base?: { ref?: string };
+    user?: { login?: string }; head?: { ref?: string; sha?: string }; base?: { ref?: string; sha?: string };
     comments?: number; created_at?: string; updated_at?: string; html_url?: string;
 }
 interface ApiFile { filename: string; previous_filename?: string; status: string; additions?: number; deletions?: number }
@@ -24,7 +24,7 @@ function toPull(p: ApiPull): PullRequest {
     return {
         number: p.number, title: p.title, author: p.user?.login ?? '', state: pullState(p),
         mergeable: typeof p.mergeable === 'boolean' ? p.mergeable : null,
-        headRef: p.head?.ref ?? '', baseRef: p.base?.ref ?? '', comments: p.comments ?? 0,
+        headRef: p.head?.ref ?? '', baseRef: p.base?.ref ?? '', headSha: p.head?.sha ?? '', baseSha: p.base?.sha ?? '', comments: p.comments ?? 0,
         createdAt: p.created_at ?? '', updatedAt: p.updated_at ?? '', url: p.html_url ?? '',
     };
 }
@@ -45,13 +45,13 @@ export class GiteaProvider implements ForgeProvider {
         return `${this.repo.baseUrl}/api/v1/repos/${encodeURIComponent(this.repo.owner)}/${encodeURIComponent(this.repo.repo)}`;
     }
 
-    private async request(method: 'GET' | 'POST', path: string, body?: object): Promise<string> {
+    private async request(method: 'GET' | 'POST', path: string, body?: object, accept = 'application/json'): Promise<string> {
         if (!this.token) throw new ForgeError('auth', `No access token for ${this.repo.host}`);
         let response;
         try {
             response = await this.transport({
                 method, url: `${this.api}${path}`,
-                headers: { Authorization: `token ${this.token}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+                headers: { Authorization: `token ${this.token}`, Accept: accept, ...(body ? { 'Content-Type': 'application/json' } : {}) },
                 ...(body ? { body: JSON.stringify(body) } : {}),
             });
         } catch (e) {
@@ -92,6 +92,20 @@ export class GiteaProvider implements ForgeProvider {
             if (items.length < PAGE) break;
         }
         return files;
+    }
+
+    async getDiff(number: number): Promise<string> {
+        return this.request('GET', `/pulls/${number}.diff`, undefined, 'text/plain');
+    }
+
+    async getContent(path: string, ref: string): Promise<string | null> {
+        const escaped = path.split('/').map(encodeURIComponent).join('/');
+        try {
+            return await this.request('GET', `/raw/${escaped}?ref=${encodeURIComponent(ref)}`, undefined, 'text/plain');
+        } catch (e) {
+            if (e instanceof ForgeError && e.failure === 'not-found') return null;
+            throw e;
+        }
     }
 
     async merge(number: number, method: MergeMethod): Promise<void> {

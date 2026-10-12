@@ -20,6 +20,8 @@ export interface PullRequest {
     mergeable: boolean | null;
     headRef: string;
     baseRef: string;
+    headSha: string;      // the two commits to compare; a pull request from a fork still has its head in the base repository
+    baseSha: string;
     comments: number;
     createdAt: string;    // ISO 8601
     updatedAt: string;
@@ -57,6 +59,10 @@ export interface ForgeProvider {
     listPulls(state: 'open' | 'closed' | 'all'): Promise<PullRequest[]>;
     getPull(number: number): Promise<PullRequest>;
     getFiles(number: number): Promise<PullFile[]>;
+    // The whole pull request as one unified diff.
+    getDiff(number: number): Promise<string>;
+    // A file at a commit; null = it does not exist there (added or deleted by the pull request).
+    getContent(path: string, ref: string): Promise<string | null>;
     merge(number: number, method: MergeMethod): Promise<void>;
 }
 

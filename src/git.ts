@@ -42,6 +42,8 @@ export function runGit(cwd: string, args: string[]): Promise<Run | null> {
             launcher.set_cwd(cwd);
             // Do not compete for the index lock with another git the user is running.
             launcher.setenv('GIT_OPTIONAL_LOCKS', '0', true);
+            // A fetch or pull that needs a password must fail, not wait for a terminal this process does not have.
+            launcher.setenv('GIT_TERMINAL_PROMPT', '0', true);
             const proc = launcher.spawnv(['git', '-c', 'core.quotePath=false', ...args]);
             const started = GLib.get_monotonic_time();
             let exitedAt = 0;

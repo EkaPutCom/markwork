@@ -61,6 +61,7 @@ import { traceTests } from './unit/trace.js';
 import { changeTests } from './unit/changes.js';
 import { deepseekTests } from './unit/deepseek.js';
 import { forgeTests } from './unit/forge.js';
+import { noteDiffTests } from './unit/notediff.js';
 import { commitMessageTests } from './unit/commitmessage.js';
 import { dialogTests } from './gui/dialogs.js';
 import { harnessTests as harnessModelTests } from './unit/harness.js';
@@ -131,6 +132,7 @@ function runUnitTests(): void {
     changeTests();
     deepseekTests();
     forgeTests();
+    noteDiffTests();
     commitMessageTests();
     harnessModelTests();
 }
