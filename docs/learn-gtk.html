@@ -600,6 +600,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">1c44423</span><span><span class="era">Adw</span><b>Chapter 5</b> · Files dropped from a file manager: the tree's <code>Gtk.DropTarget</code> also accepts <code>Gdk.FileList</code> and copies them in with <code>Gdk.DragAction.COPY</code>.</span></li>
     <li><span class="h">de2924f</span><span><span class="era">Adw</span><b>Layers, Chapter 13</b> · Journal, harness, Home, agent writes, and autosave leave <code>window.ts</code> for <code>window/</code> controllers that import only GLib/Gio; shared types move down (<code>colors.ts</code>, <code>gitlog.ts</code>) so no lower layer imports an upper one.</span></li>
     <li><span class="h">1bac3b8</span><span><span class="era">Adw</span><b>Chapter 12</b> · The assistant writes the commit message: a shared <code>MessageWriter</code> button whose <code>Gtk.Stack</code> swaps a bundled symbolic icon for a spinner with a stop mark, a capture-phase key controller for Ctrl+Z, and a status <code>Gtk.Label</code> with the <code>error</code> class and a markup link.</span></li>
+    <li><span class="h">a5d0e2b</span><span><span class="era">Adw</span><b>Chapter 12</b> · Pull requests in a fourth sidebar tab: an icon-only <code>Gtk.StackSwitcher</code> button (<code>StackPage.icon_name</code>), a <code>Gtk.ListBox</code> of rows with a colored status dot, a footer button for the server, and <code>Adw.SpinRow</code>/<code>SwitchRow</code> bound to GSettings. The forge client has no GTK at all.</span></li>
   </ol>
 </section>
 
@@ -1390,7 +1391,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
 
 <!-- ============================================================ -->
 <section class="chapter" id="ch12">
-  <div class="chapnum">Chapter 12 · commits 36ae571, e87b422, 222dc97, 79ad33d, 5877392, c237d7c, 1bac3b8</div>
+  <div class="chapnum">Chapter 12 · commits 36ae571, e87b422, 222dc97, 79ad33d, 5877392, c237d7c, 1bac3b8, a5d0e2b</div>
   <h2>Workbench features: each one is a pure model plus a thin view</h2>
   <p>The newest features follow one recipe. A pure module in <code>markdown/</code> parses and serializes the file; a view in <code>ui/</code> draws it and reports changes through a callback; the window writes the change back into the buffer as one undo step. The GTK part is the smallest part.</p>
   <table class="data cards">
@@ -1403,6 +1404,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
       <tr><td>Daily journal</td><td data-k="Model" class="wrap"><code>markdown/journal.ts</code> + <code>activity.ts</code> (JSONL log in <code>.markwork/activity</code>, merged into the Activity section)</td><td data-k="GTK" class="wrap">Quick capture through an action (Ctrl+Shift+J) and a small <code>Adw.Dialog</code>; the journal itself is a normal editor tab</td></tr>
       <tr><td>Commit message writer</td><td data-k="Model" class="wrap"><code>agent/commitmessage.ts</code>: the diff budget, the prompt, and <code>cleanMessage()</code>; git and the key come in as <code>CommitSources</code></td><td data-k="GTK" class="wrap"><code>ui/messagewriter.ts</code>: a <code>Gtk.Button</code> holding a <code>Gtk.Stack</code> (a bundled <code>com.ekaput.Markwork-sparkle-symbolic</code> icon ↔ a <code>Gtk.Overlay</code> of <code>Adw.Spinner</code> and a stop icon), a capture-phase <code>Gtk.EventControllerKey</code> on the entry, a status <code>Gtk.Label</code> with <code>error</code> and an <code>activate-link</code> markup link; used by the History tab and the single-file window</td></tr>
       <tr><td>Images in the file tree</td><td data-k="Model" class="wrap"><code>isImageFile()</code></td><td data-k="GTK" class="wrap">Same <code>ListView</code> rows; activation opens the <code>ImageViewer</code> (<code>Adw.Window</code>) instead of a tab</td></tr>
+      <tr><td>Pull requests</td><td data-k="Model" class="wrap"><code>forge/</code>: <code>parseRemote()</code>, a Forgejo/Gitea client over an injectable <code>Transport</code>, and <code>diffPulls()</code> in <code>PullMonitor</code> (the first poll is a silent baseline)</td><td data-k="GTK" class="wrap"><code>ui/collab.ts</code>: a <code>Gtk.ListBox</code> with <code>navigation-sidebar</code> rows, <code>success</code>/<code>warning</code> dots, a <code>Gtk.Stack</code> that swaps the list for a note; the tab is an icon (<code>StackPage.icon_name</code>) because four words do not fit 240 px; <code>ui/serverdialog.ts</code> uses <code>Gtk.PasswordEntry</code>. The widgets never talk to the forge: <code>window/collab.ts</code> gives them data and gets clicks back.</td></tr>
     </tbody>
   </table>
   <div class="ill">

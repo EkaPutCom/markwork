@@ -219,7 +219,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
     <div class="down">↓</div>
     <div class="layer"><b>ui/* · editor/*</b><span>widgets that report through callbacks; the editor knows no files or menus</span></div>
     <div class="down">↓</div>
-    <div class="layer"><b>orchestrator.ts · agent/*</b><span>harness processes; the assistant's logic without GTK</span></div>
+    <div class="layer"><b>orchestrator.ts · agent/* · forge/*</b><span>harness processes; the assistant's logic; Git hosting services (pull requests): all without GTK</span></div>
     <div class="down">↓</div>
     <div class="layer"><b>markdown/*</b><span>string → data, nothing else: no GI, no imports outside markdown/</span></div>
     <div class="layer base"><b>files.ts · workspace.ts · settings.ts · git.ts · …</b><span>base modules any layer may use; they never reach up</span></div>
@@ -231,6 +231,8 @@ const rules = [
         'markdown/ only holds string → data functions: no GI, nothing outside markdown/'],
     [f => f.startsWith('agent/'), t => GTK.test(t) || /^(ui|editor|window)\//.test(t) || t === 'window.ts',
         'agent/ is free of GTK and knows nothing about the editor, widgets, or the window'],
+    [f => f.startsWith('forge/'), t => GTK.test(t) || /^(ui|editor|window|agent)\//.test(t) || t === 'window.ts',
+        'forge/ talks to Git hosting services: free of GTK and knows nothing about widgets, the editor, the window, or the agent'],
     [f => f.startsWith('ui/') || f.startsWith('window/') || f === 'actions.ts', t => t === 'window.ts',
         'only app.ts composes MainWindow; components and controllers get a host interface'],
     // …
@@ -544,6 +546,7 @@ if (open) host.fileMoved(open, to);</code></pre></div>
     <li><span class="h">84dccdd</span><span><code>ChatPanel</code> split into its parts; every class with LCOM4 above 1 reviewed.</span></li>
     <li><span class="h">85f18bb</span><span>One owner per piece of document state; <code>RunQueue</code> owns run status (chapter 6).</span></li>
     <li><span class="h">1bac3b8</span><span>A new feature built to the rules from the start: <code>CommitSources</code> filled by the composition root, one button shared by two views through callbacks, and no function above complexity 7 (chapter 5).</span></li>
+    <li><span class="h">a5d0e2b</span><span>Collaboration built the same way: <code>forge/</code> is a new layer with its own rule, the HTTP call is an injectable <code>Transport</code> (libsoup in the app, a table of answers in tests), and <code>CollabController</code> reaches the token store, the transport, and <code>git remote</code> through one <code>services</code> object that tests replace.</span></li>
   </ol>
 </div>
 </section>
