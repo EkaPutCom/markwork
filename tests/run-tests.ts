@@ -93,6 +93,7 @@ import { gnomeTests } from './gui/gnome.js';
 import { robustnessTests } from './gui/robust.js';
 import { historyTests } from './gui/history.js';
 import { collabTests } from './gui/collab.js';
+import { forgejoTests } from './gui/forgejo.js';
 import { tabTests } from './gui/tabs.js';
 import { homeTests } from './gui/home.js';
 import { journalTests } from './gui/journal.js';
@@ -157,6 +158,12 @@ function runGuiTests(app: Adw.Application): void {
     }
     if (opt('only-chat')) {
         chatTests(c);
+        c.buf.set_modified(false);
+        c.w.win.destroy();
+        return;
+    }
+    if (opt('only-forgejo')) {
+        forgejoTests(c);
         c.buf.set_modified(false);
         c.w.win.destroy();
         return;

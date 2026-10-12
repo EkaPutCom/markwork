@@ -12,26 +12,15 @@
 
 import GLib from 'gi://GLib';
 import System from 'system';
-import { credentialEnv, sendChanges, type SendContext } from '../src/forge/contribute.js';
+import { CONTRIBUTOR_TOKEN, OWNER_TOKEN, REPO, SERVER_URL as URL, api, check, clone, contributor, git, owner, read, repo, stamp, waitFor, write } from './forgejo-support.js';
+import { sendChanges, type SendContext } from '../src/forge/contribute.js';
 import { fileDiff } from '../src/forge/diff.js';
 import { GiteaProvider } from '../src/forge/gitea.js';
 import { soupTransport } from '../src/forge/http.js';
-import { parseRemote } from '../src/forge/remote.js';
 import { confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../src/forge/resolve.js';
 import type { PullRequest } from '../src/forge/types.js';
 import { runGit } from '../src/git.js';
-import { DIM, GREEN, RED, RESET, errorMessage, opt, tmp } from './framework.js';
-
-const URL = GLib.getenv('FORGEJO_URL') ?? 'http://localhost:3000';
-const REPO = GLib.getenv('FORGEJO_REPO') ?? 'eka/notes';
-const OWNER_TOKEN = GLib.getenv('FORGEJO_TOKEN') ?? '';
-const CONTRIBUTOR_TOKEN = GLib.getenv('FORGEJO_CONTRIBUTOR_TOKEN') ?? '';
-
-const repo = parseRemote(`${URL}/${REPO}.git`)!;
-const owner = new GiteaProvider(repo, OWNER_TOKEN, soupTransport);
-const contributor = new GiteaProvider(repo, CONTRIBUTOR_TOKEN, soupTransport);
-const stamp = String(Math.floor(Date.now() / 1000));
-const sleep = (ms: number) => new Promise<void>(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { resolve(); return GLib.SOURCE_REMOVE; }));
+import { DIM, GREEN, RED, RESET, errorMessage, opt } from './framework.js';
 
 let passed = 0, failed = 0;
 async function step<T>(name: string, run: () => Promise<T>): Promise<T | undefined> {
@@ -46,44 +35,6 @@ async function step<T>(name: string, run: () => Promise<T>): Promise<T | undefin
         return undefined;
     }
 }
-function check(cond: unknown, message: string): asserts cond { if (!cond) throw new Error(message); }
-
-// The server's own API, for the things the forge layer does not offer (editing a file on the base branch, closing a pull request).
-async function api(token: string, method: 'GET' | 'POST' | 'PUT' | 'PATCH', path: string, body?: object): Promise<{ status: number; json: any }> {
-    const response = await soupTransport({
-        method, url: `${URL}/api/v1${path}`, headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    return { status: response.status, json: response.body ? JSON.parse(response.body) : null };
-}
-
-async function git(cwd: string, args: string[], env?: Record<string, string>): Promise<string> {
-    const run = await runGit(cwd, args, env);
-    if (run?.status !== 0) throw new Error(`git ${args.join(' ')}: ${run?.err.trim()}`);
-    return run.out.trim();
-}
-
-async function clone(token: string, name: string): Promise<{ folder: string; login: string }> {
-    const login = await new GiteaProvider(repo, token, soupTransport).currentUser();
-    const folder = GLib.build_filenamev([tmp, name]);
-    await git(tmp, ['clone', '-q', `${URL}/${REPO}.git`, folder], credentialEnv(login, token));
-    await git(folder, ['config', 'user.name', login]);
-    await git(folder, ['config', 'user.email', `${login}@example.com`]);
-    return { folder, login };
-}
-
-const write = (path: string, text: string) => GLib.file_set_contents(path, text);
-const read = (path: string) => new TextDecoder().decode(GLib.file_get_contents(path)[1]);
-
-async function waitFor<T>(what: string, probe: () => Promise<T | null | false>, seconds = 20): Promise<T> {
-    for (let i = 0; i < seconds * 2; i++) {
-        const value = await probe();
-        if (value) return value;
-        await sleep(500);
-    }
-    throw new Error(`${what} did not happen within ${seconds} seconds`);
-}
-
 async function readChecks(): Promise<PullRequest | undefined> {
     print('\nRead-only: the forge client against the real server');
     const me = await step('currentUser answers with the token\'s user', async () => { const u = await owner.currentUser(); check(u, 'empty login'); return u; });
@@ -108,14 +59,19 @@ async function readChecks(): Promise<PullRequest | undefined> {
         return d;
     });
     void diff;
-    const modified = files?.find(f => f.status === 'modified');
-    if (modified) {
-        await step('getContent: the file at the base and at the head differ; a file that is not there is null', async () => {
-            const [before, after, missing] = await Promise.all([owner.getContent(modified.path, pull.baseSha), owner.getContent(modified.path, pull.headSha), owner.getContent(`no-such-${stamp}.md`, pull.headSha)]);
-            check(before !== null && after !== null && before !== after, 'before and after should both exist and differ');
-            check(missing === null, 'a missing file should be null');
-        });
+    // Any open pull request that modifies a file will do for comparing the two versions of it (after repeated --write runs the
+    // seeded one may be gone or have changed).
+    let modified: { pull: PullRequest; path: string } | undefined;
+    for (const candidate of pulls ?? []) {
+        const path = (await owner.getFiles(candidate.number)).find(f => f.status === 'modified')?.path;
+        if (path) { modified = { pull: candidate, path }; break; }
     }
+    await step('getContent: the file at the base and at the head differ; a file that is not there is null', async () => {
+        check(modified, 'no open pull request modifies a file: run the seed script');
+        const [before, after, missing] = await Promise.all([owner.getContent(modified.path, modified.pull.baseSha), owner.getContent(modified.path, modified.pull.headSha), owner.getContent(`no-such-${stamp}.md`, modified.pull.headSha)]);
+        check(before !== null && after !== null && before !== after, 'before and after should both exist and differ');
+        check(missing === null, 'a missing file should be null');
+    });
     await step('listComments reads the discussion', async () => { const c = await owner.listComments(pull.number); check(Array.isArray(c), 'not a list'); });
     await step('a bad token is told as an auth failure', async () => {
         try { await new GiteaProvider(repo, 'not-a-token', soupTransport).listPulls('open'); } catch (e) { check((e as { failure?: string }).failure === 'auth', `got ${errorMessage(e)}`); return; }
