@@ -232,7 +232,7 @@ const tool = (id: string, name: string, args: object): Call => ({ id, name, argu
 
 // The scenes run in this order on one window; some reuse what an earlier scene set up (the work folder, the git repo).
 const SCENES: (keyof Capture & string)[] = [
-    'screenshots', 'syntaxGif', 'typingGif', 'diagramGif', 'kanbanGif', 'themeGif', 'assistant', 'proposals', 'files',
+    'screenshots', 'syntaxGif', 'typingGif', 'diagramGif', 'kanbanGif', 'layouts', 'themeGif', 'assistant', 'proposals', 'files',
     'gitHistory', 'imageZoom', 'tabs', 'chatHistory', 'contextPopover', 'workPlan', 'agentLog', 'agentGit', 'cardDialog',
     'orchestrator', 'dailyFlow',
 ];
@@ -241,7 +241,9 @@ function main(app: Adw.Application): void {
     GLib.mkdir_with_parents(OUT, 0o755);
     const capture = new Capture(app);
     capture.settle(30);
-    for (const scene of SCENES) (capture[scene] as () => void)();
+    // MARKWORK_SCENES=layouts,kanbanGif runs only those scenes (some need the work folder an earlier scene sets up).
+    const only = GLib.getenv('MARKWORK_SCENES')?.split(',');
+    for (const scene of SCENES) if (!only || only.includes(scene)) (capture[scene] as () => void)();
     writeGifs(capture.pending);
     print(`Done: ${OUT}`);
     capture.close();
@@ -561,6 +563,57 @@ class Capture {
             this.frame('kanban', 5);
         }
         this.frame('kanban', 5);
+    }
+
+    // One file, many layouts: the same Markdown is shown as a board, list, table, calendar, timeline, gallery, and chart
+    // by changing only its `layout:` line (the same path the header bar's layout menu takes). Dates are relative to today.
+    layouts(): void {
+        const w = this.w;
+        const day = (offset: number) => { const d = new Date(); d.setDate(d.getDate() + offset); return localDate(d); };
+        const doc = `---
+layout: board
+fields:
+  status: select(todo:gray, doing:blue, done:green) = todo
+  start: date
+  due: date
+---
+
+# Launch plan
+
+One file. Change the layout: line and the same notes become a list, a table, a calendar, a timeline, a gallery, or a chart.
+
+## Plan
+
+- [ ] Write the changelog #docs [status:: todo] [start:: ${day(3)}] [due:: ${day(6)}]
+- [ ] Prepare the release material #marketing [status:: todo] [start:: ${day(1)}] [due:: ${day(8)}]
+
+## In Progress
+
+- [ ] Fix the sync bug #bug [status:: doing] [start:: ${day(-4)}] [due:: ${day(2)}]
+- [ ] Review the parser #dev [status:: doing] [start:: ${day(-1)}] [due:: ${day(4)}]
+
+## Done
+
+- [x] Redesign the home page #design [status:: done] [start:: ${day(-9)}] [due:: ${day(-3)}]
+- [x] Migration to GTK 4 #dev [status:: done] [start:: ${day(-12)}] [due:: ${day(-6)}]
+`;
+        const dir = GLib.dir_make_tmp('markwork-layouts-XXXXXX');
+        const path = this.put('launch-plan.md', doc, dir);
+        w.setOption('chat', false);
+        w.setOption('sidebar', false);
+        w.setDark(false);
+        w.openFile(path);
+        this.idle(600);
+        for (const layout of ['board', 'list', 'table', 'calendar', 'timeline', 'gallery', 'chart']) {
+            w.setLayout(layout);
+            this.idle(500);
+            this.shot(`layout-${layout}`);
+            this.frame('layouts', 8);
+        }
+        w.setLayout('board');
+        this.idle(300);
+        this.frame('layouts', 8);
+        w.editor.buffer.set_modified(false);
     }
 
     // GIF 5: light ↔ dark mode.
