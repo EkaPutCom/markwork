@@ -38,6 +38,7 @@
   <li>A batch has at most 20 actions. Moving a file does not update links in other files; the agent must propose that separately.</li>
   <li>The search is keyword-based (BM25), not meaning-based; <code>search_text</code> does not recognize synonyms.</li>
   <li>The Git tools only read what has been committed.</li>
+  <li><code>edit_note</code> and <code>edit_schema</code> rewrite a structured document through its model, so blank lines and the order of a note's own text are normalized like in the app; <code>edit_schema</code> does not rename a field or change the type of one that notes use.</li>
   <li>Undo restores a deleted file from the journal snapshot, not from the Trash.</li>
   <li>The conversation history cannot be searched from the panel yet; search the files in <code>.markwork/chats/</code>.</li>
   <li>The token estimate is rough (3 characters per token).</li>

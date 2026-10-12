@@ -37,7 +37,10 @@
   <tr><td><code>search_documents</code></td><td>Search sections of files by topic (BM25)</td><td>No</td></tr>
   <tr><td><code>search_text</code></td><td>Search for exact text</td><td>No</td></tr>
   <tr><td><code>read_file</code></td><td>Read the contents of a file by line range</td><td>No</td></tr>
+  <tr><td><code>describe_schema</code></td><td>The layout, options, fields (type, select options, default), and groups of a document that has <code>layout:</code> in its frontmatter; without a name, every such file</td><td>No</td></tr>
+  <tr><td><code>query_notes</code></td><td>Filter, sort, or count the notes of those documents by their fields (<code>eq</code>, <code>lt</code>, <code>contains</code>, <code>empty</code>, …; <code>today</code> for dates; <code>count_by</code> a field)</td><td>No</td></tr>
 </table></div>
+<p><code>list_files</code> also shows the layout of a structured document, so the agent knows which files are boards, tables, calendars, and so on.</p>
 
 <h2 id="git">Git tools</h2>
 <p>Only available when the work folder is a Git repository.</p>
@@ -56,7 +59,8 @@
   <tr><td><code>insert_text</code></td><td>Insert text at the start, at the end, or after a given line</td><td>Yes</td></tr>
   <tr><td><code>delete_file</code></td><td>Move a file to the Trash</td><td>Yes</td></tr>
   <tr><td><code>move_file</code></td><td>Rename or move to another folder</td><td>Yes</td></tr>
-  <tr><td><code>edit_kanban</code></td><td>Kanban board cards and lists</td><td>Yes</td></tr>
+  <tr><td><code>edit_note</code></td><td>One note of any structured document: add, update (title, tags, fields), move, mark, delete, and groups; field values are checked against the declared fields</td><td>Yes</td></tr>
+  <tr><td><code>edit_schema</code></td><td>The setup of a structured document: add or remove a field or a select option, reorder fields, switch the layout, set a layout option</td><td>Yes</td></tr>
   <tr><td><code>propose_batch</code></td><td>1–20 of the actions above in one review, which may be applied partially</td><td>Yes</td></tr>
 </table></div>
 
@@ -64,7 +68,7 @@
 <div class="table-wrap"><table>
   <tr><th>Tool</th><th>Function</th><th>Approval</th></tr>
   <tr><td><code>set_work</code></td><td>Record the goal and up to 20 steps with their status</td><td>No</td></tr>
-  <tr><td><code>verify_work</code></td><td>Check the actual result: text present/absent, kanban cards, Markdown structure</td><td>No</td></tr>
+  <tr><td><code>verify_work</code></td><td>Check the actual result: text present/absent, a note in a group and its done status, the value of a note's field, Markdown structure and the fields of structured documents</td><td>No</td></tr>
 </table></div>
 
 <h2 id="harness">External harness</h2>

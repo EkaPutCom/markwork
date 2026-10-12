@@ -55,6 +55,7 @@ import { agentTests, apiKeyTests, toolTests } from './unit/agent.js';
 import { transcriptTests } from './unit/transcript.js';
 import { agenticTests } from './unit/agentic.js';
 import { agentActionTests } from './unit/agentactions.js';
+import { noteToolTests } from './unit/notetools.js';
 import { workTests } from './unit/work.js';
 import { traceTests } from './unit/trace.js';
 import { changeTests } from './unit/changes.js';
@@ -123,6 +124,7 @@ function runUnitTests(): void {
     workTests();
     traceTests();
     agenticTests();
+    noteToolTests();
     agentActionTests();
     changeTests();
     deepseekTests();

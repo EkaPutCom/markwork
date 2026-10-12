@@ -4,6 +4,8 @@
 //   npm run test:live -- --thinking    with thinking mode
 //   npm run test:live -- --model=deepseek-v4-pro
 //   npm run test:live -- --commit-only  only the commit message writer (tests/live-commit.ts)
+//   npm run test:live -- --structured    also the tools for structured documents (tests/live-structured.ts)
+//   npm run test:live -- --structured-only  only those
 //
 // Uses the manuscript tests/samples/sample-book (deliberately containing contradictions: Raka's age 17 vs 25, the name Hasan vs Hasyim,
 // white vs black ship) and runs ChatSession + DeepSeek + the same browsing tools as the app.
@@ -11,6 +13,7 @@
 
 import { liveAgentic } from './live-agentic.js';
 import { liveCommitMessage } from './live-commit.js';
+import { liveStructured } from './live-structured.js';
 import GLib from 'gi://GLib';
 import System from 'system';
 import { systemKeyStore } from '../src/agent/apikey.js';
@@ -66,6 +69,7 @@ async function main(): Promise<boolean> {
 
     let failures = 0;
     if (opt('commit-only')) return await liveCommitMessage(provider, model) === 0;
+    if (opt('structured-only')) return await liveStructured(provider, model, thinking) === 0;
     for (const sc of SCENARIOS) {
         print(`\n▶ ${sc.name}\n  Q: ${sc.question}`);
         const session = new ChatSession();
@@ -107,6 +111,7 @@ async function main(): Promise<boolean> {
     print(`\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} scenarios passed${RESET}`);
     failures += await liveCommitMessage(provider, model);
     if (opt('agentic')) failures += await liveAgentic(provider, model, thinking);
+    if (opt('structured')) failures += await liveStructured(provider, model, thinking);
     return failures === 0;
 }
 
