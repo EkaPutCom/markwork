@@ -47,6 +47,18 @@ export interface PullComment {
     createdAt: string;
 }
 
+// A repository on the forge, as far as sending changes to it needs to know.
+export interface RepoInfo {
+    owner: string;
+    repo: string;
+    cloneUrl: string;       // https URL to push to
+    defaultBranch: string;
+    canPush: boolean;       // the token may push branches here (no fork needed)
+    isFork: boolean;
+}
+
+export interface NewPull { title: string; body: string; head: string; base: string }
+
 export type MergeMethod = 'merge' | 'squash' | 'rebase';
 
 // What went wrong, in terms the interface can act on.
@@ -68,6 +80,11 @@ export interface ForgeProvider {
     listPulls(state: 'open' | 'closed' | 'all'): Promise<PullRequest[]>;
     getPull(number: number): Promise<PullRequest>;
     getFiles(number: number): Promise<PullFile[]>;
+    currentUser(): Promise<string>;
+    // null = no such repository (or the token cannot see it); without arguments, the repository of the open folder.
+    repoInfo(owner?: string, repo?: string): Promise<RepoInfo | null>;
+    fork(): Promise<RepoInfo>;
+    createPull(pull: NewPull): Promise<PullRequest>;
     listComments(number: number): Promise<PullComment[]>;
     addComment(number: number, body: string): Promise<PullComment>;
     // The whole pull request as one unified diff.

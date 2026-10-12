@@ -2,7 +2,7 @@
 // so it runs the same against libsoup and against the fake of the tests.
 
 import {
-    ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest, type PullState, type RepoRef, type Transport,
+    ForgeError, type ForgeProvider, type MergeMethod, type NewPull, type PullComment, type PullFile, type PullRequest, type PullState, type RepoInfo, type RepoRef, type Transport,
 } from './types.js';
 
 const PAGE = 50;
@@ -12,6 +12,10 @@ interface ApiPull {
     number: number; title: string; state: string; merged?: boolean; mergeable?: boolean | null;
     user?: { login?: string }; head?: { ref?: string; sha?: string }; base?: { ref?: string; sha?: string };
     body?: string; comments?: number; created_at?: string; updated_at?: string; html_url?: string;
+}
+interface ApiRepo {
+    name: string; owner?: { login?: string }; clone_url?: string; default_branch?: string; fork?: boolean;
+    permissions?: { push?: boolean };
 }
 interface ApiComment { id: number; body?: string; user?: { login?: string }; created_at?: string }
 interface ApiFile { filename: string; previous_filename?: string; status: string; additions?: number; deletions?: number }
@@ -30,6 +34,11 @@ function toPull(p: ApiPull): PullRequest {
     };
 }
 
+const toRepo = (r: ApiRepo): RepoInfo => ({
+    owner: r.owner?.login ?? '', repo: r.name, cloneUrl: r.clone_url ?? '', defaultBranch: r.default_branch ?? 'main',
+    canPush: r.permissions?.push === true, isFork: r.fork === true,
+});
+
 const toComment = (c: ApiComment): PullComment => ({ id: c.id, author: c.user?.login ?? '', body: c.body ?? '', createdAt: c.created_at ?? '' });
 
 const FILE_STATUS: Record<string, PullFile['status']> = { added: 'added', deleted: 'deleted', removed: 'deleted', renamed: 'renamed' };
@@ -45,15 +54,23 @@ export class GiteaProvider implements ForgeProvider {
     constructor(private readonly repo: RepoRef, private readonly token: string, private readonly transport: Transport) {}
 
     private get api(): string {
-        return `${this.repo.baseUrl}/api/v1/repos/${encodeURIComponent(this.repo.owner)}/${encodeURIComponent(this.repo.repo)}`;
+        return this.apiOf(this.repo.owner, this.repo.repo);
     }
 
-    private async request(method: 'GET' | 'POST', path: string, body?: object, accept = 'application/json'): Promise<string> {
+    private apiOf(owner: string, repo: string): string {
+        return `${this.repo.baseUrl}/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+    }
+
+    private request(method: 'GET' | 'POST', path: string, body?: object, accept = 'application/json'): Promise<string> {
+        return this.requestAt(`${this.api}${path}`, method, body, accept);
+    }
+
+    private async requestAt(url: string, method: 'GET' | 'POST', body?: object, accept = 'application/json'): Promise<string> {
         if (!this.token) throw new ForgeError('auth', `No access token for ${this.repo.host}`);
         let response;
         try {
             response = await this.transport({
-                method, url: `${this.api}${path}`,
+                method, url,
                 headers: { Authorization: `token ${this.token}`, Accept: accept, ...(body ? { 'Content-Type': 'application/json' } : {}) },
                 ...(body ? { body: JSON.stringify(body) } : {}),
             });
@@ -95,6 +112,42 @@ export class GiteaProvider implements ForgeProvider {
             if (items.length < PAGE) break;
         }
         return files;
+    }
+
+    async currentUser(): Promise<string> {
+        const text = await this.requestAt(`${this.repo.baseUrl}/api/v1/user`, 'GET');
+        try {
+            return String(JSON.parse(text).login ?? '');
+        } catch (e) {
+            throw new ForgeError('server', `${this.repo.host} sent an answer that is not JSON`);
+        }
+    }
+
+    async repoInfo(owner = this.repo.owner, repo = this.repo.repo): Promise<RepoInfo | null> {
+        try {
+            return toRepo(JSON.parse(await this.requestAt(this.apiOf(owner, repo), 'GET')) as ApiRepo);
+        } catch (e) {
+            if (e instanceof ForgeError && e.failure === 'not-found') return null;
+            throw e instanceof ForgeError ? e : new ForgeError('server', `${this.repo.host} sent an answer that is not JSON`);
+        }
+    }
+
+    async fork(): Promise<RepoInfo> {
+        const text = await this.requestAt(`${this.api}/forks`, 'POST', {});
+        try {
+            return toRepo(JSON.parse(text) as ApiRepo);
+        } catch (e) {
+            throw new ForgeError('server', `${this.repo.host} sent an answer that is not JSON`);
+        }
+    }
+
+    async createPull(pull: NewPull): Promise<PullRequest> {
+        const text = await this.request('POST', '/pulls', pull);
+        try {
+            return toPull(JSON.parse(text) as ApiPull);
+        } catch (e) {
+            throw new ForgeError('server', `${this.repo.host} sent an answer that is not JSON`);
+        }
     }
 
     // A pull request is an issue to the forge: its discussion lives under /issues.

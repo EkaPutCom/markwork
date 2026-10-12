@@ -44,6 +44,7 @@ const LASTING: ReadonlySet<ForgeError['failure']> = new Set(['auth', 'not-found'
 export class CollabController {
     private monitor: PullMonitor | null = null;
     private forge: ForgeProvider | null = null;
+    private accessToken = '';
     private repo: RepoRef | null = null;
     private folder: string | null = null;
     private generation = 0;                 // a folder change makes the answers of the previous folder stale
@@ -61,6 +62,7 @@ export class CollabController {
         const panel = host.collabPanel;
         panel.onRefresh = () => void this.refresh();
         panel.onServer = () => void this.editToken();
+        panel.onSend = () => this.onSend();
         panel.onOpen = pull => this.onOpenPull(pull);
         host.settings.gsettings.connect('changed::forge-poll-seconds', () => this.monitor?.start(host.settings.forgePollSeconds));
     }
@@ -68,8 +70,15 @@ export class CollabController {
     // A pull request was chosen in the list; the window connects this to the review (the browser page until then).
     onOpenPull: (pull: PullRequest) => void = pull => { if (pull.url) Gio.AppInfo.launch_default_for_uri(pull.url, null); };
 
+    // The send button of the tab; the window connects it to ContributeController.
+    onSend: () => void = () => {};
+
     get pulls(): readonly PullRequest[] { return this.monitor?.pulls ?? []; }
     provider(): ForgeProvider | null { return this.forge; }
+    // What sending changes needs: the forge, where the folder's repository is, and the token to push with.
+    session(): { provider: ForgeProvider; repo: RepoRef; token: string } | null {
+        return this.forge && this.repo ? { provider: this.forge, repo: this.repo, token: this.accessToken } : null;
+    }
 
     // The work folder changed (or the window just opened one): look for its forge from scratch.
     async setFolder(folder: string | null): Promise<void> {
@@ -96,6 +105,7 @@ export class CollabController {
     private connect(repo: RepoRef, token: string): void {
         const provider = new GiteaProvider(repo, token, this.services.transport);
         this.forge = provider;
+        this.accessToken = token;
         const monitor = new PullMonitor(provider);
         monitor.onChange = (pulls, events) => {
             this.failing = false;
@@ -111,6 +121,7 @@ export class CollabController {
         this.monitor?.stop();
         this.monitor = null;
         this.forge = null;
+        this.accessToken = '';
         this.repo = null;
         this.failing = false;
         this.notified.clear();

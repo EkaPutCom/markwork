@@ -20,6 +20,7 @@ export class CollabPanel {
     onOpen: (pull: PullRequest) => void = () => {};
     onRefresh: () => void = () => {};
     onServer: () => void = () => {};
+    onSend: () => void = () => {};
 
     constructor() {
         this.title = new Gtk.Label({ label: _('PULL REQUESTS'), xalign: 0, margin_start: 16 });
@@ -28,8 +29,13 @@ export class CollabPanel {
         this.refreshButton.set_has_frame(false);
         this.refreshButton.set_tooltip_text(_('Look for new pull requests'));
         this.refreshButton.connect('clicked', () => this.onRefresh());
+        const send = Gtk.Button.new_from_icon_name('document-send-symbolic');
+        send.set_has_frame(false);
+        send.set_tooltip_text(_('Send changes as a pull request…'));
+        send.connect('clicked', () => this.onSend());
         const header = new Gtk.Box({ margin_top: 4, margin_bottom: 8, margin_end: 6 });
         pack(header, this.title, true);
+        header.append(send);
         header.append(this.refreshButton);
 
         this.list = new Gtk.ListBox({ selection_mode: Gtk.SelectionMode.NONE, activate_on_single_click: true });

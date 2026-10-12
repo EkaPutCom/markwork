@@ -26,6 +26,7 @@ src/ui/messagewriter.ts
 src/ui/outline.ts
 src/ui/proposalviewer.ts
 src/ui/pullview.ts
+src/ui/sendchanges.ts
 src/ui/serverdialog.ts
 src/ui/shortcuts.ts
 src/ui/sidebar.ts
@@ -34,6 +35,7 @@ src/ui/worklist.ts
 src/window.ts
 src/window/autosave.ts
 src/window/collab.ts
+src/window/contribute.ts
 src/window/harness.ts
 src/window/home.ts
 src/window/journal.ts

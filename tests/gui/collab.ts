@@ -7,6 +7,7 @@ import type { HttpRequest, HttpResponse } from '../../src/forge/types.js';
 import { section, test, eq, ok, contains, settle, optVal, tmp } from '../framework.js';
 import type { GuiContext } from './context.js';
 import { descendants, widgetPixbuf } from '../widgets.js';
+import { sendChangesDialog, type SendChangesAnswer, type SendChangesOptions } from '../../src/ui/sendchanges.js';
 
 const apiPull = (n: number, extra: object = {}) => ({
     number: n, title: `Pull request ${n}`, state: 'open', merged: false, mergeable: true, user: { login: 'budi' },
@@ -179,11 +180,15 @@ export function collabTests(c: GuiContext): void {
     const NOTE_BEFORE = '---\ndate: 2026-10-12\n---\n# Rapat\n\nBahas rilis.\n';
     const NOTE_AFTER = '---\ndate: 2026-10-14\nowner: budi\n---\n# Rapat\n\nBahas kolaborasi.\n';
     const posts: HttpRequest[] = [];
+    const sendOrigin = GLib.build_filenamev([tmp, 'send-origin.git']);
     const comments: object[] = [{ id: 1, body: 'Tried it on my machine, the calendar works.', user: { login: 'sari' }, created_at: '2026-10-12T08:00:00Z' }];
     let merged = false;
     const API = 'https://git.example.org/api/v1/repos/eka/notes';
     const routes = (request: HttpRequest): HttpResponse => {
+        if (request.url === 'https://git.example.org/api/v1/user') return { status: 200, body: '{"login":"eka"}' };
         const path = request.url.slice(API.length);
+        if (path === '') return { status: 200, body: JSON.stringify({ name: 'notes', owner: { login: 'eka' }, clone_url: sendOrigin, default_branch: 'main', fork: false, permissions: { push: true } }) };
+        if (request.method === 'POST' && path === '/pulls') { posts.push(request); return { status: 201, body: JSON.stringify(apiPull(50, { title: JSON.parse(request.body ?? '{}').title })) }; }
         if (request.method === 'POST' && path === '/issues/42/comments') {
             posts.push(request);
             const body = JSON.parse(request.body ?? '{}').body as string;
@@ -380,6 +385,83 @@ export function collabTests(c: GuiContext): void {
     });
 
     w.collab.dispose();
+
+    section('Send changes as a pull request');
+    for (const [name, value] of Object.entries({ GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 'tester@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 'tester@example.com' })) GLib.setenv(name, value, true);
+    const sendWork = GLib.build_filenamev([tmp, 'send-work']);
+    GLib.mkdir_with_parents(sendOrigin, 0o755);
+    git(sendOrigin, 'init', '-q', '--bare', '-b', 'main');
+    git(tmp, 'clone', '-q', sendOrigin, sendWork);
+    git(sendWork, 'checkout', '-q', '-B', 'main');
+    const note = GLib.build_filenamev([sendWork, 'journal.md']);
+    GLib.file_set_contents(note, '# Journal\n\nHallo\n');
+    git(sendWork, 'add', 'journal.md');
+    git(sendWork, 'commit', '-q', '-m', 'First');
+    git(sendWork, 'push', '-q', '-u', 'origin', 'main');
+    w.openFolder(sendWork);
+    const offered: SendChangesOptions[] = [];
+    let draft: SendChangesAnswer | null = null;
+    w.contribute.dialogs.send = async options => { offered.push(options); return draft; };
+    const bareRefs = () => { const [, out] = GLib.spawn_sync(sendOrigin, ['git', 'for-each-ref', '--format=%(refname)'], env, GLib.SpawnFlags.SEARCH_PATH, null); return new TextDecoder().decode(out ?? undefined); };
+    const startAndWait = () => { const before = w.lastToast; w.lastToast = ''; settle(w.contribute.start()); const toast = w.lastToast; w.lastToast = before; return toast; };
+
+    test('with nothing changed there is nothing to send, and the dialog is not shown', () => {
+        ok(waitFor(() => w.collab.session() !== null), 'connected to the forge');
+        contains(startAndWait(), 'no changes');
+        eq(offered.length, 0);
+    });
+
+    test('the dialog is offered the repository, the base branch, and the changes; cancelling sends nothing', () => {
+        GLib.file_set_contents(note, '# Journal\n\nHello\n');
+        draft = null;
+        startAndWait();
+        eq(offered.length, 1);
+        eq([offered[0].repository, offered[0].base, offered[0].canPush, offered[0].changes.map(c => c.path)], ['eka/notes', 'main', true, [note]]);
+        ok(!bareRefs().includes('fix-greeting'), 'nothing was pushed');
+    });
+
+    test('sending commits on a new branch, pushes it, opens the pull request, and says where the folder is', () => {
+        draft = { title: 'Fix the greeting', body: 'Hallo is not English.', branch: 'fix-greeting', via: 'direct', files: [note] };
+        const toast = startAndWait();
+        contains(toast, 'Opened pull request #50');
+        contains(toast, 'fix-greeting');
+        contains(bareRefs(), 'refs/heads/fix-greeting');
+        const created = JSON.parse(posts[posts.length - 1].body ?? '{}');
+        eq([created.title, created.head, created.base, created.body], ['Fix the greeting', 'fix-greeting', 'main', 'Hallo is not English.']);
+    });
+
+    // A dialog that is closed while it is still appearing never reports that it closed; let it finish appearing first.
+    const settleDialog = () => { for (let i = 0; i < 40; i++) { pump(); GLib.usleep(10000); } };
+
+    test('the real dialog opens, offers a fork when the user cannot push, and answers null when closed', () => {
+        const options: SendChangesOptions = { repository: 'eka/notes', base: 'main', folder: sendWork, changes: [{ path: note, kind: 'modified' }], canPush: false };
+        const opened = sendChangesDialog(w.win, options);
+        ok(waitFor(() => !!w.win.get_visible_dialog()), 'the dialog is shown');
+        const radios = descendants(w.win.get_visible_dialog() as Gtk.Widget).filter((x): x is Gtk.CheckButton => x instanceof Gtk.CheckButton && !!x.get_label());
+        eq(radios.map(r => r.get_label()).filter(l => l && !l.includes('journal')), ['Through my fork', 'AGit (no fork, no branch)']);
+        eq(radios.find(r => r.get_label() === 'Through my fork')?.get_active(), true);
+        settleDialog();
+        w.win.get_visible_dialog()?.close();
+        eq(settle(opened), null);
+        ok(waitFor(() => !w.win.get_visible_dialog()), 'the dialog went away');
+        const withPush = sendChangesDialog(w.win, { ...options, canPush: true });
+        ok(waitFor(() => !!w.win.get_visible_dialog()), 'shown again');
+        const labels = descendants(w.win.get_visible_dialog() as Gtk.Widget).filter((x): x is Gtk.CheckButton => x instanceof Gtk.CheckButton).map(r => r.get_label());
+        ok(labels.includes('A branch in the repository'), 'the direct way is offered to those who may push');
+        settleDialog();
+        w.win.get_visible_dialog()?.close();
+        eq(settle(withPush), null);
+        ok(waitFor(() => !w.win.get_visible_dialog()), 'and again');
+    });
+
+    test('without a connection to a forge the user is told how to connect', () => {
+        w.collab.dispose();
+        contains(startAndWait(), 'Connect to a server');
+    });
+
+    for (const name of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) GLib.unsetenv(name);
+
+    w.collab.dispose();
     if (previousRoot) w.openFolder(previousRoot);
     w.collab.dispose();
 
@@ -405,6 +487,11 @@ export function collabTests(c: GuiContext): void {
         waitFor(() => view.banner.get_revealed());
         shot('conflict');
         w.pulls.close();
+        const dialog = sendChangesDialog(w.win, { repository: 'eka/notes', base: 'main', folder: sendWork, changes: [{ path: note, kind: 'modified' }, { path: GLib.build_filenamev([sendWork, 'agenda', 'rapat.md']), kind: 'untracked' }], canPush: false });
+        waitFor(() => !!w.win.get_visible_dialog());
+        shot('send');
+        w.win.get_visible_dialog()?.force_close();
+        settle(dialog);
     }
     w.collab.dispose();
     w.sidebar.setPage('files');

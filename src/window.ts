@@ -61,6 +61,7 @@ import { _, fmt } from './i18n.js';
 import type { Doc } from './window/doc.js';
 import { Autosaver, type AutosaveHost } from './window/autosave.js';
 import { CollabController, type CollabHost } from './window/collab.js';
+import { ContributeController, type ContributeHost } from './window/contribute.js';
 import { PullReviewController, type PullHost } from './window/pulls.js';
 import { JournalController, type JournalHost } from './window/journal.js';
 import { HarnessController, type HarnessHost } from './window/harness.js';
@@ -83,7 +84,7 @@ function fitToScreen(width: number, height: number): [number, number] {
 const MODE_LABELS: Record<Mode, string> = { source: _('Source'), focus: _('Focus'), typewriter: _('Typewriter') };
 
 // The window as seen by its controllers; each controller is typed with only the part it needs.
-type WindowHost = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost & ViewHost & NoteHost & CollabHost & PullHost;
+type WindowHost = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost & ViewHost & NoteHost & CollabHost & PullHost & ContributeHost;
 
 export class MainWindow {
     readonly app: Adw.Application;
@@ -110,6 +111,7 @@ export class MainWindow {
     readonly collabPanel: CollabPanel;
     readonly pullView: PullView;
     readonly pulls: PullReviewController;
+    readonly contribute: ContributeController;
     readonly harness: HarnessController;
     readonly homePage: HomeController;
     private readonly views: ViewController;
@@ -163,6 +165,8 @@ export class MainWindow {
         this.collab = new CollabController(this.host);
         this.pulls = new PullReviewController(this.host, { provider: () => this.collab.provider(), changed: () => void this.collab.refresh() });
         this.collab.onOpenPull = pull => void this.pulls.open(pull);
+        this.contribute = new ContributeController(this.host, { session: () => this.collab.session(), refresh: () => void this.collab.refresh() });
+        this.collab.onSend = () => void this.contribute.start();
         this.harness = new HarnessController(this.host);
         this.homePage = new HomeController(this.host);
         this.views = new ViewController(this.host);
@@ -394,6 +398,7 @@ export class MainWindow {
             get collabPanel() { return w.collabPanel; },
             get pullView() { return w.pullView; },
             showDocument: () => this.views.sync(),
+            saveAll: () => this.documents.saveOpenFiles(),
             get workspace() { return w.workspace; },
             get app() { return w.app; },
             get content() { return w.content; },
@@ -664,6 +669,10 @@ export class MainWindow {
     }
 
     // The "Fields…" menu for the board or list that is shown.
+    sendChanges(): void {
+        void this.contribute.start();
+    }
+
     editFields(): void {
         this.views.editFields();
     }

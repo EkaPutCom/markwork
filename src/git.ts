@@ -28,7 +28,8 @@ export const gitLimits = {
 };
 
 // null = git cannot be run (not installed, or the folder does not exist).
-export function runGit(cwd: string, args: string[]): Promise<Run | null> {
+// extra = environment variables for this one run (a credential for a push stays out of the arguments, which `ps` shows).
+export function runGit(cwd: string, args: string[], extra: Record<string, string> = {}): Promise<Run | null> {
     return new Promise(resolve => {
         let done = false, watchdog = 0;
         const finish = (run: Run | null) => {
@@ -44,6 +45,7 @@ export function runGit(cwd: string, args: string[]): Promise<Run | null> {
             launcher.setenv('GIT_OPTIONAL_LOCKS', '0', true);
             // A fetch or pull that needs a password must fail, not wait for a terminal this process does not have.
             launcher.setenv('GIT_TERMINAL_PROMPT', '0', true);
+            for (const [name, value] of Object.entries(extra)) launcher.setenv(name, value, true);
             const proc = launcher.spawnv(['git', '-c', 'core.quotePath=false', ...args]);
             const started = GLib.get_monotonic_time();
             let exitedAt = 0;

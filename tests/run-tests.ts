@@ -62,6 +62,7 @@ import { changeTests } from './unit/changes.js';
 import { deepseekTests } from './unit/deepseek.js';
 import { forgeTests } from './unit/forge.js';
 import { noteDiffTests } from './unit/notediff.js';
+import { contributeTests } from './unit/contribute.js';
 import { commitMessageTests } from './unit/commitmessage.js';
 import { dialogTests } from './gui/dialogs.js';
 import { harnessTests as harnessModelTests } from './unit/harness.js';
@@ -133,6 +134,7 @@ function runUnitTests(): void {
     deepseekTests();
     forgeTests();
     noteDiffTests();
+    contributeTests();
     commitMessageTests();
     harnessModelTests();
 }
@@ -153,6 +155,12 @@ function runGuiTests(app: Adw.Application): void {
     }
     if (opt('only-chat')) {
         chatTests(c);
+        c.buf.set_modified(false);
+        c.w.win.destroy();
+        return;
+    }
+    if (opt('only-collab')) {
+        collabTests(c);
         c.buf.set_modified(false);
         c.w.win.destroy();
         return;
