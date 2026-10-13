@@ -57,13 +57,13 @@ export function historyTests(c: GuiContext): void {
     w.sidebar.setVisible(true);
     w.sidebar.setPage('history');
 
-    test('the history tab does not make the sidebar expand (the sidebar stays at the left edge, 240 wide)', () => {
+    test('the history tab does not make the sidebar expand (the sidebar stays at the left edge, 300 wide)', () => {
         ok(!w.sidebar.panel.compute_expand(Gtk.Orientation.HORIZONTAL), 'the sidebar demands spare space');
         ok(!w.history.widget.compute_expand(Gtk.Orientation.HORIZONTAL), 'the history tab demands spare space');
         w.win.set_default_size(1600, 700);
         for (let i = 0; i < 40; i++) { pump(); GLib.usleep(15000); }
         const a = w.sidebar.panel.get_allocation();
-        ok(a.width <= 260, `sidebar width  ${a.width}`);
+        ok(a.width <= 320, `sidebar width  ${a.width}`);
         // Relative to the window contents: on a desktop, the window manager's decorations/shadow shift the toplevel allocation.
         const x = w.sidebar.panel.translate_coordinates(w.win.get_child()!, 0, 0)[1];
         // Restore the size: a window wider than the Xvfb screen puts buttons outside

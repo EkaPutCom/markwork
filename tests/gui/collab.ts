@@ -47,10 +47,10 @@ export function collabTests(c: GuiContext): void {
     const labels = () => descendants(panel.widget).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.get_label());
     const folder = GLib.build_filenamev([GLib.get_tmp_dir(), 'collab-folder']);
 
-    test('the sidebar has a fourth tab for pull requests, shown as an icon', () => {
+    test('the sidebar rail has an icon for pull requests', () => {
         const page = w.sidebar.stack.get_page(panel.widget);
         eq(page.get_name(), 'collab');
-        eq(page.get_icon_name(), 'network-workgroup-symbolic');
+        eq(w.sidebar.railButtons.get('collab')!.icon_name, 'network-workgroup-symbolic');
         w.sidebar.setVisible(true);
         w.sidebar.setPage('collab');
         eq(w.settings.sidebarPage, 'collab');

@@ -32,6 +32,7 @@ import { widgetPixbuf } from './widgets.js';
 import { incrementalTests } from './unit/incremental.js';
 import { inlineTests } from './unit/inline.js';
 import { wikiLinkTests } from './unit/wikilink.js';
+import { searchTests } from './unit/search.js';
 import { settingsTests } from './unit/settings.js';
 import { tableTests } from './unit/table.js';
 import { kanbanModelTests } from './unit/kanban.js';
@@ -106,6 +107,7 @@ setRoot(import.meta.url);
 function runUnitTests(): void {
     inlineTests();
     wikiLinkTests();
+    searchTests();
     incrementalTests();
     settingsTests();
     tableTests();

@@ -2,25 +2,128 @@
 <interface>
   <template class="MarkworkFindBar" parent="GtkSearchBar">
     <property name="show-close-button">true</property>
-    <property name="child">
-      <object class="GtkBox">
+    <child>
+      <object class="GtkBox" id="box">
         <property name="spacing">6</property>
         <child>
-          <object class="GtkSearchEntry" id="entry">
-            <property name="width-chars">32</property>
+          <object class="GtkToggleButton" id="expand">
+            <property name="icon-name">pan-end-symbolic</property>
+            <property name="valign">start</property>
+            <property name="tooltip-text" translatable="yes">Replace</property>
+            <style><class name="flat"/><class name="circular"/></style>
           </object>
         </child>
         <child>
-          <object class="GtkButton" id="previous">
-            <property name="icon-name">go-up-symbolic</property>
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <property name="spacing">4</property>
+            <child>
+              <object class="GtkOverlay">
+                <property name="child">
+                  <object class="GtkEntry" id="entry">
+                    <property name="width-chars">34</property>
+                    <property name="placeholder-text" translatable="yes">Find</property>
+                    <property name="primary-icon-name">edit-find-symbolic</property>
+                    <style><class name="search-field"/></style>
+                  </object>
+                </property>
+                <child type="overlay">
+                  <object class="GtkBox">
+                    <property name="halign">end</property>
+                    <property name="valign">center</property>
+                    <property name="margin-end">4</property>
+                    <property name="spacing">2</property>
+                    <child>
+                      <object class="GtkToggleButton" id="caseButton">
+                        <property name="label">Aa</property>
+                        <property name="tooltip-text" translatable="yes">Match Case</property>
+                        <style><class name="flat"/><class name="search-chip"/></style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkToggleButton" id="wordButton">
+                        <property name="label">ab</property>
+                        <property name="tooltip-text" translatable="yes">Whole Words</property>
+                        <style><class name="flat"/><class name="search-chip"/></style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkToggleButton" id="regexButton">
+                        <property name="label">.*</property>
+                        <property name="tooltip-text" translatable="yes">Regular Expression</property>
+                        <style><class name="flat"/><class name="search-chip"/></style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRevealer" id="replaceRow">
+                <property name="transition-type">slide-down</property>
+                <property name="child">
+                  <object class="GtkOverlay">
+                    <property name="child">
+                      <object class="GtkEntry" id="replaceEntry">
+                        <property name="width-chars">34</property>
+                        <property name="placeholder-text" translatable="yes">Replace</property>
+                        <style><class name="replace-field-two"/></style>
+                      </object>
+                    </property>
+                    <child type="overlay">
+                      <object class="GtkBox">
+                        <property name="halign">end</property>
+                        <property name="valign">center</property>
+                        <property name="margin-end">4</property>
+                        <property name="spacing">2</property>
+                        <child>
+                          <object class="GtkButton" id="replaceOne">
+                            <property name="label" translatable="yes">Replace</property>
+                            <property name="tooltip-text" translatable="yes">Replace the selected result and go to the next</property>
+                            <style><class name="flat"/><class name="search-chip"/></style>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="replaceAll">
+                            <property name="label" translatable="yes">All</property>
+                            <property name="tooltip-text" translatable="yes">Replace All</property>
+                            <style><class name="flat"/><class name="search-chip"/></style>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+              </object>
+            </child>
           </object>
         </child>
         <child>
-          <object class="GtkButton" id="next">
-            <property name="icon-name">go-down-symbolic</property>
+          <object class="GtkBox">
+            <property name="valign">start</property>
+            <style><class name="linked"/></style>
+            <child>
+              <object class="GtkButton" id="previous">
+                <property name="icon-name">go-up-symbolic</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="next">
+                <property name="icon-name">go-down-symbolic</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="count">
+            <property name="width-chars">9</property>
+            <property name="xalign">1</property>
+            <property name="valign">start</property>
+            <property name="margin-top">6</property>
+            <style><class name="dim-label"/></style>
           </object>
         </child>
       </object>
-    </property>
+    </child>
   </template>
 </interface>

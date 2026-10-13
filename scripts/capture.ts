@@ -317,7 +317,7 @@ class Capture {
     private note = '';
 
     constructor(app: Adw.Application) {
-        const settings = AppSettings.inMemory({ welcomed: true, home: false, dark: false, sidebarPage: 'outline', width: 1280, height: 780 });
+        const settings = AppSettings.inMemory({ welcomed: true, home: false, dark: false, sidebarPage: 'files', width: 1280, height: 780 });
         this.w = new MainWindow(app, settings, null);
     }
 

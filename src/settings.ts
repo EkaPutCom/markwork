@@ -16,7 +16,7 @@ export interface SavedTab {
     cursor: number;          // cursor position (code points)
 }
 
-export type SidebarPage = 'files' | 'outline' | 'history' | 'collab';
+export type SidebarPage = 'files' | 'search' | 'outline' | 'history' | 'collab';
 
 // When run from dist/, the compiled schema is next to the bundle (see vite.config.ts).
 // When installed (Meson/Flatpak), the schema is in the system schema directory and there is no copy next to the bundle.

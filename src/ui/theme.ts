@@ -41,7 +41,11 @@ const buildCss = (p: Palette): string => `
     .sidebar { background-color: @sidebar_bg_color; color: @sidebar_fg_color; }
     .side-title { font-size: 11px; font-weight: bold; letter-spacing: 1px; color: alpha(currentColor, 0.55); }
     .side-drop { background-color: alpha(@accent_bg_color, 0.25); }
-    .sidebar-tabs button { padding: 3px 6px; min-width: 0; font-size: 12px; }
+    .search-field { padding-right: 90px; }
+    .replace-field { padding-right: 40px; }
+    .replace-field-two { padding-right: 90px; }
+    .search-chip { min-height: 20px; min-width: 20px; padding: 0 4px; font-size: 11px; }
+    .sidebar-rail { background-color: alpha(black, 0.12); padding-bottom: 8px; }
     .side-meta { font-size: 11px; color: alpha(currentColor, 0.55); }
     .pull-avatar { border-radius: 50%; color: white; font-weight: bold; font-size: 14px; }
     .pull-avatar-0 { background-color: @blue_4; } .pull-avatar-1 { background-color: @green_5; } .pull-avatar-2 { background-color: @orange_5; }

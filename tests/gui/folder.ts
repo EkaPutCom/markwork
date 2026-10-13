@@ -345,6 +345,33 @@ export function folderTests(c: GuiContext): void {
     w.file = null;
     ft.onOpenFile = openBefore;
 
+    test('the Search panel finds a note, opens the hit with the match selected, and plans the replacement', () => {
+        w.showSearch(); pump();
+        eq(w.sidebar.page, 'search', 'page');
+        ok(w.sidebar.railButtons.get('search')!.active, 'the rail icon did not follow');
+        const panel = w.searchPanel;
+        panel.entry.text = '# C'; panel.run();
+        eq(panel.store.get_n_items(), 2, 'a file row and a hit row');
+        ok(panel.summary.label.includes('1 result in 1 file'), `summary: ${panel.summary.label}`);
+        panel.list.emit('activate', 1); pump();
+        ok(w.file?.endsWith('/c.md') === true, `file: ${w.file}`);
+        const [has, s, e] = w.editor.buffer.get_selection_bounds();
+        ok(has && w.editor.buffer.get_text(s, e, false) === '# C', 'the match is not selected');
+        panel.replaceEntry.text = '# Z';
+        const [change] = panel.plan();
+        eq(change.after, '# Z', 'planned change');
+        panel.regexButton.active = true; panel.entry.text = '('; panel.run();
+        ok(panel.entry.has_css_class('error'), 'an invalid regular expression is not marked');
+        panel.regexButton.active = false; panel.entry.text = ''; panel.run();
+        eq(panel.store.get_n_items(), 0, 'rows after clearing');
+        w.editor.buffer.set_modified(false);
+    });
+    test('the rail switches the sidebar page and the choice is remembered', () => {
+        w.sidebar.railButtons.get('history')!.active = true; pump();
+        eq([w.sidebar.page, w.settings.sidebarPage], ['history', 'history'], 'history');
+        w.sidebar.railButtons.get('files')!.active = true; pump();
+        eq([w.sidebar.page, w.settings.sidebarPage], ['files', 'files'], 'files');
+    });
     test('closing the folder empties the tree', () => {
         ft.setRoot(null);
         eq(childNames(), [], 'rows');

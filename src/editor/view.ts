@@ -356,6 +356,21 @@ export class MarkdownView {
         });
     }
 
+    // Select `length` characters (code points) from `column` on a line, and scroll to them (a search result).
+    selectRange(line: number, column: number, length: number): void {
+        const start = iterAtLine(this.buffer, line);
+        start.forward_chars(column);
+        const end = start.copy();
+        end.forward_chars(length);
+        this.buffer.select_range(end, start);
+        this.view.grab_focus();
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            if (this.destroyed) return GLib.SOURCE_REMOVE;
+            this.view.scroll_to_mark(this.buffer.get_insert(), 0.1, true, 0, 0.3);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     // Cursor position in code points, to be remembered and then restored with restoreCursor().
     get cursorOffset(): number {
         return this.buffer.get_iter_at_mark(this.buffer.get_insert()).get_offset();

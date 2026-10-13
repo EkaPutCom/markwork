@@ -27,6 +27,7 @@ export interface ActionHost {
     readonly win: Adw.ApplicationWindow;
     readonly settings: AppSettings;
     readonly findBar: FindBar;
+    showSearch(withReplace?: boolean): void;
     readonly editor: MarkdownView;
     readonly dark: boolean;
     newDocument(): void;
@@ -56,7 +57,7 @@ const TABLE_TEMPLATE: [before: string, after: string] = ['| Column 1 | Column 2 
 // Actions that edit the document text. While the kanban board is shown, its text is hidden, so
 // these actions are disabled (menu dims, shortcuts and palette do not trigger them).
 export const TEXT_ACTIONS = new Set([
-    'find', 'bold', 'italic', 'strike', 'inline-code', 'highlight', 'link', 'image', 'zoom-image', 'codeblock', 'table',
+    'find', 'replace', 'bold', 'italic', 'strike', 'inline-code', 'highlight', 'link', 'image', 'zoom-image', 'codeblock', 'table',
     'quote', 'ulist', 'olist', 'heading0', 'heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6',
     'table-row-below', 'table-row-above', 'table-delete-row', 'table-col-right', 'table-col-left', 'table-delete-col',
     'table-align-left', 'table-align-center', 'table-align-right', 'table-format',
@@ -121,6 +122,9 @@ export function registerActions(app: Adw.Application, w: ActionHost): void {
     action('shortcuts', ['<Control>question'], () => showShortcuts(app, w.win));
     action('about', null, () => showAbout(w.win));
     action('find', ['<Control>f'], () => w.findBar.open());
+    action('replace', ['<Control>h'], () => w.findBar.open(true));
+    action('search-files', ['<Control><Shift>f'], () => w.showSearch());
+    action('replace-files', ['<Control><Shift>h'], () => w.showSearch(true));
 
     // Inline formatting
     action('bold', ['<Control>b'], () => wrapSelection(w.editor.buffer, '**'));

@@ -17,7 +17,7 @@ export const SHORTCUT_SECTIONS = (): [title: string, actions: string[]][] => [
     [_('Files'), ['new', 'open', 'open-folder', 'save', 'save-as', 'export-html']],
     [_('Tab'), ['home', 'next-tab', 'prev-tab', 'close-tab']],
     [_('Journal'), ['journal', 'journal-capture']],
-    [_('Editing'), ['undo', 'redo', 'find']],
+    [_('Editing'), ['undo', 'redo', 'find', 'replace', 'search-files', 'replace-files']],
     [_('Format'), ['bold', 'italic', 'strike', 'inline-code', 'highlight', 'link', 'image', 'codeblock', 'table', 'quote', 'ulist', 'olist']],
     [_('Table'), ['table-row-below', 'table-row-above', 'table-delete-row', 'table-col-right', 'table-col-left', 'table-delete-col', 'table-format']],
     [_('View'), ['sidebar', 'chat', 'kanban-view', 'source', 'focus', 'typewriter', 'dark']],

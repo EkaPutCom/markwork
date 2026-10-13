@@ -34,9 +34,12 @@ import { History } from './ui/history.js';
 import { HistoryViewer } from './ui/historyviewer.js';
 import { FileTree, isDirectory, isImageFile } from './ui/filetree.js';
 import { Sidebar } from './ui/sidebar.js';
+import { SearchPanel } from './ui/searchpanel.js';
+import { cpLength } from './editor/offsets.js';
 import { ChatPanel } from './ui/chat.js';
 import { WorkspaceRepository } from './workspace.js';
 import type { WikiLink } from './markdown/wikilink.js';
+import type { SearchHit } from './markdown/search.js';
 import { agentGit, recentSubjects, workingDiff } from './git.js';
 import { writeCommitMessage } from './agent/commitmessage.js';
 import type { MessageWriter } from './ui/messagewriter.js';
@@ -46,7 +49,7 @@ import { TabBar } from './ui/tabbar.js';
 import { HeaderBar } from './ui/headerbar.js';
 import type { Palette } from './colors.js';
 import { applyTheme, systemPrefersDark } from './ui/theme.js';
-import { chooseFile, showError } from './ui/dialogs.js';
+import { chooseFile, decideDialog, showError } from './ui/dialogs.js';
 import { registerActions, type Option } from './actions.js';
 import { ImageViewer } from './ui/imageviewer.js';
 import { KanbanBoard } from './ui/kanban.js';
@@ -94,6 +97,7 @@ export class MainWindow {
     readonly history: History;
     readonly fileTree: FileTree;
     readonly sidebar: Sidebar;
+    readonly searchPanel: SearchPanel;
     readonly findBar: FindBar;
     // The last notification text (for tests; the toast itself disappears on its own).
     lastToast = '';
@@ -148,7 +152,14 @@ export class MainWindow {
         this.fileTree = new FileTree();
         this.collabPanel = new CollabPanel();
         this.pullView = new PullView();
-        this.sidebar = new Sidebar(this.fileTree.widget, this.outline.widget, this.history.widget, this.collabPanel.widget);
+        this.searchPanel = new SearchPanel({
+            root: () => this.fileTree.root,
+            files: () => this.fileTree.root ? this.workspace.files(this.fileTree.root, { freshness: 'current', limit: 5000 }) : [],
+            open: (file, hit) => this.openSearchHit(file, hit),
+            replace: changes => applyChangeBatch(this.host, changes),
+            confirm: (message, detail, accept) => decideDialog(this.win, message, detail, accept),
+        });
+        this.sidebar = new Sidebar(this.fileTree.widget, this.searchPanel.widget, this.outline.widget, this.history.widget, this.collabPanel.widget);
         this.statusBar = new StatusBar();
         this.board = new KanbanBoard();
         this.inbox = new InboxView();
@@ -831,6 +842,22 @@ export class MainWindow {
     // Open a file in a tab: its own tab if already open, the active empty document, or a new tab.
     openInTab(path: string): boolean {
         return this.documents.openInTab(path);
+    }
+
+    // A hit of the Search panel: open the file and select the match.
+    private openSearchHit(file: string, hit: SearchHit): void {
+        const root = this.fileTree.root;
+        if (!root || !this.openInTab(GLib.build_filenamev([root, ...file.split('/')]))) return;
+        const line = this.editor.getText().split('\n')[hit.line] ?? '';
+        this.editor.selectRange(hit.line, cpLength(line.slice(0, hit.start)), cpLength(line.slice(hit.start, hit.end)));
+    }
+
+    // Ctrl+Shift+F: show the Search panel with the selected text as the query.
+    showSearch(withReplace = false): void {
+        this.settings.sidebar = true;
+        this.sidebar.setPage('search');
+        const [has, s, e] = this.editor.buffer.get_selection_bounds();
+        this.searchPanel.focus(has ? this.editor.buffer.get_text(s, e, false) : '', withReplace);
     }
 
     // Open the file chosen in the file tree.

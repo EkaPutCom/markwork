@@ -7,9 +7,10 @@
   </enum>
   <enum id="com.ekaput.Markwork.SidebarPage">
     <value nick="files" value="0"/>
-    <value nick="outline" value="1"/>
-    <value nick="history" value="2"/>
-    <value nick="collab" value="3"/>
+    <value nick="search" value="1"/>
+    <value nick="outline" value="2"/>
+    <value nick="history" value="3"/>
+    <value nick="collab" value="4"/>
   </enum>
 
   <schema id="com.ekaput.Markwork" path="/com/ekaput/Markwork/">
@@ -36,7 +37,7 @@
       <summary>Sidebar open</summary>
     </key>
     <key name="sidebar-page" enum="com.ekaput.Markwork.SidebarPage">
-      <default>'outline'</default>
+      <default>'files'</default>
       <summary>Active sidebar page</summary>
     </key>
     <key name="chat" type="b">

@@ -13,7 +13,7 @@ export function settingsTests(): void {
         eq(s.folder, null, 'folder');
         eq(s.tabs, [], 'tabs');
         eq(s.projects, {}, 'projects');
-        eq(s.sidebarPage, 'outline', 'sidebarPage');
+        eq(s.sidebarPage, 'files', 'sidebarPage');
         eq(s.activeTab, -1, 'activeTab');
         eq(s.home, true, 'home');
         eq(s.recentFiles, [], 'recentFiles');
@@ -25,7 +25,7 @@ export function settingsTests(): void {
         s.folder = '/tmp/project';
         s.tabs = [{ file: '/tmp/a.md', cursor: 7 }, { file: '/tmp/b.md', cursor: 0 }];
         s.projects = { shop: '/tmp/shop' };
-        s.sidebarPage = 'history';
+        s.sidebarPage = 'collab';
         s.recentFiles = [{ path: '/tmp/a.md', time: 1791360000 }];
         eq(s.recentFiles, [{ path: '/tmp/a.md', time: 1791360000 }], 'recentFiles');
         eq(s.focus, true, 'focus');
@@ -33,7 +33,7 @@ export function settingsTests(): void {
         eq(s.folder, '/tmp/project', 'folder');
         eq(s.tabs, [{ file: '/tmp/a.md', cursor: 7 }, { file: '/tmp/b.md', cursor: 0 }], 'tabs');
         eq(s.projects, { shop: '/tmp/shop' }, 'projects');
-        eq(s.sidebarPage, 'history', 'sidebarPage');
+        eq(s.sidebarPage, 'collab', 'sidebarPage');
         s.dark = null;
         s.folder = null;
         eq(s.dark, null, 'dark goes back to the system');

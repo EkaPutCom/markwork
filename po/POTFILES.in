@@ -30,6 +30,7 @@ src/ui/pullview.ts
 src/ui/sendchanges.ts
 src/ui/serverdialog.ts
 src/ui/shortcuts.ts
+src/ui/searchpanel.ts
 src/ui/sidebar.ts
 src/ui/statusbar.ts
 src/ui/worklist.ts
@@ -42,6 +43,7 @@ src/window/home.ts
 src/window/journal.ts
 src/window/pulls.ts
 src/ui/chat.ui
+src/ui/findbar.ts
 src/ui/findbar.ui
 src/ui/headerbar.ui
 src/ui/palette.ui

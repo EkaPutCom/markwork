@@ -23,6 +23,34 @@ export function gnomeTests(c: GuiContext): void {
 
     section('GNOME guidelines');
 
+    test('Ctrl+F shows the search entry in the window', () => {
+        w.win.present(); settle();
+        w.findBar.open(); settle();
+        ok(w.findBar.search_mode_enabled, 'the search bar is not enabled');
+        ok(w.findBar._entry.get_mapped() && w.findBar._entry.get_width() > 0, 'the search entry is not visible');
+        w.findBar.close(); settle();
+    });
+    test('Find and Replace: counter, replace one, replace all', () => {
+        const fb = w.findBar;
+        const buf = fb.buffer;
+        buf.set_text('foo bar foo Foo', -1); buf.place_cursor(buf.get_start_iter());
+        fb.open(true); settle();
+        ok(fb._replaceRow.reveal_child, 'the replace row is not shown');
+        fb._entry.text = 'foo'; settle();
+        ok(fb._count.label.endsWith('3'), `counter: ${fb._count.label}`);
+        fb._replaceEntry.text = 'x';
+        fb._replaceOne.activate(); settle();
+        fb.replaceCurrent(); settle();
+        fb._caseButton.active = true; settle();
+        fb.replaceEverything(); settle();
+        const text = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), false);
+        eq(text, 'x bar x Foo', 'two replaced one by one, then Replace All with Match Case leaves Foo');
+        fb._caseButton.active = false; settle();
+        fb.replaceEverything(); settle();
+        eq(buf.get_text(buf.get_start_iter(), buf.get_end_iter(), false), 'x bar x x', 'Replace All');
+        buf.set_text('', -1); buf.set_modified(false);
+        fb._caseButton.active = false; fb._expand.active = false; fb.close(); settle();
+    });
     test('the window icon and the About dialog use the App ID', () => {
         eq(APP_ID, 'com.ekaput.Markwork');
         eq(w.win.get_icon_name(), APP_ID);

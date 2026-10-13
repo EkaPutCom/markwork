@@ -8,7 +8,7 @@ export const COMMAND_LABELS: Record<string, string> = {
     'new': _('New Document'), 'open': _('Open File…'), 'open-folder': _('Open Folder…'), 'save': _('Save'), 'save-as': _('Save As…'),
     'export-html': _('Export HTML…'), 'home': _('Home'),
     'journal': _("Today's Journal"), 'journal-capture': _('Add to Journal…'), 'journal-summary': _('Summarize Journal with Assistant'), 'close-tab': _('Close Tab'), 'next-tab': _('Next Tab'), 'prev-tab': _('Previous Tab'),
-    'find': _('Find'), 'undo': _('Undo'), 'redo': _('Redo'),
+    'find': _('Find'), 'replace': _('Find and Replace'), 'search-files': _('Search in All Notes'), 'replace-files': _('Replace in All Notes'), 'undo': _('Undo'), 'redo': _('Redo'),
     'bold': _('Bold'), 'italic': _('Italic'), 'strike': _('Strikethrough'), 'inline-code': _('Inline Code'), 'highlight': _('Highlight'), 'link': _('Insert Link'),
     'image': _('Insert Image…'), 'zoom-image': _('Zoom Image'), 'codeblock': _('Insert Code Block'), 'table': _('Insert Table'),
     'quote': _('Quote'), 'ulist': _('Bulleted List'), 'olist': _('Numbered List'),
