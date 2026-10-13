@@ -64,6 +64,7 @@ import { forgeTests } from './unit/forge.js';
 import { noteDiffTests } from './unit/notediff.js';
 import { contributeTests } from './unit/contribute.js';
 import { resolveTests } from './unit/resolve.js';
+import { conflictTests } from './unit/conflicts.js';
 import { commitMessageTests } from './unit/commitmessage.js';
 import { dialogTests } from './gui/dialogs.js';
 import { harnessTests as harnessModelTests } from './unit/harness.js';
@@ -79,6 +80,7 @@ import { codeColorTests } from './gui/codecolor.js';
 import { mermaidTests } from './gui/mermaid.js';
 import { tableGridTests } from './gui/table.js';
 import { codeBlockTests } from './gui/codeblock.js';
+import { conflictLayerTests } from './gui/conflicts.js';
 import { kanbanBoardTests } from './gui/kanban.js';
 import { inboxTests } from './gui/inbox.js';
 import { tableLayoutGuiTests } from './gui/tablelayout.js';
@@ -138,6 +140,7 @@ function runUnitTests(): void {
     noteDiffTests();
     contributeTests();
     resolveTests();
+    conflictTests();
     commitMessageTests();
     harnessModelTests();
 }
@@ -205,6 +208,7 @@ function runGuiTests(app: Adw.Application): void {
     codeColorTests(c);
     tableGridTests(c);
     codeBlockTests(c);
+    conflictLayerTests(c);
     mermaidTests(c);
     kanbanBoardTests(c);
     inboxTests(c);
