@@ -6,11 +6,12 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
-import { commitContent, commitDiff, commitFile, workingDiff, type TextResult } from '../git.js';
-import { parseDiff, type Commit, type DiffLine } from '../gitlog.js';
+import { commitContent, commitDiff, commitFile, discardChanges, workingDiff, workingState, type TextResult } from '../git.js';
+import { parseDiff, type ChangeKind, type Commit, type DiffLine } from '../gitlog.js';
 import { replaceAllText } from '../editor/view.js';
 import { iterAtLine, onKeyPress, pack } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
+import { askDiscard } from './discard.js';
 import { MessageBox } from './messagebox.js';
 import { MessageWriter, setStatus } from './messagewriter.js';
 
@@ -69,6 +70,10 @@ export class HistoryViewer {
     readonly writer: MessageWriter;            // the assistant button next to the message
     beforeCommit: () => boolean = () => true;  // save the document first; false = cancel the commit
     onCommitted: () => void = () => {};
+    readonly discardButton: Gtk.Button;        // throws away this file's uncommitted changes (uncommitted-changes mode only)
+    beforeDiscard: () => boolean = () => true;
+    onDiscarded: (paths: string[]) => void = () => {};
+    confirmDiscard: (kind: ChangeKind, path: string) => Promise<boolean> = (kind, path) => askDiscard(this.window, kind, path);
 
     constructor(parent: Gtk.Window | null, file: string, readonly commit: Commit | null, dark: boolean) {
         this.window = new Adw.Window({
@@ -106,21 +111,26 @@ export class HistoryViewer {
         this.message = new MessageBox(_('Commit message'));
         this.commitButton = new Gtk.Button({ label: _('Commit this file'), valign: Gtk.Align.CENTER });
         this.commitButton.add_css_class('suggested-action');
+        this.discardButton = new Gtk.Button({ label: _('Discard Changes'), valign: Gtk.Align.CENTER });
+        this.discardButton.add_css_class('destructive-action');
+        this.discardButton.set_tooltip_text(_('Go back to the last commit; this cannot be undone'));
         this.status = new Gtk.Label({ xalign: 0, wrap: true, visible: false, margin_start: 12, margin_end: 12, margin_bottom: 8 });
         this.writer = new MessageWriter(this.message, this.status, () => commit ? [] : [file],
             _("Write the message with the assistant (reads this file's changes)"));
-        this.writer.onBusy = busy => this.commitButton.set_sensitive(!busy);
+        this.writer.onBusy = busy => { this.commitButton.set_sensitive(!busy); this.discardButton.set_sensitive(!busy); };
         if (!commit) {
             const bar = new Gtk.Box({ spacing: 8, margin_top: 10, margin_bottom: 10, margin_start: 10, margin_end: 10 });
             const message = new Gtk.Box({ spacing: 6 });
             pack(message, this.message.widget, true);
             message.append(this.writer.button);
             pack(bar, message, true);
+            bar.append(this.discardButton);
             bar.append(this.commitButton);
             body.append(new Gtk.Separator());
             body.append(bar);
             body.append(this.status);
             this.commitButton.connect('clicked', () => this.doCommit(file));
+            this.discardButton.connect('clicked', () => void this.doDiscard(file));
             this.message.onActivate = () => void this.doCommit(file);
         }
         const view = new Adw.ToolbarView({ content: body });
@@ -160,6 +170,20 @@ export class HistoryViewer {
             return this.showStatus(fmt(_('Commit failed: {message}'), { message: result.message }));
         }
         this.onCommitted();
+        this.window.destroy();
+    }
+
+    // Asks, then throws the file's uncommitted changes away and closes the window (there is nothing left to show).
+    private async doDiscard(file: string): Promise<void> {
+        if (this.writer.busy) return;
+        const state = await workingState(file);
+        if (this.closed || !state.ok || state.state === 'clean') return;
+        if (!await this.confirmDiscard(state.state === 'untracked' ? 'untracked' : 'modified', file) || this.closed) return;
+        if (!this.beforeDiscard()) return this.showStatus('The document failed to save; the changes were not discarded');
+        const result = await discardChanges([file]);
+        if (this.closed) return;
+        if (!result.ok) return this.showStatus(fmt(_('Could not discard the changes: {message}'), { message: result.message }));
+        this.onDiscarded([file]);
         this.window.destroy();
     }
 

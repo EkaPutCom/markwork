@@ -44,6 +44,7 @@ import { ImageLayer } from './images.js';
 import { CodeHighlighter } from './codehighlight.js';
 import { TableLayer } from './tablelayer.js';
 import { CodeLayer } from './codelayer.js';
+import { ConflictLayer } from './conflictlayer.js';
 import { MermaidLayer } from './mermaid.js';
 import { cellStart, type TableRange } from '../markdown/table.js';
 import { enterInTable, tabInTable, runTableCommand, type TableCommand } from './tableedit.js';
@@ -98,6 +99,7 @@ export class MarkdownView {
     readonly tableLayer: TableLayer;
     readonly codeLayer: CodeLayer;
     readonly mermaid: MermaidLayer;
+    readonly conflicts: ConflictLayer;
 
     markers: Marker[] = [];
     headings: Heading[] = [];
@@ -192,6 +194,8 @@ export class MarkdownView {
             this.view.grab_focus();
         };
 
+        this.conflicts = new ConflictLayer(this.view);
+
         this.images = new ImageLayer(this.view);
         this.images.onZoom = (line, index) => this.zoomImage(line, index);
         this.images.getBaseDir = () => this.getBaseDir();
@@ -260,6 +264,7 @@ export class MarkdownView {
         this.tableLayer.destroy();
         this.codeLayer.destroy();
         this.mermaid.destroy();
+        this.conflicts.destroy();
         this.completer.destroy();
     }
 
@@ -321,6 +326,7 @@ export class MarkdownView {
         paintTags(this.tags, palette);
         this.code.setScheme(palette.codeScheme);
         this.tableLayer.setPalette(palette);
+        this.conflicts.setPalette(palette);
         this.codeLayer.setPalette();
         this.mermaid.setTheme({ dark: palette.dark, bg: palette.bg, fg: palette.fg, accent: palette.accent, node: palette.codeBg });
         this.highlight();  // recolor code blocks with the new scheme
@@ -380,6 +386,7 @@ export class MarkdownView {
             this.view.set_left_margin(m);
             this.view.set_right_margin(m);
             setTagMargins(this.tags, m);
+            this.conflicts.setMargin(m);
             this.listIndent.setMargin(m);
             this.images.setMaxWidth(width - 2 * m);
             this.tableLayer.setMaxWidth(width - 2 * m);
@@ -449,6 +456,7 @@ export class MarkdownView {
         this.code.apply(result.codeBlocks, reset || result.codeBlocks.some(b => touches(b.startLine, b.endLine)));
         this.codeLayer.update(result.codeBlocks, reset || result.codeBlocks.some(b => touches(b.startLine, b.endLine)));
         this.mermaid.update(result.codeBlocks);
+        this.conflicts.update(result.text, result.lines, reset);
         this.images.update(result.images);
         this.onHighlighted(result);
         this.updateCursor(true);
@@ -532,7 +540,8 @@ export class MarkdownView {
         const key = `${l0}:${l1}`;
         if (force || key !== this.cursorKey) {
             this.cursorKey = key;
-            this.concealer.apply(this.starts, l0, l1, !this.modes.source);
+            // A file with conflict markers shows them as they are: `=======` and `>>>>>>>` are not Markdown to hide.
+            this.concealer.apply(this.starts, l0, l1, !this.modes.source && !this.conflicts.conflicts.length);
             dimOutsideParagraph(buf, this.tags.dim, this.lines, l0, l1, this.modes.focus);
             this.tableLayer.setCursor(l0, l1);
             this.codeLayer.setCursor(l0, l1);

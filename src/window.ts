@@ -24,6 +24,7 @@ import GdkPixbuf from 'gi://GdkPixbuf';
 import { APP_ID, APP_NAME } from './config.js';
 import { addBundledIcons, after, type Awaitable } from './gtkutil.js';
 import { type AppSettings } from './settings.js';
+import { fileExists, readTextFile } from './files.js';
 import { WELCOME } from './welcome.js';
 import { MarkdownView, type Mode } from './editor/view.js';
 import { Outline } from './ui/outline.js';
@@ -232,6 +233,8 @@ export class MainWindow {
             this.syncHistory(true);
         };
         this.connectWriter(this.history.writer);
+        this.history.beforeDiscard = () => this.documents.saveOpenFiles();
+        this.history.onDiscarded = paths => this.changesDiscarded(paths);
         this.history.onOpenChanges = file => {
             const viewer = new HistoryViewer(this.win, file, null, this.dark);
             this.connectWriter(viewer.writer);
@@ -240,6 +243,8 @@ export class MainWindow {
                 this.toast(_('Committed successfully'));
                 this.syncHistory(true);
             };
+            viewer.beforeDiscard = () => this.documents.saveOpenFiles();
+            viewer.onDiscarded = paths => this.changesDiscarded(paths);
             viewer.show();
         };
         this.chat.settings.setModel(settings.chatModel);
@@ -705,6 +710,22 @@ export class MainWindow {
     }
 
     // ---------- Git history ----------
+
+    // The uncommitted changes of these files were thrown away on disk: an open document takes the file's contents again (one undo
+    // step, as when the assistant writes to it), or loses its file when the file is gone (a new file that went to the Trash).
+    private changesDiscarded(paths: string[]): void {
+        for (const path of paths) {
+            const doc = this.docs.find(d => d.file === path);
+            if (!doc) continue;
+            if (fileExists(path)) {
+                doc.editor.replaceText(readTextFile(path));
+                doc.editor.buffer.set_modified(false);
+            } else this.documents.fileDeleted(path);
+        }
+        this.toast(_('The changes were discarded'));
+        if (this.fileTree.root) this.fileTree.refresh(this.fileTree.root);
+        this.syncHistory(true);
+    }
 
     // A commit form's assistant button writes with the Assistant panel's key and model.
     private connectWriter(writer: MessageWriter): void {

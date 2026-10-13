@@ -1,7 +1,7 @@
 // Tests for resolving a pull request's conflicts locally: real git against a local bare "forge" repository.
 
 import GLib from 'gi://GLib';
-import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasMarkers, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
+import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasMarkers, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
 import { ForgeError, type ForgeProvider } from '../../src/forge/types.js';
 import { runGit } from '../../src/git.js';
 import { section, test, eq, ok, contains, settle, tmp } from '../framework.js';
@@ -64,6 +64,34 @@ export function resolveTests(): void {
         sh(work, 'checkout', '-q', '--', 'journal.md');
         write(`${work}/untracked.md`, 'not tracked\n');
         eq(settle(preflight(runGit, work, 'main')), null);   // a file git does not know cannot be lost by a merge
+    });
+
+    test('a merge left in the folder (the app was closed) is found again with its pull request and files', () => {
+        const { work, merge } = scenario(true);
+        eq(settle(pendingMerge(runGit, work)), null);
+        const start = settle(startLocalMerge(runGit, merge));
+        ok(start.ok, 'started');
+        const found = settle(pendingMerge(runGit, work));
+        ok(found !== null, 'the merge in progress was not found');
+        if (!found || !start.ok) return;
+        eq(found.pull, 7);
+        eq(found.before, start.before);
+        eq(found.conflicts, [`${work}/journal.md`]);
+        sh(work, 'merge', '--abort');
+        eq(settle(pendingMerge(runGit, work)), null);
+    });
+
+    test('a merge that was started by hand is found, without a pull request', () => {
+        const { work } = scenario(true);
+        sh(work, 'checkout', '-q', '-b', 'side', 'HEAD~1');
+        write(`${work}/journal.md`, 'side\n');
+        sh(work, 'commit', '-q', '-a', '-m', 'Side');
+        sh(work, 'checkout', '-q', 'main');
+        const merged = settle(runGit(work, ['merge', '--no-ff', 'side']));
+        ok(merged?.status !== 0, 'the merge should conflict');
+        const found = settle(pendingMerge(runGit, work));
+        ok(found !== null && found.pull === null, JSON.stringify(found));
+        sh(work, 'merge', '--abort');
     });
 
     test('a conflicting pull request is merged as far as it goes and the conflicting files are listed', () => {

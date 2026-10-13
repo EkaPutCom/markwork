@@ -3,6 +3,7 @@ data/com.ekaput.Markwork.desktop.in
 data/com.ekaput.Markwork.metainfo.xml.in
 data/com.ekaput.Markwork.gschema.xml
 src/commands.ts
+src/editor/conflictlayer.ts
 src/editor/images.ts
 src/editor/mermaidrender.ts
 src/editor/mermaid.ts

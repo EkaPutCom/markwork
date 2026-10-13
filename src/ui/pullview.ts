@@ -208,7 +208,7 @@ export class PullView {
         let title = this.bannerText, button: string | null = this.canResolve ? _('Resolve locally…') : null;
         if (this.resolving !== null) {
             title = this.resolving
-                ? fmt(ngettext('{n} file still has conflict markers. Edit it in its tab, then finish.', '{n} files still have conflict markers. Edit them in their tabs, then finish.', this.resolving), { n: this.resolving })
+                ? fmt(ngettext('{n} file still has conflict markers. Choose a side above each conflict in its tab, then finish.', '{n} files still have conflict markers. Choose a side above each conflict in their tabs, then finish.', this.resolving), { n: this.resolving })
                 : _('The conflicts are resolved. Finish to push the merge to the server.');
             button = _('Finish and push');
         }

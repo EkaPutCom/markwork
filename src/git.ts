@@ -1,8 +1,9 @@
 // Reads a file's git history through the `git` command. The only changes to the repository
-// are commitFile()/commitFiles(), and only at the user's request. Everything is async (Gio.Subprocess) so a long history does not block the editor.
+// are commitFile()/commitFiles() and discardChanges(), and only at the user's request. Everything is async (Gio.Subprocess) so a long history does not block the editor.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import { trashEntry } from './fileops.js';
 import { AGENT_LOG_FORMAT, LOG_FORMAT, parseLog, parseStatus, type Commit, type FileChange, type GitAnswer, type GitRequest } from './gitlog.js';
 
 export type GitFailure = 'no-git' | 'no-repo' | 'failed';
@@ -199,6 +200,42 @@ export async function commitFiles(files: string[], message: string): Promise<Tex
     if (add?.status !== 0) return failure(add);
     const run = await runGit(dir, ['commit', '--only', '--no-verify', '-m', message, '--', ...specs]);
     return run?.status === 0 ? { ok: true, text: run.out } : failure(run);
+}
+
+// Throws away the uncommitted changes of these files (absolute paths): a modified or deleted file goes back to the last commit
+// (the index too), a new file is taken out of the index and moved to the Trash. The kind of each file is read from git here, not
+// trusted from the caller, because the list on screen can be older than the folder. A renamed file is refused: its old name is
+// not known from the new one, so half of the rename would be left.
+export async function discardChanges(files: string[]): Promise<TextResult> {
+    if (!files.length) return { ok: false, reason: 'failed', message: 'No files selected' };
+    const dir = dirOf(files[0]);
+    const root = await runGit(dir, ['rev-parse', '--show-toplevel']);
+    if (root?.status !== 0) return failure(root);
+    const top = root.out.trim();
+    const specOf = (path: string) => `:(top,literal)${path}`;
+    const wanted = new Set(files.map(f => f.startsWith(top + '/') ? f.slice(top.length + 1) : f));
+    // The whole repository, not just these paths: with a pathspec git no longer pairs a rename's two names, and the new name alone
+    // looks like an added file.
+    const status = await runGit(dir, ['status', '--porcelain=v1', '--untracked-files=all']);
+    if (status?.status !== 0) return failure(status);
+    const changes = parseStatus(status.out).filter(c => wanted.has(c.path));
+    if (changes.some(c => c.kind === 'renamed')) return { ok: false, reason: 'failed', message: 'A renamed file cannot be discarded here' };
+    const named = (kinds: string[]) => changes.filter(c => kinds.includes(c.kind)).map(c => c.path);
+    const restore = named(['modified', 'deleted']), added = named(['added']), untracked = named(['untracked']);
+    if (restore.length) {
+        const run = await runGit(dir, ['restore', '--source=HEAD', '--staged', '--worktree', '--', ...restore.map(specOf)]);
+        if (run?.status !== 0) return failure(run);
+    }
+    if (added.length) {
+        const run = await runGit(dir, ['rm', '--cached', '-q', '-f', '--', ...added.map(specOf)]);
+        if (run?.status !== 0) return failure(run);
+    }
+    try {
+        for (const path of [...added, ...untracked]) trashEntry(GLib.build_filenamev([top, path]));
+    } catch (e) {
+        return { ok: false, reason: 'failed', message: (e as Error).message };
+    }
+    return { ok: true, text: '' };
 }
 
 // Agent Git tool pathspec: Markdown files only, no dot files/folders or node_modules, relative to the work folder.
