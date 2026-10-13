@@ -575,6 +575,25 @@ export function collabTests(c: GuiContext): void {
         eq(sha(rsBare, 'main'), before);
     });
 
+    test('after a restart (the app forgot its note of the merge) the pull request still offers Finish and Abort', () => {
+        (w.pulls as unknown as { local: unknown }).local = null;
+        settle(w.pulls.open(conflictedPull()));
+        ok(waitFor(() => view.banner.get_button_label() === 'Finish and push'), `banner: ${view.banner.get_button_label()}`);
+        contains(view.banner.get_title(), '1 file still has conflict markers');
+        eq(view.abort.get_visible(), true);
+    });
+
+    test('Resolve locally on a merge that is already started carries on with it instead of refusing', () => {
+        (w.pulls as unknown as { local: unknown }).local = null;
+        settle(w.pulls.open(conflictedPull()));
+        for (let i = 0; i < 20; i++) { pump(); GLib.usleep(10000); }
+        (w.pulls as unknown as { local: unknown }).local = null;
+        contains(toastOf(() => w.pulls.resolve()), 'already started');
+        eq(w.file, rsNote);
+        contains(w.editor.getText(), '<<<<<<<');
+        eq(view.abort.get_visible(), true);
+    });
+
     test('aborting asks first, and returns the folder to what it was', () => {
         abortAnswer = false;
         toastOf(() => w.pulls.abort());

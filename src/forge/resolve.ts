@@ -3,6 +3,7 @@
 // The forge then sees the pull request's commits in the base branch and marks it merged. Git is a function passed in, so the
 // same steps run against local bare repositories in the tests.
 
+import GLib from 'gi://GLib';
 import { credentialEnv, type GitRun, type GitRunner } from './contribute.js';
 import type { ForgeProvider } from './types.js';
 
@@ -47,6 +48,25 @@ export async function conflictedFiles(git: GitRunner, folder: string): Promise<s
     const names = await out(git, folder, ['diff', '--name-only', '--diff-filter=U']);
     if (top === null || !names) return [];
     return names.split('\n').filter(Boolean).map(name => `${top}/${name}`);
+}
+
+export interface PendingMerge {
+    pull: number | null;      // the pull request it merges, from git's own merge message; null = a merge this feature did not start
+    before: string;           // HEAD, which a merge in progress has not moved yet
+    conflicts: string[];      // absolute paths git still sees as conflicted
+}
+
+// A merge that is still waiting in the folder, because the app was closed or crashed after starting it (the merge itself lives in
+// git, the app's note of it does not); null = none.
+export async function pendingMerge(git: GitRunner, folder: string): Promise<PendingMerge | null> {
+    if (!await out(git, folder, ['rev-parse', '-q', '--verify', 'MERGE_HEAD'])) return null;
+    const path = await out(git, folder, ['rev-parse', '--git-path', 'MERGE_MSG']);
+    let message = '';
+    if (path) {
+        try { message = new TextDecoder().decode(GLib.file_get_contents(GLib.path_is_absolute(path) ? path : GLib.build_filenamev([folder, path]))[1]); } catch (e) { message = ''; }
+    }
+    const number = /^Merge pull request #(\d+)/.exec(message)?.[1];
+    return { pull: number ? Number(number) : null, before: await out(git, folder, ['rev-parse', 'HEAD']) ?? '', conflicts: await conflictedFiles(git, folder) };
 }
 
 // Fetches the base branch and the pull request, and merges the second into the first.

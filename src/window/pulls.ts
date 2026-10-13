@@ -10,7 +10,7 @@ import { runGit } from '../git.js';
 import { parseDiff, type DiffLine } from '../gitlog.js';
 import type { GitRunner } from '../forge/contribute.js';
 import { fileDiff, isBinaryDiff } from '../forge/diff.js';
-import { abortLocalMerge, confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../forge/resolve.js';
+import { abortLocalMerge, confirmMerged, finishLocalMerge, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge, type PendingMerge } from '../forge/resolve.js';
 import { ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest, type RepoRef } from '../forge/types.js';
 import { diffNote, type NoteDiff } from '../markdown/notediff.js';
 import { decideDialog, mergeDialog } from '../ui/dialogs.js';
@@ -113,6 +113,7 @@ export class PullReviewController {
         this.diff = '';
         pullView.setPull(pull);
         pullView.setResolving(this.local?.merge.pull === pull.number ? this.remaining().length : null);
+        void this.resume(pull, generation);
         pullView.setFiles([]);
         pullView.setDiscussion(pull, []);
         pullView.clearComment();
@@ -243,35 +244,80 @@ export class PullReviewController {
         }
     }
 
-    // Merges the open pull request into the base branch in the user's folder, and opens the files that conflict.
-    async resolve(): Promise<void> {
-        const pull = this.pull, session = this.access.session(), folder = this.host.root();
-        if (!pull || !session || !folder || pull.state !== 'open') return;
-        if (!this.host.saveAll()) return;
-        const problem = await preflight(this.git, folder, pull.baseRef);
-        if (problem) return this.host.toast(problem);
-        if (!await this.dialogs.local(pull)) return;
-        let target, login;
+    // What a local merge of this pull request needs from the server; a message when the server cannot say.
+    private async mergeFor(pull: PullRequest, folder: string): Promise<LocalMerge | string> {
+        const session = this.access.session();
+        if (!session) return _('Not connected to a server.');
         try {
-            [target, login] = await Promise.all([session.provider.repoInfo(), session.provider.currentUser()]);
+            const [target, login] = await Promise.all([session.provider.repoInfo(), session.provider.currentUser()]);
+            if (!target) return _('The server does not know this repository, or the token cannot see it.');
+            return { folder, base: pull.baseRef, cloneUrl: target.cloneUrl, pull: pull.number, title: pull.title, login, token: session.token };
         } catch (e) {
-            return this.host.toast(e instanceof Error ? e.message : String(e));
+            return e instanceof Error ? e.message : String(e);
         }
-        if (!target) return this.host.toast(_('The server does not know this repository, or the token cannot see it.'));
-        const merge: LocalMerge = { folder, base: pull.baseRef, cloneUrl: target.cloneUrl, pull: pull.number, title: pull.title, login, token: session.token };
-        const started = await startLocalMerge(this.git, merge);
-        if (!started.ok) return this.host.toast(started.message);
-        this.local = { merge, files: started.conflicts, before: started.before };
+    }
+
+    // The merge lives in git, but the app's note of it (which files, where to go back to) does not survive a restart. When the
+    // folder is in the middle of a merge of this pull request, the note is made again, so Finish and Abort work.
+    private async resume(pull: PullRequest, generation: number): Promise<void> {
+        const folder = this.host.root();
+        if (this.local || !folder || pull.state !== 'open') return;
+        const pending = await pendingMerge(this.git, folder);
+        if (!pending || pending.pull !== pull.number || this.local) return;
+        const merge = await this.mergeFor(pull, folder);
+        if (typeof merge === 'string' || this.local || generation !== this.generation) return;
+        this.local = { merge, files: pending.conflicts, before: pending.before };
+        this.host.pullView.setResolving(this.remaining().length);
+    }
+
+    // After the merge started (now or in an earlier run): the open documents show what is on disk, and the files that conflict
+    // open in source mode, where the markers are plain text.
+    private showMerge(files: readonly string[]): void {
         this.host.refreshTree();
         this.reloadOpen();
-        for (const file of started.conflicts) {
+        for (const file of files) {
             this.host.openInTab(file);
             // The editor would otherwise render the markers as Markdown: `=======` becomes a heading underline and `>>>>>>>` a quote.
             docFor(this.host, file)?.editor.setMode('source', true);
         }
+        if (!files.length) this.host.pullView.setResolving(0);
+    }
+
+    // The folder is already in the middle of a merge. If it is this pull request's, carry on with it; otherwise say whose it is.
+    private async carryOn(pull: PullRequest, folder: string, pending: PendingMerge): Promise<void> {
+        if (pending.pull !== pull.number) {
+            return this.host.toast(pending.pull !== null
+                ? fmt(_('A merge for pull request #{number} is already in progress in this folder. Open that pull request to finish or abort it.'), { number: pending.pull })
+                : _('A merge is already in progress in this folder. Finish or abort it first.'));
+        }
+        const merge = await this.mergeFor(pull, folder);
+        if (typeof merge === 'string') return this.host.toast(merge);
+        this.local = { merge, files: pending.conflicts, before: pending.before };
+        this.showMerge(pending.conflicts);
+        this.host.pullView.setResolving(this.remaining().length);
+        this.host.toast(pending.conflicts.length
+            ? fmt(ngettext('This merge was already started in this folder. {count} file still has conflicts; edit it, then choose Finish and push.', 'This merge was already started in this folder. {count} files still have conflicts; edit them, then choose Finish and push.', pending.conflicts.length), { count: pending.conflicts.length })
+            : _('This merge was already started in this folder. Choose Finish and push to send it to the server.'));
+    }
+
+    // Merges the open pull request into the base branch in the user's folder, and opens the files that conflict.
+    async resolve(): Promise<void> {
+        const pull = this.pull, folder = this.host.root();
+        if (!pull || !this.access.session() || !folder || pull.state !== 'open') return;
+        if (!this.host.saveAll()) return;
+        const pending = await pendingMerge(this.git, folder);
+        if (pending) return this.carryOn(pull, folder, pending);
+        const problem = await preflight(this.git, folder, pull.baseRef);
+        if (problem) return this.host.toast(problem);
+        if (!await this.dialogs.local(pull)) return;
+        const merge = await this.mergeFor(pull, folder);
+        if (typeof merge === 'string') return this.host.toast(merge);
+        const started = await startLocalMerge(this.git, merge);
+        if (!started.ok) return this.host.toast(started.message);
+        this.local = { merge, files: started.conflicts, before: started.before };
+        this.showMerge(started.conflicts);
         // Opening the files puts a document in front of the review; the review is back from the list.
         this.host.toast(started.conflicts.length ? fmt(ngettext('{count} file has conflicts. Edit it, then open the pull request again and choose Finish and push.', '{count} files have conflicts. Edit them, then open the pull request again and choose Finish and push.', started.conflicts.length), { count: started.conflicts.length }) : _('Merged without conflicts. Choose Finish and push to send it to the server.'));
-        if (!started.conflicts.length) this.host.pullView.setResolving(0);
     }
 
     // Commits the resolution and pushes the base branch; the server then sees the pull request as merged.
