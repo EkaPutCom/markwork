@@ -47,6 +47,7 @@ import { codeLanguageTests } from './unit/codelang.js';
 import { htmlTests } from './unit/html.js';
 import { dbmlTests } from './unit/dbml.js';
 import { gitLogTests } from './unit/gitlog.js';
+import { discardTests } from './unit/discard.js';
 import { fileOpsTests } from './unit/fileops.js';
 import { fileWriteTests } from './unit/files.js';
 import { workspaceTests } from './unit/workspace.js';
@@ -119,6 +120,7 @@ function runUnitTests(): void {
     htmlTests();
     dbmlTests();
     gitLogTests();
+    discardTests();
     fileOpsTests();
     fileWriteTests();
     workspaceTests();

@@ -297,6 +297,73 @@ export function historyTests(c: GuiContext): void {
         ok(waitFor(() => !w.history.changedBox.get_visible()), 'the list did not vanish');
     });
 
+    section('Discarding changes');
+    const read = (path: string) => new TextDecoder().decode(GLib.file_get_contents(path)[1]);
+    const names = () => listRows(w.history.changedList).map(r => (childrenOf(r.get_child()!)[2] as Gtk.Label).label);
+    const undoButton = (name: string) => childrenOf(w.history.changedList.get_row_at_index(names().indexOf(name))!.get_child()!).pop() as Gtk.Button;
+    test('the undo button on a row asks first; declining leaves the file alone', () => {
+        w.load(a);
+        const committed = read(a);
+        write(a, committed + 'junk\n');
+        w.history.refresh();
+        ok(waitFor(() => names().includes('a.md')), `list: ${names()}`);
+        eq(undoButton('a.md').get_tooltip_text(), 'Discard the changes to this file');
+        shot('discard');
+        let asked = '';
+        w.history.confirmDiscard = (kind, path) => { asked = `${kind} ${GLib.path_get_basename(path)}`; return Promise.resolve(false); };
+        undoButton('a.md').emit('clicked');
+        ok(waitFor(() => asked !== ''), 'the question was not asked');
+        eq(asked, 'modified a.md');
+        eq(read(a), committed + 'junk\n');
+    });
+    test('confirming goes back to the last commit, and the open document takes the file again as one undo step', () => {
+        const committed = (() => { const t = read(a); return t.slice(0, t.length - 'junk\n'.length); })();
+        w.history.confirmDiscard = () => Promise.resolve(true);
+        setText(committed + 'typed in the editor\n');
+        undoButton('a.md').emit('clicked');
+        ok(waitFor(() => read(a) === committed), `file: ${read(a)}`);
+        ok(waitFor(() => c.text() === committed), `editor: ${c.text()}`);
+        ok(!w.editor.buffer.get_modified(), 'the document is still marked as unsaved');
+        ok(waitFor(() => !names().includes('a.md')), 'the row is still listed');
+        w.editor.buffer.undo();
+        eq(c.text(), committed + 'typed in the editor\n');
+        w.editor.buffer.redo();
+    });
+    test('a new file is moved to the Trash and its open document loses its file', () => {
+        const f = GLib.build_filenamev([repo, 'discard-new.md']);
+        write(f, '# New\n');
+        w.load(f);
+        w.history.refresh();
+        ok(waitFor(() => names().includes('discard-new.md')), `list: ${names()}`);
+        eq(undoButton('discard-new.md').get_tooltip_text(), 'Delete this new file');
+        let kind = '';
+        w.history.confirmDiscard = k => { kind = k; return Promise.resolve(true); };
+        undoButton('discard-new.md').emit('clicked');
+        ok(waitFor(() => !GLib.file_test(f, GLib.FileTest.EXISTS)), 'the file is still there');
+        eq(kind, 'untracked');
+        ok(waitFor(() => w.file === null), `the document still has the file ${w.file}`);
+        w.history.confirmDiscard = () => Promise.resolve(false);
+    });
+    test('the changes window has a Discard Changes button too', () => {
+        w.load(a);
+        const committed = read(a);
+        write(a, committed + 'junk\n');
+        const viewer = new HistoryViewer(w.win, a, null, false);
+        try {
+            let discarded: string[] = [];
+            viewer.confirmDiscard = () => Promise.resolve(true);
+            viewer.onDiscarded = paths => { discarded = paths; };
+            viewer.show();
+            eq(viewer.discardButton.get_label(), 'Discard Changes');
+            viewer.discardButton.emit('clicked');
+            ok(waitFor(() => discarded.length === 1), 'the changes were not discarded');
+            eq(read(a), committed);
+            ok(waitFor(() => viewer.closed), 'the window stayed open');
+        } finally {
+            viewer.window.destroy();
+        }
+    });
+
     test('without a file, the opened folder still shows the uncommitted files', () => {
         write(GLib.build_filenamev([repo, 'd.md']), '# D\n');
         w.file = null; setText('');

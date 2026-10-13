@@ -6,10 +6,11 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
-import { commitFiles, fileLog, repoChanges, workingState, type GitFailure } from '../git.js';
+import { commitFiles, discardChanges, fileLog, repoChanges, workingState, type GitFailure } from '../git.js';
 import { relativeTime, type ChangeKind, type Commit, type FileChange } from '../gitlog.js';
 import { pack, removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
+import { askDiscard } from './discard.js';
 import { MessageBox } from './messagebox.js';
 import { MessageWriter, setStatus } from './messagewriter.js';
 
@@ -51,6 +52,13 @@ export class History {
     readonly writer: MessageWriter;            // the assistant button next to the message
     beforeCommit: () => boolean = () => true;      // save the document first; false = cancel the commit
     onCommitted: () => void = () => {};
+    beforeDiscard: () => boolean = () => true;     // save the open documents first, so no pending write brings the changes back
+    onDiscarded: (paths: string[]) => void = () => {};   // the changes of these files were thrown away
+    confirmDiscard: (kind: ChangeKind, path: string) => Promise<boolean> = (kind, path) => {
+        const root = this.widget.get_root();
+        return askDiscard(root instanceof Gtk.Window ? root : null, kind, path);
+    };
+    private readonly discards: Gtk.Button[] = [];
 
     private folder: string | null = null;     // the open folder; source of the changes list when there is no file yet
     private file: string | null | undefined;   // undefined = never loaded
@@ -192,6 +200,7 @@ export class History {
         if (same) return;
         this.changed = changes;
         this.checks.clear();
+        this.discards.length = 0;
         removeChildren(this.changedList);
         for (const path of [...this.unchecked]) if (!changes.some(c => c.path === path)) this.unchecked.delete(path);
         const dir = this.file ? GLib.path_get_dirname(this.file) : this.folder ?? '';
@@ -211,12 +220,36 @@ export class History {
             box.append(check);
             box.append(mark);
             pack(box, name, true);
+            if (change.kind !== 'renamed') box.append(this.discardButton(change));
             const row = new Gtk.ListBoxRow({ child: box, tooltip_text: change.path });
             this.changedList.insert(row, -1);
         }
         this.changedBox.set_label(fmt(_('Uncommitted ({count})'), { count: changes.length }));
         this.updateCommitButton();
         this.changedBox.set_visible(changes.length > 0);
+    }
+
+    // The button at the end of a row: undo the changes of that file (after asking). Not for a rename, which git cannot undo per file.
+    private discardButton(change: FileChange): Gtk.Button {
+        const button = Gtk.Button.new_from_icon_name('edit-undo-symbolic');
+        button.add_css_class('flat');
+        button.set_valign(Gtk.Align.CENTER);
+        const label = change.kind === 'untracked' || change.kind === 'added' ? _('Delete this new file') : _('Discard the changes to this file');
+        button.set_tooltip_text(label);
+        button.update_property([Gtk.AccessibleProperty.LABEL], [label]);
+        button.set_sensitive(!this.writer.busy);
+        button.connect('clicked', () => void this.discard(change));
+        this.discards.push(button);
+        return button;
+    }
+
+    private async discard(change: FileChange): Promise<void> {
+        if (this.writer.busy || !await this.confirmDiscard(change.kind, change.path)) return;
+        if (!this.beforeDiscard()) return this.showCommitStatus('The document failed to save; the changes were not discarded');
+        const result = await discardChanges([change.path]);
+        if (!result.ok) return this.showCommitStatus(fmt(_('Could not discard the changes: {message}'), { message: result.message }));
+        this.commitStatus.set_visible(false);
+        this.onDiscarded([change.path]);
     }
 
     // The checked files; the order follows the list.
@@ -231,6 +264,7 @@ export class History {
         this.commitButton.set_label(n ? fmt(ngettext('Commit {n} file', 'Commit {n} files', n), { n }) : _('Commit'));
         this.commitButton.set_sensitive(n > 0 && !busy);
         for (const check of this.checks.values()) check.set_sensitive(!busy);
+        for (const button of this.discards) button.set_sensitive(!busy);
         this.writer.update();
     }
 
