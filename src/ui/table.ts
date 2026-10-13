@@ -224,13 +224,14 @@ export class TableView {
 
     // A control inside a plain box, so the cell style (padding, a line under it) is on the box and not on the control.
     private boxed(control: Gtk.Widget): Gtk.Box {
-        const box = new Gtk.Box({ valign: Gtk.Align.CENTER });
+        const box = new Gtk.Box({ valign: Gtk.Align.FILL });
+        control.set_valign(Gtk.Align.CENTER);
         box.append(control);
         return box;
     }
 
     private checkCell(row: TableRow): Gtk.Widget {
-        const box = new Gtk.Box({ halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER });
+        const box = new Gtk.Box({ halign: Gtk.Align.CENTER, valign: Gtk.Align.FILL });
         if (row.card.done === null) return box;
         const check = new Gtk.CheckButton({ active: row.card.done, tooltip_text: _('Mark done') });
         check.connect('toggled', () => this.commit(toggleDone(this.board, row.at)));
@@ -258,7 +259,7 @@ export class TableView {
 
     // One cell. The title opens the edit dialog; any other cell changes its field in place from a popover.
     private cell(row: TableRow, key: string, schema: FieldDef[]): Gtk.Widget {
-        const cell = new Gtk.Box({ valign: Gtk.Align.CENTER });
+        const cell = new Gtk.Box({ valign: Gtk.Align.FILL });
         if (key === TITLE_COLUMN) {
             cell.append(this.titleLabel(row, schema));
             onChipClick(cell, () => this.editItem(row.at));
