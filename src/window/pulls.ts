@@ -229,6 +229,20 @@ export class PullReviewController {
         return unresolved(local.files, path => { try { return readTextFile(path); } catch (e) { return ''; } });
     }
 
+    // A merge, an abort, or a pull changes files on disk under documents that are already open. Those documents take the disk
+    // contents, or they would show the old text while the file has markers (and saving them would write the old text back over the
+    // merge). The open documents were saved before git ran, so no edit is lost.
+    private reloadOpen(): void {
+        for (const doc of this.host.docs()) {
+            if (!doc.file || doc.editor.buffer.get_modified()) continue;
+            let text: string;
+            try { text = readTextFile(doc.file); } catch (e) { continue; }
+            if (text === doc.editor.getText()) continue;
+            doc.editor.replaceText(text);
+            doc.editor.buffer.set_modified(false);
+        }
+    }
+
     // Merges the open pull request into the base branch in the user's folder, and opens the files that conflict.
     async resolve(): Promise<void> {
         const pull = this.pull, session = this.access.session(), folder = this.host.root();
@@ -249,6 +263,7 @@ export class PullReviewController {
         if (!started.ok) return this.host.toast(started.message);
         this.local = { merge, files: started.conflicts, before: started.before };
         this.host.refreshTree();
+        this.reloadOpen();
         for (const file of started.conflicts) {
             this.host.openInTab(file);
             // The editor would otherwise render the markers as Markdown: `=======` becomes a heading underline and `>>>>>>>` a quote.
@@ -293,6 +308,7 @@ export class PullReviewController {
         this.local = null;
         this.host.pullView.setResolving(null);
         this.host.refreshTree();
+        this.reloadOpen();
         this.host.toast(_('The merge was undone.'));
     }
 
@@ -308,6 +324,7 @@ export class PullReviewController {
         const pulled = await runGit(root, ['pull', '--ff-only']);
         if (pulled?.status !== 0) return fmt(_('{done}, but git pull failed: {message}'), { done, message: (pulled?.err.trim() || pulled?.out.trim() || 'git is not available').split('\n')[0] });
         this.host.refreshTree();
+        this.reloadOpen();
         return fmt(_('{done}. The folder is up to date.'), { done });
     }
 }

@@ -544,6 +544,18 @@ export function collabTests(c: GuiContext): void {
         contains(new TextDecoder().decode(GLib.file_get_contents(rsNote)[1]), '<<<<<<<');
     });
 
+    test('a file that was already open when the merge started shows the markers too, and is not written back over them', () => {
+        settle(w.pulls.abort());
+        w.load(rsNote);
+        contains(w.editor.getText(), 'hello from main');
+        const toast = toastOf(() => w.pulls.resolve());
+        contains(toast, '1 file has conflicts');
+        contains(w.editor.getText(), '<<<<<<<');
+        ok(!w.editor.buffer.get_modified(), 'the reloaded document is marked as unsaved');
+        w.documents.saveOpenFiles();
+        contains(new TextDecoder().decode(GLib.file_get_contents(rsNote)[1]), '<<<<<<<');
+    });
+
     test('opening the pull request again shows how many files are left, and Abort', () => {
         settle(w.pulls.open(conflictedPull()));
         eq(view.banner.get_button_label(), 'Finish and push');
