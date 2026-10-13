@@ -114,6 +114,19 @@ export class DocumentController {
         return after(this.confirmDiscard(doc), yes => yes && this.docs.includes(doc) && this.remove(doc));
     }
 
+    // Close the tabs whose file lies outside folder (asks about unsaved changes first).
+    // false = the user cancelled, so the folder should not be switched.
+    closeOutside(folder: string): Awaitable<boolean> {
+        const prefix = folder.endsWith('/') ? folder : `${folder}/`;
+        const stale = this.docs.filter(d => d.file && !d.file.startsWith(prefix));
+        if (stale.length === 0) return true;
+        return after(this.confirmDiscardAll(stale), yes => {
+            if (!yes) return false;
+            for (const doc of stale) if (this.docs.includes(doc)) this.remove(doc);
+            return true;
+        });
+    }
+
     private remove(doc: Doc): boolean {
         if (this.docs.length === 1) {
             if (doc.home && this.host.settings.home) return true;

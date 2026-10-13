@@ -857,6 +857,17 @@ export class MainWindow {
     // closed does not suddenly appear.
     openFolder(path: string, show = true): void {
         const absolute = Gio.File.new_for_path(path).get_path() ?? path;
+        // Switching to another folder: the files of the old folder do not belong here, close their tabs first.
+        if (this.fileTree.root && this.fileTree.root !== absolute) {
+            void after(this.documents.closeOutside(absolute), yes => {
+                if (yes) this.applyFolder(absolute, show);
+            });
+            return;
+        }
+        this.applyFolder(absolute, show);
+    }
+
+    private applyFolder(absolute: string, show: boolean): void {
         this.fileTree.setRoot(absolute);
         this.workspace.warm(absolute);
         this.fileTree.reveal(this.file);
