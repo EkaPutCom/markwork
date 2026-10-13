@@ -806,7 +806,7 @@ One file. Change the layout: line and the same notes become a list, a table, a c
         const w = this.w;
         w.chat.makeProvider = () => this.scripted([
             [{ id: 'u1', name: 'edit_file', arguments: JSON.stringify({ name: 'plans/launch.md', old_text: '- Public release: 15 November', new_text: '- Public release: 22 November', reason: 'The 1 October meeting postponed the public release to 22 November.' }) }],
-            [{ id: 'u2', name: 'edit_kanban', arguments: JSON.stringify({ name: 'tasks.md', action: 'move', card: 'Prepare the release material', list: 'In Progress', reason: 'Sari started preparing the release material.' }) }],
+            [{ id: 'u2', name: 'edit_note', arguments: JSON.stringify({ name: 'tasks.md', action: 'move', note: 'Prepare the release material', group: 'In Progress', reason: 'Sari started preparing the release material.' }) }],
             ANSWER_ACT,
         ], 'agent');
         this.streamFrames = true;
@@ -974,7 +974,7 @@ One file. Change the layout: line and the same notes become a list, a table, a c
             [tool('p1', 'set_work', { goal, steps: steps('done', 'pending', 'pending'), note: 'The public release is postponed to 22 November.' })],
             [tool('p2', 'propose_batch', { actions: [
                 { tool: 'edit_file', arguments: JSON.stringify({ name: 'plans/launch.md', old_text: '- Public release: 15 November', new_text: '- Public release: 22 November', reason: 'The 1 October meeting postponed the public release.' }) },
-                { tool: 'edit_kanban', arguments: JSON.stringify({ name: 'tasks.md', action: 'move', card: 'Prepare the release material', list: 'In Progress', reason: 'Sari started preparing the release material.' }) },
+                { tool: 'edit_note', arguments: JSON.stringify({ name: 'tasks.md', action: 'move', note: 'Prepare the release material', group: 'In Progress', reason: 'Sari started preparing the release material.' }) },
                 { tool: 'insert_text', arguments: JSON.stringify({ name: 'notes/meeting-8-oct.md', position: 'end', text: '\nThe launch plan has been updated to 22 November.\n', reason: 'Record that the plan has been synced.' }) },
             ] })],
             [tool('p3', 'set_work', { goal, steps: steps('done', 'done', 'pending'), note: 'The batch was applied.' })],
