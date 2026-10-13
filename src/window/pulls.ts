@@ -280,7 +280,9 @@ export class PullReviewController {
             // The editor would otherwise render the markers as Markdown: `=======` becomes a heading underline and `>>>>>>>` a quote.
             docFor(this.host, file)?.editor.setMode('source', true);
         }
-        if (!files.length) this.host.pullView.setResolving(0);
+        // A tab that is already the active one is not switched to by openInTab(), so the review would stay in front of it.
+        if (files.length) this.host.showDocument();
+        else this.host.pullView.setResolving(0);
     }
 
     // The folder is already in the middle of a merge. If it is this pull request's, carry on with it; otherwise say whose it is.

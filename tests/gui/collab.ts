@@ -548,9 +548,13 @@ export function collabTests(c: GuiContext): void {
         settle(w.pulls.abort());
         w.load(rsNote);
         contains(w.editor.getText(), 'hello from main');
+        settle(w.pulls.open(conflictedPull()));
+        eq((w as unknown as { content: { visible_child_name: string } }).content.visible_child_name, 'pull');
         const toast = toastOf(() => w.pulls.resolve());
         contains(toast, '1 file has conflicts');
         contains(w.editor.getText(), '<<<<<<<');
+        // The document was already the active tab, so openInTab() alone leaves the review in front of it.
+        ok((w as unknown as { content: { visible_child_name: string } }).content.visible_child_name !== 'pull', 'the review is still in front of the document');
         ok(!w.editor.buffer.get_modified(), 'the reloaded document is marked as unsaved');
         w.documents.saveOpenFiles();
         contains(new TextDecoder().decode(GLib.file_get_contents(rsNote)[1]), '<<<<<<<');
