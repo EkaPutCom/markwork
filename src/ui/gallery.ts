@@ -10,6 +10,7 @@
 // A cover image path is read relative to the folder of the document (`baseDir`). Every change goes through commit().
 
 import Gtk from 'gi://Gtk?version=4.0';
+import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import { CARD_WIDTH, GALLERY_SIZES, galleryCards, gallerySize, type GalleryCard, type GallerySize } from '../markdown/gallery.js';
@@ -115,7 +116,8 @@ export class GalleryView extends LayoutView {
             text.append(snippet);
         }
         text.append(this.chips(card));
-        box.append(text);
+        // A label's natural width is its whole text: the clamp keeps the card at its size, as the cells are as wide as the widest card.
+        box.append(new Adw.Clamp({ maximum_size: width, tightening_threshold: width, child: text }));
         onChipClick(text, () => this.editItem(card.at));
         onChipClick(cover, () => this.editItem(card.at));
         box.set_tooltip_text(_('Click to edit'));
@@ -145,8 +147,7 @@ export class GalleryView extends LayoutView {
 
     // The tags and the fields that have a value, as chips.
     private chips(card: GalleryCard): Gtk.Widget {
-        const flow = new Gtk.Box({ spacing: 4, halign: Gtk.Align.START });
-        const wrap = new Gtk.FlowBox({ selection_mode: Gtk.SelectionMode.NONE, column_spacing: 4, row_spacing: 4, max_children_per_line: 6, can_target: false, focusable: false });
+        const wrap = new Gtk.FlowBox({ selection_mode: Gtk.SelectionMode.NONE, column_spacing: 4, row_spacing: 4, max_children_per_line: 30, halign: Gtk.Align.FILL, hexpand: true, can_target: false, focusable: false });
         const add = (label: Gtk.Widget) => wrap.append(new Gtk.FlowBoxChild({ child: label, focusable: false }));
         for (const tag of card.tags) {
             const chip = new Gtk.Label({ label: `#${tag}` });
@@ -161,7 +162,6 @@ export class GalleryView extends LayoutView {
             const color = def.type === 'select' && !Array.isArray(parsed.value) ? def.colors?.[String(parsed.value)] : undefined;
             add(this.chip(def.type === 'select' || def.type === 'progress' ? text : `${def.key}: ${text}`, color ? `opt-${color}` : ''));
         }
-        flow.append(wrap);
-        return flow;
+        return wrap;
     }
 }

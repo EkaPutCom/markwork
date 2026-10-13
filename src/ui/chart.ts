@@ -99,6 +99,8 @@ export class ChartView extends LayoutView {
                 this.body.append(row);
             }
             row.append(panel);
+            // Two panels share the row in halves, so that the gap is under the gap between the second and third number above.
+            row.set_homogeneous(countChildren(row) === 2);
         }
     }
 
@@ -196,14 +198,16 @@ export class ChartView extends LayoutView {
         return dropdown;
     }
 
+    // A panel is as tall as the one beside it (the row gives it the height); its content sits in the middle of the space left under the title.
+    // No widget here is set to expand: an expanding child would make the whole row, and so the page, stretch.
     private panel(title: string, content: Gtk.Widget): Gtk.Widget {
-        const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 10, hexpand: true, valign: Gtk.Align.START });
+        const box = new Gtk.CenterBox({ orientation: Gtk.Orientation.VERTICAL, hexpand: true, valign: Gtk.Align.FILL });
         box.add_css_class('card');
         box.add_css_class('chart-panel');
-        const heading = new Gtk.Label({ label: title, xalign: 0 });
+        const heading = new Gtk.Label({ label: title, xalign: 0, margin_bottom: 10 });
         heading.add_css_class('heading');
-        box.append(heading);
-        box.append(content);
+        box.set_start_widget(heading);
+        box.set_center_widget(content);
         return box;
     }
 

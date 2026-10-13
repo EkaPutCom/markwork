@@ -102,6 +102,9 @@ const buildCss = (p: Palette): string => `
     .inbox-field-2 { background-color: #8e5bd6; color: #ffffff; } .inbox-field-3 { background-color: #d6602e; color: #ffffff; }
     .inbox-field-4 { background-color: #c2417a; color: #ffffff; } .inbox-field-5 { background-color: #2f8f99; color: #ffffff; }
     .inbox-field-6 { background-color: #8a7a1c; color: #ffffff; } .inbox-field-7 { background-color: #5e6c84; color: #ffffff; }
+    list.inbox-list > row.inbox-section { background-color: transparent; border: none; border-bottom: 2px solid alpha(@accent_color, 0.5); border-radius: 0; margin-top: 12px; margin-bottom: 10px; }
+    list.inbox-list > row.inbox-section:hover { border-bottom-color: alpha(@accent_color, 0.5); }
+    list.inbox-list > row.inbox-section label { color: @accent_color; font-size: 13px; letter-spacing: 0.5px; }
     list.inbox-list > row.inbox-drop-above { box-shadow: 0 -3px 0 0 @accent_color; }
     list.inbox-list > row.inbox-drop-below { box-shadow: 0 3px 0 0 @accent_color; }
     .table-view { background-color: transparent; }
