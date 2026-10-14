@@ -92,7 +92,7 @@ export function forgejoTests(c: GuiContext): void {
     });
 
     test('a comment written in the discussion tab reaches the server, and the description is shown', () => {
-        until('the discussion', () => labels(view.discussion).includes('description'));
+        until('the discussion', () => labels(view.discussion).includes('opened this pull request'));
         contains(labels(view.discussion), `Prepared for the integration test ${stamp}`);
         real(w.pulls.comment(`Comment from the UI test ${stamp}`));
         const a = pullNamed(titleA)!;

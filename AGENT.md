@@ -20,7 +20,7 @@ Language: code comments, commit messages, interface text, test names, and docume
 | `npm test` | Build and then all the tests (unit + GUI + mouse) on a separate Xvfb display |
 | `npm run test:ui` | Build and then all the tests shown on the X11 desktop; the pointer will move |
 | `npm run test:live` | Live tests against the DeepSeek API (needs `DEEPSEEK_API_KEY` in `.env`; not part of `npm test`, uses real quota) |
-| `npm run test:live:forge`, `npm run test:live:forgejo` | Live tests of the collaboration feature against a real Forgejo or Gitea (tokens in `.env`, see `.env.example`; the second runs the window on Xvfb; not part of `npm test`) |
+| `npm run test:live:forge`, `npm run test:live:forgejo` | Live tests of the collaboration feature against a real Forgejo or Gitea (tokens in `.env`, see `.env.example`; the second runs the window on Xvfb; not part of `npm test`). `scripts/forgejo.sh test` does both against a throwaway Forgejo in Podman/Docker, seeded by `scripts/forgejo-seed.py`, with its tokens in `.env.forgejo` (see the script's header for `up`, `down`, `status`, `reset`) |
 | `npm run test:live -- --structured-only` | Only the live scenarios for the tools of structured documents (`tests/live-structured.ts`); `--structured` adds them to the full live run |
 | `npm run bench` | Build and then measure the performance (Markdown + the GUI editor) on Xvfb; `gjs -m dist/bench.js --no-gui` only the Markdown module |
 | `npm run bench:compare` | Benchmark and compare with `bench/baseline.json`; after a deliberate optimization, update the baseline through `--save=bench/baseline.json` |

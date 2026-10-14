@@ -2,3 +2,4 @@ node_modules/
 dist/
 .env
 po/markwork.pot
+.env.forgejo

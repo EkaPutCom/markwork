@@ -282,7 +282,7 @@ if (opt('only-daemon')) {
     System.exit(failed ? 1 : 0);
 }
 
-if (!opt('only-agents')) runUnitTests();
+if (!opt('only-agents') && !opt('only-forgejo')) runUnitTests();
 
 if (opt('with-kanban-mouse') && opt('no-gui')) {
     recordFailure();

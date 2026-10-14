@@ -112,6 +112,7 @@ gjs -m dist/markwork.js ~/notes
 | `npm run test:live` | Build, then run live tests against the DeepSeek API on the sample manuscript (needs `DEEPSEEK_API_KEY` in `.env`, see `.env.example`; not part of `npm test`) |
 | `npm run test:live:forge` | Build, then run the forge layer against a real Forgejo or Gitea (needs `FORGEJO_TOKEN` in `.env`; add `FORGEJO_CONTRIBUTOR_TOKEN` and `-- --write` to also send, merge, and resolve; not part of `npm test`) |
 | `npm run test:live:forgejo` | Build, then run the Markwork window against a real Forgejo or Gitea on Xvfb, with nothing faked (needs both tokens in `.env`; not part of `npm test`) |
+| `scripts/forgejo.sh test [read\|write\|ui\|all]` | The two live Forgejo suites above against a throwaway Forgejo in a Podman (or Docker) container that the script starts, seeds (two users, tokens, the repository, a clean and a conflicting pull request), and tears down with `down`; the tokens go to `.env.forgejo`, not to your `.env`. Also `up`, `status`, `logs`, `reset` (not part of `npm test`) |
 | `npm run bench` | Build, then measure the performance of the Markdown module and the editor (setText, highlighting, typing) on Xvfb; options: `--size=`, `--runs=`, `--budget=`, `--no-gui` |
 | `npm run bench:save` | Run the benchmark and save the result to `bench/<date-time>.json` |
 | `npm run bench:compare` | Run the benchmark and show the difference against [`bench/baseline.json`](bench/baseline.json) (green = faster, red = slower, gray = a difference < 25%, measurement noise) |
