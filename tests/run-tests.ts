@@ -3,6 +3,7 @@
 //   npm test                                         build, then all tests including the mouse in Xvfb
 //   npm run test:ui                                 build, then all tests including the mouse on the desktop
 //   gjs -m dist/run-tests.js --no-gui                only the Markdown → HTML conversion tests
+//   gjs -m dist/run-tests.js --only-daemon           only the markworkd client tests (the live part needs Go to build the daemon)
 //   gjs -m dist/run-tests.js --mouse                 add real mouse clicks (the pointer will move)
 //   gjs -m dist/run-tests.js --screenshot=a.png      save a screenshot of the editor window
 //   gjs -m dist/run-tests.js --shot-proposal=/tmp/p  save screenshots of the agent proposal review window (/tmp/p-<n>-review.png and -main.png)
@@ -70,6 +71,8 @@ import { conflictTests } from './unit/conflicts.js';
 import { commitMessageTests } from './unit/commitmessage.js';
 import { dialogTests } from './gui/dialogs.js';
 import { harnessTests as harnessModelTests } from './unit/harness.js';
+import { daemonClientTests } from './unit/daemon.js';
+import { daemonLiveTests } from './unit/daemon-live.js';
 import { harnessTests } from './gui/harness.js';
 import { chatTests } from './gui/chat.js';
 import { syntaxHidingTests } from './gui/syntax.js';
@@ -148,6 +151,8 @@ function runUnitTests(): void {
     conflictTests();
     commitMessageTests();
     harnessModelTests();
+    daemonClientTests();
+    daemonLiveTests();
 }
 
 function runGuiTests(app: Adw.Application): void {
@@ -253,6 +258,14 @@ function runGuiTests(app: Adw.Application): void {
 }
 
 // ───────────────────────── Run ─────────────────────────
+
+if (opt('only-daemon')) {
+    daemonClientTests();
+    daemonLiveTests();
+    const { passed, failed } = summary();
+    print(`\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET}`);
+    System.exit(failed ? 1 : 0);
+}
 
 runUnitTests();
 

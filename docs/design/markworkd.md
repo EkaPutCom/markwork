@@ -1,6 +1,6 @@
 # markworkd: design
 
-Status: v1 implemented in `markworkd/` (Go, standard library only, no third-party modules). Section 16 lists where the implementation differs from or settles this draft. The Markwork (TypeScript) client is not written yet.
+Status: v1 implemented in `markworkd/` (Go, standard library only, no third-party modules). Section 16 lists where the implementation differs from or settles this draft. The TypeScript client (section 14) is in `src/agent/daemon/` and `src/orchestratordaemon.ts`; it is not yet selectable in the settings.
 
 `markworkd` is a small supervisor daemon, one per machine (the desktop and any VPS). It owns the agent processes that Markwork orchestrates, so a run keeps going when the Markwork window is closed, and Markwork can reconnect to it later, locally or over SSH.
 
@@ -410,7 +410,28 @@ Markwork keeps its adapters and `Orchestrator`; only the process layer changes.
 
 On startup Markwork connects to each configured machine, calls `watch`, matches runs to board cards through their `labels`, and for each run resubscribes from the last `seq` it processed (or from 1, which rebuilds the trace and session id because the readers are stateful). A run that ended while Markwork was closed goes through the normal `finish` path, so the card gets its result note and moves to Review. A run that is `lost` is shown as interrupted with the session id so the user can resume it.
 
-The TypeScript side adds `src/agent/daemon.ts` (protocol client over `Gio.SocketClient`, or over a `Gio.Subprocess` running `ssh -T host markworkd bridge` for remote machines) and a machine registry in the settings. The adapter split from the earlier discussion (transport versus protocol) is independent and can land before or after this.
+The TypeScript side, as built:
+
+| File | Role |
+| --- | --- |
+| `src/agent/daemon/protocol.ts` | wire types, `parseFrame`, `encodeRequest`, `exitStatus`; pure |
+| `src/agent/daemon/client.ts` | `DaemonClient`: requests with replies and timeouts, `subscribe`, `watch`; works over any `Link`; pure apart from timers |
+| `src/agent/daemon/connection.ts` | `DaemonConnection`: connects, says hello, reconnects with a growing delay, and keeps `follow()`ers and `watch()`ers going across reconnects |
+| `src/agent/daemon/streamlink.ts` | `Link`s over real descriptors: `openSocketLink(path)` and `openCommandLink(argv)` (`sshBridgeArgv(...)` builds `ssh -T host markworkd bridge`) |
+| `src/orchestratordaemon.ts` | `daemonSpawner(conn)`: a `Spawner` for the orchestrator whose processes live in the daemon; `adoptRun()` follows a run found again after a restart |
+
+Decisions:
+
+- The descriptors are driven with `GLib.IOChannel` watches, not Gio's async streams: GJS 1.80 can drop an async callback that arrives during garbage collection, which would leave a run unwatched. `spawnHarness` in `orchestrator.ts` made the same choice.
+- Handlers for a subscription are registered before the request is sent. The daemon sends the first records right behind the reply, and a promise continuation runs only after the read loop finished handling those lines.
+- A follower remembers the last record it delivered and resubscribes from the next one after a reconnect; it also drops any record at or below that number, so a misbehaving daemon cannot make it repeat output.
+- `ready()` rejects with `closed` (shut down) or the daemon's own code (`unsupported_proto`) for final failures, and with `connection_closed` or `timeout` for ones that a reconnect fixes. Callers retry only the second kind.
+- Writes are at-most-once. A line that was on its way when the link died may or may not have arrived, and sending it again could repeat a prompt, so it is reported through the spawner's `problem` callback instead. Closing and stopping are idempotent and are retried; creating a run is idempotent by run id and is retried.
+- `HarnessProcess.detach()`: `Orchestrator.dispose()` calls it, when it exists, instead of `stop()`, so closing the window leaves a daemon run going. A local child process has no `detach` and is stopped as before.
+- `Spawner` gets an optional fourth argument, `SpawnMeta` (`lane` = the project, `labels` = agent, project, board file, card text, title), so a run can be recognised after a restart.
+- The run is forgotten on the daemon once its result was delivered (`forgetWhenDone`); a run whose owner never saw it end stays until the retention period.
+
+Not done yet, and needed before this is usable from the app: a machine registry and a choice of spawner in the settings; at startup, listing the daemon's runs and adopting those whose labels match a card (and presenting `lost` ones); the close-window dialog with the stop / keep running / cancel choice; a connection indicator in the UI.
 
 ## 15. Open questions
 
@@ -432,4 +453,5 @@ Where the code settled things the draft left open or does differently.
 - Shutdown: SIGTERM or the `shutdown` op stops running runs in an orderly way and then closes the listener. New spawns are refused with `shutting_down` meanwhile, and queued runs are not promoted.
 - `stderr` result: `head_dropped` is true when output before the returned text exists (either cut by `tail_bytes` or dropped by the size bound).
 - Verified by hand with the real thing: `pi --mode rpc` driven through the daemon (a `get_state` request answers, closing stdin ends pi with status 0); systemd socket activation with transient user units (the service starts on the first connection, uses systemd's socket, and `systemctl stop` ends a live run as `stopped`).
+- The client tests are `tests/unit/daemon.ts` (an in-memory stand-in daemon in `daemon-fake.ts`, with manual timers) and `tests/unit/daemon-live.ts` (builds the Go daemon with `go build` and runs the client against it with a shell script as the agent; skipped with a note when Go is missing). `gjs -m dist/run-tests.js --only-daemon` runs just these.
 - Not done in v1, as agreed: lease-based exclusive writers, pipe hand-over between daemons, log compaction.

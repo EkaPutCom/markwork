@@ -36,7 +36,7 @@ Language: code comments, commit messages, interface text, test names, and docume
 
 ## markworkd (Go)
 
-`markworkd/` is a separate Go module (standard library only, no third-party modules): a supervisor daemon that keeps agent processes running when the app is closed. The protocol and design are in `docs/design/markworkd.md`; build and run notes are in `markworkd/README.md`. It is not part of the Vite/GJS build. From `markworkd/`: `go vet ./... && go test -race ./...` (the tests start real processes and take a few seconds). Keep the daemon protocol-agnostic: it moves lines and never parses an agent's output.
+`markworkd/` is a separate Go module (standard library only, no third-party modules): a supervisor daemon that keeps agent processes running when the app is closed. The protocol and design are in `docs/design/markworkd.md`; build and run notes are in `markworkd/README.md`. It is not part of the Vite/GJS build. From `markworkd/`: `go vet ./... && go test -race ./...` (the tests start real processes and take a few seconds). Keep the daemon protocol-agnostic: it moves lines and never parses an agent's output. The TypeScript client is in `src/agent/daemon/` (pure protocol, client, reconnecting connection; descriptor links in `streamlink.ts`) and `src/orchestratordaemon.ts` (the `Spawner` adapter); its tests are `tests/unit/daemon.ts` and `tests/unit/daemon-live.ts` (`gjs -m dist/run-tests.js --only-daemon`; the live part builds the daemon with Go).
 
 ## A change of appearance must come with a screenshot
 

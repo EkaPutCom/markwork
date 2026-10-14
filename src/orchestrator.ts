@@ -16,6 +16,9 @@ export interface HarnessProcess {
     write(line: string): boolean;   // one JSONL command to stdin; false if stdin is already closed or failed
     closeInput(): void;             // close stdin: the RPC harness finishes in an orderly way
     stop(): void;
+    // Let go without stopping: the process lives elsewhere (a daemon) and goes on when this window is closed. When
+    // a harness has no detach, closing the window stops it, so it is not left running without a monitor.
+    detach?(): void;
 }
 
 export interface SpawnHandlers {
@@ -23,8 +26,15 @@ export interface SpawnHandlers {
     exit(status: number, stderr: string): void;
 }
 
-// Throws if the program cannot be run.
-export type Spawner = (argv: string[], cwd: string, handlers: SpawnHandlers) => HarnessProcess;
+// What a spawner that keeps runs elsewhere (the markworkd daemon) records about a run so it can be found again
+// after Markwork was closed: the lane serializes runs of one project, the labels say which card it is for.
+export interface SpawnMeta {
+    lane: string;
+    labels: Record<string, string>;
+}
+
+// Throws if the program cannot be run. The local spawner ignores meta.
+export type Spawner = (argv: string[], cwd: string, handlers: SpawnHandlers, meta?: SpawnMeta) => HarnessProcess;
 
 const STDERR_TAIL = 8000;
 const DRAIN_MS = 1500;   // grace period for reading remaining output after the process exits
@@ -254,13 +264,16 @@ export class Orchestrator {
         else live.proc?.stop();
     }
 
-    // The window is closed: stop all harnesses so they are not left without a monitor.
+    // The window is closed: stop the harnesses that are children of this window so they are not left without a
+    // monitor, and let go of those that live in a daemon, which keeps them going.
     dispose(): void {
         this.disposed = true;
         for (const run of this.queue.runs) {
             const live = this.live.get(run.id);
             if (live?.askTimer) { GLib.source_remove(live.askTimer); live.askTimer = 0; }
-            if ((run.status === 'working' || run.status === 'waiting') && live?.proc) { live.stopped = true; live.proc.stop(); }
+            if ((run.status !== 'working' && run.status !== 'waiting') || !live?.proc) continue;
+            if (live.proc.detach) live.proc.detach();
+            else { live.stopped = true; live.proc.stop(); }
         }
     }
 
@@ -293,7 +306,7 @@ export class Orchestrator {
                     if (signal) this.onSignal(run, signal);
                 },
                 exit: (status, stderr) => this.finish(run, status, stderr),
-            });
+            }, spawnMeta(run));
         } catch (e) {
             this.finish(run, 127, e instanceof Error ? e.message : String(e));
             return;
@@ -369,6 +382,15 @@ export class Orchestrator {
         });
         return error ?? (missing ? 'the card was not found on the board (its text may have been changed)' : null);
     }
+}
+
+const LABEL_CARD_CHARS = 500;   // the daemon limits the labels of a run to a few KB
+
+function spawnMeta(run: Run): SpawnMeta {
+    return {
+        lane: run.project,
+        labels: { agent: run.agent, project: run.project, board: run.board, card: run.card.slice(0, LABEL_CARD_CHARS), title: run.title },
+    };
 }
 
 // Short title for messages, pi session names, and logs.

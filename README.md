@@ -424,6 +424,7 @@ src/
 ├── workspace.ts          WorkspaceRepository: the Markdown files of a work folder (snapshot watched by file monitors, LRU contents cache, unsaved overlay, background warming); used by chat, Home, [[ suggestions, harness (GLib/GIO)
 ├── fileops.ts            create, rename, delete (to the trash), and move files/folders on disk (no GTK; used by the file tree)
 ├── orchestrator.ts       runs the external harness (pi) for kanban cards in the project folder: process, queue, board updates
+├── orchestratordaemon.ts a Spawner for orchestrator.ts whose processes live in the markworkd daemon (they survive closing the window; the daemon can be on another machine)
 ├── git.ts                the git history of a file and the list of uncommitted files through the `git` command (async; read-only, except committing selected files); also runs the agent's Git tools
 ├── gitlog.ts             git output parser: log, diff, relative time (pure, no GTK); also the agent's GitRequest/GitAnswer types
 ├── welcome.ts            the sample document shown on first launch
@@ -590,6 +591,8 @@ The code is divided into layers. Each layer may only use the layers below it, ne
         │    └─ markdown/* Markdown rules (no GTK)
         ├─ orchestrator.ts runs harness processes (pi) for window/harness.ts (GLib, no GTK)
         │    └─ agent/harness.ts  prompts, RPC, the pi stream reader, the run queue
+        ├─ orchestratordaemon.ts the same harnesses through the markworkd daemon
+        │    └─ agent/daemon/*    protocol, client, reconnecting connection, socket/ssh links (GLib/Gio, no GTK)
         ├─ agent/*         manuscript context and model client (no GTK)
         ├─ forge/*         Forgejo/Gitea: pull requests, sending changes, resolving conflicts (GLib/libsoup, no GTK)
         └─ settings.ts, files.ts, workspace.ts, git.ts, gitlog.ts, config.ts, colors.ts
@@ -767,6 +770,10 @@ text buffer ──parseBoard()──► KanbanBoard (model + view)
 **Dragging.** This does not use GTK's built-in drag and drop, but its own pointer handling (a `Gtk.GestureDrag` on each card): press on a card, move more than 6 pixels, release. While dragging, a ghost card (a still image of the card from `Gtk.WidgetPaintable`, in a `Gtk.Overlay` layer above the board, because GTK 4 cannot move a popup window by itself) follows the pointer, the source card is dimmed, and a dashed marker shows the destination. The destination is calculated from the pointer position: the list that contains it (or the nearest one), and then `dropIndex()` counts how many other cards have their midpoint above the pointer. Near the edge, the board or the target list scrolls automatically. A movement under 6 pixels is treated as an ordinary click and opens the edit dialog. This approach was chosen so that the behavior is controlled and can be tested by calling `onCardPress()`/`onCardMotion()`/`onCardRelease()` directly (card coordinates).
 
 **Dialogs** (`editCardDialog`, `promptDialog`, `confirmDialog`) hold the program until they are closed, so `KanbanBoard.dialogs` can be replaced, and tests use a stand-in.
+
+### The markworkd daemon (`markworkd/`, `agent/daemon/`, `orchestratordaemon.ts`)
+
+`markworkd/` is a separate Go program (standard library only) that owns agent processes so they keep running when Markwork is closed, or on another machine. The design and wire protocol are in [docs/design/markworkd.md](docs/design/markworkd.md). On the Markwork side, `agent/daemon/` is the client (pure protocol and client, a connection that reconnects and resumes without repeating or losing a record, and links over a Unix socket or the stdio of `ssh host markworkd bridge`), and `orchestratordaemon.ts` turns a daemon run into the `HarnessProcess` the orchestrator already drives, so the pi reader, the queue, and the board logic are unchanged. `Orchestrator.dispose()` lets go of such a process instead of stopping it. It is not selectable in the settings yet.
 
 ### How the harness orchestrator works (`agent/harness.ts`, `orchestrator.ts`)
 
