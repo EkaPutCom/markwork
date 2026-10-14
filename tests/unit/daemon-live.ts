@@ -6,7 +6,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import { DaemonConnection, type ConnectionOptions } from '../../src/agent/daemon/connection.js';
-import { openCommandLink, openSocketLink } from '../../src/agent/daemon/streamlink.js';
+import { openCommandLink, openSocketLink, sshBridgeArgv } from '../../src/agent/daemon/streamlink.js';
 import type { RunSummary, StateEvent } from '../../src/agent/daemon/protocol.js';
 import { adoptRun, daemonSpawner } from '../../src/orchestratordaemon.js';
 import type { HarnessProcess, SpawnHandlers } from '../../src/orchestrator.js';
@@ -242,5 +242,97 @@ export function daemonLiveTests(): void {
         try { settle(new Promise<void>(resolve => daemon.wait_async(null, () => resolve())), 10000); } catch { daemon.force_exit(); }
         run(['rm', '-rf', dir], '/');
         void tmp;
+    }
+}
+
+// ---------- over real ssh ----------
+
+// The client through a real `ssh` to a machine that runs markworkd and has a `pi` that speaks pi's RPC mode (the Docker
+// image in markworkd/contrib/docker is one). Off unless MARKWORK_TEST_SSH is set, e.g.
+//   MARKWORK_TEST_SSH="-F /path/ssh_config markwork-vps" gjs -m dist/run-tests.js --only-daemon
+// The last word is the host, the others are ssh options. The run folder is MARKWORK_TEST_SSH_DIR.
+export function daemonSshTests(): void {
+    const spec = GLib.getenv('MARKWORK_TEST_SSH');
+    if (!spec) return;
+    section('markworkd client: over real ssh');
+    const words = spec.split(/\s+/).filter(Boolean);
+    const host = words.pop()!;
+    const folder = GLib.getenv('MARKWORK_TEST_SSH_DIR') ?? '/home/tester/projects/shop';
+    const open = (target = host) => () => openCommandLink(sshBridgeArgv({ host: target, options: words }));
+    const connect = (target = host): DaemonConnection => new DaemonConnection({ open: open(target), name: 'markwork-test', expectBridge: true, backoffMs: [200, 500] });
+    const GET_STATE = JSON.stringify({ id: 'markwork-state', type: 'get_state' });
+    const PROMPT = JSON.stringify({ id: 'p1', type: 'prompt', message: 'go' });
+    const conns: DaemonConnection[] = [];
+    const mk = (target?: string) => { const c = connect(target); conns.push(c); return c; };
+    const start = (conn: DaemonConnection, c: Collected, labels: Record<string, string> = {}): HarnessProcess => {
+        const proc = daemonSpawner(conn)(['pi', '--mode', 'rpc'], folder, c.handlers, { lane: 'ssh-test', labels });
+        proc.write(GET_STATE);
+        proc.write(PROMPT);
+        return proc;
+    };
+
+    try {
+        test('hello over ssh and markworkd bridge', () => {
+            const conn = mk();
+            const info = settle((async () => (await conn.ready()).info())(), 30000);
+            contains(info.daemon, 'markworkd');
+            eq(conn.state, 'ready');
+        });
+
+        test('a run over ssh: the agent\'s events come back, and stop ends it (143)', () => {
+            const conn = mk();
+            const c = collect();
+            const proc = start(conn, c);
+            waitUntil(() => c.lines.some(l => l.includes('tool_execution_start')), 'the agent\'s first events', 30000);
+            contains(c.lines[0], 'markwork-state');
+            proc.stop();
+            waitUntil(() => c.exit !== null, 'the run to end');
+            eq(c.exit?.status, 143);
+        });
+
+        test('Markwork closes while the agent works on the machine: a new ssh finds the run and replays it', () => {
+            const label = `ssh-adopt-${Date.now()}`;
+            const first = mk();
+            const c1 = collect();
+            start(first, c1, { card: label });
+            waitUntil(() => c1.lines.some(l => l.includes('tool_execution_start')), 'the first events', 30000);
+            first.dispose();                                    // the ssh process ends; the run does not
+
+            const second = mk();
+            const runs = settle((async () => (await second.ready()).list({ state: 'running' }))(), 30000);
+            const mine = runs.find(r => r.labels?.card === label);
+            ok(mine, 'the run is still on the machine');
+            const c2 = collect();
+            const adopted = adoptRun(second, mine!.run, 1, c2.handlers);
+            waitUntil(() => c2.lines.some(l => l.includes('tool_execution_start')), 'the replay');
+            contains(c2.lines[0], 'markwork-state');
+            adopted.stop();
+            waitUntil(() => c2.exit !== null, 'the run to end');
+            eq(c2.exit?.status, 143);
+        });
+
+        test('the ssh link dies mid-run: it reconnects and the output is whole, once', () => {
+            const conn = mk();
+            const c = collect();
+            const proc = start(conn, c);
+            waitUntil(() => c.lines.some(l => l.includes('tool_execution_start')), 'the first events', 30000);
+            const before = c.lines.length;
+            conn.current()!.link.close();                       // ssh is terminated, as if the network had dropped
+            waitUntil(() => conn.state === 'ready', 'the reconnect', 30000);
+            eq(c.lines.length, before, 'nothing was repeated after the resume');
+            eq(new Set(c.lines).size, c.lines.length, 'no line twice');
+            proc.stop();
+            waitUntil(() => c.exit !== null, 'the run to end');
+            eq(c.exit?.status, 143);
+        });
+
+        test('a host that does not exist is a failed attempt with ssh\'s own reason', () => {
+            const conn = mk('markwork-no-such-host.invalid');
+            conn.start();
+            waitUntil(() => conn.state === 'waiting' && conn.detail.length > 0, 'the reason', 30000);
+            ok(/resolve|not known|name or service/i.test(conn.detail), `reason: ${conn.detail}`);
+        });
+    } finally {
+        for (const c of conns) c.dispose();
     }
 }

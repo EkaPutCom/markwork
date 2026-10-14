@@ -74,7 +74,7 @@ import { commitMessageTests } from './unit/commitmessage.js';
 import { dialogTests } from './gui/dialogs.js';
 import { harnessTests as harnessModelTests } from './unit/harness.js';
 import { daemonClientTests } from './unit/daemon.js';
-import { daemonLiveTests } from './unit/daemon-live.js';
+import { daemonLiveTests, daemonSshTests } from './unit/daemon-live.js';
 import { daemonAppTests } from './unit/daemonapp.js';
 import { harnessTests } from './gui/harness.js';
 import { agentsHostTests } from './gui/agentshost.js';
@@ -158,6 +158,7 @@ function runUnitTests(): void {
     daemonClientTests();
     daemonAppTests();
     daemonLiveTests();
+    daemonSshTests();
 }
 
 function runGuiTests(app: Adw.Application): void {
@@ -275,6 +276,7 @@ if (opt('only-daemon')) {
     daemonClientTests();
     daemonAppTests();
     daemonLiveTests();
+    daemonSshTests();
     const { passed, failed } = summary();
     print(`\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET}`);
     System.exit(failed ? 1 : 0);

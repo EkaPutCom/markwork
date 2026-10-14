@@ -3,14 +3,14 @@
 #
 #   docker build -f contrib/docker/Dockerfile -t markwork-vps .      (run from markworkd/)
 
-FROM golang:1.23-bookworm AS build
+FROM docker.io/library/golang:1.23-bookworm AS build
 WORKDIR /src
 COPY go.mod ./
 COPY cmd ./cmd
 COPY internal ./internal
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/markworkd ./cmd/markworkd
 
-FROM debian:bookworm-slim
+FROM docker.io/library/debian:bookworm-slim
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openssh-server ca-certificates procps \
  && rm -rf /var/lib/apt/lists/* \
