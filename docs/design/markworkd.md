@@ -1,6 +1,6 @@
 # markworkd: design
 
-Status: v1 implemented in `markworkd/` (Go, standard library only, no third-party modules). Section 16 lists where the implementation differs from or settles this draft. The TypeScript client (section 14) is in `src/agent/daemon/` and `src/orchestratordaemon.ts`; it is not yet selectable in the settings.
+Status: v1 implemented in `markworkd/` (Go, standard library only, no third-party modules). Section 16 lists where the implementation differs from or settles this draft. The TypeScript client (section 14) is in `src/agent/daemon/` and `src/orchestratordaemon.ts`; the app wiring (settings, following runs again, the close question, Home) is in `src/daemonhub.ts` and `src/window/harness.ts`.
 
 `markworkd` is a small supervisor daemon, one per machine (the desktop and any VPS). It owns the agent processes that Markwork orchestrates, so a run keeps going when the Markwork window is closed, and Markwork can reconnect to it later, locally or over SSH.
 
@@ -431,7 +431,17 @@ Decisions:
 - `Spawner` gets an optional fourth argument, `SpawnMeta` (`lane` = the project, `labels` = agent, project, board file, card text, title), so a run can be recognised after a restart.
 - The run is forgotten on the daemon once its result was delivered (`forgetWhenDone`); a run whose owner never saw it end stays until the retention period.
 
-Not done yet, and needed before this is usable from the app: a machine registry and a choice of spawner in the settings; at startup, listing the daemon's runs and adopting those whose labels match a card (and presenting `lost` ones); the close-window dialog with the stop / keep running / cancel choice; a connection indicator in the UI.
+The app wiring, as built:
+
+- **Settings** (`data/com.ekaput.Markwork.gschema.xml`, Preferences → Agents): `harness-machine` (`''` = child of the window, `'local'` = the daemon on this computer, else the name of an SSH machine), `machines` (name → SSH host), `machine-projects` (`machine:project` → folder on that machine) and `daemon-command`. Names and hosts are validated in `agent/daemon/machines.ts`; a host is never allowed to start with `-`, and `sshBridgeArgv` puts `--` before it.
+- **`DaemonHub`** (`src/daemonhub.ts`): one `DaemonConnection` per machine, made on first use. This computer uses `markworkd bridge` when the program is installed (the bridge starts the daemon) and otherwise the socket, which a systemd user service listens on; a sandboxed app only has the socket. A connection is dropped when the host or command of its machine changes, and kept otherwise because runs are followed through it.
+- **`HarnessController`** picks the spawner by `harness-machine`, resolves the program by name (the daemon finds it), and keeps project folders per machine; for an SSH machine the folder is a typed absolute path and `Orchestrator.localFolders` is false, so the local folder checks are skipped.
+- **Following runs again**: while a machine is chosen the controller `watch`es it, and every snapshot (after each connect) is matched against the board cards by the labels the orchestrator put on the run (agent, project, board, card text, title, and the computer's host name, so a run started from another computer is left alone). `Orchestrator.adopt()` follows such a run from its first record. The replay is old news: only the last signal that nothing was sent after is acted on once the replay is over, and a question whose own timeout ran out while Markwork was closed is noted instead of asked. A run that ended meanwhile goes through the normal finish path, so the card gets its note and moves to Review; a `lost` run fails the card with the daemon's reason.
+- **Closing**: `confirmClose()` asks stop / keep running / cancel when agents work; `Orchestrator.dispose(stopDetachable)` stops or lets go accordingly. Agents that are children of the window can only be stopped, as before, but are now asked about too.
+- **Connection state**: `Home` shows "Agents run on …" with *Connected*, *Connecting…*, *Trying again* or *Cannot connect* and the reason; the user gets a toast once when a machine becomes unreachable and once when it is back.
+- **Flatpak**: `--filesystem=xdg-run/markworkd` and `--socket=ssh-auth` in `build-aux/flatpak/com.ekaput.Markwork.json`.
+
+Known limits: only the machine chosen at startup is watched, so runs left on another machine are not found until it is chosen; a queued card (waiting behind another in the same project) is kept by the window, not the daemon, so closing the window does not start it later; a write that was on its way when the link died is reported, not repeated.
 
 ## 15. Open questions
 

@@ -188,6 +188,15 @@ export class FakeDaemon {
         c.reply(req.id, { run: req.run, state: 'running', position: 0 });
     }
 
+    // A run that exists on the daemon before the test starts, with the records it has so far.
+    seed(spec: Partial<SpawnSpec> & { run: string }, records: [RecordKind, string][], exit: ExitInfo | null = null, stderr = ''): void {
+        const full: SpawnSpec = { program: 'pi', args: ['--mode', 'rpc'], cwd: '/srv/shop', ...spec };
+        this.runs.set(spec.run, { spec: full, state: exit ? 'exited' : 'running', records: [], exit, stderr, inputs: [], stdinClosed: false, stopped: false, forgotten: false });
+        this.append(spec.run, 'start', 'pid 1');
+        for (const [kind, line] of records) this.append(spec.run, kind, line);
+        if (exit) this.append(spec.run, 'exit', JSON.stringify(exit));
+    }
+
     summary(run: string): object {
         const r = this.runs.get(run)!;
         return { run, state: r.state, program: r.spec.program, args: r.spec.args, cwd: r.spec.cwd, lane: r.spec.lane ?? '', labels: r.spec.labels, created_at: 1, started_at: 1, ended_at: r.exit ? 2 : null, exit: r.exit, last_seq: r.records.length, log_bytes: 0, stderr_bytes: r.stderr.length, queue_position: 0 };

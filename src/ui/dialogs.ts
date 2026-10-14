@@ -16,6 +16,7 @@ import { composeItem, itemMeta } from '../markdown/inbox.js';
 import { fieldInputText, parseValue, setField, type FieldDef, type FieldType } from '../markdown/fields.js';
 import { AGENT_NAME, CARD_SCHEMA, composeCard, DUE_INPUT, splitCard, withDueDate } from '../markdown/kanban.js';
 import type { HarnessAsk, HarnessReply } from '../agent/harness.js';
+import { isValidMachineName, isValidSshTarget } from '../agent/daemon/machines.js';
 import { _, fmt, ngettext } from '../i18n.js';
 
 type FilterSetup = [label: string, setup: (filter: Gtk.FileFilter) => void];
@@ -507,4 +508,56 @@ export async function harnessTextDialog(parent: Gtk.Window | null, options: { ti
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => { area.view.grab_focus(); return GLib.SOURCE_REMOVE; });
     const accepted = await modalWindow(parent, options.title, 520, box, [_('Cancel'), _('Send')], 0, 1, i => i === 0 || !!area.text().trim()) === 1;
     return accepted ? area.text().trim() : null;
+}
+
+// ---------- Dialogs for agents that keep running ----------
+
+export type CloseAgentsChoice = 'cancel' | 'stop' | 'keep';
+
+// Asked when the window closes while agents work. Children of this window end with it; agents that live in the
+// markworkd daemon can be left going, and are found again the next time Markwork opens.
+export async function closeAgentsDialog(parent: Gtk.Window | null, activity: { children: number; detachable: number; queued: number }): Promise<CloseAgentsChoice> {
+    const lines: string[] = [];
+    if (activity.children) lines.push(fmt(ngettext('{n} agent runs as part of this window and will stop.', '{n} agents run as part of this window and will stop.', activity.children), { n: activity.children }));
+    if (activity.detachable) lines.push(fmt(ngettext('{n} agent runs on markworkd and can keep going while Markwork is closed.', '{n} agents run on markworkd and can keep going while Markwork is closed.', activity.detachable), { n: activity.detachable }));
+    if (activity.queued) lines.push(fmt(ngettext('{n} queued card will not start.', '{n} queued cards will not start.', activity.queued), { n: activity.queued }));
+    const keep = activity.detachable > 0;
+    const buttons = keep ? [_('Cancel'), _('Stop Agents and Close'), _('Keep Running and Close')] : [_('Cancel'), _('Stop Agents and Close')];
+    const answer = await alert(parent, _('Agents are still working'), lines.join('\n'), buttons, 0, keep ? 2 : 0, 1);
+    return answer === 2 ? 'keep' : answer === 1 ? 'stop' : 'cancel';
+}
+
+export interface MachineDraft {
+    name: string;
+    target: string;
+}
+
+// Adds a machine where markworkd runs agents. `taken` = the names that are in use. null if cancelled.
+export async function machineDialog(parent: Gtk.Window | null, taken: string[]): Promise<MachineDraft | null> {
+    const group = new Adw.PreferencesGroup();
+    const name = new Adw.EntryRow({ title: _('Name'), activates_default: true });
+    const target = new Adw.EntryRow({ title: _('SSH host'), activates_default: true });
+    group.add(name);
+    group.add(target);
+    const hint = new Gtk.Label({
+        label: _('A host from ~/.ssh/config, or user@host. Markwork connects with ssh in the background, so the key must work without asking for a password (an ssh-agent is fine). markworkd must be installed on that machine.'),
+        xalign: 0, wrap: true, max_width_chars: 48,
+    });
+    hint.add_css_class('dim-label');
+    const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 12 });
+    box.append(group);
+    box.append(hint);
+    const check = (row: Adw.EntryRow, good: boolean): boolean => {
+        if (good) row.remove_css_class('error');
+        else row.add_css_class('error');
+        return good;
+    };
+    const accepted = await formDialog(parent, _('Add Machine'), 440, box, _('Add'), () => {
+        const nameOk = check(name, isValidMachineName(name.text.trim()) && !taken.includes(name.text.trim()));
+        const targetOk = check(target, isValidSshTarget(target.text.trim()));
+        if (!nameOk) name.grab_focus();
+        else if (!targetOk) target.grab_focus();
+        return nameOk && targetOk;
+    });
+    return accepted ? { name: name.text.trim(), target: target.text.trim() } : null;
 }

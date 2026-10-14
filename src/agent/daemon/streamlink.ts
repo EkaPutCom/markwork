@@ -186,6 +186,6 @@ export interface SshTarget {
 export function sshBridgeArgv(t: SshTarget): string[] {
     return [
         'ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3', '-o', 'ConnectTimeout=10',
-        ...(t.options ?? []), t.host, t.remoteCommand ?? 'markworkd bridge',
+        ...(t.options ?? []), '--', t.host, t.remoteCommand ?? 'markworkd bridge',
     ];
 }

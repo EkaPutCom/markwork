@@ -49,6 +49,7 @@
   <li>Focus mode, typewriter mode, and autosave; the window size</li>
   <li>The Assistant panel: open or not, the model, and thinking mode</li>
   <li><code>projects</code>: the mapping of project name → folder for external harnesses</li>
+  <li>Agents (Preferences → Agents): <code>harness-machine</code>, where harnesses run (in this window, on this computer through markworkd, or on a machine you added), <code>machines</code>, the SSH host of each machine, <code>machine-projects</code>, the project folders on those machines, and <code>daemon-command</code>, the markworkd command on them when it is not on the non-interactive PATH. See <a href="orchestrator.html#daemon">markworkd</a></li>
   <li>Collaboration (Preferences → Collaboration): <code>forge-poll-seconds</code>, how often to look for pull requests (30 to 3600 seconds), and <code>forge-notify</code>, whether a new or updated pull request raises a notification. The server and the repository come from the git remote of the folder; the token is not in the settings. See <a href="collaboration.html">Collaboration</a></li>
 </ul>
 <p>The API key and the access tokens of the servers are never written to the settings.</p>
@@ -65,6 +66,7 @@
   <tr><td>Focus / typewriter</td><td>Off</td></tr>
   <tr><td>Autosave</td><td>On</td></tr>
   <tr><td>Home</td><td>On</td></tr>
+  <tr><td>Where agents run</td><td>In the Markwork window</td></tr>
   <tr><td>Check for pull requests</td><td>Every 60 seconds, with notifications on</td></tr>
   <tr><td>Window size</td><td>1100 × 760 pixels</td></tr>
 </table></div>

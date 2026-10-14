@@ -22,7 +22,7 @@ const rules = [
     [f => f.startsWith('editor/'), t => /^(ui|window|agent)\//.test(t) || t === 'window.ts', 'editor/ knows nothing about files, menus, the sidebar, or the agent'],
     [f => f.startsWith('ui/') || f.startsWith('window/') || f === 'actions.ts', t => t === 'window.ts', 'only app.ts composes MainWindow; components and controllers get a host interface'],
     [f => BASE.includes(f), t => /^(ui|editor|agent|window)\//.test(t) || t === 'window.ts', 'base modules do not reach up into the layers above them'],
-    [f => f === 'orchestrator.ts' || f === 'orchestratordaemon.ts', t => GTK.test(t) || /^(ui|editor|window)\//.test(t) || t === 'window.ts', 'the orchestrator runs harness processes for window/harness.ts; it uses agent/, markdown/, and base modules, never GTK, widgets, or the window'],
+    [f => f === 'orchestrator.ts' || f === 'orchestratordaemon.ts' || f === 'daemonhub.ts', t => GTK.test(t) || /^(ui|editor|window)\//.test(t) || t === 'window.ts', 'the orchestrator runs harness processes for window/harness.ts; it uses agent/, markdown/, and base modules, never GTK, widgets, or the window'],
 ];
 
 const files = readdirSync(src, { recursive: true }).filter(f => f.endsWith('.ts') && !f.endsWith('.d.ts')).map(f => f.split('\\').join('/'));

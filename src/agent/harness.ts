@@ -421,6 +421,14 @@ export class RunQueue {
         return added;
     }
 
+    // A run whose process already exists (it was found again on the daemon after Markwork restarted): it is working
+    // whatever else is going on in its folder; the daemon, not this queue, ordered it.
+    addRunning(run: Omit<Run, 'id' | 'status' | 'ask' | 'trace' | 'result'>, trace = new AgentTrace()): Run {
+        const added: Run = { ...run, id: ++this.seq, status: 'working', ask: null, trace, result: null };
+        this.runs.push(added);
+        return added;
+    }
+
     // The latest run for this card (an active one takes precedence).
     find(board: string, card: string): Run | null {
         const mine = this.runs.filter(r => r.board === board && r.card === card);

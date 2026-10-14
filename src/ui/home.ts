@@ -21,6 +21,7 @@ import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import { dayPart, type DayPart, type InboxCount, type Task } from '../markdown/home.js';
 import type { RunStatus } from '../agent/harness.js';
+import type { ConnectionState } from '../agent/daemon/connection.js';
 import { ageLabel } from './inbox.js';
 import { removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
@@ -46,6 +47,13 @@ export interface HomeRun {
     status: RunStatus;
 }
 
+// The machine agents run on (not shown when they run as children of this window), and whether it can be reached.
+export interface HomeAgentHost {
+    label: string;
+    state: ConnectionState;
+    detail: string;
+}
+
 export interface HomeJournal {
     exists: boolean;    // today's journal file already exists
     notes: number;      // bullets in the Notes section
@@ -60,6 +68,7 @@ export interface HomeData {
     recent: HomeEntry[];
     tasks: Task[];
     runs: HomeRun[];
+    agentHost: HomeAgentHost | null;
     inboxes: InboxCount[];
     journal: HomeJournal | null;  // null = no work folder
 }
@@ -98,7 +107,7 @@ export class HomeView {
         this.page.append(this.header(data));
         if (data.resume.length) this.addSection(_('Continue'), this.resumeCards(data));
         if (data.journal) this.addSection(_('Journal'), this.list([this.journalRow(data.journal)]));
-        if (data.runs.length) this.addSection(_('Agent'), this.list(data.runs.map(run => this.runRow(run))));
+        if (data.runs.length || data.agentHost) this.addSection(_('Agent'), this.list([...(data.agentHost ? [this.hostRow(data.agentHost)] : []), ...data.runs.map(run => this.runRow(run))]));
         this.addSection(_('Due dates'), this.taskList(data));
         if (data.inboxes.length) this.addSection(_('Inbox'), this.list(data.inboxes.map(inbox => this.inboxRow(inbox))));
         if (data.recent.length) this.addSection(_('Recent files'), this.list(data.recent.map(entry => this.recentRow(entry, data.now))));
@@ -224,6 +233,22 @@ export class HomeView {
     }
 
     // ---------- Agent ----------
+
+    // Where agents run and whether that machine answers. The state is written out, not only shown by an icon or a color.
+    private hostRow(host: HomeAgentHost): Adw.ActionRow {
+        const trouble = host.state === 'waiting' || host.state === 'failed';
+        const detail = host.detail.trim();
+        const [text, style] = host.state === 'ready' ? [_('Connected'), 'success']
+            : host.state === 'waiting' ? [_('Trying again'), 'warning']
+            : host.state === 'failed' ? [_('Cannot connect'), 'error']
+            : [_('Connecting…'), 'dim-label'];
+        const row = this.row(fmt(_('Agents run on {machine}'), { machine: host.label }), trouble ? detail : '');
+        row.set_activatable(false);
+        row.set_subtitle_lines(2);
+        row.add_prefix(new Gtk.Image({ icon_name: trouble ? 'network-error-symbolic' : 'network-server-symbolic' }));
+        row.add_suffix(this.suffix(text, style));
+        return row;
+    }
 
     private runRow(run: HomeRun): Adw.ActionRow {
         const row = this.row(run.title, run.agent);

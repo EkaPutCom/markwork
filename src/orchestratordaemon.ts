@@ -32,6 +32,7 @@ class DaemonProcess implements HarnessProcess {
     private ended = false;
     private follower: Follower | null = null;
     private exit: ExitInfo | null = null;
+    private upTo: number | null = null;   // set while the history of an adopted run is being replayed
 
     constructor(
         private readonly conn: DaemonConnection,
@@ -53,8 +54,19 @@ class DaemonProcess implements HarnessProcess {
         attempt();
     }
 
-    // Follows a run that already exists (found again after Markwork was restarted).
-    adopt(fromSeq: number): void { this.attached(fromSeq); }
+    // Follows a run that already exists (found again after Markwork was restarted). upTo = the last record that was
+    // there at that moment: once it is delivered, the replay is over and the handlers' caughtUp is called.
+    adopt(fromSeq: number, upTo: number): void {
+        this.upTo = upTo;
+        this.attached(fromSeq);
+        if (upTo < fromSeq) this.caughtUp();
+    }
+
+    private caughtUp(): void {
+        if (this.upTo === null) return;
+        this.upTo = null;
+        this.handlers.caughtUp?.();
+    }
 
     write(line: string): boolean {
         if (this.ended || this.inputClosed) return false;
@@ -93,8 +105,10 @@ class DaemonProcess implements HarnessProcess {
     private followHandlers(): FollowHandlers {
         return {
             record: rec => {
-                if (rec.kind === 'out') this.handlers.line(rec.line);
+                if (rec.kind === 'out') this.handlers.line(rec.line, rec.ts);
+                else if (rec.kind === 'in') this.handlers.input?.(rec.line);
                 else if (rec.kind === 'exit') this.exit = parseExit(rec.line);
+                if (this.upTo !== null && rec.seq >= this.upTo) this.caughtUp();
             },
             end: () => this.completed(),
             failed: e => this.finish(1, e.message),
@@ -103,6 +117,7 @@ class DaemonProcess implements HarnessProcess {
 
     // The exit record arrived and the stream ended: fetch the stderr tail, then report.
     private completed(): void {
+        this.caughtUp();
         const exit = this.exit ?? { reason: 'exited' as const };
         const done = (stderr: string) => this.finish(exitStatus(exit), stderr || exit.error || '');
         this.conn.ready().then(c => c.stderr(this.run, STDERR_TAIL)).then(r => done(r.text), () => done(''));
@@ -163,10 +178,10 @@ export function daemonSpawner(conn: DaemonConnection, opts: DaemonSpawnerOptions
     };
 }
 
-// A run that is already on the daemon, followed from the record after fromSeq: what the orchestrator does for a
-// run it finds again at startup.
-export function adoptRun(conn: DaemonConnection, run: string, fromSeq: number, handlers: SpawnHandlers, opts: DaemonSpawnerOptions = {}): HarnessProcess {
+// A run that is already on the daemon, followed from fromSeq on: what the orchestrator does for a run it finds again
+// at startup. upTo is the run's last record when it was found; the handlers' caughtUp is called once that is delivered.
+export function adoptRun(conn: DaemonConnection, run: string, fromSeq: number, handlers: SpawnHandlers, opts: DaemonSpawnerOptions = {}, upTo = 0): HarnessProcess {
     const proc = new DaemonProcess(conn, run, handlers, opts);
-    proc.adopt(fromSeq);
+    proc.adopt(fromSeq, upTo);
     return proc;
 }

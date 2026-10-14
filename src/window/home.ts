@@ -42,6 +42,7 @@ export class HomeController {
             resume: resume.map(r => this.entry(r, true)),
             recent: others.map(r => this.entry(r, false)),
             tasks: dueTasks(files, localDate(now), cardProject),
+            agentHost: this.host.harness.hostStatus(),
             runs: this.host.harness.orchestrator.queue.runs.filter(r => isActive(r.status)).map(r => ({ id: r.id, agent: r.agent, title: r.title, status: r.status })),
             inboxes: openInboxes(files),
             journal: root ? this.host.journal.summary(root, localDate(now)) : null,
