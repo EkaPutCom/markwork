@@ -110,3 +110,32 @@ function expand(template: string, args: unknown[]): string {
         return n >= 1 && n <= captures.length ? captures[n - 1] ?? '' : all;
     });
 }
+
+// ---------- Files to include and exclude ----------
+
+const GLOB_CHARS = /[.+^${}()|[\]\\]/g;
+
+// One glob as a regular expression over a path relative to the folder. A pattern without a slash ("*.md", "drafts")
+// matches a file name or a folder name at any depth; one with a slash ("agenda/**") is anchored at the folder.
+// A folder pattern also covers everything inside it. `*` stays within a folder, `**` crosses folders.
+function globRegExp(glob: string): RegExp {
+    const anchored = glob.includes('/');
+    const body = glob.replace(/^\.?\//, '').replace(/\/$/, '/**')
+        .replace(GLOB_CHARS, '\\$&')
+        .replace(/\*\*\/?/g, m => m.endsWith('/') ? '(?:.*/)?' : '.*')
+        .replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]');
+    return new RegExp(anchored ? `^${body}(?:/.*)?$` : `^(?:.*/)?${body}(?:/.*)?$`, 'i');
+}
+
+const patterns = (text: string): RegExp[] => text.split(',').map(p => p.trim()).filter(Boolean).map(globRegExp);
+
+// The test for a file path, or null when both fields are empty. Excluding wins over including.
+export function pathFilter(include: string, exclude: string): ((path: string) => boolean) | null {
+    const yes = patterns(include), no = patterns(exclude);
+    if (!yes.length && !no.length) return null;
+    return path => (!yes.length || yes.some(r => r.test(path))) && !no.some(r => r.test(path));
+}
+
+// How many of the two fields hold a pattern, for the summary line.
+export const activeFilters = (include: string, exclude: string): number =>
+    [include, exclude].filter(text => patterns(text).length > 0).length;

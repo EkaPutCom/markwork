@@ -17,7 +17,7 @@ export class FindBar extends Gtk.SearchBar {
             Template: uiTemplate(template),
             InternalChildren: [
                 'entry', 'previous', 'next', 'box', 'expand', 'caseButton', 'wordButton', 'regexButton',
-                'count', 'replaceRow', 'replaceEntry', 'replaceOne', 'replaceAll',
+                'count', 'replaceRow', 'replaceEntry', 'replaceOne', 'replaceAll', 'closeButton',
             ],
         }, this);
     }
@@ -34,6 +34,7 @@ export class FindBar extends Gtk.SearchBar {
     declare _replaceEntry: Gtk.Entry;
     declare _replaceOne: Gtk.Button;
     declare _replaceAll: Gtk.Button;
+    declare _closeButton: Gtk.Button;
 
     buffer: GtkSource.Buffer;
     view: Gtk.TextView;
@@ -49,6 +50,8 @@ export class FindBar extends Gtk.SearchBar {
 
         // The template's child property is not applied to GtkSearchBar, so the box is attached here.
         this.set_child(this._box);
+        // The counter only takes room while it has something to say, so the close button stays next to the buttons.
+        this._count.connect('notify::label', () => { this._count.visible = this._count.label !== ''; });
 
         const entry = this._entry;
         entry.connect('changed', () => {
@@ -73,6 +76,15 @@ export class FindBar extends Gtk.SearchBar {
             this._expand.icon_name = this._expand.active ? 'pan-down-symbolic' : 'pan-end-symbolic';
         });
         this._replaceEntry.connect('activate', () => this.replaceCurrent());
+        this._closeButton.connect('clicked', () => this.close());
+        // A plain GtkEntry has no stop-search signal like GtkSearchEntry: Escape closes the bar from either field.
+        for (const field of [entry, this._replaceEntry]) {
+            onKeyPress(field, keyval => {
+                if (keyval !== Gdk.KEY_Escape) return false;
+                this.close();
+                return true;
+            });
+        }
         this._replaceOne.connect('clicked', () => this.replaceCurrent());
         this._replaceAll.connect('clicked', () => this.replaceEverything());
         this.watchContext();

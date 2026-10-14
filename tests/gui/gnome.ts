@@ -28,6 +28,9 @@ export function gnomeTests(c: GuiContext): void {
         w.findBar.open(); settle();
         ok(w.findBar.search_mode_enabled, 'the search bar is not enabled');
         ok(w.findBar._entry.get_mapped() && w.findBar._entry.get_width() > 0, 'the search entry is not visible');
+        w.findBar._closeButton.activate(); settle();
+        ok(!w.findBar.search_mode_enabled, 'the close button does not close the search bar');
+        w.findBar.open(); settle();
         w.findBar.close(); settle();
     });
     test('Find and Replace: counter, replace one, replace all', () => {

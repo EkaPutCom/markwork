@@ -44,6 +44,7 @@ const buildCss = (p: Palette): string => `
     .search-field { padding-right: 90px; }
     .replace-field { padding-right: 40px; }
     .replace-field-two { padding-right: 90px; }
+    .find-close { padding: 0; min-width: 24px; }
     .search-chip { min-height: 20px; min-width: 20px; padding: 0 4px; font-size: 11px; }
     .sidebar-rail { background-color: alpha(black, 0.12); padding-bottom: 8px; }
     .side-meta { font-size: 11px; color: alpha(currentColor, 0.55); }

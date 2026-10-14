@@ -7,7 +7,7 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
-import { buildPattern, replaceMatches, searchFiles, MAX_HITS, type FileHits, type SearchHit, type SearchOptions } from '../markdown/search.js';
+import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, MAX_HITS, type FileHits, type SearchHit, type SearchOptions } from '../markdown/search.js';
 import type { Change } from '../agent/changes.js';
 import { pack } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
@@ -43,6 +43,10 @@ export class SearchPanel {
     readonly caseButton: Gtk.ToggleButton;
     readonly wordButton: Gtk.ToggleButton;
     readonly regexButton: Gtk.ToggleButton;
+    readonly filterButton: Gtk.ToggleButton;
+    readonly filterRow: Gtk.Revealer;
+    readonly includeEntry: Gtk.Entry;
+    readonly excludeEntry: Gtk.Entry;
     readonly summary: Gtk.Label;
     readonly expand: Gtk.ToggleButton;
     readonly replaceRow: Gtk.Revealer;
@@ -94,9 +98,26 @@ export class SearchPanel {
         const replaceField = new Gtk.Overlay({ child: this.replaceEntry });
         replaceField.add_overlay(this.replaceAll);
         this.replaceRow = new Gtk.Revealer({ child: replaceField, transition_type: Gtk.RevealerTransitionType.SLIDE_DOWN });
+        // Always visible: which files take part, as comma separated globs.
+        const filter = (placeholder: string, tooltip: string): Gtk.Entry => new Gtk.Entry({
+            hexpand: true, width_chars: 6, placeholder_text: placeholder, tooltip_text: tooltip,
+        });
+        const globs = _('Separate patterns with commas. * matches within a folder, ** matches across folders, a name matches that folder or file anywhere.');
+        this.includeEntry = filter(_('Files to include: agenda/**, *.md'), globs);
+        this.excludeEntry = filter(_('Files to exclude: drafts/**'), globs);
         const fields = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, hexpand: true });
+        // The ··· button folds the two fields away; it stays lit while a filter is set, so a hidden filter is not forgotten.
+        this.filterButton = new Gtk.ToggleButton({ icon_name: 'view-more-horizontal-symbolic', tooltip_text: _('Files to include and exclude'), halign: Gtk.Align.END });
+        this.filterButton.add_css_class('flat');
+        this.filterButton.add_css_class('search-chip');
+        const filterBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4 });
+        filterBox.append(this.includeEntry);
+        filterBox.append(this.excludeEntry);
+        this.filterRow = new Gtk.Revealer({ child: filterBox, transition_type: Gtk.RevealerTransitionType.SLIDE_DOWN });
         fields.append(searchField);
         fields.append(this.replaceRow);
+        fields.append(this.filterButton);
+        fields.append(this.filterRow);
         const block = new Gtk.Box({ spacing: 2, margin_start: 6, margin_end: 10 });
         block.append(this.expand);
         block.append(fields);
@@ -117,6 +138,11 @@ export class SearchPanel {
     private connect(): void {
         this.entry.connect('changed', () => this.schedule());
         this.entry.connect('activate', () => this.run());
+        this.filterButton.connect('toggled', () => { this.filterRow.reveal_child = this.filterButton.active; });
+        for (const entry of [this.includeEntry, this.excludeEntry]) {
+            entry.connect('changed', () => { this.markFilter(); this.schedule(); });
+            entry.connect('activate', () => this.run());
+        }
         for (const button of [this.caseButton, this.wordButton, this.regexButton]) button.connect('toggled', () => this.run());
         this.expand.connect('toggled', () => {
             this.replaceRow.reveal_child = this.expand.active;
@@ -166,17 +192,26 @@ export class SearchPanel {
         } else if (!this.host.root()) this.setSummary(_('Open a folder to search in its notes.'));
         else {
             this.pattern = pattern;
-            const found = searchFiles(this.host.files(), pattern);
+            const keep = pathFilter(this.includeEntry.text, this.excludeEntry.text);
+            const files = this.host.files();
+            const found = searchFiles(keep ? files.filter(f => keep(f.name)) : files, pattern);
             this.results = found.files;
             this.setSummary(this.describe(found.total, found.files.length, found.truncated));
         }
         this.fill();
     }
 
+    private markFilter(): void {
+        if (activeFilters(this.includeEntry.text, this.excludeEntry.text)) this.filterButton.add_css_class('accent');
+        else this.filterButton.remove_css_class('accent');
+    }
+
     private describe(total: number, files: number, truncated: boolean): string {
-        if (total === 0) return _('No results');
+        const filters = activeFilters(this.includeEntry.text, this.excludeEntry.text);
+        const note = filters ? ` · ${fmt(ngettext('{count} filter', '{count} filters', filters), { count: filters })}` : '';
+        if (total === 0) return _('No results') + note;
         const text = fmt(ngettext('{count} result in {files} file', '{count} results in {files} files', total), { count: total, files });
-        return truncated ? fmt(_('{text} (only the first {max} are shown)'), { text, max: MAX_HITS }) : text;
+        return (truncated ? fmt(_('{text} (only the first {max} are shown)'), { text, max: MAX_HITS }) : text) + note;
     }
 
     private setSummary(text: string): void {

@@ -357,6 +357,20 @@ export function folderTests(c: GuiContext): void {
         ok(w.file?.endsWith('/c.md') === true, `file: ${w.file}`);
         const [has, s, e] = w.editor.buffer.get_selection_bounds();
         ok(has && w.editor.buffer.get_text(s, e, false) === '# C', 'the match is not selected');
+        ok(!panel.filterRow.reveal_child, 'the filters start folded');
+        panel.filterButton.active = true;
+        ok(panel.filterRow.reveal_child, 'the ··· button did not open the filters');
+        panel.entry.text = '#'; panel.excludeEntry.text = 'sub'; panel.run();
+        ok(panel.filterButton.has_css_class('accent'), 'the button does not show an active filter');
+        const filesShown = () => Array.from({ length: panel.store.get_n_items() }, (_i, n) => panel.store.get_item(n) as unknown as { kind: string; file: string })
+            .filter(r => r.kind === 'file').map(r => r.file);
+        ok(filesShown().length > 0 && filesShown().every(f => !f.startsWith('sub/')), `excluded folder shown: ${filesShown()}`);
+        panel.excludeEntry.text = ''; panel.includeEntry.text = 'sub/**'; panel.run();
+        ok(filesShown().length > 0 && filesShown().every(f => f.startsWith('sub/')), `included folder only: ${filesShown()}`);
+        ok(panel.summary.label.includes('1 filter'), `summary: ${panel.summary.label}`);
+        panel.includeEntry.text = ''; panel.filterButton.active = false;
+        ok(!panel.filterButton.has_css_class('accent'), 'the mark stays after the filters are cleared');
+        panel.entry.text = '# C'; panel.run();
         panel.replaceEntry.text = '# Z';
         const [change] = panel.plan();
         eq(change.after, '# Z', 'planned change');

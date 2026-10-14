@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <template class="MarkworkFindBar" parent="GtkSearchBar">
-    <property name="show-close-button">true</property>
     <child>
       <object class="GtkBox" id="box">
         <property name="spacing">6</property>
@@ -116,11 +115,32 @@
         </child>
         <child>
           <object class="GtkLabel" id="count">
-            <property name="width-chars">9</property>
-            <property name="xalign">1</property>
+            <property name="visible">false</property>
+            <property name="margin-start">6</property>
+            <property name="margin-end">2</property>
             <property name="valign">start</property>
-            <property name="margin-top">6</property>
+            <property name="height-request">34</property>
             <style><class name="dim-label"/></style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkSeparator">
+            <property name="orientation">vertical</property>
+            <property name="valign">start</property>
+            <property name="margin-top">8</property>
+            <property name="margin-start">2</property>
+            <property name="margin-end">0</property>
+            <property name="height-request">18</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="closeButton">
+            <property name="icon-name">window-close-symbolic</property>
+            <property name="valign">start</property>
+            <property name="tooltip-text" translatable="yes">Close</property>
+            <property name="width-request">24</property>
+            <property name="height-request">34</property>
+            <style><class name="flat"/><class name="find-close"/></style>
           </object>
         </child>
       </object>
