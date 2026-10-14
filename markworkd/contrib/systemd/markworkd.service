@@ -1,0 +1,10 @@
+[Unit]
+Description=Markwork agent supervisor
+Requires=markworkd.socket
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/markworkd serve
+Restart=on-failure
+# SIGTERM makes the daemon stop active runs in an orderly way; give it time.
+TimeoutStopSec=20

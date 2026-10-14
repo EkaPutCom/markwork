@@ -34,6 +34,10 @@ Language: code comments, commit messages, interface text, test names, and docume
 - **A new feature or a change of appearance must be checked through a screenshot.** Run the app (e.g. through `scripts/capture.ts` or `npm start` on Xvfb/desktop), take a screenshot of the relevant state (light and dark themes if related), then look at the image and judge whether the layout is right: the position and width of the sidebar, alignment, spacing, cut-off text, widgets that expand or overlap. Green tests alone do not prove that the appearance is right. Fix whatever looks off before declaring it finished, and mention in the report what was checked.
 - A test that fails now and then (flaky) must not be counted as passing: repeat it, find the cause, and report it if it is not solved.
 
+## markworkd (Go)
+
+`markworkd/` is a separate Go module (standard library only, no third-party modules): a supervisor daemon that keeps agent processes running when the app is closed. The protocol and design are in `docs/design/markworkd.md`; build and run notes are in `markworkd/README.md`. It is not part of the Vite/GJS build. From `markworkd/`: `go vet ./... && go test -race ./...` (the tests start real processes and take a few seconds). Keep the daemon protocol-agnostic: it moves lines and never parses an agent's output.
+
 ## A change of appearance must come with a screenshot
 
 - **Every UI change (widget, layout, CSS/theme, window, dialog) must be checked through a real screenshot, and then shown to the user in the conversation.** Do not declare the appearance right only from passing tests or from reading the code.

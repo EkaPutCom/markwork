@@ -1,0 +1,10 @@
+[Unit]
+Description=Markwork agent supervisor (socket)
+
+[Socket]
+ListenStream=%t/markworkd/markworkd.sock
+DirectoryMode=0700
+SocketMode=0600
+
+[Install]
+WantedBy=sockets.target
