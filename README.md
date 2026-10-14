@@ -112,6 +112,7 @@ gjs -m dist/markwork.js ~/notes
 | `npm run test:live` | Build, then run live tests against the DeepSeek API on the sample manuscript (needs `DEEPSEEK_API_KEY` in `.env`, see `.env.example`; not part of `npm test`) |
 | `npm run test:live:forge` | Build, then run the forge layer against a real Forgejo or Gitea (needs `FORGEJO_TOKEN` in `.env`; add `FORGEJO_CONTRIBUTOR_TOKEN` and `-- --write` to also send, merge, and resolve; not part of `npm test`) |
 | `npm run test:live:forgejo` | Build, then run the Markwork window against a real Forgejo or Gitea on Xvfb, with nothing faked (needs both tokens in `.env`; not part of `npm test`) |
+| `scripts/forgejo.sh test [read\|write\|ui\|all]` | The two live Forgejo suites above against a throwaway Forgejo in a Podman (or Docker) container that the script starts, seeds (two users, tokens, the repository, a clean and a conflicting pull request), and tears down with `down`; the tokens go to `.env.forgejo`, not to your `.env`. Also `up`, `status`, `logs`, `reset` (not part of `npm test`) |
 | `npm run bench` | Build, then measure the performance of the Markdown module and the editor (setText, highlighting, typing) on Xvfb; options: `--size=`, `--runs=`, `--budget=`, `--no-gui` |
 | `npm run bench:save` | Run the benchmark and save the result to `bench/<date-time>.json` |
 | `npm run bench:compare` | Run the benchmark and show the difference against [`bench/baseline.json`](bench/baseline.json) (green = faster, red = slower, gray = a difference < 25%, measurement noise) |
@@ -424,6 +425,7 @@ src/
 ├── workspace.ts          WorkspaceRepository: the Markdown files of a work folder (snapshot watched by file monitors, LRU contents cache, unsaved overlay, background warming); used by chat, Home, [[ suggestions, harness (GLib/GIO)
 ├── fileops.ts            create, rename, delete (to the trash), and move files/folders on disk (no GTK; used by the file tree)
 ├── orchestrator.ts       runs the external harness (pi) for kanban cards in the project folder: process, queue, board updates
+├── orchestratordaemon.ts a Spawner for orchestrator.ts whose processes live in the markworkd daemon (they survive closing the window; the daemon can be on another machine)
 ├── git.ts                the git history of a file and the list of uncommitted files through the `git` command (async; read-only, except committing selected files); also runs the agent's Git tools
 ├── gitlog.ts             git output parser: log, diff, relative time (pure, no GTK); also the agent's GitRequest/GitAnswer types
 ├── welcome.ts            the sample document shown on first launch
@@ -590,6 +592,8 @@ The code is divided into layers. Each layer may only use the layers below it, ne
         │    └─ markdown/* Markdown rules (no GTK)
         ├─ orchestrator.ts runs harness processes (pi) for window/harness.ts (GLib, no GTK)
         │    └─ agent/harness.ts  prompts, RPC, the pi stream reader, the run queue
+        ├─ orchestratordaemon.ts the same harnesses through the markworkd daemon
+        │    └─ agent/daemon/*    protocol, client, reconnecting connection, socket/ssh links (GLib/Gio, no GTK)
         ├─ agent/*         manuscript context and model client (no GTK)
         ├─ forge/*         Forgejo/Gitea: pull requests, sending changes, resolving conflicts (GLib/libsoup, no GTK)
         └─ settings.ts, files.ts, workspace.ts, git.ts, gitlog.ts, config.ts, colors.ts
@@ -767,6 +771,10 @@ text buffer ──parseBoard()──► KanbanBoard (model + view)
 **Dragging.** This does not use GTK's built-in drag and drop, but its own pointer handling (a `Gtk.GestureDrag` on each card): press on a card, move more than 6 pixels, release. While dragging, a ghost card (a still image of the card from `Gtk.WidgetPaintable`, in a `Gtk.Overlay` layer above the board, because GTK 4 cannot move a popup window by itself) follows the pointer, the source card is dimmed, and a dashed marker shows the destination. The destination is calculated from the pointer position: the list that contains it (or the nearest one), and then `dropIndex()` counts how many other cards have their midpoint above the pointer. Near the edge, the board or the target list scrolls automatically. A movement under 6 pixels is treated as an ordinary click and opens the edit dialog. This approach was chosen so that the behavior is controlled and can be tested by calling `onCardPress()`/`onCardMotion()`/`onCardRelease()` directly (card coordinates).
 
 **Dialogs** (`editCardDialog`, `promptDialog`, `confirmDialog`) hold the program until they are closed, so `KanbanBoard.dialogs` can be replaced, and tests use a stand-in.
+
+### The markworkd daemon (`markworkd/`, `agent/daemon/`, `orchestratordaemon.ts`)
+
+`markworkd/` is a separate Go program (standard library only) that owns agent processes so they keep running when Markwork is closed, or on another machine. The design and wire protocol are in [docs/design/markworkd.md](docs/design/markworkd.md). On the Markwork side, `agent/daemon/` is the client (pure protocol and client, a connection that reconnects and resumes without repeating or losing a record, and links over a Unix socket or the stdio of `ssh host markworkd bridge`), and `orchestratordaemon.ts` turns a daemon run into the `HarnessProcess` the orchestrator already drives, so the pi reader, the queue, and the board logic are unchanged. `Orchestrator.dispose()` lets go of such a process instead of stopping it, when the user chooses to keep it running. It is chosen in Preferences → Agents (this computer, or an SSH machine); `daemonhub.ts` holds the connections, `window/harness.ts` finds the runs of the board's cards again at startup, and Home shows whether the machine answers.
 
 ### How the harness orchestrator works (`agent/harness.ts`, `orchestrator.ts`)
 

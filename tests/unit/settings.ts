@@ -17,6 +17,7 @@ export function settingsTests(): void {
         eq(s.activeTab, -1, 'activeTab');
         eq(s.home, true, 'home');
         eq(s.recentFiles, [], 'recentFiles');
+        eq([s.harnessMachine, s.machines, s.machineProjects, s.daemonCommand], ['', {}, {}, ''], 'where harnesses run: in this window, no machines');
     });
     test('settings are written and read back, including compound types', () => {
         const s = AppSettings.inMemory();
@@ -34,6 +35,8 @@ export function settingsTests(): void {
         eq(s.tabs, [{ file: '/tmp/a.md', cursor: 7 }, { file: '/tmp/b.md', cursor: 0 }], 'tabs');
         eq(s.projects, { shop: '/tmp/shop' }, 'projects');
         eq(s.sidebarPage, 'collab', 'sidebarPage');
+        Object.assign(s, { harnessMachine: 'vps', machines: { vps: 'eka@vps.example.com' }, machineProjects: { 'vps:shop': '/srv/shop' }, daemonCommand: '~/.local/bin/markworkd' });
+        eq([s.harnessMachine, s.machines, s.machineProjects, s.daemonCommand], ['vps', { vps: 'eka@vps.example.com' }, { 'vps:shop': '/srv/shop' }, '~/.local/bin/markworkd'], 'machines');
         s.dark = null;
         s.folder = null;
         eq(s.dark, null, 'dark goes back to the system');

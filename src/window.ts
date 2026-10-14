@@ -388,6 +388,8 @@ export class MainWindow {
         this.win.present();
         this.syncHistory();
         this.editor.view.grab_focus();
+        // Agents that kept working while Markwork was closed are found again once the window is up.
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => { this.harness.reconnect(); return GLib.SOURCE_REMOVE; });
     }
 
     // A short notification that disappears on its own (Adw.Toast).
@@ -933,7 +935,7 @@ export class MainWindow {
 
     // true = the window may be closed. Every changed document is asked about one by one.
     onClose(): Awaitable<boolean> {
-        return after(this.documents.confirmDiscardAll(), yes => yes && this.rememberWindow());
+        return after(this.documents.confirmDiscardAll(), yes => yes ? after(this.harness.confirmClose(), stay => stay && this.rememberWindow()) : false);
     }
 
     private rememberWindow(): true {

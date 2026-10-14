@@ -109,6 +109,25 @@ export class AppSettings {
         this.gsettings.set_value('projects', new GLib.Variant('a{ss}', value));
     }
 
+    // Where harnesses run: '' = children of this window, 'local' = the markworkd daemon on this computer, otherwise
+    // the name of an SSH machine in `machines`.
+    get harnessMachine(): string { return this.gsettings.get_string('harness-machine'); }
+    set harnessMachine(value: string) { this.gsettings.set_string('harness-machine', value); }
+    get machines(): Record<string, string> {
+        return this.gsettings.get_value('machines').deepUnpack() as Record<string, string>;
+    }
+    set machines(value: Record<string, string>) {
+        this.gsettings.set_value('machines', new GLib.Variant('a{ss}', value));
+    }
+    get machineProjects(): Record<string, string> {
+        return this.gsettings.get_value('machine-projects').deepUnpack() as Record<string, string>;
+    }
+    set machineProjects(value: Record<string, string>) {
+        this.gsettings.set_value('machine-projects', new GLib.Variant('a{ss}', value));
+    }
+    get daemonCommand(): string { return this.gsettings.get_string('daemon-command'); }
+    set daemonCommand(value: string) { this.gsettings.set_string('daemon-command', value); }
+
     // In-memory settings with default values, plus `overrides`; for tests, bench, and screenshots.
     static inMemory(overrides: Partial<Omit<AppSettings, 'gsettings'>> = {}): AppSettings {
         return Object.assign(new AppSettings(Gio.memory_settings_backend_new()), overrides);

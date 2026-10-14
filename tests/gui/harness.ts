@@ -92,6 +92,8 @@ export function harnessTests(c: GuiContext): void {
         chooseFolder: title => { chosen.push(title); return pick; },
         answer: ask => { asked.push(ask); return answers.shift() ?? null; },
         text: () => texts.shift() ?? null,
+        remoteFolder: () => null,
+        closeAgents: () => 'stop',
     };
 
     const waitFor = (cond: () => boolean, ms = 5000) => {

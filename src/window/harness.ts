@@ -5,14 +5,20 @@ import GLib from 'gi://GLib';
 import { after, type Awaitable } from '../gtkutil.js';
 import { readTextFile } from '../files.js';
 import type { AppSettings } from '../settings.js';
-import { Orchestrator } from '../orchestrator.js';
+import { findProgram, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator.js';
 import { cardProject, checkProjectFolder, HARNESSES, isActive, PROJECT_NAME, type HarnessAsk, type HarnessReply, type LinkedNote, type Run } from '../agent/harness.js';
-import { chooseFile, harnessAskDialog, harnessTextDialog } from '../ui/dialogs.js';
+import { isRemoteMachine, LOCAL_MACHINE, machineProjectKey } from '../agent/daemon/machines.js';
+import type { ConnectionState } from '../agent/daemon/connection.js';
+import type { RunSummary } from '../agent/daemon/protocol.js';
+import { openCommandLink, openSocketLink } from '../agent/daemon/streamlink.js';
+import { DaemonHub, type Openers } from '../daemonhub.js';
+import { adoptRun, daemonSpawner } from '../orchestratordaemon.js';
+import { chooseFile, closeAgentsDialog, harnessAskDialog, harnessTextDialog, promptDialog, type CloseAgentsChoice } from '../ui/dialogs.js';
 import type { KanbanBoard } from '../ui/kanban.js';
 import { LogViewer } from '../ui/logviewer.js';
 import type { MenuEntry } from '../ui/menu.js';
 import { harnessActivity, type ActivityKind } from '../markdown/journal.js';
-import { assignCard, cardMeta, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
+import { assignCard, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
 import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
 import type { WorkspaceRepository } from '../workspace.js';
 import { _, fmt } from '../i18n.js';
@@ -28,18 +34,43 @@ export interface HarnessHost extends DocumentHost {
     refreshHome(): void;
 }
 
+// The state of the connection to the machine the agents run on, for Home.
+export interface AgentHostStatus {
+    label: string;                          // "this computer", or the name of the machine
+    state: ConnectionState;
+    detail: string;                         // why it cannot connect, when it cannot
+}
+
+const LABEL_CARD_CHARS = 4000;   // see spawnMeta() in orchestrator.ts: a longer card is matched by its start
+
 export class HarnessController {
     readonly orchestrator: Orchestrator;
+    readonly hub: DaemonHub;
     // Harness dialogs can be replaced in tests with immediate answers; the real dialog answers through a Promise.
     dialogs: {
         chooseFolder: (title: string) => Awaitable<string | null>;
         answer: (ask: HarnessAsk, agent: string) => Awaitable<HarnessReply | null>;
         text: (options: { title: string; label: string; context?: string }) => Awaitable<string | null>;
+        // The folder of a project on another machine, which cannot be browsed from here.
+        remoteFolder: (machine: string, project: string | null, current: string) => Awaitable<string | null>;
+        closeAgents: (activity: { children: number; detachable: number; queued: number }) => Awaitable<CloseAgentsChoice>;
     } = {
         chooseFolder: title => chooseFile(this.host.win, { title, selectFolder: true }),
         answer: (ask, agent) => harnessAskDialog(this.host.win, ask, agent),
         text: options => harnessTextDialog(this.host.win, options),
+        remoteFolder: (machine, project, current) => promptDialog(this.host.win, {
+            title: project ? fmt(_('Project folder “{name}”'), { name: project }) : _('Choose a project folder'),
+            label: fmt(_('The folder of the project on {machine} (an absolute path):'), { machine }), value: current, accept: _('Save'),
+        }),
+        closeAgents: activity => closeAgentsDialog(this.host.win, activity),
     };
+    // How links to the daemons are made; tests replace them.
+    openers: Openers = { socket: openSocketLink, command: openCommandLink };
+    private following: string | null = null;        // the machine whose runs are watched
+    private unwatch: (() => void) | null = null;
+    private adoptMachine = '';
+    private stopOnClose = false;
+    private readonly trouble = new Set<string>();    // machines whose connection trouble the user was told about
     private readonly logs = new Map<number, LogViewer>();
     private readonly logged = new WeakSet<object>();   // results already recorded in the activity log
 
@@ -57,6 +88,108 @@ export class HarnessController {
                 host.refreshHome();
                 if (message) host.toast(message);
             },
+        });
+        const settings = host.settings;
+        this.hub = new DaemonHub({ machines: () => settings.machines, daemonCommand: () => settings.daemonCommand }, { socket: path => this.openers.socket(path), command: argv => this.openers.command(argv) });
+        // With a machine chosen, the harness runs in the markworkd daemon there, which resolves the program by name.
+        this.orchestrator.program = spec => this.machine ? spec.program : findProgram(spec.program);
+        this.orchestrator.spawn = (argv, cwd, handlers, meta) => this.machine
+            ? daemonSpawner(this.hub.connection(this.machine))(argv, cwd, handlers, meta)
+            : spawnHarness(argv, cwd, handlers);
+        this.orchestrator.adopter = (runId, upTo, handlers) => adoptRun(this.hub.connection(this.adoptMachine), runId, 1, handlers, {}, upTo);
+        this.orchestrator.localFolders = !isRemoteMachine(this.machine);
+        this.hub.onState((machine, state, detail) => this.machineState(machine, state, detail));
+        for (const key of ['harness-machine', 'machines', 'daemon-command']) settings.gsettings.connect(`changed::${key}`, () => this.machineSettingsChanged());
+    }
+
+    // Where harnesses run: '' = children of this window, 'local' = the daemon on this computer, else an SSH machine.
+    get machine(): string { return this.host.settings.harnessMachine; }
+
+    private machineLabel(machine: string): string { return machine === LOCAL_MACHINE ? _('this computer') : machine; }
+
+    // The connection to the machine agents run on, for Home; null when they run as children of this window.
+    hostStatus(): AgentHostStatus | null {
+        const machine = this.machine;
+        if (!machine) return null;
+        const known = this.hub.state(machine);
+        return { label: this.machineLabel(machine), state: known?.state ?? 'idle', detail: known?.detail ?? '' };
+    }
+
+    private machineSettingsChanged(): void {
+        this.hub.refresh();
+        this.orchestrator.localFolders = !isRemoteMachine(this.machine);
+        this.reconnect();
+        this.host.refreshHome();
+    }
+
+    private machineState(machine: string, state: ConnectionState, detail: string): void {
+        this.host.refreshHome();
+        const label = this.machineLabel(machine);
+        if (state === 'waiting' || state === 'failed') {
+            if (this.trouble.has(machine)) return;
+            this.trouble.add(machine);
+            this.host.toast(fmt(_('Cannot reach {machine}: {detail}'), { machine: label, detail }));
+        } else if (state === 'ready' && this.trouble.delete(machine)) {
+            this.host.toast(fmt(_('Connected to {machine} again'), { machine: label }));
+        }
+    }
+
+    // Watches the machine agents run on. Every time it connects, the runs it already has for our cards are followed
+    // again: they went on while Markwork was closed (or the link was down), and what they did is in their log.
+    reconnect(): void {
+        const machine = this.machine;
+        if (this.following === machine) return;
+        this.unwatch?.();
+        this.unwatch = null;
+        this.following = null;
+        if (!machine) return;
+        try {
+            const conn = this.hub.connection(machine);
+            this.following = machine;
+            this.unwatch = conn.watch({ snapshot: runs => this.adoptAll(machine, runs), state: () => {} });
+        } catch (e) {
+            this.host.toast(e instanceof Error ? e.message : String(e));
+        }
+    }
+
+    private adoptAll(machine: string, runs: RunSummary[]): void {
+        this.adoptMachine = machine;
+        for (const summary of runs) {
+            const info = this.adoptInfo(machine, summary);
+            if (!info) continue;
+            const error = this.orchestrator.adopt(info);
+            if (error) this.host.toast(fmt(_('Cannot follow {agent} again: {error}'), { agent: info.agent, error }));
+        }
+        this.host.refreshHome();
+    }
+
+    // A run on the daemon that is for a card of ours: it carries the board, the card, and the computer that started it.
+    private adoptInfo(machine: string, run: RunSummary): AdoptInfo | null {
+        const l = run.labels ?? {};
+        if (!l.agent || !l.board || !l.card || !HARNESSES[l.agent]) return null;
+        if (l.host && l.host !== GLib.get_host_name()) return null;   // started from another computer
+        const card = this.cardText(l.board, l.card);
+        if (!card || this.orchestrator.queue.active(l.board, card)) return null;
+        return { runId: run.run, lastSeq: run.last_seq, board: l.board, card, title: l.title || cardMeta(card).title, agent: l.agent, project: l.project ?? '', folder: run.cwd, machine: this.machineLabel(machine) };
+    }
+
+    // The text of the card on the board that a run was started for, or null if the board or the card is gone.
+    private cardText(boardFile: string, label: string): string | null {
+        let text: string;
+        try { text = docFor(this.host, boardFile)?.editor.getText() ?? readTextFile(boardFile); } catch { return null; }
+        const cards = parseBoard(text).columns.flatMap(c => c.cards);
+        const exact = cards.find(c => c.text === label);
+        if (exact) return exact.text;
+        return label.length >= LABEL_CARD_CHARS ? cards.find(c => c.text.startsWith(label))?.text ?? null : null;
+    }
+
+    // Asked when the window closes while agents work. false = the user cancelled.
+    confirmClose(): Awaitable<boolean> {
+        const activity = this.orchestrator.activity();
+        if (!activity.children && !activity.detachable) return true;
+        return after(this.dialogs.closeAgents(activity), choice => {
+            this.stopOnClose = choice === 'stop';
+            return choice !== 'cancel';
         });
     }
 
@@ -121,7 +254,7 @@ export class HarnessController {
         const entries: MenuEntry[] = [];
         if (cardMeta(card.text).agent && idle) entries.push({ label: _('Remove Assignment'), run: () => board.commit(updateCard(board.getBoard(), at, { text: assignCard(card.text, null) })) });
         const project = cardProject(board.getBoard(), card);
-        if (project && this.host.settings.projects[project]) entries.push({ label: _('Change Project Folder…'), run: () => this.chooseProjectFolder(project) });
+        if (project && this.folderOf(project)) entries.push({ label: _('Change Project Folder…'), run: () => this.chooseProjectFolder(project) });
         return entries;
     }
 
@@ -133,7 +266,7 @@ export class HarnessController {
         const card = board.getBoard().columns[at.column]?.cards[at.index];
         if (!card) return;
         const project = cardProject(board.getBoard(), card);
-        if (project && this.host.settings.projects[project]) {
+        if (project && this.folderOf(project)) {
             this.start(file, at, agent, project);
             return;
         }
@@ -154,21 +287,37 @@ export class HarnessController {
     }
 
     private start(file: string, at: Position, agent: string, project: string): void {
-        const error = this.orchestrator.start(file, this.host.board.getBoard(), at, agent, project, this.host.settings.projects[project], GLib.path_get_basename(file));
+        const error = this.orchestrator.start(file, this.host.board.getBoard(), at, agent, project, this.folderOf(project)!, GLib.path_get_basename(file));
         if (error) this.host.toast(fmt(_('Cannot run {agent}: {error}'), { agent, error }));
+    }
+
+    // The folder of a project on the machine agents run on (this computer unless an SSH machine is chosen).
+    private folderOf(project: string): string | undefined {
+        const machine = this.machine;
+        return isRemoteMachine(machine) ? this.host.settings.machineProjects[machineProjectKey(machine, project)] : this.host.settings.projects[project];
     }
 
     // Choose a folder for project `name` (or a new project if null) and save the mapping.
     private chooseProjectFolder(name: string | null): Awaitable<{ name: string; path: string } | null> {
+        const machine = this.machine;
+        if (isRemoteMachine(machine)) {
+            return after(this.dialogs.remoteFolder(this.machineLabel(machine), name, name ? this.folderOf(name) ?? '' : ''), path => this.mapProjectFolder(name, path));
+        }
         return after(this.dialogs.chooseFolder(name ? fmt(_('Project folder “{name}”'), { name }) : _('Choose a project folder')), path => this.mapProjectFolder(name, path));
     }
 
     private mapProjectFolder(name: string | null, path: string | null): { name: string; path: string } | null {
         if (!path) return null;
         const project = name ?? GLib.path_get_basename(path).replace(/\s+/g, '-');
-        const problem = !PROJECT_NAME.test(project) ? fmt(_('the folder name "{name}" cannot be used as a project name'), { name: project }) : checkProjectFolder(path, this.host.root());
+        const machine = this.machine;
+        const remote = isRemoteMachine(machine);
+        // A folder on another machine cannot be checked from here; the daemon there allows only its own roots.
+        const problem = !PROJECT_NAME.test(project) ? fmt(_('the folder name "{name}" cannot be used as a project name'), { name: project })
+            : remote ? (path.startsWith('/') ? null : _('the project folder must be an absolute path'))
+            : checkProjectFolder(path, this.host.root());
         if (problem) { this.host.toast(fmt(_('Project folder rejected: {problem}'), { problem })); return null; }
-        this.host.settings.projects = { ...this.host.settings.projects, [project]: path };
+        if (remote) this.host.settings.machineProjects = { ...this.host.settings.machineProjects, [machineProjectKey(machine, project)]: path };
+        else this.host.settings.projects = { ...this.host.settings.projects, [project]: path };
         return { name: project, path };
     }
 
@@ -216,6 +365,8 @@ export class HarnessController {
     }
 
     dispose(): void {
-        this.orchestrator.dispose();
+        this.unwatch?.();
+        this.orchestrator.dispose(this.stopOnClose);
+        this.hub.dispose();
     }
 }

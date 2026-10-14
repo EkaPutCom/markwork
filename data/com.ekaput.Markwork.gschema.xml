@@ -91,6 +91,22 @@
       <default>{}</default>
       <summary>Project name to folder, for external harnesses that work on kanban cards</summary>
     </key>
+    <key name="harness-machine" type="s">
+      <default>''</default>
+      <summary>Where external harnesses run: empty = as children of this window, "local" = the markworkd daemon on this computer, otherwise the name of a machine in machines</summary>
+    </key>
+    <key name="machines" type="a{ss}">
+      <default>{}</default>
+      <summary>Machine name to SSH target (a host from ~/.ssh/config, or user@host) where markworkd runs agents</summary>
+    </key>
+    <key name="machine-projects" type="a{ss}">
+      <default>{}</default>
+      <summary>"machine:project" to the project's folder on that machine</summary>
+    </key>
+    <key name="daemon-command" type="s">
+      <default>''</default>
+      <summary>The markworkd command on remote machines, when it is not on the non-interactive PATH; empty = markworkd</summary>
+    </key>
 
     <key name="width" type="i">
       <default>1100</default>

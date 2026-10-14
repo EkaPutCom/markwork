@@ -3,10 +3,13 @@
 //   npm test                                         build, then all tests including the mouse in Xvfb
 //   npm run test:ui                                 build, then all tests including the mouse on the desktop
 //   gjs -m dist/run-tests.js --no-gui                only the Markdown → HTML conversion tests
+//   gjs -m dist/run-tests.js --only-agents          only the GUI tests of agents on another machine (needs a display)
+//   gjs -m dist/run-tests.js --only-daemon           only the markworkd client tests (the live part needs Go to build the daemon)
 //   gjs -m dist/run-tests.js --mouse                 add real mouse clicks (the pointer will move)
 //   gjs -m dist/run-tests.js --screenshot=a.png      save a screenshot of the editor window
 //   gjs -m dist/run-tests.js --shot-proposal=/tmp/p  save screenshots of the agent proposal review window (/tmp/p-<n>-review.png and -main.png)
 //   gjs -m dist/run-tests.js --shot-inbox=/tmp/i     save screenshots of the inbox light/dark (/tmp/i-light.png, /tmp/i-dark.png)
+//   gjs -m dist/run-tests.js --shot-agents=/tmp/a    save screenshots of agents on another machine: Home with the connection, the Preferences page, the close question (/tmp/a-home-connected.png, -preferences.png, -close.png, and -dark)
 //   gjs -m dist/run-tests.js --shot-harness=/tmp/h   save screenshots of the board with pi cards working/queued and the pi log (/tmp/h-board.png, -log.png)
 //   gjs -m dist/run-tests.js --shot-log=/tmp/l       save a screenshot of the agent log with a tool call selected (/tmp/l-log.png)
 //   gjs -m dist/run-tests.js --shot-tree-menu=/tmp/m  save screenshots of the file tree right-click menu and a new kanban board (/tmp/m-menu.png, -board.png)
@@ -70,7 +73,11 @@ import { conflictTests } from './unit/conflicts.js';
 import { commitMessageTests } from './unit/commitmessage.js';
 import { dialogTests } from './gui/dialogs.js';
 import { harnessTests as harnessModelTests } from './unit/harness.js';
+import { daemonClientTests } from './unit/daemon.js';
+import { daemonLiveTests, daemonSshTests } from './unit/daemon-live.js';
+import { daemonAppTests } from './unit/daemonapp.js';
 import { harnessTests } from './gui/harness.js';
+import { agentsHostTests } from './gui/agentshost.js';
 import { chatTests } from './gui/chat.js';
 import { syntaxHidingTests } from './gui/syntax.js';
 import { listTests, listIndentTests } from './gui/lists.js';
@@ -148,10 +155,20 @@ function runUnitTests(): void {
     conflictTests();
     commitMessageTests();
     harnessModelTests();
+    daemonClientTests();
+    daemonAppTests();
+    daemonLiveTests();
+    daemonSshTests();
 }
 
 function runGuiTests(app: Adw.Application): void {
     const c = createContext(app);
+    if (opt('only-agents')) {
+        agentsHostTests(c);
+        c.buf.set_modified(false);
+        c.w.win.destroy();
+        return;
+    }
     if (opt('only-dialogs')) {
         dialogTests(c);
         c.buf.set_modified(false);
@@ -220,6 +237,7 @@ function runGuiTests(app: Adw.Application): void {
     tableLayoutGuiTests(c);
     layoutsGuiTests(c);
     harnessTests(c);
+    agentsHostTests(c);
     dialogTests(c);
     // The folder tests create another window and replace the app actions. Check undo/redo
     // with the mouse while the actions are still connected to this context's window.
@@ -254,7 +272,17 @@ function runGuiTests(app: Adw.Application): void {
 
 // ───────────────────────── Run ─────────────────────────
 
-runUnitTests();
+if (opt('only-daemon')) {
+    daemonClientTests();
+    daemonAppTests();
+    daemonLiveTests();
+    daemonSshTests();
+    const { passed, failed } = summary();
+    print(`\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET}`);
+    System.exit(failed ? 1 : 0);
+}
+
+if (!opt('only-agents') && !opt('only-forgejo')) runUnitTests();
 
 if (opt('with-kanban-mouse') && opt('no-gui')) {
     recordFailure();

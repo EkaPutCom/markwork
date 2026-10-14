@@ -16,15 +16,28 @@ export interface HarnessProcess {
     write(line: string): boolean;   // one JSONL command to stdin; false if stdin is already closed or failed
     closeInput(): void;             // close stdin: the RPC harness finishes in an orderly way
     stop(): void;
+    // Let go without stopping: the process lives elsewhere (a daemon) and goes on when this window is closed. When
+    // a harness has no detach, closing the window stops it, so it is not left running without a monitor.
+    detach?(): void;
 }
 
 export interface SpawnHandlers {
-    line(text: string): void;
+    line(text: string, ts?: number): void;   // one line of the harness's stdout; ts = when it was printed (Unix ms), if known
     exit(status: number, stderr: string): void;
+    // Only for a run that is followed again after Markwork was closed: its history is replayed first.
+    input?(line: string): void;              // a line that was sent to the harness (an answer, a reply, steering)
+    caughtUp?(): void;                       // the history is delivered; what comes next is live
 }
 
-// Throws if the program cannot be run.
-export type Spawner = (argv: string[], cwd: string, handlers: SpawnHandlers) => HarnessProcess;
+// What a spawner that keeps runs elsewhere (the markworkd daemon) records about a run so it can be found again
+// after Markwork was closed: the lane serializes runs of one project, the labels say which card it is for.
+export interface SpawnMeta {
+    lane: string;
+    labels: Record<string, string>;
+}
+
+// Throws if the program cannot be run. The local spawner ignores meta.
+export type Spawner = (argv: string[], cwd: string, handlers: SpawnHandlers, meta?: SpawnMeta) => HarnessProcess;
 
 const STDERR_TAIL = 8000;
 const DRAIN_MS = 1500;   // grace period for reading remaining output after the process exits
@@ -151,11 +164,38 @@ interface Live {
     proc: HarnessProcess | null;
     stopped: boolean;
     askTimer: number;
+    // A run followed again after Markwork was closed replays its history first. Signals in it are old news: only the
+    // last one that nothing answered afterwards is acted on, once the replay is over.
+    replaying: boolean;
+    pending: PiSignal | null;
+    pendingTs: number;
 }
+
+const newLive = (reader: PiReader, replaying = false): Live => ({ reader, proc: null, stopped: false, askTimer: 0, replaying, pending: null, pendingTs: 0 });
+
+// A run found on the daemon that belongs to a card of ours.
+export interface AdoptInfo {
+    runId: string;
+    lastSeq: number;      // the run's last record when it was found: the replay ends there
+    board: string;
+    card: string;
+    title: string;
+    agent: string;
+    project: string;
+    folder: string;
+    machine: string;      // for the log
+}
+
+// Follows a run that is already on a daemon: delivers its history to the handlers, then what comes live.
+export type Adopter = (runId: string, upTo: number, handlers: SpawnHandlers) => HarnessProcess;
 
 export class Orchestrator {
     readonly queue = new RunQueue();
     spawn: Spawner = spawnHarness;
+    adopter: Adopter | null = null;
+    // false when the project folders are on another machine: this computer can neither check them nor keep the
+    // harness out of Markwork's work folder; the daemon there checks its own folders.
+    localFolders = true;
     program: (spec: HarnessSpec) => string | null = spec => findProgram(spec.program);
     stamp: () => string = () => GLib.DateTime.new_now_local().format('%d/%m %H:%M') ?? '';
     private readonly live = new Map<number, Live>();
@@ -172,9 +212,9 @@ export class Orchestrator {
         const card = board.columns[at.column]?.cards[at.index];
         if (!card) return 'card not found';
         if (this.queue.active(boardFile, card.text)) return 'this card is already being worked on';
-        const problem = checkProjectFolder(folder, this.host.workspace());
+        const problem = this.localFolders ? checkProjectFolder(folder, this.host.workspace()) : null;
         if (problem) return problem;
-        if (!GLib.file_test(folder, GLib.FileTest.IS_DIR)) return `the project folder does not exist: ${folder}`;
+        if (this.localFolders && !GLib.file_test(folder, GLib.FileTest.IS_DIR)) return `the project folder does not exist: ${folder}`;
 
         const text = assignCard(card.text, agent);
         if (text !== card.text) {
@@ -199,7 +239,7 @@ export class Orchestrator {
         if (!text) return 'empty reply';
         if (!previous.result?.sessionId) return 'the pi session for this card is unknown';
         if (this.queue.active(previous.board, previous.card)) return 'this card is already being worked on';
-        if (!GLib.file_test(previous.folder, GLib.FileTest.IS_DIR)) return `the project folder does not exist: ${previous.folder}`;
+        if (this.localFolders && !GLib.file_test(previous.folder, GLib.FileTest.IS_DIR)) return `the project folder does not exist: ${previous.folder}`;
         // The same log is reused so the conversation with the harness reads as a whole.
         const run = this.queue.add({ ...previous, prompt: text, session: previous.result.sessionId }, previous.trace);
         run.trace.add('turn', _('Your reply'), text);
@@ -254,19 +294,22 @@ export class Orchestrator {
         else live.proc?.stop();
     }
 
-    // The window is closed: stop all harnesses so they are not left without a monitor.
-    dispose(): void {
+    // The window is closed: stop the harnesses that are children of this window so they are not left without a
+    // monitor, and let go of those that live in a daemon, which keeps them going.
+    dispose(stopDetachable = false): void {
         this.disposed = true;
         for (const run of this.queue.runs) {
             const live = this.live.get(run.id);
             if (live?.askTimer) { GLib.source_remove(live.askTimer); live.askTimer = 0; }
-            if ((run.status === 'working' || run.status === 'waiting') && live?.proc) { live.stopped = true; live.proc.stop(); }
+            if ((run.status !== 'working' && run.status !== 'waiting') || !live?.proc) continue;
+            if (live.proc.detach && !stopDetachable) live.proc.detach();
+            else { live.stopped = true; live.proc.stop(); }
         }
     }
 
     private enqueue(run: Run): void {
         const spec = HARNESSES[run.agent];
-        this.live.set(run.id, { reader: new PiReader(run.trace), proc: null, stopped: false, askTimer: 0 });
+        this.live.set(run.id, newLive(new PiReader(run.trace)));
         if (run.status === 'working') this.launch(run);
         else this.host.changed(run, fmt(_('{agent} is working on another card in {project}; this card is waiting its turn'), { agent: spec.label, project: run.project }));
     }
@@ -286,14 +329,7 @@ export class Orchestrator {
         });
         if (doing) run.trace.add('note', _('Card not moved'), doing);
         try {
-            live.proc = this.spawn([program, ...spec.args(run.title, run.session)], run.folder, {
-                line: text => {
-                    if (this.disposed) return;
-                    const signal = live.reader.line(text);
-                    if (signal) this.onSignal(run, signal);
-                },
-                exit: (status, stderr) => this.finish(run, status, stderr),
-            });
+            live.proc = this.spawn([program, ...spec.args(run.title, run.session)], run.folder, this.handlersFor(run, live), spawnMeta(run));
         } catch (e) {
             this.finish(run, 127, e instanceof Error ? e.message : String(e));
             return;
@@ -301,6 +337,65 @@ export class Orchestrator {
         live.proc.write(rpcGetState());
         live.proc.write(rpcPrompt(run.prompt, `markwork-${++this.prompts}`));
         this.host.changed(run, fmt(_('{agent} started working on “{title}”'), { agent: spec.label, title: run.title }));
+    }
+
+    private handlersFor(run: Run, live: Live): SpawnHandlers {
+        return {
+            line: (text, ts) => {
+                if (this.disposed) return;
+                const signal = live.reader.line(text);
+                if (!signal) return;
+                if (live.replaying) { live.pending = signal; live.pendingTs = ts ?? 0; } else this.onSignal(run, signal);
+            },
+            input: () => { if (live.replaying) live.pending = null; },   // something was sent after it: it was dealt with
+            caughtUp: () => { live.replaying = false; this.flushReplay(run, live); },
+            exit: (status, stderr) => this.finish(run, status, stderr),
+        };
+    }
+
+    // The history of a run followed again is over: act on the last signal that nothing answered.
+    private flushReplay(run: Run, live: Live): void {
+        const signal = live.pending;
+        if (!live.proc || live.replaying || !signal) return;
+        live.pending = null;
+        if (signal.type === 'ask' && signal.ask.timeout && live.pendingTs && Date.now() - live.pendingTs > signal.ask.timeout) {
+            // The harness gave up waiting while we were away and used its default answer.
+            run.trace.add('note', _('Answer time ran out'), fmt(_('{agent} used its default answer for: {question}'), { agent: HARNESSES[run.agent]?.label ?? run.agent, question: signal.ask.title }));
+            return;
+        }
+        this.onSignal(run, signal);
+    }
+
+    // Follows a run that is already on the daemon: this window was closed while it worked. Its history is replayed
+    // into the log, and what it is waiting for (if anything) is asked again. Returns an error message or null.
+    adopt(info: AdoptInfo): string | null {
+        const spec = HARNESSES[info.agent];
+        if (!spec) return fmt(_('unknown harness "{agent}"'), { agent: info.agent });
+        if (!this.adopter) return 'there is no daemon to follow the run on';
+        if (this.queue.active(info.board, info.card)) return 'this card is already being worked on';
+        const run = this.queue.addRunning({ board: info.board, card: info.card, title: info.title, agent: info.agent, project: info.project, folder: info.folder, prompt: '', session: null });
+        const live = newLive(new PiReader(run.trace), true);
+        this.live.set(run.id, live);
+        run.trace.add('turn', fmt(_('{agent} for “{title}”'), { agent: spec.label, title: run.title }), fmt(_('Found again on {machine} after Markwork was closed; its history follows.'), { machine: info.machine }));
+        live.proc = this.adopter(info.runId, info.lastSeq, this.handlersFor(run, live));
+        this.flushReplay(run, live);   // the replay may already have been delivered inside adopter()
+        this.host.changed(run, fmt(_('Following {agent} again on “{title}”'), { agent: spec.label, title: run.title }));
+        return null;
+    }
+
+    // What is running now, for the question asked when the window closes. Children of this window end with it;
+    // runs that live in a daemon can be left going. Queued cards live only in this window and do not start later.
+    activity(): { children: number; detachable: number; queued: number } {
+        let children = 0, detachable = 0, queued = 0;
+        for (const run of this.queue.runs) {
+            const proc = this.live.get(run.id)?.proc;
+            if (run.status === 'queued') queued++;
+            else if ((run.status === 'working' || run.status === 'waiting') && proc) {
+                if (proc.detach) detachable++;
+                else children++;
+            }
+        }
+        return { children, detachable, queued };
     }
 
     private onSignal(run: Run, signal: PiSignal): void {
@@ -369,6 +464,15 @@ export class Orchestrator {
         });
         return error ?? (missing ? 'the card was not found on the board (its text may have been changed)' : null);
     }
+}
+
+const LABEL_CARD_CHARS = 4000;   // the daemon limits the labels of a run to 8 KB; a longer card is matched by its start
+
+function spawnMeta(run: Run): SpawnMeta {
+    return {
+        lane: run.project,
+        labels: { agent: run.agent, project: run.project, board: run.board, card: run.card.slice(0, LABEL_CARD_CHARS), title: run.title, host: GLib.get_host_name() },
+    };
 }
 
 // Short title for messages, pi session names, and logs.

@@ -12,6 +12,8 @@
         "--device=dri",
         "--share=network",
         "--filesystem=home",
+        "--filesystem=xdg-run/markworkd",
+        "--socket=ssh-auth",
         "--talk-name=org.freedesktop.secrets"
     ],
     "cleanup": ["/include", "/lib/pkgconfig", "*.la", "*.a"],

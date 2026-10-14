@@ -99,13 +99,29 @@ project: web-ecommerce         <span class="c">← the default project of the bo
 <figure><img src="../assets/pi-log.png" width="760" height="640" loading="lazy" alt="The pi Log window with the prompt sent to pi, the session, the model reasoning, the bash and edit tool calls, and the finished summary"><figcaption>The pi log: the prompt from the card, the reasoning, the tools, and the summary</figcaption></figure>
 
 
+<h2 id="daemon">Agents that keep working: markworkd</h2>
+<p>By default pi is a child of the Markwork window, so closing the window stops it. <strong>markworkd</strong> is a small program that runs the agents instead, on this computer or on another one (a VPS, a NAS), so they keep working when Markwork is closed or the connection drops. It never looks inside what an agent says; Markwork still reads the log, asks you the questions, and moves the cards.</p>
+<ol>
+  <li>Install <code>markworkd</code> where the agents should run (a single binary; see <code>markworkd/README.md</code> in the source) and give it the folders agents may work in, in <code>~/.config/markworkd/config.json</code>: <code>{"roots": ["/home/you/projects"]}</code>. Without roots it refuses every run.</li>
+  <li>In <strong>Preferences → Agents</strong>, choose <em>This computer (markworkd)</em>, or add a machine with <em>Add Machine…</em> (a host from your <code>~/.ssh/config</code>, or <code>user@host</code>) and choose it under <em>Run agents</em>. Markwork connects with <code>ssh</code> in the background, so the key must work without a password prompt (an ssh-agent is fine).</li>
+  <li>On another machine the project folder is asked as a typed path (an absolute path on that machine), and remembered per machine.</li>
+</ol>
+<ul>
+  <li><strong>Closing the window</strong> asks what to do: <em>Keep Running and Close</em>, <em>Stop Agents and Close</em>, or <em>Cancel</em>. Agents that are children of the window (the default) can only be stopped, so that question has no <em>Keep Running</em>.</li>
+  <li><strong>Opening Markwork again</strong> finds the runs of your cards on the machine, replays what happened while you were away into the log, and asks again for an answer that is still open. A run that finished meanwhile is finished as usual: the card gets its result and moves to Review. A run that ended because the daemon itself restarted is reported as failed, with that reason.</li>
+  <li><strong>Home</strong> says <em>Agents run on …</em> and whether the machine can be reached; when it cannot, Markwork says why and keeps trying. A line that was being sent when the connection dropped is not sent again (it could repeat a prompt); the log tells you.</li>
+  <li>Runs that were queued behind another card in the same project are kept only by the window: closing it does not start them later.</li>
+</ul>
+<div class="callout warn"><strong>The Flatpak needs the daemon to be started outside it.</strong><p>A sandboxed Markwork cannot start programs on your computer. Use the systemd user units that come with markworkd (<code>contrib/systemd/</code>), which also start it on the first connection; the Flatpak is allowed to reach its socket and your ssh-agent.</p></div>
+
 <h2 id="boundaries">Access boundaries</h2>
 <div class="callout warn"><strong>Pi writes freely in the project folder, without the Markwork review window.</strong><p>Review the result in that project repo itself (pi is asked not to commit). Pi does not ask for tool permission by itself; permission requests come from the pi extensions you install, such as <code>permission-gate</code>.</p></div>
 <ul>
   <li>The Markdown only names the <em>name</em> of the project. The name is mapped to a folder that can only be filled in through the choose-folder dialog, so a card or an agent cannot point the harness at an arbitrary folder.</li>
   <li>The Markwork work folder, its contents, its parents, the root, and relative paths are rejected as a project folder.</li>
   <li>The contents of the notes linked with <code>[[ ]]</code> from the Markwork work folder are sent to pi as part of the prompt (and to the model provider that pi uses). Do not link notes that must not leave. Only Markdown files in the work folder can be linked; dot folders, symlinks, and paths outside the work folder are not included.</li>
-  <li>Markwork itself does not write to the project folder. Closing the window stops every harness that is running.</li>
+  <li>Markwork itself does not write to the project folder. Closing the window stops every harness that is a child of the window; with <a href="#daemon">markworkd</a> you can choose to leave them running.</li>
+  <li>On another machine, what may run is decided there: markworkd runs only the programs and in the folders its own configuration allows, whatever a card or the Markdown says.</li>
 </ul>
 </main>
 <aside class="toc" id="toc" aria-label="Table of contents"></aside>

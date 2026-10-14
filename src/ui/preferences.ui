@@ -113,5 +113,45 @@
         </child>
       </object>
     </child>
+    <child>
+      <object class="AdwPreferencesPage">
+        <property name="title" translatable="yes">Agents</property>
+        <property name="icon-name">system-run-symbolic</property>
+        <child>
+          <object class="AdwPreferencesGroup">
+            <property name="title" translatable="yes">Where agents run</property>
+            <property name="description" translatable="yes">The agents that work on kanban cards. On markworkd they keep working when Markwork is closed.</property>
+            <child>
+              <object class="AdwComboRow" id="harnessMachine">
+                <property name="title" translatable="yes">Run agents</property>
+                <property name="model">
+                  <object class="GtkStringList" id="harnessMachines"/>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwEntryRow" id="daemonCommand">
+                <property name="title" translatable="yes">markworkd command on other machines</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="AdwPreferencesGroup" id="machinesGroup">
+            <property name="title" translatable="yes">Machines</property>
+            <property name="description" translatable="yes">Computers that run agents through ssh and markworkd</property>
+            <property name="header-suffix">
+              <object class="GtkButton" id="addMachine">
+                <property name="label" translatable="yes">Add Machine…</property>
+                <property name="valign">center</property>
+                <style>
+                  <class name="flat"/>
+                </style>
+              </object>
+            </property>
+          </object>
+        </child>
+      </object>
+    </child>
   </template>
 </interface>
