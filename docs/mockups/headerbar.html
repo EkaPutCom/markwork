@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Headerbar Mockup</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{
+  --bg:#fafafa;--ed:#fff;--side:#ebebeb;--head:#f2f2f2;--fg:#241f31;--dim:#77767b;--line:#deddda;
+  --accent:#3584e4;--accent-fg:#fff;--bad:#c01c28;--hover:#0000000d;--sel:#0000001a;--btn:#0000000f;
+  --pop:#fff;--code:#c64600;--shade:#555;--note:#e5a50a;--note-fg:#241f31;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#242424;--ed:#1e1e1e;--side:#2b2b2b;--head:#2e2e2e;--fg:#fff;--dim:#9a9996;--line:#ffffff1a;
+  --accent:#78aeed;--accent-fg:#1e1e1e;--bad:#ff7b63;--hover:#ffffff12;--sel:#ffffff1f;--btn:#ffffff14;
+  --pop:#383838;--code:#ff8f6b;--shade:#111;--note:#f8e45c;--note-fg:#241f31;}}
+:root[data-theme="dark"]{
+  --bg:#242424;--ed:#1e1e1e;--side:#2b2b2b;--head:#2e2e2e;--fg:#fff;--dim:#9a9996;--line:#ffffff1a;
+  --accent:#78aeed;--accent-fg:#1e1e1e;--bad:#ff7b63;--hover:#ffffff12;--sel:#ffffff1f;--btn:#ffffff14;
+  --pop:#383838;--code:#ff8f6b;--shade:#111;--note:#f8e45c;--note-fg:#241f31;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:14px/1.45 "Cantarell","Inter",system-ui,sans-serif;background:var(--shade);color:var(--fg);
+  display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:12px 16px 24px;gap:12px}
+kbd{font:11.5px "JetBrains Mono","Source Code Pro",monospace;color:var(--dim)}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
+svg.s{width:12px;height:12px}
+
+/* scenario bar (not part of the app) */
+.steps{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:1180px;width:100%}
+.steps button{background:#ffffff1f;color:#fff;border:1px solid #ffffff33;border-radius:99px;padding:4px 12px;font:inherit;font-size:13px;cursor:pointer}
+.steps button.on{background:#fff;color:#241f31}
+.steps .gap{width:14px}
+.steps .only-after{display:contents}
+.before .steps .only-after{display:none}
+
+/* window */
+.win{width:min(1180px,100%);height:560px;background:var(--bg);border-radius:12px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:0 10px 40px #0008;position:relative;transition:width .25s}
+.win.narrow{width:min(720px,100%)}
+.app button{font:inherit;color:inherit;background:none;border:0;border-radius:6px;padding:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;position:relative}
+.app button:hover{background:var(--hover)}
+.app button.on{background:var(--sel)}
+.app button.lbl{padding:5px 10px;background:var(--btn)}
+.app button.lbl:hover{background:var(--sel)}
+
+.hb{height:48px;display:none;align-items:center;gap:4px;padding:0 8px;background:var(--head);border-bottom:1px solid var(--line);flex:none;position:relative}
+.before .hb.b,.after .hb.a{display:flex}
+.hb .ttl{flex:1;text-align:center;min-width:0;line-height:1.2;display:flex;flex-direction:column;align-items:center}
+.hb .ttl b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.hb .ttl small{color:var(--dim);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ttl .name{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:1px 8px;cursor:pointer}
+.ttl .name:hover{background:var(--hover)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:none}
+.dirty .dot{display:inline-block}
+.saved{font-size:11.5px;color:var(--dim)}
+.dirty .saved{display:none}
+.grp{display:flex;align-items:center;gap:2px}
+.split{display:inline-flex;background:var(--btn);border-radius:6px}
+.split>button{border-radius:6px 0 0 6px}
+.split>button+button{border-radius:0 6px 6px 0;padding:6px 4px;border-left:1px solid var(--line)}
+.vsep{width:1px;height:22px;background:var(--line);margin:0 8px 0 10px}
+.wc{display:flex;gap:8px;margin-left:4px}
+.wc span{width:22px;height:22px;border-radius:50%;background:var(--btn);display:grid;place-items:center}
+.wc svg{width:10px;height:10px}
+.wc.tight{margin-left:4px}
+.narrow .wide{display:none}
+
+/* popovers */
+.pop{position:absolute;top:44px;background:var(--pop);border-radius:12px;box-shadow:0 0 0 1px var(--line),0 8px 24px #0005;padding:6px;min-width:250px;z-index:5;display:none}
+.pop.on{display:block}
+.pop .it{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;cursor:default;white-space:nowrap}
+.pop .it:hover{background:var(--hover)}
+.pop .it span{flex:1}
+.pop hr{border:0;border-top:1px solid var(--line);margin:5px 4px}
+.pop h6{margin:6px 10px 3px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.pop .row{display:flex;gap:4px;padding:2px 2px 4px}
+.pop .row button{flex:1;justify-content:center;background:var(--btn);flex-direction:column;gap:3px;padding:8px 4px;font-size:11.5px}
+.pop .row button:hover{background:var(--sel)}
+.pop .sub{color:var(--dim)}
+.pop .it .rec{color:var(--dim);font-size:12px}
+
+/* body skeleton */
+.body{flex:1;display:flex;min-height:0}
+.rail{width:42px;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:6px;color:var(--dim)}
+.rail span{padding:6px;border-radius:6px}
+.rail span.on{color:var(--fg);background:var(--sel)}
+.tree{width:230px;background:var(--side);border-right:1px solid var(--line);padding:10px 8px;font-size:13.5px;overflow:hidden}
+.tree h5{margin:0 6px 8px;font-size:11px;color:var(--dim);letter-spacing:.06em}
+.tree div{padding:4px 8px;border-radius:6px;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.tree div.on{background:var(--sel)}
+.tree div.in{padding-left:26px}
+.ed{flex:1;background:var(--ed);overflow:hidden;padding:30px 40px;min-width:0}
+.ed .doc{max-width:620px;margin:0 auto}
+.ed h1{font-size:26px;margin:0 0 18px}
+.ed p{margin:0 0 14px;color:var(--fg);opacity:.92}
+.ed code{color:var(--code);font:13px "JetBrains Mono",monospace}
+.ed .ln{height:10px;border-radius:5px;background:var(--btn);margin:0 0 12px}
+.chat{width:280px;background:var(--side);border-left:1px solid var(--line);display:none;flex-direction:column;padding:12px}
+.chat-on .chat{display:flex}
+.narrow .chat,.narrow .tree{display:none}
+.chat h5{margin:0 0 10px;font-size:11px;color:var(--dim);letter-spacing:.06em}
+.chat .sp{flex:1}
+.chat .in{height:58px;border-radius:10px;border:1px solid var(--line);background:var(--ed);color:var(--dim);padding:8px 10px;font-size:13px}
+
+/* numbered callouts */
+.n{position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;background:var(--note);color:var(--note-fg);
+  font:700 10.5px/16px system-ui,sans-serif;text-align:center;pointer-events:none;display:none;z-index:3}
+.marks .n{display:block}
+.ttl .n{position:static;display:none;margin-left:4px}
+.marks .ttl .n{display:inline-block}
+
+/* notes below the window */
+.notes{width:min(1180px,100%);color:#fff;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.notes>div{background:#ffffff14;border:1px solid #ffffff22;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5}
+.notes b{display:flex;align-items:center;gap:8px;margin-bottom:3px;font-size:13.5px}
+.notes b i{font-style:normal;width:18px;height:18px;border-radius:50%;background:#f8e45c;color:#241f31;font:700 11px/18px system-ui;text-align:center;flex:none}
+.notes code{font:12px "JetBrains Mono",monospace;background:#ffffff1a;padding:0 4px;border-radius:4px}
+.notes .bad b i{background:#ff7b63}
+.notes .set{display:none;grid-column:1/-1;grid-template-columns:inherit;gap:10px}
+.before .notes .set.b,.after .notes .set.a{display:grid}
+@media (max-width:640px){.tree{display:none}.chat{display:none!important}.ed{padding:20px 16px}}
+</style>
+</head>
+<body class="after">
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="sidebar" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></symbol>
+  <symbol id="justify" viewBox="0 0 16 16"><path d="M2 4h12M2 8h8M2 12h12"/></symbol>
+  <symbol id="menu" viewBox="0 0 16 16"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></symbol>
+  <symbol id="plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  <symbol id="caret" viewBox="0 0 16 16"><path d="M4.5 6.5 8 10l3.5-3.5"/></symbol>
+  <symbol id="doc" viewBox="0 0 16 16"><path d="M4 1.5h5l3.5 3.5v9.5h-8.5z"/><path d="M9 1.5V5h3.5"/></symbol>
+  <symbol id="docnew" viewBox="0 0 16 16"><path d="M9 14.5H3.5v-13h5L12 5v3.5"/><path d="M8.5 1.5V5H12M12 10.5v4M10 12.5h4"/></symbol>
+  <symbol id="folder" viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 0 1 1-1h3.5l1.5 1.5h6a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="chat" viewBox="0 0 16 16"><path d="M2 3.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 14 3.5v6a1.5 1.5 0 0 1-1.5 1.5H7l-3.5 3v-3h0A1.5 1.5 0 0 1 2 9.5z"/></symbol>
+  <symbol id="person" viewBox="0 0 16 16"><circle cx="8" cy="5.5" r="3"/><path d="M2.5 14a5.5 5.5 0 0 1 11 0"/></symbol>
+  <symbol id="save" viewBox="0 0 16 16"><path d="M2.5 2.5h8.5l2.5 2.5v8.5h-11z"/><path d="M5 2.5v3.5h5V2.5M5 13.5v-4h6v4"/></symbol>
+  <symbol id="text" viewBox="0 0 16 16"><path d="M3 3.5h10M3 6.5h10M3 9.5h7M3 12.5h9"/></symbol>
+  <symbol id="board" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="3.5" height="11" rx="1"/><rect x="6.25" y="2.5" width="3.5" height="7" rx="1"/><rect x="11" y="2.5" width="3.5" height="9" rx="1"/></symbol>
+  <symbol id="search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></symbol>
+  <symbol id="list" viewBox="0 0 16 16"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h0M2.5 8h0M2.5 12h0"/></symbol>
+  <symbol id="clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></symbol>
+  <symbol id="cloud" viewBox="0 0 16 16"><path d="M4.5 12.5a3 3 0 0 1-.4-6 4 4 0 0 1 7.7.9 2.6 2.6 0 0 1-.3 5.1z"/></symbol>
+  <symbol id="files" viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 0 1 1-1h3.5l1.5 1.5h6a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="cmd" viewBox="0 0 16 16"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="m4.5 6.5 2 1.5-2 1.5M8 10h3.5"/></symbol>
+  <symbol id="export" viewBox="0 0 16 16"><path d="M8 10V2M5 4.5 8 1.5l3 3M3 9v4.5h10V9"/></symbol>
+  <symbol id="find" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></symbol>
+  <symbol id="min" viewBox="0 0 10 10"><path d="M2 5h6"/></symbol>
+  <symbol id="max" viewBox="0 0 10 10"><rect x="2" y="2" width="6" height="6"/></symbol>
+  <symbol id="x" viewBox="0 0 10 10"><path d="m2.5 2.5 5 5m0-5-5 5"/></symbol>
+</svg>
+
+<div class="steps">
+  <button data-mode="before">Sekarang</button>
+  <button data-mode="after" class="on">Usulan</button>
+  <span class="gap"></span>
+  <span class="only-after">
+    <button data-pop="new">Popover "Baru"</button>
+    <button data-pop="menu">Menu utama</button>
+    <button data-pop="view">Pilih tampilan</button>
+  </span>
+  <button data-tog="dirty">Ada perubahan</button>
+  <button data-tog="chat-on" class="on">Panel Assistant</button>
+  <button data-tog="narrow">Jendela sempit</button>
+  <button data-tog="marks" class="on">Nomor catatan</button>
+  <button id="theme">Tema</button>
+</div>
+
+<div class="win app chat-on marks" id="win">
+
+  <!-- CURRENT headerbar, as in src/ui/headerbar.ui -->
+  <header class="hb b">
+    <button title="Sidebar (Ctrl+\)"><svg class="i"><use href="#justify"/></svg><i class="n">1</i></button>
+    <button title="Open File (Ctrl+O)"><svg class="i"><use href="#doc"/></svg><i class="n">2</i></button>
+    <button title="Open Folder (Ctrl+Shift+O)"><svg class="i"><use href="#folder"/></svg></button>
+    <button title="New (Ctrl+N)"><svg class="i"><use href="#docnew"/></svg></button>
+    <div class="ttl"><b>markworkd.md<span class="dot" style="margin-left:6px;vertical-align:1px"></span></b><small>~/Documents/markwork/docs/design</small></div>
+    <button class="on" title="Assistant (Ctrl+Shift+A)"><svg class="i"><use href="#person"/></svg></button>
+    <button title="Save (Ctrl+S)"><svg class="i"><use href="#save"/></svg><i class="n">3</i></button>
+    <button title="Menu"><svg class="i"><use href="#menu"/></svg><i class="n">1</i></button>
+    <button class="lbl" title="Layout"><svg class="i"><use href="#doc"/></svg>Text<svg class="i s"><use href="#caret"/></svg></button>
+    <div class="wc"><span><svg class="i"><use href="#min"/></svg></span><span><svg class="i"><use href="#max"/></svg></span><span style="position:relative"><svg class="i"><use href="#x"/></svg><i class="n">4</i></span></div>
+  </header>
+
+  <!-- PROPOSED headerbar -->
+  <header class="hb a">
+    <div class="grp">
+      <button title="Sidebar (Ctrl+\)"><svg class="i"><use href="#sidebar"/></svg><i class="n">1</i></button>
+      <div class="split">
+        <button title="New Document (Ctrl+N)"><svg class="i"><use href="#plus"/></svg><span class="wide">New</span></button>
+        <button title="Open…" data-pop="new"><svg class="i s"><use href="#caret"/></svg><i class="n">2</i></button>
+      </div>
+    </div>
+    <div class="ttl">
+      <b class="name" data-pop="recent" title="Recent files (Ctrl+P)">markworkd.md<span class="dot" title="Unsaved changes — Ctrl+S"></span><svg class="i s" style="color:var(--dim)"><use href="#caret"/></svg><i class="n">3</i></b>
+      <small>~/Documents/markwork/docs/design <span class="saved">· Saved</span></small>
+    </div>
+    <div class="grp">
+      <button class="lbl" data-pop="view" title="View (Ctrl+Shift+L)"><svg class="i"><use href="#text"/></svg><span class="wide">Text</span><svg class="i s"><use href="#caret"/></svg><i class="n">5</i></button>
+      <button class="on" id="chatBtn" title="Assistant (Ctrl+Shift+A)"><svg class="i"><use href="#chat"/></svg><i class="n">5</i></button>
+      <button data-pop="menu" title="Main Menu (F10)"><svg class="i"><use href="#menu"/></svg><i class="n">6</i></button>
+    </div>
+    <span class="vsep"></span>
+    <div class="wc tight"><span><svg class="i"><use href="#min"/></svg></span><span><svg class="i"><use href="#max"/></svg></span><span style="position:relative"><svg class="i"><use href="#x"/></svg><i class="n">4</i></span></div>
+
+    <!-- New ▾ -->
+    <div class="pop" id="pop-new" style="left:44px">
+      <div class="it"><svg class="i"><use href="#docnew"/></svg><span>New Document</span><kbd>Ctrl+N</kbd></div>
+      <div class="it"><svg class="i"><use href="#board"/></svg><span>New Kanban Board</span></div>
+      <hr>
+      <div class="it"><svg class="i"><use href="#doc"/></svg><span>Open File…</span><kbd>Ctrl+O</kbd></div>
+      <div class="it"><svg class="i"><use href="#folder"/></svg><span>Open Folder…</span><kbd>Ctrl+Shift+O</kbd></div>
+      <hr>
+      <h6>Recent</h6>
+      <div class="it"><span>harness.ts</span><span class="rec">src/window</span></div>
+      <div class="it"><span>README.md</span><span class="rec">markwork</span></div>
+    </div>
+    <!-- title ▾ -->
+    <div class="pop" id="pop-recent" style="left:50%;transform:translateX(-50%);min-width:300px">
+      <div class="it" style="background:var(--btn);color:var(--dim)"><svg class="i"><use href="#search"/></svg><span>Go to file…</span><kbd>Ctrl+P</kbd></div>
+      <h6>Recent</h6>
+      <div class="it"><span>markworkd.md</span><span class="rec">docs/design</span></div>
+      <div class="it"><span>harness.ts</span><span class="rec">src/window</span></div>
+      <div class="it"><span>daemonhub.ts</span><span class="rec">src</span></div>
+      <hr>
+      <div class="it"><span>Rename…</span><kbd>F2</kbd></div>
+      <div class="it"><span>Save As…</span><kbd>Ctrl+Shift+S</kbd></div>
+      <div class="it"><span>Show in Files</span></div>
+    </div>
+    <!-- view ▾ -->
+    <div class="pop" id="pop-view" style="right:118px;min-width:220px">
+      <div class="it" style="background:var(--sel)"><svg class="i"><use href="#text"/></svg><span>Text</span><kbd>✓</kbd></div>
+      <div class="it"><svg class="i"><use href="#doc"/></svg><span>Source</span><kbd>Ctrl+/</kbd></div>
+      <div class="it"><svg class="i"><use href="#board"/></svg><span>Board · List · Table</span></div>
+      <hr>
+      <div class="it"><span>Focus Mode</span></div>
+      <div class="it"><span>Typewriter Mode</span></div>
+    </div>
+    <!-- main menu -->
+    <div class="pop" id="pop-menu" style="right:84px;min-width:270px">
+      <div class="row">
+        <button><svg class="i"><use href="#cmd"/></svg>Commands</button>
+        <button><svg class="i"><use href="#find"/></svg>Find</button>
+        <button><svg class="i"><use href="#export"/></svg>Export</button>
+      </div>
+      <hr>
+      <div class="it"><span>Home</span></div>
+      <div class="it"><span>Today's Journal</span></div>
+      <div class="it"><span>Add to Journal…</span></div>
+      <hr>
+      <div class="it"><span>Insert</span><span class="sub" style="flex:none">›</span></div>
+      <div class="it"><span>Table</span><span class="sub" style="flex:none">›</span></div>
+      <div class="it"><span>Send Changes as Pull Request…</span></div>
+      <hr>
+      <div class="it"><span>Autosave</span><kbd>✓</kbd></div>
+      <div class="it"><span>Dark Mode</span></div>
+      <hr>
+      <div class="it"><span>Preferences</span><kbd>Ctrl+,</kbd></div>
+      <div class="it"><span>Keyboard Shortcuts</span><kbd>Ctrl+?</kbd></div>
+      <div class="it"><span>About Markwork</span></div>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="rail">
+      <span class="on"><svg class="i"><use href="#files"/></svg></span>
+      <span><svg class="i"><use href="#search"/></svg></span>
+      <span><svg class="i"><use href="#list"/></svg></span>
+      <span><svg class="i"><use href="#clock"/></svg></span>
+      <span><svg class="i"><use href="#cloud"/></svg></span>
+    </nav>
+    <aside class="tree">
+      <h5>MARKWORK</h5>
+      <div><svg class="i"><use href="#folder"/></svg>bench</div>
+      <div><svg class="i"><use href="#folder"/></svg>docs</div>
+      <div class="in"><svg class="i"><use href="#folder"/></svg>design</div>
+      <div class="in on" style="padding-left:44px"><svg class="i"><use href="#doc"/></svg>markworkd.md</div>
+      <div><svg class="i"><use href="#folder"/></svg>markworkd</div>
+      <div><svg class="i"><use href="#folder"/></svg>src</div>
+      <div><svg class="i"><use href="#folder"/></svg>tests</div>
+      <div><svg class="i"><use href="#doc"/></svg>AGENT.md</div>
+      <div><svg class="i"><use href="#doc"/></svg>README.md</div>
+    </aside>
+    <main class="ed"><div class="doc">
+      <h1>markworkd: design</h1>
+      <p>Status: v1 implemented in <code>markworkd/</code> (Go, standard library only, no third-party modules). Section 16 lists where the implementation differs from or settles this draft.</p>
+      <p><code>markworkd</code> is a small supervisor daemon, one per machine (the desktop and any VPS). It owns the agent processes that Markwork orchestrates.</p>
+      <div class="ln" style="width:92%"></div><div class="ln" style="width:85%"></div><div class="ln" style="width:60%"></div>
+    </div></main>
+    <aside class="chat">
+      <h5>ASSISTANT</h5>
+      <div class="sp"></div>
+      <div class="in">Ask about this document…</div>
+    </aside>
+  </div>
+</div>
+
+<section class="notes">
+  <div class="set b">
+    <div class="bad"><b><i>1</i>Dua ikon "≡"</b>Ikon sidebar (<code>format-justify-left</code>) terlihat sama dengan ikon menu di kanan. Pengguna tidak tahu mana menu utamanya.</div>
+    <div class="bad"><b><i>2</i>Tiga tombol file berderet</b>Open File, Open Folder, dan New adalah tiga ikon dokumen/folder yang mirip, padahal ketiganya jarang dipakai dan sudah ada shortcut-nya.</div>
+    <div class="bad"><b><i>3</i>Save memakan tempat</b>Autosave sudah ada, tapi tombol Save tetap tampil permanen tanpa memberi tahu apakah ada perubahan yang belum disimpan.</div>
+    <div class="bad"><b><i>4</i>Menempel ke tombol jendela</b>"Text ▾" berada persis di sebelah minimize/close, jadi mudah salah klik dan grupnya tidak terbaca.</div>
+  </div>
+  <div class="set a">
+    <div><b><i>1</i>Ikon sidebar yang jelas</b>Ganti ke <code>sidebar-show-symbolic</code> (persegi dengan panel kiri), sehingga hanya ada satu ikon "≡" di aplikasi.</div>
+    <div><b><i>2</i>Satu tombol "+ New ▾"</b>Klik untuk dokumen baru, caret untuk Open File, Open Folder, Board baru, dan Recent. Tiga tombol jadi satu split button.</div>
+    <div><b><i>3</i>Judul sebagai status &amp; switcher</b>Titik biru berarti ada perubahan yang belum disimpan, dan "· Saved" muncul saat bersih. Klik judul untuk membuka Recent, Go to file, Rename, dan Save As. Tombol Save bisa dihapus (Ctrl+S tetap ada).</div>
+    <div><b><i>4</i>Pemisah sebelum tombol jendela</b>Garis vertikal plus jarak memisahkan kontrol aplikasi dari minimize/maximize/close.</div>
+    <div><b><i>5</i>Kontrol tampilan dikelompokkan</b>"Text ▾" (sekarang memuat Source, Focus, dan Typewriter) diletakkan bersebelahan dengan toggle Assistant. Ikon Assistant diganti gelembung chat, bukan ikon orang. Di jendela sempit, label teks disembunyikan.</div>
+    <div><b><i>6</i>Menu utama yang lebih pendek</b>Menu dari 30+ item dipadatkan: baris aksi cepat (Commands, Find, Export) di atas, lalu Insert/Table dijadikan submenu, dan mode tampilan pindah ke "Text ▾".</div>
+  </div>
+</section>
+
+<script>
+const body=document.body, win=document.getElementById('win');
+const steps=document.querySelectorAll('.steps button');
+let pop=null;
+function setPop(p){
+  pop=(pop===p)?null:p;
+  document.querySelectorAll('.pop').forEach(e=>e.classList.toggle('on',e.id==='pop-'+pop));
+  document.querySelectorAll('.steps [data-pop]').forEach(b=>b.classList.toggle('on',b.dataset.pop===pop));
+}
+document.querySelectorAll('.steps [data-mode]').forEach(b=>b.onclick=()=>{
+  body.className=b.dataset.mode;
+  document.querySelectorAll('.steps [data-mode]').forEach(x=>x.classList.toggle('on',x===b));
+  if(pop)setPop(pop);
+});
+document.querySelectorAll('.steps [data-pop], .app [data-pop]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setPop(b.dataset.pop)}));
+document.querySelectorAll('.steps [data-tog]').forEach(b=>b.onclick=()=>{
+  b.classList.toggle('on',win.classList.toggle(b.dataset.tog));
+  if(b.dataset.tog==='chat-on')document.querySelectorAll('.hb [title^="Assistant"]').forEach(x=>x.classList.toggle('on',win.classList.contains('chat-on')));
+});
+document.querySelectorAll('.hb [title^="Assistant"]').forEach(x=>x.onclick=()=>document.querySelector('[data-tog="chat-on"]').click());
+document.addEventListener('click',e=>{if(pop&&!e.target.closest('.pop'))setPop(pop)});
+document.getElementById('theme').onclick=()=>{
+  const r=document.documentElement, dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark';
+};
+</script>
+</body>
+</html>

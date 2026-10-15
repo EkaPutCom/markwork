@@ -116,7 +116,7 @@ export function layoutsGuiTests(c: GuiContext): void {
     });
 
     section('Layout button (header bar)');
-    const button = () => descendants(w.header).find((x): x is Gtk.MenuButton => x instanceof Gtk.MenuButton && x.get_tooltip_text() === 'Layout')!;
+    const button = () => descendants(w.header).find((x): x is Gtk.MenuButton => x instanceof Gtk.MenuButton && x.get_tooltip_text() === 'View')!;
     const buttonLabel = () => (w.header as unknown as { _layoutLabel: Gtk.Label })._layoutLabel.label;
     const choose = (layout: string) => { (w.app.lookup_action('layout') as Gio.SimpleAction).change_state(GLib.Variant.new_string(layout)); settle(); };
     const checked = () => (w.app.lookup_action('layout') as Gio.SimpleAction).get_state()!.get_string()[0];

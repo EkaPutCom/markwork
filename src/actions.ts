@@ -43,6 +43,7 @@ export interface ActionHost {
     openHome(): void;
     readonly journal: Pick<JournalController, 'open' | 'capture' | 'summarize'>;
     open(): Promise<void>;
+    load(path: string): boolean;
     chooseFolder(): Promise<void>;
     save(): Awaitable<boolean>;
     saveAs(): Promise<boolean>;
@@ -95,6 +96,10 @@ export function registerActions(app: Adw.Application, w: ActionHost): void {
     action('prev-tab', ['<Control>Page_Up', '<Control><Shift>Tab', '<Control><Shift>ISO_Left_Tab'], () => w.switchTab(-1));
     action('open', ['<Control>o'], () => w.open());
     action('open-folder', ['<Control><Shift>o'], () => w.chooseFolder());
+    // A file of the Recent list in the New menu and the document's menu; the target is its path.
+    const openRecent = new Gio.SimpleAction({ name: 'open-recent', parameter_type: GLib.VariantType.new('s') });
+    openRecent.connect('activate', (_a, path) => { if (path) w.load(path.get_string()[0]); });
+    app.add_action(openRecent);
     action('save', ['<Control>s'], () => w.save());
 
     // Undo/redo through actions, so they also work while the kanban board is shown (the text editor is

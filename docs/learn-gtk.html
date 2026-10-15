@@ -605,6 +605,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">ea54dba</span><span><span class="era">Adw</span><b>Chapter 12</b> · Discussion tab in the review page: a third linked <code>Gtk.ToggleButton</code>, comment cards (<code>card</code> style) in a <code>Gtk.ScrolledWindow</code>, and a wrapping <code>Gtk.TextView</code> to write one.</span></li>
     <li><span class="h">675345c</span><span><span class="era">Adw</span><b>Chapter 12</b> · “Send changes as pull request” dialog (<code>Adw.Dialog</code> through <code>formDialog</code>): entries, a radio group of <code>Gtk.CheckButton</code>s, a checklist of changed files, and a header button in the pull requests tab next to Refresh.</span></li>
     <li><span class="h">91e2fa9</span><span><span class="era">Adw</span><b>Chapter 12</b> · Resolving a conflicting pull request here: the <code>Adw.Banner</code> gets one button whose job follows the state (<code>button-clicked</code> reads the state, not the label), a header button appears only while a merge is in progress, and the conflicted files open in ordinary tabs.</span></li>
+    <li><span class="h">3060113</span><span><span class="era">Adw</span><b>Chapter 10</b> · A tidier header bar: <code>Adw.SplitButton</code> for New and Open, the title as a <code>Gtk.MenuButton</code> for the document's menu inside a <code>Gtk.Stack</code> (plain on Home), the primary menu last with <code>primary</code>, the view modes as <code>Gtk.CheckButton</code>s in the layout popover, and no Save button.</span></li>
   </ol>
 </section>
 
@@ -653,13 +654,12 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <div class="mock" id="anat-win" data-n="win" aria-label="Mock-up of the Markwork main window">
       <div class="m-header" data-n="header">
         <button type="button" class="m-btn on" data-n="hstart" data-act="side" title="app.sidebar"><svg class="ic"><use href="#i-side"/></svg></button>
-        <span class="m-btn" data-n="hstart"><svg class="ic"><use href="#i-doc"/></svg></span>
-        <span class="m-btn" data-n="hstart"><svg class="ic"><use href="#i-folder"/></svg></span>
-        <span class="m-btn" data-n="hstart"><svg class="ic"><use href="#i-new"/></svg></span>
-        <span class="m-title" data-n="title"><b>Meeting Notes</b><small>~/Notes</small></span>
+        <span class="m-btn" data-n="hstart"><svg class="ic"><use href="#i-new"/></svg>New<svg class="ic"><use href="#i-down"/></svg></span>
+        <span class="m-title" data-n="title"><b>Meeting Notes <svg class="ic" style="vertical-align:-3px"><use href="#i-down"/></svg></b><small>~/Notes · Saved</small></span>
+        <span class="m-btn" data-n="hend"><svg class="ic"><use href="#i-doc"/></svg> Text <svg class="ic"><use href="#i-down"/></svg></span>
         <button type="button" class="m-btn on" data-n="hend" data-act="chat" title="app.chat"><svg class="ic"><use href="#i-chat"/></svg></button>
-        <span class="m-btn" data-n="hend"><svg class="ic"><use href="#i-save"/></svg></span>
         <span class="m-btn" data-n="hend"><svg class="ic"><use href="#i-menu"/></svg></span>
+        <span style="width:1px;height:18px;background:var(--m-line);margin:0 4px"></span>
       </div>
       <div class="m-main" data-n="main">
         <div class="m-side" data-n="side">
@@ -717,9 +717,9 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
           <ul>
             <li><span class="slot">top-bar</span><span class="nd" data-t="header"><code>MarkworkHeaderBar</code><small>Adw.Bin → Adw.HeaderBar</small></span>
               <ul>
-                <li><span class="slot">start</span><span class="nd" data-t="hstart"><code>Gtk.ToggleButton</code>, <code>Gtk.Button</code> ×3</span></li>
-                <li><span class="slot">title</span><span class="nd" data-t="title"><code>Adw.WindowTitle</code></span></li>
-                <li><span class="slot">end</span><span class="nd" data-t="hend"><code>Gtk.ToggleButton</code>, <code>Gtk.Button</code>, <code>Gtk.MenuButton</code></span></li>
+                <li><span class="slot">start</span><span class="nd" data-t="hstart"><code>Gtk.ToggleButton</code>, <code>Adw.SplitButton</code></span></li>
+                <li><span class="slot">title</span><span class="nd" data-t="title"><code>Gtk.Stack</code><small>Adw.WindowTitle | Gtk.MenuButton</small></span></li>
+                <li><span class="slot">end</span><span class="nd" data-t="hend"><code>Gtk.MenuButton</code> (layout), <code>Gtk.ToggleButton</code>, <code>Gtk.MenuButton</code> (primary)</span></li>
               </ul></li>
             <li><span class="slot">content</span><span class="nd" data-t="toasts"><code>Adw.ToastOverlay</code></span>
               <ul><li><span class="nd" data-t="main"><code>Adw.OverlaySplitView</code><small>sidebar 240 px</small></span>
@@ -1101,9 +1101,9 @@ slots.release(slot);           // empty + hide,
     <figure>
       <div class="stage" style="padding:0;min-height:0">
         <div class="mock" style="border-radius:10px 10px 0 0;box-shadow:none"><div class="m-header">
-          <span class="m-btn on"><svg class="ic"><use href="#i-side"/></svg></span><span class="m-btn"><svg class="ic"><use href="#i-doc"/></svg></span>
+          <span class="m-btn on"><svg class="ic"><use href="#i-side"/></svg></span><span class="m-btn"><svg class="ic"><use href="#i-new"/></svg>New<svg class="ic"><use href="#i-down"/></svg></span>
           <span class="m-title"><b>Meeting Notes</b><small id="g-sub">~/Notes</small></span>
-          <span class="m-btn"><svg class="ic"><use href="#i-save"/></svg></span><span class="m-btn"><svg class="ic"><use href="#i-menu"/></svg></span>
+          <span class="m-btn"><svg class="ic"><use href="#i-chat"/></svg></span><span class="m-btn"><svg class="ic"><use href="#i-menu"/></svg></span>
         </div><div style="height:46px;background:var(--m-view)"></div></div>
       </div>
       <figcaption><b><code>Adw.HeaderBar</code> + <code>Adw.WindowTitle</code></b>Buttons go in <code>start</code>/<code>end</code> slots; the title widget shows the document name and its folder as subtitle (<code>windowTitle.subtitle</code>).</figcaption>
@@ -1354,22 +1354,24 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
     <h3>Illustration: the XML and what it draws <span class="kind">shortened from <code>ui/headerbar.ui</code></span></h3>
     <p class="note">Hover over a line of XML or a part of the header bar. Every <code>&lt;child type="start"&gt;</code> lands left of the title in the order written, every <code>type="end"</code> lands right of it, starting from the edge. The buttons need no click handlers: <code>action-name</code> connects them to <code>Gio.Action</code>s.</p>
     <div class="tpl" id="tpl">
-<pre><code><span data-x="tpl">&lt;template class="MarkworkHeaderBar" parent="AdwBin"&gt;</span><span data-x="hb">  &lt;object class="AdwHeaderBar"&gt;</span><span data-x="title">    &lt;property name="title-widget"&gt;
-      &lt;object class="AdwWindowTitle" id="windowTitle"/&gt;</span><span data-x="s1">    &lt;child type="start"&gt; GtkToggleButton
-      icon-name: format-justify-left-symbolic
-      action-name: app.sidebar</span><span data-x="s2">    &lt;child type="start"&gt; GtkButton  app.open</span><span data-x="s3">    &lt;child type="start"&gt; GtkButton  app.open-folder</span><span data-x="s4">    &lt;child type="start"&gt; GtkButton  app.new</span><span data-x="e1">    &lt;child type="end"&gt; GtkMenuButton
-      menu-model: mainMenu</span><span data-x="e2">    &lt;child type="end"&gt; GtkButton  app.save</span><span data-x="e3">    &lt;child type="end"&gt; GtkToggleButton  app.chat</span></code></pre>
+<pre><code><span data-x="tpl">&lt;template class="MarkworkHeaderBar" parent="AdwBin"&gt;</span><span data-x="hb">  &lt;object class="AdwHeaderBar"&gt;</span><span data-x="title">    &lt;property name="title-widget"&gt; GtkStack
+      AdwWindowTitle | GtkMenuButton  documentMenu</span><span data-x="s1">    &lt;child type="start"&gt; GtkToggleButton
+      icon-name: sidebar-show-symbolic
+      action-name: app.sidebar</span><span data-x="s2">    &lt;child type="start"&gt; AdwSplitButton
+      action-name: app.new
+      menu-model: newMenu</span><span data-x="sep">    &lt;child type="end"&gt; GtkSeparator  vertical</span><span data-x="e1">    &lt;child type="end"&gt; GtkMenuButton
+      menu-model: mainMenu
+      primary: True</span><span data-x="e3">    &lt;child type="end"&gt; GtkToggleButton  app.chat</span><span data-x="e2">    &lt;child type="end"&gt; GtkMenuButton  layoutButton</span></code></pre>
       <div>
         <div class="mock" data-x="tpl" id="tpl-mock">
           <div class="m-header" data-x="hb">
             <span class="m-btn on" data-x="s1"><svg class="ic"><use href="#i-side"/></svg></span>
-            <span class="m-btn" data-x="s2"><svg class="ic"><use href="#i-doc"/></svg></span>
-            <span class="m-btn" data-x="s3"><svg class="ic"><use href="#i-folder"/></svg></span>
-            <span class="m-btn" data-x="s4"><svg class="ic"><use href="#i-new"/></svg></span>
-            <span class="m-title" data-x="title"><b>Meeting Notes</b><small>~/Notes</small></span>
+            <span class="m-btn" data-x="s2"><svg class="ic"><use href="#i-new"/></svg>New<svg class="ic"><use href="#i-down"/></svg></span>
+            <span class="m-title" data-x="title"><b>Meeting Notes <svg class="ic" style="vertical-align:-3px"><use href="#i-down"/></svg></b><small>~/Notes · Saved</small></span>
+            <span class="m-btn" data-x="e2"><svg class="ic"><use href="#i-doc"/></svg> Text <svg class="ic"><use href="#i-down"/></svg></span>
             <span class="m-btn on" data-x="e3"><svg class="ic"><use href="#i-chat"/></svg></span>
-            <span class="m-btn" data-x="e2"><svg class="ic"><use href="#i-save"/></svg></span>
             <span class="m-btn" data-x="e1"><svg class="ic"><use href="#i-menu"/></svg></span>
+            <span data-x="sep" style="width:1px;height:18px;background:var(--m-line);margin:0 4px"></span>
           </div>
           <div style="height:60px;background:var(--m-view)"></div>
         </div>
@@ -2060,11 +2062,12 @@ lv.addEventListener('scroll', () => { if (!lvRaf) lvRaf = requestAnimationFrame(
 const tplDesc = {
   tpl: '<code>&lt;template&gt;</code>: the class <code>MarkworkHeaderBar</code> itself, an <code>Adw.Bin</code> holding one child.',
   hb: '<code>AdwHeaderBar</code>: final, so it is the Bin\'s child instead of a parent class.',
-  title: '<code>title-widget</code> → <code>Adw.WindowTitle</code>, reachable as <code>this._windowTitle</code> through <code>InternalChildren</code>.',
-  s1: 'First <code>start</code> child: leftmost. A toggle button whose pressed state follows the stateful <code>app.sidebar</code> action.',
-  s2: '<code>app.open</code>: Open File (Ctrl+O).', s3: '<code>app.open-folder</code>: Open Folder (Ctrl+Shift+O).', s4: '<code>app.new</code>: New (Ctrl+N).',
-  e1: 'First <code>end</code> child: rightmost. A <code>GtkMenuButton</code> whose <code>menu-model</code> is the <code>&lt;menu id="mainMenu"&gt;</code> in the same file.',
-  e2: '<code>app.save</code>: Save (Ctrl+S).', e3: 'Third <code>end</code> child, so the furthest from the edge: the <code>app.chat</code> toggle.',
+  title: '<code>title-widget</code> → a <code>Gtk.Stack</code>: a plain <code>Adw.WindowTitle</code> on Home, and for a document a flat <code>GtkMenuButton</code> holding another <code>Adw.WindowTitle</code>, whose <code>documentMenu</code> has Save, Save As, Autosave, and Export. There is no Save button: the “•” before the name says there are unsaved changes.',
+  s1: 'First <code>start</code> child: leftmost. A toggle button whose pressed state follows the stateful <code>app.sidebar</code> action; <code>sidebar-show-symbolic</code>, so it is not mistaken for the ☰ menu.',
+  s2: '<code>AdwSplitButton</code>: the button (icon and “New”, icon only in a window under 600sp through the <code>compact</code> property set by an <code>Adw.Breakpoint</code>) runs <code>app.new</code> (Ctrl+N); its arrow opens <code>newMenu</code> (the other new documents, Open File, Open Folder, and the Recent files). One button instead of three.',
+  sep: 'The first <code>end</code> child, next to the window controls: a vertical <code>GtkSeparator</code> that sets the app buttons apart from minimize, maximize, and close.',
+  e1: 'Second <code>end</code> child, just left of the separator: the primary menu, as the HIG places it. <code>primary: True</code> opens it with F10. Its first row (Commands, Find, Export) is a <code>custom</code> menu item filled with a widget by <code>PopoverMenu.add_child()</code>.',
+  e2: 'Fourth <code>end</code> child, so the furthest from the edge: the layout button, whose popover also holds Source, Focus, and Typewriter mode as <code>Gtk.CheckButton</code>s bound to their boolean actions.', e3: 'Third <code>end</code> child: the <code>app.chat</code> toggle for the Assistant panel.',
 };
 const tpl = $('#tpl');
 let tplCur = null;
