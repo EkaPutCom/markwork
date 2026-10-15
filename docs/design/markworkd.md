@@ -28,7 +28,7 @@ Non-goals (v1)
 | --- | --- |
 | run | One agent process plus its log. Identified by a client-chosen run id. |
 | record | One entry of a run's log: a line of stdout or stdin, or a lifecycle marker. stderr is not part of the log; it is kept apart (4.6, section 6). Numbered by `seq`. |
-| lane | A string key. At most one run per lane is running at a time; the rest wait in FIFO order. Markwork uses the project name, which reproduces today's "one harness per project folder" rule. An empty lane means no limit. |
+| lane | A string key. A lane runs at most `lane_slots` runs at a time (1 unless the spawn says otherwise); the rest wait in FIFO order. Markwork uses the project name: one slot when cards work in the project folder itself, and the project's "cards at the same time" when each card has its own worktree. An empty lane means no limit. |
 | labels | Opaque string key/values the client attaches to a run (board file, card text, agent name, session id). Lets a client rebuild its view after losing its own state. |
 
 The log is the single source of truth. A run's live state is a fold over its records; subscribers read the log, they do not get a separate copy.
@@ -75,6 +75,7 @@ Timestamps are Unix milliseconds (`ts`, integers). Run ids match `^[A-Za-z0-9][A
    "args":["--mode","rpc","--name","Fix login"],
    "cwd":"/home/eka/projects/web",
    "lane":"web",
+   "lane_slots":1,
    "env":{"PI_FOO":"1"},
    "labels":{"agent":"pi","board":"/home/eka/notes/board.md","card":"Fix login"},
    "initial_input":["{\"id\":\"markwork-state\",\"type\":\"get_state\"}","{\"id\":\"p1\",\"type\":\"prompt\",\"message\":\"...\"}"],
@@ -88,6 +89,7 @@ Timestamps are Unix milliseconds (`ts`, integers). Run ids match `^[A-Za-z0-9][A
 - `initial_input` lines are written to stdin right after the process starts (and recorded as `in` records). This lets a client start a run, disconnect at once, and still have the prompt delivered, including when the run waits in a lane.
 - `idle_ttl_sec`: if no client is subscribed and no output was produced for this long, the daemon closes stdin; if the process is still alive 30 s later it stops it. `0` disables; the default comes from the config and is 24 hours (`default_idle_ttl_sec`: 86400). Output on stderr counts as activity. A paused agent that waits for its next prompt therefore does not live forever.
 - Idempotent: repeating a `spawn` with an existing run id and identical parameters returns the existing run (`"existing":true`). Different parameters give `conflict`. A client can retry safely after a dropped connection.
+- `lane_slots` (0–64, 0 means 1) is how many runs of the lane may run at once with this run. Each run carries its own value, so a client that changes the limit affects the runs it spawns from then on. A run waits while others are ahead of it in the queue, even when a slot would be free for it, so the order stays FIFO.
 - If the lane is busy the run is `queued` and `position` is its place in line (1 = next).
 
 Run states: `queued`, `running`, `exited`. An exited run carries `exit` = `{reason, code?, signal?, error?}`.
@@ -430,6 +432,8 @@ Decisions:
 - `HarnessProcess.detach()`: `Orchestrator.dispose()` calls it, when it exists, instead of `stop()`, so closing the window leaves a daemon run going. A local child process has no `detach` and is stopped as before.
 - `Spawner` gets an optional fourth argument, `SpawnMeta` (`lane` = the project, `labels` = agent, project, board file, card text, title), so a run can be recognised after a restart.
 - The run is forgotten on the daemon once its result was delivered (`forgetWhenDone`); a run whose owner never saw it end stays until the retention period.
+- `SpawnMeta.slots` becomes `lane_slots`: the project's "cards at the same time" for cards with their own worktree, 1 for a card that works in the project folder. The labels also carry the worktree (`worktree`, `branch`, `base`, `basecommit`, `repo`) and the window's own lane, so a run found again is tied to its worktree.
+- `daemonGit(conn)` is a `GitRunner` for the worktrees on the daemon's machine: each call spawns `git` (no lane, no environment), collects its `out` records and the stderr tail, and the run is forgotten when it ended. A daemon that does not allow `git` or the folder answers as a git failure with the daemon's message.
 
 The app wiring, as built:
 

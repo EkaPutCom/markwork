@@ -8,7 +8,8 @@ import Gio from 'gi://Gio';
 import { DaemonConnection, type ConnectionOptions } from '../../src/agent/daemon/connection.js';
 import { openCommandLink, openSocketLink, sshBridgeArgv } from '../../src/agent/daemon/streamlink.js';
 import type { RunSummary, StateEvent } from '../../src/agent/daemon/protocol.js';
-import { adoptRun, daemonSpawner } from '../../src/orchestratordaemon.js';
+import { adoptRun, daemonGit, daemonSpawner } from '../../src/orchestratordaemon.js';
+import { createWorktree, DEFAULT_ISOLATION, listWorktrees, removeWorktree } from '../../src/agent/worktree.js';
 import type { HarnessProcess, SpawnHandlers } from '../../src/orchestrator.js';
 import { DIM, RESET, ROOT, ok, eq, contains, section, settle, test, tmp } from '../framework.js';
 
@@ -69,7 +70,8 @@ export function daemonLiveTests(): void {
     GLib.chmod(agent, 0o755);
     const sock = `${dir}/s.sock`;
     const common = ['--socket', sock, '--state-dir', `${dir}/state`, '--config', `${dir}/config.json`];
-    GLib.file_set_contents(`${dir}/config.json`, JSON.stringify({ roots: [proj], programs: { 'agent.sh': agent }, default_idle_ttl_sec: 0 }));
+    const gitPath = GLib.find_program_in_path('git') ?? '/usr/bin/git';
+    GLib.file_set_contents(`${dir}/config.json`, JSON.stringify({ roots: [proj], programs: { 'agent.sh': agent, git: gitPath }, default_idle_ttl_sec: 0 }));
     const daemon = Gio.Subprocess.new([bin, 'serve', ...common], Gio.SubprocessFlags.STDERR_SILENCE);
     const connections: DaemonConnection[] = [];
 
@@ -228,6 +230,43 @@ export function daemonLiveTests(): void {
             waitUntil(() => c.exit !== null, 'the run to end');
             eq(c.lines, ['ready', 'echo:over the bridge', 'eof']);
             eq(c.exit?.status, 0);
+        });
+
+        test('lane slots: two runs of a lane work at once, a third waits for a slot', () => {
+            const conn = connect();
+            const runs = [collect(), collect(), collect()];
+            const procs = runs.map(c => daemonSpawner(conn)([agent], proj, c.handlers, { lane: 'slots', slots: 2, labels: {} }));
+            waitUntil(() => runs[0].lines.includes('ready') && runs[1].lines.includes('ready'), 'two runs to start');
+            const client = settle(conn.ready());
+            eq(settle(client.list({ lane: 'slots' })).map(r => r.state).sort(), ['queued', 'running', 'running']);
+            procs[0].closeInput();
+            waitUntil(() => runs[2].lines.includes('ready'), 'the third to start in the freed slot');
+            procs[1].closeInput();
+            procs[2].closeInput();
+            waitUntil(() => runs.every(c => c.exit !== null), 'the runs to end');
+        });
+
+        test('git through the daemon: a card worktree is made, listed, and removed on its machine', () => {
+            const conn = connect();
+            const repo = `${proj}/shop`;
+            GLib.mkdir_with_parents(repo, 0o755);
+            const sh = (...args: string[]) => { const r = run(['git', '-c', 'user.name=T', '-c', 'user.email=t@example.com', ...args], repo); if (!r.ok) throw new Error(r.out); };
+            sh('init', '-q', '-b', 'main');
+            GLib.file_set_contents(`${repo}/a.txt`, 'a\n');
+            sh('add', '-A');
+            sh('commit', '-q', '-m', 'First');
+            const git = daemonGit(conn);
+            const made = settle(createWorktree(git, { folder: repo, title: 'Fix login', isolation: DEFAULT_ISOLATION }));
+            if (!made.ok) throw new Error(made.message);
+            eq(made.value.path, `${proj}/.markwork-worktrees/shop/fix-login`, 'next to the project, inside the daemon\'s root');
+            ok(GLib.file_test(`${made.value.path}/a.txt`, GLib.FileTest.EXISTS), 'checked out');
+            eq(settle(listWorktrees(git, repo)).map(w => w.branch), ['main', 'markwork/fix-login']);
+            const client = settle(conn.ready());
+            eq(settle(client.list({})).filter(r => r.program === 'git').length, 0, 'every git run is forgotten once it ended');
+            eq(settle(removeWorktree(git, made.value)).ok, true);
+            ok(!GLib.file_test(made.value.path, GLib.FileTest.EXISTS), 'removed');
+            const refused = settle(git('/etc', ['status']));
+            ok(refused !== null && refused.status !== 0 && /cwd|allowed|root/i.test(refused.err), `a folder outside the roots is refused: ${refused?.err}`);
         });
 
         test('a command that cannot be run is a failed attempt with its reason, not a crash', () => {

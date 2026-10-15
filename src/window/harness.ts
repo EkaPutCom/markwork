@@ -5,20 +5,23 @@ import GLib from 'gi://GLib';
 import { after, type Awaitable } from '../gtkutil.js';
 import { readTextFile } from '../files.js';
 import type { AppSettings } from '../settings.js';
-import { findProgram, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator.js';
-import { cardProject, checkProjectFolder, HARNESSES, isActive, PROJECT_NAME, type HarnessAsk, type HarnessReply, type LinkedNote, type Run } from '../agent/harness.js';
+import { findProgram, labelWorktree, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator.js';
+import { runGit } from '../git.js';
+import { parseIsolation, type Isolation } from '../agent/worktree.js';
+import type { GitRunner } from '../forge/contribute.js';
+import { cardProject, checkProjectFolder, HARNESSES, isActive, locateCard as findCard, PROJECT_NAME, type HarnessAsk, type HarnessReply, type LinkedNote, type Run } from '../agent/harness.js';
 import { isRemoteMachine, LOCAL_MACHINE, machineProjectKey } from '../agent/daemon/machines.js';
 import type { ConnectionState } from '../agent/daemon/connection.js';
 import type { RunSummary } from '../agent/daemon/protocol.js';
 import { openCommandLink, openSocketLink } from '../agent/daemon/streamlink.js';
 import { DaemonHub, type Openers } from '../daemonhub.js';
-import { adoptRun, daemonSpawner } from '../orchestratordaemon.js';
+import { adoptRun, daemonGit, daemonSpawner } from '../orchestratordaemon.js';
 import { chooseFile, closeAgentsDialog, harnessAskDialog, harnessTextDialog, promptDialog, type CloseAgentsChoice } from '../ui/dialogs.js';
 import type { KanbanBoard } from '../ui/kanban.js';
 import { LogViewer } from '../ui/logviewer.js';
 import type { MenuEntry } from '../ui/menu.js';
 import { harnessActivity, type ActivityKind } from '../markdown/journal.js';
-import { assignCard, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
+import { assignCard, cardBranch, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
 import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
 import type { WorkspaceRepository } from '../workspace.js';
 import { _, fmt } from '../i18n.js';
@@ -50,7 +53,7 @@ export class HarnessController {
     dialogs: {
         chooseFolder: (title: string) => Awaitable<string | null>;
         answer: (ask: HarnessAsk, agent: string) => Awaitable<HarnessReply | null>;
-        text: (options: { title: string; label: string; context?: string }) => Awaitable<string | null>;
+        text: (options: { title: string; label: string; context?: string; text?: string }) => Awaitable<string | null>;
         // The folder of a project on another machine, which cannot be browsed from here.
         remoteFolder: (machine: string, project: string | null, current: string) => Awaitable<string | null>;
         closeAgents: (activity: { children: number; detachable: number; queued: number }) => Awaitable<CloseAgentsChoice>;
@@ -66,6 +69,8 @@ export class HarnessController {
     };
     // How links to the daemons are made; tests replace them.
     openers: Openers = { socket: openSocketLink, command: openCommandLink };
+    // Opens the review of a card's worktree; the window connects it.
+    onReview: (file: string, card: Card, board: Board) => void = () => {};
     private following: string | null = null;        // the machine whose runs are watched
     private unwatch: (() => void) | null = null;
     private adoptMachine = '';
@@ -86,8 +91,9 @@ export class HarnessController {
                 }
                 if (host.boardShown(run.board)) host.board.queueRender();
                 host.refreshHome();
-                if (message) host.toast(message);
+                if (message) host.toast(message, run.worktree && run.status === 'done' ? { label: _('Review'), run: () => this.review(run) } : undefined);
             },
+            notify: message => host.toast(message),
         });
         const settings = host.settings;
         this.hub = new DaemonHub({ machines: () => settings.machines, daemonCommand: () => settings.daemonCommand }, { socket: path => this.openers.socket(path), command: argv => this.openers.command(argv) });
@@ -96,6 +102,8 @@ export class HarnessController {
         this.orchestrator.spawn = (argv, cwd, handlers, meta) => this.machine
             ? daemonSpawner(this.hub.connection(this.machine))(argv, cwd, handlers, meta)
             : spawnHarness(argv, cwd, handlers);
+        this.orchestrator.git = (cwd, args) => this.git(cwd, args);
+        this.orchestrator.isolation = (project, folder) => this.isolationOf(project, folder);
         this.orchestrator.adopter = (runId, upTo, handlers) => adoptRun(this.hub.connection(this.adoptMachine), runId, 1, handlers, {}, upTo);
         this.orchestrator.localFolders = !isRemoteMachine(this.machine);
         this.hub.onState((machine, state, detail) => this.machineState(machine, state, detail));
@@ -105,7 +113,28 @@ export class HarnessController {
     // Where harnesses run: '' = children of this window, 'local' = the daemon on this computer, else an SSH machine.
     get machine(): string { return this.host.settings.harnessMachine; }
 
-    private machineLabel(machine: string): string { return machine === LOCAL_MACHINE ? _('this computer') : machine; }
+    // Git where the project folders are: on this computer (also when the daemon here runs the agents), or through
+    // the daemon on an SSH machine.
+    readonly git: GitRunner = (cwd, args) => isRemoteMachine(this.machine) ? daemonGit(this.hub.connection(this.machine))(cwd, args) : runGit(cwd, args);
+
+    // The project's key in the settings: its name here, "machine:project" on another machine.
+    projectKey(project: string): string {
+        return isRemoteMachine(this.machine) ? machineProjectKey(this.machine, project) : project;
+    }
+
+    isolation(project: string): Isolation {
+        return parseIsolation(this.host.settings.projectOptions[this.projectKey(project)]);
+    }
+
+    // A folder on this computer that is in no Git repository works as it always did, without asking git; one on
+    // another machine is asked, and falls back the same way when git says it is not a repository.
+    private isolationOf(project: string, folder: string): Isolation | null {
+        const isolation = this.isolation(project);
+        if (!isolation.worktrees) return null;
+        return isRemoteMachine(this.machine) || inRepository(folder) ? isolation : null;
+    }
+
+    machineLabel(machine: string): string { return machine === LOCAL_MACHINE ? _('this computer') : machine; }
 
     // The connection to the machine agents run on, for Home; null when they run as children of this window.
     hostStatus(): AgentHostStatus | null {
@@ -170,7 +199,11 @@ export class HarnessController {
         if (l.host && l.host !== GLib.get_host_name()) return null;   // started from another computer
         const card = this.cardText(l.board, l.card);
         if (!card || this.orchestrator.queue.active(l.board, card)) return null;
-        return { runId: run.run, lastSeq: run.last_seq, board: l.board, card, title: l.title || cardMeta(card).title, agent: l.agent, project: l.project ?? '', folder: run.cwd, machine: this.machineLabel(machine) };
+        const slots = Number(l.slots);
+        return {
+            runId: run.run, lastSeq: run.last_seq, board: l.board, card, title: l.title || cardMeta(card).title, agent: l.agent, project: l.project ?? '', folder: run.cwd,
+            lane: l.lane || run.cwd, slots: Number.isInteger(slots) && slots > 0 ? slots : 1, worktree: labelWorktree(l, run.cwd), machine: this.machineLabel(machine),
+        };
     }
 
     // The text of the card on the board that a run was started for, or null if the board or the card is gone.
@@ -225,7 +258,18 @@ export class HarnessController {
         const file = this.host.active().file;
         const run = file ? this.orchestrator.queue.find(file, card.text) : null;
         const active = run && isActive(run.status) ? run : null;
-        return [...this.assignEntries(card, at, !!file && !active), ...(run ? this.runEntries(run, active) : []), ...this.cardEntries(card, at, !active)];
+        const review: MenuEntry[] = file && cardBranch(card.text) && !active
+            ? [{ label: _('Review Changes'), run: () => this.onReview(file, card, this.host.board.getBoard()) }] : [];
+        return [...review, ...this.assignEntries(card, at, !!file && !active), ...(run ? this.runEntries(run, active) : []), ...this.cardEntries(card, at, !active)];
+    }
+
+    // Opens the review of a finished run's card, found on its board by the text it has now.
+    private review(run: Run): void {
+        let text: string;
+        try { text = docFor(this.host, run.board)?.editor.getText() ?? readTextFile(run.board); } catch { return; }
+        const board = parseBoard(text);
+        const at = findCard(board, run.card);
+        if (at) this.onReview(run.board, board.columns[at.column].cards[at.index], board);
     }
 
     // "Work on it with …" for every harness; only on a saved board, for a card that is not done or already running.
@@ -292,7 +336,7 @@ export class HarnessController {
     }
 
     // The folder of a project on the machine agents run on (this computer unless an SSH machine is chosen).
-    private folderOf(project: string): string | undefined {
+    folderOf(project: string): string | undefined {
         const machine = this.machine;
         return isRemoteMachine(machine) ? this.host.settings.machineProjects[machineProjectKey(machine, project)] : this.host.settings.projects[project];
     }
@@ -369,4 +413,13 @@ export class HarnessController {
         this.orchestrator.dispose(this.stopOnClose);
         this.hub.dispose();
     }
+}
+
+// Whether a folder on this computer is inside a Git repository: it or a folder above it has a .git (a folder, or a
+// file in a worktree or submodule).
+function inRepository(folder: string): boolean {
+    for (let dir = folder; dir && dir !== '/'; dir = GLib.path_get_dirname(dir)) {
+        if (GLib.file_test(GLib.build_filenamev([dir, '.git']), GLib.FileTest.EXISTS)) return true;
+    }
+    return false;
 }

@@ -8,6 +8,7 @@ import GLib from 'gi://GLib';
 import { wrapSelection, insertLink, insertBlock, togglePrefix, setHeading } from './editor/editing.js';
 import { showAbout } from './ui/dialogs.js';
 import { PreferencesDialog } from './ui/preferences.js';
+import type { ProjectsAccess } from './ui/projectsettings.js';
 import { CommandPalette } from './ui/palette.js';
 import { showShortcuts } from './ui/shortcuts.js';
 import type Adw from 'gi://Adw?version=1';
@@ -26,6 +27,7 @@ export type Option = 'sidebar' | 'chat' | 'dark' | 'autosave' | Mode;
 export interface ActionHost {
     readonly win: Adw.ApplicationWindow;
     readonly settings: AppSettings;
+    readonly harness: ProjectsAccess;
     readonly findBar: FindBar;
     showSearch(withReplace?: boolean): void;
     readonly editor: MarkdownView;
@@ -117,7 +119,7 @@ export function registerActions(app: Adw.Application, w: ActionHost): void {
     action('save-as', ['<Control><Shift>s'], () => w.saveAs());
     action('export-html', ['<Control><Shift>e'], () => w.exportHtml());
     action('quit', ['<Control>q'], () => w.win.close());
-    action('preferences', ['<Control>comma'], () => new PreferencesDialog(w.settings).present(w.win));
+    action('preferences', ['<Control>comma'], () => new PreferencesDialog(w.settings, w.harness).present(w.win));
     action('command-palette', ['<Control><Shift>p'], () => new CommandPalette(app).present(w.win));
     action('shortcuts', ['<Control>question'], () => showShortcuts(app, w.win));
     action('about', null, () => showAbout(w.win));

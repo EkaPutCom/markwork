@@ -166,6 +166,9 @@ export class FakeDaemon {
     failSpawnWith: string | null = null;
     dropAfterSpawn = false;           // the connection dies right after the daemon created the run, before the reply
     afterWatch: ((c: FakeConn) => void) | null = null;
+    // What `git` answers when a run of it is spawned (Markwork asks git about worktrees on the daemon's machine); by
+    // default the folder is not a repository, so cards work in the project folder as before.
+    git: (args: string[], cwd: string) => { status: number; out?: string; err?: string } = () => ({ status: 128, err: 'fatal: not a git repository (or any of the parent directories): .git' });
     private opens = 0;
 
     get openCount(): number { return this.opens; }
@@ -186,6 +189,12 @@ export class FakeDaemon {
         }
         if (this.dropAfterSpawn) { this.dropAfterSpawn = false; this.drop(); return; }
         c.reply(req.id, { run: req.run, state: 'running', position: 0 });
+        if (req.program === 'git' && !this.runs.get(req.run)!.exit) {
+            const args = req.args.slice(2);   // after -c core.quotePath=false
+            const answer = this.git(args, req.cwd);
+            for (const line of (answer.out ?? '').split('\n').filter((l, i, all) => i < all.length - 1 || l)) this.out(req.run, line);
+            this.finish(req.run, { reason: 'exited', code: answer.status }, answer.err ?? '');
+        }
     }
 
     // A run that exists on the daemon before the test starts, with the records it has so far.

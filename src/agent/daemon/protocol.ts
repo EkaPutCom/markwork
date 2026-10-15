@@ -28,6 +28,7 @@ export interface SpawnSpec {
     args: string[];
     cwd: string;
     lane?: string;
+    lane_slots?: number;  // how many runs of the lane may run at once with this one (default 1)
     env?: Record<string, string>;
     labels?: Record<string, string>;
     initial_input?: string[];

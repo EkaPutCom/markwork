@@ -91,6 +91,10 @@
       <default>{}</default>
       <summary>Project name to folder, for external harnesses that work on kanban cards</summary>
     </key>
+    <key name="project-options" type="a{ss}">
+      <default>{}</default>
+      <summary>How the cards of a project are isolated: the project ("machine:project" on another machine) to a JSON object with worktrees (true/false), slots, base, dir, and afterMerge; a missing project gets a worktree per card</summary>
+    </key>
     <key name="harness-machine" type="s">
       <default>''</default>
       <summary>Where external harnesses run: empty = as children of this window, "local" = the markworkd daemon on this computer, otherwise the name of a machine in machines</summary>

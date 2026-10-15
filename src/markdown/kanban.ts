@@ -354,6 +354,17 @@ export function assignCard(text: string, agent: string | null): string {
     return writeField(text, AGENT_FIELD, agent);
 }
 
+// The Git branch a harness works on for the card, in its own worktree ("[branch:: markwork/checkout]"). Not part of
+// CARD_SCHEMA: it is written by Markwork, not edited as a field, and shows as the card's other unknown fields do.
+export const BRANCH_FIELD: FieldDef = { key: 'branch', type: 'text', multiple: false, options: [] };
+
+export function cardBranch(text: string): string | null {
+    const raw = findSegments(text).find(s => s.key === BRANCH_FIELD.key)?.raw.trim();
+    return raw ? raw.replace(/^"(.*)"$/, '$1') : null;
+}
+
+export const setCardBranch = (text: string, branch: string | null): string => writeField(text, BRANCH_FIELD, branch);
+
 export type DueStatus = 'overdue' | 'today' | 'soon' | 'later';
 
 const DAY = 24 * 60 * 60 * 1000;

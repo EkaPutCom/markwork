@@ -11,6 +11,7 @@ import { LOCAL_MACHINE, machineProjectKey } from '../agent/daemon/machines.js';
 import { uiTemplate } from '../gtkutil.js';
 import { _ } from '../i18n.js';
 import { machineDialog } from './dialogs.js';
+import { ProjectsGroup, type ProjectsAccess } from './projectsettings.js';
 import type { AppSettings } from '../settings.js';
 import template from './preferences.ui?raw';
 
@@ -22,7 +23,7 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
         GObject.registerClass({
             GTypeName: 'MarkworkPreferencesDialog',
             Template: uiTemplate(template),
-            InternalChildren: ['colorScheme', 'focus', 'typewriter', 'home', 'autosave', 'chatModel', 'chatModels', 'chatThinking', 'chatSave', 'forgePoll', 'forgeNotify', 'harnessMachine', 'harnessMachines', 'daemonCommand', 'machinesGroup', 'addMachine'],
+            InternalChildren: ['colorScheme', 'focus', 'typewriter', 'home', 'autosave', 'chatModel', 'chatModels', 'chatThinking', 'chatSave', 'forgePoll', 'forgeNotify', 'harnessMachine', 'harnessMachines', 'daemonCommand', 'machinesGroup', 'addMachine', 'agentsPage'],
         }, this);
     }
 
@@ -42,10 +43,12 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
     declare _daemonCommand: Adw.EntryRow;
     declare _machinesGroup: Adw.PreferencesGroup;
     declare _addMachine: Gtk.Button;
+    declare _agentsPage: Adw.PreferencesPage;
     private machineRows: Adw.ActionRow[] = [];
     private fillingMachines = false;
 
-    constructor(settings: AppSettings) {
+    // projects: the harness controller, for the Projects group of the Agents page (left out in tests that do not need it).
+    constructor(settings: AppSettings, projects?: ProjectsAccess) {
         super();
         const gs = settings.gsettings;
         const flags = Gio.SettingsBindFlags.DEFAULT;
@@ -70,6 +73,7 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
             if (!this.fillingMachines) settings.harnessMachine = this.machineChoices(settings)[this._harnessMachine.selected] ?? '';
         });
         this._addMachine.connect('clicked', () => void this.addMachine(settings));
+        if (projects) this._agentsPage.add(new ProjectsGroup(this, settings, projects).group);
     }
 
     // The values of "Run agents", in the order of its rows: in this window, this computer, then the SSH machines.

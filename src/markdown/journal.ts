@@ -233,3 +233,8 @@ export function commitActivity(hash: string, subject: string): string {
 export function harnessActivity(agent: string, title: string, project: string, ok: boolean): string {
     return `${agent} ${ok ? 'finished' : 'failed'} ${quote(title)} in project ${project}`;
 }
+
+// The user finished reviewing a card's worktree: its work was merged into the base branch, or thrown away.
+export function worktreeActivity(title: string, project: string, outcome: { merged: string } | { discarded: true }): string {
+    return 'merged' in outcome ? `Merged ${quote(title)} into ${outcome.merged} in project ${project}` : `Discarded the work on ${quote(title)} in project ${project}`;
+}

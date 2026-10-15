@@ -4,6 +4,8 @@
 //   npm run test:ui                                 build, then all tests including the mouse on the desktop
 //   gjs -m dist/run-tests.js --no-gui                only the Markdown → HTML conversion tests
 //   gjs -m dist/run-tests.js --only-agents          only the GUI tests of agents on another machine (needs a display)
+//   gjs -m dist/run-tests.js --only-harness         only the GUI tests of kanban cards worked on by a fake pi (needs a display)
+//   gjs -m dist/run-tests.js --only-worktrees        only the harness queue and the worktree per card (real git, no display)
 //   gjs -m dist/run-tests.js --only-daemon           only the markworkd client tests (the live part needs Go to build the daemon)
 //   gjs -m dist/run-tests.js --mouse                 add real mouse clicks (the pointer will move)
 //   gjs -m dist/run-tests.js --screenshot=a.png      save a screenshot of the editor window
@@ -73,6 +75,7 @@ import { conflictTests } from './unit/conflicts.js';
 import { commitMessageTests } from './unit/commitmessage.js';
 import { dialogTests } from './gui/dialogs.js';
 import { harnessTests as harnessModelTests } from './unit/harness.js';
+import { worktreeTests } from './unit/worktree.js';
 import { daemonClientTests } from './unit/daemon.js';
 import { daemonLiveTests, daemonSshTests } from './unit/daemon-live.js';
 import { daemonAppTests } from './unit/daemonapp.js';
@@ -155,6 +158,7 @@ function runUnitTests(): void {
     conflictTests();
     commitMessageTests();
     harnessModelTests();
+    worktreeTests();
     daemonClientTests();
     daemonAppTests();
     daemonLiveTests();
@@ -201,6 +205,12 @@ function runGuiTests(app: Adw.Application): void {
     }
     if (opt('only-journal')) {
         journalTests(c);
+        c.buf.set_modified(false);
+        c.w.win.destroy();
+        return;
+    }
+    if (opt('only-harness')) {
+        harnessTests(c);
         c.buf.set_modified(false);
         c.w.win.destroy();
         return;
@@ -272,6 +282,14 @@ function runGuiTests(app: Adw.Application): void {
 
 // ───────────────────────── Run ─────────────────────────
 
+if (opt('only-worktrees')) {
+    harnessModelTests();
+    worktreeTests();
+    const { passed, failed } = summary();
+    print(`\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET}`);
+    System.exit(failed ? 1 : 0);
+}
+
 if (opt('only-daemon')) {
     daemonClientTests();
     daemonAppTests();
@@ -282,7 +300,7 @@ if (opt('only-daemon')) {
     System.exit(failed ? 1 : 0);
 }
 
-if (!opt('only-agents') && !opt('only-forgejo')) runUnitTests();
+if (!opt('only-agents') && !opt('only-forgejo') && !opt('only-harness')) runUnitTests();
 
 if (opt('with-kanban-mouse') && opt('no-gui')) {
     recordFailure();

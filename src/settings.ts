@@ -119,6 +119,12 @@ export class AppSettings {
     set machines(value: Record<string, string>) {
         this.gsettings.set_value('machines', new GLib.Variant('a{ss}', value));
     }
+    get projectOptions(): Record<string, string> {
+        return this.gsettings.get_value('project-options').deepUnpack() as Record<string, string>;
+    }
+    set projectOptions(value: Record<string, string>) {
+        this.gsettings.set_value('project-options', new GLib.Variant('a{ss}', value));
+    }
     get machineProjects(): Record<string, string> {
         return this.gsettings.get_value('machine-projects').deepUnpack() as Record<string, string>;
     }

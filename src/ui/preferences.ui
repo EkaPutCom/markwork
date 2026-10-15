@@ -114,7 +114,7 @@
       </object>
     </child>
     <child>
-      <object class="AdwPreferencesPage">
+      <object class="AdwPreferencesPage" id="agentsPage">
         <property name="title" translatable="yes">Agents</property>
         <property name="icon-name">system-run-symbolic</property>
         <child>
