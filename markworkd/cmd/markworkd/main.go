@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/EkaPutCom/markwork/markworkd/internal/config"
+	"github.com/EkaPutCom/markwork/markworkd/internal/shim"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
@@ -22,7 +23,9 @@ Usage: markworkd <command> [flags]
 Commands:
   serve            run the daemon in the foreground (for systemd)
   start            start the daemon in the background if it is not running
-  stop [--force]   stop the daemon (refused while runs are active, unless --force)
+  stop [--force|--detach]  stop the daemon (refused while runs are active, unless --force, which
+                   stops them, or --detach, which leaves them running under their shims)
+  shim <dir>       internal: the helper that holds one agent (started by the daemon)
   status           show whether the daemon runs and what it holds
   bridge           connect stdin/stdout to the daemon's socket (use through ssh)
   list             list runs
@@ -55,6 +58,12 @@ func run(args []string) int {
 		return cmdList(rest)
 	case "logs":
 		return cmdLogs(rest)
+	case "shim": // started by the daemon, one per run (docs/design/markworkd.md, section 17)
+		if len(rest) != 1 {
+			fmt.Fprintln(os.Stderr, "markworkd shim <run directory>")
+			return 2
+		}
+		return shim.Main(rest[0])
 	case "version", "--version", "-v":
 		fmt.Println("markworkd", version)
 		return 0

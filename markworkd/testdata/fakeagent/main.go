@@ -8,10 +8,12 @@
 //	sockets       print how many socket descriptors the process has open
 //	crlf          print a line ending in CRLF
 //	sleep MS      sleep
+//	after MS TEXT print TEXT to stdout after MS milliseconds, without waiting
+//	exitafter MS N exit with status N after MS milliseconds, without waiting
 //	anything else is echoed as "echo:<line>"
 //
 // Flags: -ignore-term ignores SIGTERM, -hold starts a background child that keeps stdout open for 30 s,
-// -hello TEXT prints a line at startup, -stderr TEXT prints to stderr at startup.
+// -ignore-eof keeps running when stdin ends, -hello TEXT prints a line at startup, -stderr TEXT prints to stderr at startup.
 package main
 
 import (
@@ -29,6 +31,7 @@ import (
 
 func main() {
 	ignoreTerm := flag.Bool("ignore-term", false, "ignore SIGTERM")
+	ignoreEOF := flag.Bool("ignore-eof", false, "keep running when stdin ends")
 	hold := flag.Bool("hold", false, "start a child that holds stdout open")
 	holdChild := flag.Bool("hold-child", false, "internal")
 	hello := flag.String("hello", "", "print this at startup")
@@ -90,6 +93,15 @@ func main() {
 				fmt.Printf("sockets:%d\n", n)
 			case "crlf":
 				fmt.Print("with-cr\r\n")
+			case "after":
+				ms, text, _ := strings.Cut(arg, " ")
+				n, _ := strconv.Atoi(ms)
+				go func() { time.Sleep(time.Duration(n) * time.Millisecond); fmt.Println(text) }()
+			case "exitafter":
+				ms, code, _ := strings.Cut(arg, " ")
+				n, _ := strconv.Atoi(ms)
+				c, _ := strconv.Atoi(code)
+				go func() { time.Sleep(time.Duration(n) * time.Millisecond); os.Exit(c) }()
 			case "sleep":
 				n, _ := strconv.Atoi(arg)
 				time.Sleep(time.Duration(n) * time.Millisecond)
@@ -98,6 +110,9 @@ func main() {
 			}
 		}
 		if err != nil {
+			if *ignoreEOF {
+				time.Sleep(time.Hour)
+			}
 			fmt.Println("eof")
 			return
 		}

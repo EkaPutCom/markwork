@@ -23,10 +23,12 @@ as it is (the images are named in full, so it needs no registry configuration).
    replayed, and after the 60 seconds the card moves to Review with its note.
 5. Cut the link: `docker pause markwork-vps`, wait, `docker unpause markwork-vps`. Home says *Trying again* while the
    machine does not answer; the run is unaffected.
-6. Crash the daemon under the run: `podman exec markwork-vps pkill -9 -u tester -x markworkd` (plain `pkill` sends SIGTERM,
-   which is an orderly stop and ends the run as *stopped*). The next connection starts a new daemon (`markworkd list`
-   alone does not; `bridge` and `start` do), and the run ends as *lost* with "the daemon restarted while the run was
-   active"; the agent process of the dead daemon is stopped, not left behind.
+6. Crash the daemon under the run: `podman exec markwork-vps pkill -9 -u tester -f 'markworkd serve'` (only the daemon:
+   `-x markworkd` would also match the run's shim). The agent goes on under its shim. The next connection starts a new
+   daemon (`markworkd list` alone does not; `bridge` and `start` do), which takes the run over: `markworkd list` shows the
+   same pid, and the log has everything the agent printed meanwhile. To see the other outcome, kill the shim and the
+   agent too (`pkill -9 -u tester -x markworkd`): the run ends as *lost*, the card says *interrupted*, and *Resume* in
+   its menu continues the pi session.
 
 `contrib/docker/run.sh stop` removes the container; `logs` follows sshd.
 

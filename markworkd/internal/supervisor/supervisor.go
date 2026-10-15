@@ -55,6 +55,23 @@ type run struct {
 	done       chan struct{} // closed when the run is finalized
 }
 
+// shimMode reports whether agents live under shims: then the shim, not this daemon, writes stderr.log.
+func (s *Supervisor) shimMode() bool {
+	_, ok := s.opts.Launcher.(runner.Attacher)
+	return ok
+}
+
+// stderrSize is the size of the run's stderr.log.
+func (s *Supervisor) stderrSize(r *run) int64 {
+	if r.stderr != nil {
+		return r.stderr.Size()
+	}
+	if st, err := os.Stat(s.st.StderrPath(r.id)); err == nil {
+		return st.Size()
+	}
+	return r.meta.StderrBytes
+}
+
 type lane struct {
 	running []string
 	queue   []string
@@ -81,6 +98,7 @@ type Supervisor struct {
 	lanes    map[string]*lane
 	watchers map[*Watcher]struct{}
 	stopping bool
+	detached bool // the daemon is going away but its runs go on under their shims
 }
 
 func New(opts Options) *Supervisor {
@@ -268,9 +286,11 @@ func (s *Supervisor) createLocked(spec model.SpawnSpec) (*run, error) {
 	if err != nil {
 		return cleanup(err)
 	}
-	se, err := store.OpenStderr(s.st.StderrPath(spec.Run), int64(s.cfg.MaxStderrBytes))
-	if err != nil {
-		return cleanup(err)
+	var se *store.Stderr
+	if !s.shimMode() { // with shims the shim owns stderr.log
+		if se, err = store.OpenStderr(s.st.StderrPath(spec.Run), int64(s.cfg.MaxStderrBytes)); err != nil {
+			return cleanup(err)
+		}
 	}
 	r := &run{id: spec.Run, log: lg, stderr: se, done: make(chan struct{})}
 	r.meta = store.Meta{Spec: spec, State: model.StateQueued, CreatedAt: s.nowMS()}
@@ -348,7 +368,11 @@ func (s *Supervisor) startRun(r *run) {
 	for k, v := range spec.Env {
 		env = append(env, k+"="+v)
 	}
-	proc, err := s.opts.Launcher.Start(runner.Params{Program: path, Args: spec.Args, Dir: cwd, Env: env, Stderr: &activityWriter{r: r, s: s}})
+	proc, err := s.opts.Launcher.Start(runner.Params{
+		Program: path, Args: spec.Args, Dir: cwd, Env: env, Stderr: &activityWriter{r: r, s: s},
+		StateDir: s.st.RunDir(r.id), StderrMax: int64(s.cfg.MaxStderrBytes), SpoolMax: s.cfg.ShimSpoolMaxBytes,
+		LingerSec: s.cfg.ShimLingerSec, Activity: func() { r.touch(s.opts.Now()) },
+	})
 	if err != nil {
 		fail(err)
 		return
@@ -392,6 +416,9 @@ type activityWriter struct {
 
 func (w *activityWriter) Write(p []byte) (int, error) {
 	w.r.touch(w.s.opts.Now())
+	if w.r.stderr == nil {
+		return len(p), nil
+	}
 	return w.r.stderr.Write(p)
 }
 
@@ -404,7 +431,28 @@ func (s *Supervisor) pump(r *run, proc runner.Process) {
 	s.mu.Lock()
 	reason, errText := r.stopReason, r.stopError
 	s.mu.Unlock()
+	switch {
+	case reason == "" && ex.Lost: // the shim went away without saying how the agent ended
+		reason, errText = model.ReasonLost, ex.Error
+		if errText == "" {
+			errText = "the shim that held the agent ended unexpectedly"
+		}
+	case reason == "" && ex.Reason != "": // the shim ended the agent itself (its spool was full)
+		reason, errText = model.Reason(ex.Reason), ex.Error
+	}
 	out := model.Exit{Reason: reason, Error: errText}
+	if ex.Lost {
+		if s.Detaching() { // this daemon is going away: the next one takes the run over, it did not end
+			return
+		}
+		s.mu.Lock()
+		meta := r.meta
+		s.mu.Unlock()
+		killOrphan(&meta) // an agent that outlived its shim would run on with nobody to monitor it
+		s.finish(r, out)
+		releaseProc(proc)
+		return
+	}
 	if ex.Signaled {
 		sig := ex.Signal
 		out.Signal = &sig
@@ -419,6 +467,14 @@ func (s *Supervisor) pump(r *run, proc runner.Process) {
 		}
 	}
 	s.finish(r, out)
+	releaseProc(proc)
+}
+
+// releaseProc tells a shim that the end of its run is in the log, so it can go.
+func releaseProc(p runner.Process) {
+	if rel, ok := p.(runner.Releaser); ok {
+		rel.Release()
+	}
 }
 
 // record appends an agent record unless the log reached its size cap, in which case the run is stopped.
@@ -466,9 +522,7 @@ func (s *Supervisor) finish(r *run, exit model.Exit) {
 	r.meta.Exit = &exit
 	r.meta.EndedAt = s.nowMS()
 	r.meta.LastSeq, r.meta.LogBytes = r.log.LastSeq(), r.log.Size()
-	if r.stderr != nil {
-		r.meta.StderrBytes = r.stderr.Size()
-	}
+	r.meta.StderrBytes = s.stderrSize(r)
 	r.proc, r.starting = nil, false
 	if r.idleTimer != nil {
 		r.idleTimer.Stop()

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/EkaPutCom/markwork/markworkd/internal/config"
 	"github.com/EkaPutCom/markwork/markworkd/internal/model"
 	"github.com/EkaPutCom/markwork/markworkd/internal/runner"
+	"github.com/EkaPutCom/markwork/markworkd/internal/shim"
 	"github.com/EkaPutCom/markwork/markworkd/internal/store"
 	"github.com/EkaPutCom/markwork/markworkd/internal/testutil"
 )
@@ -40,10 +42,18 @@ func newEnv(t *testing.T, mod func(*config.Config, *Options)) *env {
 	e.cfg.EnvAllow = []string{"T_*"}
 	e.cfg.DefaultIdleTTLSec = 0
 	e.opts = Options{StopGrace: 300 * time.Millisecond, IdleUnit: 20 * time.Millisecond, IdleGrace: 200 * time.Millisecond, WriteTimeout: time.Second}
+	if os.Getenv("MARKWORKD_TEST_SHIMS") != "" { // run the whole suite with every agent under a shim
+		e.cfg.Shims = true
+		e.opts.Launcher = shim.Launcher{Exe: testutil.Markworkd(t)}
+	}
 	if mod != nil {
 		mod(&e.cfg, &e.opts)
 	}
+	if e.cfg.Shims {
+		e.cfg.ShimLingerSec = 5 // a shim whose daemon never comes back must not outlive the test for long
+	}
 	e.start()
+	t.Cleanup(func() { testutil.KillAgents(e.state) })
 	return e
 }
 
@@ -64,7 +74,12 @@ func (e *env) start() {
 	if err := e.sup.Recover(); err != nil {
 		e.t.Fatal(err)
 	}
-	e.t.Cleanup(func() { e.sup.StopAll(200 * time.Millisecond) })
+	sup := e.sup
+	e.t.Cleanup(func() {
+		if !sup.Detaching() { // a supervisor that "crashed" in a test no longer owns its runs
+			sup.StopAll(200 * time.Millisecond)
+		}
+	})
 }
 
 func (e *env) spec(id string, args ...string) model.SpawnSpec {
@@ -712,10 +727,10 @@ func TestShutdownRefusesWithActiveRunsUnlessForced(t *testing.T) {
 	e.spawn(a)
 	e.spawn(b)
 	e.wait("a", model.StateRunning)
-	if err := e.sup.Shutdown(false); code(err) != model.CodeRunsActive {
+	if err := e.sup.Shutdown(false, false); code(err) != model.CodeRunsActive {
 		t.Fatalf("got %v", err)
 	}
-	if err := e.sup.Shutdown(true); err != nil {
+	if err := e.sup.Shutdown(true, false); err != nil {
 		t.Fatal(err)
 	}
 	sum := e.wait("a", model.StateExited)
@@ -860,7 +875,7 @@ func TestStateIsExitedAsSoonAsTheExitRecordIsVisible(t *testing.T) {
 	if q, r, _ := e.sup.Counts(); q != 0 || r != 0 {
 		t.Fatalf("queued %d running %d after all runs ended", q, r)
 	}
-	if err := e.sup.Shutdown(false); err != nil {
+	if err := e.sup.Shutdown(false, false); err != nil {
 		t.Fatalf("a shutdown right after the runs ended must not be refused: %v", err)
 	}
 }

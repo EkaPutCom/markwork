@@ -27,7 +27,8 @@ export interface HarnessProcess {
 
 export interface SpawnHandlers {
     line(text: string, ts?: number): void;   // one line of the harness's stdout; ts = when it was printed (Unix ms), if known
-    exit(status: number, stderr: string): void;
+    // interrupted = the harness did not end by itself: the daemon that held it went away (its session can be resumed).
+    exit(status: number, stderr: string, interrupted?: boolean): void;
     // Only for a run that is followed again after Markwork was closed: its history is replayed first.
     input?(line: string): void;              // a line that was sent to the harness (an answer, a reply, steering)
     caughtUp?(): void;                       // the history is delivered; what comes next is live
@@ -294,6 +295,13 @@ export class Orchestrator {
         return null;
     }
 
+    // Continue a run that was interrupted (its daemon went away) in the same session, with a fixed prompt: the user
+    // only confirms. Never started by itself, so a daemon that keeps dying cannot cause a restart loop.
+    resumeInterrupted(previous: Run): string | null {
+        if (!previous.result?.interrupted) return 'this run was not interrupted';
+        return this.resume(previous, RESUME_PROMPT);
+    }
+
     // Continue a card's work in its worktree with the user's reply (often their comments on the diff): in the same
     // harness session when this window still has it, otherwise in a new one that is told what the card is and what
     // it did so far. Returns an error message or null.
@@ -427,7 +435,7 @@ export class Orchestrator {
             },
             input: () => { if (live.replaying) live.pending = null; },   // something was sent after it: it was dealt with
             caughtUp: () => { live.replaying = false; this.flushReplay(run, live); },
-            exit: (status, stderr) => this.finish(run, status, stderr),
+            exit: (status, stderr, interrupted) => this.finish(run, status, stderr, interrupted),
         };
     }
 
@@ -507,11 +515,11 @@ export class Orchestrator {
         } else live.proc.closeInput();
     }
 
-    private finish(run: Run, status: number, stderr: string): void {
+    private finish(run: Run, status: number, stderr: string, interrupted = false): void {
         const live = this.live.get(run.id);
         if (!live || run.result) return;
         if (live.askTimer) { GLib.source_remove(live.askTimer); live.askTimer = 0; }
-        const result = live.reader.finish(status, stderr, live.stopped);
+        const result = live.reader.finish(status, stderr, live.stopped, interrupted);
         const next = this.queue.end(run, live.stopped ? 'stopped' : result.ok ? 'done' : 'failed', result);
         this.live.delete(run.id);
         if (this.disposed) return;
@@ -527,6 +535,7 @@ export class Orchestrator {
             if (error) run.trace.add('note', _('Board not updated'), error);
         }
         const message = live.stopped ? `${spec.label} stopped: “${run.title}”`
+            : result.interrupted ? fmt(_('{agent} was interrupted on “{title}”: resume it from the card'), { agent: spec.label, title: run.title })
             : result.ok ? `${spec.label} finished: “${run.title}”` : `${spec.label} failed: ${result.error}`;
         this.host.changed(run, message);
         for (const started of next) this.launch(started);
@@ -544,7 +553,9 @@ export class Orchestrator {
     }
 }
 
-const LABEL_CARD_CHARS = 4000;   // the daemon limits the labels of a run to 8 KB; a longer card is matched by its start
+const RESUME_PROMPT = 'Your work was interrupted before it was finished (the process that was running you was stopped). Check the current state of the files, then continue where you left off.';
+
+const LABEL_CARD_CHARS =4000;   // the daemon limits the labels of a run to 8 KB; a longer card is matched by its start
 
 function spawnMeta(run: Run): SpawnMeta {
     const wt = run.worktree;

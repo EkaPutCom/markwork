@@ -19,6 +19,15 @@ type Params struct {
 	Dir     string
 	Env     []string
 	Stderr  io.Writer // receives the raw stderr bytes; must not block for long
+
+	// For a launcher that keeps the agent under a helper process (the shim): the run's directory, where the helper
+	// keeps its socket and spool and writes stderr.log itself, and the limits it applies. Activity is called
+	// (at most about once a second) while the agent writes to stderr, because the daemon does not see those bytes.
+	StateDir  string
+	StderrMax int64
+	SpoolMax  int64
+	LingerSec int
+	Activity  func()
 }
 
 // Line is one stdout line without its LF.
@@ -29,9 +38,12 @@ type Line struct {
 
 // Exit is how the process ended.
 type Exit struct {
-	Code     int  // valid when !Signaled
-	Signal   int  // valid when Signaled
-	Signaled bool // ended by a signal
+	Code     int    // valid when !Signaled
+	Signal   int    // valid when Signaled
+	Signaled bool   // ended by a signal
+	Lost     bool   // the helper that held the agent went away before telling how it ended
+	Reason   string // a reason the helper itself ended the agent for (log_limit), empty otherwise
+	Error    string
 }
 
 var (
@@ -52,6 +64,17 @@ type Process interface {
 	// Wait blocks until the process exited and stdout and stderr were drained.
 	Wait() Exit
 	PID() int
+}
+
+// Attacher takes over a process that a previous daemon started (through a helper that kept running). fromLines is
+// the number of stdout lines that daemon already delivered: the process replays the rest.
+type Attacher interface {
+	Attach(stateDir string, fromLines uint64) (Process, error)
+}
+
+// Releaser is implemented by a process that wants to hear that its exit was recorded.
+type Releaser interface {
+	Release()
 }
 
 // Launcher starts processes.

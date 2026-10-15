@@ -120,17 +120,17 @@ class DaemonProcess implements HarnessProcess {
     private completed(): void {
         this.caughtUp();
         const exit = this.exit ?? { reason: 'exited' as const };
-        const done = (stderr: string) => this.finish(exitStatus(exit), stderr || exit.error || '');
+        const done = (stderr: string) => this.finish(exitStatus(exit), stderr || exit.error || '', exit.reason === 'lost');
         this.conn.ready().then(c => c.stderr(this.run, STDERR_TAIL)).then(r => done(r.text), () => done(''));
     }
 
-    private finish(status: number, stderr: string): void {
+    private finish(status: number, stderr: string, interrupted = false): void {
         if (this.ended) return;
         this.ended = true;
         this.follower?.stop();
         this.follower = null;
         try {
-            this.handlers.exit(status, stderr);
+            this.handlers.exit(status, stderr, interrupted);
         } finally {
             if (this.ready && this.opts.forgetWhenDone !== false) {
                 this.conn.ready().then(c => c.forget(this.run)).catch(() => { /* the daemon's retention removes it */ });

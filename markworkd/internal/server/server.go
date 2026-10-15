@@ -368,7 +368,7 @@ func (ss *session) dispatch(env protocol.Envelope, frame []byte) bool {
 		if !ok {
 			return true
 		}
-		if err := sup.Shutdown(p.Force); err != nil {
+		if err := sup.Shutdown(p.Force, p.Detach); err != nil {
 			ss.fail(id, err)
 			return true
 		}

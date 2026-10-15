@@ -218,6 +218,7 @@ export interface HarnessResult {
     cost: number;           // USD, the sum of all assistant messages
     tokens: number;
     sessionId: string | null;
+    interrupted?: boolean;  // cut short because the process holding it went away; its session can be resumed
 }
 
 interface PiContent { type?: string; text?: string; thinking?: string }
@@ -366,14 +367,23 @@ export class PiReader {
         this.trace.add('note', 'pi session', `Continue in the project folder with: pi --session ${id}`);
     }
 
+    // Why the run failed by itself, or null when it did not.
+    private failure(exitStatus: number, stderr: string): string | null {
+        if (this.error) return this.error;
+        if (exitStatus !== 0) return lastLine(stderr) || `pi exited with code ${exitStatus}`;
+        if (this.stopReason && this.stopReason !== 'stop') return `pi stopped: ${this.stopReason}`;
+        if (!this.settled && !this.summary) return lastLine(stderr) || 'pi finished without an answer';
+        return null;
+    }
+
     // exitStatus: the process exit code; stderr: the tail of the error output for the message if it fails.
-    finish(exitStatus: number, stderr: string, stopped = false): HarnessResult {
-        let error = this.error;
-        if (stopped) error = 'stopped by the user';
-        else if (!error && exitStatus !== 0) error = lastLine(stderr) || `pi exited with code ${exitStatus}`;
-        else if (!error && this.stopReason && this.stopReason !== 'stop') error = `pi stopped: ${this.stopReason}`;
-        else if (!error && !this.settled && !this.summary) error = lastLine(stderr) || 'pi finished without an answer';
-        const result = { ok: !error, summary: this.summary, error, cost: this.cost, tokens: this.tokens, sessionId: this.sessionId };
+    // interrupted: the process holding pi went away; with a known session the run can be resumed.
+    finish(exitStatus: number, stderr: string, stopped = false, interrupted = false): HarnessResult {
+        const resumable = interrupted && !stopped && this.sessionId !== null;
+        const error = stopped ? 'stopped by the user'
+            : resumable ? 'interrupted: the process running pi was stopped'
+            : this.failure(exitStatus, stderr);
+        const result: HarnessResult = { ok: !error, summary: this.summary, error, cost: this.cost, tokens: this.tokens, sessionId: this.sessionId, ...(resumable ? { interrupted: true } : {}) };
         this.trace.add(error ? 'error' : 'usage', error ? `Failed: ${error}` : 'Finished',
             `${this.tokens} tokens · $${this.cost.toFixed(4)}${this.sessionId ? `\nSession: ${this.sessionId}` : ''}`);
         return result;
@@ -384,6 +394,7 @@ const lastLine = (text: string): string => text.trim().split('\n').filter(l => l
 
 // One card note line from the harness result, so the result stays visible after the app is closed.
 export function resultNote(agent: string, result: HarnessResult, stamp: string): string {
+    if (result.interrupted) return `↳ ${agent} interrupted ${stamp}: ${result.error}; resume it from the card`;
     if (!result.ok) return `↳ ${agent} failed ${stamp}: ${result.error}`;
     // Skip the opener ("Done.") and section headings ("**What changed:**"); take the first content line.
     const plain = result.summary.split('\n').map(l => l.replace(/^\s*(?:[#>*-]+\s*|\d+\.\s+)+/, '').replace(/\*\*/g, '').trim()).filter(Boolean);

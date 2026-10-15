@@ -87,7 +87,8 @@ type ListParams struct {
 }
 
 type ShutdownParams struct {
-	Force bool `json:"force,omitempty"`
+	Force  bool `json:"force,omitempty"`
+	Detach bool `json:"detach,omitempty"` // leave the runs going under their shims (for an upgrade)
 }
 
 // ---------- results ----------
