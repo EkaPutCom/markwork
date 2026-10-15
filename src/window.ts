@@ -357,6 +357,7 @@ export class MainWindow {
         });
 
         registerActions(app, this);
+        this.refreshRecent();
         this.setDark(settings.dark);
         // The system theme changed (GNOME Dark Style) while its setting is "follow system".
         Adw.StyleManager.get_default().connect('notify::dark', () => {
@@ -618,6 +619,7 @@ export class MainWindow {
         this.win.add_breakpoint(narrow);
         const phone = new Adw.Breakpoint({ condition: Adw.BreakpointCondition.parse('max-width: 600sp') });
         phone.add_setter(this.chatSplit, 'collapsed', true);
+        phone.add_setter(this.header, 'compact', true);
         phone.add_setter(this.sidebar.widget, 'collapsed', true);
         this.win.add_breakpoint(phone);
     }
@@ -791,6 +793,7 @@ export class MainWindow {
             if (dark instanceof Gio.SimpleAction) dark.set_state(GLib.Variant.new_boolean(this.dark));
         } else if (key === 'focus' || key === 'typewriter') for (const doc of this.docs) doc.editor.setMode(key, s[key]);
         else if (key === 'autosave') { if (s.autosave) for (const doc of this.docs) this.autosaver.queue(doc); }
+        else if (key === 'recent-files') this.refreshRecent();
         else if (key === 'chat-model') this.chat.settings.setModel(s.chatModel);
         else if (key === 'chat-thinking') this.chat.settings.setThinking(s.chatThinking);
         else if (key === 'chat-save') this.chat.settings.setSaveChats(s.chatSave);
@@ -822,6 +825,11 @@ export class MainWindow {
         this.refreshTitle(this.doc);
     }
 
+    // The Recent list of the New menu and the document's menu: the last files that still exist.
+    private refreshRecent(): void {
+        this.header.setRecent(this.settings.recentFiles.filter(r => fileExists(r.path) && !isDirectory(r.path)).slice(0, 5).map(r => r.path));
+    }
+
     // Tab title for doc, and the window title if doc is active.
     private refreshTitle(doc: Doc): void {
         if (!this.docs.includes(doc)) return;
@@ -834,7 +842,8 @@ export class MainWindow {
             this.win.set_title(`${name} — ${APP_NAME}`);
             return;
         }
-        this.header.setTitle(`${mark}${name}`, doc.file ? GLib.path_get_dirname(doc.file).replace(GLib.get_home_dir(), '~') : APP_NAME, true);
+        const where = doc.file ? GLib.path_get_dirname(doc.file).replace(GLib.get_home_dir(), '~') : APP_NAME;
+        this.header.setTitle(`${mark}${name}`, doc.file && !mark ? `${where} · ${_('Saved')}` : where, true);
         this.win.set_title(`${mark}${name} — ${APP_NAME}`);
     }
 

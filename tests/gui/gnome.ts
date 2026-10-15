@@ -67,20 +67,37 @@ export function gnomeTests(c: GuiContext): void {
         const tips = (type: typeof Gtk.Widget) => all.filter(x => x instanceof type && x.get_visible()).map(x => x.get_tooltip_text());
         ok(all.some(x => x instanceof Gtk.ToggleButton && x.icon_name === 'sidebar-show-symbolic'), 'the sidebar toggle has the sidebar icon');
         const split = all.find((x): x is Adw.SplitButton => x instanceof Adw.SplitButton)!;
-        eq([split.action_name, split.icon_name], ['app.new', 'document-new-symbolic']);
+        eq([split.action_name, descendants(split.child!).some(x => x instanceof Gtk.Image && x.icon_name === 'document-new-symbolic')], ['app.new', true]);
         const items = (model: Gio.MenuModel) => Array.from({ length: model.get_n_items() }, (_x, i) => model.get_item_link(i, 'section')!)
-            .flatMap(s => Array.from({ length: s.get_n_items() }, (_x, i) => s.get_item_attribute_value(i, 'action', null)?.get_string()[0]));
+            .flatMap(s => Array.from({ length: s.get_n_items() }, (_x, i) => s.get_item_attribute_value(i, 'action', null)?.get_string()[0]))
+            .filter(a => a !== 'app.open-recent');
         eq(items(split.menu_model!), ['app.new', 'app.kanban-new', 'app.inbox-new', 'app.table-new', 'app.open', 'app.open-folder']);
         ok(!all.some(x => x instanceof Gtk.Button && x.get_action_name() === 'app.save'), 'no Save button');
         ok(!tips(Gtk.Button).includes('Open Folder (Ctrl+Shift+O)'), 'Open Folder moved into the New menu');
         const title = (w.header as unknown as { _titleButton: Gtk.MenuButton })._titleButton;
         ok(title.get_mapped(), 'a document shows its title as a menu button');
+        const recent = (model: Gio.MenuModel) => Array.from({ length: model.get_n_items() }, (_x, i) => model.get_item_link(i, 'section')!)
+            .flatMap(s => Array.from({ length: s.get_n_items() }, (_x, i) => s.get_item_attribute_value(i, 'label', null)?.get_string()[0]));
+        w.header.setRecent(['/tmp/a.md', '/tmp/b.md']);
+        ok(['a.md', 'b.md'].every(n => recent(split.menu_model!).includes(n) && recent(title.menu_model!).includes(n)), 'the Recent files are in both menus');
+        eq(w.app.lookup_action('open-recent')?.get_parameter_type()?.dup_string(), 's', 'open-recent takes a path');
+        w.header.setRecent([]);
         eq(items(title.menu_model!), ['app.save', 'app.save-as', 'app.autosave', 'app.export-html']);
         const primary = all.find((x): x is Gtk.MenuButton => x instanceof Gtk.MenuButton && x.primary)!;
         const bar = all.find((x): x is Adw.HeaderBar => x instanceof Adw.HeaderBar)!;
         const right = (x: Gtk.Widget) => x.compute_bounds(bar)[1].get_x() + x.get_width();
         const ends = all.filter(x => x instanceof Gtk.MenuButton || x instanceof Gtk.ToggleButton).filter(x => x.get_mapped() && x !== title);
         ok(ends.every(x => right(x) <= right(primary)), 'the primary menu is the last button before the window controls');
+        const quick = all.filter((x): x is Gtk.Button => x instanceof Gtk.Button && ['app.command-palette', 'app.find', 'app.export-html'].includes(x.get_action_name() ?? ''));
+        eq(quick.map(b => b.get_action_name()), ['app.command-palette', 'app.find', 'app.export-html'], 'the quick actions row at the top of the main menu');
+        ok(!items(primary.menu_model!).some(a => a === 'app.find' || a === 'app.command-palette'), 'Find and Commands are only in the quick row');
+        const sep = all.filter((x): x is Gtk.Separator => x instanceof Gtk.Separator && x.orientation === Gtk.Orientation.VERTICAL && x.get_mapped() && !x.get_ancestor(Adw.SplitButton.$gtype));   // the split button has one of its own
+        ok(sep.length > 0 && sep.every(x => right(x) > right(primary)), 'a separator sits between the ☰ menu and the window controls');
+        const newLabel = (w.header as unknown as { _newLabel: Gtk.Label })._newLabel;
+        ok(newLabel.get_mapped() && newLabel.label === 'New', 'the New button has a label');
+        w.header.compact = true; settle();
+        ok(!newLabel.get_mapped(), 'a compact window shows icons only');
+        w.header.compact = false; settle();
         const modes = descendants((w.header as unknown as { _layoutButton: Gtk.MenuButton })._layoutButton.get_popover()!)
             .filter((x): x is Gtk.CheckButton => x instanceof Gtk.CheckButton).map(x => x.action_name);
         eq(modes, ['app.source', 'app.focus', 'app.typewriter'], 'the view modes are in the layout popover');

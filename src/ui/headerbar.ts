@@ -1,11 +1,13 @@
 // Header bar (Adw.HeaderBar, wrapped in Adw.Bin because that class is final): the buttons and the menus, declared in headerbar.ui. Each button/menu
 // only names an action ("app.save"); the action itself is registered in actions.ts.
 //
-//   [sidebar] [New ▾]        [• name ▾ / folder]        [Text ▾] [assistant] [☰]
+//   [sidebar] [New ▾]        [• name ▾ / folder · Saved]        [Text ▾] [assistant] [☰] | window controls
 //
-// New ▾ creates and opens, the title is the document's menu (Save, Save As, Export), the layout button also holds the view modes.
+// New ▾ creates and opens (and lists the recent files), the title is the document's menu (Save, Save As, Export, recent files), the
+// layout button also holds the view modes, and ☰ starts with a row of quick actions. In a compact window the labels are hidden.
 
 import Adw from 'gi://Adw?version=1';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import GObject from 'gi://GObject';
@@ -33,13 +35,20 @@ export class HeaderBar extends Adw.Bin {
         GObject.registerClass({
             GTypeName: 'MarkworkHeaderBar',
             Template: uiTemplate(template),
-            InternalChildren: ['titleStack', 'windowTitle', 'titleButton', 'documentTitle', 'layoutButton', 'layoutIcon', 'layoutLabel'],
+            InternalChildren: ['titleStack', 'windowTitle', 'titleButton', 'documentTitle', 'newLabel', 'primaryButton', 'layoutButton', 'layoutIcon', 'layoutLabel', 'newMenu', 'documentMenu'],
+            Properties: { compact: GObject.ParamSpec.boolean('compact', null, null, GObject.ParamFlags.READWRITE, false) },
         }, this);
     }
     declare _titleStack: Gtk.Stack;
     declare _windowTitle: Adw.WindowTitle;
     declare _titleButton: Gtk.MenuButton;
     declare _documentTitle: Adw.WindowTitle;
+    declare _newLabel: Gtk.Label;
+    declare _primaryButton: Gtk.MenuButton;
+    declare _newMenu: Gio.Menu;
+    declare _documentMenu: Gio.Menu;
+    private readonly recent = new Gio.Menu();
+    private isCompact = false;
     declare _layoutButton: Gtk.MenuButton;
     declare _layoutIcon: Gtk.Image;
     declare _layoutLabel: Gtk.Label;
@@ -47,6 +56,49 @@ export class HeaderBar extends Adw.Bin {
     constructor() {
         super();
         this._layoutButton.set_popover(this.layoutPopover());
+        (this._primaryButton.get_popover() as Gtk.PopoverMenu).add_child(this.quickActions(), 'quick');
+        // The same Recent section in the New menu and in the document's menu.
+        this._newMenu.append_section(_('Recent'), this.recent);
+        this._documentMenu.append_section(_('Recent'), this.recent);
+    }
+
+    // A window narrower than the breakpoint (600sp) shows icons only, so the header bar fits.
+    get compact(): boolean { return this.isCompact; }
+    set compact(value: boolean) {
+        if (value === this.isCompact) return;
+        this.isCompact = value;
+        this._newLabel.set_visible(!value);
+        this._layoutLabel.set_visible(!value);
+        this.notify('compact');
+    }
+
+    // The first row of the ☰ menu: the three actions used most from anywhere, with a label under the icon.
+    private quickActions(): Gtk.Widget {
+        const row = new Gtk.Box({ spacing: 6, homogeneous: true, margin_top: 6, margin_bottom: 6, margin_start: 6, margin_end: 6 });
+        const items: [string, string, string][] = [
+            ['system-run-symbolic', _('Commands'), 'app.command-palette'],
+            ['edit-find-symbolic', _('Find'), 'app.find'],
+            ['document-send-symbolic', _('Export'), 'app.export-html'],
+        ];
+        for (const [icon, label, action] of items) {
+            const content = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4 });
+            content.append(Gtk.Image.new_from_icon_name(icon));
+            content.append(new Gtk.Label({ label }));
+            const button = new Gtk.Button({ child: content, action_name: action, tooltip_text: label });
+            button.connect('clicked', () => this._primaryButton.popdown());
+            row.append(button);
+        }
+        return row;
+    }
+
+    // The recent files (most recent first) listed in the New menu and the document's menu; a click opens one.
+    setRecent(paths: readonly string[]): void {
+        this.recent.remove_all();
+        for (const path of paths) {
+            const item = Gio.MenuItem.new(GLib.path_get_basename(path), null);
+            item.set_action_and_target_value('app.open-recent', GLib.Variant.new_string(path));
+            this.recent.append_item(item);
+        }
     }
 
     // A row for each layout with its icon, checked for the one the document is in (the toggle follows the state of `app.layout`),

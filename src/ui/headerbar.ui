@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <!-- The ☰ primary menu: places, commands, inserting, the board, and the app. What belongs to one document is in documentMenu
+  <!-- The ☰ primary menu: a row of quick actions (Commands, Find, Export, added in headerbar.ts as the "quick" custom item), places, inserting, the board, and the app. What belongs to one document is in documentMenu
        (the title), creating and opening is in newMenu (the New split button), and the view modes are in the layout popover. -->
   <menu id="mainMenu">
+    <section>
+      <item>
+        <attribute name="custom">quick</attribute>
+      </item>
+    </section>
     <section>
       <item>
         <attribute name="label" translatable="yes">Home</attribute>
@@ -15,16 +20,6 @@
       <item>
         <attribute name="label" translatable="yes">Add to Journal…</attribute>
         <attribute name="action">app.journal-capture</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">Command Palette</attribute>
-        <attribute name="action">app.command-palette</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Find</attribute>
-        <attribute name="action">app.find</attribute>
       </item>
     </section>
     <section>
@@ -241,8 +236,14 @@
     </child>
     <child type="start">
       <object class="AdwSplitButton">
-        <property name="icon-name">document-new-symbolic</property>
         <property name="action-name">app.new</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="spacing">6</property>
+            <child><object class="GtkImage"><property name="icon-name">document-new-symbolic</property></object></child>
+            <child><object class="GtkLabel" id="newLabel"><property name="label" translatable="yes">New</property></object></child>
+          </object>
+        </property>
         <property name="menu-model">newMenu</property>
         <property name="tooltip-text" translatable="yes">New Document (Ctrl+N)</property>
         <property name="dropdown-tooltip" translatable="yes">New and Open</property>
@@ -250,8 +251,18 @@
     </child>
     <!-- The end children are packed from the right: the primary menu sits next to the window controls, as the GNOME HIG
          places it, so the layout button is not right beside Close any more. -->
+    <!-- First end child: right next to the window controls, so the app's buttons are set apart from minimize, maximize, and close. -->
     <child type="end">
-      <object class="GtkMenuButton">
+      <object class="GtkSeparator">
+        <property name="orientation">vertical</property>
+        <property name="margin-top">10</property>
+        <property name="margin-bottom">10</property>
+        <property name="margin-start">6</property>
+        <property name="margin-end">2</property>
+      </object>
+    </child>
+    <child type="end">
+      <object class="GtkMenuButton" id="primaryButton">
         <property name="icon-name">open-menu-symbolic</property>
         <property name="tooltip-text" translatable="yes">Main Menu</property>
         <property name="menu-model">mainMenu</property>
@@ -260,7 +271,7 @@
     </child>
     <child type="end">
       <object class="GtkToggleButton">
-        <property name="icon-name">sidebar-show-right-symbolic</property>
+        <property name="icon-name">chat-message-new-symbolic</property>
         <property name="action-name">app.chat</property>
         <property name="tooltip-text" translatable="yes">Assistant (Ctrl+Shift+A)</property>
       </object>
