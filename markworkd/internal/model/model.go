@@ -62,6 +62,7 @@ type SpawnSpec struct {
 	Args         []string          `json:"args"`
 	Cwd          string            `json:"cwd"`
 	Lane         string            `json:"lane,omitempty"`
+	LaneSlots    int               `json:"lane_slots,omitempty"` // how many runs of the lane may run at once with this one; 0 = 1
 	Env          map[string]string `json:"env,omitempty"`
 	Labels       map[string]string `json:"labels,omitempty"`
 	InitialInput []string          `json:"initial_input,omitempty"`
