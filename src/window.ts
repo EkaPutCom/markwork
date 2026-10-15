@@ -69,6 +69,8 @@ import { ContributeController, type ContributeHost } from './window/contribute.j
 import { PullReviewController, type PullHost } from './window/pulls.js';
 import { JournalController, type JournalHost } from './window/journal.js';
 import { HarnessController, type HarnessHost } from './window/harness.js';
+import { HarnessReviewController, type ReviewHost } from './window/harnessreview.js';
+import { HarnessReviewView } from './ui/harnessreview.js';
 import { HomeController, type HomeHost } from './window/home.js';
 import { ViewController, type ViewHost } from './window/views.js';
 import { NoteLinks, type NoteHost } from './window/notes.js';
@@ -88,7 +90,7 @@ function fitToScreen(width: number, height: number): [number, number] {
 const MODE_LABELS: Record<Mode, string> = { source: _('Source'), focus: _('Focus'), typewriter: _('Typewriter') };
 
 // The window as seen by its controllers; each controller is typed with only the part it needs.
-type WindowHost = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost & ViewHost & NoteHost & CollabHost & PullHost & ContributeHost;
+type WindowHost = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost & ViewHost & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost;
 
 export class MainWindow {
     readonly app: Adw.Application;
@@ -118,6 +120,8 @@ export class MainWindow {
     readonly pulls: PullReviewController;
     readonly contribute: ContributeController;
     readonly harness: HarnessController;
+    readonly reviewView: HarnessReviewView;
+    readonly review: HarnessReviewController;
     readonly homePage: HomeController;
     private readonly views: ViewController;
     private readonly notes: NoteLinks;
@@ -152,6 +156,7 @@ export class MainWindow {
         this.fileTree = new FileTree();
         this.collabPanel = new CollabPanel();
         this.pullView = new PullView();
+        this.reviewView = new HarnessReviewView();
         this.searchPanel = new SearchPanel({
             root: () => this.fileTree.root,
             files: () => this.fileTree.root ? this.workspace.files(this.fileTree.root, { freshness: 'current', limit: 5000 }) : [],
@@ -180,6 +185,11 @@ export class MainWindow {
         this.contribute = new ContributeController(this.host, { session: () => this.collab.session(), refresh: () => void this.collab.refresh() });
         this.collab.onSend = () => void this.contribute.start();
         this.harness = new HarnessController(this.host);
+        this.review = new HarnessReviewController(this.host);
+        this.harness.onReview = (file, card, board) => {
+            const error = this.review.open(file, card, board);
+            if (error) this.toast(error);
+        };
         this.homePage = new HomeController(this.host);
         this.views = new ViewController(this.host);
         this.notes = new NoteLinks(this.host);
@@ -308,6 +318,7 @@ export class MainWindow {
         for (const [name, view] of Object.entries(this.layouts)) this.content.add_named(view.widget, name);
         this.content.add_named(this.home.widget, 'home');
         this.content.add_named(this.pullView.widget, 'pull');
+        this.content.add_named(this.reviewView.widget, 'review');
         column.append(this.content);
         column.append(this.statusBar);
         // The Assistant panel on the right, a fixed width; the rest for the editor.
@@ -415,6 +426,7 @@ export class MainWindow {
             get journal() { return w.journal; },
             get collabPanel() { return w.collabPanel; },
             get pullView() { return w.pullView; },
+            get reviewView() { return w.reviewView; },
             showDocument: () => this.views.sync(),
             saveAll: () => this.documents.saveOpenFiles(),
             get workspace() { return w.workspace; },

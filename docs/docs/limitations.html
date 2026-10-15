@@ -51,7 +51,12 @@
   <li>A question is recognized by a <code>?</code> at the end of the answer.</li>
   <li>The <code>[[ ]]</code> notes on a card are copied only at <em>Work on it with pi</em>; <em>Reply to pi</em> does not copy them again. At most 10 notes, 8,000 characters per note and 24,000 in total. On the board, a link to a note that does not exist is shown the same as a normal link.</li>
   <li>Without a permission extension such as <code>permission-gate</code>, all the pi tools run right away.</li>
-  <li>There is no worktree per card, interactive terminal, or diff view of the harness result in Markwork yet.</li>
+  <li>Worktrees need the project folder to be in a Git repository with at least one commit. Each worktree is a full checkout, so dependencies are installed again in it; Markwork does not show how much disk they use.</li>
+  <li>The review compares files line by line without colors per language, and has no side-by-side view; binary files are listed without a diff. The conflict check before a merge looks at what pi committed, not at what it left uncommitted.</li>
+  <li>Comments on the diff go to pi as one reply; they are not kept after the review closes without sending them. A comment on a removed line names the file but no line.</li>
+  <li>Taking only some files makes one commit and is refused for a file that also changed on the base branch since the worktree was made.</li>
+  <li>The summary of what pi said and the commands it ran is only there while the run is known to this window (or found again on markworkd); after a restart without the daemon, the review still shows the changes.</li>
+  <li><em>Open Terminal</em> knows Console, Ptyxis, GNOME Terminal, and <code>xdg-terminal-exec</code>; inside the Flatpak it cannot start a terminal on the computer. There is no interactive terminal inside Markwork.</li>
 </ul>
 
 <h2 id="kanban">The kanban board</h2>

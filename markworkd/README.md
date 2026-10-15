@@ -30,5 +30,10 @@ markworkd logs <run> --follow
 markworkd stop         # refused while runs are active; --force stops them in an orderly way
 ```
 
+Markwork gives each card of a Git project its own worktree, next to the project in `../.markwork-worktrees/`, and runs
+`git` through the daemon to make and read it. So a root should be the folder that holds your projects (as above), not a
+project itself, and `git` must be allowed: it is found in `PATH` when `programs` is empty, and must be listed when it is
+not, e.g. `"programs": {"pi": "/home/you/.local/bin/pi", "git": "/usr/bin/git"}`.
+
 For a VPS, install the binary there and let the client run `ssh -T host markworkd bridge`.
 See section 10 of the design document for the systemd units and the PATH caveat (`agent_env`).

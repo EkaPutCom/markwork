@@ -12,7 +12,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/markworkd ./cmd/ma
 
 FROM docker.io/library/debian:bookworm-slim
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssh-server ca-certificates procps \
+ && apt-get install -y --no-install-recommends openssh-server ca-certificates procps git \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /run/sshd \
  && useradd --create-home --shell /bin/bash tester \

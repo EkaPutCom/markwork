@@ -408,6 +408,133 @@ export function harnessTests(c: GuiContext): void {
         contains(wikiRun()!.trace.text(), 'The pay button is green');
     });
 
+    // A project that is a Git repository: every card gets a worktree on a branch of its own, so two run side by side.
+    const savedOptions = w.settings.projectOptions;
+    const repoParent = GLib.dir_make_tmp('markwork-repo-XXXXXX');
+    const repo = GLib.build_filenamev([repoParent, 'shop']);
+    const git = (...args: string[]) => {
+        const [, out, err, status] = GLib.spawn_sync(repo, ['git', ...args], ['GIT_AUTHOR_NAME=T', 'GIT_AUTHOR_EMAIL=t@example.com', 'GIT_COMMITTER_NAME=T', 'GIT_COMMITTER_EMAIL=t@example.com', `PATH=${GLib.getenv('PATH')}`, `HOME=${GLib.get_home_dir()}`], GLib.SpawnFlags.SEARCH_PATH, null);
+        if (status !== 0) throw new Error(`git ${args.join(' ')}: ${new TextDecoder().decode(err ?? undefined)}`);
+        return new TextDecoder().decode(out ?? undefined).trim();
+    };
+    GLib.mkdir_with_parents(repo, 0o755);
+    git('init', '-q', '-b', 'main');
+    GLib.file_set_contents(`${repo}/checkout.ts`, 'export {};\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'First');
+
+    test('in a Git project each card gets its own worktree, and two cards work at the same time', () => {
+        w.settings.projects = { shop: repo };
+        w.settings.projectOptions = {};
+        mode('slow');
+        open();
+        run('Checkout');
+        run('Tidy up');
+        ok(waitFor(() => read('order').trim().split('\n').filter(l => l.startsWith('start')).length === 2), `order: ${read('order')}`);
+        eq([runOf('Checkout')?.status, runOf('Tidy up')?.status], ['working', 'working'], 'side by side, not queued');
+        const root = `${repoParent}/.markwork-worktrees/shop`;
+        eq(read('cwd').trim().split('\n').sort(), [`${root}/checkout-with-qris`, `${root}/tidy-up-readme`]);
+        ok(titles(1).includes('Checkout with QRIS [agent:: pi] #feature [branch:: markwork/checkout-with-qris]'), `the card notes its branch: ${titles(1).join(' | ')}`);
+        eq(runOf('Checkout')?.worktree?.branch, 'markwork/checkout-with-qris');
+        eq(git('rev-parse', '--abbrev-ref', 'HEAD'), 'main', 'the project folder stays on main');
+        contains(read('prompt'), 'Git worktree made for this card');
+        GLib.file_set_contents(GLib.build_filenamev([dir, 'release']), '');
+        ok(waitFor(() => runOf('Checkout')?.status === 'done' && runOf('Tidy up')?.status === 'done'), `status: ${runOf('Checkout')?.status} ${runOf('Tidy up')?.status}`);
+        eq(titles(2).map(t => t.split(' ')[0]).sort(), ['Checkout', 'Tidy']);
+        eq(w.lastToastAction?.label, 'Review', `the finish toast offers the review: ${w.lastToast}`);
+    });
+
+    const review = w.review;
+    const rv = w.reviewView;
+    const reviewOpen = (text: string) => {
+        menu(text, 'Review Changes').run!();
+        ok(waitFor(() => review.showing !== null), 'the review did not load');
+        return review.showing!;
+    };
+
+    test('the review of a card shows what changed in its worktree, and comments become the reply', () => {
+        const wt = runOf('Checkout')!.worktree!;
+        // What "pi" did: a change it committed, a new file it left uncommitted.
+        GLib.file_set_contents(`${wt.cwd}/checkout.ts`, 'export const qris = true;\n');
+        GLib.spawn_sync(wt.path, ['git', '-c', 'user.name=T', '-c', 'user.email=t@example.com', 'commit', '-q', '-a', '-m', 'Add QRIS'], null, GLib.SpawnFlags.SEARCH_PATH, null);
+        GLib.file_set_contents(`${wt.cwd}/qris.ts`, 'export const payload = "";\n');
+        const open = reviewOpen('Checkout');
+        eq((rv.widget.get_parent() as Gtk.Stack).visible_child_name, 'review', 'the review replaces the board');
+        eq(open.review.files.map(f => `${f.status} ${f.path}`), ['modified checkout.ts', 'added qris.ts']);
+        eq(open.review.commits.map(c => c.subject), ['Add QRIS']);
+        contains(rv.meta.label, 'markwork/checkout-with-qris');
+        eq(rv.merge.label, 'Merge');
+        rv.onInclude(1, false);
+        eq(rv.merge.label, 'Merge 1 of 2', 'a file left out');
+        rv.onInclude(1, true);
+        rv.onComment(2, 'Read the flag from the settings.');   // line 0 is the hunk, 1 the removed line, 2 the added one
+        eq(rv.reply.label, 'Reply with 1 Comment…');
+        let asked: { text?: string } | null = null;
+        w.harness.dialogs = { ...w.harness.dialogs, text: options => { asked = options; return null; } };
+        rv.onReply();
+        pump();
+        contains(asked!.text ?? '', 'checkout.ts:1');
+        contains(asked!.text ?? '', 'Read the flag from the settings.');
+        rv.onTab('summary');
+        pump();
+        contains(descendants(rv.summary).map(x => x instanceof Gtk.Label ? x.label : '').join('\n'), 'QRIS checkout added');
+        rv.onTab('changes');
+        const shot = optVal('shot-harness');
+        if (shot) {
+            for (let i = 0; i < 30; i++) { pump(); GLib.usleep(10000); }
+            widgetPixbuf(w.win)?.savev(`${shot}-review.png`, 'png', [], []);
+            w.setOption('dark', true);
+            for (let i = 0; i < 30; i++) { pump(); GLib.usleep(10000); }
+            widgetPixbuf(w.win)?.savev(`${shot}-review-dark.png`, 'png', [], []);
+            w.setOption('dark', false);
+        }
+        w.harness.dialogs = { ...w.harness.dialogs, text: () => texts.shift() ?? null };
+    });
+
+    test('merging takes the work into the project, removes the worktree, and moves the card to Done', () => {
+        const open = review.showing!;
+        review.dialogs = { ...review.dialogs, merge: async () => true };
+        rv.onFinish('merge');
+        ok(waitFor(() => review.showing === null), `merged: ${w.lastToast}`);
+        contains(w.lastToast, 'Merged');
+        eq(git('log', '-1', '--format=%s'), 'Checkout with QRIS');
+        ok(GLib.file_test(`${repo}/qris.ts`, GLib.FileTest.EXISTS), 'the uncommitted file came along');
+        ok(!GLib.file_test(open.wt.path, GLib.FileTest.EXISTS), 'the worktree is gone');
+        const done = kb.getBoard().columns[3].cards.find(card => card.text.startsWith('Checkout'))!;
+        ok(done, `in Done: ${titles(3).join(' | ')}`);
+        eq([done.text.includes('[branch::'), done.done], [false, true], 'the branch is forgotten and the card checked');
+        contains(done.notes.at(-1) ?? '', '↳ merged into main');
+        ok((rv.widget.get_parent() as Gtk.Stack).visible_child_name !== 'review', 'back to the board');
+    });
+
+    test('discarding deletes the worktree and its branch and leaves the project folder alone', () => {
+        const head = git('rev-parse', 'HEAD');
+        const open = reviewOpen('Tidy up');
+        eq(open.review.files, [], 'the fake pi changed nothing');
+        contains(descendants(rv.widget).map(x => x instanceof Gtk.Label ? x.label : '').join('\n'), 'changed nothing');
+        review.dialogs = { ...review.dialogs, discard: async () => true };
+        rv.onFinish('discard');
+        ok(waitFor(() => review.showing === null), `discarded: ${w.lastToast}`);
+        eq(git('branch', '--list', 'markwork/tidy-up-readme'), '');
+        eq(git('rev-parse', 'HEAD'), head);
+        const card = kb.getBoard().columns[2].cards.find(c => c.text.startsWith('Tidy up'))!;
+        eq(card.text.includes('[branch::'), false);
+        contains(card.notes.at(-1) ?? '', 'discarded');
+        ok(!findEntry(kb.cardMenu(at('Tidy up').column, at('Tidy up').index), 'Review Changes'), 'nothing left to review');
+    });
+
+    test('with worktrees off in the project settings, cards work in the project folder one at a time', () => {
+        w.settings.projectOptions = { shop: '{"worktrees":false}' };
+        mode('ok');
+        open();
+        run('Checkout');
+        ok(waitFor(() => runOf('Checkout')?.status === 'done'), `status: ${runOf('Checkout')?.status}`);
+        eq(read('cwd').trim(), repo);
+        eq(runOf('Checkout')?.worktree, null);
+        ok(!titles(2)[0]?.includes('[branch::'), 'no branch on the card');
+    });
+
+    w.settings.projectOptions = savedOptions;
     w.settings.projects = savedProjects;
     w.harness.orchestrator.program = savedProgram;
     w.harness.dialogs = savedDialogs;

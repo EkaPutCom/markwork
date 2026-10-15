@@ -26,6 +26,8 @@ src/ui/logviewer.ts
 src/ui/messagewriter.ts
 src/ui/outline.ts
 src/ui/proposalviewer.ts
+src/ui/harnessreview.ts
+src/ui/projectsettings.ts
 src/ui/pullview.ts
 src/ui/sendchanges.ts
 src/ui/serverdialog.ts
@@ -39,6 +41,7 @@ src/window/autosave.ts
 src/window/collab.ts
 src/window/contribute.ts
 src/window/harness.ts
+src/window/harnessreview.ts
 src/window/home.ts
 src/window/journal.ts
 src/window/pulls.ts

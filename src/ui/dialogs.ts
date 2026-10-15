@@ -496,7 +496,7 @@ export async function harnessAskDialog(parent: Gtk.Window | null, ask: HarnessAs
 }
 
 // Free text for the harness (steering while working, a reply after finishing). context = the harness's last answer.
-export async function harnessTextDialog(parent: Gtk.Window | null, options: { title: string; label: string; context?: string }): Promise<string | null> {
+export async function harnessTextDialog(parent: Gtk.Window | null, options: { title: string; label: string; context?: string; text?: string }): Promise<string | null> {
     const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8, vexpand: true });
     if (options.context) {
         box.append(new Gtk.Label({ label: _('Last answer'), xalign: 0 }));
@@ -504,6 +504,7 @@ export async function harnessTextDialog(parent: Gtk.Window | null, options: { ti
     }
     box.append(new Gtk.Label({ label: options.label, xalign: 0 }));
     const area = textArea();
+    if (options.text) area.view.buffer.set_text(options.text, -1);
     box.append(area.widget);
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => { area.view.grab_focus(); return GLib.SOURCE_REMOVE; });
     const accepted = await modalWindow(parent, options.title, 520, box, [_('Cancel'), _('Send')], 0, 1, i => i === 0 || !!area.text().trim()) === 1;

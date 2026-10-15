@@ -273,6 +273,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
       <a class="card" href="docs/history.html#conversations"><div class="ico">❐</div><h3>Conversation history per folder</h3><p>Conversations are saved as Markdown in <code>.markwork/chats</code>. Open them again and continue at any time.</p><span class="more">History →</span></a>
       <a class="card" href="docs/history.html#agent-log"><div class="ico">▤</div><h3>The agent log</h3><p>A live timeline of every model round, the reasoning, the tool calls with their arguments and results, the tokens, and the duration.</p><span class="more">The agent log →</span></a>
       <a class="card" href="docs/orchestrator.html"><div class="ico">π</div><h3>The pi harness orchestrator</h3><p>A card marked <code>@pi</code> is worked on by the pi harness in another project repo. Answer its questions and permission requests straight from the card.</p><span class="more">The orchestrator →</span></a>
+      <a class="card" href="docs/orchestrator.html#worktrees"><div class="ico">⑂</div><h3>A worktree per card, reviewed</h3><p>Each card works on its own branch, so several run at once. Read the diff, comment on lines for pi, then merge or discard; nothing reaches the project before you do.</p><span class="more">Worktrees and review →</span></a>
     </div>
   </div>
 </section>
@@ -374,7 +375,8 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
         <ul>
           <li>The card moves to In Progress on start and to Review when done, with a summary of the result</li>
           <li>Questions and permission requests from pi are answered from the card: <em>Answer pi…</em>, <em>Steer</em>, or <em>Reply</em></li>
-          <li>One project is worked on by one harness; other cards queue</li>
+          <li>In a Git repo every card gets its own worktree, so cards of one project work side by side</li>
+          <li>Review what pi changed in Markwork: the diff, comments sent back to pi, then merge or discard</li>
           <li>The pi log holds the tools, the reasoning, the tokens, the cost, and the session id</li>
         </ul>
         <p style="margin-top:18px"><a href="docs/orchestrator.html">Read the orchestrator guide →</a></p>

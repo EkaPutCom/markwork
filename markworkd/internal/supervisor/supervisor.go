@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -55,8 +56,17 @@ type run struct {
 }
 
 type lane struct {
-	running string
+	running []string
 	queue   []string
+}
+
+// slots is how many runs of its lane a run may run beside: each run says so itself, so a client that raises or
+// lowers the limit affects the runs it spawns from then on.
+func (r *run) slots() int {
+	if n := r.meta.Spec.LaneSlots; n > 0 {
+		return n
+	}
+	return 1
 }
 
 // Supervisor owns all runs of one daemon.
@@ -123,6 +133,7 @@ const (
 	maxInitialLines = 64
 	maxArgs         = 256
 	maxLaneName     = 128
+	maxLaneSlots    = 64
 )
 
 func (s *Supervisor) validate(spec *model.SpawnSpec) error {
@@ -143,6 +154,9 @@ func (s *Supervisor) validate(spec *model.SpawnSpec) error {
 	}
 	if len(spec.Lane) > maxLaneName {
 		return model.Errf(model.CodeLimitExceeded, "lane name is longer than %d bytes", maxLaneName)
+	}
+	if spec.LaneSlots < 0 || spec.LaneSlots > maxLaneSlots {
+		return model.Errf(model.CodeBadRequest, "lane_slots must be between 0 and %d", maxLaneSlots)
 	}
 	if spec.IdleTTLSec != nil && *spec.IdleTTLSec < 0 {
 		return model.Errf(model.CodeBadRequest, "idle_ttl_sec must not be negative")
@@ -268,7 +282,8 @@ func (s *Supervisor) createLocked(spec model.SpawnSpec) (*run, error) {
 	return r, nil
 }
 
-// admitLocked grants the run's lane or queues it. It reports whether the run may start now.
+// admitLocked grants the run a slot of its lane or queues it. It reports whether the run may start now. A run that
+// comes after others in the queue waits behind them even if a slot is free for it, so the order stays FIFO.
 func (s *Supervisor) admitLocked(r *run) bool {
 	name := r.meta.Spec.Lane
 	if name == "" {
@@ -280,8 +295,8 @@ func (s *Supervisor) admitLocked(r *run) bool {
 		l = &lane{}
 		s.lanes[name] = l
 	}
-	if l.running == "" {
-		l.running = r.id
+	if len(l.queue) == 0 && len(l.running) < r.slots() {
+		l.running = append(l.running, r.id)
 		r.starting = true
 		return true
 	}
@@ -472,38 +487,39 @@ func (s *Supervisor) finish(r *run, exit model.Exit) {
 		_ = r.stderr.Close()
 	}
 	close(r.done)
-	if next != nil {
-		go s.startRun(next)
+	for _, nr := range next {
+		go s.startRun(nr)
 	}
 }
 
-// releaseLaneLocked frees the run's lane (or removes it from the queue) and returns the next run to start.
-func (s *Supervisor) releaseLaneLocked(r *run) *run {
+// releaseLaneLocked frees the run's slot of its lane (or removes it from the queue) and returns the runs to start.
+func (s *Supervisor) releaseLaneLocked(r *run) []*run {
 	name := r.meta.Spec.Lane
 	l := s.lanes[name]
 	if name == "" || l == nil {
 		return nil
 	}
-	var next *run
-	if l.running == r.id {
-		l.running = ""
+	var next []*run
+	if i := slices.Index(l.running, r.id); i >= 0 {
+		l.running = slices.Delete(l.running, i, i+1)
 		for !s.stopping && len(l.queue) > 0 {
-			id := l.queue[0]
+			nr := s.runs[l.queue[0]]
+			if nr == nil || nr.meta.State != model.StateQueued {
+				l.queue = l.queue[1:]
+				continue
+			}
+			if len(l.running) >= nr.slots() {
+				break
+			}
 			l.queue = l.queue[1:]
-			if nr := s.runs[id]; nr != nil && nr.meta.State == model.StateQueued {
-				l.running, nr.starting, next = id, true, nr
-				break
-			}
+			l.running = append(l.running, nr.id)
+			nr.starting = true
+			next = append(next, nr)
 		}
-	} else {
-		for i, id := range l.queue {
-			if id == r.id {
-				l.queue = append(l.queue[:i:i], l.queue[i+1:]...)
-				break
-			}
-		}
+	} else if i := slices.Index(l.queue, r.id); i >= 0 {
+		l.queue = slices.Delete(l.queue, i, i+1)
 	}
-	if l.running == "" && len(l.queue) == 0 {
+	if len(l.running) == 0 && len(l.queue) == 0 {
 		delete(s.lanes, name)
 	}
 	return next
@@ -591,7 +607,7 @@ func (s *Supervisor) stopRun(r *run, reason model.Reason, errText string, grace 
 		next := s.releaseLaneLocked(r)
 		s.mu.Unlock()
 		s.finish(r, model.Exit{Reason: model.ReasonCanceled})
-		_ = next // a queued run holds no lane, so there is nothing to promote
+		_ = next // a queued run holds no slot, so there is nothing to promote
 		return nil
 	}
 	if r.stopReason == "" {

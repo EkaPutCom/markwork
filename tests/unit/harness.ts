@@ -248,10 +248,10 @@ export function harnessTests(): void {
         const c = q.add({ ...base, card: 'C', folder: '/b' });
         const d = q.add({ ...base, card: 'D', folder: '/a' });
         eq([a.status, b.status, c.status, d.status], ['working', 'queued', 'working', 'queued']);
-        eq(q.end(d, 'stopped'), null, 'cancelling from the queue does not give a turn');
-        eq(q.end(a, 'done'), b);
+        eq(q.end(d, 'stopped'), [], 'cancelling from the queue does not give a turn');
+        eq(q.end(a, 'done'), [b]);
         eq(b.status, 'working');
-        eq(q.end(b, 'failed'), null);
+        eq(q.end(b, 'failed'), []);
         eq(q.active('/p.md', 'B'), null);
         eq(q.find('/p.md', 'B')?.status, 'failed');
         const again = q.add({ ...base, card: 'B', folder: '/a' });
@@ -263,7 +263,7 @@ export function harnessTests(): void {
         q.wait(again, { kind: 'confirm', id: 'y', title: 'Allow?', message: '', options: [], prefill: '', timeout: null });
         eq(q.add({ ...base, card: 'E', folder: '/a' }).status, 'queued', 'a run waiting for an answer still holds the folder');
         eq(q.active('/p.md', 'B'), again);
-        eq(q.end(again, 'done')?.card, 'E', 'finishing the wait → the next turn');
+        eq(q.end(again, 'done').map(r => r.card), ['E'], 'finishing the wait → the next turn');
         eq(again.ask, null);
     });
 }

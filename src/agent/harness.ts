@@ -12,6 +12,7 @@
 import { cardMeta, type Board, type Card, type Position } from '../markdown/kanban.js';
 import { AgentTrace, prettyArguments } from './trace.js';
 import { wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
+import type { Worktree } from './worktree.js';
 
 export interface HarnessSpec {
     name: string;          // the assignment name on the card, without "@"
@@ -159,7 +160,7 @@ export function linkedNotesSection(notes: LinkedNote[]): string[] {
     return lines;
 }
 
-export function buildPrompt(card: Card, project: string, board: string, notes: LinkedNote[] = []): string {
+export function buildPrompt(card: Card, project: string, board: string, notes: LinkedNote[] = [], worktree: Worktree | null = null): string {
     const meta = cardMeta(card.text);
     const tags = meta.tags.filter(t => !PROJECT_TAG.test(t));
     const lines = [
@@ -170,9 +171,16 @@ export function buildPrompt(card: Card, project: string, board: string, notes: L
     if (card.notes.some(n => n.trim())) lines.push('', ...card.notes);
     if (tags.length || meta.due) lines.push('', [tags.length ? `Tags: ${tags.map(t => `#${t}`).join(' ')}` : '', meta.due ? `Due: ${meta.due}` : ''].filter(Boolean).join(' · '));
     lines.push(...linkedNotesSection(notes));
-    lines.push('', 'Do this task in this repository only. Do not make commits or pushes unless the card notes ask for it; '
-        + 'the user will review your changes. At the end, write a short summary: what was changed, which files, and what '
-        + 'is unfinished or needs checking.');
+    if (worktree) {
+        lines.push('', `You work in a Git worktree made for this card, on the branch ${worktree.branch} (from ${worktree.base}). `
+            + 'Stay on this branch and in this folder; do not switch branches, push, or touch other worktrees. You may commit '
+            + 'on this branch. The user reviews the changes of the branch and merges them; what you leave uncommitted is '
+            + 'reviewed too. At the end, write a short summary: what was changed, which files, and what is unfinished or needs checking.');
+    } else {
+        lines.push('', 'Do this task in this repository only. Do not make commits or pushes unless the card notes ask for it; '
+            + 'the user will review your changes. At the end, write a short summary: what was changed, which files, and what '
+            + 'is unfinished or needs checking.');
+    }
     return lines.join('\n');
 }
 
@@ -181,9 +189,10 @@ export function buildPrompt(card: Card, project: string, board: string, notes: L
 // The destination lists when the harness starts and finishes, recognized by their titles.
 const DOING = /^(doing|in progress|wip)$/i;
 const REVIEW = /^(review|in review)$/i;
+const DONE = /^(done|finished|completed?)$/i;
 
-export function stageColumn(board: Board, stage: 'doing' | 'review'): number {
-    const re = stage === 'doing' ? DOING : REVIEW;
+export function stageColumn(board: Board, stage: 'doing' | 'review' | 'done'): number {
+    const re = stage === 'doing' ? DOING : stage === 'review' ? REVIEW : DONE;
     return board.columns.findIndex(c => re.test(c.title.trim()));
 }
 
@@ -387,7 +396,7 @@ export function resultNote(agent: string, result: HarnessResult, stamp: string):
 
 export type RunStatus = 'queued' | 'working' | 'waiting' | 'done' | 'failed' | 'stopped';
 
-// Runs that still hold their project folder (also while waiting for the user's answer, because the process is still alive).
+// Runs that still hold a place in their lane (also while waiting for the user's answer, because the process is still alive).
 export const isActive = (status: RunStatus): boolean => status === 'queued' || status === 'working' || status === 'waiting';
 
 export interface Run {
@@ -397,7 +406,12 @@ export interface Run {
     title: string;
     agent: string;
     project: string;        // project name
-    folder: string;         // project folder; one harness per folder at a time
+    folder: string;         // where the harness runs: the project folder, or the card's worktree
+    // The runs of one lane (the project folder) take turns: at most `slots` of them work at the same time. 1 when cards
+    // work in the project folder itself; the project's "cards at the same time" when each card has its own worktree.
+    lane: string;
+    slots: number;
+    worktree: Worktree | null;
     prompt: string;
     session: string | null; // the harness session being continued (a reply after finishing), null = new session
     // Changed only through RunQueue (wait, resume, end), so the status, the question, and the result stay consistent.
@@ -409,22 +423,30 @@ export interface Run {
 
 type MutableRun = { -readonly [K in keyof Run]: Run[K] };
 
-// A project folder is worked on by only one harness at a time so they do not overwrite each other; other cards wait.
+// What a new run is made of. The lane defaults to the folder with one slot: the harness works in the folder itself.
+export type NewRun = Omit<Run, 'id' | 'status' | 'ask' | 'trace' | 'result' | 'lane' | 'slots' | 'worktree'> & Partial<Pick<Run, 'lane' | 'slots' | 'worktree'>>;
+
+const holding = (status: RunStatus): boolean => status === 'working' || status === 'waiting';
+
+// The runs of a lane take turns so they do not overwrite each other: a folder is worked on by one harness at a time,
+// and cards with their own worktrees by as many as the project allows. The others wait in order.
 export class RunQueue {
     readonly runs: Run[] = [];
     private seq = 0;
 
-    add(run: Omit<Run, 'id' | 'status' | 'ask' | 'trace' | 'result'>, trace = new AgentTrace()): Run {
-        const busy = this.runs.some(r => r.folder === run.folder && isActive(r.status));
-        const added: Run = { ...run, id: ++this.seq, status: busy ? 'queued' : 'working', ask: null, trace, result: null };
+    add(run: NewRun, trace = new AgentTrace()): Run {
+        const filled = { lane: run.folder, slots: 1, worktree: null, ...run };
+        const lane = this.runs.filter(r => r.lane === filled.lane);
+        const free = !lane.some(r => r.status === 'queued') && lane.filter(r => holding(r.status)).length < filled.slots;
+        const added: Run = { ...filled, id: ++this.seq, status: free ? 'working' : 'queued', ask: null, trace, result: null };
         this.runs.push(added);
         return added;
     }
 
     // A run whose process already exists (it was found again on the daemon after Markwork restarted): it is working
-    // whatever else is going on in its folder; the daemon, not this queue, ordered it.
-    addRunning(run: Omit<Run, 'id' | 'status' | 'ask' | 'trace' | 'result'>, trace = new AgentTrace()): Run {
-        const added: Run = { ...run, id: ++this.seq, status: 'working', ask: null, trace, result: null };
+    // whatever else is going on in its lane; the daemon, not this queue, ordered it.
+    addRunning(run: NewRun, trace = new AgentTrace()): Run {
+        const added: Run = { lane: run.folder, slots: 1, worktree: null, ...run, id: ++this.seq, status: 'working', ask: null, trace, result: null };
         this.runs.push(added);
         return added;
     }
@@ -454,18 +476,24 @@ export class RunQueue {
         r.ask = null;
     }
 
-    // Mark finished (with the harness result, if it ran), then return the next run in the same folder (already
-    // marked working), if any.
-    end(run: Run, status: 'done' | 'failed' | 'stopped', result: HarnessResult | null = run.result): Run | null {
+    // Mark finished (with the harness result, if it ran), then return the runs of the same lane that may start now
+    // (already marked working): the first in line, as long as there is a slot for it.
+    end(run: Run, status: 'done' | 'failed' | 'stopped', result: HarnessResult | null = run.result): Run[] {
         const r = run as MutableRun;
-        const wasWorking = run.status === 'working' || run.status === 'waiting';
+        const wasWorking = holding(run.status);
         r.status = status;
         r.ask = null;
         r.result = result;
-        if (!wasWorking) return null;   // cancelling from the queue does not give a turn: that folder is still being worked on by another
-        const next = this.runs.find(other => other.folder === run.folder && other.status === 'queued');
-        if (next) (next as MutableRun).status = 'working';
-        return next ?? null;
+        if (!wasWorking) return [];   // cancelling from the queue does not give a turn: no slot was freed
+        const started: Run[] = [];
+        let working = this.runs.filter(other => other.lane === run.lane && holding(other.status)).length;
+        for (const next of this.runs.filter(other => other.lane === run.lane && other.status === 'queued')) {
+            if (working >= next.slots) break;
+            (next as MutableRun).status = 'working';
+            started.push(next);
+            working++;
+        }
+        return started;
     }
 
     get running(): Run[] {

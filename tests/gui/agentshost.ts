@@ -113,10 +113,12 @@ export function agentsHostTests(c: GuiContext): void {
         reset();
         const { win } = open('plan', { harnessMachine: 'vps' });
         ok(waitFor(() => win.harness.hostStatus()?.state === 'ready'), 'connected');
-        const before = daemon.requestsOf('spawn').length;
+        const pis = () => daemon.requestsOf('spawn').filter(r => r.program === 'pi');
+        const before = pis().length;
         findEntry(win.board.cardMenu(0, 0), 'Work on it with pi')!.run!();
-        ok(waitFor(() => daemon.requestsOf('spawn').length === before + 1), 'spawn was sent');
-        const req = daemon.requestsOf('spawn')[before];
+        ok(waitFor(() => pis().length === before + 1), 'spawn was sent');
+        ok(daemon.requestsOf('spawn').some(r => r.program === 'git' && r.cwd === '/srv/shop'), 'git on the machine was asked whether the folder is a repository');
+        const req = pis()[before];
         eq([req.program, req.cwd, req.lane, req.labels.project, req.labels.board], ['pi', '/srv/shop', 'shop', 'shop', board]);
         eq(req.args.slice(0, 2), ['--mode', 'rpc']);
         const id = req.run as string;
@@ -130,6 +132,31 @@ export function agentsHostTests(c: GuiContext): void {
         daemon.finish(id, { reason: 'exited', code: 0 });
         ok(waitFor(() => runOf(win)?.status === 'done'), `status: ${runOf(win)?.status}`);
         eq(cardAt(win, 2), ['Checkout [agent:: pi] #feature']);
+        close(win);
+    });
+
+    test('on a machine whose project is a Git repository, the card gets a worktree there and pi runs in it', () => {
+        reset();
+        const gitCalls: string[] = [];
+        daemon.git = (args, cwd) => {
+            gitCalls.push(`${cwd}: ${args.join(' ')}`);
+            const line = args.join(' ');
+            if (line.startsWith('rev-parse --show-toplevel')) return { status: 0, out: '/srv/shop\n\nmain\n' };
+            if (line === 'rev-parse --verify --quiet refs/heads/main^{commit}') return { status: 0, out: 'abc123\n' };
+            if (line.startsWith('rev-parse --verify --quiet refs/heads/markwork/')) return { status: 1 };
+            if (line === 'worktree list --porcelain') return { status: 0, out: 'worktree /srv/shop\nHEAD abc123\nbranch refs/heads/main\n' };
+            return { status: 0 };   // worktree add, config
+        };
+        const { win } = open('plan', { harnessMachine: 'vps', projectOptions: { 'vps:shop': '{"slots":3}' } });
+        ok(waitFor(() => win.harness.hostStatus()?.state === 'ready'), 'connected');
+        findEntry(win.board.cardMenu(0, 0), 'Work on it with pi')!.run!();
+        ok(waitFor(() => daemon.requestsOf('spawn').some(r => r.program === 'pi')), `pi was started; git: ${gitCalls.join(' | ')}`);
+        ok(gitCalls.includes('/srv/shop: worktree add -b markwork/checkout /srv/.markwork-worktrees/shop/checkout abc123'), gitCalls.join(' | '));
+        const req = daemon.requestsOf('spawn').find(r => r.program === 'pi')!;
+        eq([req.cwd, req.lane, req.lane_slots, req.labels.branch, req.labels.worktree, req.labels.base], ['/srv/.markwork-worktrees/shop/checkout', 'shop', 3, 'markwork/checkout', '/srv/.markwork-worktrees/shop/checkout', 'main']);
+        eq(cardAt(win, 1), ['Checkout [agent:: pi] #feature [branch:: markwork/checkout]'], 'the card notes its branch');
+        ok(daemon.requestsOf('spawn').filter(r => r.program === 'git').every(r => !r.lane), 'git runs are in no lane');
+        daemon.git = () => ({ status: 128, err: 'fatal: not a git repository' });
         close(win);
     });
 
@@ -149,7 +176,7 @@ export function agentsHostTests(c: GuiContext): void {
         eq(settings.machineProjects, {});
         answer = '/srv/shop';
         findEntry(win.board.cardMenu(0, 0), 'Work on it with pi')!.run!();
-        ok(waitFor(() => daemon.requestsOf('spawn').length === spawns + 1), 'started');
+        ok(waitFor(() => daemon.requestsOf('spawn').some((r, i) => i >= spawns && r.program === 'pi')), 'started');
         eq(settings.machineProjects, { 'vps:shop': '/srv/shop' });
         eq(settings.projects, {}, 'the local mapping is untouched');
         close(win);
@@ -267,6 +294,53 @@ export function agentsHostTests(c: GuiContext): void {
         eq(settings.machineProjects, { 'vps:shop': '/srv/shop' }, 'its project folders are forgotten with it');
         eq(items(), ['In this window', 'This computer (markworkd)', 'vps']);
         (dialog as Adw.Dialog).force_close();
+        settle(20);
+        close(win);
+    });
+
+    test('Preferences: a project\'s page sets how its cards are isolated and lists its card worktrees', () => {
+        reset();
+        const parent = GLib.dir_make_tmp('markwork-prefs-XXXXXX');
+        const repo = `${parent}/shop`;
+        GLib.mkdir_with_parents(repo, 0o755);
+        const git = (...args: string[]) => GLib.spawn_sync(repo, ['git', '-c', 'user.name=T', '-c', 'user.email=t@example.com', ...args], null, GLib.SpawnFlags.SEARCH_PATH, null);
+        git('init', '-q', '-b', 'main');
+        GLib.file_set_contents(`${repo}/a.txt`, 'a\n');
+        git('add', '-A');
+        git('commit', '-q', '-m', 'First');
+        git('worktree', 'add', '-q', '-b', 'markwork/fix-login', `${parent}/.markwork-worktrees/shop/fix-login`);
+        const { win, settings } = open('plan', { harnessMachine: '', projects: { shop: repo } });
+        win.win.present();
+        c.app.activate_action('preferences', null);
+        settle();
+        const dialog = win.win.get_visible_dialog() as Adw.PreferencesDialog;
+        const find = <T extends Gtk.Widget>(type: new (...a: never[]) => T, title: string) => descendants(dialog).find((x): x is T => x instanceof type && (x as unknown as { title: string }).title === title);
+        const agents = find(Adw.PreferencesPage, 'Agents')!;
+        dialog.set_visible_page(agents);
+        const row = find(Adw.ActionRow, 'shop')!;
+        contains(row.subtitle ?? '', 'a worktree per card');
+        row.emit('activated');
+        for (let i = 0; i < 100 && !find(Adw.ActionRow, 'markwork/fix-login'); i++) settle(5);
+        ok(find(Adw.ActionRow, 'markwork/fix-login'), 'the card worktree is listed');
+        const spin = find(Adw.SpinRow, 'Cards at the same time')!;
+        spin.value = 3;
+        settle(5);
+        eq(JSON.parse(settings.projectOptions.shop).slots, 3);
+        const shot = optVal('shot-agents');
+        if (shot) {
+            settle(40);
+            widgetPixbuf(dialog)?.savev(`${shot}-project.png`, 'png', [], []);
+            win.setDark(true);
+            settle(40);
+            widgetPixbuf(dialog)?.savev(`${shot}-project-dark.png`, 'png', [], []);
+            win.setDark(false);
+            settle(20);
+        }
+        find(Adw.SwitchRow, 'Give each card its own worktree')!.active = false;
+        settle(5);
+        eq(JSON.parse(settings.projectOptions.shop).worktrees, false);
+        eq(spin.sensitive, false, 'the other rows follow the switch');
+        dialog.force_close();
         settle(20);
         close(win);
     });

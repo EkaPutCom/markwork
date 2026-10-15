@@ -4,6 +4,7 @@
 
 import type { DaemonConnection, FollowHandlers, Follower } from './agent/daemon/connection.js';
 import { DaemonError, exitStatus, parseExit, type ExitInfo, type SpawnSpec } from './agent/daemon/protocol.js';
+import type { GitRun, GitRunner } from './forge/contribute.js';
 import type { HarnessProcess, SpawnHandlers, SpawnMeta, Spawner } from './orchestrator.js';
 
 const STDERR_TAIL = 8000;
@@ -172,7 +173,7 @@ export function daemonSpawner(conn: DaemonConnection, opts: DaemonSpawnerOptions
         const proc = new DaemonProcess(conn, run, handlers, opts);
         proc.create({
             run, program: argv[0].split('/').pop() ?? argv[0], args: argv.slice(1), cwd,
-            ...(meta ? { lane: meta.lane, labels: meta.labels } : {}),
+            ...(meta ? { lane: meta.lane, lane_slots: meta.slots, labels: meta.labels } : {}),
         });
         return proc;
     };
@@ -184,4 +185,24 @@ export function adoptRun(conn: DaemonConnection, run: string, fromSeq: number, h
     const proc = new DaemonProcess(conn, run, handlers, opts);
     proc.adopt(fromSeq, upTo);
     return proc;
+}
+
+// Git on the daemon's machine, for the worktrees of the cards there: every call is a short run of `git` in no lane (it
+// never waits behind a harness), whose output is collected and which is forgotten once it ended. The daemon must allow
+// `git` and the folder; a refusal reads as git failing with the daemon's message. Environment variables are not passed:
+// the daemon allows none by default.
+export function daemonGit(conn: DaemonConnection, opts: DaemonSpawnerOptions = {}): GitRunner {
+    const spawn = daemonSpawner(conn, opts);
+    return (cwd, args) => new Promise<GitRun | null>(resolve => {
+        const out: string[] = [];
+        try {
+            const proc = spawn(['git', '-c', 'core.quotePath=false', ...args], cwd, {
+                line: text => { out.push(text); },
+                exit: (status, err) => resolve({ status, out: out.length ? `${out.join('\n')}\n` : '', err }),
+            });
+            proc.closeInput();
+        } catch {
+            resolve(null);
+        }
+    });
 }

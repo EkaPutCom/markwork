@@ -274,6 +274,54 @@ func TestLanesRunOneAtATimeInOrder(t *testing.T) {
 	}
 }
 
+func TestLaneSlotsLetSeveralRunsGoAtOnce(t *testing.T) {
+	e := newEnv(t, nil)
+	spec := func(id string) model.SpawnSpec {
+		s := e.spec(id)
+		s.Lane, s.LaneSlots = "proj", 2
+		return s
+	}
+	e.spawn(spec("a"))
+	e.spawn(spec("b"))
+	rc := e.spawn(spec("c"))
+	rd := e.spawn(spec("d"))
+	e.wait("a", model.StateRunning)
+	e.wait("b", model.StateRunning)
+	if rc.Summary.State != model.StateQueued || rc.Summary.QueuePosition != 1 || rd.Summary.QueuePosition != 2 {
+		t.Fatalf("c %+v d %+v", rc.Summary, rd.Summary)
+	}
+
+	e.sup.CloseStdin("b")
+	e.wait("b", model.StateExited)
+	e.wait("c", model.StateRunning) // the freed slot goes to the first in line
+	if sum, _ := e.sup.Get("d"); sum.State != model.StateQueued || sum.QueuePosition != 1 {
+		t.Fatalf("d should wait for a slot: %+v", sum)
+	}
+
+	// A run that allows only one at a time waits until it would be alone, and keeps the ones behind it waiting.
+	single := e.spec("single")
+	single.Lane = "proj"
+	e.spawn(single)
+	e.sup.CloseStdin("a")
+	e.wait("a", model.StateExited)
+	e.wait("d", model.StateRunning)
+	e.sup.CloseStdin("c")
+	e.wait("c", model.StateExited)
+	if sum, _ := e.sup.Get("single"); sum.State != model.StateQueued {
+		t.Fatalf("single must wait while d runs: %+v", sum)
+	}
+	e.sup.CloseStdin("d")
+	e.wait("single", model.StateRunning)
+	e.sup.CloseStdin("single")
+	e.wait("single", model.StateExited)
+
+	bad := e.spec("bad")
+	bad.LaneSlots = -1
+	if _, err := e.sup.Spawn(bad); code(err) != model.CodeBadRequest {
+		t.Fatalf("negative slots: %v", err)
+	}
+}
+
 func TestCancelQueuedAndStopRunning(t *testing.T) {
 	e := newEnv(t, nil)
 	a := e.spec("a")

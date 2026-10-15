@@ -1,14 +1,18 @@
 // Markwork as a harness orchestrator: kanban cards that are assigned (e.g. "@pi") are worked on by an external agent program
 // in its own project folder. Here the process is run (async), its output is read line by
 // line, permission/input requests are passed to the user and their answers sent back through stdin, and the card
-// is moved according to its status. The pure parts (prompt, RPC commands, JSON reader, queue) are in agent/harness.ts. Markwork writes nothing to the project folder; only its own board is written.
+// is moved according to its status. The pure parts (prompt, RPC commands, JSON reader, queue) are in agent/harness.ts.
+// Markwork writes nothing to the project folder; only its own board is written. When the project isolates its cards, each
+// card gets a Git worktree of its own first (agent/worktree.ts) and the harness works there.
 
 import GLib from 'gi://GLib';
-import { assignCard, cardMeta, moveCard, updateCard, type Board, type Position } from './markdown/kanban.js';
+import { assignCard, cardMeta, moveCard, setCardBranch, updateCard, type Board, type Card, type Position } from './markdown/kanban.js';
 import {
     buildPrompt, cardWikiLinks, checkProjectFolder, describeReply, endsWithQuestion, HARNESSES, locateCard, PiReader, resultNote, rpcGetState,
-    rpcPrompt, rpcSteer, rpcUiResponse, RunQueue, stageColumn, type HarnessReply, type HarnessSpec, type LinkedNote, type PiSignal, type Run,
+    rpcPrompt, rpcSteer, rpcUiResponse, RunQueue, stageColumn, type HarnessReply, type HarnessSpec, type LinkedNote, type NewRun, type PiSignal, type Run,
 } from './agent/harness.js';
+import { createWorktree, removeWorktree, type Isolation, type Worktree } from './agent/worktree.js';
+import type { GitRunner } from './forge/contribute.js';
 import type { WikiLink } from './markdown/wikilink.js';
 import { _, fmt } from './i18n.js';
 
@@ -30,9 +34,11 @@ export interface SpawnHandlers {
 }
 
 // What a spawner that keeps runs elsewhere (the markworkd daemon) records about a run so it can be found again
-// after Markwork was closed: the lane serializes runs of one project, the labels say which card it is for.
+// after Markwork was closed: the lane makes runs of one project take turns (`slots` of them at a time), the labels
+// say which card and which worktree it is for.
 export interface SpawnMeta {
     lane: string;
+    slots?: number;      // 1 when absent
     labels: Record<string, string>;
 }
 
@@ -157,6 +163,8 @@ export interface OrchestratorHost {
     updateBoard(file: string, edit: (board: Board) => Board): string | null;
     // A run's status changed: redraw the board, notify.
     changed(run: Run, message: string | null): void;
+    // A message about a card before its run exists (its worktree is being made, or could not be).
+    notify?(message: string): void;
 }
 
 interface Live {
@@ -183,6 +191,9 @@ export interface AdoptInfo {
     agent: string;
     project: string;
     folder: string;
+    lane?: string;        // the run's lane on this side; the folder when absent
+    slots?: number;
+    worktree?: Worktree | null;
     machine: string;      // for the log
 }
 
@@ -198,6 +209,11 @@ export class Orchestrator {
     localFolders = true;
     program: (spec: HarnessSpec) => string | null = spec => findProgram(spec.program);
     stamp: () => string = () => GLib.DateTime.new_now_local().format('%d/%m %H:%M') ?? '';
+    // Git where the project folders are (this computer, or the machine of the daemon), for the worktrees.
+    git: GitRunner = async () => null;
+    // How a project's cards are isolated; null = they work in the project folder itself, one at a time.
+    isolation: (project: string, folder: string) => Isolation | null = () => null;
+    private readonly preparing = new Set<string>();   // cards whose worktree is being made: board + "\n" + card text
     private readonly live = new Map<number, Live>();
     private disposed = false;
     private prompts = 0;
@@ -211,7 +227,7 @@ export class Orchestrator {
         if (!spec) return fmt(_('unknown harness "{agent}"'), { agent });
         const card = board.columns[at.column]?.cards[at.index];
         if (!card) return 'card not found';
-        if (this.queue.active(boardFile, card.text)) return 'this card is already being worked on';
+        if (this.queue.active(boardFile, card.text) || this.preparing.has(`${boardFile}\n${card.text}`)) return 'this card is already being worked on';
         const problem = this.localFolders ? checkProjectFolder(folder, this.host.workspace()) : null;
         if (problem) return problem;
         if (this.localFolders && !GLib.file_test(folder, GLib.FileTest.IS_DIR)) return `the project folder does not exist: ${folder}`;
@@ -224,13 +240,44 @@ export class Orchestrator {
         const assigned = { ...card, text };
         const links = cardWikiLinks(assigned);
         const notes = links.length ? this.host.linkedNotes(boardFile, links) : [];
-        const run = this.queue.add({
-            board: boardFile, card: text, title: shortTitle(text), agent, project, folder,
-            prompt: buildPrompt(assigned, project, boardName, notes), session: null,
+        const isolation = this.isolation(project, folder);
+        const base = { board: boardFile, card: text, title: shortTitle(text), agent, project, folder, session: null };
+        if (!isolation?.worktrees) {
+            this.begin({ ...base, prompt: buildPrompt(assigned, project, boardName, notes) }, fmt(_('Project folder: {folder}'), { folder }));
+            return null;
+        }
+        const key = `${boardFile}\n${text}`;
+        this.preparing.add(key);
+        // On another machine every git step is a round trip through the daemon, so it can take a moment.
+        if (!this.localFolders) this.host.notify?.(fmt(_('Making a worktree for “{title}”…'), { title: base.title }));
+        void createWorktree(this.git, { folder, title: base.title, isolation }).then(made => {
+            this.preparing.delete(key);
+            if (made.ok) this.startInWorktree(base, assigned, made.value, isolation, boardName, notes);
+            else if (made.notRepo && !this.disposed) this.begin({ ...base, prompt: buildPrompt(assigned, project, boardName, notes) }, fmt(_('Project folder: {folder} (not a Git repository, so no worktree)'), { folder }));
+            else if (!this.disposed) this.host.notify?.(fmt(_('Cannot make a worktree for “{title}”: {error}'), { title: base.title, error: made.message }));
         });
-        run.trace.add('turn', fmt(_('{agent} for “{title}”'), { agent: spec.label, title: run.title }), `${fmt(_('Project folder: {folder}'), { folder })}\n\n${run.prompt}`);
-        this.enqueue(run);
         return null;
+    }
+
+    // The worktree exists: the card notes its branch (so the card is found with its worktree after a restart), and
+    // the run is queued in the project's lane, which lets `slots` cards work at the same time.
+    private startInWorktree(base: Omit<NewRun, 'prompt'>, card: Card, wt: Worktree, isolation: Isolation, boardName: string, notes: LinkedNote[]): void {
+        const text = setCardBranch(card.text, wt.branch);
+        const error = this.disposed ? 'the window was closed' : this.editCard(base.board, card.text, (b, pos) => updateCard(b, pos, { text }));
+        if (error) {
+            void removeWorktree(this.git, wt);
+            if (!this.disposed) this.host.notify?.(fmt(_('Cannot run {agent} on “{title}”: {error}'), { agent: base.agent, title: base.title, error }));
+            return;
+        }
+        const prompt = buildPrompt({ ...card, text }, base.project, boardName, notes, wt);
+        const where = fmt(_('Worktree: {path}\nBranch {branch} from {base}'), { path: wt.cwd, branch: wt.branch, base: wt.base });
+        this.begin({ ...base, card: text, folder: wt.cwd, lane: base.folder, slots: Math.max(1, isolation.slots), worktree: wt, prompt }, where);
+    }
+
+    private begin(run: NewRun, where: string): void {
+        const added = this.queue.add(run);
+        added.trace.add('turn', fmt(_('{agent} for “{title}”'), { agent: HARNESSES[added.agent].label, title: added.title }), `${where}\n\n${added.prompt}`);
+        this.enqueue(added);
     }
 
     // Continue the session of a finished run with the user's reply (e.g. a question not ending in "?").
@@ -245,6 +292,35 @@ export class Orchestrator {
         run.trace.add('turn', _('Your reply'), text);
         this.enqueue(run);
         return null;
+    }
+
+    // Continue a card's work in its worktree with the user's reply (often their comments on the diff): in the same
+    // harness session when this window still has it, otherwise in a new one that is told what the card is and what
+    // it did so far. Returns an error message or null.
+    continueInWorktree(boardFile: string, card: Card, wt: Worktree, agent: string, project: string, folder: string, message: string, boardName: string): string | null {
+        const text = message.trim();
+        if (!text) return 'empty reply';
+        if (!HARNESSES[agent]) return fmt(_('unknown harness "{agent}"'), { agent });
+        if (this.queue.active(boardFile, card.text)) return 'this card is already being worked on';
+        if (this.localFolders && !GLib.file_test(wt.cwd, GLib.FileTest.IS_DIR)) return `the worktree does not exist: ${wt.cwd}`;
+        const previous = this.queue.find(boardFile, card.text);
+        if (previous?.result?.sessionId && previous.worktree?.path === wt.path) return this.resume(previous, text);
+        const isolation = this.isolation(project, folder);
+        const prompt = `${buildPrompt(card, project, boardName, [], wt)}\n\nYou worked on this card before; your changes are in this worktree. The user reviewed them:\n\n${text}`;
+        const where = fmt(_('Worktree: {path}\nBranch {branch} from {base}'), { path: wt.cwd, branch: wt.branch, base: wt.base });
+        this.begin({ board: boardFile, card: card.text, title: shortTitle(card.text), agent, project, folder: wt.cwd, lane: folder, slots: Math.max(1, isolation?.slots ?? 1), worktree: wt, prompt, session: null }, where);
+        return null;
+    }
+
+    // The card's worktree is done with (merged or discarded): the card forgets its branch, gets a note, and a merged one
+    // moves to Done. Returns an error message or null.
+    closeWorktree(boardFile: string, cardText: string, note: string, toDone: boolean): string | null {
+        return this.editCard(boardFile, cardText, (b, pos) => {
+            const card = b.columns[pos.column].cards[pos.index];
+            const closed = updateCard(b, pos, { text: setCardBranch(card.text, null), notes: [...card.notes, note], ...(toDone ? { done: true } : {}) });
+            const done = toDone ? stageColumn(closed, 'done') : -1;
+            return done >= 0 && done !== pos.column ? moveCard(closed, pos, { column: done, index: Infinity }) : closed;
+        });
     }
 
     // Answer what the harness is waiting for. Returns an error message or null.
@@ -311,7 +387,9 @@ export class Orchestrator {
         const spec = HARNESSES[run.agent];
         this.live.set(run.id, newLive(new PiReader(run.trace)));
         if (run.status === 'working') this.launch(run);
-        else this.host.changed(run, fmt(_('{agent} is working on another card in {project}; this card is waiting its turn'), { agent: spec.label, project: run.project }));
+        else this.host.changed(run, run.slots > 1
+            ? fmt(_('{agent} already works on {count} cards in {project}; this card is waiting its turn'), { agent: spec.label, count: run.slots, project: run.project })
+            : fmt(_('{agent} is working on another card in {project}; this card is waiting its turn'), { agent: spec.label, project: run.project }));
     }
 
     private launch(run: Run): void {
@@ -373,7 +451,7 @@ export class Orchestrator {
         if (!spec) return fmt(_('unknown harness "{agent}"'), { agent: info.agent });
         if (!this.adopter) return 'there is no daemon to follow the run on';
         if (this.queue.active(info.board, info.card)) return 'this card is already being worked on';
-        const run = this.queue.addRunning({ board: info.board, card: info.card, title: info.title, agent: info.agent, project: info.project, folder: info.folder, prompt: '', session: null });
+        const run = this.queue.addRunning({ board: info.board, card: info.card, title: info.title, agent: info.agent, project: info.project, folder: info.folder, lane: info.lane ?? info.folder, slots: info.slots ?? 1, worktree: info.worktree ?? null, prompt: '', session: null });
         const live = newLive(new PiReader(run.trace), true);
         this.live.set(run.id, live);
         run.trace.add('turn', fmt(_('{agent} for “{title}”'), { agent: spec.label, title: run.title }), fmt(_('Found again on {machine} after Markwork was closed; its history follows.'), { machine: info.machine }));
@@ -451,7 +529,7 @@ export class Orchestrator {
         const message = live.stopped ? `${spec.label} stopped: “${run.title}”`
             : result.ok ? `${spec.label} finished: “${run.title}”` : `${spec.label} failed: ${result.error}`;
         this.host.changed(run, message);
-        if (next) this.launch(next);
+        for (const started of next) this.launch(started);
     }
 
     // The card is looked up again on the current board (the user may have moved it). Not found → leave the board alone.
@@ -469,10 +547,22 @@ export class Orchestrator {
 const LABEL_CARD_CHARS = 4000;   // the daemon limits the labels of a run to 8 KB; a longer card is matched by its start
 
 function spawnMeta(run: Run): SpawnMeta {
+    const wt = run.worktree;
     return {
         lane: run.project,
-        labels: { agent: run.agent, project: run.project, board: run.board, card: run.card.slice(0, LABEL_CARD_CHARS), title: run.title, host: GLib.get_host_name() },
+        slots: run.slots,
+        labels: {
+            agent: run.agent, project: run.project, board: run.board, card: run.card.slice(0, LABEL_CARD_CHARS), title: run.title, host: GLib.get_host_name(),
+            lane: run.lane, slots: String(run.slots),
+            ...(wt ? { worktree: wt.path, branch: wt.branch, base: wt.base, basecommit: wt.baseCommit, repo: wt.repo } : {}),
+        },
     };
+}
+
+// The worktree a run found again on the daemon was started in, from the labels spawnMeta() put on it.
+export function labelWorktree(labels: Record<string, string>, cwd: string): Worktree | null {
+    const { worktree, branch, base, basecommit, repo } = labels;
+    return worktree && branch && base && basecommit && repo ? { path: worktree, cwd, branch, base, baseCommit: basecommit, repo } : null;
 }
 
 // Short title for messages, pi session names, and logs.

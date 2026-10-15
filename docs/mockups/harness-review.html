@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Harness Review Mockup</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{
+  --bg:#fafafa;--card:#fff;--side:#ebebeb;--head:#fafafa;--col:#ebebeb;--fg:#241f31;--dim:#77767b;--line:#deddda;
+  --accent:#3584e4;--accent-fg:#fff;--ok:#26a269;--ok-bg:#2ec27e;--warn:#9c6e03;--warn-bg:#f6d32d55;--bad:#c01c28;--bad-bg:#e01b24;
+  --hover:#0000000d;--sel:#0000001a;--add:#dcf5e3;--del:#fde2e2;--addg:#b7ebc6;--delg:#f8c7c7;--btn:#0000000f;--shade:#555;
+  --tag-a:#9141ac;--tag-b:#986a44;--tag-c:#e66100;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#242424;--card:#383838;--side:#2e2e2e;--head:#303030;--col:#2e2e2e;--fg:#fff;--dim:#9a9996;--line:#ffffff1a;
+  --accent:#78aeed;--accent-fg:#1e1e1e;--ok:#8ff0a4;--ok-bg:#26a269;--warn:#f8e45c;--warn-bg:#cd930944;--bad:#ff7b63;--bad-bg:#c01c28;
+  --hover:#ffffff12;--sel:#ffffff1f;--add:#1f3a2a;--del:#46262a;--addg:#2a5a3c;--delg:#6a3036;--btn:#ffffff1a;--shade:#111;}}
+:root[data-theme="dark"]{
+  --bg:#242424;--card:#383838;--side:#2e2e2e;--head:#303030;--col:#2e2e2e;--fg:#fff;--dim:#9a9996;--line:#ffffff1a;
+  --accent:#78aeed;--accent-fg:#1e1e1e;--ok:#8ff0a4;--ok-bg:#26a269;--warn:#f8e45c;--warn-bg:#cd930944;--bad:#ff7b63;--bad-bg:#c01c28;
+  --hover:#ffffff12;--sel:#ffffff1f;--add:#1f3a2a;--del:#46262a;--addg:#2a5a3c;--delg:#6a3036;--btn:#ffffff1a;--shade:#111;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:14px/1.45 "Cantarell","Inter",system-ui,sans-serif;background:var(--shade);color:var(--fg);
+  display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:12px 16px 16px;gap:10px}
+code,.mono{font-family:"JetBrains Mono","Source Code Pro",monospace;font-size:12.5px}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;flex:none}
+/* scenario bar (not part of the app) */
+.steps{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:1180px;width:100%}
+.steps button{background:#ffffff1f;color:#fff;border:1px solid #ffffff33;border-radius:99px;padding:4px 12px;font:inherit;font-size:13px;cursor:pointer}
+.steps button.on{background:#fff;color:#241f31}
+.steps .sp{flex:1}
+/* window */
+.win{width:min(1180px,100%);height:min(740px,calc(100vh - 110px));min-height:520px;background:var(--bg);border-radius:12px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:0 10px 40px #0008;position:relative}
+button{font:inherit;color:inherit;background:var(--btn);border:0;border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+button:hover{filter:brightness(.96)}
+button.flat{background:none;font-weight:400}button.flat:hover{background:var(--hover)}
+button.icon{padding:6px;background:none}button.icon:hover{background:var(--hover)}
+button.pri{background:var(--accent);color:var(--accent-fg)}
+button.dest{background:var(--bad-bg);color:#fff}
+button:disabled{opacity:.45;cursor:default;filter:none}
+.hb{height:48px;display:flex;align-items:center;gap:4px;padding:0 8px;background:var(--head);border-bottom:1px solid var(--line);flex:none}
+.hb .ttl{flex:1;text-align:center;min-width:0;line-height:1.2}
+.hb .ttl b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb .ttl small{color:var(--dim);font-size:11.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wc{display:flex;gap:8px;margin-left:6px}.wc span{width:22px;height:22px;border-radius:50%;background:var(--btn);display:grid;place-items:center;font-size:11px}
+.view{display:none;flex:1;min-height:0;flex-direction:column}.view.on{display:flex}
+.status{height:26px;border-top:1px solid var(--line);color:var(--dim);font-size:12px;display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 12px;flex:none}
+/* board */
+.board{flex:1;display:flex;gap:14px;padding:16px 20px;overflow:auto;min-height:0}
+.list{flex:0 0 270px;background:var(--col);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.list h4{margin:0 0 2px;display:flex;font-size:14px}.list h4 span{margin-left:auto;color:var(--dim);font-weight:400}
+.kc{background:var(--card);border-radius:8px;padding:9px 11px;box-shadow:0 0 0 1px var(--line),0 1px 2px #0001;cursor:default;position:relative}
+.kc .t{display:flex;gap:9px;align-items:flex-start}
+.kc .cb{width:18px;height:18px;border:2px solid var(--line);border-radius:5px;flex:none;margin-top:1px}
+.kc.done .t span{text-decoration:line-through;color:var(--dim)}.kc.done .cb{background:var(--accent);border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.chip{font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;gap:4px;align-items:center}
+.chip.tag{color:#fff}
+.chip.working{background:var(--ok-bg);color:#fff}.chip.queued{background:var(--warn-bg);color:var(--warn)}
+.chip.review{background:var(--accent);color:var(--accent-fg);cursor:pointer}.chip.review:hover{filter:brightness(1.08)}
+.chip.wt{background:var(--btn);color:var(--dim);font-weight:400}
+.chip.conf{background:var(--warn-bg);color:var(--warn)}
+.addc{color:var(--fg);font-weight:700;padding:6px;margin-top:auto;opacity:.8}
+/* review page */
+.rbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);flex:none;flex-wrap:wrap}
+.rbar .h{min-width:0;flex:1 1 260px}
+.rbar .h b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar .h small{color:var(--dim);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar .acts{display:flex;gap:6px;align-items:center;margin-left:auto}
+.split{display:inline-flex}.split>button:first-child{border-radius:6px 0 0 6px}.split>button:last-child{border-radius:0 6px 6px 0;padding:5px 7px;border-left:1px solid #0002}
+.banner{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.banner.info{background:var(--sel)}.banner.warn{background:var(--warn-bg)}.banner.ok{background:var(--add)}
+.banner .sp{flex:1}.banner>span:first-child{flex:1 1 320px}.banner .bb{display:flex;gap:6px;margin-left:auto}
+.rgrid{flex:1;display:grid;grid-template-columns:270px 1fr;min-height:0}
+.files{border-right:1px solid var(--line);overflow:auto;padding:6px;background:var(--bg)}
+.files h5,.sec{margin:8px 8px 4px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.file{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer}
+.file:hover{background:var(--hover)}.file.on{background:var(--sel)}
+.file input{margin:0;accent-color:var(--accent)}
+.file .st{font-weight:700;font-size:12px;width:12px}.st.A{color:var(--ok)}.st.M{color:var(--warn)}.st.D{color:var(--bad)}
+.file .nm{flex:1;min-width:0;line-height:1.25}.file .nm small{display:block;color:var(--dim);font-size:11px}
+.file .n{font-size:11px;color:var(--dim);white-space:nowrap}.file .cm{font-size:11px;color:var(--accent)}
+.pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+.tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.lnk{display:inline-flex;border-radius:6px;overflow:hidden}
+.lnk span{padding:5px 12px;background:var(--btn);cursor:pointer;font-weight:700;border-right:1px solid var(--line)}
+.lnk span:last-child{border-right:0}.lnk span.on{background:var(--sel)}
+.tabs .sp{flex:1}.tabs small{color:var(--dim)}
+.body{flex:1;overflow:auto;padding:0 0 30px}
+table.diff{border-collapse:collapse;width:100%;font:12.5px/1.55 "JetBrains Mono","Source Code Pro",monospace}
+.diff td{padding:0 8px;white-space:pre;vertical-align:top}
+.diff td.ln{width:1%;color:var(--dim);text-align:right;user-select:none;padding:0 6px;cursor:pointer;white-space:nowrap;position:relative}
+.diff tr:hover td.ln.n::before{content:"+";position:absolute;left:-2px;top:0;width:15px;height:18px;background:var(--accent);color:var(--accent-fg);border-radius:4px;text-align:center;font-weight:700}
+.diff tr.a td{background:var(--add)}.diff tr.a td.ln{background:var(--addg)}
+.diff tr.d td{background:var(--del)}.diff tr.d td.ln{background:var(--delg)}
+.diff tr.hh td{background:var(--sel);color:var(--dim);padding:3px 8px}
+.diff tr.fh td{position:sticky;top:0;background:var(--bg);color:var(--accent);font-weight:700;padding:8px 8px 4px;z-index:1}
+.diff .sg{width:1%;user-select:none;color:var(--dim)}
+.cmt td{background:var(--bg)!important;padding:6px 10px 8px!important}
+.cbox{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:8px 10px;max-width:640px;font:13px/1.45 Cantarell,Inter,system-ui,sans-serif;white-space:normal}
+.cbox b{font-size:12px}.cbox p{margin:3px 0 0}.cbox .row{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
+textarea,input[type=text]{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:6px 9px}
+.prose{padding:14px 22px;max-width:780px}
+.prose h3{margin:14px 0 6px;font-size:14px}
+.boxed{border-radius:12px;background:var(--card);box-shadow:0 0 0 1px var(--line);overflow:hidden;margin:6px 0 12px}
+.boxed .r{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line)}
+.boxed .r:last-child{border-bottom:0}.boxed .r .grow{flex:1;min-width:0}.boxed .r small{color:var(--dim);display:block}
+.okc{color:var(--ok)}.badc{color:var(--bad)}.dimc{color:var(--dim)}.warnc{color:var(--warn)}
+.log .r{font-size:13px}.log .r .k{width:62px;color:var(--dim);font-size:12px}
+.sw{width:40px;height:22px;border-radius:99px;background:var(--accent);position:relative;flex:none}.sw::after{content:"";position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff}
+.sw.off{background:var(--btn)}.sw.off::after{right:auto;left:2px}
+/* popovers, dialogs, toast */
+.pop{position:absolute;background:var(--card);border-radius:12px;box-shadow:0 0 0 1px var(--line),0 8px 28px #0004;padding:6px;min-width:240px;z-index:30;display:none}
+.pop.show{display:block}
+.pop div{padding:6px 10px;border-radius:6px;cursor:pointer}.pop div:hover{background:var(--hover)}
+.pop small{display:block;color:var(--dim)}.pop hr{border:0;border-top:1px solid var(--line);margin:5px 0}
+.pop .bad{color:var(--bad)}
+.overlay{position:absolute;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.overlay.show{display:flex}
+.dlg{background:var(--card);border-radius:14px;padding:20px;width:460px;max-width:100%;box-shadow:0 10px 40px #0007;max-height:100%;overflow:auto}
+.dlg.wide{width:600px}
+.dlg h3{margin:0 0 8px;text-align:center}.dlg p{margin:6px 0}.dlg .c{text-align:center;color:var(--dim)}
+.dlg .btns{display:flex;gap:10px;margin-top:16px}.dlg .btns button{flex:1;justify-content:center;padding:9px}
+.toast{position:absolute;bottom:40px;left:50%;transform:translate(-50%,160%);background:#353535ee;color:#fff;border-radius:99px;padding:9px 12px 9px 18px;
+  display:flex;gap:12px;align-items:center;transition:.3s;z-index:60;max-width:92%;opacity:0;visibility:hidden}
+.toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}.toast button{background:#ffffff26;color:#fff}
+.note{max-width:1180px;width:100%;color:#ddd;font-size:13px;display:none}
+.note.show{display:block}
+.note details{background:#00000040;border-radius:10px;padding:8px 14px}
+.note summary{cursor:pointer;font-weight:700;color:#fff}
+.note li{margin:3px 0}.note code{color:#fff}
+.hide{display:none!important}
+@media(max-width:760px){
+  body{padding:8px}
+  .rgrid{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .files{border-right:0;border-bottom:1px solid var(--line);max-height:180px}
+  .hb .ttl small{display:none}.wc{display:none}
+  .list{flex-basis:230px}
+}
+</style>
+</head>
+<body>
+<div class="steps" id="steps">
+  <button data-s="board" class="on">1 · Board: parallel worktrees</button>
+  <button data-s="review">2 · Review the changes</button>
+  <button data-s="moved">3 · main moved, conflict</button>
+  <button data-s="settings">4 · Project settings</button>
+  <button id="vps" title="Run the scenes with the project on an SSH machine">5 · Project on a VPS: off</button>
+  <span class="sp"></span>
+  <button id="theme">◐ Theme</button>
+  <button id="notesBtn">Design notes</button>
+</div>
+
+<div class="win" id="win">
+  <div class="hb">
+    <button class="icon" title="Sidebar"><svg class="i" viewBox="0 0 16 16"><path d="M2 3.5h12M2 8h12M2 12.5h8"/></svg></button>
+    <button class="icon" title="New file"><svg class="i" viewBox="0 0 16 16"><path d="M4 1.5h5l3 3v10H4z M9 1.5v3h3"/></svg></button>
+    <button class="icon" title="Open folder"><svg class="i" viewBox="0 0 16 16"><path d="M1.5 4v9.5h13V5.5H7.5L6 4z"/></svg></button>
+    <div class="ttl"><b id="wtitle">• development.md</b><small>~/work/markwork-launch</small></div>
+    <button class="icon" title="Assistant"><svg class="i" viewBox="0 0 16 16"><path d="M2 3h12v8H6l-3 3v-3H2z"/></svg></button>
+    <button class="icon" title="Main menu"><svg class="i" viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12"/></svg></button>
+    <button id="layout" style="margin-left:4px"><svg class="i" viewBox="0 0 16 16"><path d="M2 2.5h12v11H2zM8 2.5v11"/></svg> Board ▾</button>
+    <span class="wc"><span>–</span><span>▢</span><span>✕</span></span>
+  </div>
+
+  <!-- 1 · BOARD -->
+  <div class="view on" id="v-board">
+    <div class="board" id="board"></div>
+    <div class="status"><span id="bcount">4 lists · 6 cards</span><span>Line 1, Column 1</span></div>
+  </div>
+
+  <!-- 2 · REVIEW PAGE (replaces the board in the content area, like a pull request) -->
+  <div class="view" id="v-review">
+    <div class="rbar">
+      <button class="icon" id="back" title="Back to the board"><svg class="i" viewBox="0 0 16 16"><path d="M10 3 5 8l5 5"/></svg></button>
+      <div class="h"><b>Checkout with QRIS</b><small id="rmeta"></small></div>
+      <div class="acts">
+        <button class="icon" title="Open the worktree folder" id="openDir"><svg class="i" viewBox="0 0 16 16"><path d="M1.5 4v9.5h13V5.5H7.5L6 4z"/></svg></button>
+        <button class="icon" title="Open a terminal in the worktree" id="openTerm"><svg class="i" viewBox="0 0 16 16"><path d="M1.5 2.5h13v11h-13zM4 6l2 2-2 2M8 10.5h4"/></svg></button>
+        <button id="replyBtn">Reply to pi…</button>
+        <span class="split" id="mergeSplit"><button class="pri" id="mergeBtn">Merge 6 of 6</button><button class="pri" id="mergeMore" title="More ways to finish">▾</button></span>
+      </div>
+    </div>
+    <div id="banner"></div>
+    <div class="rgrid">
+      <div class="files">
+        <h5>Changed files</h5>
+        <div id="flist"></div>
+        <h5 style="margin-top:14px">Commits</h5>
+        <div class="file" style="cursor:default"><span class="st dimc">●</span><span class="nm">Add QRIS as a payment method<small class="mono">a81c2e4 · pi</small></span></div>
+        <div class="file" style="cursor:default"><span class="st dimc">○</span><span class="nm">Uncommitted changes<small>pi did not commit these; Merge commits them first</small></span></div>
+      </div>
+      <div class="pane">
+        <div class="tabs">
+          <span class="lnk" id="tabs"><span data-t="changes" class="on">Changes</span><span data-t="summary">Summary</span><span data-t="log">Log (23)</span></span>
+          <span class="sp"></span><small id="tabinfo">+170 −14 · click a line number to comment</small>
+        </div>
+        <div class="body" id="pbody"></div>
+      </div>
+    </div>
+    <div class="status"><span id="wtpath"></span></div>
+  </div>
+
+  <!-- 4 · PROJECT SETTINGS (Preferences → Agents → a project) -->
+  <div class="overlay" id="ov-settings"><div class="dlg wide">
+    <h3>web-ecommerce</h3>
+    <p class="c">Preferences → Agents → Projects</p>
+    <div class="sec">Folder</div>
+    <div class="boxed">
+      <div class="r"><div class="grow">Project folder<small class="mono" id="setFolder"></small></div><button class="flat">Change…</button></div>
+      <div class="r"><div class="grow">Git repository<small id="setGit"></small></div><span class="okc">✓</span></div>
+    </div>
+    <div class="sec">Isolation</div>
+    <div class="boxed">
+      <div class="r"><div class="grow">Give each card its own worktree<small>Cards in this project run side by side, each on a branch <span class="mono">markwork/&lt;card&gt;</span>; nothing touches <span id="setProj">~/web-ecommerce</span> until you merge</small></div><span class="sw" id="isoSw"></span></div>
+      <div class="r" id="wtRow"><div class="grow">Worktree folder<small class="mono" id="setWt"></small><small id="setWtOk"></small></div><button class="flat">Change…</button></div>
+      <div class="r" id="parRow"><div class="grow">Cards at the same time<small id="setPar"></small></div><button class="flat">2 ▾</button></div>
+      <div class="r"><div class="grow">Base branch<small>New worktrees start from its latest commit</small></div><button class="flat">main ▾</button></div>
+      <div class="r"><div class="grow">After merging<small>What happens to the worktree and its branch</small></div><button class="flat">Remove both ▾</button></div>
+    </div>
+    <div class="sec" id="setWts">Worktrees</div>
+    <div class="boxed">
+      <div class="r"><div class="grow">checkout-with-qris<small>review · 6 files · 1 commit</small></div><span class="dimc">48 MB</span></div>
+      <div class="r"><div class="grow">test-the-cart<small>working</small></div><span class="dimc">46 MB</span></div>
+      <div class="r"><div class="grow">fix-coupon-rounding<small>merged 2 days ago, branch kept</small></div><button class="flat">Remove</button></div>
+    </div>
+    <p class="dimc" style="font-size:12px">Without Git, or with isolation off, cards work in the folder itself, one at a time, and there is no review of changes.</p>
+    <div class="btns"><button data-close>Close</button></div>
+  </div></div>
+
+  <!-- reply dialog -->
+  <div class="overlay" id="ov-reply"><div class="dlg">
+    <h3>Reply to pi</h3>
+    <p class="c">pi continues in the same worktree and session; the card goes back to In Progress.</p>
+    <textarea rows="8" id="replyText"></textarea>
+    <div class="btns"><button data-close>Cancel</button><button class="pri" id="sendReply">Send</button></div>
+  </div></div>
+
+  <!-- discard dialog -->
+  <div class="overlay" id="ov-discard"><div class="dlg">
+    <h3>Discard pi’s Work?</h3>
+    <p class="c">The worktree and the branch <span class="mono">markwork/checkout-with-qris</span> are deleted: 6 changed files and 1 commit. ~/web-ecommerce is not touched.</p>
+    <label style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px"><input type="checkbox"> Keep the branch</label>
+    <div class="btns"><button data-close>Cancel</button><button class="dest" id="doDiscard">Discard</button></div>
+  </div></div>
+
+  <!-- merge menu -->
+  <div class="pop" id="mergeMenu">
+    <div data-m="merge">Merge into main<small>A merge commit; pi’s commits are kept</small></div>
+    <div data-m="squash">Squash into main<small>One commit, message written by the assistant</small></div>
+    <div data-m="pr">Open a Pull Request…<small>Push the branch to git.example.org and review it there</small></div>
+    <hr>
+    <div data-m="keep">Keep the Branch, Remove the Worktree</div>
+    <div class="bad" data-m="discard">Discard…</div>
+  </div>
+
+  <!-- card context menu -->
+  <div class="pop" id="cardMenu">
+    <div data-a="review">Review Changes</div>
+    <div data-a="reply">Reply to pi…</div>
+    <div data-a="log">View pi Log</div>
+    <div data-a="dir">Open Worktree Folder</div>
+    <hr>
+    <div class="bad" data-a="discard">Discard Work…</div>
+  </div>
+
+  <div class="toast" id="toast"><span id="toastMsg"></span><button id="toastBtn" class="hide"></button></div>
+</div>
+
+<div class="note" id="notes"><details open><summary>Design notes</summary><ul>
+  <li><b>One worktree per card.</b> On start, when the project is a Git repository and isolation is on, Markwork runs <code>git worktree add -b markwork/&lt;slug&gt; &lt;parent&gt;/.markwork-worktrees/&lt;project&gt;/&lt;slug&gt; &lt;base&gt;</code> and starts pi there. The worktree sits next to the project, never inside it, so pi's tools do not see sibling worktrees, and on a VPS it falls under the same daemon root as the project. The run's <code>folder</code> becomes the worktree, so <code>RunQueue</code> no longer queues cards of one project behind each other; a per-project limit replaces it.</li>
+  <li><b>The diff is read, never trusted.</b> The review compares the worktree (committed and uncommitted, untracked included via <code>git add -N</code> on a throwaway index) with the merge base. Git runs through the same spawner as pi, so on a markworkd machine it is <code>git</code> spawned by the daemon; the daemon stays protocol-agnostic.</li>
+  <li><b>Same shape as the other reviews.</b> The page replaces the board in the content area like a pull request (back button, file list, linked Changes/Summary/Log buttons), files can be left out like an agent batch (“Merge 5 of 6”), and nothing reaches the project folder until Merge.</li>
+  <li><b>Merge is a Git operation the user starts</b>: commit pi's leftovers in the worktree, then merge or squash into the base in the project folder. It refuses when the project folder has uncommitted changes or the merge would conflict; then pi can be asked to update its branch, or the user opens a terminal in the worktree.</li>
+  <li><b>Comments become the reply.</b> Line comments are collected into “Reply to pi”, which continues the same pi session in the same worktree.</li>
+  <li><b>Summary shows evidence</b>: pi's final answer plus the commands it ran and their exit codes, read from the log. Markwork itself still runs no project commands.</li>
+  <li><b>Recorded on the card</b>: <code>[branch:: markwork/checkout-with-qris]</code> next to <code>[agent:: pi]</code>, so the run is found again after a restart even though the run status only lives in the window (and through markworkd).</li>
+  <li><b>On a VPS (scene 5)</b>, everything Git does happens on that machine; only the diff text travels.
+    <ul>
+      <li><code>git</code> is started as a markworkd run (spawn, read its <code>out</code> records and exit code, then <code>forget</code>), so the daemon needs no new op and stays protocol-agnostic. <code>git</code> must be allowed by its <code>programs</code>/PATH.</li>
+      <li>The worktree folder must be inside the daemon's <code>roots</code>, or pi's spawn fails with <code>cwd_not_allowed</code>; the settings row checks it and says so.</li>
+      <li>Lanes: pi runs get the lane <code>&lt;project&gt;/&lt;card&gt;</code> and git runs no lane, so a diff never waits behind pi. The per-project limit needs a capacity per lane group in markworkd (a small Go change), so the queue keeps going while Markwork is closed.</li>
+      <li>No Open Folder; Open Terminal runs <code>ssh -t host 'cd &lt;worktree&gt; &amp;&amp; exec $SHELL'</code>.</li>
+      <li>Runs carry <code>branch</code> and <code>worktree</code> labels, so <code>adopt()</code> ties a run found again after a restart to its worktree. A <code>lost</code> run keeps its worktree, which can still be reviewed.</li>
+      <li>Every worktree is a fresh checkout (dependencies are installed again), so the settings show the free disk on the machine. The Docker fake VPS needs <code>git</code> to test this path.</li>
+    </ul></li>
+  <li>Not in this mockup: a side-by-side diff, syntax colors per language, binary files (listed, no diff), several harnesses on one card.</li>
+</ul></details></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const SVG={branch:'<svg class="i" viewBox="0 0 16 16" style="width:12px;height:12px;vertical-align:-2px"><circle cx="4" cy="3.5" r="1.5"/><circle cx="4" cy="12.5" r="1.5"/><circle cx="12" cy="5" r="1.5"/><path d="M4 5v6M12 6.5c0 3-8 2-8 4.5"/></svg>'};
+
+/* ---------- state ---------- */
+const S={remote:false,loaded:false,scene:"board",moved:false,qris:"review",merged:false,tab:"changes",sel:0,comments:[],draft:null};
+
+/* ---------- board ---------- */
+function card(c){
+  const chips=[];
+  if(c.run==="working") chips.push(`<span class="chip working">● pi · working</span><span class="chip wt">${SVG.branch} ${c.br}${S.remote?" · vps-1":""}</span>`);
+  if(c.run==="queued") chips.push(`<span class="chip queued">○ pi · queued</span>`);
+  if(c.run==="review") chips.push(`<span class="chip review" data-review title="Review the changes">◆ pi · review · +170 −14</span><span class="chip wt">${SVG.branch} ${c.br}${S.remote?" · vps-1":""}</span>`);
+  if(c.run==="conf") chips.push(`<span class="chip review" data-review>◆ pi · review</span><span class="chip conf">⚠ conflicts with main</span>`);
+  if(c.run==="merged") chips.push(`<span class="chip wt">✓ merged into main · squash</span>`);
+  (c.tags||[]).forEach(([t,col])=>chips.push(`<span class="chip tag" style="background:var(--tag-${col})">#${t}</span>`));
+  return `<div class="kc ${c.done?'done':''}" ${c.menu?'data-menu':''}><div class="t"><span class="cb"></span><span>${c.t}</span></div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}</div>`;
+}
+function renderBoard(){
+  const qris={t:"Checkout with QRIS",run:S.merged?"merged":(S.moved?"conf":"review"),br:"checkout-with-qris",tags:[["feature","b"]],menu:!S.merged,done:S.merged};
+  if(S.qris==="working") Object.assign(qris,{run:"working"});
+  const L=[
+    ["Plan",[{t:"Wishlist on the product page",run:"queued",tags:[["feature","b"]]},{t:"Tidy up the README",tags:[["docs","c"]]}]],
+    ["In Progress",[{t:"Test the cart",run:"working",br:"test-the-cart",tags:[["test","a"]]},{t:"Fix the shipping estimate",run:"working",br:"fix-shipping-estimate",tags:[["bug","c"]]}].concat(S.qris==="working"?[qris]:[])],
+    ["Review",S.qris==="review"&&!S.merged?[qris]:[]],
+    ["Done",(S.merged?[qris]:[]).concat([{t:"Product page",done:true,tags:[["feature","b"]]}])],
+  ];
+  $("#board").innerHTML=L.map(([h,cs])=>`<div class="list"><h4>${h}<span>${cs.length}</span></h4>${cs.map(card).join("")}<div class="addc">+ Add card</div></div>`).join("");
+  $$("[data-review]").forEach(e=>e.onclick=ev=>{ev.stopPropagation();go("review");});
+  $$("[data-menu]").forEach(e=>e.oncontextmenu=ev=>{ev.preventDefault();popAt("#cardMenu",ev.clientX,ev.clientY);});
+}
+
+/* ---------- diff data ---------- */
+const FILES=[
+ {p:"src/payment/qris.ts",s:"A",on:true,h:[[0,1,[
+  "+import QRCode from 'qrcode';",
+  "+import { env } from '../env';",
+  "+",
+  "+// A dynamic QRIS payload (EMVCo MPM) for one order.",
+  "+export function qrisPayload(orderId: string, amount: number): string {",
+  "+    const fields = [",
+  "+        tlv('00', '01'),",
+  "+        tlv('01', '12'),                         // dynamic: one amount, one use",
+  "+        tlv('26', merchantAccount(env.QRIS_MERCHANT_ID)),",
+  "+        tlv('54', amount.toFixed(0)),",
+  "+        tlv('62', tlv('01', orderId)),",
+  "+    ];",
+  "+    const body = fields.join('') + '6304';",
+  "+    return body + crc16(body);",
+  "+}",
+  "+",
+  "+export const qrisImage = (payload: string) => QRCode.toDataURL(payload, { margin: 1 });"]]]},
+ {p:"src/checkout/CheckoutPage.tsx",s:"M",on:true,h:[[40,40,[
+  " export function CheckoutPage({ order }: Props) {",
+  "     const [method, setMethod] = useState<PaymentMethod>('card');",
+  "+    const [qris, setQris] = useState<string | null>(null);",
+  " ",
+  "-    async function pay() {",
+  "-        await submitOrder(order.id, method);",
+  "+    async function pay() {",
+  "+        const res = await submitOrder(order.id, method);",
+  "+        if (method === 'qris') setQris(await qrisImage(res.qrisPayload));",
+  "     }",
+  " "]],[88,90,[
+  "             <PaymentMethods value={method} onChange={setMethod} />",
+  "+            {qris && <img className=\"qris\" src={qris} alt=\"Scan to pay with QRIS\" />}",
+  "             <Button onClick={pay}>Pay {formatIdr(order.total)}</Button>"]]]},
+ {p:"src/checkout/paymentMethods.ts",s:"M",on:true,h:[[3,3,[
+  " export const METHODS = [",
+  "     { id: 'card', label: 'Card' },",
+  "-    { id: 'transfer', label: 'Bank transfer' }",
+  "+    { id: 'transfer', label: 'Bank transfer' },",
+  "+    { id: 'qris', label: 'QRIS' },",
+  " ] as const;"]]]},
+ {p:"src/api/orders.ts",s:"M",on:true,h:[[21,21,[
+  " export async function submitOrder(id: string, method: PaymentMethod) {",
+  "-    return post(`/orders/${id}/pay`, { method });",
+  "+    const res = await post(`/orders/${id}/pay`, { method });",
+  "+    if (method === 'qris' && !res.qrisPayload) throw new Error('The server sent no QRIS payload');",
+  "+    return res;",
+  " }"]]]},
+ {p:"tests/qris.test.ts",s:"A",on:true,h:[[0,1,[
+  "+import { qrisPayload } from '../src/payment/qris';",
+  "+",
+  "+test('the payload ends with a valid CRC', () => {",
+  "+    const p = qrisPayload('ORD-17', 125000);",
+  "+    expect(p.slice(-8, -4)).toBe('6304');",
+  "+    expect(p.slice(-4)).toBe(crc16(p.slice(0, -4)));",
+  "+});"]]]},
+ {p:".env.example",s:"M",on:true,h:[[6,6,[
+  " PAYMENT_GATEWAY_URL=https://sandbox.example.id",
+  "+QRIS_MERCHANT_ID="]]]},
+];
+const CONFLICT_FILE="src/checkout/paymentMethods.ts";
+function counts(f){let a=0,d=0;f.h.forEach(h=>h[2].forEach(l=>{if(l[0]==="+")a++;else if(l[0]==="-")d++;}));return [a,d];}
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+/* ---------- review page ---------- */
+function renderFiles(){
+  $("#flist").innerHTML=FILES.map((f,i)=>{const [a,d]=counts(f);const n=S.comments.filter(c=>c.f===i).length;
+    const dir=f.p.includes("/")?f.p.slice(0,f.p.lastIndexOf("/")):"",nm=f.p.slice(f.p.lastIndexOf("/")+1);
+    const conf=S.moved&&f.p===CONFLICT_FILE?` <span class="warnc" title="Conflicts with main">⚠</span>`:"";
+    return `<div class="file ${i===S.sel?'on':''}" data-i="${i}"><input type="checkbox" ${f.on?'checked':''} aria-label="Include ${f.p} in the merge"><span class="st ${f.s}">${f.s}</span>
+      <span class="nm">${nm}${conf}<small>${dir||"&nbsp;"}</small></span>${n?`<span class="cm">💬${n}</span>`:""}<span class="n">+${a} −${d}</span></div>`;}).join("");
+  $$("#flist .file").forEach(e=>{
+    e.onclick=ev=>{if(ev.target.tagName==="INPUT")return; S.sel=+e.dataset.i; S.tab="changes"; renderReview(); const t=document.getElementById("f"+S.sel); t&&t.scrollIntoView({block:"start"});};
+    e.querySelector("input").onchange=ev=>{FILES[+e.dataset.i].on=ev.target.checked; renderHeader();};
+  });
+}
+function renderHeader(){
+  const on=FILES.filter(f=>f.on).length;
+  $("#mergeBtn").textContent=S.moved?"Merge":`Merge ${on} of ${FILES.length}`;
+  $("#mergeBtn").disabled=S.moved||!on;
+  const n=S.comments.length;
+  $("#replyBtn").textContent=n?`Reply to pi with ${n} comment${n>1?"s":""}…`:"Reply to pi…";
+  $("#replyBtn").classList.toggle("pri",n>0);
+  $("#banner").innerHTML=S.moved
+    ?`<div class="banner warn"><span>⚠ main moved 2 commits since pi started, and merging now would conflict in <b class="mono">paymentMethods.ts</b>.</span><span class="sp"></span><span class="bb"><button class="flat" id="termB">Open Terminal</button><button id="askUpdate">Ask pi to Update Its Branch</button></span></div>`
+    :`<div class="banner info"><span>pi finished: <i>“Added QRIS as a payment method; the payload test passes.”</i></span><span class="sp"></span><span class="dimc">main has not moved · merges cleanly</span></div>`;
+  const au=$("#askUpdate"); if(au) au.onclick=()=>{S.moved=false;S.qris="working";flash("pi is merging main into markwork/checkout-with-qris");go("board");setTimeout(()=>{S.qris="review";renderBoard();flash("pi updated its branch; it merges cleanly now","Review",()=>go("review"));},2600);};
+  const tb=$("#termB"); if(tb) tb.onclick=()=>flash(TERM());
+}
+function diffTable(){
+  let out='<table class="diff">';
+  FILES.forEach((f,i)=>{
+    out+=`<tr class="fh" id="f${i}"><td colspan="4">${esc(f.p)}${f.on?"":' <span class="dimc">· left out of the merge</span>'}</td></tr>`;
+    f.h.forEach(([o,n,ls],hi)=>{
+      out+=`<tr class="hh"><td colspan="4">@@ −${o},${ls.filter(l=>l[0]!=="+").length} +${n},${ls.filter(l=>l[0]!=="-").length} @@</td></tr>`;
+      let a=o,b=n;
+      ls.forEach((l,li)=>{
+        const k=l[0], cls=k==="+"?"a":k==="-"?"d":"";
+        const oa=k==="+"?"":a++, nb=k==="-"?"":b++;
+        const key=`${i}:${hi}:${li}`;
+        out+=`<tr class="${cls}"><td class="ln">${oa}</td><td class="ln ${k!=="-"?"n":""}" data-k="${key}" data-line="${nb}">${nb}</td><td class="sg">${k===" "?" ":k}</td><td>${esc(l.slice(1))||" "}</td></tr>`;
+        S.comments.filter(c=>c.k===key).forEach(c=>{out+=`<tr class="cmt"><td colspan="2"></td><td colspan="2"><div class="cbox"><b>You · line ${c.line}</b><p>${esc(c.text)}</p></div></td></tr>`;});
+        if(S.draft===key) out+=`<tr class="cmt"><td colspan="2"></td><td colspan="2"><div class="cbox"><textarea rows="2" id="draft" placeholder="A comment for pi about this line"></textarea><div class="row"><button class="flat" id="dcancel">Cancel</button><button class="pri" id="dsave">Add Comment</button></div></div></td></tr>`;
+      });
+    });
+  });
+  return out+"</table>";
+}
+function renderPane(){
+  $$("#tabs span").forEach(s=>s.classList.toggle("on",s.dataset.t===S.tab));
+  const b=$("#pbody");
+  if(S.tab==="changes"){
+    $("#tabinfo").textContent="+170 −14 · click a line number to comment";
+    b.innerHTML=diffTable();
+    $$("td.ln.n").forEach(td=>td.onclick=()=>{S.draft=td.dataset.k;S.draftLine=td.dataset.line;renderPane();const d=$("#draft");d&&d.focus();});
+    const dc=$("#dcancel"); if(dc) dc.onclick=()=>{S.draft=null;renderPane();};
+    const ds=$("#dsave"); if(ds) ds.onclick=()=>{const t=$("#draft").value.trim(); if(t){S.comments.push({k:S.draft,f:+S.draft.split(":")[0],line:S.draftLine,text:t});} S.draft=null; renderReview();};
+  } else if(S.tab==="summary"){
+    $("#tabinfo").textContent="from pi’s last answer and its log";
+    b.innerHTML=`<div class="prose">
+      <h3>pi’s answer</h3>
+      <p>Added <b>QRIS</b> as a payment method. The checkout asks the API for a dynamic QRIS payload and shows it as a QR code; the payload is built in <code>src/payment/qris.ts</code> with a CRC-16 check. Set <code>QRIS_MERCHANT_ID</code> in <code>.env</code> before trying it against the sandbox.</p>
+      <p>I did not change the order status polling; after paying, the page still needs a reload.</p>
+      <h3>Commands pi ran</h3>
+      <div class="boxed">
+        <div class="r"><span class="okc">✓</span><div class="grow mono">npm install qrcode</div><span class="dimc">exit 0 · 6 s</span></div>
+        <div class="r"><span class="badc">✗</span><div class="grow mono">npm test -- qris<small>Expected "6304" … the CRC was computed over the wrong slice</small></div><span class="dimc">exit 1</span></div>
+        <div class="r"><span class="okc">✓</span><div class="grow mono">npm test -- qris</div><span class="dimc">exit 0 · 3 s</span></div>
+        <div class="r"><span class="okc">✓</span><div class="grow mono">npm run typecheck</div><span class="dimc">exit 0 · 9 s</span></div>
+      </div>
+      <p class="dimc" style="font-size:12px">These are what pi reported running; Markwork did not run them. The full test suite was not run.</p>
+      <h3>The card</h3>
+      <div class="boxed"><div class="r"><div class="grow">Checkout with QRIS #feature [agent:: pi] [branch:: markwork/checkout-with-qris]<small>↳ pi: Added QRIS as a payment method; the payload test passes.</small></div></div></div>
+    </div>`;
+  } else {
+    $("#tabinfo").textContent="the same steps as the pi Log window";
+    const L=[["turn 1","Read src/checkout/CheckoutPage.tsx"],["","Read src/checkout/paymentMethods.ts"],["","Read src/api/orders.ts"],["","bash: npm install qrcode"],["","Write src/payment/qris.ts"],["","Edit src/checkout/CheckoutPage.tsx (2 edits)"],["","Edit src/checkout/paymentMethods.ts"],["","Write tests/qris.test.ts"],["","bash: npm test -- qris  ✗"],["turn 2","Edit src/payment/qris.ts"],["","bash: npm test -- qris  ✓"],["","bash: npm run typecheck  ✓"],["","bash: git commit -m \"Add QRIS as a payment method\""],["","Edit src/api/orders.ts"],["","Edit .env.example"],["","Answer · 41k tokens in, 6k out · $0.21"]];
+    b.innerHTML=`<div class="prose log"><div class="boxed">${L.map(([k,t])=>`<div class="r"><span class="k">${k}</span><div class="grow mono">${esc(t)}</div></div>`).join("")}</div><button>Open pi Log…</button></div>`;
+  }
+}
+function renderReview(){renderFiles();renderHeader();
+  if(S.remote&&!S.loaded){$("#pbody").innerHTML='<div class="prose dimc">Reading the diff from vps-1 through markworkd…</div>';setTimeout(()=>{S.loaded=true;if(S.scene==="review")renderPane();},700);}
+  else renderPane();}
+const WT=()=>S.remote?"/home/eka/projects/.markwork-worktrees/web-ecommerce":"~/.markwork-worktrees/web-ecommerce";
+function applyMachine(){
+  $("#vps").textContent=`5 · Project on a VPS: ${S.remote?"on":"off"}`; $("#vps").classList.toggle("on",S.remote);
+  $("#rmeta").innerHTML=`pi${S.remote?" on vps-1":""} · <span class="mono">markwork/checkout-with-qris</span> from main @ 3f2a1c9 · 14 min · $0.21`;
+  $("#wtpath").textContent=`Worktree${S.remote?" on vps-1":""}: ${WT()}/checkout-with-qris`;
+  $("#openDir").classList.toggle("hide",S.remote);
+  $("#openTerm").title=S.remote?"Open a terminal in the worktree on vps-1 (ssh)":"Open a terminal in the worktree";
+  $$('#cardMenu [data-a="dir"]').forEach(d=>d.classList.toggle("hide",S.remote));
+  $("#setFolder").textContent=S.remote?"/home/eka/projects/web-ecommerce · vps-1":"~/web-ecommerce · this computer";
+  $("#setProj").textContent=S.remote?"the project on vps-1":"~/web-ecommerce";
+  $("#setGit").textContent=S.remote?"main · clean · checked by git on vps-1":"main · clean · origin git.example.org/eka/web-ecommerce";
+  $("#setWt").textContent=WT();
+  $("#setWtOk").innerHTML=S.remote?'<span class="okc">✓ inside the roots of markworkd on vps-1</span>':"Next to the project, so it is never inside it";
+  $("#setPar").textContent=S.remote?"markworkd on vps-1 keeps the queue, so it goes on when Markwork is closed":"Others wait in the queue while Markwork is open";
+  $("#setWts").textContent=S.remote?"Worktrees on vps-1 · 14 GB free":"Worktrees";
+}
+const TERM=()=>S.remote?"Runs ssh -t vps-1 and opens a terminal in the worktree there":"Opens a terminal in the worktree";
+
+/* ---------- navigation ---------- */
+function go(scene){
+  if(scene!=="review") S.loaded=false;
+  S.scene=scene; closePops(); $("#toast").classList.remove("show");
+  $$("#steps [data-s]").forEach(b=>b.classList.toggle("on",b.dataset.s===scene||(scene==="review"&&S.moved&&b.dataset.s==="moved")));
+  $$(".overlay").forEach(o=>o.classList.remove("show"));
+  const rev=scene==="review";
+  $("#v-board").classList.toggle("on",!rev); $("#v-review").classList.toggle("on",rev);
+  $("#wtitle").textContent=rev?"Review: Checkout with QRIS":"• development.md";
+  $("#layout").classList.toggle("hide",rev);
+  if(rev) renderReview(); else renderBoard();
+  if(scene==="settings") $("#ov-settings").classList.add("show");
+}
+$$("#steps [data-s]").forEach(b=>b.onclick=()=>{
+  const s=b.dataset.s; S.merged=false; S.qris="review";
+  if(s==="moved"){S.moved=true;go("review");} else {S.moved=false; go(s==="settings"?"board":s); if(s==="settings") $("#ov-settings").classList.add("show");}
+});
+$("#back").onclick=()=>go("board");
+$$("#tabs span").forEach(s=>s.onclick=()=>{S.tab=s.dataset.t;renderPane();});
+
+/* ---------- actions ---------- */
+function popAt(sel,x,y){const w=$("#win").getBoundingClientRect(),p=$(sel);closePops();p.classList.add("show");
+  const left=Math.min(x-w.left,w.width-p.offsetWidth-8);p.style.left=Math.max(8,left)+"px";p.style.top=(y-w.top+4)+"px";}
+function closePops(){$$(".pop").forEach(p=>p.classList.remove("show"));}
+document.addEventListener("click",e=>{if(!e.target.closest(".pop"))closePops();});
+$("#mergeMore").onclick=e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();popAt("#mergeMenu",r.right-260,r.bottom);};
+$("#mergeBtn").onclick=()=>finish("merge");
+$$("#mergeMenu div").forEach(d=>d.onclick=()=>finish(d.dataset.m));
+function finish(m){
+  closePops();
+  if(m==="discard"){$("#ov-discard").classList.add("show");return;}
+  if(S.moved&&(m==="merge"||m==="squash")){flash("Merging would conflict; ask pi to update its branch first");return;}
+  if(m==="pr"){flash("Pushed markwork/checkout-with-qris and opened pull request #21","Open",()=>{});return;}
+  if(m==="keep"){flash("Worktree removed; the branch markwork/checkout-with-qris stays");return;}
+  const left=FILES.filter(f=>!f.on).length;
+  S.merged=true; go("board");
+  flash(`${m==="squash"?"Squashed":"Merged"} ${FILES.length-left} files into main${S.remote?" on vps-1":""} · worktree removed`,"Undo",()=>{S.merged=false;go("board");flash("The merge was reverted; the worktree is back");});
+}
+$("#doDiscard").onclick=()=>{$("#ov-discard").classList.remove("show");S.merged=false;go("board");
+  $$("#board .kc").forEach(k=>{if(k.textContent.includes("Checkout with QRIS"))k.remove();});flash("pi’s work on “Checkout with QRIS” was discarded");};
+$("#replyBtn").onclick=()=>{
+  const lines=S.comments.map(c=>`${FILES[c.f].p}:${c.line} — ${c.text}`);
+  $("#replyText").value=lines.length?`Please address these review comments:\n\n${lines.map(l=>"- "+l).join("\n")}\n`:"";
+  $("#ov-reply").classList.add("show");$("#replyText").focus();
+};
+$("#sendReply").onclick=()=>{$("#ov-reply").classList.remove("show");S.comments=[];S.qris="working";go("board");
+  flash("pi continues on “Checkout with QRIS” in its worktree");
+  setTimeout(()=>{S.qris="review";if(S.scene==="board")renderBoard();flash("pi finished “Checkout with QRIS” again","Review",()=>go("review"));},3000);};
+$("#openDir").onclick=()=>flash("Opens the worktree in Files");
+$("#openTerm").onclick=()=>flash(TERM());
+$$("#cardMenu div").forEach(d=>d.onclick=()=>{closePops();const a=d.dataset.a;
+  if(a==="review")go("review");else if(a==="reply"){go("review");$("#replyBtn").click();}
+  else if(a==="discard")$("#ov-discard").classList.add("show");else flash(a==="log"?"Opens the pi Log window":"Opens the worktree in Files");});
+$$("[data-close]").forEach(b=>b.onclick=()=>b.closest(".overlay").classList.remove("show"));
+$("#isoSw").onclick=e=>{e.currentTarget.classList.toggle("off");$("#parRow").classList.toggle("hide");};
+
+function flash(msg,btn,fn){const t=$("#toast");$("#toastMsg").textContent=msg;const b=$("#toastBtn");
+  b.classList.toggle("hide",!btn);b.textContent=btn||"";b.onclick=()=>{t.classList.remove("show");fn&&fn();};
+  t.classList.add("show");clearTimeout(flash.t);flash.t=setTimeout(()=>t.classList.remove("show"),4200);}
+
+/* theme + notes */
+$("#theme").onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark";};
+$("#vps").onclick=()=>{S.remote=!S.remote;S.loaded=false;applyMachine();go(S.scene==="review"?"review":"board");};
+$("#notesBtn").onclick=()=>$("#notes").classList.toggle("show");
+
+applyMachine();
+renderBoard();
+setTimeout(()=>{if(S.scene==="board"&&!$(".overlay.show"))flash("pi finished “Checkout with QRIS”: 6 files changed","Review",()=>go("review"));},1200);
+</script>
+</body>
+</html>
