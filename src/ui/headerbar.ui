@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
+  <!-- The ☰ primary menu: places, commands, inserting, the board, and the app. What belongs to one document is in documentMenu
+       (the title), creating and opening is in newMenu (the New split button), and the view modes are in the layout popover. -->
   <menu id="mainMenu">
     <section>
       <item>
@@ -14,26 +16,6 @@
         <attribute name="label" translatable="yes">Add to Journal…</attribute>
         <attribute name="action">app.journal-capture</attribute>
       </item>
-      <item>
-        <attribute name="label" translatable="yes">Open Folder…</attribute>
-        <attribute name="action">app.open-folder</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Save As…</attribute>
-        <attribute name="action">app.save-as</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Autosave</attribute>
-        <attribute name="action">app.autosave</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Export HTML…</attribute>
-        <attribute name="action">app.export-html</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Send Changes as Pull Request…</attribute>
-        <attribute name="action">app.send-changes</attribute>
-      </item>
     </section>
     <section>
       <item>
@@ -44,18 +26,31 @@
         <attribute name="label" translatable="yes">Find</attribute>
         <attribute name="action">app.find</attribute>
       </item>
-      <item>
-        <attribute name="label" translatable="yes">Insert Image…</attribute>
-        <attribute name="action">app.image</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Zoom Image</attribute>
-        <attribute name="action">app.zoom-image</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Insert Table</attribute>
-        <attribute name="action">app.table</attribute>
-      </item>
+    </section>
+    <section>
+      <submenu>
+        <attribute name="label" translatable="yes">Insert</attribute>
+        <section>
+          <item>
+            <attribute name="label" translatable="yes">Image…</attribute>
+            <attribute name="action">app.image</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">Table</attribute>
+            <attribute name="action">app.table</attribute>
+          </item>
+          <item>
+            <attribute name="label" translatable="yes">Code Block</attribute>
+            <attribute name="action">app.codeblock</attribute>
+          </item>
+        </section>
+        <section>
+          <item>
+            <attribute name="label" translatable="yes">Zoom Image</attribute>
+            <attribute name="action">app.zoom-image</attribute>
+          </item>
+        </section>
+      </submenu>
       <submenu>
         <attribute name="label" translatable="yes">Edit Table</attribute>
         <section>
@@ -107,24 +102,8 @@
           </item>
         </section>
       </submenu>
-      <item>
-        <attribute name="label" translatable="yes">Insert Code Block</attribute>
-        <attribute name="action">app.codeblock</attribute>
-      </item>
     </section>
     <section>
-      <item>
-        <attribute name="label" translatable="yes">New Kanban Board</attribute>
-        <attribute name="action">app.kanban-new</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">New Inbox</attribute>
-        <attribute name="action">app.inbox-new</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">New Table</attribute>
-        <attribute name="action">app.table-new</attribute>
-      </item>
       <item>
         <attribute name="label" translatable="yes">Board/List/Table View</attribute>
         <attribute name="action">app.kanban-view</attribute>
@@ -133,26 +112,16 @@
         <attribute name="label" translatable="yes">Fields…</attribute>
         <attribute name="action">app.fields-edit</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">Send Changes as Pull Request…</attribute>
+        <attribute name="action">app.send-changes</attribute>
+      </item>
     </section>
     <section>
-      <item>
-        <attribute name="label" translatable="yes">Source Mode</attribute>
-        <attribute name="action">app.source</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Focus Mode</attribute>
-        <attribute name="action">app.focus</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Typewriter Mode</attribute>
-        <attribute name="action">app.typewriter</attribute>
-      </item>
       <item>
         <attribute name="label" translatable="yes">Dark Mode</attribute>
         <attribute name="action">app.dark</attribute>
       </item>
-    </section>
-    <section>
       <item>
         <attribute name="label" translatable="yes">Preferences</attribute>
         <attribute name="action">app.preferences</attribute>
@@ -171,45 +140,134 @@
       </item>
     </section>
   </menu>
+  <!-- The New split button: the button makes a document, its arrow creates the other kinds or opens one. -->
+  <menu id="newMenu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">New Document</attribute>
+        <attribute name="action">app.new</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">New Kanban Board</attribute>
+        <attribute name="action">app.kanban-new</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">New Inbox</attribute>
+        <attribute name="action">app.inbox-new</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">New Table</attribute>
+        <attribute name="action">app.table-new</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Open File…</attribute>
+        <attribute name="action">app.open</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Open Folder…</attribute>
+        <attribute name="action">app.open-folder</attribute>
+      </item>
+    </section>
+  </menu>
+  <!-- The title of a document is a menu button for what is done to that document. There is no Save button: the "•" before
+       the name says there are unsaved changes, and Save is here and on Ctrl+S. -->
+  <menu id="documentMenu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Save</attribute>
+        <attribute name="action">app.save</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Save As…</attribute>
+        <attribute name="action">app.save-as</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Autosave</attribute>
+        <attribute name="action">app.autosave</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Export HTML…</attribute>
+        <attribute name="action">app.export-html</attribute>
+      </item>
+    </section>
+  </menu>
   <template class="MarkworkHeaderBar" parent="AdwBin">
     <property name="child">
     <object class="AdwHeaderBar">
+    <!-- A plain title for Home (nothing to save), a menu button for a document. -->
     <property name="title-widget">
-      <object class="AdwWindowTitle" id="windowTitle"/>
+      <object class="GtkStack" id="titleStack">
+        <property name="hhomogeneous">False</property>
+        <child>
+          <object class="GtkStackPage">
+            <property name="name">plain</property>
+            <property name="child">
+              <object class="AdwWindowTitle" id="windowTitle"/>
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkStackPage">
+            <property name="name">document</property>
+            <property name="child">
+              <object class="GtkMenuButton" id="titleButton">
+                <property name="tooltip-text" translatable="yes">Document Menu</property>
+                <property name="menu-model">documentMenu</property>
+                <property name="halign">center</property>
+                <style><class name="flat"/></style>
+                <property name="child">
+                  <object class="GtkBox">
+                    <property name="spacing">6</property>
+                    <child><object class="AdwWindowTitle" id="documentTitle"/></child>
+                    <child><object class="GtkImage"><property name="icon-name">pan-down-symbolic</property></object></child>
+                  </object>
+                </property>
+              </object>
+            </property>
+          </object>
+        </child>
+      </object>
     </property>
     <child type="start">
       <object class="GtkToggleButton">
-        <property name="icon-name">format-justify-left-symbolic</property>
+        <property name="icon-name">sidebar-show-symbolic</property>
         <property name="action-name">app.sidebar</property>
         <property name="tooltip-text" translatable="yes">Sidebar (Ctrl+\)</property>
       </object>
     </child>
-    <!-- A document icon, not document-open-symbolic: in some icon themes (for example
-         elementary-xfce) document-open is a folder, so it gets confused with Open Folder. -->
     <child type="start">
-      <object class="GtkButton">
-        <property name="icon-name">text-x-generic-symbolic</property>
-        <property name="action-name">app.open</property>
-        <property name="tooltip-text" translatable="yes">Open File (Ctrl+O)</property>
-      </object>
-    </child>
-    <child type="start">
-      <object class="GtkButton">
-        <property name="icon-name">folder-open-symbolic</property>
-        <property name="action-name">app.open-folder</property>
-        <property name="tooltip-text" translatable="yes">Open Folder (Ctrl+Shift+O)</property>
-      </object>
-    </child>
-    <child type="start">
-      <object class="GtkButton">
+      <object class="AdwSplitButton">
         <property name="icon-name">document-new-symbolic</property>
         <property name="action-name">app.new</property>
-        <property name="tooltip-text" translatable="yes">New (Ctrl+N)</property>
+        <property name="menu-model">newMenu</property>
+        <property name="tooltip-text" translatable="yes">New Document (Ctrl+N)</property>
+        <property name="dropdown-tooltip" translatable="yes">New and Open</property>
+      </object>
+    </child>
+    <!-- The end children are packed from the right: the primary menu sits next to the window controls, as the GNOME HIG
+         places it, so the layout button is not right beside Close any more. -->
+    <child type="end">
+      <object class="GtkMenuButton">
+        <property name="icon-name">open-menu-symbolic</property>
+        <property name="tooltip-text" translatable="yes">Main Menu</property>
+        <property name="menu-model">mainMenu</property>
+        <property name="primary">True</property>
+      </object>
+    </child>
+    <child type="end">
+      <object class="GtkToggleButton">
+        <property name="icon-name">sidebar-show-right-symbolic</property>
+        <property name="action-name">app.chat</property>
+        <property name="tooltip-text" translatable="yes">Assistant (Ctrl+Shift+A)</property>
       </object>
     </child>
     <child type="end">
       <object class="GtkMenuButton" id="layoutButton">
-        <property name="tooltip-text" translatable="yes">Layout</property>
+        <property name="tooltip-text" translatable="yes">View</property>
         <property name="visible">False</property>
         <property name="child">
           <object class="GtkBox">
@@ -219,27 +277,6 @@
             <child><object class="GtkImage"><property name="icon-name">pan-down-symbolic</property></object></child>
           </object>
         </property>
-      </object>
-    </child>
-    <child type="end">
-      <object class="GtkMenuButton">
-        <property name="icon-name">open-menu-symbolic</property>
-        <property name="tooltip-text" translatable="yes">Menu</property>
-        <property name="menu-model">mainMenu</property>
-      </object>
-    </child>
-    <child type="end">
-      <object class="GtkButton">
-        <property name="icon-name">document-save-symbolic</property>
-        <property name="action-name">app.save</property>
-        <property name="tooltip-text" translatable="yes">Save (Ctrl+S)</property>
-      </object>
-    </child>
-    <child type="end">
-      <object class="GtkToggleButton">
-        <property name="icon-name">user-available-symbolic</property>
-        <property name="action-name">app.chat</property>
-        <property name="tooltip-text" translatable="yes">Assistant (Ctrl+Shift+A)</property>
       </object>
     </child>
     </object>

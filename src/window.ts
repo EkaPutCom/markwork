@@ -834,7 +834,7 @@ export class MainWindow {
             this.win.set_title(`${name} — ${APP_NAME}`);
             return;
         }
-        this.header.setTitle(`${mark}${name}`, doc.file ? GLib.path_get_dirname(doc.file).replace(GLib.get_home_dir(), '~') : APP_NAME);
+        this.header.setTitle(`${mark}${name}`, doc.file ? GLib.path_get_dirname(doc.file).replace(GLib.get_home_dir(), '~') : APP_NAME, true);
         this.win.set_title(`${mark}${name} — ${APP_NAME}`);
     }
 

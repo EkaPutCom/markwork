@@ -1,6 +1,7 @@
 // GUI tests: compliance with the GNOME guidelines (adaptive layout, shortcuts dialog, app icon, Adwaita colors).
 
 import Adw from 'gi://Adw?version=1';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Gtk from 'gi://Gtk?version=4.0';
@@ -59,6 +60,45 @@ export function gnomeTests(c: GuiContext): void {
         eq(w.win.get_icon_name(), APP_ID);
         const theme = Gtk.IconTheme.get_for_display(w.win.get_display());
         ok(theme.has_icon(APP_ID), 'the app icon was not found in the icon theme (dist/icons)');
+    });
+
+    test('the header bar: sidebar and New at the start, the title is the document menu, the primary menu sits last, no Save button', () => {
+        const all = descendants(w.header);
+        const tips = (type: typeof Gtk.Widget) => all.filter(x => x instanceof type && x.get_visible()).map(x => x.get_tooltip_text());
+        ok(all.some(x => x instanceof Gtk.ToggleButton && x.icon_name === 'sidebar-show-symbolic'), 'the sidebar toggle has the sidebar icon');
+        const split = all.find((x): x is Adw.SplitButton => x instanceof Adw.SplitButton)!;
+        eq([split.action_name, split.icon_name], ['app.new', 'document-new-symbolic']);
+        const items = (model: Gio.MenuModel) => Array.from({ length: model.get_n_items() }, (_x, i) => model.get_item_link(i, 'section')!)
+            .flatMap(s => Array.from({ length: s.get_n_items() }, (_x, i) => s.get_item_attribute_value(i, 'action', null)?.get_string()[0]));
+        eq(items(split.menu_model!), ['app.new', 'app.kanban-new', 'app.inbox-new', 'app.table-new', 'app.open', 'app.open-folder']);
+        ok(!all.some(x => x instanceof Gtk.Button && x.get_action_name() === 'app.save'), 'no Save button');
+        ok(!tips(Gtk.Button).includes('Open Folder (Ctrl+Shift+O)'), 'Open Folder moved into the New menu');
+        const title = (w.header as unknown as { _titleButton: Gtk.MenuButton })._titleButton;
+        ok(title.get_mapped(), 'a document shows its title as a menu button');
+        eq(items(title.menu_model!), ['app.save', 'app.save-as', 'app.autosave', 'app.export-html']);
+        const primary = all.find((x): x is Gtk.MenuButton => x instanceof Gtk.MenuButton && x.primary)!;
+        const bar = all.find((x): x is Adw.HeaderBar => x instanceof Adw.HeaderBar)!;
+        const right = (x: Gtk.Widget) => x.compute_bounds(bar)[1].get_x() + x.get_width();
+        const ends = all.filter(x => x instanceof Gtk.MenuButton || x instanceof Gtk.ToggleButton).filter(x => x.get_mapped() && x !== title);
+        ok(ends.every(x => right(x) <= right(primary)), 'the primary menu is the last button before the window controls');
+        const modes = descendants((w.header as unknown as { _layoutButton: Gtk.MenuButton })._layoutButton.get_popover()!)
+            .filter((x): x is Gtk.CheckButton => x instanceof Gtk.CheckButton).map(x => x.action_name);
+        eq(modes, ['app.source', 'app.focus', 'app.typewriter'], 'the view modes are in the layout popover');
+        if (shot) {
+            widgetPixbuf(w.header)?.savev(`${shot}-header.png`, 'png', [], []);
+            // A popover is a surface of its own, so it is rendered by itself, not as part of the window.
+            const layout = (w.header as unknown as { _layoutButton: Gtk.MenuButton })._layoutButton;
+            for (const [name, button] of [['new', split], ['document', title], ['view', layout], ['menu', primary]] as const) {
+                button.popup();
+                settle();
+                widgetPixbuf(button.get_popover()!)?.savev(`${shot}-header-${name}.png`, 'png', [], []);
+                button.popdown();
+                settle();
+            }
+        }
+        w.openHome(); settle();
+        ok(!title.get_mapped() && (w.header as unknown as { _windowTitle: Adw.WindowTitle })._windowTitle.get_mapped(), 'Home has a plain title');
+        w.closeTab(); settle();
     });
 
     test('untranslated text is shown in the source language', () => {

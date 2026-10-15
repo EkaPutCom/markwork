@@ -1,5 +1,9 @@
-// Header bar (Adw.HeaderBar, wrapped in Adw.Bin because that class is final): the buttons and the ☰ menu, declared in headerbar.ui. Each button/menu
+// Header bar (Adw.HeaderBar, wrapped in Adw.Bin because that class is final): the buttons and the menus, declared in headerbar.ui. Each button/menu
 // only names an action ("app.save"); the action itself is registered in actions.ts.
+//
+//   [sidebar] [New ▾]        [• name ▾ / folder]        [Text ▾] [assistant] [☰]
+//
+// New ▾ creates and opens, the title is the document's menu (Save, Save As, Export), the layout button also holds the view modes.
 
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib';
@@ -29,10 +33,13 @@ export class HeaderBar extends Adw.Bin {
         GObject.registerClass({
             GTypeName: 'MarkworkHeaderBar',
             Template: uiTemplate(template),
-            InternalChildren: ['windowTitle', 'layoutButton', 'layoutIcon', 'layoutLabel'],
+            InternalChildren: ['titleStack', 'windowTitle', 'titleButton', 'documentTitle', 'layoutButton', 'layoutIcon', 'layoutLabel'],
         }, this);
     }
+    declare _titleStack: Gtk.Stack;
     declare _windowTitle: Adw.WindowTitle;
+    declare _titleButton: Gtk.MenuButton;
+    declare _documentTitle: Adw.WindowTitle;
     declare _layoutButton: Gtk.MenuButton;
     declare _layoutIcon: Gtk.Image;
     declare _layoutLabel: Gtk.Label;
@@ -42,7 +49,8 @@ export class HeaderBar extends Adw.Bin {
         this._layoutButton.set_popover(this.layoutPopover());
     }
 
-    // A row for each layout with its icon, checked for the one the document is in (the toggle follows the state of `app.layout`).
+    // A row for each layout with its icon, checked for the one the document is in (the toggle follows the state of `app.layout`),
+    // then the view modes as check buttons (they follow the boolean state of their actions).
     private layoutPopover(): Gtk.Popover {
         const popover = new Gtk.Popover();
         const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 2, margin_top: 6, margin_bottom: 6, margin_start: 6, margin_end: 6 });
@@ -56,13 +64,19 @@ export class HeaderBar extends Adw.Bin {
             item.connect('clicked', () => popover.popdown());
             box.append(item);
         }
+        box.append(new Gtk.Separator({ margin_top: 4, margin_bottom: 4 }));
+        for (const [action, label] of [['app.source', _('Source Mode')], ['app.focus', _('Focus Mode')], ['app.typewriter', _('Typewriter Mode')]])
+            box.append(new Gtk.CheckButton({ label, action_name: action, margin_start: 6, margin_end: 6 }));
         popover.set_child(box);
         return popover;
     }
 
-    setTitle(title: string, subtitle: string): void {
-        this._windowTitle.set_title(title);
-        this._windowTitle.set_subtitle(subtitle);
+    // `document` makes the title the document's menu button; Home has a plain title.
+    setTitle(title: string, subtitle: string, document = false): void {
+        const shown = document ? this._documentTitle : this._windowTitle;
+        shown.set_title(title);
+        shown.set_subtitle(subtitle);
+        this._titleStack.set_visible_child_name(document ? 'document' : 'plain');
     }
 
     // The layout button shows the layout the document is shown in (its name and icon); null hides it (Home).
