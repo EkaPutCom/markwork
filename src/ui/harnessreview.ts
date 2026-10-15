@@ -105,7 +105,7 @@ export class HarnessReviewView {
         side.append(this.files);
         side.append(this.heading(_('Commits')));
         side.append(this.commits);
-        const sideScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, width_request: 200, child: side });
+        const sideScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, width_request: 160, child: side });
 
         const changes = new Gtk.ToggleButton({ label: _('Changes'), active: true });
         const summary = new Gtk.ToggleButton({ label: _('Summary'), group: changes });

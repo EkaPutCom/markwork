@@ -20,7 +20,9 @@
               <object class="GtkOverlay">
                 <property name="child">
                   <object class="GtkEntry" id="entry">
-                    <property name="width-chars">34</property>
+                    <property name="width-chars">12</property>
+                    <property name="max-width-chars">34</property>
+                    <property name="hexpand">true</property>
                     <property name="placeholder-text" translatable="yes">Find</property>
                     <property name="primary-icon-name">edit-find-symbolic</property>
                     <style><class name="search-field"/></style>
@@ -64,7 +66,9 @@
                   <object class="GtkOverlay">
                     <property name="child">
                       <object class="GtkEntry" id="replaceEntry">
-                        <property name="width-chars">34</property>
+                        <property name="width-chars">12</property>
+                    <property name="max-width-chars">34</property>
+                    <property name="hexpand">true</property>
                         <property name="placeholder-text" translatable="yes">Replace</property>
                         <style><class name="replace-field-two"/></style>
                       </object>

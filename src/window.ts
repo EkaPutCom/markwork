@@ -149,7 +149,7 @@ export class MainWindow {
         this.dark = settings.dark ?? systemPrefersDark();
 
         // Components
-        this.content = new Gtk.Stack({ vexpand: true, hexpand: true });
+        this.content = new Gtk.Stack({ vexpand: true, hexpand: true, hhomogeneous: false });
         this.tabBar = new TabBar();
         this.outline = new Outline();
         this.history = new History();
@@ -597,6 +597,15 @@ export class MainWindow {
     private bindPanel(key: 'sidebar' | 'chat', split: Adw.OverlaySplitView): void {
         const gs = this.settings.gsettings;
         split.pin_sidebar = true;
+        // A panel that takes editor width appears at once: sliding it re-wraps the text on every frame, one frame
+        // behind the panel. Connected before the binding below, so animations are off when the binding opens the
+        // panel (the animation checks this when it starts); a floating panel (collapsed) keeps its slide.
+        gs.connect(`changed::${key}`, () => {
+            const settings = Gtk.Settings.get_default();
+            if (!settings || split.collapsed || !settings.gtk_enable_animations) return;
+            settings.gtk_enable_animations = false;
+            GLib.idle_add(GLib.PRIORITY_HIGH, () => { settings.gtk_enable_animations = true; return GLib.SOURCE_REMOVE; });
+        });
         gs.bind(key, split, 'show-sidebar', Gio.SettingsBindFlags.DEFAULT);
         split.connect('notify::collapsed', () => {
             if (split.collapsed) {
