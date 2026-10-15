@@ -6,5 +6,8 @@ Requires=markworkd.socket
 Type=simple
 ExecStart=%h/.local/bin/markworkd serve
 Restart=on-failure
-# SIGTERM makes the daemon stop active runs in an orderly way; give it time.
+# Each agent lives under its own shim (docs/design/markworkd.md, section 17) so it survives a stop or restart of
+# this service: do not let systemd kill the whole control group.
+KillMode=process
+# SIGTERM detaches the daemon from its runs; with "shims": false it stops them in an orderly way, which takes time.
 TimeoutStopSec=20

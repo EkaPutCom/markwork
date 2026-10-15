@@ -286,6 +286,7 @@ export class HarnessController {
         const entries: MenuEntry[] = [];
         if (active?.status === 'waiting') entries.push({ label: fmt(_('Answer {agent}…'), { agent: active.agent }), run: () => this.answer(active) });
         if (active?.status === 'working') entries.push({ label: fmt(_('Steer {agent}…'), { agent: active.agent }), run: () => this.steer(active) });
+        if (!active && run.result?.interrupted) entries.push({ label: fmt(_('Resume {agent}'), { agent: run.agent }), run: () => this.resumeInterrupted(run) });
         if (!active && run.result?.sessionId) entries.push({ label: fmt(_('Reply to {agent}…'), { agent: run.agent }), run: () => this.reply(run) });
         if (active) entries.push({ label: active.status === 'queued' ? _('Cancel Queue') : fmt(_('Stop {agent}'), { agent: active.agent }), run: () => this.orchestrator.stop(active) });
         entries.push({ label: fmt(_('View {agent} Log'), { agent: run.agent }), run: () => this.showLog(run) });
@@ -380,6 +381,11 @@ export class HarnessController {
             const error = this.orchestrator.steer(run, text);
             this.host.toast(error ? fmt(_('The steering was not sent: {error}'), { error }) : fmt(_('Steering sent to {agent}'), { agent: run.agent }));
         });
+    }
+
+    private resumeInterrupted(run: Run): void {
+        const error = this.orchestrator.resumeInterrupted(run);
+        if (error) this.host.toast(fmt(_('Cannot resume {agent}: {error}'), { agent: run.agent, error }));
     }
 
     private reply(run: Run): void {

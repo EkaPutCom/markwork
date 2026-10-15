@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/EkaPutCom/markwork/markworkd/internal/model"
+	"github.com/EkaPutCom/markwork/markworkd/internal/runner"
 	"github.com/EkaPutCom/markwork/markworkd/internal/store"
 )
 
@@ -43,7 +44,7 @@ func (s *Supervisor) Recover() error {
 	if err != nil {
 		return err
 	}
-	var running, queued []*run
+	var running, queued, reattached []*run
 	for _, id := range ids {
 		meta, err := s.st.LoadMeta(id)
 		if errors.Is(err, fs.ErrNotExist) { // the daemon died while creating the run
@@ -89,12 +90,16 @@ func (s *Supervisor) Recover() error {
 			}
 		}
 		r.log = lg
-		if r.stderr, err = store.OpenStderr(s.st.StderrPath(id), int64(s.cfg.MaxStderrBytes)); err != nil {
-			s.log.Error("cannot open stderr.log", "run", id, "err", err)
+		if !s.shimMode() { // with shims the shim owns stderr.log
+			if r.stderr, err = store.OpenStderr(s.st.StderrPath(id), int64(s.cfg.MaxStderrBytes)); err != nil {
+				s.log.Error("cannot open stderr.log", "run", id, "err", err)
+			}
 		}
 		r.touch(s.opts.Now())
 		s.runs[id] = r
-		if meta.State == model.StateRunning {
+		if meta.State == model.StateRunning && s.reattach(r) {
+			reattached = append(reattached, r)
+		} else if meta.State == model.StateRunning {
 			running = append(running, r)
 		} else {
 			queued = append(queued, r)
@@ -104,6 +109,22 @@ func (s *Supervisor) Recover() error {
 	s.stopOrphans(running)
 	for _, r := range running {
 		s.finish(r, model.Exit{Reason: model.ReasonLost, Error: "the daemon restarted while the run was active"})
+	}
+	// The runs that kept going hold their lane slots again before any queued run is admitted.
+	for _, r := range reattached {
+		s.mu.Lock()
+		if name := r.meta.Spec.Lane; name != "" {
+			l := s.lanes[name]
+			if l == nil {
+				l = &lane{}
+				s.lanes[name] = l
+			}
+			l.running = append(l.running, r.id)
+		}
+		proc := r.proc
+		s.mu.Unlock()
+		s.armIdle(r)
+		go s.pump(r, proc)
 	}
 
 	sort.Slice(queued, func(i, j int) bool { return queued[i].meta.CreatedAt < queued[j].meta.CreatedAt })
@@ -116,6 +137,26 @@ func (s *Supervisor) Recover() error {
 		}
 	}
 	return nil
+}
+
+// reattach takes over a run whose shim is still running: the agent went on while no daemon was there. The shim
+// replays the output the previous daemon had not logged; what it did log is counted from the log itself, so nothing
+// is lost and nothing is repeated.
+func (s *Supervisor) reattach(r *run) bool {
+	att, ok := s.opts.Launcher.(runner.Attacher)
+	if !ok {
+		return false
+	}
+	proc, err := att.Attach(s.st.RunDir(r.id), r.log.OutCount())
+	if err != nil {
+		s.log.Warn("the shim of a run cannot be reached", "run", r.id, "err", err)
+		return false
+	}
+	s.mu.Lock()
+	r.proc = proc
+	s.mu.Unlock()
+	s.log.Info("took over a run from a previous daemon", "run", r.id, "pid", proc.PID())
+	return true
 }
 
 // orphanTarget returns the process group of an agent from a previous daemon, or 0 if it is gone or not ours.

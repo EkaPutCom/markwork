@@ -195,6 +195,9 @@ func (s *Supervisor) Stderr(id string, tail int) (string, bool, error) {
 		return "", false, err
 	}
 	se, size := r.stderr, r.meta.StderrBytes
+	if se == nil && r.meta.State != model.StateExited {
+		size = s.stderrSize(r)
+	}
 	s.mu.Unlock()
 	var text string
 	var partial bool
@@ -210,13 +213,38 @@ func (s *Supervisor) Stderr(id string, tail int) (string, bool, error) {
 }
 
 // Shutdown prepares the daemon to stop. Without force it refuses while runs are queued or running.
-func (s *Supervisor) Shutdown(force bool) error {
+func (s *Supervisor) Shutdown(force, detach bool) error {
+	if detach {
+		if !s.CanDetach() {
+			return model.Errf(model.CodeBadRequest, "detach needs agents that run under shims (\"shims\": true)")
+		}
+		s.Detach()
+		return nil
+	}
 	q, r, _ := s.Counts()
 	if q+r > 0 && !force {
 		return model.Errf(model.CodeRunsActive, "%d runs are active (%d running, %d queued); use force to stop them", q+r, r, q)
 	}
 	s.StopAll(s.opts.StopGrace)
 	return nil
+}
+
+// CanDetach reports whether runs can outlive this daemon.
+func (s *Supervisor) CanDetach() bool { return s.shimMode() }
+
+// Detach prepares the daemon to exit while the runs go on under their shims: no new run starts and no queued run
+// is promoted, and nothing is stopped. The next daemon takes the runs over (Recover).
+func (s *Supervisor) Detach() {
+	s.mu.Lock()
+	s.stopping, s.detached = true, true
+	s.mu.Unlock()
+}
+
+// Detaching reports whether Detach was called.
+func (s *Supervisor) Detaching() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.detached
 }
 
 // StopAll stops every running run in an orderly way and prevents queued runs from starting. Queued runs stay
@@ -277,9 +305,7 @@ func (s *Supervisor) summaryLocked(r *run) model.Summary {
 		if r.log != nil {
 			sum.LastSeq, sum.LogBytes = r.log.LastSeq(), r.log.Size()
 		}
-		if r.stderr != nil {
-			sum.StderrBytes = r.stderr.Size()
-		}
+		sum.StderrBytes = s.stderrSize(r)
 	}
 	if m.State == model.StateQueued {
 		if l := s.lanes[m.Spec.Lane]; l != nil {

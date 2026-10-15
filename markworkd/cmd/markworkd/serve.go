@@ -14,6 +14,7 @@ import (
 	"github.com/EkaPutCom/markwork/markworkd/internal/daemonize"
 	"github.com/EkaPutCom/markwork/markworkd/internal/runner"
 	"github.com/EkaPutCom/markwork/markworkd/internal/server"
+	"github.com/EkaPutCom/markwork/markworkd/internal/shim"
 	"github.com/EkaPutCom/markwork/markworkd/internal/store"
 	"github.com/EkaPutCom/markwork/markworkd/internal/supervisor"
 )
@@ -44,10 +45,11 @@ func cmdServe(args []string) int {
 	if err != nil {
 		return fail("%v", err)
 	}
-	sup := supervisor.New(supervisor.Options{
-		Config: cfg, Store: st, Logger: log,
-		Launcher: runner.OSLauncher{MaxLine: cfg.MaxLineBytes},
-	})
+	var launcher runner.Launcher = runner.OSLauncher{MaxLine: cfg.MaxLineBytes}
+	if cfg.Shims { // each agent lives under a shim of its own, so it survives this daemon
+		launcher = shim.Launcher{MaxLine: cfg.MaxLineBytes}
+	}
+	sup := supervisor.New(supervisor.Options{Config: cfg, Store: st, Logger: log, Launcher: launcher})
 	if err := sup.Recover(); err != nil {
 		return fail("recovering runs: %v", err)
 	}
@@ -81,6 +83,9 @@ func cmdServe(args []string) int {
 	select {
 	case s := <-sigs:
 		log.Info("stopping", "signal", s.String())
+		if sup.CanDetach() { // runs live under their shims: a stop or restart of the service must not end them
+			sup.Detach()
+		}
 	case <-srv.ShutdownRequested():
 		log.Info("stopping on request")
 	case err := <-served:
@@ -89,8 +94,12 @@ func cmdServe(args []string) int {
 			code = 1
 		}
 	}
-	// Active runs are stopped in an orderly way, so they end as "stopped" with a complete log, not as "lost".
-	sup.StopAll(5 * time.Second)
+	if sup.Detaching() {
+		log.Info("leaving the active runs to their shims")
+	} else {
+		// Active runs are stopped in an orderly way, so they end as "stopped" with a complete log, not as "lost".
+		sup.StopAll(5 * time.Second)
+	}
 	srv.Close()
 	log.Info("markworkd stopped")
 	return code

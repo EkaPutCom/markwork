@@ -26,6 +26,10 @@ type Config struct {
 	MaxLogBytes       int64             `json:"max_log_bytes"`
 	MaxLineBytes      int               `json:"max_line_bytes"`
 	MaxStderrBytes    int               `json:"max_stderr_bytes"`
+	// Shims keeps every agent under a small helper process of its own, so the agents survive the daemon (design 17).
+	Shims             bool  `json:"shims"`
+	ShimLingerSec     int   `json:"shim_linger_sec"`      // how long a shim waits for a daemon to take over a finished run
+	ShimSpoolMaxBytes int64 `json:"shim_spool_max_bytes"` // output kept for a daemon that is away; past it the agent is stopped
 }
 
 // Default returns the built-in configuration. With no roots every spawn is refused.
@@ -37,6 +41,9 @@ func Default() Config {
 		MaxLogBytes:       512 << 20,
 		MaxLineBytes:      8 << 20,
 		MaxStderrBytes:    1 << 20,
+		Shims:             true,
+		ShimLingerSec:     86400,
+		ShimSpoolMaxBytes: 256 << 20,
 	}
 }
 
@@ -99,6 +106,10 @@ func (c *Config) Validate() error {
 		return errors.New("max_line_bytes must be at least 1024")
 	case c.MaxStderrBytes < 1<<10:
 		return errors.New("max_stderr_bytes must be at least 1024")
+	case c.ShimLingerSec < 1:
+		return errors.New("shim_linger_sec must be at least 1")
+	case c.ShimSpoolMaxBytes < 1<<10:
+		return errors.New("shim_spool_max_bytes must be at least 1024")
 	}
 	return nil
 }

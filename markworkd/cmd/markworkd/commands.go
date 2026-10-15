@@ -32,8 +32,12 @@ func cmdStart(args []string) int {
 func cmdStop(args []string) int {
 	fs, c := newFlags("stop")
 	force := fs.Bool("force", false, "stop active runs too")
+	detach := fs.Bool("detach", false, "leave active runs going under their shims (for an upgrade)")
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	if *force && *detach {
+		return fail("--force and --detach exclude each other")
 	}
 	cl, err := dial(c)
 	if err != nil {
@@ -41,7 +45,7 @@ func cmdStop(args []string) int {
 		return 0
 	}
 	defer cl.Close()
-	if err := cl.Shutdown(*force); err != nil {
+	if err := cl.Shutdown(*force, *detach); err != nil {
 		return fail("%v", err)
 	}
 	deadline := time.Now().Add(15 * time.Second)

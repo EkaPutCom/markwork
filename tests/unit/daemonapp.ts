@@ -233,6 +233,44 @@ export function daemonAppTests(): void {
         contains(run.result?.error ?? '', 'daemon restarted');
     });
 
+    test('an interrupted run (lost with a known session) can be resumed in the same session, once the user confirms', () => {
+        const f = follower();
+        f.orch.adopt(f.info);
+        f.history([STATE]);
+        f.handlers.exit(1, 'the daemon restarted while the run was active', true);
+        const run = f.orch.queue.runs[0];
+        eq(run.status, 'failed');
+        eq(run.result?.interrupted, true);
+        contains(f.board().columns[1].cards[0].notes.join('\n'), 'interrupted');
+        contains(f.board().columns[1].cards[0].notes.join('\n'), 'resume it');
+        ok(f.changes.some(m => m.includes('interrupted')), 'the user is told, in words that point at the card');
+
+        let argv: string[] = [];
+        let wrote = '';
+        f.orch.program = spec => spec.program;
+        f.orch.spawn = (a, _cwd, _h) => { argv = a; return { write: l => { wrote += l; return true; }, closeInput: () => {}, stop: () => {} }; };
+        eq(f.orch.resumeInterrupted(run), null);
+        eq(argv.slice(-2), ['--session', 's-1'], 'the same pi session');
+        contains(wrote, 'interrupted');
+        eq(f.orch.queue.find('/b.md', run.card)?.status, 'working');
+    });
+
+    test('a lost run without a session id cannot be resumed; a run that failed by itself is not "interrupted"', () => {
+        const f = follower();
+        f.orch.adopt(f.info);
+        f.history([]);
+        f.handlers.exit(1, 'the daemon restarted while the run was active', true);
+        const run = f.orch.queue.runs[0];
+        ok(!run.result?.interrupted, 'no session to continue');
+        eq(f.orch.resumeInterrupted(run), 'this run was not interrupted');
+
+        const g = follower();
+        g.orch.adopt(g.info);
+        g.history([STATE]);
+        g.handlers.exit(2, 'boom');
+        ok(!g.orch.queue.runs[0].result?.interrupted, 'an ordinary failure is not offered as a resume');
+    });
+
     test('closing: runs in a daemon are let go or stopped as asked, local children are stopped; queued cards are counted', () => {
         const f = follower();
         f.orch.adopt(f.info);

@@ -424,7 +424,7 @@ func TestShutdownRefusesWithActiveRuns(t *testing.T) {
 	c := f.dial()
 	c.Spawn(f.spec("busy"))
 	waitState(t, c, "busy", model.StateRunning)
-	if err := c.Shutdown(false); code(err) != model.CodeRunsActive {
+	if err := c.Shutdown(false, false); code(err) != model.CodeRunsActive {
 		t.Fatalf("got %v", err)
 	}
 	select {
@@ -432,7 +432,7 @@ func TestShutdownRefusesWithActiveRuns(t *testing.T) {
 		t.Fatal("shutdown must not be requested after a refusal")
 	default:
 	}
-	if err := c.Shutdown(true); err != nil {
+	if err := c.Shutdown(true, false); err != nil {
 		t.Fatal(err)
 	}
 	select {

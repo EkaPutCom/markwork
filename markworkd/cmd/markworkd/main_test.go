@@ -67,7 +67,10 @@ type daemonEnv struct {
 	root  string
 }
 
-func newDaemonEnv(t *testing.T) *daemonEnv {
+func newDaemonEnv(t *testing.T) *daemonEnv { return newDaemonEnvWith(t, nil) }
+
+// newDaemonEnvWith adds entries to config.json.
+func newDaemonEnvWith(t *testing.T, extra map[string]any) *daemonEnv {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "mwd")
 	if err != nil {
@@ -76,11 +79,14 @@ func newDaemonEnv(t *testing.T) *daemonEnv {
 	t.Cleanup(func() { os.RemoveAll(dir) })
 	e := &daemonEnv{t: t, bin: binary(t), dir: dir, sock: filepath.Join(dir, "s.sock"), state: filepath.Join(dir, "state"), conf: filepath.Join(dir, "config.json"), root: filepath.Join(dir, "proj")}
 	os.Mkdir(e.root, 0o755)
-	cfg := map[string]any{"roots": []string{e.root}, "programs": map[string]string{"agent": testutil.FakeAgent(t)}, "default_idle_ttl_sec": 0}
+	cfg := map[string]any{"roots": []string{e.root}, "programs": map[string]string{"agent": testutil.FakeAgent(t)}, "default_idle_ttl_sec": 0, "shim_linger_sec": 5}
+	for k, v := range extra {
+		cfg[k] = v
+	}
 	data, _ := json.Marshal(cfg)
 	os.WriteFile(e.conf, data, 0o600)
 	// Whatever the test leaves behind must not outlive it.
-	t.Cleanup(func() { e.cli("stop", "--force") })
+	t.Cleanup(func() { e.cli("stop", "--force"); testutil.KillAgents(e.state) })
 	return e
 }
 
@@ -195,8 +201,9 @@ func readMeta(t *testing.T, e *daemonEnv, run string) metaFile {
 	return m
 }
 
+// Without shims the agents are children of the daemon, so a stop of the daemon has to end them.
 func TestSigtermStopsRunsInAnOrderlyWay(t *testing.T) {
-	e := newDaemonEnv(t)
+	e := newDaemonEnvWith(t, map[string]any{"shims": false})
 	cmd := exec.Command(e.bin, append([]string{"serve"}, e.flags()...)...)
 	var logs bytes.Buffer
 	cmd.Stderr = &logs
@@ -245,8 +252,8 @@ func TestSigtermStopsRunsInAnOrderlyWay(t *testing.T) {
 }
 
 // kill -9 is the worst case: no orderly stop. The run that was active is "lost"; the queued one starts.
-func TestCrashRecovery(t *testing.T) {
-	e := newDaemonEnv(t)
+func TestCrashRecoveryWithoutShims(t *testing.T) {
+	e := newDaemonEnvWith(t, map[string]any{"shims": false})
 	cmd := exec.Command(e.bin, append([]string{"serve"}, e.flags()...)...)
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -282,6 +289,138 @@ func TestCrashRecovery(t *testing.T) {
 	if out, _ := e.cli("logs", "a"); !strings.Contains(out, "lost") {
 		t.Fatalf("logs of the lost run: %q", out)
 	}
+}
+
+// Starts `serve` in the foreground and returns the command and a channel with its exit status.
+func (e *daemonEnv) serve() (*exec.Cmd, <-chan error) {
+	e.t.Helper()
+	cmd := exec.Command(e.bin, append([]string{"serve"}, e.flags()...)...)
+	if err := cmd.Start(); err != nil {
+		e.t.Fatal(err)
+	}
+	exited := make(chan error, 1)
+	go func() { exited <- cmd.Wait() }()
+	e.t.Cleanup(func() { cmd.Process.Kill() })
+	waitSocket(e.t, e.sock)
+	return cmd, exited
+}
+
+func (e *daemonEnv) waitOut(c *client.Client, run string, want ...string) {
+	e.t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	var got []string
+	for time.Now().Before(deadline) {
+		got = got[:0]
+		sub, err := c.Subscribe(run, 0)
+		if err == nil {
+			for len(got) < len(want) {
+				select {
+				case rec, ok := <-sub.Records:
+					if !ok {
+						goto done
+					}
+					if rec.Kind == model.KindOut {
+						got = append(got, rec.Line)
+					}
+				case <-time.After(200 * time.Millisecond):
+					goto done
+				}
+			}
+		done:
+			sub.Close()
+		}
+		if strings.Join(got, "|") == strings.Join(want, "|") {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	e.t.Fatalf("run %s: output %v, want %v", run, got, want)
+}
+
+// kill -9 on the daemon: the agent lives under its shim, so it goes on, and the next daemon takes it over,
+// including what it printed while nobody was there.
+func TestAgentSurvivesKillNineOfTheDaemon(t *testing.T) {
+	e := newDaemonEnv(t)
+	cmd, _ := e.serve()
+	c := e.dial()
+	a := e.spec("a", "-hello", "up")
+	a.Lane = "p"
+	b := e.spec("b", "-hello", "b is up")
+	b.Lane = "p"
+	c.Spawn(a)
+	c.Spawn(b)
+	pid := e.wait(c, "a", model.StateRunning).PID
+	e.waitOut(c, "a", "up")
+	if _, err := c.Write("a", "after 400 while-away"); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd.Process.Signal(syscall.SIGKILL)
+	time.Sleep(700 * time.Millisecond)
+	if err := syscall.Kill(pid, 0); err != nil {
+		t.Fatalf("the agent should still be alive: %v", err)
+	}
+
+	if out, code := e.cli("start"); code != 0 {
+		t.Fatalf("start after a crash: %q", out)
+	}
+	c2 := e.dial()
+	sum := e.wait(c2, "a", model.StateRunning)
+	if sum.PID != pid {
+		t.Fatalf("the same agent should be running: pid %d, was %d", sum.PID, pid)
+	}
+	e.waitOut(c2, "a", "up", "while-away")
+	if sum, _ := c2.Get("b"); sum.State != model.StateQueued {
+		t.Fatalf("b must keep waiting: the lane slot of a is taken: %s", sum.State)
+	}
+	if _, err := c2.Write("a", "exit 0"); err != nil {
+		t.Fatal(err)
+	}
+	e.wait(c2, "a", model.StateExited)
+	e.wait(c2, "b", model.StateRunning)
+}
+
+// SIGTERM (a service stop or restart) and `stop --detach` leave the runs to their shims.
+func TestStopDetachAndSigtermLeaveRunsGoing(t *testing.T) {
+	e := newDaemonEnv(t)
+	_, exited := e.serve()
+	c := e.dial()
+	c.Spawn(e.spec("a", "-hello", "up"))
+	e.wait(c, "a", model.StateRunning)
+
+	if out, code := e.cli("stop", "--force", "--detach"); code == 0 {
+		t.Fatalf("--force and --detach exclude each other: %q", out)
+	}
+	if out, code := e.cli("stop", "--detach"); code != 0 || !strings.Contains(out, "stopped") {
+		t.Fatalf("stop --detach: %q %d", out, code)
+	}
+	<-exited
+	if m := readMeta(t, e, "a"); m.State != model.StateRunning {
+		t.Fatalf("a should be left running after stop --detach: %+v", m)
+	}
+
+	cmd, exited := e.serve() // the next daemon takes it over
+	c2 := e.dial()
+	e.wait(c2, "a", model.StateRunning)
+	e.waitOut(c2, "a", "up")
+
+	cmd.Process.Signal(syscall.SIGTERM)
+	select {
+	case <-exited:
+	case <-time.After(15 * time.Second):
+		t.Fatal("the daemon did not stop on SIGTERM")
+	}
+	if m := readMeta(t, e, "a"); m.State != model.StateRunning {
+		t.Fatalf("a should be left running after SIGTERM: %+v", m)
+	}
+
+	e.serve() // and once more; the cleanup then stops it for good
+	c3 := e.dial()
+	e.wait(c3, "a", model.StateRunning)
+	if _, err := c3.Write("a", "exit 0"); err != nil {
+		t.Fatal(err)
+	}
+	e.wait(c3, "a", model.StateExited)
 }
 
 // systemd passes the listening socket as fd 3 and announces it with LISTEN_PID and LISTEN_FDS.

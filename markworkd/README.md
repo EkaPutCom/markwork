@@ -2,7 +2,7 @@
 
 A small supervisor daemon for the agent processes that Markwork orchestrates, so a run keeps going when the Markwork
 window is closed (or the SSH link to a VPS drops) and Markwork can reconnect and replay everything it missed.
-Go, standard library only. The design and the wire protocol are in [docs/design/markworkd.md](../docs/design/markworkd.md).
+Go, standard library only. Each agent runs under a small helper of its own (a *shim*), so the agents also survive the daemon being restarted or crashing; the next daemon takes them over (design section 17, `"shims": false` turns it off). The design and the wire protocol are in [docs/design/markworkd.md](../docs/design/markworkd.md).
 
 ## Build and test
 
@@ -27,7 +27,8 @@ markworkd start        # background daemon (or use contrib/systemd/ for socket a
 markworkd status
 markworkd list
 markworkd logs <run> --follow
-markworkd stop         # refused while runs are active; --force stops them in an orderly way
+markworkd stop         # refused while runs are active; --force stops them in an orderly way,
+                       # --detach leaves them going under their shims (for an upgrade)
 ```
 
 Markwork gives each card of a Git project its own worktree, next to the project in `../.markwork-worktrees/`, and runs

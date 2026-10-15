@@ -305,8 +305,8 @@ func (c *Client) Stderr(run string, tail int) (protocol.StderrResult, error) {
 	return r, err
 }
 
-func (c *Client) Shutdown(force bool) error {
-	return c.call(protocol.OpShutdown, protocol.ShutdownParams{Force: force}, nil)
+func (c *Client) Shutdown(force, detach bool) error {
+	return c.call(protocol.OpShutdown, protocol.ShutdownParams{Force: force, Detach: detach}, nil)
 }
 
 // ---------- subscriptions ----------

@@ -27,6 +27,7 @@ type Log struct {
 	f        *os.File // nil when read-only or closed
 	size     int64    // bytes committed
 	lastSeq  uint64
+	outCount uint64 // records of kind "out": with a shim, the number of agent lines already delivered
 	index    []int64
 	finished bool // an exit record was written
 	notify   chan struct{}
@@ -82,6 +83,9 @@ func (l *Log) scan(f *os.File, readOnly bool) error {
 				l.index = append(l.index, off)
 			}
 			l.lastSeq = rec.Seq
+			if rec.Kind == model.KindOut {
+				l.outCount++
+			}
 			if rec.Kind == model.KindExit {
 				l.finished = true
 			}
@@ -101,6 +105,13 @@ func (l *Log) LastSeq() uint64 {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.lastSeq
+}
+
+// OutCount is the number of "out" records in the log.
+func (l *Log) OutCount() uint64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.outCount
 }
 
 func (l *Log) Size() int64 {
@@ -150,6 +161,9 @@ func (l *Log) Append(kind model.Kind, line string, truncated bool, tsMillis int6
 	}
 	l.size += int64(len(data))
 	l.lastSeq = rec.Seq
+	if kind == model.KindOut {
+		l.outCount++
+	}
 	if kind == model.KindExit {
 		l.finished = true
 	}

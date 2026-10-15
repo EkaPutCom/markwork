@@ -16,7 +16,7 @@ Goals
 
 Non-goals (v1)
 
-- Surviving a restart of the daemon itself. The agents' stdio pipes belong to the daemon, so they end with it (see 8.2). A later version may hand pipes over.
+- (Was a non-goal in the first draft.) Surviving a restart of the daemon itself is now handled by shims, section 17. The daemon-owned pipes of 8.2 apply with `"shims": false`.
 - Parsing agent events, answering permission dialogs, or deciding when a card moves. That is the client's job.
 - Authentication beyond OS file permissions and SSH. There is no TCP/TLS endpoint.
 - Several clients arbitrating who may write. Any connected client may write; clients coordinate themselves.
@@ -208,7 +208,10 @@ $XDG_STATE_HOME/markworkd/            (default ~/.local/state/markworkd)
   "max_active_runs": 8,
   "max_log_bytes": 536870912,
   "max_line_bytes": 8388608,
-  "max_stderr_bytes": 1048576
+  "max_stderr_bytes": 1048576,
+  "shims": true,
+  "shim_linger_sec": 86400,
+  "shim_spool_max_bytes": 268435456
 }
 ```
 
@@ -232,7 +235,7 @@ Stopping: SIGTERM to `-pgid`, then SIGKILL to `-pgid` after the grace period. Ki
 
 8.1 Client disappears (Markwork closed, SSH dropped). Nothing happens to runs. The daemon only notes there are no subscribers; `idle_ttl_sec` applies if the agent also goes quiet. When pi finishes a turn while no client is attached, it simply waits on stdin; the next client sees the end of turn in the log and decides what to do (close stdin, ask the user a question, send a follow-up).
 
-8.2 Daemon restarts (crash, upgrade, reboot). The agents' pipes end with the daemon, so active agents end too. On startup the daemon:
+8.2 Daemon restarts (crash, upgrade, reboot). With shims (the default, section 17) the agents go on and the next daemon takes them over; only a reboot, or a shim that is gone, ends a run as `lost`. The rest of this paragraph describes that `lost` path, which is also the whole behaviour with `"shims": false`: the agents' pipes end with the daemon, so active agents end too. On startup the daemon:
 
 1. Takes the lock and reads every run directory.
 2. For each run recorded as `running`: if its process group still exists, SIGTERM then SIGKILL it (an unmonitored orphan is worse than a stopped run); append an `exit` record with reason `lost`.
@@ -261,7 +264,8 @@ Commands (`flag` package, subcommands):
 | --- | --- |
 | `markworkd serve` | run in the foreground (used by systemd, and by `start`) |
 | `markworkd start` | start in the background if not running; idempotent. Re-executes itself with `Setsid`, output to `daemon.log` |
-| `markworkd stop [--force]` | `shutdown` through the socket |
+| `markworkd stop [--force\|--detach]` | `shutdown` through the socket; `--force` stops the runs, `--detach` leaves them going under their shims (an upgrade) |
+| `markworkd shim <run dir>` | internal: the helper that holds one agent (section 17) |
 | `markworkd status` | running or not, version, runs per state |
 | `markworkd bridge` | stdio to socket proxy for SSH; starts the daemon if needed |
 | `markworkd list`, `markworkd logs <run> [--from N] [--follow]` | for people debugging by hand |
@@ -293,13 +297,15 @@ Requires=markworkd.socket
 Type=simple
 ExecStart=%h/.local/bin/markworkd serve
 Restart=on-failure
-# SIGTERM makes the daemon stop active runs in an orderly way (8.2); give it time.
+# With shims (section 17) the agents must outlive a stop or restart of this service.
+KillMode=process
+# SIGTERM only detaches the daemon from its runs; without shims it stops them in an orderly way (8.2): give it time.
 TimeoutStopSec=20
 ```
 
 Agents inherit the daemon's environment, and a daemon started by the systemd user manager does not have the PATH of an interactive shell. This was hit while testing: `pi` is a `#!/usr/bin/env node` script and `node` is installed under `~/.local/share/mise`, so under systemd it exited with status 127. Fix it with `agent_env` in `config.json` (as in section 6), or with `systemctl --user import-environment PATH` before the daemon starts. The daemon started from a shell (`markworkd start`) simply inherits that shell's PATH.
 
-`%t` is `$XDG_RUNTIME_DIR`, so the path matches the default in section 3. `KillMode` stays at its default (control group): once the daemon is gone its agents have no monitor and broken pipes anyway. `markworkd start` is for hosts without systemd; it first checks whether the socket already answers, so the two never fight over the path, and the state-directory lock stops a second daemon regardless.
+`%t` is `$XDG_RUNTIME_DIR`, so the path matches the default in section 3. `KillMode=process` (changed with section 17): with shims the agents are meant to outlive the daemon, so systemd must not reap the whole control group when the service stops or restarts. Without shims (`\"shims\": false`) the default `control-group` is the better choice, because once the daemon is gone its agents have no monitor and broken pipes anyway. `markworkd start` is for hosts without systemd; it first checks whether the socket already answers, so the two never fight over the path, and the state-directory lock stops a second daemon regardless.
 
 Flatpak note. The Markwork Flatpak (`build-aux/flatpak/com.ekaput.Markwork.json`) shares `home` but not the host's runtime directory, and a daemon started from inside the sandbox would die with it. So: the daemon is installed and started on the host (systemd user unit), and the Flatpak needs `--filesystem=xdg-run/markworkd` to reach its socket (checked: with that permission a socket created on the host is reachable at the same path inside the sandbox). Remote machines also need `--socket=ssh-auth`, so that keys held by the user's agent (including passphrase-protected ones) work; the GNOME 50 runtime already ships the `ssh` client (`/usr/bin/ssh`). Markwork must not start the daemon through `flatpak-spawn --host`, which would be a sandbox escape.
 
@@ -410,7 +416,7 @@ Markwork keeps its adapters and `Orchestrator`; only the process layer changes.
 | `exit(status, stderr)` | the `exit` record and `end` event; the stderr tail comes from the `stderr` op |
 | in-memory `RunQueue` | lanes in the daemon; the UI mirrors `queue_position` |
 
-On startup Markwork connects to each configured machine, calls `watch`, matches runs to board cards through their `labels`, and for each run resubscribes from the last `seq` it processed (or from 1, which rebuilds the trace and session id because the readers are stateful). A run that ended while Markwork was closed goes through the normal `finish` path, so the card gets its result note and moves to Review. A run that is `lost` is shown as interrupted with the session id so the user can resume it.
+On startup Markwork connects to each configured machine, calls `watch`, matches runs to board cards through their `labels`, and for each run resubscribes from the last `seq` it processed (or from 1, which rebuilds the trace and session id because the readers are stateful). A run that ended while Markwork was closed goes through the normal `finish` path, so the card gets its result note and moves to Review. A run that is `lost` is shown as interrupted with the session id so the user can resume it (see 17.9).
 
 The TypeScript side, as built:
 
@@ -440,7 +446,7 @@ The app wiring, as built:
 - **Settings** (`data/com.ekaput.Markwork.gschema.xml`, Preferences → Agents): `harness-machine` (`''` = child of the window, `'local'` = the daemon on this computer, else the name of an SSH machine), `machines` (name → SSH host), `machine-projects` (`machine:project` → folder on that machine) and `daemon-command`. Names and hosts are validated in `agent/daemon/machines.ts`; a host is never allowed to start with `-`, and `sshBridgeArgv` puts `--` before it.
 - **`DaemonHub`** (`src/daemonhub.ts`): one `DaemonConnection` per machine, made on first use. This computer uses `markworkd bridge` when the program is installed (the bridge starts the daemon) and otherwise the socket, which a systemd user service listens on; a sandboxed app only has the socket. A connection is dropped when the host or command of its machine changes, and kept otherwise because runs are followed through it.
 - **`HarnessController`** picks the spawner by `harness-machine`, resolves the program by name (the daemon finds it), and keeps project folders per machine; for an SSH machine the folder is a typed absolute path and `Orchestrator.localFolders` is false, so the local folder checks are skipped.
-- **Following runs again**: while a machine is chosen the controller `watch`es it, and every snapshot (after each connect) is matched against the board cards by the labels the orchestrator put on the run (agent, project, board, card text, title, and the computer's host name, so a run started from another computer is left alone). `Orchestrator.adopt()` follows such a run from its first record. The replay is old news: only the last signal that nothing was sent after is acted on once the replay is over, and a question whose own timeout ran out while Markwork was closed is noted instead of asked. A run that ended meanwhile goes through the normal finish path, so the card gets its note and moves to Review; a `lost` run fails the card with the daemon's reason.
+- **Following runs again**: while a machine is chosen the controller `watch`es it, and every snapshot (after each connect) is matched against the board cards by the labels the orchestrator put on the run (agent, project, board, card text, title, and the computer's host name, so a run started from another computer is left alone). `Orchestrator.adopt()` follows such a run from its first record. The replay is old news: only the last signal that nothing was sent after is acted on once the replay is over, and a question whose own timeout ran out while Markwork was closed is noted instead of asked. A run that ended meanwhile goes through the normal finish path, so the card gets its note and moves to Review; a `lost` run fails the card as *interrupted*, with the daemon's reason, and offers *Resume* when its session is known (17.9).
 - **Closing**: `confirmClose()` asks stop / keep running / cancel when agents work; `Orchestrator.dispose(stopDetachable)` stops or lets go accordingly. Agents that are children of the window can only be stopped, as before, but are now asked about too.
 - **Connection state**: `Home` shows "Agents run on …" with *Connected*, *Connecting…*, *Trying again* or *Cannot connect* and the reason; the user gets a toast once when a machine becomes unreachable and once when it is back.
 - **Flatpak**: `--filesystem=xdg-run/markworkd` and `--socket=ssh-auth` in `build-aux/flatpak/com.ekaput.Markwork.json`.
@@ -450,7 +456,7 @@ Known limits: only the machine chosen at startup is watched, so runs left on ano
 ## 15. Open questions
 
 - Nothing open for packaging: the unit files and the Flatpak permissions are in section 10. Still to confirm during implementation: the unit files on a real VPS, and that `ssh` inside the sandbox honours the user's `~/.ssh/config` and `ControlMaster` sockets.
-- Optional later features: exclusive write leases, pipe hand-over so the daemon itself can be upgraded without ending runs, log compaction.
+- Optional later features: exclusive write leases, log compaction. (Pipe hand-over was replaced by shims, section 17.)
 
 ## 16. Implementation notes
 
@@ -469,3 +475,96 @@ Where the code settled things the draft left open or does differently.
 - Verified by hand with the real thing: `pi --mode rpc` driven through the daemon (a `get_state` request answers, closing stdin ends pi with status 0); systemd socket activation with transient user units (the service starts on the first connection, uses systemd's socket, and `systemctl stop` ends a live run as `stopped`).
 - The client tests are `tests/unit/daemon.ts` (an in-memory stand-in daemon in `daemon-fake.ts`, with manual timers) and `tests/unit/daemon-live.ts` (builds the Go daemon with `go build` and runs the client against it with a shell script as the agent; skipped with a note when Go is missing). `gjs -m dist/run-tests.js --only-daemon` runs just these.
 - Not done in v1, as agreed: lease-based exclusive writers, pipe hand-over between daemons, log compaction.
+
+## 17. Surviving a daemon restart: shims
+
+Status: implemented (`internal/shim`, `markworkd shim`; tests in `internal/supervisor/shim_test.go` and `cmd/markworkd/main_test.go`). Replaces the non-goal in section 1 ("surviving a restart of the daemon itself") and the "pipe hand-over" idea in section 15 with a mechanism that also covers a crash. Two layers work together: the shim keeps the agent alive when the *daemon* goes away (this section), and Markwork's *resume* picks the agent's own session up again when the agent itself is gone (a reboot, an OOM kill of the shim). The second layer already exists in the client: a run that ends `lost` with a known session id is shown as interrupted on its card and resumed with one click (`Orchestrator.resumeInterrupted`).
+
+### 17.1 Idea
+
+The agent's pipes must belong to a process that is not the daemon. For every run the daemon starts a small helper, `markworkd shim`, the same binary as the daemon. The shim starts the agent, owns its stdin, stdout and stderr, and serves them on a per-run Unix socket. The daemon talks to the shim instead of to the agent. When the daemon dies, the shim and the agent go on; a new daemon finds the shim again and carries on.
+
+```
+markworkd ──spawn──► shim ──spawn──► agent
+   │                  │  ▲
+   └── shim.sock ─────┘  └── pipes (stdin, stdout, stderr)
+```
+
+Nothing changes for clients: the protocol of sections 3–5 and the log of section 6 stay as they are. The seam in the code is `runner.Process`; the shim adds a second implementation of it next to the direct one.
+
+### 17.2 Files and processes
+
+```
+runs/<run>/
+  shim.sock        the shim's socket (0600); the shim listens here for as long as it lives
+  shim.json        what to start (program, args, cwd, env, limits); read by the shim, then deleted
+  shim.log         the shim's own diagnostics
+  shim-out.log     spool of stdout lines not yet acknowledged by a daemon (see 17.4)
+  shim-exit.json   how the agent ended; written by the shim before it announces the exit
+```
+
+- The daemon starts the shim with `Setsid`, so it is in no process group or session of the daemon, and with no inherited descriptors except the ones it needs. The agent keeps its own process group (`Setpgid`), as today, so signalling it needs no help from the shim: the daemon sends signals to `-pgid` directly.
+- `stderr.log` is written by the shim (the same bounded file, the same code) and only read by the daemon. The shim sends an `activity` event at most once a second while stderr has output, so `idle_ttl_sec` still counts stderr as activity.
+- The shim lives until the agent ended **and** a daemon acknowledged the exit, or for `shim_linger_sec` (default 24 h) after the agent ended with no daemon to tell. Then it removes its socket and exits. A run whose shim is gone and whose exit was never delivered is recovered as `lost`, as today.
+
+### 17.3 Shim protocol
+
+The same framing as section 3 (one JSON object per line), one daemon connection at a time (a new connection replaces the old one). Version `proto: 1` of its own.
+
+```
+shim → daemon   {"ev":"hello","proto":1,"pid":5120,"start_ticks":123456,"lines":212,"acked":212,"exited":false}
+daemon → shim   {"op":"attach","from":212}
+shim → daemon   {"ev":"out","n":212,"text":"...","truncated":false}     lines n >= from, replayed, then live
+                {"ev":"activity"}
+                {"ev":"exit","code":0,"signal":null}                      after all lines were sent
+daemon → shim   {"op":"ack","n":212}                                      lines below n are safely in the log
+                {"op":"write","id":7,"line":"...","timeout_ms":10000}  →  {"ev":"wrote","id":7,"error":""}
+                {"op":"close_stdin"}
+                {"op":"bye"}                                              the exit was logged; the shim may end
+```
+
+Errors of `write` use the same words as the runner (`stdin_closed`, `write_timeout`). A timeout closes the stdin, as today.
+
+### 17.4 No loss, no duplicates
+
+The event log stays the source of truth, and the shim never writes it. Every stdout line gets a number `n` (0, 1, 2, ...) in the order the shim read it. The daemon turns each one into exactly one `out` record, in order, so **the number of `out` records in the log is the number of lines already delivered**. On attach the daemon tells the shim where to start: `from = out records in the log`. That is correct after any crash, with no extra state to keep consistent: a record that was not appended is asked for again, one that was is not.
+
+The shim keeps the lines it has produced in `shim-out.log` until the daemon acknowledges them. `ack` is sent when a line has been appended, lazily (the previous line, when the next one is taken), and the shim empties the spool whenever everything is acknowledged. While a daemon is attached the spool therefore stays small; while none is, it is what carries the agent's output until the next daemon asks for it. It is capped at `shim_spool_max_bytes` (default 256 MiB); past that the shim stops the agent's group and records `log_limit`, as the daemon does for the event log.
+
+A line that was written to the agent's stdin and not yet logged as an `in` record when the daemon died stays at-most-once: it may be missing from the log. This is the same promise the `write` op makes today.
+
+### 17.5 What the daemon does differently
+
+- **Start.** `Launcher.Start` becomes: write `shim.json`, start the shim, wait until the socket accepts and `hello` arrives (or the shim exits: its `shim.log` tail becomes the `start_failed` error), `attach` from 0. The returned `Process` is the connection.
+- **Recover.** For a run recorded as `running`: dial `shim.sock`. If it answers, build the `Process` from the connection, `attach` with `from` as in 17.4, put the run back in its lane (it holds a slot again), re-arm the idle timer, and restart the pump. A run whose shim does not answer is ended as `lost`, and its process group is stopped if the recorded start time still matches (today's orphan rule). Queued runs are handled as before, after the running ones took their slots back.
+- **Stop.** Unchanged: `SIGTERM`, then `SIGKILL` to `-pgid`.
+- **Daemon shutdown.** New: `shutdown {detach:true}` and SIGTERM close the listener and leave the runs going, because that is the point of this section (an upgrade or a restart must not end live work). `shutdown {force:true}` still stops every run in an orderly way. `markworkd stop` keeps refusing while runs are active unless `--force` (stop them) or `--detach` (leave them) is given.
+- **Switch.** `"shims": true` in the config (the default once this is done); `false` keeps today's direct launcher, for systems where a second process per run is unwanted.
+
+### 17.6 Service manager
+
+systemd stops every process in the unit's cgroup when it stops or restarts the service, shims included. The unit therefore sets `KillMode=process`, and the shims are started with `Setsid` so a user session ending is not enough to reap them either (`loginctl enable-linger` keeps the user manager alive on a VPS). A reboot still ends everything; that is the case the client's resume covers.
+
+### 17.7 Failure behaviour added by this layer
+
+| Event | Result |
+| --- | --- |
+| Daemon crashes or is upgraded | Shims and agents go on; the next daemon re-attaches and replays what was spooled |
+| Shim killed (SIGKILL, OOM) | The agent's stdin closes and it likely ends; the run is `lost` and the client offers *Resume* |
+| Agent ends while no daemon is attached | The shim records the exit, lingers, delivers it to the next daemon |
+| Two daemons | Prevented by the existing `flock`; a shim accepts one connection at a time anyway |
+| Daemon and shim protocol versions differ after an upgrade | `hello.proto` must match; otherwise the run cannot be taken over, so it is stopped and recorded as `lost` (an agent nobody can talk to is an unmonitored orphan) |
+| The shim's spool reached `shim_spool_max_bytes` while no daemon was there | The shim stops the agent and reports `log_limit`; lines past the cap are dropped |
+
+### 17.8 As built
+
+- `store.Log.OutCount()` counts `out` records (kept by `Append`, rebuilt by the scan), which is the `from` of an attach.
+- `internal/shim`: `Main` (the shim: agent via `runner.OSLauncher`, socket, spool) and `Launcher` (the daemon's side, implementing `runner.Launcher` and `runner.Attacher`; the connection is a `runner.Process`). The seam in `runner` is `Params.StateDir` and friends, `Attacher`, `Releaser`, and `Exit.Lost`/`Reason`.
+- `supervisor`: with an `Attacher` launcher the shim owns `stderr.log` (the daemon only reads it); `Recover` calls `reattach` for a run recorded as `running` and puts it back in its lane before queued runs are admitted; `Detach` (the `shutdown` op with `detach`, and SIGTERM) leaves the runs alone, and a connection that breaks while detached is not recorded as `lost`.
+- The socket address is relative inside the shim (it changes into the run directory), and the daemon dials through `/proc/self/fd/<dir>/shim.sock` when the path would not fit the 108 bytes of a Unix socket address.
+- A signal to the agent goes straight to its process group from the daemon, so `stop` still works when the shim's socket does not.
+- Tests: the whole supervisor suite also passes with every agent under a shim (`MARKWORKD_TEST_SHIMS=1 go test ./internal/supervisor`).
+
+### 17.9 The client side: interrupted runs
+
+A run that still ends `lost` (a reboot, a killed shim, a protocol mismatch) reaches Markwork as an exit with `reason: "lost"`. The client turns it into an *interrupted* result instead of a plain failure when the session id is known: the card gets a note saying so, the run stays failed in the queue, and the card menu offers *Resume pi*. Resuming starts pi again in the same folder or worktree with `--session <id>` and a fixed prompt telling it that it was interrupted and should check the files and carry on (`Orchestrator.resumeInterrupted`). It is never started automatically, so a daemon that keeps dying cannot cause a restart loop. Tests: `tests/unit/daemonapp.ts`.

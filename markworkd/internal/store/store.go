@@ -51,6 +51,12 @@ func (s *Store) runDir(run string) (string, error) {
 	return filepath.Join(s.root, "runs", run), nil
 }
 
+// RunDir is the directory of a run.
+func (s *Store) RunDir(run string) string {
+	d, _ := s.runDir(run)
+	return d
+}
+
 func (s *Store) LogPath(run string) string {
 	d, _ := s.runDir(run)
 	return filepath.Join(d, "events.jsonl")
