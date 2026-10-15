@@ -122,6 +122,8 @@ export class MarkdownView {
     private readonly listIndent: ListIndent;
     private margin = -1;
     private width = -1;
+    private marginIdle = 0;
+    private layerIdle = 0;
     private cursorKey = '';
     private highlightQueued = 0;
     private resetHighlight = false;
@@ -254,6 +256,9 @@ export class MarkdownView {
     destroy(): void {
         if (this.destroyed) return;
         this.destroyed = true;
+        if (this.marginIdle) GLib.source_remove(this.marginIdle);
+        if (this.layerIdle) GLib.source_remove(this.layerIdle);
+        this.marginIdle = this.layerIdle = 0;
         if (this.highlightQueued) GLib.source_remove(this.highlightQueued);
         this.highlightQueued = 0;
         if (this.cursorQueued) GLib.source_remove(this.cursorQueued);
@@ -395,19 +400,31 @@ export class MarkdownView {
         if (m === this.margin && width === this.width) return;
         this.margin = m;
         this.width = width;
-        // Do not resize while GTK is allocating; defer to idle.
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        // Do not resize while GTK is allocating; defer to just before the next redraw. While a panel slides the width
+        // changes every frame: the text follows each frame once (the latest values, never one pass per signal), and the
+        // layers that redraw their content (images, tables, code, diagrams) only follow when the width has settled.
+        if (this.marginIdle) return;
+        this.marginIdle = GLib.idle_add(GLib.PRIORITY_HIGH_IDLE, () => {
+            this.marginIdle = 0;
             if (this.destroyed) return GLib.SOURCE_REMOVE;
+            const m = this.margin;
             this.view.set_left_margin(m);
             this.view.set_right_margin(m);
             setTagMargins(this.tags, m);
             this.conflicts.setMargin(m);
             this.listIndent.setMargin(m);
-            this.images.setMaxWidth(width - 2 * m);
-            this.tableLayer.setMaxWidth(width - 2 * m);
-            this.codeLayer.setMaxWidth(width - 2 * m);
-            this.mermaid.setMaxWidth(width - 2 * m);
             this.widget.set_opacity(1);
+            if (this.layerIdle) GLib.source_remove(this.layerIdle);
+            this.layerIdle = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
+                this.layerIdle = 0;
+                if (this.destroyed) return GLib.SOURCE_REMOVE;
+                const column = this.width - 2 * this.margin;
+                this.images.setMaxWidth(column);
+                this.tableLayer.setMaxWidth(column);
+                this.codeLayer.setMaxWidth(column);
+                this.mermaid.setMaxWidth(column);
+                return GLib.SOURCE_REMOVE;
+            });
             return GLib.SOURCE_REMOVE;
         });
     }

@@ -94,7 +94,7 @@ export class PullView {
             this.leaveDiscussion();
             this.onSelect(path);
         });
-        const fileScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, width_request: 240, child: this.files });
+        const fileScroll = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, width_request: 180, child: this.files });
 
         this.renderedButton = new Gtk.ToggleButton({ label: _('Note'), active: true });
         this.rawButton = new Gtk.ToggleButton({ label: _('Diff'), group: this.renderedButton });
