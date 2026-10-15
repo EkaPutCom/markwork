@@ -445,6 +445,10 @@ func (s *Supervisor) pump(r *run, proc runner.Process) {
 		if s.Detaching() { // this daemon is going away: the next one takes the run over, it did not end
 			return
 		}
+		s.mu.Lock()
+		meta := r.meta
+		s.mu.Unlock()
+		killOrphan(&meta) // an agent that outlived its shim would run on with nobody to monitor it
 		s.finish(r, out)
 		releaseProc(proc)
 		return

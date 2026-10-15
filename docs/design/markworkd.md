@@ -550,7 +550,7 @@ systemd stops every process in the unit's cgroup when it stops or restarts the s
 | Event | Result |
 | --- | --- |
 | Daemon crashes or is upgraded | Shims and agents go on; the next daemon re-attaches and replays what was spooled |
-| Shim killed (SIGKILL, OOM) | The agent's stdin closes and it likely ends; the run is `lost` and the client offers *Resume* |
+| Shim killed (SIGKILL, OOM) | The agent's stdin closes and it likely ends; the run is `lost`, any agent that outlived its shim is killed, and the client offers *Resume* |
 | Agent ends while no daemon is attached | The shim records the exit, lingers, delivers it to the next daemon |
 | Two daemons | Prevented by the existing `flock`; a shim accepts one connection at a time anyway |
 | Daemon and shim protocol versions differ after an upgrade | `hello.proto` must match; otherwise the run cannot be taken over, so it is stopped and recorded as `lost` (an agent nobody can talk to is an unmonitored orphan) |

@@ -13,7 +13,7 @@
 //	anything else is echoed as "echo:<line>"
 //
 // Flags: -ignore-term ignores SIGTERM, -hold starts a background child that keeps stdout open for 30 s,
-// -hello TEXT prints a line at startup, -stderr TEXT prints to stderr at startup.
+// -ignore-eof keeps running when stdin ends, -hello TEXT prints a line at startup, -stderr TEXT prints to stderr at startup.
 package main
 
 import (
@@ -31,6 +31,7 @@ import (
 
 func main() {
 	ignoreTerm := flag.Bool("ignore-term", false, "ignore SIGTERM")
+	ignoreEOF := flag.Bool("ignore-eof", false, "keep running when stdin ends")
 	hold := flag.Bool("hold", false, "start a child that holds stdout open")
 	holdChild := flag.Bool("hold-child", false, "internal")
 	hello := flag.String("hello", "", "print this at startup")
@@ -109,6 +110,9 @@ func main() {
 			}
 		}
 		if err != nil {
+			if *ignoreEOF {
+				time.Sleep(time.Hour)
+			}
 			fmt.Println("eof")
 			return
 		}

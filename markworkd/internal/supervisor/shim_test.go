@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -266,4 +268,56 @@ func waitGone(t *testing.T, path string) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatalf("%s still exists", path)
+}
+
+// shimPID finds the shim of a run by its command line.
+func shimPID(t *testing.T, runDir string) int {
+	t.Helper()
+	entries, _ := os.ReadDir("/proc")
+	for _, e := range entries {
+		pid, err := strconv.Atoi(e.Name())
+		if err != nil {
+			continue
+		}
+		data, err := os.ReadFile("/proc/" + e.Name() + "/cmdline")
+		if err == nil && strings.Contains(string(data), "shim\x00"+runDir) {
+			return pid
+		}
+	}
+	t.Fatalf("no shim for %s", runDir)
+	return 0
+}
+
+func processAlive(pid int) bool {
+	data, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
+	if err != nil {
+		return false
+	}
+	s := string(data)
+	i := strings.LastIndexByte(s, ')')
+	return i >= 0 && i+2 < len(s) && s[i+2] != 'Z' // a zombie is gone, only not reaped yet
+}
+
+// The shim is killed while the daemon is connected, and the agent does not end by itself when its stdin does: the
+// run is lost, and the agent must not be left running with nobody to monitor it.
+func TestShimKilledStopsAnAgentThatOutlivesIt(t *testing.T) {
+	e := newShimEnv(t, nil)
+	e.spawn(e.spec("s7", "-ignore-eof", "-hello", "ready"))
+	e.waitLines("s7", 1)
+	agent := e.wait("s7", model.StateRunning).PID
+	if err := syscall.Kill(shimPID(t, filepath.Join(e.state, "runs", "s7")), syscall.SIGKILL); err != nil {
+		t.Fatal(err)
+	}
+
+	end := e.wait("s7", model.StateExited)
+	if end.Exit.Reason != model.ReasonLost {
+		t.Fatalf("exit = %+v, want lost", end.Exit)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for processAlive(agent) && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if processAlive(agent) {
+		t.Fatalf("the agent (pid %d) was left running without a shim", agent)
+	}
 }
