@@ -361,7 +361,7 @@ input[type=text] { width: 100%; }
     <li><span class="h">84dccdd</span><span><b>Four rules</b> · The Assistant panel is split into its parts: settings, history, the context popover, and the proposal cards with their review window and Undo (<code>ui/proposalcard.ts</code>). Earlier commits split <code>ChatSession.ask</code> into a <code>TurnRun</code> with one method per tool (76acf0d), and <code>planChange</code>/<code>planKanban</code> into handlers per tool and action (1caf08a); every function is now at most complexity 15.</span></li>
     <li><span class="h">1bac3b8</span><span><b>Chapter 10</b> · The assistant writes the commit message: one request without tools from the checked files' diffs within a 30,000-character budget, streamed into the commit box, which the user still reviews and commits.</span></li>
     <li><span class="h">69d9151</span><span><b>Chapter 11</b> · The typed fields and layouts reach the agent: <code>describe_schema</code> and <code>query_notes</code> to read them, <code>edit_note</code> and <code>edit_schema</code> to change them, every value checked against the document's own schema, and <code>verify_work</code> learns the <code>field</code> kind.</span></li>
-    <li><span class="h">platform</span><span><b>Four rules</b> · “Pure” now also means “no GIO”: stopping a turn, a waiting proposal, or a commit message uses <code>Cancellable</code> from <code>cancel.ts</code> instead of <code>Gio.Cancellable</code>, the symlink check in <code>agent/path.ts</code> asks <code>platform().fs.kind()</code> (which never follows a link), and saved conversations go through <code>platform().fs</code>. Only <code>deepseek.ts</code> (libsoup streaming) and <code>daemon/streamlink.ts</code> still import <code>gi://</code>.</span></li>
+    <li><span class="h">f56b9e1</span><span><b>Four rules</b> · “Pure” now also means “no GIO”: stopping a turn, a waiting proposal, or a commit message uses <code>Cancellable</code> from <code>cancel.ts</code> instead of <code>Gio.Cancellable</code>, the symlink check in <code>agent/path.ts</code> asks <code>platform().fs.kind()</code> (which never follows a link), and saved conversations go through <code>platform().fs</code>. Only <code>deepseek.ts</code> (libsoup streaming) and <code>daemon/streamlink.ts</code> still import <code>gi://</code>.</span></li>
   </ol>
 </section>
 
@@ -1212,7 +1212,7 @@ const journey = [
   { c: '84dccdd', t: 'panel split, complexity ≤ 15', read: 7, propose: 7, control: 2, tests: 200, lines: 3594, files: 20 },
   { c: '1bac3b8', t: 'commit message writer', read: 7, propose: 7, control: 2, tests: 212, lines: 3726, files: 21 },
   { c: '69d9151', t: 'fields + layouts for the agent', read: 9, propose: 8, control: 2, tests: 250, lines: 4699, files: 25 },
-  { c: 'platform', t: 'agent/ without GIO', read: 9, propose: 8, control: 2, tests: 252, lines: 5893, files: 32 },
+  { c: 'f56b9e1', t: 'agent/ without GIO', read: 9, propose: 8, control: 2, tests: 252, lines: 5893, files: 32 },
 ];
 function toolsChart() {
   const svg = $('#chart-tools');

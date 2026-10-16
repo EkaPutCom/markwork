@@ -607,7 +607,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">91e2fa9</span><span><span class="era">Adw</span><b>Chapter 12</b> · Resolving a conflicting pull request here: the <code>Adw.Banner</code> gets one button whose job follows the state (<code>button-clicked</code> reads the state, not the label), a header button appears only while a merge is in progress, and the conflicted files open in ordinary tabs.</span></li>
     <li><span class="h">3060113</span><span><span class="era">Adw</span><b>Chapter 10</b> · A tidier header bar: <code>Adw.SplitButton</code> for New and Open, the title as a <code>Gtk.MenuButton</code> for the document's menu inside a <code>Gtk.Stack</code> (plain on Home), the primary menu last with <code>primary</code>, the view modes as <code>Gtk.CheckButton</code>s in the layout popover, and no Save button.</span></li>
     <li><span class="h">c6d52cf</span><span><span class="era">Adw</span><b>Layers</b> · A port between the core and the runtime: <code>platform/index.ts</code> declares files, paths, the keyring, HTTP, and the environment; <code>platform/gjs/</code> fills it with GLib, Gio, libsecret, and libsoup. <code>forge/</code> and the new <code>credentials.ts</code> drop every <code>gi://</code> import, and <code>scripts/layers.mjs</code> keeps the 15 core modules that still use GI in a list that may only shrink.</span></li>
-    <li><span class="h">platform</span><span><span class="era">Adw</span><b>Layers</b> · The port grows: <code>FileSystem</code> learns <code>list</code>, <code>kind</code> (never follows a link), and <code>trash</code>; <code>Paths</code> learns <code>runtimeDir</code>; a monotonic clock joins; and <code>cancel.ts</code> replaces <code>Gio.Cancellable</code>. <code>agent/</code> keeps <code>gi://</code> only in <code>deepseek.ts</code> and <code>daemon/streamlink.ts</code>, and <code>GI_ALLOWED</code> shrinks from 15 to 7.</span></li>
+    <li><span class="h">f56b9e1</span><span><span class="era">Adw</span><b>Layers</b> · The port grows: <code>FileSystem</code> learns <code>list</code>, <code>kind</code> (never follows a link), and <code>trash</code>; <code>Paths</code> learns <code>runtimeDir</code>; a monotonic clock joins; and <code>cancel.ts</code> replaces <code>Gio.Cancellable</code>. <code>agent/</code> keeps <code>gi://</code> only in <code>deepseek.ts</code> and <code>daemon/streamlink.ts</code>, and <code>GI_ALLOWED</code> shrinks from 15 to 7.</span></li>
   </ol>
 </section>
 
@@ -1668,7 +1668,7 @@ const layers = [
   ['1bac3b8', 'Oct 9', 'Adw', 'Commit message writer', 11521, 3397, 5055, 125, 6],
   ['e5bd23a', 'Oct 16', 'Adw', 'markworkd shims', 17940, 5054, 9095, 192, 6],
   ['c6d52cf', 'Oct 16', 'Adw', 'Platform port', 17940, 4695, 9554, 192, 6],
-  ['platform', 'Oct 16', 'Adw', 'agent/ without GIO', 17940, 3378, 10938, 192, 6],
+  ['f56b9e1', 'Oct 16', 'Adw', 'agent/ without GIO', 17940, 3378, 10938, 192, 6],
 ];
 function fit(svg, H) {
   const W = Math.max(300, Math.round(svg.parentNode.clientWidth || 900));
