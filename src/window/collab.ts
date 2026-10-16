@@ -64,7 +64,7 @@ export class CollabController {
         panel.onServer = () => void this.editToken();
         panel.onSend = () => this.onSend();
         panel.onOpen = pull => this.onOpenPull(pull);
-        host.settings.gsettings.connect('changed::forge-poll-seconds', () => this.monitor?.start(host.settings.forgePollSeconds));
+        host.settings.onChanged(['forge-poll-seconds'], () => this.monitor?.start(host.settings.forgePollSeconds));
     }
 
     // A pull request was chosen in the list; the window connects this to the review (the browser page until then).

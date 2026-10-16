@@ -3,10 +3,11 @@
 import GLib from 'gi://GLib';
 import { section, test, eq, ok, tmp } from '../framework.js';
 import { readTextFile } from '../../src/files.js';
-import { AppSettings } from '../../src/settings.js';
+import type { AppSettings, SettingOverrides } from '../../src/settings.js';
 import { MainWindow } from '../../src/window.js';
 import { registerActions } from '../../src/actions.js';
 import type { GuiContext } from './context.js';
+import { inMemorySettings } from '../../src/platform/gjs/settings.js';
 
 export function tabTests(c: GuiContext): void {
     const { w, ed, pump } = c;
@@ -159,7 +160,7 @@ export function tabTests(c: GuiContext): void {
     // ---------- Tab restoration ----------
     section('Tab restoration');
     const ch3 = put('chapter-3.md', '# Chapter Three\n\nSecond line.\n\nThird line targeted by the cursor.\n');
-    const settingsFor = (extra: Partial<AppSettings>): AppSettings => AppSettings.inMemory({ welcomed: true, home: false, dark: false, autosave: false, ...extra });
+    const settingsFor = (extra: SettingOverrides): AppSettings => inMemorySettings({ welcomed: true, home: false, dark: false, autosave: false, ...extra });
     // The second window re-registers the app actions; destroy it and then restore the actions to the main test window.
     const closeWindow = (win: MainWindow) => {
         win.win.destroy();

@@ -27,13 +27,13 @@ import System from 'system';
 
 import { DIM, GREEN, RED, RESET, errorMessage, opt, optVal } from './framework.js';
 import { readTextFile, writeTextFile } from '../src/files.js';
-import { AppSettings } from '../src/settings.js';
 import { MainWindow } from '../src/window.js';
 import { markdownToHtml } from '../src/markdown/html.js';
 import { parseInline } from '../src/markdown/inline.js';
 import { findTables, parseTable, renderTable } from '../src/markdown/table.js';
 import { parseBoard, serializeBoard } from '../src/markdown/kanban.js';
 import { iterAtLine } from '../src/gtkutil.js';
+import { inMemorySettings } from '../src/platform/gjs/settings.js';
 
 const FIXTURE = optVal('fixture') ?? 'mixed';
 if (!['mixed', 'long', 'book'].includes(FIXTURE)) { printerr('--fixture must be mixed, long, or book.'); System.exit(1); }
@@ -205,7 +205,7 @@ function runModelBench(): void {
 // The window is not destroyed: the child process exits right away, and destroy triggers GC warnings from GJS.
 const windows: MainWindow[] = [];
 async function runGuiBench(app: Adw.Application, n: number): Promise<void> {
-    const w = new MainWindow(app, AppSettings.inMemory({ welcomed: true, home: false, dark: false }), null);
+    const w = new MainWindow(app, inMemorySettings({ welcomed: true, home: false, dark: false }), null);
     windows.push(w);
     const ed = w.editor;
     const buf = ed.buffer;

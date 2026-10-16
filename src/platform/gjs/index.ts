@@ -6,7 +6,7 @@ import Gio from 'gi://Gio';
 import { fileExists, readTextFile, writeTextFile } from '../../files.js';
 import { trashEntry } from '../../fileops.js';
 import type { EntryKind, FileSystem, Platform, Secrets } from '../index.js';
-import { soupTransport } from './http.js';
+import { soupStreamTransport, soupTransport } from './http.js';
 
 // libsecret is loaded when needed; a missing typelib or a dead keyring service must not kill the app.
 async function loadSecret() {
@@ -97,6 +97,7 @@ export const gjsPlatform: Platform = {
     },
     secrets,
     http: soupTransport,
+    httpStream: soupStreamTransport,
     env: name => GLib.getenv(name),
     monotonicMs: () => GLib.get_monotonic_time() / 1000,
 };

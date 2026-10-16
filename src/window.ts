@@ -77,6 +77,7 @@ import { NoteLinks, type NoteHost } from './window/notes.js';
 import type { ToastAction } from './window/doc.js';
 import { DocumentController, UNTITLED, type DocumentsHost } from './window/documents.js';
 import { applyChange, applyChangeBatch, type AgentWriteHost } from './window/agentwrites.js';
+import { gsettingsOf } from './platform/gjs/settings.js';
 
 // The saved window size may be larger than the screen (for example after moving
 // to a smaller monitor); limit it to the monitor size. GTK 4 no longer gives the general
@@ -366,7 +367,7 @@ export class MainWindow {
         // The system accent changed (libadwaita ≥ 1.6): recolor the text tags; older libadwaita has no such property.
         if (GObject.Object.find_property.call(Adw.StyleManager, 'accent-color'))
             Adw.StyleManager.get_default().connect('notify::accent-color', () => this.setDark(this.colorScheme));
-        settings.gsettings.connect('changed', (_gs, key) => this.onSettingChanged(key));
+        settings.onChanged(null, key => this.onSettingChanged(key));
         // Panel visibility follows GSettings in both directions; side effects are installed on widget changes.
         this.bindPanel('sidebar', this.sidebar.widget);
         this.bindPanel('chat', this.chatSplit);
@@ -595,7 +596,7 @@ export class MainWindow {
     private readonly widePanels = new Map<'sidebar' | 'chat', boolean>();   // the panel settings before collapsing
 
     private bindPanel(key: 'sidebar' | 'chat', split: Adw.OverlaySplitView): void {
-        const gs = this.settings.gsettings;
+        const gs = gsettingsOf(this.settings);
         split.pin_sidebar = true;
         // A panel that takes editor width appears at once: sliding it re-wraps the text on every frame, one frame
         // behind the panel. Connected before the binding below, so animations are off when the binding opens the
@@ -970,7 +971,7 @@ export class MainWindow {
 
     private rememberWindow(): true {
         // Closed while narrow: save the panel settings for the wide layout, not the collapsed state.
-        for (const [key, value] of this.widePanels) this.settings.gsettings.set_boolean(key, value);
+        for (const [key, value] of this.widePanels) this.settings.store.set(key, value);
         // After confirmation: a new document saved through a dialog already has a file.
         this.documents.rememberTabs();
         // In GTK 4 the default size follows the current window size.

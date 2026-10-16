@@ -44,7 +44,7 @@ export class ProjectsGroup {
     constructor(private readonly dialog: Adw.PreferencesDialog, private readonly settings: AppSettings, private readonly access: ProjectsAccess) {
         this.group = new Adw.PreferencesGroup({ title: _('Projects'), description: _('The folders cards are worked on in. In a Git repository each card gets its own worktree, so several cards can work at once and you review the changes before they are merged.') });
         this.fill();
-        for (const key of ['projects', 'machine-projects', 'harness-machine']) settings.gsettings.connect(`changed::${key}`, () => this.fill());
+        settings.onChanged(['projects', 'machine-projects', 'harness-machine'], () => this.fill());
     }
 
     private fill(): void {

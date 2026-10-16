@@ -608,6 +608,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">3060113</span><span><span class="era">Adw</span><b>Chapter 10</b> · A tidier header bar: <code>Adw.SplitButton</code> for New and Open, the title as a <code>Gtk.MenuButton</code> for the document's menu inside a <code>Gtk.Stack</code> (plain on Home), the primary menu last with <code>primary</code>, the view modes as <code>Gtk.CheckButton</code>s in the layout popover, and no Save button.</span></li>
     <li><span class="h">c6d52cf</span><span><span class="era">Adw</span><b>Layers</b> · A port between the core and the runtime: <code>platform/index.ts</code> declares files, paths, the keyring, HTTP, and the environment; <code>platform/gjs/</code> fills it with GLib, Gio, libsecret, and libsoup. <code>forge/</code> and the new <code>credentials.ts</code> drop every <code>gi://</code> import, and <code>scripts/layers.mjs</code> keeps the 15 core modules that still use GI in a list that may only shrink.</span></li>
     <li><span class="h">f56b9e1</span><span><span class="era">Adw</span><b>Layers</b> · The port grows: <code>FileSystem</code> learns <code>list</code>, <code>kind</code> (never follows a link), and <code>trash</code>; <code>Paths</code> learns <code>runtimeDir</code>; a monotonic clock joins; and <code>cancel.ts</code> replaces <code>Gio.Cancellable</code>. <code>agent/</code> keeps <code>gi://</code> only in <code>deepseek.ts</code> and <code>daemon/streamlink.ts</code>, and <code>GI_ALLOWED</code> shrinks from 15 to 7.</span></li>
+    <li><span class="h">settings</span><span><span class="era">Adw</span><b>Chapter 8, Layers</b> · <code>AppSettings</code> reads and writes through a <code>SettingsStore</code>; GSettings is the store under GJS and finds each key's GVariant type in the schema. GTK keeps <code>bind()</code> and <code>create_action()</code> through <code>gsettingsOf()</code>, and listeners use <code>settings.onChanged()</code>. The DeepSeek stream moves to <code>platform().httpStream</code>; <code>GI_ALLOWED</code> shrinks to 5.</span></li>
   </ol>
 </section>
 
@@ -1296,8 +1297,9 @@ action('journal-capture', ['&lt;Control&gt;&lt;Shift&gt;j'], () =&gt; w.journal.
   <ul>
     <li><code>gsettings.create_action(key)</code>: a stateful toggle action whose state <i>is</i> the key (sidebar, Assistant, focus mode, typewriter, autosave).</li>
     <li><code>gsettings.bind(key, widget, 'property', DEFAULT)</code>: the split view's <code>show-sidebar</code> and the preference switches follow the key both ways.</li>
-    <li><code>Gio.memory_settings_backend_new()</code>: tests get <code>AppSettings.inMemory()</code> and never touch the user's dconf.</li>
+    <li><code>Gio.memory_settings_backend_new()</code>: tests get <code>inMemorySettings()</code> and never touch the user's dconf.</li>
   </ul>
+  <p><b>GSettings behind a port.</b> Later the typed <code>AppSettings</code> in <code>settings.ts</code> stopped holding a <code>Gio.Settings</code>. It now reads and writes through a <code>SettingsStore</code> (<code>get</code>, <code>set</code>, <code>onChanged</code>), and <code>platform/gjs/settings.ts</code> is the GSettings store: it finds each key's GVariant type in the schema, so <code>set('tabs', [['/a.md', 3]])</code> becomes an <code>a(si)</code> without a type written in <code>AppSettings</code>. The two features above that are pure GTK stay: <code>actions.ts</code>, the preferences dialog, and <code>bindPanel()</code> ask for the real <code>Gio.Settings</code> with <code>gsettingsOf(settings)</code>. Code that only reacts to a change (<code>window/harness.ts</code>, <code>window/collab.ts</code>, the project page, <code>MainWindow.onSettingChanged</code>) uses <code>settings.onChanged(keys, …)</code> and no longer needs Gio for it.</p>
   <p><b>The palette</b> (Ctrl+Shift+P) lists the enabled actions that have a label in <code>commands.ts</code>, filtered as you type. Its rows are <code>Command</code> GObjects in a <code>Gio.ListStore</code> (Chapter 9).</p>
   <div class="lesson"><b>Lesson</b>If something can be triggered from two places, make it an action. If something must be remembered, make it a GSettings key and bind it; do not write save/load code.</div>
 </section>
@@ -1669,6 +1671,7 @@ const layers = [
   ['e5bd23a', 'Oct 16', 'Adw', 'markworkd shims', 17940, 5054, 9095, 192, 6],
   ['c6d52cf', 'Oct 16', 'Adw', 'Platform port', 17940, 4695, 9554, 192, 6],
   ['f56b9e1', 'Oct 16', 'Adw', 'agent/ without GIO', 17940, 3378, 10938, 192, 6],
+  ['settings', 'Oct 16', 'Adw', 'Settings + stream port', 17943, 3218, 11165, 192, 6],
 ];
 function fit(svg, H) {
   const W = Math.max(300, Math.round(svg.parentNode.clientWidth || 900));

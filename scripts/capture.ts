@@ -13,7 +13,6 @@ import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 import Gio from 'gi://Gio';
 import System from 'system';
 
-import { AppSettings } from '../src/settings.js';
 import { MainWindow } from '../src/window.js';
 import { moveCard, parseBoard } from '../src/markdown/kanban.js';
 import { isBoard } from '../src/markdown/layout.js';
@@ -26,6 +25,7 @@ import { findEntry } from '../src/ui/menu.js';
 import { localDate } from '../src/markdown/home.js';
 import { sendChangesDialog } from '../src/ui/sendchanges.js';
 import type { HttpRequest, HttpResponse } from '../src/forge/types.js';
+import { inMemorySettings } from '../src/platform/gjs/settings.js';
 
 // A sample work folder for the Assistant panel screenshots (a fake provider; no network and no API key):
 // a product launch project with a plan, meeting notes, research, and a task board.
@@ -318,7 +318,7 @@ class Capture {
     private note = '';
 
     constructor(app: Adw.Application) {
-        const settings = AppSettings.inMemory({ welcomed: true, home: false, dark: false, sidebarPage: 'files', width: 1280, height: 780 });
+        const settings = inMemorySettings({ welcomed: true, home: false, dark: false, sidebarPage: 'files', width: 1280, height: 780 });
         this.w = new MainWindow(app, settings, null);
     }
 

@@ -42,6 +42,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
             clear: async (schema, attributes) => { ring.delete(key(schema, attributes)); },
         },
         http: async () => ({ status: 200, body: '' }),
+        httpStream: async () => { throw new Error('no network in this fake'); },
         env: name => options.env?.[name] ?? null,
         monotonicMs: () => 0,
     };

@@ -5,12 +5,12 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 
-import { AppSettings } from '../../src/settings.js';
 import { ROOT, tmp } from '../framework.js';
 import type { Option } from '../../src/actions.js';
 import { MainWindow } from '../../src/window.js';
 import type { TagName } from '../../src/editor/tags.js';
 import { iterAtLine } from '../../src/gtkutil.js';
+import { inMemorySettings } from '../../src/platform/gjs/settings.js';
 
 export interface GuiContext {
     app: Adw.Application;
@@ -37,7 +37,7 @@ export interface GuiContext {
 
 export function createContext(app: Adw.Application): GuiContext {
     // Autosave off: many tests open real files (the sample document, README) and then edit them.
-    const settings = AppSettings.inMemory({ welcomed: true, home: false, dark: false, autosave: false });
+    const settings = inMemorySettings({ welcomed: true, home: false, dark: false, autosave: false });
     const w = new MainWindow(app, settings, null);
     const ed = w.editor;
     const buf = ed.buffer;

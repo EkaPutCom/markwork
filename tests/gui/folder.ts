@@ -3,13 +3,13 @@
 import GLib from 'gi://GLib';
 import { parseBoard } from '../../src/markdown/kanban.js';
 import { isBoard } from '../../src/markdown/layout.js';
-import { AppSettings } from '../../src/settings.js';
 import { listFolder } from '../../src/ui/filetree.js';
 import { MainWindow } from '../../src/window.js';
 import { widgetPixbuf } from '../widgets.js';
 import { section, test, eq, ok, tmp, optVal } from '../framework.js';
 import type { GuiContext } from './context.js';
 import type { MenuEntry } from '../../src/ui/menu.js';
+import { inMemorySettings } from '../../src/platform/gjs/settings.js';
 
 export function folderTests(c: GuiContext): void {
     const { app, w, ed, buf, pump } = c;
@@ -104,7 +104,7 @@ export function folderTests(c: GuiContext): void {
         eq(w.file, GLib.build_filenamev([proj, 'sub', 'inner', 'd.md']), 'the open file did not change');
     });
     test('a folder as an argument opens that folder', () => {
-        const w2 = new MainWindow(app, AppSettings.inMemory({ welcomed: true, home: false, dark: false }), proj);
+        const w2 = new MainWindow(app, inMemorySettings({ welcomed: true, home: false, dark: false }), proj);
         pump();
         eq(w2.fileTree.root, proj, 'root of the second window');
         eq(w2.file, null, 'no file was opened');
@@ -113,7 +113,7 @@ export function folderTests(c: GuiContext): void {
         pump();
     });
     test('the last folder is restored without forcing the sidebar open', () => {
-        const w3 = new MainWindow(app, AppSettings.inMemory({ welcomed: true, home: false, dark: false, folder: proj, sidebar: false }), null);
+        const w3 = new MainWindow(app, inMemorySettings({ welcomed: true, home: false, dark: false, folder: proj, sidebar: false }), null);
         pump();
         eq(w3.fileTree.root, proj, 'root');
         ok(!w3.sidebar.visible, 'the sidebar was forced open');
@@ -122,7 +122,7 @@ export function folderTests(c: GuiContext): void {
         pump();
     });
     test('an Assistant panel that is open from the start shows the context summary right away', () => {
-        const w4 = new MainWindow(app, AppSettings.inMemory({ welcomed: true, home: false, dark: false, folder: proj, chat: true }), null);
+        const w4 = new MainWindow(app, inMemorySettings({ welcomed: true, home: false, dark: false, folder: proj, chat: true }), null);
         pump();
         ok(w4.chatSplit.show_sidebar, 'the Assistant panel did not open');
         ok(w4.chat.contextButton.get_label()?.startsWith('Context · ≈'), `the context summary is empty:  "${w4.chat.contextButton.get_label()}"`);

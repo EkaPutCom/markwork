@@ -20,11 +20,9 @@ const isCore = f => /^(markdown|agent|forge)\//.test(f) || BASE.includes(f)
     || ['orchestrator.ts', 'orchestratordaemon.ts', 'daemonhub.ts', 'platform/index.ts'].includes(f);
 const GI_ALLOWED = new Set([
     'agent/daemon/streamlink.ts',
-    'agent/deepseek.ts',
     'files.ts',
     'git.ts',
     'orchestrator.ts',
-    'settings.ts',
     'workspace.ts',
 ]);
 
