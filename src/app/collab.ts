@@ -24,9 +24,10 @@ export interface CollabView {
     setPulls(pulls: readonly PullRequest[]): void;
 }
 
-// The token dialog; null = cancelled, '' = forget the saved token.
+// The token dialog; null = cancelled, '' = forget the saved token. `test` tries a typed token without saving it (see
+// CollabController.test): it resolves to a sentence for the user and rejects with the reason.
 export interface CollabDialogs {
-    token(repo: RepoRef, hasToken: boolean, source?: TokenSource): Promise<string | null>;
+    token(repo: RepoRef, hasToken: boolean, source: TokenSource | undefined, test: (token: string) => Promise<string>): Promise<string | null>;
 }
 
 export interface CollabHost extends DocumentHost {
@@ -183,7 +184,7 @@ export class CollabController {
         const repo = this.repo ?? (this.folder ? parseRemote((await this.services.remoteUrl(this.folder)) ?? '') : null);
         if (!repo) return;
         const saved = await this.services.tokens.get(repo.host);
-        const answer = await this.dialogs.token(repo, !!saved, saved?.source);
+        const answer = await this.dialogs.token(repo, !!saved, saved?.source, token => this.test(repo, token));
         if (answer === null) return;
         if (answer === '') await this.services.tokens.clear(repo.host);
         else await this.services.tokens.set(repo.host, answer);

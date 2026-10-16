@@ -49,8 +49,13 @@ import { TabBar } from './ui/tabbar.js';
 import { HeaderBar, LAYOUT_CHOICES } from './ui/headerbar.js';
 import type { Palette } from './colors.js';
 import { applyTheme, systemPrefersDark } from './ui/theme.js';
-import { askSaveChanges, chooseFile, closeAgentsDialog, decideDialog, harnessAskDialog, harnessTextDialog, mergeDialog, promptDialog, showError } from './ui/dialogs.js';
-import { registerActions, type Option } from './actions.js';
+import { askSaveChanges, chooseFile, closeAgentsDialog, decideDialog, harnessAskDialog, harnessTextDialog, mergeDialog, promptDialog, showAbout, showError } from './ui/dialogs.js';
+import { registerActions } from './actions.js';
+import type { CommandHost, EditCommands, ViewOption } from './app/commands.js';
+import { wrapSelection, insertLink, insertBlock, togglePrefix, setHeading } from './editor/editing.js';
+import { PreferencesDialog } from './ui/preferences.js';
+import { CommandPalette } from './ui/palette.js';
+import { showShortcuts } from './ui/shortcuts.js';
 import { ImageViewer } from './ui/imageviewer.js';
 import { KanbanBoard } from './ui/kanban.js';
 import { InboxView } from './ui/inbox.js';
@@ -63,22 +68,21 @@ import type { StructuredView } from './ui/structured.js';
 import { HomeView } from './ui/home.js';
 import { _, fmt } from './i18n.js';
 import type { Doc } from './window/doc.js';
-import { Autosaver, type AutosaveHost } from './app/autosave.js';
-import { CollabController, type CollabHost } from './app/collab.js';
-import { ContributeController, type ContributeHost } from './app/contribute.js';
-import { mergeMethodName, PullReviewController, type PullHost } from './app/pulls.js';
-import { JournalController, type JournalHost } from './app/journal.js';
-import { HarnessController, type HarnessHost } from './app/harness.js';
+import { mergeMethodName, type PullReviewController } from './app/pulls.js';
+import type { CollabController } from './app/collab.js';
+import type { ContributeController } from './app/contribute.js';
+import type { JournalController } from './app/journal.js';
+import type { HarnessController } from './app/harness.js';
 import { HarnessLogWindows } from './window/harnesslogs.js';
-import { HarnessReviewController, type ReviewHost } from './app/harnessreview.js';
+import type { HarnessReviewController } from './app/harnessreview.js';
 import { HarnessReviewView } from './ui/harnessreview.js';
-import { HomeController, type HomeHost } from './app/home.js';
-import { ViewController, type ViewHost, type ViewScreen } from './app/views.js';
+import type { HomeController } from './app/home.js';
+import type { ViewScreen } from './app/views.js';
 import { editSchemaDialog } from './ui/schemadialog.js';
-import { NoteLinks, type NoteHost } from './app/notes.js';
 import type { ToastAction } from './app/document.js';
-import { DocumentController, UNTITLED, type DocumentsHost } from './app/documents.js';
-import { applyChange, applyChangeBatch, type AgentWriteHost } from './app/agentwrites.js';
+import { UNTITLED, type DocumentController } from './app/documents.js';
+import { applyChange, applyChangeBatch } from './app/agentwrites.js';
+import { AppSession, type AppDialogs, type AppFrontend, type FrontendHost } from './app/session.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
 import { sendChangesDialog } from './ui/sendchanges.js';
 import { tokenDialog } from './ui/serverdialog.js';
@@ -94,10 +98,7 @@ function fitToScreen(width: number, height: number): [number, number] {
 }
 const MODE_LABELS: Record<Mode, string> = { source: _('Source'), focus: _('Focus'), typewriter: _('Typewriter') };
 
-// The window as seen by its controllers; each controller is typed with only the part it needs.
-type WindowHost = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<MarkdownView> & ViewHost<MarkdownView> & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost;
-
-export class MainWindow {
+export class MainWindow implements CommandHost {
     readonly app: Adw.Application;
     readonly settings: AppSettings;
     readonly outline: Outline;
@@ -129,10 +130,8 @@ export class MainWindow {
     readonly reviewView: HarnessReviewView;
     readonly review: HarnessReviewController;
     readonly homePage: HomeController;
-    private readonly views: ViewController<MarkdownView>;
-    private readonly notes: NoteLinks;
-    private readonly autosaver: Autosaver;
-    private readonly host: WindowHost;
+    // The application layer: the controllers and what ties them together (app/session.ts); this class is its GTK frontend.
+    readonly session: AppSession<MarkdownView>;
     private closing = false;   // closing the window has been confirmed through a dialog
     readonly chat: ChatPanel;
     readonly chatSplit: Adw.OverlaySplitView;
@@ -141,9 +140,19 @@ export class MainWindow {
     readonly win: Adw.ApplicationWindow;
 
     readonly documents: DocumentController<MarkdownView>;
-    // The Markdown files of the work folder; documents with unsaved changes are read from their editor.
-    readonly workspace = new WorkspaceRepository(() => new Map(this.docs
-        .filter(d => d.file && d.editor.buffer.get_modified()).map(d => [d.file!, d.editor.getText()])));
+    readonly workspace: WorkspaceRepository;
+    // The edits the commands make to the active document's text (CommandHost).
+    readonly edit: EditCommands = {
+        undo: () => this.editor.buffer.undo(),
+        redo: () => this.editor.buffer.redo(),
+        wrap: marker => wrapSelection(this.editor.buffer, marker),
+        link: () => insertLink(this.editor.buffer),
+        block: (before, after) => insertBlock(this.editor.buffer, before, after),
+        prefix: (pattern, text) => togglePrefix(this.editor.buffer, pattern, text),
+        heading: level => setHeading(this.editor.buffer, level),
+        table: operation => this.editor.tableCommand(operation),
+        zoomImage: () => this.editor.zoomImage(),
+    };
     private palette: Palette | null = null;
     dark: boolean;
     private colorScheme: boolean | null = null;   // the last choice applied by setDark (null = follow the system)
@@ -167,7 +176,7 @@ export class MainWindow {
             root: () => this.fileTree.root,
             files: () => this.fileTree.root ? this.workspace.files(this.fileTree.root, { freshness: 'current', limit: 5000 }) : [],
             open: (file, hit) => this.openSearchHit(file, hit),
-            replace: changes => applyChangeBatch(this.host, changes),
+            replace: changes => applyChangeBatch(this.session.host, changes),
             confirm: (message, detail, accept) => decideDialog(this.win, message, detail, accept),
         });
         this.sidebar = new Sidebar(this.fileTree.widget, this.searchPanel.widget, this.outline.widget, this.history.widget, this.collabPanel.widget);
@@ -181,67 +190,24 @@ export class MainWindow {
         this.chat = new ChatPanel();
         this.header = new HeaderBar();
 
-        // Feature controllers: created before the first document, whose buffer already queues autosaves.
-        this.host = this.makeHost();
-        this.autosaver = new Autosaver(this.host);
-        this.journal = new JournalController(this.host, {
-            capture: () => promptDialog(this.win, { title: _('Add to Journal'), label: _('Recorded in today\'s journal with the current time.'), accept: _('Add') }),
-        });
-        this.collab = new CollabController(this.host, {
-            token: (repo, hasToken, source) => tokenDialog(this.win, {
-                host: repo.host, repository: `${repo.owner}/${repo.repo}`, hasToken, source, test: token => this.collab.test(repo, token),
-            }),
-        });
-        this.pulls = new PullReviewController(this.host, { provider: () => this.collab.provider(), changed: () => void this.collab.refresh(), session: () => this.collab.session() }, {
-            local: pull => decideDialog(this.win, fmt(_('Merge pull request #{number} in this folder?'), { number: pull.number }),
-                fmt(_('Markwork will merge it into your {base}. Files that conflict get conflict markers; you edit them in their tabs and then finish, which pushes the result to the server. “Abort merge” undoes it.'), { base: pull.baseRef }), _('Merge Here')),
-            abort: pull => decideDialog(this.win, fmt(_('Undo the merge of pull request #{number}?'), { number: pull.number }),
-                _('The folder goes back to what it was before. Your edits to the conflicting files are lost.'), _('Undo the Merge'), true),
-            merge: (pull, method) => mergeDialog(this.win, fmt(_('Merge pull request #{number}?'), { number: pull.number }),
-                fmt(_('“{title}” will be merged into {base} on the server with “{method}”. Everybody who uses this repository sees it.'), { title: pull.title, base: pull.baseRef, method: mergeMethodName(method) })),
-        });
-        this.collab.onOpenPull = pull => void this.pulls.open(pull);
-        this.contribute = new ContributeController(this.host, { session: () => this.collab.session(), refresh: () => void this.collab.refresh() },
-            { send: options => sendChangesDialog(this.win, options) });
-        this.collab.onSend = () => void this.contribute.start();
-        this.harness = new HarnessController(this.host, {
-            chooseFolder: title => chooseFile(this.win, { title, selectFolder: true }),
-            answer: (ask, agent) => harnessAskDialog(this.win, ask, agent),
-            text: options => harnessTextDialog(this.win, options),
-            remoteFolder: (machine, project, current) => promptDialog(this.win, {
-                title: project ? fmt(_('Project folder “{name}”'), { name: project }) : _('Choose a project folder'),
-                label: fmt(_('The folder of the project on {machine} (an absolute path):'), { machine }), value: current, accept: _('Save'),
-            }),
-            closeAgents: activity => closeAgentsDialog(this.win, activity),
-        });
-        this.review = new HarnessReviewController(this.host, {
-            merge: (title, base, method, partial) => decideDialog(this.win, fmt(_('Merge “{title}” into {base}?'), { title, base }),
-                [method === 'squash' || partial ? _('Everything becomes one commit on the base branch of the project folder.') : _('A merge commit joins the branch to the base branch of the project folder.'), partial, _('The worktree is removed afterwards.')].filter(Boolean).join(' '), _('Merge')),
-            discard: (title, branch) => decideDialog(this.win, fmt(_('Discard the Work on “{title}”?'), { title }),
-                fmt(_('The worktree and the branch {branch} are deleted, with every change in them. The project folder is not touched.'), { branch }), _('Discard'), true),
-        });
-        this.harness.onReview = (file, card, board) => {
-            const error = this.review.open(file, card, board);
-            if (error) this.toast(error);
-        };
-        this.homePage = new HomeController(this.host);
-        this.views = new ViewController(this.host, { editSchema: options => editSchemaDialog(this.win, options) });
-        this.notes = new NoteLinks(this.host);
-
-        this.documents = new DocumentController(this.documentsHost());
-        this.documents.start();
+        // The application layer: its controllers are created before the first document, whose buffer already queues autosaves.
+        this.session = new AppSession<MarkdownView>({ host: this.frontendHost(), documents: this.documentsHost(), dialogs: this.appDialogs() });
+        const session = this.session;
+        ({ journal: this.journal, collab: this.collab, pulls: this.pulls, contribute: this.contribute, harness: this.harness,
+            review: this.review, homePage: this.homePage, documents: this.documents, workspace: this.workspace } = session);
+        session.start();
         this.doc.editor.modes.focus = settings.focus;
         this.doc.editor.modes.typewriter = settings.typewriter;
         this.findBar = new FindBar(this.doc.editor.buffer, this.doc.editor.view);
 
         // The components do not know each other; the window is what connects them.
         this.inbox.onOpenNote = link => this.openNote(link);
-        this.inbox.listNotes = () => this.notes.names(this.doc);
+        this.inbox.listNotes = () => this.session.notes.names(this.doc);
         this.table.onOpenNote = link => this.openNote(link);
-        this.table.listNotes = () => this.notes.names(this.doc);
+        this.table.listNotes = () => this.session.notes.names(this.doc);
         for (const view of Object.values(this.layouts)) {
             view.onOpenNote = link => this.openNote(link);
-            view.listNotes = () => this.notes.names(this.doc);
+            view.listNotes = () => this.session.notes.names(this.doc);
         }
         this.gallery.baseDir = () => (this.doc.file ? GLib.path_get_dirname(this.doc.file) : null);
         this.home.onOpenFile = path => this.openInTab(path);
@@ -254,7 +220,7 @@ export class MainWindow {
         this.home.onOpenJournal = () => this.journal.open();
         this.home.onCaptureJournal = () => this.journal.capture();
         this.board.onOpenNote = link => this.openNote(link);
-        this.board.listNotes = () => this.notes.names(this.doc);
+        this.board.listNotes = () => this.session.notes.names(this.doc);
         this.board.harness = {
             status: card => this.harness.status(card),
             menu: (card, at) => this.harness.menu(card, at),
@@ -325,8 +291,8 @@ export class MainWindow {
                 return bounds[0] ? buf.get_text(bounds[1], bounds[2], false) : '';
             },
             root: () => this.fileTree.root,
-            applyChange: change => applyChange(this.host, change),
-            applyBatch: changes => applyChangeBatch(this.host, changes),
+            applyChange: change => applyChange(this.session.host, change),
+            applyBatch: changes => applyChangeBatch(this.session.host, changes),
             git: request => this.fileTree.root ? agentGit(this.fileTree.root, request) : Promise.resolve({ ok: false, message: 'no work folder' }),
             window: () => this.win,
             insertText: text => this.insertIntoNote(text),
@@ -429,7 +395,7 @@ export class MainWindow {
         } else {
             this.editor.setText('');
         }
-        this.views.sync();
+        this.session.views.sync();
         this.updateTitle();
         this.win.present();
         this.syncHistory();
@@ -450,7 +416,8 @@ export class MainWindow {
         this.toasts.add_toast(toast);
     }
 
-    private makeHost(): WindowHost {
+    // What the application layer needs from the GTK widgets and the system (AppFrontend.host).
+    private frontendHost(): FrontendHost<MarkdownView> {
         const w = this;
         return {
             screen: this.viewScreen(),
@@ -458,39 +425,17 @@ export class MainWindow {
             get chat() { return w.chat; },
             get board() { return w.board; },
             get logs() { return w.harnessLogs; },
-            get harness() { return w.harness; },
-            get journal() { return w.journal; },
             get collabPanel() { return w.collabPanel; },
             get pullView() { return w.pullView; },
             get reviewView() { return w.reviewView; },
-            showDocument: () => this.views.sync(),
-            saveAll: () => this.documents.saveOpenFiles(),
-            get workspace() { return w.workspace; },
             get inbox() { return w.inbox; },
             get table() { return w.table; },
             get layouts() { return w.layouts; },
-            get homePage() { return w.homePage; },
-            newDocument: text => this.documents.reset(this.documents.blank(), text),
             root: () => this.fileTree.root,
-            active: () => this.doc,
-            docs: () => this.docs,
-            openInTab: path => this.openInTab(path),
             toast: (message, action) => this.toast(message, action),
-            write: (path, text) => this.documents.write(path, text),
             refreshTree: () => { if (this.fileTree.root) this.fileTree.refresh(this.fileTree.root); },
-            refreshHome: () => this.refreshHome(),
-            fileMoved: (doc, path) => this.documents.fileMoved(doc, path),
-            fileGone: doc => this.documents.fileGone(doc),
-            fileBack: (doc, path) => this.documents.fileBack(doc, path),
             filesMoved: () => { this.fileTree.reveal(this.file); this.syncHistory(true); },
             projectName: path => this.projectName(path),
-            showChat: () => { this.settings.chat = true; },
-            boardShown: file => this.boardMode && this.file === file,
-            updateBoardFile: (file, edit) => this.views.updateBoardFile(file, edit),
-            record: (kind, text) => this.journal.record(kind, text),
-            agentHost: () => this.harness.hostStatus(),
-            runs: () => this.harness.orchestrator.queue.runs,
-            journalSummary: (root, date) => this.journal.summary(root, date),
             isActive: () => this.win.is_active,
             notify: (id, title, body) => {
                 const notification = new Gio.Notification();
@@ -502,6 +447,46 @@ export class MainWindow {
             showPull: () => { this.content.visible_child_name = 'pull'; },
             showReview: () => { this.content.visible_child_name = 'review'; },
             openFolder: path => new Gtk.FileLauncher({ file: Gio.File.new_for_path(path) }).launch(this.win, null, null),
+        };
+    }
+
+    // The questions the application layer asks, as GTK dialogs (AppFrontend.dialogs).
+    private appDialogs(): AppDialogs {
+        return {
+            journal: {
+                capture: () => promptDialog(this.win, { title: _('Add to Journal'), label: _('Recorded in today\'s journal with the current time.'), accept: _('Add') }),
+            },
+            collab: {
+                token: (repo, hasToken, source, test) => tokenDialog(this.win, {
+                    host: repo.host, repository: `${repo.owner}/${repo.repo}`, hasToken, source, test,
+                }),
+            },
+            pulls: {
+                local: pull => decideDialog(this.win, fmt(_('Merge pull request #{number} in this folder?'), { number: pull.number }),
+                    fmt(_('Markwork will merge it into your {base}. Files that conflict get conflict markers; you edit them in their tabs and then finish, which pushes the result to the server. “Abort merge” undoes it.'), { base: pull.baseRef }), _('Merge Here')),
+                abort: pull => decideDialog(this.win, fmt(_('Undo the merge of pull request #{number}?'), { number: pull.number }),
+                    _('The folder goes back to what it was before. Your edits to the conflicting files are lost.'), _('Undo the Merge'), true),
+                merge: (pull, method) => mergeDialog(this.win, fmt(_('Merge pull request #{number}?'), { number: pull.number }),
+                    fmt(_('“{title}” will be merged into {base} on the server with “{method}”. Everybody who uses this repository sees it.'), { title: pull.title, base: pull.baseRef, method: mergeMethodName(method) })),
+            },
+            contribute: { send: options => sendChangesDialog(this.win, options) },
+            harness: {
+                chooseFolder: title => chooseFile(this.win, { title, selectFolder: true }),
+                answer: (ask, agent) => harnessAskDialog(this.win, ask, agent),
+                text: options => harnessTextDialog(this.win, options),
+                remoteFolder: (machine, project, current) => promptDialog(this.win, {
+                    title: project ? fmt(_('Project folder “{name}”'), { name: project }) : _('Choose a project folder'),
+                    label: fmt(_('The folder of the project on {machine} (an absolute path):'), { machine }), value: current, accept: _('Save'),
+                }),
+                closeAgents: activity => closeAgentsDialog(this.win, activity),
+            },
+            review: {
+                merge: (title, base, method, partial) => decideDialog(this.win, fmt(_('Merge “{title}” into {base}?'), { title, base }),
+                    [method === 'squash' || partial ? _('Everything becomes one commit on the base branch of the project folder.') : _('A merge commit joins the branch to the base branch of the project folder.'), partial, _('The worktree is removed afterwards.')].filter(Boolean).join(' '), _('Merge')),
+                discard: (title, branch) => decideDialog(this.win, fmt(_('Discard the Work on “{title}”?'), { title }),
+                    fmt(_('The worktree and the branch {branch} are deleted, with every change in them. The project folder is not touched.'), { branch }), _('Discard'), true),
+            },
+            views: { editSchema: options => editSchemaDialog(this.win, options) },
         };
     }
 
@@ -577,7 +562,7 @@ export class MainWindow {
     }
 
     // What follows the documents on screen.
-    private documentsHost(): DocumentsHost<MarkdownView> {
+    private documentsHost(): AppFrontend<MarkdownView>['documents'] {
         const w = this;
         return {
             dialogs: {
@@ -587,7 +572,6 @@ export class MainWindow {
             },
             createEditor: () => new MarkdownView(),
             get settings() { return w.settings; },
-            get autosaver() { return w.autosaver; },
             root: () => this.fileTree.root,
             toast: (message, action) => this.toast(message, action),
             attach: doc => this.attach(doc),
@@ -600,14 +584,14 @@ export class MainWindow {
                 this.findBar.setTarget(doc.editor.buffer, doc.editor.view);
                 this.tabBar.setActive(doc.id);
                 this.outline.update(doc.editor.headings);
-                this.views.sync();
+                this.session.views.sync();
                 this.updateTitle();
                 this.fileTree.reveal(doc.file);
                 this.syncHistory();
                 if (this.chatSplit.show_sidebar) this.chat.updateContextSummary();
             },
             contentChanged: doc => {
-                this.views.replaced(doc);
+                this.session.views.replaced(doc);
                 this.updateTitle();
                 this.fileTree.reveal(doc.file);
                 if (!doc.home) this.syncHistory();
@@ -615,7 +599,6 @@ export class MainWindow {
             refreshTitle: doc => this.refreshTitle(doc),
             setIcon: (doc, icon) => this.tabBar.setIcon(doc.id, icon),
             tabOrder: () => this.tabBar.ids(),
-            refreshHome: () => this.refreshHome(),
             openFolder: path => this.openFolder(path),
             fileSaved: path => {
                 // Show the new file in the tree without waiting for the disk monitor.
@@ -633,7 +616,7 @@ export class MainWindow {
         editor.onHighlighted = ({ headings, words, characters }) => {
             if (doc !== this.doc) return;
             this.outline.update(headings);
-            if (!this.views.structuredMode) this.statusBar.setDocumentCounts(words, characters);
+            if (!this.session.views.structuredMode) this.statusBar.setDocumentCounts(words, characters);
         };
         editor.onCursorMoved = (line, column) => {
             if (doc !== this.doc) return;
@@ -645,12 +628,12 @@ export class MainWindow {
         editor.getBaseDir = () => doc.file ? GLib.path_get_dirname(doc.file) : GLib.get_home_dir();
         editor.onOpenNote = link => this.openNote(link, doc);
         editor.onOpenDocument = path => this.openInTab(path);
-        editor.listNotes = () => this.notes.names(doc);
+        editor.listNotes = () => this.session.notes.names(doc);
         editor.buffer.connect('modified-changed', () => this.refreshTitle(doc));
         // Text changed while the board is shown and not by the board itself (undo/redo): re-read.
         editor.buffer.connect('changed', () => {
-            this.views.queueReload(doc);
-            this.autosaver.edited(doc);
+            this.session.views.queueReload(doc);
+            this.session.autosaver.edited(doc);
         });
 
         // A new document inherits the mode and theme of the currently active document.
@@ -745,14 +728,14 @@ export class MainWindow {
 
     // Ctrl+click [[note]]: see NoteLinks.open.
     openNote(link: WikiLink, doc = this.doc): void {
-        this.notes.open(link, doc);
+        this.session.notes.open(link, doc);
     }
 
     // ---------- Views: text, board, inbox, Home ----------
 
     // The assistant's answer goes into the open note at the cursor, as one undo step. false: no editable note is shown.
     private insertIntoNote(text: string): boolean {
-        if (this.views.structuredMode || this.homeMode) return false;
+        if (this.session.views.structuredMode || this.homeMode) return false;
         const buffer = this.editor.buffer;
         buffer.begin_user_action();
         const inserted = buffer.insert_interactive_at_cursor(`${text.trim()}\n`, -1, true);
@@ -761,38 +744,38 @@ export class MainWindow {
     }
 
     get boardMode(): boolean {
-        return this.views.boardMode;
+        return this.session.views.boardMode;
     }
 
     get inboxMode(): boolean {
-        return this.views.inboxMode;
+        return this.session.views.inboxMode;
     }
 
     get tableMode(): boolean {
-        return this.views.tableMode;
+        return this.session.views.tableMode;
     }
 
     get homeMode(): boolean {
-        return this.views.homeMode;
+        return this.session.views.homeMode;
     }
 
     setBoardMode(on: boolean): void {
-        this.views.show(on ? 'board' : 'text');
+        this.session.views.show(on ? 'board' : 'text');
     }
 
     // Text editor actions are disabled while a board, inbox, or Home is shown.
     syncActionsEnabled(): void {
-        this.views.syncActionsEnabled();
+        this.session.views.syncActionsEnabled();
     }
 
     // The "Board View" menu/shortcut.
     toggleBoardView(on: boolean): void {
-        this.views.toggle(on);
+        this.session.views.toggle(on);
     }
 
     // The layout menu in the header bar.
     setLayout(layout: string): void {
-        this.views.setLayout(layout);
+        this.session.views.setLayout(layout);
     }
 
     // The "Fields…" menu for the board or list that is shown.
@@ -801,22 +784,22 @@ export class MainWindow {
     }
 
     editFields(): void {
-        this.views.editFields();
+        this.session.views.editFields();
     }
 
     // A new document containing an empty kanban board.
     newBoardDocument(): void {
-        this.views.newBoard();
+        this.session.views.newBoard();
     }
 
     // A new document containing an empty inbox.
     newInboxDocument(): void {
-        this.views.newInbox();
+        this.session.views.newInbox();
     }
 
     // A new document containing an empty table.
     newTableDocument(): void {
-        this.views.newTable();
+        this.session.views.newTable();
     }
 
     // ---------- Home ----------
@@ -828,7 +811,7 @@ export class MainWindow {
 
     // Redraw Home if it is shown; the data is recomputed from the files every time.
     refreshHome(): void {
-        if (this.doc.home && this.homeMode) this.home.render(this.homePage.data());
+        this.session.refreshHome();
     }
 
     // ---------- Git history ----------
@@ -871,7 +854,7 @@ export class MainWindow {
     // Change a view option. All but source mode are GSettings keys: writing them is enough,
     // because the sidebar and assistant are bound to their keys (Gio.Settings.bind) and the rest is applied by
     // onSettingChanged. The toggle actions in the menu (Gio.Settings.create_action) use the same path.
-    setOption(key: Option, value: boolean): void {
+    setOption(key: ViewOption, value: boolean): void {
         if (key === 'source') for (const doc of this.docs) doc.editor.setMode('source', value);
         else if (key === 'dark') {
             this.setDark(value);
@@ -887,7 +870,7 @@ export class MainWindow {
             const dark = this.app.lookup_action('dark');
             if (dark instanceof Gio.SimpleAction) dark.set_state(GLib.Variant.new_boolean(this.dark));
         } else if (key === 'focus' || key === 'typewriter') for (const doc of this.docs) doc.editor.setMode(key, s[key]);
-        else if (key === 'autosave') { if (s.autosave) for (const doc of this.docs) this.autosaver.queue(doc); }
+        else if (key === 'autosave') { if (s.autosave) for (const doc of this.docs) this.session.autosaver.queue(doc); }
         else if (key === 'recent-files') this.refreshRecent();
         else if (key === 'chat-model') this.chat.settings.setModel(s.chatModel);
         else if (key === 'chat-thinking') this.chat.settings.setThinking(s.chatThinking);
@@ -898,11 +881,11 @@ export class MainWindow {
 
     // The active document unless given; see Autosaver.
     autosaveInBackground(doc: Doc = this.doc, done?: () => void): boolean {
-        return this.autosaver.inBackground(doc, done);
+        return this.session.autosaver.inBackground(doc, done);
     }
 
     autosave(doc: Doc = this.doc): boolean {
-        return this.autosaver.now(doc);
+        return this.session.autosaver.now(doc);
     }
 
     // ---------- Documents ----------
@@ -1065,17 +1048,38 @@ export class MainWindow {
         return true;
     }
 
+    // ---------- Commands (CommandHost) ----------
+
+    openFind(withReplace = false): void {
+        this.findBar.open(withReplace);
+    }
+
+    showPreferences(): void {
+        new PreferencesDialog(this.settings, this.harness).present(this.win);
+    }
+
+    showPalette(): void {
+        new CommandPalette(this.app).present(this.win);
+    }
+
+    showShortcuts(): void {
+        showShortcuts(this.app, this.win);
+    }
+
+    showAbout(): void {
+        showAbout(this.win);
+    }
+
+    quit(): void {
+        this.win.close();
+    }
+
     // Stop the timers and idles of all components after the window is destroyed.
     private dispose(): void {
-        for (const doc of this.docs) {
-            this.autosaver.cancel(doc);
-            doc.editor.destroy();
-        }
-        this.harness.dispose();
-        this.collab.dispose();
+        for (const doc of this.docs) doc.editor.destroy();
+        this.session.dispose();
         this.chat.destroy();
         this.history.destroy();
         this.fileTree.destroy();
-        this.workspace.close();
     }
 }

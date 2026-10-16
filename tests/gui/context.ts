@@ -6,7 +6,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 
 import { ROOT, tmp } from '../framework.js';
-import type { Option } from '../../src/actions.js';
+import type { ViewOption as Option } from '../../src/app/commands.js';
 import { MainWindow } from '../../src/window.js';
 import type { TagName } from '../../src/editor/tags.js';
 import { iterAtLine } from '../../src/gtkutil.js';
