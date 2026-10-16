@@ -609,7 +609,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">c6d52cf</span><span><span class="era">Adw</span><b>Layers</b> · A port between the core and the runtime: <code>platform/index.ts</code> declares files, paths, the keyring, HTTP, and the environment; <code>platform/gjs/</code> fills it with GLib, Gio, libsecret, and libsoup. <code>forge/</code> and the new <code>credentials.ts</code> drop every <code>gi://</code> import, and <code>scripts/layers.mjs</code> keeps the 15 core modules that still use GI in a list that may only shrink.</span></li>
     <li><span class="h">f56b9e1</span><span><span class="era">Adw</span><b>Layers</b> · The port grows: <code>FileSystem</code> learns <code>list</code>, <code>kind</code> (never follows a link), and <code>trash</code>; <code>Paths</code> learns <code>runtimeDir</code>; a monotonic clock joins; and <code>cancel.ts</code> replaces <code>Gio.Cancellable</code>. <code>agent/</code> keeps <code>gi://</code> only in <code>deepseek.ts</code> and <code>daemon/streamlink.ts</code>, and <code>GI_ALLOWED</code> shrinks from 15 to 7.</span></li>
     <li><span class="h">9b061d3</span><span><span class="era">Adw</span><b>Chapter 8, Layers</b> · <code>AppSettings</code> reads and writes through a <code>SettingsStore</code>; GSettings is the store under GJS and finds each key's GVariant type in the schema. GTK keeps <code>bind()</code> and <code>create_action()</code> through <code>gsettingsOf()</code>, and listeners use <code>settings.onChanged()</code>. The DeepSeek stream moves to <code>platform().httpStream</code>; <code>GI_ALLOWED</code> shrinks to 5.</span></li>
-    <li><span class="h">process</span><span><span class="era">Adw</span><b>Layers</b> · Processes join the port: <code>run()</code> for a program run to the end (git, with the watchdog for a callback GJS loses during garbage collection) and <code>spawn()</code> for a harness spoken to line by line over <code>GLib.IOChannel</code>, both in <code>platform/gjs/process.ts</code>. <code>git.ts</code> and <code>orchestrator.ts</code> drop GLib, its timers become <code>setTimeout</code>; <code>GI_ALLOWED</code> shrinks to 3.</span></li>
+    <li><span class="h">d5017f6</span><span><span class="era">Adw</span><b>Layers</b> · Processes join the port: <code>run()</code> for a program run to the end (git, with the watchdog for a callback GJS loses during garbage collection) and <code>spawn()</code> for a harness spoken to line by line over <code>GLib.IOChannel</code>, both in <code>platform/gjs/process.ts</code>. <code>git.ts</code> and <code>orchestrator.ts</code> drop GLib, its timers become <code>setTimeout</code>; <code>GI_ALLOWED</code> shrinks to 3.</span></li>
   </ol>
 </section>
 
@@ -1673,7 +1673,7 @@ const layers = [
   ['c6d52cf', 'Oct 16', 'Adw', 'Platform port', 17940, 4695, 9554, 192, 6],
   ['f56b9e1', 'Oct 16', 'Adw', 'agent/ without GIO', 17940, 3378, 10938, 192, 6],
   ['9b061d3', 'Oct 16', 'Adw', 'Settings + stream port', 17943, 3218, 11165, 192, 6],
-  ['process', 'Oct 16', 'Adw', 'Process port', 17943, 2578, 11868, 192, 6],
+  ['d5017f6', 'Oct 16', 'Adw', 'Process port', 17943, 2578, 11868, 192, 6],
 ];
 function fit(svg, H) {
   const W = Math.max(300, Math.round(svg.parentNode.clientWidth || 900));
