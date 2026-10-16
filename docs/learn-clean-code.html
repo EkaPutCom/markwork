@@ -409,7 +409,7 @@ export class LineCache { begin() get() put() end() }</code></pre></div>
 <div class="wrap">
   <div class="chapnum">Chapter 5</div>
   <h2>Coupling: a narrow host, and one place that knows everyone</h2>
-  <p>Markwork has no import cycle. Its fan-out is concentrated where it belongs: <code>window.ts</code> imports 33 modules because it is the <b>composition root</b>, the one place that creates the widgets and connects their callbacks. Everything else stays narrow.</p>
+  <p>Markwork has no import cycle. Its fan-out is concentrated where it belongs: <code>window.ts</code> imports 61 local modules because it is the <b>composition root</b> of the widgets, the one place that creates them and connects their callbacks. Everything else stays narrow.</p>
   <p>A controller never receives <code>MainWindow</code>. It declares what it needs as a host interface, and the window builds that host from closures:</p>
 <pre><code>// window/views.ts
 export interface ViewHost extends DocumentHost {
@@ -426,11 +426,20 @@ export interface ViewHost extends DocumentHost {
     <tbody>
       <tr><td><code>i18n.ts</code></td><td class="num">37</td><td class="num">0</td><td>stable foundation: many depend on it, it depends on nothing</td></tr>
       <tr><td><code>gtkutil.ts</code></td><td class="num">36</td><td class="num">0</td><td>same</td></tr>
-      <tr><td><code>window.ts</code></td><td class="num">1</td><td class="num">33</td><td>composition root (was 38 before views, notes, and file operations moved to controllers)</td></tr>
+      <tr><td><code>window.ts</code></td><td class="num">1</td><td class="num">61</td><td>composition root of the widgets (the 33 once counted here predate the GTK widgets it builds; the controllers are now built by <code>app/session.ts</code>)</td></tr>
       <tr><td><code>agent/commitmessage.ts</code></td><td class="num">1</td><td class="num">0</td><td>a new feature with no runtime import at all: everything it needs comes in as <code>CommitSources</code></td></tr>
       <tr><td><code>markdown/*</code></td><td class="num">—</td><td class="num">—</td><td>every import stays inside markdown/: fully self-contained</td></tr>
     </tbody>
   </table></div>
+  <h3>Who builds the controllers: <code>AppSession</code></h3>
+  <p>The controllers were app-layer code, but the window still <i>built</i> them: about fifty lines created eleven of them, handed each one the dialogs it asks with, and connected them to each other (<code>collab.onOpenPull</code>, <code>collab.onSend</code>, <code>harness.onReview</code>). A second frontend would have copied those lines. They moved to <code>app/session.ts</code>: <code>AppSession</code> constructs and owns the controllers and the workspace, and answers the host members that are only other controllers (<code>harness</code>, <code>journal</code>, <code>boardShown</code>, <code>saveAll</code>, …). What the frontend must supply is one object, <code>AppFrontend</code>: the views and system services (<code>FrontendHost</code>), the <code>DocumentsHost</code> hooks, and <code>AppDialogs</code>.</p>
+<pre><code>// window.ts
+this.session = new AppSession&lt;MarkdownView&gt;({ host: this.frontendHost(), documents: this.documentsHost(), dialogs: this.appDialogs() });
+({ journal: this.journal, collab: this.collab, /* … */ } = this.session);</code></pre>
+  <p>One dialog had to change its shape to make that possible. The token dialog tried a token with <code>collab.test</code>, so building the dialogs needed the controller that needed the dialogs; <code>CollabDialogs.token</code> now receives <code>test</code> as an argument and the cycle is gone. <code>window.ts</code> did not get shorter (1,081 → 1,085 lines: the dialogs and the host closures are still its job); the wiring moved, and the layer rule for <code>app/</code> already keeps <code>AppSession</code> free of GI.</p>
+  <h3>Commands as data</h3>
+  <p>Commands were <code>Gio.Action</code>s in <code>actions.ts</code> with only their labels in <code>app/commands.ts</code>, so the default keys, which commands apply to a text editor, and what each one does lived in GTK. <code>COMMANDS</code> is now the table: an id, a palette label, default keys in a neutral notation (<code>Ctrl+Shift+P</code>), a scope (<code>text</code>, <code>document</code>, <code>structured</code>), and a <code>run</code> that acts only through <code>CommandHost</code>. <code>actions.ts</code> shrank from 171 to 69 lines: it maps the table onto actions and accelerators (<code>gtkAccelerators()</code>), and a test checks every key against the accelerator the action had before. <code>ViewController</code> enables the actions of a scope from the same table instead of keeping three name lists.</p>
+  <div class="lesson"><b>Lesson</b>A composition root is code a second frontend would have to copy. Find the lines that connect controllers to each other and move them behind one constructor; what stays is only what needs a widget.</div>
   <h3>The same shape for a small feature</h3>
   <p>The commit message writer (1bac3b8) needs git, the API key, the model client, and the chosen model. None of those is imported. The function lists them as a parameter, and the composition root fills it in:</p>
 <pre><code>// agent/commitmessage.ts: only type imports
@@ -561,6 +570,7 @@ if (open) host.fileMoved(open, to);</code></pre></div>
     <li><span class="h">91e2fa9</span><span>Local conflict resolution: <code>forge/resolve.ts</code> is git steps behind a <code>GitRunner</code> (preflight, merge, finish, abort), tested against a bare repository that fakes the forge, including the pull request ref; the controller keeps the one piece of state (which merge is ours) and nothing else.</span></li>
     <li><span class="h">c35e170</span><span>The forge layer run against a real Forgejo (<code>npm run test:live:forge</code>) found what the fake could not: pushing a merge does not close the pull request, and the “manually merged” style is refused unless the repository allows it. The fake forge had been written from the same assumption as the code, so it agreed with it; a real server did not.</span></li>
     <li><span class="h">0e34a38</span><span>The core on Node (chapter 1): <code>platform/node/</code> implements the port, <code>npm run test:core:node</code> runs the 544 core tests there, and the import rules keep <code>node:</code> inside <code>platform/node/</code>. The tests stopped spinning nested main loops and now await.</span></li>
+    <li><span class="h">2612ad7</span><span>The application session (chapter 5): <code>app/session.ts</code> builds and wires the controllers from one <code>AppFrontend</code>, and commands become the data table <code>COMMANDS</code> in <code>app/commands.ts</code>. <code>actions.ts</code> is 171 → 69 lines, and the session runs on Node in <code>npm run test:core:node</code> on a fake frontend.</span></li>
   </ol>
 </div>
 </section>
