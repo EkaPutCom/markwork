@@ -5,17 +5,17 @@
 
 import Adw from 'gi://Adw?version=1';
 import Gdk from 'gi://Gdk?version=4.0';
-import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import type { WriteResult } from '../agent/commitmessage.js';
 import { onKeyPress } from '../gtkutil.js';
 import type { MessageBox } from './messagebox.js';
 import { _, fmt, ngettext } from '../i18n.js';
+import { Cancellable } from '../cancel.js';
 
 export const SPARKLE_ICON = 'com.ekaput.Markwork-sparkle-symbolic';
 
-export type WriteMessage = (files: string[], onText: (message: string) => void, cancellable: Gio.Cancellable) => Promise<WriteResult>;
+export type WriteMessage = (files: string[], onText: (message: string) => void, cancellable: Cancellable) => Promise<WriteResult>;
 
 // A status line under a commit form: plain or an error, optionally with markup (a link).
 export function setStatus(label: Gtk.Label, text: string, error = false, markup = false): void {
@@ -35,7 +35,7 @@ export class MessageWriter {
     onBusy: (busy: boolean) => void = () => {};     // lock or unlock the rest of the form
     onOpenSettings: () => void = () => {};          // the "no API key" link
     private readonly pages: Gtk.Stack;
-    private cancellable: Gio.Cancellable | null = null;
+    private cancellable: Cancellable | null = null;
     private before: string | null = null;           // the text Ctrl+Z restores, while the box still holds the written message
     private written = '';
     private writeMessage: WriteMessage | null = null;
@@ -85,7 +85,7 @@ export class MessageWriter {
         const files = this.files();
         if (!this.write || !files.length || this.busy || this.held) return;
         const before = this.box.text;
-        this.cancellable = new Gio.Cancellable();
+        this.cancellable = new Cancellable();
         this.setBusy(true);
         setStatus(this.status, files.length === 1
             ? fmt(_('Writing from the changes in {name}…'), { name: GLib.path_get_basename(files[0]) })

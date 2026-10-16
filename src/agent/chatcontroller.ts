@@ -3,8 +3,8 @@
 // saved conversations, undoing applied changes, and composing the context. The panel (ui/chat.ts) draws what it
 // is told through ChatView and passes user actions in; tests drive this class with a fake view and provider.
 
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
+import { Cancellable } from '../cancel.js';
+import { platform } from '../platform/index.js';
 import { systemKeyStore, type KeyStore } from './apikey.js';
 import { buildContext, DEFAULT_BUDGET, findMentions, type BuiltContext, type ContextOptions, type SourceFile } from './context.js';
 import { deleteChat, listChats, loadChat, loadChatLog, nowStamp, saveChat, saveChatLog, titleFrom, type ChatSummary } from './chatstore.js';
@@ -55,7 +55,7 @@ export interface ChatView {
     startTurn(question: string): TurnView;          // the question was accepted: show it with an empty answer
     // Show a change proposal and wait for the user's decision. apply writes an approved change (an error message or
     // null); cancelled fires when the turn is stopped, which must end the review as rejected.
-    review(change: Change | Change[], apply: (change: Change | Change[]) => string | null, cancelled: Gio.Cancellable): Promise<ProposalResult>;
+    review(change: Change | Change[], apply: (change: Change | Change[]) => string | null, cancelled: Cancellable): Promise<ProposalResult>;
 }
 
 export class ChatController {
@@ -70,7 +70,7 @@ export class ChatController {
     budget = DEFAULT_BUDGET;
 
     private generation = 0;              // bumped by reset(): late results of an older conversation are dropped
-    private cancellable: Gio.Cancellable | null = null;
+    private cancellable: Cancellable | null = null;
     // The conversation currently shown on disk: its file (null = not written yet), the folder it came from, and its title.
     private chatPath: string | null = null;
     private chatRoot: string | null = null;
@@ -109,13 +109,13 @@ export class ChatController {
         if (!found) { this.view.noKey(); return; }
 
         const turn = this.view.startTurn(question);
-        const cancellable = this.cancellable = new Gio.Cancellable();
+        const cancellable = this.cancellable = new Cancellable();
         this.view.busyChanged(true);
         // Everything that touches files is refused once the folder changes; the answer itself may still finish.
         const requestRoot = this.host.root();
         const sameRoot = () => requestRoot === this.host.root();
-        const started = GLib.get_monotonic_time();
-        const elapsed = () => (GLib.get_monotonic_time() - started) / 1e6;
+        const started = platform().monotonicMs();
+        const elapsed = () => (platform().monotonicMs() - started) / 1000;
         let planShown = false;
         const showWork = (running: boolean) => {
             if (!this.session.work || !running && !planShown) return;
@@ -160,7 +160,7 @@ export class ChatController {
     }
 
     // A proposal is applied only while the work folder is still the one it was made in.
-    private propose(change: Change | Change[], cancellable: Gio.Cancellable): Promise<ProposalResult> {
+    private propose(change: Change | Change[], cancellable: Cancellable): Promise<ProposalResult> {
         const proposalRoot = this.host.root();
         return this.view.review(change, c => {
             if (proposalRoot !== this.host.root()) return 'The work folder changed since the proposal was made';

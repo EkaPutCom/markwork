@@ -13,7 +13,6 @@ import { journalText } from '../agent/journal.js';
 import { WorkList } from './worklist.js';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import type { KeyStore } from '../agent/apikey.js';
@@ -35,6 +34,7 @@ import type { Palette } from '../colors.js';
 import { childrenOf, onKeyPress, uiTemplate } from '../gtkutil.js';
 import template from './chat.ui?raw';
 import { _, fmt, ngettext } from '../i18n.js';
+import type { Cancellable } from '../cancel.js';
 
 // What the panel needs to know from the window: the controller's host plus a parent for its windows.
 export interface ChatHost extends ChatControllerHost {
@@ -467,7 +467,7 @@ export class ChatPanel extends Gtk.Box implements ChatView {
     }
 
     // Change proposal: a card in the panel and the review window (see ProposalCards).
-    review(change: Change | Change[], apply: (change: Change | Change[]) => string | null, cancelled: Gio.Cancellable): Promise<ProposalResult> {
+    review(change: Change | Change[], apply: (change: Change | Change[]) => string | null, cancelled: Cancellable): Promise<ProposalResult> {
         const { widget, start } = this.proposals.card(change, apply, cancelled);
         this.empty.hide();
         (this.cardsBox ?? this.messages).append(widget);

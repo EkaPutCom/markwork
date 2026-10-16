@@ -288,7 +288,7 @@ export function chatTests(c: GuiContext): void {
         panel.makeProvider = () => ({
             chat: req => new Promise(resolve => {
                 req.onText('Half the answer ');
-                req.cancellable?.connect(() => resolve({ usage: null, cancelled: true, toolCalls: [], reasoning: '' }));
+                req.cancellable?.onCancel(() => resolve({ usage: null, cancelled: true, toolCalls: [], reasoning: '' }));
             }),
         });
         const pending = panel.ask('Tell me at length');

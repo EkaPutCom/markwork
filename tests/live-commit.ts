@@ -3,12 +3,12 @@
 // Part of npm run test:live.
 
 import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
 import { systemKeyStore } from '../src/agent/apikey.js';
 import { writeCommitMessage } from '../src/agent/commitmessage.js';
 import type { Provider } from '../src/agent/provider.js';
 import { recentSubjects, workingDiff } from '../src/git.js';
 import { DIM, GREEN, RED, RESET, errorMessage, tmp } from './framework.js';
+import { Cancellable } from '../src/cancel.js';
 
 interface CommitScenario {
     name: string;
@@ -76,7 +76,7 @@ export async function liveCommitMessage(provider: Provider, model: string): Prom
         try {
             const repo = makeRepo(sc, n);
             const files = Object.keys(sc.after).map(name => GLib.build_filenamev([repo, name]));
-            const cancellable = new Gio.Cancellable();
+            const cancellable = new Cancellable();
             let updates = 0;
             const started = GLib.get_monotonic_time();
             const result = await writeCommitMessage({

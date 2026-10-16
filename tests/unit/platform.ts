@@ -3,9 +3,11 @@
 
 import GLib from 'gi://GLib';
 import { clearCredential, readCredential, saveCredential, type Credential } from '../../src/credentials.js';
+import { Cancellable } from '../../src/cancel.js';
 import { base64 } from '../../src/forge/contribute.js';
+import { gjsPlatform } from '../../src/platform/gjs/index.js';
 import { platform, setPlatform, type Platform } from '../../src/platform/index.js';
-import { section, test, eq, ok, settle } from '../framework.js';
+import { section, test, eq, ok, settle, tmp } from '../framework.js';
 
 const CREDENTIAL: Credential = { envVar: 'TEST_KEY', schema: 'com.example.test', attributes: { provider: 'x' }, label: 'Test key', file: 'test.key' };
 
@@ -23,12 +25,16 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
             remove: path => { if (!files.delete(path)) throw new Error(`no ${path}`); },
             makeDirs: () => {},
             setMode: (path, mode) => { modes.set(path, mode); },
+            list: () => [],
+            kind: path => files.has(path) ? 'file' : 'missing',
+            trash: path => { files.delete(path); },
         },
         paths: {
             join: (...parts) => parts.join('/'),
             dirname: path => path.slice(0, path.lastIndexOf('/')),
             isAbsolute: path => path.startsWith('/'),
             configDir: () => '/config',
+            runtimeDir: () => '/run',
         },
         secrets: {
             lookup: async (schema, attributes) => options.keyring === false ? null : ring.get(key(schema, attributes)) ?? null,
@@ -37,6 +43,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
         },
         http: async () => ({ status: 200, body: '' }),
         env: name => options.env?.[name] ?? null,
+        monotonicMs: () => 0,
     };
     return { fake, files, modes, ring };
 }
@@ -89,6 +96,50 @@ export function platformTests(): void {
             eq(settle(readCredential(CREDENTIAL)), null);
             settle(clearCredential(CREDENTIAL));   // nothing left to clear is not an error
         });
+    });
+
+    section('Platform: cancelling');
+
+    test('cancel runs each listener once, in order, and later cancels do nothing', () => {
+        const c = new Cancellable();
+        const seen: string[] = [];
+        c.onCancel(() => seen.push('a'));
+        c.onCancel(() => seen.push('b'));
+        ok(!c.cancelled, 'not cancelled yet');
+        c.cancel();
+        c.cancel();
+        eq(seen, ['a', 'b']);
+        ok(c.cancelled, 'cancelled');
+    });
+
+    test('a listener added after cancelling runs at once; a removed one never runs', () => {
+        const c = new Cancellable();
+        const seen: string[] = [];
+        const off = c.onCancel(() => seen.push('removed'));
+        off();
+        let selfOff = () => {};
+        selfOff = c.onCancel(() => { seen.push('self'); selfOff(); });   // removing itself from inside is safe
+        c.cancel();
+        c.onCancel(() => seen.push('late'));
+        eq(seen, ['self', 'late']);
+    });
+
+    section('Platform: GJS file system');
+
+    test('kind tells files, folders, symbolic links, and missing paths apart without following links', () => {
+        const { fs, paths } = gjsPlatform;
+        const dir = paths.join(tmp, 'platform-kind');
+        fs.makeDirs(paths.join(dir, 'sub'), 0o755);
+        fs.writeText(paths.join(dir, 'a.md'), 'a');
+        GLib.spawn_command_line_sync(`ln -sfn ${GLib.shell_quote(paths.join(dir, 'sub'))} ${GLib.shell_quote(paths.join(dir, 'link'))}`);
+        eq(fs.kind(paths.join(dir, 'a.md')), 'file');
+        eq(fs.kind(paths.join(dir, 'sub')), 'directory');
+        eq(fs.kind(paths.join(dir, 'link')), 'symlink');
+        eq(fs.kind(paths.join(dir, 'nope')), 'missing');
+        eq(fs.list(dir).sort(), ['a.md', 'link', 'sub']);
+        let threw = false;
+        try { fs.list(paths.join(dir, 'nope')); } catch (e) { threw = true; }
+        ok(threw, 'listing a missing folder throws');
     });
 
     section('Platform: base64');

@@ -2,7 +2,7 @@
 // died, a daemon that restarted) it reconnects with a growing delay and resumes what was being followed, from the
 // record after the last one it delivered, so the caller sees every record once and in order.
 
-import { DaemonClient, glibTimers, type Link, type Timers } from './client.js';
+import { DaemonClient, systemTimers, type Link, type Timers } from './client.js';
 import { DaemonError, type DaemonRecord, type RunSummary, type StateEvent } from './protocol.js';
 
 export type ConnectionState = 'idle' | 'connecting' | 'ready' | 'waiting' | 'failed' | 'closed';
@@ -49,7 +49,7 @@ export class DaemonConnection {
     private readonly timers: Timers;
 
     constructor(private readonly opts: ConnectionOptions) {
-        this.timers = opts.timers ?? glibTimers;
+        this.timers = opts.timers ?? systemTimers;
     }
 
     get state(): ConnectionState { return this.status; }

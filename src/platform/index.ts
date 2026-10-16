@@ -12,7 +12,10 @@ export interface HttpRequest {
 export interface HttpResponse { status: number; body: string }
 export type Transport = (request: HttpRequest) => Promise<HttpResponse>;
 
-// Synchronous UTF-8 text files. Each call throws on failure; handling is up to the caller.
+// What is at a path, without following a symbolic link.
+export type EntryKind = 'missing' | 'file' | 'directory' | 'symlink' | 'other';
+
+// Synchronous UTF-8 text files and folders. Each call throws on failure; handling is up to the caller.
 export interface FileSystem {
     readText(path: string): string;
     writeText(path: string, text: string): void;
@@ -20,6 +23,9 @@ export interface FileSystem {
     remove(path: string): void;
     makeDirs(path: string, mode: number): void;
     setMode(path: string, mode: number): void;
+    list(dir: string): string[];      // the names of a folder's entries, in no particular order
+    kind(path: string): EntryKind;    // 'missing' only when nothing is there; any other error (no permission) throws
+    trash(path: string): void;        // to the desktop trash, so it can be restored
 }
 
 export interface Paths {
@@ -27,6 +33,7 @@ export interface Paths {
     dirname(path: string): string;
     isAbsolute(path: string): boolean;
     configDir(): string;              // the per-user configuration folder (~/.config on Linux)
+    runtimeDir(): string;             // the per-user folder for sockets and other runtime files ($XDG_RUNTIME_DIR on Linux)
 }
 
 // The system keyring. A missing or dead keyring is not an error: lookup gives null, store gives false, clear does nothing.
@@ -42,6 +49,7 @@ export interface Platform {
     readonly secrets: Secrets;
     readonly http: Transport;
     env(name: string): string | null;
+    monotonicMs(): number;            // a clock that only moves forward, in milliseconds; for measuring durations
 }
 
 let current: Platform | null = null;

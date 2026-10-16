@@ -2,7 +2,6 @@
 // It is pure apart from timers: the bytes move through a Link, so tests can use an in-memory link and the app a
 // Unix socket or an SSH bridge (fdlink.ts). Reconnecting is connection.ts.
 
-import GLib from 'gi://GLib';
 import {
     DaemonError, PROTOCOL_VERSION, encodeRequest, parseFrame, replyError,
     type DaemonRecord, type HelloResult, type InfoResult, type ListFilter, type RunSummary, type SpawnResult, type SpawnSpec,
@@ -22,10 +21,10 @@ export interface Timers {
     after(ms: number, fn: () => void): () => void;
 }
 
-export const glibTimers: Timers = {
+export const systemTimers: Timers = {
     after(ms, fn) {
-        let id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { id = 0; fn(); return GLib.SOURCE_REMOVE; });
-        return () => { if (id) { GLib.source_remove(id); id = 0; } };
+        let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => { timer = null; fn(); }, ms);
+        return () => { if (timer) { clearTimeout(timer); timer = null; } };
     },
 };
 
@@ -64,7 +63,7 @@ export class DaemonClient {
 
     constructor(readonly link: Link, opts: ClientOptions = {}) {
         this.banner = opts.expectBridge === true;
-        this.timers = opts.timers ?? glibTimers;
+        this.timers = opts.timers ?? systemTimers;
         this.timeoutMs = opts.requestTimeoutMs ?? 60000;
         link.onLine = line => this.receive(line);
         link.onClose = reason => this.handleClose(reason);

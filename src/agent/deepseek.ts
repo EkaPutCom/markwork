@@ -41,20 +41,15 @@ export class DeepSeek implements Provider {
             throw new Error('libsoup 3 is not installed (on Debian/Ubuntu: package gir1.2-soup-3.0); the assistant needs it to connect to DeepSeek');
         }
         return requestWithRetry({ chat: r => this.stream(Soup, r) }, request, ms => new Promise(resolve => {
-            let timer = 0, connection = 0;
+            let timer = 0;
+            let stopListening = () => {};
             const finish = () => {
                 if (timer) { GLib.source_remove(timer); timer = 0; }
-                if (connection) { request.cancellable?.disconnect(connection); connection = 0; }
+                stopListening();
                 resolve();
             };
             timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { timer = 0; finish(); return GLib.SOURCE_REMOVE; });
-            if (request.cancellable) connection = request.cancellable.connect(() => {
-                // Do not disconnect from inside the cancel callback itself (GIO may wait for that callback).
-                const id = connection; connection = 0;
-                finish();
-                GLib.idle_add(GLib.PRIORITY_DEFAULT, () => { if (id) request.cancellable?.disconnect(id); return GLib.SOURCE_REMOVE; });
-            });
-            if (request.cancellable?.is_cancelled()) finish();
+            if (request.cancellable) stopListening = request.cancellable.onCancel(finish);
         }));
     }
 
@@ -72,28 +67,36 @@ export class DeepSeek implements Provider {
             };
             message.set_request_body_from_bytes('application/json', new GLib.Bytes(encoder.encode(JSON.stringify(body))));
 
-            const cancelled = () => !!cancellable?.is_cancelled();
+            // GIO needs its own Cancellable; ours cancels it. The link is dropped when the request settles.
+            const gioCancellable = new Gio.Cancellable();
+            const unlink = cancellable?.onCancel(() => gioCancellable.cancel()) ?? (() => {});
+            const cancelled = () => !!cancellable?.cancelled;
             const collected = new StreamCollector(onText, onReasoning);
-            session.send_async(message, GLib.PRIORITY_DEFAULT, cancellable ?? null, (_session, result) => {
+            const settle = (result: ChatResult | null, error?: Error) => {
+                unlink();
+                if (error) reject(error);
+                else resolve(result!);
+            };
+            session.send_async(message, GLib.PRIORITY_DEFAULT, gioCancellable, (_session, result) => {
                 let stream: Gio.InputStream;
                 try {
                     stream = session.send_finish(result);
                 } catch (e) {
-                    if (cancelled()) resolve({ ...collected.result(true), toolCalls: [] });
-                    else reject(new TemporaryProviderError(`Cannot connect to DeepSeek: ${e instanceof Error ? e.message : e}`));
+                    if (cancelled()) settle({ ...collected.result(true), toolCalls: [] });
+                    else settle(null, new TemporaryProviderError(`Cannot connect to DeepSeek: ${e instanceof Error ? e.message : e}`));
                     return;
                 }
                 const status: number = message.get_status();
                 const reader = new Gio.DataInputStream({ base_stream: stream, close_base_stream: true });
                 const finish = (error?: Error) => {
                     try { reader.close(null); } catch (e) { /* already closed */ }
-                    if (error) reject(error);
-                    else resolve(collected.result(cancelled()));
+                    if (error) settle(null, error);
+                    else settle(collected.result(cancelled()));
                 };
 
                 // A status other than 200: the whole body is a JSON error, not a stream.
                 let errorBody = '';
-                const readLine = () => reader.read_line_async(GLib.PRIORITY_DEFAULT, cancellable ?? null, (_reader, res) => {
+                const readLine = () => reader.read_line_async(GLib.PRIORITY_DEFAULT, gioCancellable, (_reader, res) => {
                     let line: string | null;
                     try {
                         [line] = reader.read_line_finish_utf8(res);
