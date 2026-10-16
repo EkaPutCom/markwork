@@ -12,6 +12,7 @@
 // The key is never printed.
 
 import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
+import './host-gjs.js';   // the tests reach the runtime through host(), installed before framework.ts
 import { liveAgentic } from './live-agentic.js';
 import { liveCommitMessage } from './live-commit.js';
 import { liveStructured } from './live-structured.js';

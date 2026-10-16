@@ -11,6 +11,7 @@
 // Tokens are never printed.
 
 import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
+import './host-gjs.js';   // the tests reach the runtime through host(), installed before framework.ts
 import GLib from 'gi://GLib';
 import System from 'system';
 import { CONTRIBUTOR_TOKEN, OWNER_TOKEN, REPO, SERVER_URL as URL, api, check, clone, contributor, git, owner, read, repo, stamp, waitFor, write } from './forgejo-support.js';

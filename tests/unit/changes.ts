@@ -6,7 +6,7 @@ import { cleanNewName, CHANGE_TOOLS, diffPreview, planChange, unifiedDiff, type 
 import { ChatSession, type ProposalResult, type ToolStep } from '../../src/agent/session.js';
 import { describeCall } from '../../src/agent/tools.js';
 import type { ChatRequest, ChatResult, Provider } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, settle } from '../framework.js';
+import { section, test, eq, ok, contains, within } from '../framework.js';
 
 const PLAN = '# Plan\n\n- First draft: October\n- Revision: November\n\n## Notes\n\nNone yet.\n';
 const files: SourceFile[] = [{ name: 'plan.md', text: PLAN }, { name: 'research/harbor.md', text: '# Harbor\n\nThere are two piers.\n' }];
@@ -21,10 +21,10 @@ const kanbanAfter = (args: object): string => { const r = kanban(args); if (!r.o
 
 const plan = (name: string, args: object, over: SourceFile[] = files) => planChange(name, JSON.stringify(args), over);
 
-export function changeTests(): void {
+export async function changeTests(): Promise<void> {
     section('Agent: change proposals');
 
-    test('tool and kanban action names never reach inherited object properties', () => {
+    await test('tool and kanban action names never reach inherited object properties', async () => {
         for (const name of ['toString', 'constructor', '__proto__', 'hasOwnProperty']) {
             const r = plan(name, { name: 'plan', reason: 'x' });
             ok(!r.ok && r.summary === 'unknown tool', `${name}: ${JSON.stringify(r)}`);
@@ -33,7 +33,7 @@ export function changeTests(): void {
         }
     });
 
-    test('edit_file: replaces one exact piece and produces the new contents', () => {
+    await test('edit_file: replaces one exact piece and produces the new contents', async () => {
         const r = plan('edit_file', { name: 'plan', old_text: '- Revision: November', new_text: '- Revision: December', reason: 'schedule shifted' });
         ok(r.ok, 'rejected');
         if (!r.ok) return;
@@ -44,7 +44,7 @@ export function changeTests(): void {
         eq(r.change.reason, 'schedule shifted');
     });
 
-    test('edit_file: text does not match, is not unique, is the same, or the file does not exist → message for the model', () => {
+    await test('edit_file: text does not match, is not unique, is the same, or the file does not exist → message for the model', async () => {
         const bad = (args: object) => { const r = plan('edit_file', { reason: 'x', new_text: 'y', ...args }); ok(!r.ok, 'should have failed'); return r.ok ? '' : r.message; };
         contains(bad({ name: 'plan.md', old_text: 'not in the file' }), 'not found');
         contains(bad({ name: 'plan.md', old_text: 'a' }), 'times');
@@ -54,13 +54,13 @@ export function changeTests(): void {
         contains(planChange('edit_file', '{broken', files).ok ? '' : (planChange('edit_file', '{broken', files) as { message: string }).message, 'not a valid JSON');
     });
 
-    test('edit_file: an empty new_text deletes the piece', () => {
+    await test('edit_file: an empty new_text deletes the piece', async () => {
         const r = plan('edit_file', { name: 'plan.md', old_text: '\n## Notes\n\nNone yet.\n', new_text: '', reason: 'clean' });
         ok(r.ok, "proposal rejected");
         if (r.ok) eq(r.change.after, '# Plan\n\n- First draft: October\n- Revision: November\n');
     });
 
-    test('create_file: a new file with .md and a trailing newline; a taken or unsafe name is rejected', () => {
+    await test('create_file: a new file with .md and a trailing newline; a taken or unsafe name is rejected', async () => {
         const r = plan('create_file', { name: 'tasks/week-1', content: '# Week 1', reason: 'task list' });
         ok(r.ok, "proposal rejected");
         if (r.ok) { eq(r.change.kind, 'create'); eq(r.change.file, 'tasks/week-1.md'); eq(r.change.after, '# Week 1\n'); eq(r.change.before, ''); }
@@ -71,7 +71,7 @@ export function changeTests(): void {
         eq(cleanNewName('./notes.markdown'), 'notes.markdown');
     });
 
-    test('diffPreview: context, removal, addition, and truncation', () => {
+    await test('diffPreview: context, removal, addition, and truncation', async () => {
         const r = plan('edit_file', { name: 'plan.md', old_text: '- Revision: November', new_text: '- Revision: December', reason: 'x' });
         if (!r.ok) throw new Error('proposal failed');
         const d = diffPreview(r.change.before, r.change.after);
@@ -87,7 +87,7 @@ export function changeTests(): void {
         eq(big.lines[big.lines.length - 1].sign, '…');
     });
 
-    test('unifiedDiff: git-style hunks with three context lines and the right line numbers', () => {
+    await test('unifiedDiff: git-style hunks with three context lines and the right line numbers', async () => {
         const r = plan('edit_file', { name: 'plan.md', old_text: '- Revision: November', new_text: '- Revision: December', reason: 'x' });
         if (!r.ok) throw new Error('proposal failed');
         eq(unifiedDiff(r.change.before, r.change.after), [
@@ -97,14 +97,14 @@ export function changeTests(): void {
         eq(unifiedDiff('x\n', 'x\n'), '');
     });
 
-    test('edit_note: add a card on a board at the end of a list, only that line changes', () => {
+    await test('edit_note: add a card on a board at the end of a list, only that line changes', async () => {
         const after = kanbanAfter({ action: 'add', card: 'Arrange schedule #plan', list: 'in progress' });
         eq(after, BOARD.replace('- [ ] Harbor research\n', '- [ ] Harbor research\n- [ ] Arrange schedule #plan\n'));
         const r = kanban({ action: 'add', card: 'Arrange schedule', list: 'In Progress' });
         ok(r.ok && r.change.kind === 'edit' && r.change.file === 'board.md', 'wrong proposal shape');
     });
 
-    test('edit_note: move a card to the end of another list and mark done/not done', () => {
+    await test('edit_note: move a card to the end of another list and mark done/not done', async () => {
         const moved = kanbanAfter({ action: 'move', card: 'harbor research', list: 'Done' });
         eq(moved, BOARD.replace('## In Progress\n\n- [ ] Harbor research\n\n', '## In Progress\n\n').replace('- [x] Book venue\n', '- [x] Book venue\n- [ ] Harbor research\n'));
         const done = kanbanAfter({ action: 'mark', card: 'invitations', done: true });
@@ -113,7 +113,7 @@ export function changeTests(): void {
         contains(kanbanAfter({ action: 'mark', card: 'report', done: true }), '  report note');   // card notes stay
     });
 
-    test('the diff separates distant changes: moving a card does not mark other lists as changed', () => {
+    await test('the diff separates distant changes: moving a card does not mark other lists as changed', async () => {
         const after = kanbanAfter({ action: 'move', card: 'Send invitations', list: 'Done' });
         const d = diffPreview(BOARD, after);
         eq([d.added, d.removed], [1, 1]);
@@ -124,7 +124,7 @@ export function changeTests(): void {
         eq(unifiedDiff('a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\n', 'a\nB\nc\nd\ne\nf\ng\nh\ni\nj\nK\nl\n').split('\n').filter(l => l.startsWith('@@')), ['@@ -1,5 +1,5 @@', '@@ -8,5 +8,5 @@']);
     });
 
-    test('edit_note: clear errors for the model (not a structured file, group/note does not match, no change)', () => {
+    await test('edit_note: clear errors for the model (not a structured file, group/note does not match, no change)', async () => {
         const bad = (args: { card?: string; list?: string; action?: string; done?: boolean }, name = 'board'): string => { const r = kanban(args, name); ok(!r.ok, 'should have failed'); return r.ok ? '' : r.message; };
         contains(bad({ action: 'add', card: 'x', list: 'Plan' }, 'plan.md'), 'ordinary document');
         contains(bad({ action: 'add', card: 'x', list: 'Postponed' }), 'Groups: Plan, In Progress, Done');
@@ -139,7 +139,7 @@ export function changeTests(): void {
         contains(bad({ action: 'add', card: '', list: 'Plan' }), 'required');
     });
 
-    test('describeCall for change tools', () => {
+    await test('describeCall for change tools', async () => {
         eq(describeCall('create_file', '{"name":"a.md"}'), 'Proposing new file a.md');
         eq(describeCall('edit_file', '{"name":"a.md"}'), 'Proposing changes to a.md');
     });
@@ -166,24 +166,24 @@ export function changeTests(): void {
         },
     });
 
-    test('without onProposal the agent is not given change tools and the prompt stays read-only', () => {
+    await test('without onProposal the agent is not given change tools and the prompt stays read-only', async () => {
         const calls: ChatRequest[] = [];
-        settle(new ChatSession().ask(input(), proposing(calls, []), 'm', base));
+        await within(new ChatSession().ask(input(), proposing(calls, []), 'm', base));
         const names = calls[0].tools!.map(t => t.name);
         ok(!names.includes('edit_file') && !names.includes('create_file'), names.join(','));
         contains(calls[0].messages[0].content as string, 'You cannot change files');
         // The model still tries to call it: rejected as an unknown tool, nothing is written.
         const results: string[] = [];
-        settle(new ChatSession().ask(input(), proposing([], results), 'm', base));
+        await within(new ChatSession().ask(input(), proposing([], results), 'm', base));
         contains(results[0], 'not recognized');
     });
 
-    test('approved: the handler receives the diff, the result goes back to the model, the new contents are visible in the next round', () => {
+    await test('approved: the handler receives the diff, the result goes back to the model, the new contents are visible in the next round', async () => {
         const calls: ChatRequest[] = [];
         const results: string[] = [];
         const seen: Change[] = [];
         const steps: ToolStep[] = [];
-        const r = settle(new ChatSession().ask(input(), proposing(calls, results), 'm', {
+        const r = await within(new ChatSession().ask(input(), proposing(calls, results), 'm', {
             ...base,
             onTool: s => steps.push({ ...s }),
             onProposal: async change => { seen.push(change); return { applied: true }; },
@@ -202,30 +202,30 @@ export function changeTests(): void {
         ok(!system.includes('You cannot change files'), 'the read-only rule is still there');
     });
 
-    test('rejected or failed to apply: the model is told and no change is counted', () => {
+    await test('rejected or failed to apply: the model is told and no change is counted', async () => {
         for (const [answer, expected, summary] of [
             [{ applied: false }, 'rejected', 'rejected'],
             [{ applied: false, error: 'file changed' }, 'failed to apply: file changed', 'failed to apply'],
         ] as [ProposalResult, string, string][]) {
             const results: string[] = [];
             const steps: ToolStep[] = [];
-            const r = settle(new ChatSession().ask(input(), proposing([], results), 'm', { ...base, onTool: s => steps.push({ ...s }), onProposal: async () => answer }));
+            const r = await within(new ChatSession().ask(input(), proposing([], results), 'm', { ...base, onTool: s => steps.push({ ...s }), onProposal: async () => answer }));
             contains(results[0], expected);
             eq(r.applied, 0);
             eq(steps[steps.length - 1].summary, summary);
         }
     });
 
-    test('an invalid proposal does not reach the handler; the model gets the reason', () => {
+    await test('an invalid proposal does not reach the handler; the model gets the reason', async () => {
         const results: string[] = [];
         let asked = 0;
         const bad = JSON.stringify({ name: 'plan.md', old_text: 'nonexistent', new_text: 'x', reason: 'x' });
-        settle(new ChatSession().ask(input(), proposing([], results, bad), 'm', { ...base, onProposal: async () => { asked++; return { applied: true }; } }));
+        await within(new ChatSession().ask(input(), proposing([], results, bad), 'm', { ...base, onProposal: async () => { asked++; return { applied: true }; } }));
         eq(asked, 0);
         contains(results[0], 'not found');
     });
 
-    test('create_file followed by edit_file on that file in one turn uses the new contents', () => {
+    await test('create_file followed by edit_file on that file in one turn uses the new contents', async () => {
         const results: string[] = [];
         let round = 0;
         const provider: Provider = {
@@ -240,19 +240,19 @@ export function changeTests(): void {
             },
         };
         const edits: Change[] = [];
-        const r = settle(new ChatSession().ask(input(), provider, 'm', { ...base, onProposal: async c => { edits.push(c); return { applied: true }; } }));
+        const r = await within(new ChatSession().ask(input(), provider, 'm', { ...base, onProposal: async c => { edits.push(c); return { applied: true }; } }));
         eq(r.applied, 2);
         eq(edits[1].before, '# New\n\nOne.\n');
         eq(edits[1].after, '# New\n\nTwo.\n');
     });
 
-    test('the project option is off: no tools, even though a handler exists', () => {
+    await test('the project option is off: no tools, even though a handler exists', async () => {
         const calls: ChatRequest[] = [];
-        settle(new ChatSession().ask(input({ options: { activeDocument: true, selection: true, project: false } }), proposing(calls, []), 'm', { ...base, onProposal: async () => ({ applied: true }) }));
+        await within(new ChatSession().ask(input({ options: { activeDocument: true, selection: true, project: false } }), proposing(calls, []), 'm', { ...base, onProposal: async () => ({ applied: true }) }));
         eq(calls[0].tools, undefined);
     });
 
-    test('instructions: the proposal section only exists if allowed', () => {
+    await test('instructions: the proposal section only exists if allowed', async () => {
         const on = buildContext({ ...input(), recent: [], canPropose: true }).system;
         const off = buildContext({ ...input(), recent: [] }).system;
         contains(on, 'edit_file');

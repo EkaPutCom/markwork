@@ -1,60 +1,58 @@
-// DeepSeek client tests against a fake SSE server on 127.0.0.1 (libsoup), without a real network.
+// DeepSeek client tests against a fake SSE server on 127.0.0.1 (the test host's), through the platform's streaming
+// transport, without a real network.
 
-import GLib from 'gi://GLib';
-import Soup from 'gi://Soup?version=3.0';
-import System from 'system';
 import { DeepSeek } from '../../src/agent/deepseek.js';
-import { section, test, eq, ok, contains, settle } from '../framework.js';
+import { section, test, eq, ok, contains, within } from '../framework.js';
+import { host, type FakeReply } from '../host.js';
 import { Cancellable } from '../../src/cancel.js';
 
-const enc = new TextEncoder();
-
-export function deepseekTests(): void {
+export async function deepseekTests(): Promise<void> {
     section('DeepSeek client (fake server)');
     // Earlier unit tests run without a main loop and can leave GC pending; a Soup callback that arrives
     // at that time is blocked by GJS ("callback during garbage collection"). In the app the main loop always runs.
-    System.gc();
+    host().gc();
 
     let auth = '', requested = '';
     let mode: 'stream' | 'unauthorized' | 'tools' | 'busy' | 'truncated' | 'hold' = 'stream';
     let body: any = null;
     let requests = 0;
-    const held: Soup.ServerMessage[] = [];
-    const server = new Soup.Server();
-    server.add_handler('/chat/completions', (_server, msg) => {
+    const held: FakeReply[] = [];
+    const server = await host().serve((msg, reply) => {
+        if (msg.path !== '/chat/completions') { reply.status(404); reply.end(); return; }
         requests++;
         if (mode === 'busy') {
-            if (requests === 1) { msg.set_status(503, null); msg.get_response_body().append(enc.encode('{}')); return; }
+            if (requests === 1) { reply.status(503); reply.write('{}'); reply.end(); return; }
             mode = 'stream';
         }
         if (mode === 'hold') {
             // One piece of text, then the stream stays open (chunked, body never completed) until the client gives up.
-            msg.set_status(200, null);
-            msg.get_response_headers().set_encoding(Soup.Encoding.CHUNKED);
-            msg.get_response_body().append(enc.encode('data: {"choices":[{"delta":{"content":"Hello "}}]}\n\n'));
-            held.push(msg);
+            reply.status(200);
+            reply.write('data: {"choices":[{"delta":{"content":"Hello "}}]}\n\n');
+            held.push(reply);
             return;
         }
         if (mode === 'truncated') {
-            msg.set_status(200, null);
-            msg.get_response_body().append(enc.encode('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'));
+            reply.status(200);
+            reply.write('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n');
+            reply.end();
             return;
         }
-        auth = msg.get_request_headers().get_one('Authorization') ?? '';
-        requested = msg.get_method();
+        auth = msg.headers.authorization ?? '';
+        requested = msg.method;
         try {
-            body = JSON.parse(new TextDecoder().decode(msg.get_request_body().data ?? new Uint8Array()));
+            body = JSON.parse(msg.body);
         } catch (e) {
             body = null;
         }
         if (mode === 'unauthorized') {
-            msg.set_status(401, null);
-            msg.get_response_headers().set_content_type('application/json', null);
-            msg.get_response_body().append(enc.encode('{"error":{"message":"Authentication Fails"}}'));
+            reply.status(401);
+            reply.header('Content-Type', 'application/json');
+            reply.write('{"error":{"message":"Authentication Fails"}}');
+            reply.end();
             return;
         }
-        msg.set_status(200, null);
-        msg.get_response_headers().set_content_type('text/event-stream', null);
+        reply.status(200);
+        reply.header('Content-Type', 'text/event-stream');
         if (mode === 'tools') {
             // Two tools, their arguments arrive in pieces and interleaved by index.
             const delta = (tool_calls: object[]) => `data: ${JSON.stringify({ choices: [{ delta: { tool_calls } }] })}`;
@@ -66,7 +64,8 @@ export function deepseekTests(): void {
                 'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":50,"completion_tokens":9}}',
                 'data: [DONE]',
             ];
-            msg.get_response_body().append(enc.encode(lines.join('\n\n') + '\n\n'));
+            reply.write(lines.join('\n\n') + '\n\n');
+            reply.end();
             return;
         }
         const lines = [
@@ -78,17 +77,17 @@ export function deepseekTests(): void {
             'data: {"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":7,"prompt_cache_hit_tokens":100}}',
             'data: [DONE]',
         ];
-        msg.get_response_body().append(enc.encode(lines.join('\n\n') + '\n\n'));
+        reply.write(lines.join('\n\n') + '\n\n');
+        reply.end();
     });
-    server.listen_local(0, Soup.ServerListenOptions.IPV4_ONLY);
-    const port = server.get_uris()[0].get_port();
+    const port = server.port;
     const client = (key: string) => new DeepSeek(key, `http://127.0.0.1:${port}`);
     const request = { model: 'deepseek-chat', messages: [{ role: 'user' as const, content: 'hai' }] };
 
-    test('the answer streams in pieces, reasoning is separate, usage is read, the key is sent as a Bearer', () => {
+    await test('the answer streams in pieces, reasoning is separate, usage is read, the key is sent as a Bearer', async () => {
         mode = 'stream';
         let text = '', thinking = '';
-        const result = settle(client('sk-test').chat({ ...request, onText: d => { text += d; }, onReasoning: d => { thinking += d; } }));
+        const result = await within(client('sk-test').chat({ ...request, onText: d => { text += d; }, onReasoning: d => { thinking += d; } }));
         eq(text, 'Hello writer');
         eq(thinking, 'Considering…  ');
         eq(result, { usage: { prompt: 120, cached: 100, completion: 7 }, cancelled: false, toolCalls: [], reasoning: 'Considering…  ' });
@@ -99,10 +98,10 @@ export function deepseekTests(): void {
         eq(requested, 'POST');
     });
 
-    test('tools are sent as tools; tool calls that arrive in pieces are assembled per index', () => {
+    await test('tools are sent as tools; tool calls that arrive in pieces are assembled per index', async () => {
         mode = 'tools';
         let text = '';
-        const result = settle(client('sk-test').chat({
+        const result = await within(client('sk-test').chat({
             model: 'deepseek-flash', thinking: true, onText: d => { text += d; },
             tools: [{ name: 'search_text', description: 'search', parameters: { type: 'object', properties: {} } }],
             messages: [
@@ -122,40 +121,38 @@ export function deepseekTests(): void {
         eq(body.messages[3], { role: 'tool', tool_call_id: 'x', content: 'result' });
     });
 
-    test('a 503 before output is retried; a stream cut off after text is not repeated', () => {
+    await test('a 503 before output is retried; a stream cut off after text is not repeated', async () => {
         mode = 'busy'; requests = 0;
         let text = '';
-        settle(client('sk-test').chat({ ...request, onText: d => { text += d; } }));
+        await within(client('sk-test').chat({ ...request, onText: d => { text += d; } }));
         eq(requests, 2); eq(text, 'Hello writer');
         mode = 'truncated'; requests = 0; text = '';
         let failed = false;
-        try { settle(client('sk-test').chat({ ...request, onText: d => { text += d; } })); } catch (e) { failed = true; contains(String(e), 'completion marker'); }
+        try { await within(client('sk-test').chat({ ...request, onText: d => { text += d; } })); } catch (e) { failed = true; contains(String(e), 'completion marker'); }
         eq(failed, true); eq(requests, 1); eq(text, 'partial');
     });
 
-    test('cancellation during the retry pause finishes without sending a second request', () => {
+    await test('cancellation during the retry pause finishes without sending a second request', async () => {
         mode = 'busy'; requests = 0;
         const cancellable = new Cancellable();
-        const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => { cancellable.cancel(); return GLib.SOURCE_REMOVE; });
-        const r = settle(client('sk-test').chat({ ...request, cancellable, onText: () => {} }));
+        setTimeout(() => cancellable.cancel(), 50);
+        const r = await within(client('sk-test').chat({ ...request, cancellable, onText: () => {} }));
         eq(r.cancelled, true); eq(requests, 1);
-        // The timer has run by the time settle finishes.
-        ok(timer > 0, 'the timer was not created');
     });
 
-    test('cancelling while the answer streams keeps the text so far and stops reading', () => {
+    await test('cancelling while the answer streams keeps the text so far and stops reading', async () => {
         mode = 'hold'; requests = 0;
         const cancellable = new Cancellable();
         let partial = '';
-        const r = settle(client('sk-test').chat({ ...request, cancellable, onText: d => { partial += d; cancellable.cancel(); } }));
+        const r = await within(client('sk-test').chat({ ...request, cancellable, onText: d => { partial += d; cancellable.cancel(); } }));
         eq([r.cancelled, partial, requests], [true, 'Hello ', 1]);
     });
 
-    test('status 401 becomes an error with the server message', () => {
+    await test('status 401 becomes an error with the server message', async () => {
         mode = 'unauthorized';
         let message = '';
         try {
-            settle(client('wrong').chat({ ...request, onText: () => {} }));
+            await within(client('wrong').chat({ ...request, onText: () => {} }));
         } catch (e) {
             message = e instanceof Error ? e.message : String(e);
         }
@@ -163,25 +160,24 @@ export function deepseekTests(): void {
         contains(message, 'Authentication Fails');
     });
 
-    test('a request that was already cancelled finishes as cancelled, not as an error', () => {
+    await test('a request that was already cancelled finishes as cancelled, not as an error', async () => {
         mode = 'stream';
         const cancellable = new Cancellable();
         cancellable.cancel();
-        const result = settle(client('sk-test').chat({ ...request, onText: () => {}, cancellable }));
+        const result = await within(client('sk-test').chat({ ...request, onText: () => {}, cancellable }));
         ok(result.cancelled, 'should have been cancelled');
     });
 
-    test('an unreachable server produces a clear error', () => {
+    await test('an unreachable server produces a clear error', async () => {
         let message = '';
         try {
-            settle(new DeepSeek('k', 'http://127.0.0.1:1').chat({ ...request, onText: () => {} }));
+            await within(new DeepSeek('k', 'http://127.0.0.1:1').chat({ ...request, onText: () => {} }));
         } catch (e) {
             message = e instanceof Error ? e.message : String(e);
         }
         contains(message, 'DeepSeek');
     });
 
-    for (const msg of held) msg.get_response_body().complete();
-    server.disconnect();
-    GLib.usleep(1000);
+    for (const reply of held) reply.end();
+    server.close();
 }

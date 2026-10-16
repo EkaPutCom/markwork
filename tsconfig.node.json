@@ -1,0 +1,10 @@
+{
+  // The core and its tests on Node (tests/run-core-node.ts). Without src/env.d.ts: no GJS globals and no gi:// modules
+  // resolve, so anything the core reaches outside the platform port fails to typecheck here.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src/platform/node", "tests/run-core-node.ts"],
+  "exclude": []
+}

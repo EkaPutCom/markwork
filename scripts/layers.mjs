@@ -40,6 +40,9 @@ const rules = [
     [isCore, t => !t.startsWith('gi://') && !t.startsWith('gjs:') && !isCore(t), 'the core imports only the core, so it is free of GI all the way down, not only in its own imports'],
     [f => f === 'platform/index.ts', () => true, 'platform/index.ts is the contract and imports nothing'],
     [f => f.startsWith('platform/gjs/'), t => /^(ui|editor|window|agent|forge|markdown)\//.test(t) || t === 'window.ts', 'platform/gjs/ implements the port with GI and base modules; it knows nothing about the layers that use it'],
+    [f => f.startsWith('platform/node/'), t => t.startsWith('gi://') || t.startsWith('gjs:') || !(t.startsWith('node:') || t.startsWith('platform/node/') || t === 'platform/index.ts'),
+        'platform/node/ implements the port with Node built-ins only: the contract and its own files, nothing above it'],
+    [f => !f.startsWith('platform/node/'), t => t.startsWith('node:') || t.startsWith('platform/node/'), 'only platform/node/ uses Node built-ins; the rest reaches them through platform(), and only an entry point installs it'],
 ];
 
 const GJS_BUILTINS = new Set(['system', 'gettext', 'cairo', 'console', 'byteArray', 'mainloop']);
@@ -57,6 +60,8 @@ for (const file of files) {
             target = relative(src, normalize(join(src, dirname(file), spec.split('?')[0]))).split('\\').join('/').replace(/\.js$/, '.ts');
         } else if (GJS_BUILTINS.has(spec)) {
             target = `gjs:${spec}`;   // a GJS built-in module (system, gettext, cairo)
+        } else if (spec.startsWith('node:')) {
+            target = spec;   // a Node built-in module
         } else if (!spec.startsWith('gi://')) continue;   // npm packages
         if (target.startsWith('gi://')) giImporters.add(file);
         for (const [applies, forbidden, why] of rules) {

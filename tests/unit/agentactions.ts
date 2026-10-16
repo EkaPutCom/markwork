@@ -2,9 +2,6 @@
 // user notes, Undo (the inverse of a change), Git history tools, and structure verification. Without a GUI and network,
 // except one test that runs real git in a temporary folder.
 
-import Gio from 'gi://Gio';
-import System from 'system';
-import GLib from 'gi://GLib';
 import type { SourceFile } from '../../src/agent/context.js';
 import { changeState, invertChange, planChange, preflight, type Change } from '../../src/agent/changes.js';
 import { applyBatch, planBatch } from '../../src/agent/batch.js';
@@ -15,7 +12,8 @@ import { ChatSession, type ProposalResult, type TurnHandlers } from '../../src/a
 import type { ChatRequest, ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
 import { localLinks, newIssues, resolveLink, structureIssues } from '../../src/markdown/lint.js';
 import { agentGit, gitLimits, runGit } from '../../src/git.js';
-import { section, test, eq, ok, contains, settle, tmp } from '../framework.js';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
+import { host } from '../host.js';
 
 const NOTES = '---\ntitle: meeting\n---\n# Meeting\n\nRelease November 15.\nNote: November 15 final.\n';
 const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n## Done\n\n- [x] Book venue\n';
@@ -59,7 +57,7 @@ function harness(steps: ToolCall[][], answer: (changes: Change[]) => ProposalRes
         req.onText('Done.'); return result();
     } };
     const input = () => ({ question: 'Do it', active: null, selection: '', files: files(), mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 });
-    return { disk, session, handlers, replies, run: () => settle(session.ask(input(), provider, 'fake', handlers)) };
+    return { disk, session, handlers, replies, run: () => within(session.ask(input(), provider, 'fake', handlers)) };
 }
 function sync(disk: Map<string, string>, c: Change): void {
     if (c.kind === 'delete') disk.delete(c.file);
@@ -67,15 +65,15 @@ function sync(disk: Map<string, string>, c: Change): void {
     else disk.set(c.file, c.after);
 }
 
-export function agentActionTests(): void {
+export async function agentActionTests(): Promise<void> {
     section('Agent: edit and file tools');
 
-    test('edit_file all=true replaces every occurrence; without it a non-unique one is still rejected', () => {
+    await test('edit_file all=true replaces every occurrence; without it a non-unique one is still rejected', async () => {
         eq(planned('edit_file', { name: 'meeting', old_text: 'November 15', new_text: 'November 22', all: true }).after, NOTES.replaceAll('November 15', 'November 22'));
         contains(refused('edit_file', { name: 'meeting', old_text: 'November 15', new_text: 'November 22' }), 'all=true');
     });
 
-    test('insert_text: start after the frontmatter, end, and after a line with the line_text safeguard', () => {
+    await test('insert_text: start after the frontmatter, end, and after a line with the line_text safeguard', async () => {
         eq(planned('insert_text', { name: 'meeting', position: 'start', text: '> Summary' }).after, NOTES.replace('---\n# Meeting', '---\n> Summary\n# Meeting'));
         eq(planned('insert_text', { name: 'meeting', position: 'end', text: '- Follow-up\n' }).after, `${NOTES}- Follow-up\n`);
         eq(planned('insert_text', { name: 'meeting', position: 'after_line', line: 6, line_text: 'Release November 15.', text: 'Approved by all.' }).after,
@@ -91,7 +89,7 @@ export function agentActionTests(): void {
         eq(planned('insert_text', { name: 'a', position: 'end', text: 'content' }, [{ name: 'a.md', text: '' }]).after, 'content\n');
     });
 
-    test('delete_file and move_file: the proposal shape, a safe destination name, a taken destination is rejected', () => {
+    await test('delete_file and move_file: the proposal shape, a safe destination name, a taken destination is rejected', async () => {
         const del = planned('delete_file', { name: 'archive/old' });
         eq([del.kind, del.file, del.before, del.after], ['delete', 'archive/old.md', '# Old\n', '']);
         const move = planned('move_file', { name: 'meeting', destination: 'archive/meeting-oct' });
@@ -102,7 +100,7 @@ export function agentActionTests(): void {
         contains(refused('delete_file', { name: 'nonexistent' }), 'was not found');
     });
 
-    test('edit_note on a board: change a card title, delete a card, and manage groups; a group containing cards cannot be deleted', () => {
+    await test('edit_note on a board: change a card title, delete a card, and manage groups; a group containing cards cannot be deleted', async () => {
         const note = (args: object) => planned('edit_note', { name: 'board', ...args }).after;
         contains(note({ action: 'update', note: 'Release', title: 'Release material v2', tags: ['important'] }), '- [ ] Release material v2 #important');
         ok(!note({ action: 'delete', note: 'Book venue' }).includes('Book venue'), 'the card was not deleted');
@@ -116,7 +114,7 @@ export function agentActionTests(): void {
         contains(refused('edit_note', { name: 'board', action: 'update', note: 'Release' }), 'Give "title"');
     });
 
-    test('the inverse of a change and the state check for each kind', () => {
+    await test('the inverse of a change and the state check for each kind', async () => {
         const read = (files: Map<string, string>) => (f: string) => files.get(f) ?? null;
         const kinds: Change[] = [
             { kind: 'create', file: 'new.md', before: '', after: 'content\n', reason: 'r' },
@@ -139,7 +137,7 @@ export function agentActionTests(): void {
         contains(preflight(kinds[1], () => 'edited by the user') ?? '', 'changed since it was proposed');
     });
 
-    test('batch: a deleted/moved file must not be touched by another action; delete and move can be batched', () => {
+    await test('batch: a deleted/moved file must not be touched by another action; delete and move can be batched', async () => {
         const act = (tool: string, args: object) => ({ tool, arguments: JSON.stringify({ reason: 'x', ...args }) });
         const blocked = planBatch(JSON.stringify({ actions: [act('edit_file', { name: 'meeting', old_text: 'Release', new_text: 'Launch' }), act('move_file', { name: 'meeting', destination: 'archive/meeting' })] }), base());
         contains(blocked.error ?? '', 'deleted or moved');
@@ -152,7 +150,7 @@ export function agentActionTests(): void {
         eq([...disk.keys()].sort(), ['archive/meeting.md', 'board.md']);
     });
 
-    test('journal: move/delete are validated, recovered after an interruption, and the undone status is accepted', () => {
+    await test('journal: move/delete are validated, recovered after an interruption, and the undone status is accepted', async () => {
         const move: Change = { kind: 'move', file: 'a.md', to: 'b.md', before: 'x', after: 'x', reason: 'r' };
         const ev = (changes: Change[], status: ActionEvent['status'] = 'proposed'): ActionEvent => ({ id: '1', question: 'q', tool: 'move_file', status, changes, summary: '', time: 't' });
         eq(parseEvents([ev([move]), ev([{ ...move, to: '../outside.md' }]), ev([{ ...move, to: undefined }]), ev([move], 'reverted')]).length, 2);
@@ -166,7 +164,7 @@ export function agentActionTests(): void {
 
     section('Agent: structure verification');
 
-    test('structure: tables, skipped/empty headings, an unclosed code block; code contents and frontmatter are ignored', () => {
+    await test('structure: tables, skipped/empty headings, an unclosed code block; code contents and frontmatter are ignored', async () => {
         const text = '---\ntitle: x\n---\n# A\n### Jump\n##\n\n| a | b |\n| - | - |\n| 1 |\n| 1 | 2 |\n\n```\n# not a heading\n| x |\n';
         const issues = structureIssues(text).map(i => i.text);
         ok(issues.some(t => t.includes('jumps from H1 to H3')), issues.join('\n'));
@@ -177,7 +175,7 @@ export function agentActionTests(): void {
         eq(structureIssues('## Start from H2\n### Down one\n').length, 0);
     });
 
-    test('local links: taken outside code, URLs and anchors skipped, relative paths resolved', () => {
+    await test('local links: taken outside code, URLs and anchors skipped, relative paths resolved', async () => {
         const links = localLinks('[a](../b.md#x) ![g](image.png) [web](https://x.id) [j](#top) `[k](code.md)` [s](<with%20space.md>)');
         eq(links.map(l => l.target), ['../b.md', 'image.png', 'with space.md']);
         eq(resolveLink('chapter/one.md', '../b.md'), 'b.md');
@@ -185,7 +183,7 @@ export function agentActionTests(): void {
         eq(newIssues([{ line: 1, key: 'x', text: '' }], [{ line: 9, key: 'x', text: '' }, { line: 10, key: 'x', text: 'new' }]).map(i => i.text), ['new']);
     });
 
-    test('verifyWork: "*" looks for leftover text in the whole folder; structure only fails new problems', () => {
+    await test('verifyWork: "*" looks for leftover text in the whole folder; structure only fails new problems', async () => {
         const files = [{ name: 'a.md', text: 'Release November 22\n' }, { name: 'b.md', text: 'still November 15\n[to c](c.md)\n' }];
         const v = verifyWork(JSON.stringify({ checks: [{ file: '*', kind: 'absent', text: 'November 15' }, { file: '*', kind: 'present', text: 'November 22' }] }), files);
         eq(v.checks.map(c => c.passed), [false, true]);
@@ -209,9 +207,9 @@ export function agentActionTests(): void {
         act('delete_file', { name: 'archive/old' }),
     ] });
 
-    test('a batch applied partly: only the chosen files change, the journal records two decisions, the model is told', () => {
+    await test('a batch applied partly: only the chosen files change, the journal records two decisions, the model is told', async () => {
         const h = harness([[pack]], () => ({ applied: true, accepted: [0, 2], note: 'I will arrange the board myself' }));
-        const r = h.run();
+        const r = await h.run();
         eq(r.applied, 2);
         contains(h.disk.get('meeting.md')!, 'November 22');
         eq(h.disk.get('board.md'), BOARD);
@@ -222,18 +220,18 @@ export function agentActionTests(): void {
         contains(reply, 'User note: I will arrange the board myself');
     });
 
-    test('a single proposal rejected with a note: the note reaches the model', () => {
+    await test('a single proposal rejected with a note: the note reaches the model', async () => {
         const h = harness([[call('edit_file', { name: 'meeting', old_text: 'Release November 15', new_text: 'Release November 16', reason: 'x' })]], () => ({ applied: false, note: 'The date is 22, not 16' }));
-        h.run();
+        await h.run();
         ok(h.replies.some(m => m.includes('User note: The date is 22, not 16')), h.replies.join('\n'));
     });
 
-    test('automatic verification: a deleted file is checked as absent, the structure of a changed file is checked too', () => {
+    await test('automatic verification: a deleted file is checked as absent, the structure of a changed file is checked too', async () => {
         const breakTable = call('insert_text', { name: 'meeting', position: 'end', text: '| a | b |\n| - | - |\n| 1 |', reason: 'x' }, 's1');
         const del = call('delete_file', { name: 'archive/old', reason: 'x' }, 'h1');
         const verify = call('verify_work', { checks: [{ file: 'meeting.md', kind: 'present', text: '| a | b |' }] });
         const h = harness([[call('set_work', { goal: 'g', steps: [{ text: 'a', status: 'done' }], note: '' })], [breakTable], [del], [verify]]);
-        h.run();
+        await h.run();
         const checks = h.session.work!.verification!.checks;
         ok(checks.some(c => c.file === 'archive/old.md' && c.passed && c.label.includes('deleted')), JSON.stringify(checks));
         ok(checks.some(c => c.file === 'meeting.md' && !c.passed && c.label.includes('1 cells, header has 2 columns')), JSON.stringify(checks));
@@ -244,9 +242,9 @@ export function agentActionTests(): void {
     // Earlier unit tests run without a main loop and can leave GC pending; git's async callback (and the runGit watchdog,
     // which is a JS callback too) arriving at that time is blocked by GJS ("callback during garbage collection"), and the
     // run never settles. In the app the main loop always runs. Same as the forge and DeepSeek tests.
-    System.gc();
+    host().gc();
 
-    test('parseGitCall validates the commit and file; formatGit tidies the log, diff, and file contents', () => {
+    await test('parseGitCall validates the commit and file; formatGit tidies the log, diff, and file contents', async () => {
         eq(parseGitCall('git_log', '{}'), { kind: 'log', file: null, limit: 15 });
         eq(parseGitCall('git_log', '{"file":"plan.md","max":500}'), { kind: 'log', file: 'plan.md', limit: 50 });
         for (const bad of ['--output=/tmp/x', 'main', 'abc', 'HEAD;rm']) contains(parseGitCall('show_commit', JSON.stringify({ commit: bad })) as string, 'not valid');
@@ -260,66 +258,58 @@ export function agentActionTests(): void {
         eq(formatGit({ kind: 'log', file: null, limit: 1 }, { ok: false, message: 'fatal: not a git repository' }).content, 'The work folder is not a Git repository.');
     });
 
-    test('session: Git tools are only offered when there is a handler; the result goes back to the model', () => {
+    await test('session: Git tools are only offered when there is a handler; the result goes back to the model', async () => {
         const asked: GitRequest[] = [];
         const h = harness([[call('git_log', { file: 'meeting.md' })]]);
         let tools: string[] = [];
         h.handlers.git = async request => { asked.push(request); return { ok: true, text: '\x1ea1b2c3d\x1f2026-10-01 10:00\x1fEka\x1fPostpone release\n\nM\tmeeting.md\n' }; };
         const provider: Provider = { chat: async req => { tools = req.tools?.map(t => t.name) ?? tools; return result(); } };
-        settle(h.session.ask({ question: 'q', active: null, selection: '', files: base(), mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 }, provider, 'fake', h.handlers));
+        await within(h.session.ask({ question: 'q', active: null, selection: '', files: base(), mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 }, provider, 'fake', h.handlers));
         ok(tools.includes('git_log') && tools.includes('file_at_commit'), tools.join(','));
-        h.run();
+        await h.run();
         eq(asked, [{ kind: 'log', file: 'meeting.md', limit: 15 }]);
         ok(h.replies.some(m => m.includes('Postpone release')), h.replies.join('\n'));
         delete h.handlers.git;
-        settle(h.session.ask({ question: 'q', active: null, selection: '', files: base(), mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 }, provider, 'fake', h.handlers));
+        await within(h.session.ask({ question: 'q', active: null, selection: '', files: base(), mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 }, provider, 'fake', h.handlers));
         ok(!tools.includes('git_log'), 'Git tool offered without a handler');
     });
 
-    test('agentGit in a real repository: log, diff, and file contents are limited to non-hidden Markdown', () => {
-        const root = GLib.build_filenamev([tmp, 'git-agent']);
-        GLib.mkdir_with_parents(GLib.build_filenamev([root, '.secret']), 0o755);
-        const write = (name: string, text: string) => GLib.file_set_contents(GLib.build_filenamev([root, name]), text);
-        const git = (...args: string[]) => {
-            const [okRun, , , status] = GLib.spawn_sync(root, ['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.com', ...args], null, GLib.SpawnFlags.SEARCH_PATH, null);
-            ok(okRun && status === 0, `git ${args.join(' ')} failed`);
+    await test('agentGit in a real repository: log, diff, and file contents are limited to non-hidden Markdown', async () => {
+        const root = disk.join(tmp, 'git-agent');
+        disk.mkdirs(disk.join(root, '.secret'));
+        const write = (name: string, text: string) => disk.write(disk.join(root, name), text);
+        const git = async (...args: string[]) => {
+            const run = await within(runGit(root, ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', ...args]));
+            ok(run?.status === 0, `git ${args.join(' ')} failed`);
         };
-        git('init', '-q');
+        await git('init', '-q');
         write('plan.md', 'Release November 15\n'); write('.secret/x.md', 'secret\n'); write('code.txt', 'x\n');
-        git('add', '-A'); git('commit', '-qm', 'Initial');
+        await git('add', '-A'); await git('commit', '-qm', 'Initial');
         write('plan.md', 'Release November 22\n'); write('.secret/x.md', 'secret 2\n');
-        git('commit', '-qam', 'Postpone release');
-        const log = formatGit({ kind: 'log', file: null, limit: 10 }, settle(agentGit(root, { kind: 'log', file: null, limit: 10 })));
+        await git('commit', '-qam', 'Postpone release');
+        const log = formatGit({ kind: 'log', file: null, limit: 10 }, await within(agentGit(root, { kind: 'log', file: null, limit: 10 })));
         contains(log.content, 'Postpone release');
         contains(log.content, 'edit plan.md');
         ok(!log.content.includes('secret') && !log.content.includes('code.txt'), log.content);
-        const show = formatGit({ kind: 'show', commit: 'HEAD', file: null }, settle(agentGit(root, { kind: 'show', commit: 'HEAD', file: null })));
+        const show = formatGit({ kind: 'show', commit: 'HEAD', file: null }, await within(agentGit(root, { kind: 'show', commit: 'HEAD', file: null })));
         contains(show.content, '+Release November 22');
         ok(!show.content.includes('secret'), show.content);
-        const old = formatGit({ kind: 'file', commit: 'HEAD~1', file: 'plan.md' }, settle(agentGit(root, { kind: 'file', commit: 'HEAD~1', file: 'plan.md' })));
+        const old = formatGit({ kind: 'file', commit: 'HEAD~1', file: 'plan.md' }, await within(agentGit(root, { kind: 'file', commit: 'HEAD~1', file: 'plan.md' })));
         contains(old.content, '1│ Release November 15');
     });
 
-    test('runGit: a result lost by the runtime, or a git that hangs, ends as a failure instead of waiting forever', () => {
+    // A result lost by the runtime is GJS's own failure; its test is in gjsport.ts.
+    await test('runGit: a git that hangs ends as a failure instead of waiting forever', async () => {
         const limits = { ...gitLimits };
-        const communicate = Gio.Subprocess.prototype.communicate_utf8_async;
         try {
-            // What GJS does when it blocks the callback during garbage collection: git exits, nothing calls back.
-            Gio.Subprocess.prototype.communicate_utf8_async = (() => {}) as unknown as typeof communicate;   // a narrow cast: only the callback form is used
-            gitLimits.lostMs = 300;
-            const lost = settle(agentGit(tmp, { kind: 'log', file: null, limit: 10 }));
-            eq(lost.ok, false, 'a lost result is a failure');
-            if (!lost.ok) contains(lost.message, 'result was lost');
-            Gio.Subprocess.prototype.communicate_utf8_async = communicate;
             gitLimits.runMs = 500;
             const started = Date.now();
-            const hung = settle(runGit(tmp, ['-c', 'alias.wait=!sleep 3', 'wait']));
+            const hung = await within(runGit(tmp, ['-c', 'alias.wait=!sleep 3', 'wait']));
             eq(hung?.status, -1, 'a hanging git is stopped');
             contains(hung?.err ?? '', 'did not finish');
             ok(Date.now() - started < 2500, `stopped after ${Date.now() - started} ms`);
-            eq(settle(runGit(tmp, ['--version']))?.status, 0, 'a normal run still answers');
+            eq((await within(runGit(tmp, ['--version'])))?.status, 0, 'a normal run still answers');
         } finally {
-            Gio.Subprocess.prototype.communicate_utf8_async = communicate;
             Object.assign(gitLimits, limits);
         }
     });

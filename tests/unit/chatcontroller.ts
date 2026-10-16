@@ -1,13 +1,12 @@
 // Conversation life cycle without widgets: ChatController with a recording view and fake providers.
 
-import GLib from 'gi://GLib';
 import { ChatController, FOLDER_CHANGED, type ChatControllerHost, type ChatView, type TurnOutcome } from '../../src/agent/chatcontroller.js';
 import type { KeyStore } from '../../src/agent/apikey.js';
 import type { Change } from '../../src/agent/changes.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import type { ProposalResult } from '../../src/agent/session.js';
 import { chatLogPath } from '../../src/agent/chatstore.js';
-import { section, test, eq, ok, settle, tmp } from '../framework.js';
+import { section, test, eq, ok, within, tmp, disk } from '../framework.js';
 import type { Cancellable } from '../../src/cancel.js';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
@@ -38,12 +37,12 @@ function recordingView() {
     return { view, log, outcomes, decideWith: (fn: typeof decide) => { decide = fn; } };
 }
 
-export function chatControllerTests(): void {
+export async function chatControllerTests(): Promise<void> {
     section('Chat controller (no GTK)');
     let n = 0;
     const folder = () => {
-        const root = GLib.build_filenamev([tmp, `chatctl-${++n}`]);
-        GLib.mkdir_with_parents(root, 0o755);
+        const root = disk.join(tmp, `chatctl-${++n}`);
+        disk.mkdirs(root);
         return root;
     };
     const setup = (root: string | null) => {
@@ -62,25 +61,25 @@ export function chatControllerTests(): void {
         return { c, ...rec, state, disk };
     };
 
-    test('without a key nothing is sent and the view asks for one', () => {
+    await test('without a key nothing is sent and the view asks for one', async () => {
         const { c, log } = setup(null);
         c.keyStore = { ...KEY, get: async () => null };
-        settle(c.send('hello'));
+        await within(c.send('hello'));
         eq(log, ['noKey']);
     });
 
-    test('a turn is shown, saved to the folder, and can be reopened and deleted', () => {
+    await test('a turn is shown, saved to the folder, and can be reopened and deleted', async () => {
         const root = folder();
         const { c, log } = setup(root);
         c.makeProvider = () => answer('Hi.');
-        settle(c.send('  hello  '));
+        await within(c.send('  hello  '));
         eq(log, ['turn hello', 'busy true', 'end Hi.', 'busy false']);
         const chats = c.chats()!;
         eq(chats.length, 1, 'saved conversations');
         eq(chats[0].title, 'hello');
 
         const logFile = chatLogPath(chats[0].path);
-        ok(GLib.file_test(logFile, GLib.FileTest.EXISTS), 'the agent log was not saved next to the conversation');
+        ok(disk.exists(logFile), 'the agent log was not saved next to the conversation');
         eq(chats.length, 1, 'the log file is not listed as a conversation');
 
         const other = setup(root).c;
@@ -90,14 +89,14 @@ export function chatControllerTests(): void {
         eq(other.session.trace.events.map(e => e.kind), c.session.trace.events.map(e => e.kind), 'the agent log came back with the conversation');
         ok(other.session.trace.events.some(e => e.kind === 'turn' && e.title.includes('hello')), 'the turn is missing from the restored log');
         other.makeProvider = () => answer('Again.');
-        settle(other.send('more'));
+        await within(other.send('more'));
         eq(other.chats()!.length, 1, 'the continuation is appended to the same file');
         other.deleteChat(chats[0].path);
         eq(other.chats()!.length, 0, 'deleted');
-        ok(!GLib.file_test(logFile, GLib.FileTest.EXISTS), 'the log stayed behind after deleting the conversation');
+        ok(!disk.exists(logFile), 'the log stayed behind after deleting the conversation');
     });
 
-    test('a proposal after the work folder changed is refused without asking the user', () => {
+    await test('a proposal after the work folder changed is refused without asking the user', async () => {
         const { c, log, state, decideWith } = setup(folder());
         decideWith(() => { throw new Error('the user must not be asked'); });
         const replies: string[] = [];
@@ -113,12 +112,12 @@ export function chatControllerTests(): void {
                 return { usage: null, cancelled: false, reasoning: '', toolCalls: [] };
             },
         });
-        settle(c.send('change the date'));
+        await within(c.send('change the date'));
         ok(!log.includes('review'), 'the review was shown');
         ok(replies.some(r => r.includes(FOLDER_CHANGED)), replies.join('\n'));
     });
 
-    test('an approved proposal is applied through the host and can be undone', () => {
+    await test('an approved proposal is applied through the host and can be undone', async () => {
         const { c, disk, decideWith } = setup(folder());
         let applied: Change | Change[] | null = null;
         decideWith((change, apply) => { applied = change; const error = apply(change); return error ? { applied: false, error } : { applied: true }; });
@@ -130,7 +129,7 @@ export function chatControllerTests(): void {
                 return { usage: null, cancelled: false, reasoning: '', toolCalls: [] };
             },
         });
-        settle(c.send('change the date'));
+        await within(c.send('change the date'));
         eq(disk.get('notes.md'), 'Release 22 November\n');
         ok(applied && !Array.isArray(applied), 'single change');
         eq(c.undo([applied as Change]), null, 'undo error');
@@ -138,29 +137,28 @@ export function chatControllerTests(): void {
         eq(c.session.events[0].status, 'reverted');
     });
 
-    test('stop cancels the running turn; busy ends', () => {
+    await test('stop cancels the running turn; busy ends', async () => {
         const { c, log } = setup(null);
         c.makeProvider = () => ({
             chat: req => new Promise(resolve => { req.cancellable?.onCancel(() => resolve({ usage: null, cancelled: true, toolCalls: [], reasoning: '' })); }),
         });
         const sending = c.send('slow');
-        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => { ok(c.busy, 'not busy while sending'); c.stop(); return GLib.SOURCE_REMOVE; });
-        settle(sending);
+        setTimeout(() => { ok(c.busy, 'not busy while sending'); c.stop(); }, 0);
+        await within(sending);
         eq(log, ['turn slow', 'busy true', 'end cancelled', 'busy false']);
         ok(!c.busy, 'still busy');
     });
 
-    test('reset during a turn drops its late result', () => {
+    await test('reset during a turn drops its late result', async () => {
         const { c, log } = setup(null);
         let finish: (r: ChatResult) => void = () => {};
         c.makeProvider = () => ({ chat: req => new Promise(resolve => { finish = r => { req.onText('late'); resolve(r); }; }) });
         const sending = c.send('first');
-        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+        setTimeout(() => {
             c.reset();
             finish({ usage: null, cancelled: false, toolCalls: [], reasoning: '' });
-            return GLib.SOURCE_REMOVE;
-        });
-        settle(sending);
+        }, 0);
+        await within(sending);
         eq(log, ['turn first', 'busy true', 'busy false'], 'no end for the dropped turn');
         eq(c.session.history.length, 0, 'history cleared');
     });

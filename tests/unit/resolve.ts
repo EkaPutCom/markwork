@@ -1,177 +1,177 @@
 // Tests for resolving a pull request's conflicts locally: real git against a local bare "forge" repository.
 
-import GLib from 'gi://GLib';
 import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasMarkers, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
 import { ForgeError, type ForgeProvider } from '../../src/forge/types.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, contains, settle, tmp } from '../framework.js';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
+import { host } from '../host.js';
 
-const sh = (cwd: string, ...args: string[]): string => {
-    const run = settle(runGit(cwd, args));
+const sh = async (cwd: string, ...args: string[]): Promise<string> => {
+    const run = await within(runGit(cwd, args));
     if (run?.status !== 0) throw new Error(`git ${args.join(' ')}: ${run?.err}`);
     return run.out.trim();
 };
 
-export function resolveTests(): void {
+export async function resolveTests(): Promise<void> {
     section('Resolving pull request conflicts locally');
-    for (const [name, value] of Object.entries({ GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 'tester@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 'tester@example.com' })) GLib.setenv(name, value, true);
-    const dir = GLib.build_filenamev([tmp, 'resolve']);
+    for (const [name, value] of Object.entries({ GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 'tester@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 'tester@example.com' })) host().setenv(name, value);
+    const dir = disk.join(tmp, 'resolve');
     let counter = 0;
-    const write = (path: string, text: string) => GLib.file_set_contents(path, text);
-    const read = (path: string) => new TextDecoder().decode(GLib.file_get_contents(path)[1]);
+    const write = (path: string, text: string) => disk.write(path, text);
+    const read = (path: string) => disk.read(path);
 
     // A fresh scenario: a bare "forge", a maintainer's clone on main, and pull request #7 that edits the same line as a later
     // commit on main (so it conflicts) or a different file (so it does not).
-    const scenario = (conflict: boolean) => {
-        const root = GLib.build_filenamev([dir, `case-${++counter}`]);
-        const bare = GLib.build_filenamev([root, 'forge.git']), work = GLib.build_filenamev([root, 'work']), other = GLib.build_filenamev([root, 'author']);
-        GLib.mkdir_with_parents(bare, 0o755);
-        sh(bare, 'init', '-q', '--bare', '-b', 'main');
-        sh(root, 'clone', '-q', bare, work);
-        sh(work, 'checkout', '-q', '-B', 'main');
+    const scenario = async (conflict: boolean) => {
+        const root = disk.join(dir, `case-${++counter}`);
+        const bare = disk.join(root, 'forge.git'), work = disk.join(root, 'work'), other = disk.join(root, 'author');
+        disk.mkdirs(bare);
+        await sh(bare, 'init', '-q', '--bare', '-b', 'main');
+        await sh(root, 'clone', '-q', bare, work);
+        await sh(work, 'checkout', '-q', '-B', 'main');
         write(`${work}/journal.md`, '# Journal\n\nhello\n');
         write(`${work}/other.md`, '# Other\n');
-        sh(work, 'add', '-A');
-        sh(work, 'commit', '-q', '-m', 'First');
-        sh(work, 'push', '-q', '-u', 'origin', 'main');
+        await sh(work, 'add', '-A');
+        await sh(work, 'commit', '-q', '-m', 'First');
+        await sh(work, 'push', '-q', '-u', 'origin', 'main');
         // The author's branch becomes pull request #7 (a forge keeps it under refs/pull/7/head).
-        sh(root, 'clone', '-q', bare, other);
-        sh(other, 'checkout', '-q', '-b', 'feature');
+        await sh(root, 'clone', '-q', bare, other);
+        await sh(other, 'checkout', '-q', '-b', 'feature');
         write(`${other}/${conflict ? 'journal.md' : 'other.md'}`, conflict ? '# Journal\n\nhello from the pull request\n' : '# Other\n\nadded by the pull request\n');
-        sh(other, 'commit', '-q', '-a', '-m', 'The pull request');
-        sh(other, 'push', '-q', 'origin', 'feature');
-        sh(bare, 'update-ref', 'refs/pull/7/head', sh(other, 'rev-parse', 'HEAD'));
+        await sh(other, 'commit', '-q', '-a', '-m', 'The pull request');
+        await sh(other, 'push', '-q', 'origin', 'feature');
+        await sh(bare, 'update-ref', 'refs/pull/7/head', await sh(other, 'rev-parse', 'HEAD'));
         // Meanwhile main moved on.
         write(`${work}/journal.md`, '# Journal\n\nhello from main\n');
-        sh(work, 'commit', '-q', '-a', '-m', 'Main moved on');
-        sh(work, 'push', '-q', 'origin', 'main');
+        await sh(work, 'commit', '-q', '-a', '-m', 'Main moved on');
+        await sh(work, 'push', '-q', 'origin', 'main');
         const merge: LocalMerge = { folder: work, base: 'main', cloneUrl: bare, pull: 7, title: 'Greeting', login: 'eka', token: 'sekret' };
         return { bare, work, merge };
     };
 
-    test('conflict markers are told from a Markdown heading underline', () => {
+    await test('conflict markers are told from a Markdown heading underline', async () => {
         ok(hasMarkers('a\n<<<<<<< HEAD\nb\n=======\nc\n>>>>>>> FETCH_HEAD\n'), 'markers');
         ok(!hasMarkers('Title\n=======\n\ntext\n'), 'a setext heading is not a conflict');
         ok(!hasMarkers('a << b >> c\n<<<<<<<<x'), 'not at the start of a line with a space after');
     });
 
-    test('the folder must be on the base branch, clean, and not in the middle of a merge', () => {
-        const { work } = scenario(true);
-        eq(settle(preflight(runGit, work, 'main')), null);
-        contains(String(settle(preflight(runGit, work, 'develop'))), 'Switch this folder to the branch develop');
+    await test('the folder must be on the base branch, clean, and not in the middle of a merge', async () => {
+        const { work } = await scenario(true);
+        eq(await within(preflight(runGit, work, 'main')), null);
+        contains(String(await within(preflight(runGit, work, 'develop'))), 'Switch this folder to the branch develop');
         write(`${work}/journal.md`, 'dirty\n');
-        contains(String(settle(preflight(runGit, work, 'main'))), 'not committed');
-        sh(work, 'checkout', '-q', '--', 'journal.md');
+        contains(String(await within(preflight(runGit, work, 'main'))), 'not committed');
+        await sh(work, 'checkout', '-q', '--', 'journal.md');
         write(`${work}/untracked.md`, 'not tracked\n');
-        eq(settle(preflight(runGit, work, 'main')), null);   // a file git does not know cannot be lost by a merge
+        eq(await within(preflight(runGit, work, 'main')), null);   // a file git does not know cannot be lost by a merge
     });
 
-    test('a merge left in the folder (the app was closed) is found again with its pull request and files', () => {
-        const { work, merge } = scenario(true);
-        eq(settle(pendingMerge(runGit, work)), null);
-        const start = settle(startLocalMerge(runGit, merge));
+    await test('a merge left in the folder (the app was closed) is found again with its pull request and files', async () => {
+        const { work, merge } = await scenario(true);
+        eq(await within(pendingMerge(runGit, work)), null);
+        const start = await within(startLocalMerge(runGit, merge));
         ok(start.ok, 'started');
-        const found = settle(pendingMerge(runGit, work));
+        const found = await within(pendingMerge(runGit, work));
         ok(found !== null, 'the merge in progress was not found');
         if (!found || !start.ok) return;
         eq(found.pull, 7);
         eq(found.before, start.before);
         eq(found.conflicts, [`${work}/journal.md`]);
-        sh(work, 'merge', '--abort');
-        eq(settle(pendingMerge(runGit, work)), null);
+        await sh(work, 'merge', '--abort');
+        eq(await within(pendingMerge(runGit, work)), null);
     });
 
-    test('a merge that was started by hand is found, without a pull request', () => {
-        const { work } = scenario(true);
-        sh(work, 'checkout', '-q', '-b', 'side', 'HEAD~1');
+    await test('a merge that was started by hand is found, without a pull request', async () => {
+        const { work } = await scenario(true);
+        await sh(work, 'checkout', '-q', '-b', 'side', 'HEAD~1');
         write(`${work}/journal.md`, 'side\n');
-        sh(work, 'commit', '-q', '-a', '-m', 'Side');
-        sh(work, 'checkout', '-q', 'main');
-        const merged = settle(runGit(work, ['merge', '--no-ff', 'side']));
+        await sh(work, 'commit', '-q', '-a', '-m', 'Side');
+        await sh(work, 'checkout', '-q', 'main');
+        const merged = await within(runGit(work, ['merge', '--no-ff', 'side']));
         ok(merged?.status !== 0, 'the merge should conflict');
-        const found = settle(pendingMerge(runGit, work));
+        const found = await within(pendingMerge(runGit, work));
         ok(found !== null && found.pull === null, JSON.stringify(found));
-        sh(work, 'merge', '--abort');
+        await sh(work, 'merge', '--abort');
     });
 
-    test('a conflicting pull request is merged as far as it goes and the conflicting files are listed', () => {
-        const { work, merge } = scenario(true);
-        const start = settle(startLocalMerge(runGit, merge));
+    await test('a conflicting pull request is merged as far as it goes and the conflicting files are listed', async () => {
+        const { work, merge } = await scenario(true);
+        const start = await within(startLocalMerge(runGit, merge));
         ok(start.ok, `started: ${!start.ok && start.message}`);
         if (!start.ok) return;
         eq(start.conflicts, [`${work}/journal.md`]);
         contains(read(`${work}/journal.md`), '<<<<<<<');
-        eq(settle(conflictedFiles(runGit, work)), [`${work}/journal.md`]);
+        eq(await within(conflictedFiles(runGit, work)), [`${work}/journal.md`]);
         eq(unresolved(start.conflicts, read), [`${work}/journal.md`]);
-        eq(sh(work, 'rev-parse', 'HEAD'), start.before);
+        eq(await sh(work, 'rev-parse', 'HEAD'), start.before);
     });
 
-    test('finishing commits the resolution as a merge and pushes the base branch', () => {
-        const { bare, work, merge } = scenario(true);
-        const start = settle(startLocalMerge(runGit, merge));
+    await test('finishing commits the resolution as a merge and pushes the base branch', async () => {
+        const { bare, work, merge } = await scenario(true);
+        const start = await within(startLocalMerge(runGit, merge));
         if (!start.ok) throw new Error(start.message);
         write(`${work}/journal.md`, '# Journal\n\nhello from main and the pull request\n');
         eq(unresolved(start.conflicts, read), []);
-        const done = settle(finishLocalMerge(runGit, merge, start.conflicts));
+        const done = await within(finishLocalMerge(runGit, merge, start.conflicts));
         ok(done.ok, `finished: ${!done.ok && done.message}`);
-        eq(sh(bare, 'rev-parse', 'main'), sh(work, 'rev-parse', 'HEAD'));
-        eq(sh(bare, 'log', '-1', '--format=%P').split(' ').length, 2);          // a merge commit
-        contains(sh(bare, 'log', '-1', '--format=%s'), 'Merge pull request #7: Greeting');
-        eq(sh(bare, 'merge-base', '--is-ancestor', sh(bare, 'rev-parse', 'refs/pull/7/head'), 'main') === '', true);
+        eq(await sh(bare, 'rev-parse', 'main'), await sh(work, 'rev-parse', 'HEAD'));
+        eq((await sh(bare, 'log', '-1', '--format=%P')).split(' ').length, 2);          // a merge commit
+        contains(await sh(bare, 'log', '-1', '--format=%s'), 'Merge pull request #7: Greeting');
+        eq(await sh(bare, 'merge-base', '--is-ancestor', await sh(bare, 'rev-parse', 'refs/pull/7/head'), 'main') === '', true);
     });
 
-    test('finishing while git still sees conflicts is refused and nothing is pushed', () => {
-        const { bare, merge } = scenario(true);
-        const before = sh(bare, 'rev-parse', 'main');
-        const start = settle(startLocalMerge(runGit, merge));
+    await test('finishing while git still sees conflicts is refused and nothing is pushed', async () => {
+        const { bare, merge } = await scenario(true);
+        const before = await sh(bare, 'rev-parse', 'main');
+        const start = await within(startLocalMerge(runGit, merge));
         if (!start.ok) throw new Error(start.message);
-        const done = settle(finishLocalMerge(runGit, merge, []));     // the files were never staged as resolved
+        const done = await within(finishLocalMerge(runGit, merge, []));     // the files were never staged as resolved
         ok(!done.ok, 'refused');
-        eq(sh(bare, 'rev-parse', 'main'), before);
+        eq(await sh(bare, 'rev-parse', 'main'), before);
     });
 
-    test('aborting returns the folder to what it was', () => {
-        const { work, merge } = scenario(true);
-        const start = settle(startLocalMerge(runGit, merge));
+    await test('aborting returns the folder to what it was', async () => {
+        const { work, merge } = await scenario(true);
+        const start = await within(startLocalMerge(runGit, merge));
         if (!start.ok) throw new Error(start.message);
-        ok(settle(abortLocalMerge(runGit, work, start.before)).ok, 'aborted');
+        ok((await within(abortLocalMerge(runGit, work, start.before))).ok, 'aborted');
         eq(read(`${work}/journal.md`), '# Journal\n\nhello from main\n');
-        eq(sh(work, 'status', '--porcelain'), '');
+        eq(await sh(work, 'status', '--porcelain'), '');
     });
 
-    test('a pull request that merges cleanly is committed at once; finishing only pushes, aborting undoes it', () => {
-        const { bare, work, merge } = scenario(false);
-        const start = settle(startLocalMerge(runGit, merge));
+    await test('a pull request that merges cleanly is committed at once; finishing only pushes, aborting undoes it', async () => {
+        const { bare, work, merge } = await scenario(false);
+        const start = await within(startLocalMerge(runGit, merge));
         ok(start.ok && start.conflicts.length === 0, 'no conflicts');
         if (!start.ok) return;
-        ok(sh(work, 'rev-parse', 'HEAD') !== start.before, 'the merge commit exists');
-        ok(settle(abortLocalMerge(runGit, work, start.before)).ok, 'undone');
-        eq(sh(work, 'rev-parse', 'HEAD'), start.before);
-        const again = settle(startLocalMerge(runGit, merge));
+        ok(await sh(work, 'rev-parse', 'HEAD') !== start.before, 'the merge commit exists');
+        ok((await within(abortLocalMerge(runGit, work, start.before))).ok, 'undone');
+        eq(await sh(work, 'rev-parse', 'HEAD'), start.before);
+        const again = await within(startLocalMerge(runGit, merge));
         if (!again.ok) throw new Error(again.message);
-        ok(settle(finishLocalMerge(runGit, merge, [])).ok, 'pushed');
-        eq(sh(bare, 'rev-parse', 'main'), sh(work, 'rev-parse', 'HEAD'));
+        ok((await within(finishLocalMerge(runGit, merge, []))).ok, 'pushed');
+        eq(await sh(bare, 'rev-parse', 'main'), await sh(work, 'rev-parse', 'HEAD'));
     });
 
-    test('a local base that has diverged from the server stops before the pull request is touched', () => {
-        const { work, merge } = scenario(true);
+    await test('a local base that has diverged from the server stops before the pull request is touched', async () => {
+        const { work, merge } = await scenario(true);
         write(`${work}/local.md`, 'only here\n');
-        sh(work, 'add', 'local.md');
-        sh(work, 'commit', '-q', '-m', 'Local only');
-        const bareMoves = GLib.build_filenamev([dir, 'mover']);
-        sh(dir, 'clone', '-q', merge.cloneUrl, bareMoves);
+        await sh(work, 'add', 'local.md');
+        await sh(work, 'commit', '-q', '-m', 'Local only');
+        const bareMoves = disk.join(dir, 'mover');
+        await sh(dir, 'clone', '-q', merge.cloneUrl, bareMoves);
         write(`${bareMoves}/server.md`, 'only on the server\n');
-        sh(bareMoves, 'add', 'server.md');
-        sh(bareMoves, 'commit', '-q', '-m', 'Server only');
-        sh(bareMoves, 'push', '-q', 'origin', 'main');
-        const start = settle(startLocalMerge(runGit, merge));
+        await sh(bareMoves, 'add', 'server.md');
+        await sh(bareMoves, 'commit', '-q', '-m', 'Server only');
+        await sh(bareMoves, 'push', '-q', 'origin', 'main');
+        const start = await within(startLocalMerge(runGit, merge));
         ok(!start.ok && start.message.includes('bring them together'), 'refused with a reason');
-        eq(sh(work, 'status', '--porcelain'), '');
+        eq(await sh(work, 'status', '--porcelain'), '');
     });
 
-    test('a forge without the pull request ref says so', () => {
-        const { merge } = scenario(true);
-        const start = settle(startLocalMerge(runGit, { ...merge, pull: 99 }));
+    await test('a forge without the pull request ref says so', async () => {
+        const { merge } = await scenario(true);
+        const start = await within(startLocalMerge(runGit, { ...merge, pull: 99 }));
         ok(!start.ok && start.message.includes('Could not fetch the pull request'), 'refused');
     });
 
@@ -184,30 +184,30 @@ export function resolveTests(): void {
         } as unknown as ForgeProvider;
         return { provider, marks: () => marks };
     };
-    test('a pull request the server already shows as merged is left alone', () => {
+    await test('a pull request the server already shows as merged is left alone', async () => {
         const f = forge(['merged'], async () => {});
-        ok(settle(confirmMerged(f.provider, 7, 'abc')).ok, 'ok');
+        ok((await within(confirmMerged(f.provider, 7, 'abc'))).ok, 'ok');
         eq(f.marks(), 0);
     });
-    test('an open pull request is recorded as merged with the pushed commit', () => {
+    await test('an open pull request is recorded as merged with the pushed commit', async () => {
         const f = forge(['open'], async () => {});
-        ok(settle(confirmMerged(f.provider, 7, 'abc')).ok, 'ok');
+        ok((await within(confirmMerged(f.provider, 7, 'abc'))).ok, 'ok');
         eq(f.marks(), 1);
     });
-    test('a repository that does not allow manual merges is explained, not hidden', () => {
+    await test('a repository that does not allow manual merges is explained, not hidden', async () => {
         const f = forge(['open'], async () => { throw new ForgeError('not-mergeable', 'not allowed', 405); });
-        const result = settle(confirmMerged(f.provider, 7, 'abc'));
+        const result = await within(confirmMerged(f.provider, 7, 'abc'));
         ok(!result.ok && result.message.includes('Manually merged') && result.message.includes('still shows it as open'), 'explained');
     });
-    test('a server that notices the merge by itself while it is being recorded counts as merged', () => {
+    await test('a server that notices the merge by itself while it is being recorded counts as merged', async () => {
         const f = forge(['open', 'merged'], async () => { throw new ForgeError('not-mergeable', 'already merged', 405); });
-        ok(settle(confirmMerged(f.provider, 7, 'abc')).ok, 'ok');
+        ok((await within(confirmMerged(f.provider, 7, 'abc'))).ok, 'ok');
     });
-    test('any other failure is passed on as it is', () => {
+    await test('any other failure is passed on as it is', async () => {
         const f = forge(['open'], async () => { throw new ForgeError('network', 'Cannot reach git.example.org'); });
-        const result = settle(confirmMerged(f.provider, 7, 'abc'));
+        const result = await within(confirmMerged(f.provider, 7, 'abc'));
         ok(!result.ok && result.message === 'Cannot reach git.example.org', 'passed on');
     });
 
-    for (const name of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) GLib.unsetenv(name);
+    for (const name of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) host().setenv(name, null);
 }
