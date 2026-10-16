@@ -25,62 +25,26 @@
 // GUI tests open real windows, so a desktop session (X11/Wayland) is needed.
 
 import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
+import './host-gjs.js';   // the tests reach the runtime through host(), installed before framework.ts
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio';
 import System from 'system';
 
-import { DIM, GREEN, RED, RESET, errorMessage, opt, optVal, recordFailure, setRoot, summary } from './framework.js';
+import { DIM, GREEN, RED, RESET, errorMessage, opt, optVal, recordFailure, setRoot, settle, summary } from './framework.js';
 import { WELCOME } from '../src/welcome.js';
 import { createContext } from './gui/context.js';
 import { widgetPixbuf } from './widgets.js';
 import { incrementalTests } from './unit/incremental.js';
-import { inlineTests } from './unit/inline.js';
-import { wikiLinkTests } from './unit/wikilink.js';
-import { searchFilterTests, searchTests } from './unit/search.js';
 import { settingsTests } from './unit/settings.js';
 import { tableTests } from './unit/table.js';
-import { kanbanModelTests } from './unit/kanban.js';
-import { inboxModelTests } from './unit/inbox.js';
-import { fieldsModelTests } from './unit/fields.js';
-import { layoutTests } from './unit/layout.js';
-import { tableLayoutTests } from './unit/tablelayout.js';
-import { sampleDocumentTests } from './unit/samples.js';
-import { layoutsModelTests } from './unit/layouts.js';
-import { homeModelTests } from './unit/home.js';
-import { journalModelTests } from './unit/journal.js';
 import { codeLanguageTests } from './unit/codelang.js';
-import { htmlTests } from './unit/html.js';
-import { dbmlTests } from './unit/dbml.js';
-import { gitLogTests } from './unit/gitlog.js';
 import { discardTests } from './unit/discard.js';
 import { fileOpsTests } from './unit/fileops.js';
-import { fileWriteTests } from './unit/files.js';
-import { workspaceTests } from './unit/workspace.js';
-import { chatControllerTests } from './unit/chatcontroller.js';
-import { agentTests, apiKeyTests, toolTests } from './unit/agent.js';
-import { transcriptTests } from './unit/transcript.js';
-import { agenticTests } from './unit/agentic.js';
-import { agentActionTests } from './unit/agentactions.js';
-import { noteToolTests } from './unit/notetools.js';
-import { workTests } from './unit/work.js';
-import { traceTests } from './unit/trace.js';
-import { changeTests } from './unit/changes.js';
-import { deepseekTests } from './unit/deepseek.js';
-import { forgeTests } from './unit/forge.js';
-import { platformTests } from './unit/platform.js';
-import { noteDiffTests } from './unit/notediff.js';
-import { contributeTests } from './unit/contribute.js';
-import { resolveTests } from './unit/resolve.js';
-import { conflictTests } from './unit/conflicts.js';
-import { commitMessageTests } from './unit/commitmessage.js';
+import { gjsPortTests } from './unit/gjsport.js';
+import { runCoreTests } from './core-tests.js';
 import { dialogTests } from './gui/dialogs.js';
-import { harnessTests as harnessModelTests } from './unit/harness.js';
-import { worktreeTests } from './unit/worktree.js';
-import { daemonClientTests } from './unit/daemon.js';
-import { daemonLiveTests, daemonSshTests } from './unit/daemon-live.js';
-import { daemonAppTests } from './unit/daemonapp.js';
 import { harnessTests } from './gui/harness.js';
 import { agentsHostTests } from './gui/agentshost.js';
 import { chatTests } from './gui/chat.js';
@@ -116,56 +80,18 @@ import { journalTests } from './gui/journal.js';
 
 setRoot(import.meta.url);
 
+// The core's tests (shared with the Node runner, run-core-node.ts), then the unit tests that need GJS: the editor
+// engine's GTK parts, GSettings, the file tree's Gio operations, and the GJS port's own guards. settle() runs the main
+// loop while the async ones wait.
 function runUnitTests(): void {
-    inlineTests();
-    wikiLinkTests();
-    searchTests();
-    searchFilterTests();
+    settle(runCoreTests(), 30 * 60 * 1000);
     incrementalTests();
     settingsTests();
     tableTests();
-    kanbanModelTests();
-    inboxModelTests();
-    fieldsModelTests();
-    layoutTests();
-    tableLayoutTests();
-    layoutsModelTests();
-    sampleDocumentTests();
-    homeModelTests();
-    journalModelTests();
     codeLanguageTests();
-    htmlTests();
-    dbmlTests();
-    gitLogTests();
     discardTests();
     fileOpsTests();
-    fileWriteTests();
-    workspaceTests();
-    chatControllerTests();
-    agentTests();
-    apiKeyTests();
-    toolTests();
-    transcriptTests();
-    workTests();
-    traceTests();
-    agenticTests();
-    noteToolTests();
-    agentActionTests();
-    changeTests();
-    deepseekTests();
-    forgeTests();
-    platformTests();
-    noteDiffTests();
-    contributeTests();
-    resolveTests();
-    conflictTests();
-    commitMessageTests();
-    harnessModelTests();
-    worktreeTests();
-    daemonClientTests();
-    daemonAppTests();
-    daemonLiveTests();
-    daemonSshTests();
+    settle(gjsPortTests(), 60 * 1000);
 }
 
 function runGuiTests(app: Adw.Application): void {
@@ -286,18 +212,14 @@ function runGuiTests(app: Adw.Application): void {
 // ───────────────────────── Run ─────────────────────────
 
 if (opt('only-worktrees')) {
-    harnessModelTests();
-    worktreeTests();
+    settle(runCoreTests('worktrees'), 30 * 60 * 1000);
     const { passed, failed } = summary();
     print(`\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET}`);
     System.exit(failed ? 1 : 0);
 }
 
 if (opt('only-daemon')) {
-    daemonClientTests();
-    daemonAppTests();
-    daemonLiveTests();
-    daemonSshTests();
+    settle(runCoreTests('daemon'), 30 * 60 * 1000);
     const { passed, failed } = summary();
     print(`\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET}`);
     System.exit(failed ? 1 : 0);

@@ -1,6 +1,4 @@
 // A complete-work evaluation with a deterministic provider, a virtual disk, and real checkpoints.
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import { WorkspaceRepository } from '../../src/workspace.js';
 import { projectPath } from '../../src/agent/path.js';
 import { ChatSession, type TurnHandlers } from '../../src/agent/session.js';
@@ -9,7 +7,9 @@ import { parseChat, serializeChat } from '../../src/agent/transcript.js';
 import type { ToolCall, Provider, ChatResult } from '../../src/agent/provider.js';
 import type { SourceFile } from '../../src/agent/context.js';
 import type { Change } from '../../src/agent/changes.js';
-import { section, test, eq, ok, contains, settle } from '../framework.js';
+import { platform } from '../../src/platform/index.js';
+import { section, test, eq, ok, contains, within, disk } from '../framework.js';
+import { host } from '../host.js';
 
 const call = (name: string, args: unknown): ToolCall => ({ id: name, name, arguments: JSON.stringify(args) });
 const result = (toolCalls: ToolCall[] = []): ChatResult => ({ usage: null, cancelled: false, toolCalls, reasoning: '' });
@@ -51,99 +51,98 @@ function harness() {
             if (failAtEnd) throw Error('connection dropped');
             req.onText('The result has been checked.'); return result();
         } };
-        return settle(session.ask(input(), provider, 'fake', handlers));
+        return within(session.ask(input(), provider, 'fake', handlers));
     };
     return { session, disk, handlers, input, run, checkpoint: () => checkpoint, proposals: () => proposals };
 }
 
-export function agenticTests(): void {
+export async function agenticTests(): Promise<void> {
     section('Agent evaluation: work through to a verified result');
-    test('the folder boundary rejects creating files through a symlink', () => {
-        const root = GLib.dir_make_tmp('markwork-path-XXXXXX');
-        const outside = GLib.dir_make_tmp('markwork-outside-XXXXXX');
-        const link = Gio.File.new_for_path(GLib.build_filenamev([root, 'link']));
+    await test('the folder boundary rejects creating files through a symlink', async () => {
+        const root = host().makeTempDir();
+        const outside = host().makeTempDir();
+        const link = disk.join(root, 'link');
         try {
-            link.make_symbolic_link(outside, null);
+            host().symlink(outside, link);
             let rejected = false;
             try { projectPath(root, 'link/new.md'); } catch { rejected = true; }
             eq(rejected, true);
-            eq(projectPath(root, 'notes/new.md'), GLib.build_filenamev([root, 'notes', 'new.md']));
-        } finally { link.delete(null); GLib.rmdir(root); GLib.rmdir(outside); }
+            eq(projectPath(root, 'notes/new.md'), disk.join(root, 'notes', 'new.md'));
+        } finally { disk.remove(link); disk.remove(root); disk.remove(outside); }
     });
-    test('verification re-reads a same-size change and skips source symlinks', () => {
-        const root = GLib.dir_make_tmp('markwork-fresh-XXXXXX');
-        const file = Gio.File.new_for_path(GLib.build_filenamev([root, 'a.md']));
-        const link = Gio.File.new_for_path(GLib.build_filenamev([root, 'alias.md']));
+    await test('verification re-reads a same-size change and skips source symlinks', async () => {
+        const root = host().makeTempDir();
+        const file = disk.join(root, 'a.md');
+        const link = disk.join(root, 'alias.md');
         const workspace = new WorkspaceRepository();
         try {
-            GLib.file_set_contents(file.get_path()!, 'old');
+            disk.write(file, 'old');
             eq(workspace.files(root)[0].text, 'old');
-            const info = file.query_info('time::modified,time::modified-usec', Gio.FileQueryInfoFlags.NONE, null);
-            GLib.file_set_contents(file.get_path()!, 'new');
-            file.set_attribute_uint64('time::modified', info.get_attribute_uint64('time::modified'), Gio.FileQueryInfoFlags.NONE, null);
-            file.set_attribute_uint32('time::modified-usec', info.get_attribute_uint32('time::modified-usec'), Gio.FileQueryInfoFlags.NONE, null);
-            link.make_symbolic_link(file.get_path()!, null);
+            const modified = host().modified(file);
+            disk.write(file, 'new');
+            host().setModified(file, modified);
+            host().symlink(file, link);
             const fresh = workspace.files(root, { freshness: 'fresh' });
             eq(fresh.map(f => f.name), ['a.md']); eq(fresh[0].text, 'new');
-        } finally { workspace.close(); if (link.query_exists(null)) link.delete(null); file.delete(null); GLib.rmdir(root); }
+        } finally { workspace.close(); if (platform().fs.kind(link) !== 'missing') disk.remove(link); disk.remove(file); disk.remove(root); }
     });
-    test('plan → batch approval → verification of the actual result → finished; the checkpoint can be opened', () => {
+    await test('plan → batch approval → verification of the actual result → finished; the checkpoint can be opened', async () => {
         const h = harness();
-        const r = h.run([[plan(false)], [batch], [plan(true)], [verify]]);
+        const r = await h.run([[plan(false)], [batch], [plan(true)], [verify]]);
         eq(r.applied, 2); eq(h.proposals(), 1);
         eq(h.session.work?.status, 'complete');
         const saved = parseChat(h.checkpoint());
         eq(saved?.work?.status, 'complete'); eq(saved?.events?.find(e => e.tool === 'propose_batch')?.status, 'applied');
         contains(h.disk.get('plan.md')!, 'November 22');
     });
-    test('a new conversation while a response is pending is not mixed with the old work result', () => {
+    await test('a new conversation while a response is pending is not mixed with the old work result', async () => {
         const h = harness();
         let finish: (() => void) | null = null;
         const pending = h.session.ask(h.input(), { chat: req => new Promise(resolve => { finish = () => { req.onText('old answer'); resolve(result()); }; }) }, 'fake', h.handlers);
         h.session.clear();
         ok(finish, 'the provider was not called');
         (finish as () => void)();
-        const r = settle(pending);
+        const r = await within(pending);
         eq(r.cancelled, true); eq(h.session.history, []); eq(h.session.events, []); eq(h.session.work, null);
     });
-    test('all steps done without verification are not yet considered finished', () => {
-        const h = harness(); h.run([[plan(true)]]);
+    await test('all steps done without verification are not yet considered finished', async () => {
+        const h = harness(); await h.run([[plan(true)]]);
         eq(h.session.work?.status, 'paused');
     });
-    test('verification must cover all changed files and read external changes', () => {
+    await test('verification must cover all changed files and read external changes', async () => {
         const h = harness();
         h.handlers.currentFiles = () => [{ name: 'plan.md', text: 'Release November 15' }];
-        h.run([[plan(false)], [batch], [plan(true)], [verify]]);
+        await h.run([[plan(false)], [batch], [plan(true)], [verify]]);
         eq(h.session.work?.verification?.passed, false); eq(h.session.work?.status, 'paused');
         const omitted = harness();
-        omitted.run([[plan(false)], [batch], [plan(true)], [call('verify_work', { checks: [{ file: 'plan.md', kind: 'present', text: 'November 22' }] })]]);
+        await omitted.run([[plan(false)], [batch], [plan(true)], [call('verify_work', { checks: [{ file: 'plan.md', kind: 'present', text: 'November 22' }] })]]);
         eq(omitted.session.work?.verification?.passed, false);
     });
-    test('a rejected batch does not change the disk; the decision is kept after recovery', () => {
+    await test('a rejected batch does not change the disk; the decision is kept after recovery', async () => {
         const h = harness(), before = [...h.disk];
         h.handlers.onBatchProposal = async () => ({ applied: false });
-        const r = h.run([[plan(false)], [batch]]);
+        const r = await h.run([[plan(false)], [batch]]);
         eq(r.applied, 0); eq([...h.disk], before);
         eq(parseChat(h.checkpoint())?.events?.[0].status, 'rejected');
     });
-    test('a conflict on one file cancels the whole batch and is recorded as failed', () => {
+    await test('a conflict on one file cancels the whole batch and is recorded as failed', async () => {
         const h = harness(), apply = h.handlers.onBatchProposal!;
         h.handlers.onBatchProposal = async changes => { h.disk.set('board.md', 'Edited by the user'); return apply(changes); };
-        h.run([[plan(false)], [batch]]);
+        await h.run([[plan(false)], [batch]]);
         contains(h.disk.get('plan.md')!, 'November 15');
         eq(h.session.events[0].status, 'failed');
     });
-    test('the connection fails after applying: the checkpoint still keeps the result and the next turn does not need to repeat it', () => {
+    await test('the connection fails after applying: the checkpoint still keeps the result and the next turn does not need to repeat it', async () => {
         const h = harness();
         let failed = false;
-        try { h.run([[plan(false)], [batch]], true); } catch { failed = true; }
+        try { await h.run([[plan(false)], [batch]], true); } catch { failed = true; }
         eq(failed, true); eq(h.session.work?.status, 'failed');
         const saved = parseChat(h.checkpoint())!;
         const restored = new ChatSession(); restored.restore(saved.turns); restored.work = saved.work!; restored.events.push(...saved.events!);
         let proposed = 0;
         const handlers = { ...h.handlers, onState: () => {}, onBatchProposal: async () => { proposed++; return { applied: false }; } };
         let n = 0;
-        settle(restored.ask(h.input(), { chat: async req => {
+        await within(restored.ask(h.input(), { chat: async req => {
             if (n++ === 0) {
                 ok(req.messages.some(m => m.content?.includes('Applied: propose_batch')), 'the earlier result is not in the context');
                 eq(req.messages[req.messages.length - 1].content.includes(goal), true);

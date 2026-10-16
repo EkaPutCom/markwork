@@ -1,10 +1,9 @@
 // A stand-in for markworkd for tests of the TypeScript client: it speaks the same protocol, in memory, in the same
 // order as the real daemon (a reply, then the records right behind it). The real daemon is exercised in daemon-live.ts.
 
-import GLib from 'gi://GLib';
 import type { Link, Timers } from '../../src/agent/daemon/client.js';
 import type { DaemonRecord, ExitInfo, RecordKind, RunState, SpawnSpec } from '../../src/agent/daemon/protocol.js';
-import { settle } from '../framework.js';
+import { within } from '../framework.js';
 
 // Both ends of a connection. Delivery is synchronous, like a read loop that handles several lines in one go.
 class MemoryLink implements Link {
@@ -52,7 +51,7 @@ export class ManualTimers implements Timers {
 
     get pendingDelays(): number[] { return [...this.due.values()].map(d => d.at - this.now).sort((a, b) => a - b); }
 
-    advance(ms: number): void {
+    async advance(ms: number): Promise<void> {
         const target = this.now + ms;
         for (;;) {
             const next = [...this.due.entries()].filter(([, d]) => d.at <= target).sort((a, b) => a[1].at - b[1].at)[0];
@@ -60,16 +59,16 @@ export class ManualTimers implements Timers {
             this.due.delete(next[0]);
             this.now = next[1].at;
             next[1].fn();
-            flush();   // promise continuations may schedule more timers
+            await flush();   // promise continuations may schedule more timers
         }
         this.now = target;
     }
 }
 
 // Runs the main loop a few times so promise continuations that are ready have run.
-export function flush(rounds = 6): void {
+export async function flush(rounds = 6): Promise<void> {
     for (let i = 0; i < rounds; i++) {
-        settle(new Promise<void>(resolve => GLib.idle_add(GLib.PRIORITY_LOW, () => { resolve(); return GLib.SOURCE_REMOVE; })));
+        await within(new Promise<void>(resolve => setTimeout(resolve, 0)));
     }
 }
 

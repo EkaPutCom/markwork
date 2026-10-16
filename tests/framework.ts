@@ -1,23 +1,24 @@
-// A mini test framework used by all test modules: the result recorder and assertion functions.
+// A mini test framework used by all test modules: the result recorder and assertion functions. It reaches the runtime
+// only through the test host (host.ts) and the platform port, so the core's tests run on GJS and on Node.
 
-import GLib from 'gi://GLib';
-import System from 'system';
+import { platform } from '../src/platform/index.js';
+import { host } from './host.js';
 
-const argv = System.programArgs;
-export const opt = (name: string) => argv.includes(`--${name}`);
-export const optVal = (name: string) => argv.find(a => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
+export const opt = (name: string) => host().args.includes(`--${name}`);
+export const optVal = (name: string) => host().args.find(a => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
 
 // The project folder. This module lives in tests/ (source) or dist/chunks/ (build output),
 // so it is computed from the entry location (run-tests) through setRoot.
 export let ROOT = '';
 export function setRoot(url: string): void {
-    ROOT = GLib.path_get_dirname(GLib.path_get_dirname(GLib.filename_from_uri(url)[0]));
+    const { dirname } = platform().paths;
+    ROOT = dirname(dirname(host().pathOfUrl(url)));
 }
 
 // Settings and test files are put in a temporary folder, not ~/.config. It is safe to set
 // after the import because settings.ts only reads XDG_CONFIG_HOME when called.
-export const tmp = GLib.dir_make_tmp('markwork-test-XXXXXX');
-GLib.setenv('XDG_CONFIG_HOME', tmp, true);
+export const tmp = host().makeTempDir();
+host().setenv('XDG_CONFIG_HOME', tmp);
 
 export const errorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e);
 
@@ -25,17 +26,28 @@ export const RED = '\x1b[31m', GREEN = '\x1b[32m', DIM = '\x1b[2m', RESET = '\x1
 
 let passed = 0, failed = 0;
 
-export function section(name: string): void { print(`\n${name}`); }
+export const say = (text: string): void => host().print(text);
 
-export function test(name: string, fn: () => void): void {
+export function section(name: string): void { say(`\n${name}`); }
+
+const pass = (name: string) => { passed++; say(`  ${GREEN}✓${RESET} ${name}`); };
+const fail = (name: string, e: unknown) => { failed++; say(`  ${RED}✗ ${name}${RESET}\n    ${errorMessage(e).split('\n').join('\n    ')}`); };
+
+// A synchronous test is recorded before test() returns; an async one when the returned Promise settles, so a module
+// whose tests wait awaits each test() in turn.
+export function test(name: string, fn: () => void | Promise<void>): Promise<void> {
+    let result: void | Promise<void>;
     try {
-        fn();
-        passed++;
-        print(`  ${GREEN}✓${RESET} ${name}`);
+        result = fn();
     } catch (e) {
-        failed++;
-        print(`  ${RED}✗ ${name}${RESET}\n    ${errorMessage(e).split('\n').join('\n    ')}`);
+        fail(name, e);
+        return Promise.resolve();
     }
+    if (!(result instanceof Promise)) {
+        pass(name);
+        return Promise.resolve();
+    }
+    return result.then(() => pass(name), e => fail(name, e));
 }
 
 // Used by the runner for failures outside test(), e.g. a GUI test that stops halfway.
@@ -54,16 +66,42 @@ export function contains(haystack: string, needle: string): void {
     if (!haystack.includes(needle)) throw new Error(`does not contain ${JSON.stringify(needle)}\n    in: ${JSON.stringify(haystack.slice(0, 300))}`);
 }
 
-// Waits for a Promise to finish while running the main loop (tests are synchronous). Throws on an error or a timeout.
-export function settle<T>(promise: Promise<T>, timeoutMs = 10000): T {
-    let done = false, value: T | undefined, error: unknown;
-    const loop = new GLib.MainLoop(null, false);
-    const finish = () => { done = true; loop.quit(); };
-    promise.then(v => { value = v; finish(); }, e => { error = e; finish(); });
-    const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, timeoutMs, () => { loop.quit(); return GLib.SOURCE_REMOVE; });
-    if (!done) loop.run();
-    if (done) GLib.source_remove(timer);
-    if (!done) throw new Error('The Promise did not finish before the timeout');
-    if (error) throw error;
-    return value as T;
+// A Promise that rejects when the one given has not finished within timeoutMs; await it in a test that runs on every
+// runtime.
+export function within<T>(promise: Promise<T>, timeoutMs = 10000): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const late = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('The Promise did not finish before the timeout')), timeoutMs);
+    });
+    return Promise.race([promise, late]).finally(() => { if (timer) clearTimeout(timer); });
 }
+
+// Waits for a Promise to finish while running the main loop, so a synchronous (GUI) test can use its value. GJS only:
+// a test of the core awaits within() instead. Throws on an error or a timeout.
+export function settle<T>(promise: Promise<T>, timeoutMs = 10000): T {
+    return host().settle(promise, timeoutMs);
+}
+
+// Waits a little, letting timers and I/O run.
+export const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+
+// Polls until cond() holds, letting timers and I/O run in between; fails after timeoutMs.
+export async function until(cond: () => boolean, timeoutMs = 5000): Promise<void> {
+    const end = platform().monotonicMs() + timeoutMs;
+    while (!cond()) {
+        if (platform().monotonicMs() > end) throw new Error('timed out');
+        await pause(1);
+    }
+}
+
+// Test files through the platform port, so a test of the core touches the disk the same way on every runtime.
+export const disk = {
+    join: (...parts: string[]): string => platform().paths.join(...parts),
+    dirname: (path: string): string => platform().paths.dirname(path),
+    write: (path: string, text: string): void => platform().fs.writeText(path, text),
+    read: (path: string): string => platform().fs.readText(path),
+    mkdirs: (path: string): void => platform().fs.makeDirs(path, 0o755),
+    exists: (path: string): boolean => platform().fs.exists(path),
+    isDirectory: (path: string): boolean => platform().fs.isDirectory(path),
+    remove: (path: string): void => platform().fs.remove(path),
+};

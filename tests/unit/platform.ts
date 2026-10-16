@@ -1,13 +1,13 @@
 // The platform port: the credential order (environment, keyring, file) against a fake platform, so no keyring or real
-// config folder is touched, and the runtime-free base64 that builds the git credential header.
+// config folder is touched; the contract of the installed platform (GJS or Node: files, idle work, processes), so every
+// implementation is held to the same behaviour; and the runtime-free base64 that builds the git credential header.
 
-import GLib from 'gi://GLib';
 import { clearCredential, readCredential, saveCredential, type Credential } from '../../src/credentials.js';
 import { Cancellable } from '../../src/cancel.js';
 import { base64 } from '../../src/forge/contribute.js';
-import { gjsPlatform } from '../../src/platform/gjs/index.js';
 import { platform, setPlatform, type Platform } from '../../src/platform/index.js';
-import { section, test, eq, ok, settle, tmp } from '../framework.js';
+import { section, test, eq, ok, within, tmp } from '../framework.js';
+import { host } from '../host.js';
 
 const CREDENTIAL: Credential = { envVar: 'TEST_KEY', schema: 'com.example.test', attributes: { provider: 'x' }, label: 'Test key', file: 'test.key' };
 
@@ -67,58 +67,58 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
 }
 
 // Runs fn with a fake platform installed, then puts the real one back.
-function withPlatform(fake: Platform, fn: () => void): void {
+async function withPlatform(fake: Platform, fn: () => Promise<void>): Promise<void> {
     const real = platform();
     setPlatform(fake);
-    try { fn(); } finally { setPlatform(real); }
+    try { await fn(); } finally { setPlatform(real); }
 }
 
-export function platformTests(): void {
+export async function platformTests(): Promise<void> {
     section('Platform: credentials');
 
-    test('the environment wins over the keyring and the file', () => {
+    await test('the environment wins over the keyring and the file', async () => {
         const { fake, ring, files } = fakePlatform({ env: { TEST_KEY: '  from-env \n' } });
         ring.set('com.example.test|{"provider":"x"}', 'from-ring');
         files.set('/config/markwork/test.key', 'from-file');
-        withPlatform(fake, () => eq(settle(readCredential(CREDENTIAL)), { value: 'from-env', source: 'env' }));
+        await withPlatform(fake, async () => eq(await within(readCredential(CREDENTIAL)), { value: 'from-env', source: 'env' }));
     });
 
-    test('saving goes to the keyring and removes an older fallback file', () => {
+    await test('saving goes to the keyring and removes an older fallback file', async () => {
         const { fake, ring, files } = fakePlatform();
         files.set('/config/markwork/test.key', 'old');
-        withPlatform(fake, () => {
-            eq(settle(saveCredential(CREDENTIAL, 'sekret')), 'keyring');
+        await withPlatform(fake, async () => {
+            eq(await within(saveCredential(CREDENTIAL, 'sekret')), 'keyring');
             eq(ring.get('com.example.test|{"provider":"x"}'), 'sekret');
             ok(!files.has('/config/markwork/test.key'), 'fallback file removed');
-            eq(settle(readCredential(CREDENTIAL)), { value: 'sekret', source: 'keyring' });
+            eq(await within(readCredential(CREDENTIAL)), { value: 'sekret', source: 'keyring' });
         });
     });
 
-    test('without a keyring the secret goes to a file only its owner can read', () => {
+    await test('without a keyring the secret goes to a file only its owner can read', async () => {
         const { fake, files, modes } = fakePlatform({ keyring: false });
-        withPlatform(fake, () => {
-            eq(settle(saveCredential(CREDENTIAL, 'sekret')), 'file');
+        await withPlatform(fake, async () => {
+            eq(await within(saveCredential(CREDENTIAL, 'sekret')), 'file');
             eq(files.get('/config/markwork/test.key'), 'sekret');
             eq(modes.get('/config/markwork/test.key'), 0o600);
-            eq(settle(readCredential(CREDENTIAL)), { value: 'sekret', source: 'file' });
+            eq(await within(readCredential(CREDENTIAL)), { value: 'sekret', source: 'file' });
         });
     });
 
-    test('clearing removes it from the keyring and the file, and a missing one reads as null', () => {
+    await test('clearing removes it from the keyring and the file, and a missing one reads as null', async () => {
         const { fake, ring, files } = fakePlatform();
         ring.set('com.example.test|{"provider":"x"}', 'a');
         files.set('/config/markwork/test.key', 'b');
-        withPlatform(fake, () => {
-            settle(clearCredential(CREDENTIAL));
+        await withPlatform(fake, async () => {
+            await within(clearCredential(CREDENTIAL));
             eq(ring.size + files.size, 0);
-            eq(settle(readCredential(CREDENTIAL)), null);
-            settle(clearCredential(CREDENTIAL));   // nothing left to clear is not an error
+            eq(await within(readCredential(CREDENTIAL)), null);
+            await within(clearCredential(CREDENTIAL));   // nothing left to clear is not an error
         });
     });
 
     section('Platform: cancelling');
 
-    test('cancel runs each listener once, in order, and later cancels do nothing', () => {
+    await test('cancel runs each listener once, in order, and later cancels do nothing', async () => {
         const c = new Cancellable();
         const seen: string[] = [];
         c.onCancel(() => seen.push('a'));
@@ -130,7 +130,7 @@ export function platformTests(): void {
         ok(c.cancelled, 'cancelled');
     });
 
-    test('a listener added after cancelling runs at once; a removed one never runs', () => {
+    await test('a listener added after cancelling runs at once; a removed one never runs', async () => {
         const c = new Cancellable();
         const seen: string[] = [];
         const off = c.onCancel(() => seen.push('removed'));
@@ -142,14 +142,15 @@ export function platformTests(): void {
         eq(seen, ['self', 'late']);
     });
 
-    section('Platform: GJS file system');
+    section(`Platform on ${host().runtime}: files`);
+    const installed = platform();
 
-    test('kind tells files, folders, symbolic links, and missing paths apart without following links', () => {
-        const { fs, paths } = gjsPlatform;
+    await test('kind tells files, folders, symbolic links, and missing paths apart without following links', async () => {
+        const { fs, paths } = installed;
         const dir = paths.join(tmp, 'platform-kind');
         fs.makeDirs(paths.join(dir, 'sub'), 0o755);
         fs.writeText(paths.join(dir, 'a.md'), 'a');
-        GLib.spawn_command_line_sync(`ln -sfn ${GLib.shell_quote(paths.join(dir, 'sub'))} ${GLib.shell_quote(paths.join(dir, 'link'))}`);
+        host().symlink(paths.join(dir, 'sub'), paths.join(dir, 'link'));
         eq(fs.kind(paths.join(dir, 'a.md')), 'file');
         eq(fs.kind(paths.join(dir, 'sub')), 'directory');
         eq(fs.kind(paths.join(dir, 'link')), 'symlink');
@@ -160,8 +161,8 @@ export function platformTests(): void {
         ok(threw, 'listing a missing folder throws');
     });
 
-    test('info and listInfo give kind, size, and a stamp that changes with the contents; watchDir reports a new file', () => {
-        const { fs, paths } = gjsPlatform;
+    await test('info and listInfo give kind, size, and a stamp that changes with the contents; watchDir reports a new file', async () => {
+        const { fs, paths } = installed;
         const dir = paths.join(tmp, 'platform-info');
         fs.makeDirs(dir, 0o755);
         const file = paths.join(dir, 'a.md');
@@ -178,11 +179,11 @@ export function platformTests(): void {
             const stop = fs.watchDir(dir, path => { if (path.endsWith('b.md')) { stop(); resolve(path); } });
             setTimeout(() => fs.writeText(paths.join(dir, 'b.md'), 'new'), 50);
         });
-        eq(settle(seen), paths.join(dir, 'b.md'));
+        eq(await within(seen), paths.join(dir, 'b.md'));
     });
 
-    test('background writes finish through pumpWrites, in order, and report their errors', () => {
-        const { fs, paths } = gjsPlatform;
+    await test('background writes finish through pumpWrites, in order, and report their errors', async () => {
+        const { fs, paths } = installed;
         const file = paths.join(tmp, 'platform-bg.md');
         const results: unknown[] = [];
         fs.startWrite(file, 'first', e => results.push(e));
@@ -192,29 +193,29 @@ export function platformTests(): void {
         eq(fs.readText(file), 'first');
     });
 
-    test('idle work runs until it says stop, and a cancelled one never runs', () => {
-        const { scheduler } = gjsPlatform;
+    await test('idle work runs until it says stop, and a cancelled one never runs', async () => {
+        const { scheduler } = installed;
         let runs = 0, cancelledRan = false;
         const done = new Promise<void>(resolve => scheduler.idle(() => { runs++; if (runs < 3) return true; resolve(); return false; }));
         scheduler.idleAfter(10, () => { cancelledRan = true; })();
-        settle(done);
-        settle(new Promise<void>(resolve => scheduler.idleAfter(30, resolve)));
+        await within(done);
+        await within(new Promise<void>(resolve => scheduler.idleAfter(30, resolve)));
         eq([runs, cancelledRan], [3, false]);
     });
 
-    section('Platform: GJS processes');
+    section(`Platform on ${host().runtime}: processes`);
 
-    test('run collects the output, the exit status, and the extra environment; a missing program gives null', () => {
-        const { processes } = gjsPlatform;
-        const r = settle(processes.run({ argv: ['sh', '-c', 'echo "$GREETING"; echo oops >&2; exit 3'], cwd: tmp, env: { GREETING: 'hello' } }));
+    await test('run collects the output, the exit status, and the extra environment; a missing program gives null', async () => {
+        const { processes } = installed;
+        const r = await within(processes.run({ argv: ['sh', '-c', 'echo "$GREETING"; echo oops >&2; exit 3'], cwd: tmp, env: { GREETING: 'hello' } }));
         eq(r, { status: 3, out: 'hello\n', err: 'oops\n' });
-        eq(settle(processes.run({ argv: ['markwork-no-such-program'], cwd: tmp })), null);
+        eq(await within(processes.run({ argv: ['markwork-no-such-program'], cwd: tmp })), null);
     });
 
-    test('spawn speaks line by line: stdin in, stdout lines out, the exit status after both outputs are drained', () => {
+    await test('spawn speaks line by line: stdin in, stdout lines out, the exit status after both outputs are drained', async () => {
         const lines: string[] = [];
         const ended = new Promise<[number, string]>(resolve => {
-            const child = gjsPlatform.processes.spawn([gjsPlatform.processes.findProgram('sh')!, '-c', 'while read -r l; do echo "got $l"; done; echo bye >&2; exit 4'], tmp, {
+            const child = installed.processes.spawn([installed.processes.findProgram('sh')!, '-c', 'while read -r l; do echo "got $l"; done; echo bye >&2; exit 4'], tmp, {
                 line: text => lines.push(text),
                 exit: (status, stderr) => resolve([status, stderr]),
             });
@@ -222,29 +223,28 @@ export function platformTests(): void {
             child.closeInput();
             ok(!child.write('late'), 'no writes after stdin is closed');
         });
-        eq(settle(ended), [4, 'bye\n']);
+        eq(await within(ended), [4, 'bye\n']);
         eq(lines, ['got one', 'got two']);
     });
 
-    test('stop ends a child that does not end by itself', () => {
+    await test('stop ends a child that does not end by itself', async () => {
         const ended = new Promise<number>(resolve => {
-            const child = gjsPlatform.processes.spawn([gjsPlatform.processes.findProgram('sleep')!, '30'], tmp, { line: () => {}, exit: status => resolve(status) });
+            const child = installed.processes.spawn([installed.processes.findProgram('sleep')!, '30'], tmp, { line: () => {}, exit: status => resolve(status) });
             child.stop();
         });
-        eq(settle(ended), 128 + 15);   // SIGTERM
+        eq(await within(ended), 128 + 15);   // SIGTERM
     });
 
-    test('findProgram finds a program on PATH and not one that does not exist', () => {
-        ok(gjsPlatform.processes.findProgram('sh')?.endsWith('/sh'), 'sh not found');
-        eq(gjsPlatform.processes.findProgram('markwork-no-such-program'), null);
+    await test('findProgram finds a program on PATH and not one that does not exist', async () => {
+        ok(installed.processes.findProgram('sh')?.endsWith('/sh'), 'sh not found');
+        eq(installed.processes.findProgram('markwork-no-such-program'), null);
     });
 
     section('Platform: base64');
 
-    test('matches GLib for every padding length', () => {
-        for (const text of ['', 'e', 'ek', 'eka', 'eka:', 'eka:s', 'eka:sekret', 'ünïcödé:✓']) {
-            const bytes = new TextEncoder().encode(text);
-            eq(base64(bytes), GLib.base64_encode(bytes), JSON.stringify(text));
-        }
+    await test('RFC 4648 for every padding length', async () => {
+        const vectors: [string, string][] = [['', ''], ['e', 'ZQ=='], ['ek', 'ZWs='], ['eka', 'ZWth'], ['eka:', 'ZWthOg=='], ['eka:s', 'ZWthOnM='],
+            ['eka:sekret', 'ZWthOnNla3JldA=='], ['ünïcödé:✓', 'w7xuw69jw7Zkw6k64pyT']];
+        for (const [text, expected] of vectors) eq(base64(new TextEncoder().encode(text)), expected, JSON.stringify(text));
     });
 }

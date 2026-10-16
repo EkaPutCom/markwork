@@ -3,15 +3,15 @@ import { AgentTrace } from '../../src/agent/trace.js';
 import { ChatSession } from '../../src/agent/session.js';
 import type { ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
 import { traceTree, descendants, traceStats, turnEvents, formatMs, formatSize } from '../../src/agent/tracetree.js';
-import { section, test, eq, ok, contains, settle } from '../framework.js';
+import { section, test, eq, ok, contains, within } from '../framework.js';
 
 const files = [{ name: 'a.md', text: '# A\nRelease November 15\n' }];
 const input = { question: 'When is the release?', active: null, selection: '', files, mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 };
 const handlers = { onContext: () => {}, onText: () => {}, onReasoning: () => {} };
 
-export function traceTests(): void {
+export async function traceTests(): Promise<void> {
     section('Agent: activity log');
-    test('streaming reasoning and answers are joined; tools are completed with a result and duration', () => {
+    await test('streaming reasoning and answers are joined; tools are completed with a result and duration', async () => {
         let t = 0;
         const trace = new AgentTrace(() => (t += 50), () => '2026-10-05T10:00:00');
         trace.append('reasoning', 1, 'Check ');
@@ -29,7 +29,7 @@ export function traceTests(): void {
         trace.finish('tool', '1:x', 'failed', 'double');   // without a pair: ignored
         eq(trace.events[1].status, 'ok');
     });
-    test('a huge detail is truncated and the log is limited in count', () => {
+    await test('a huge detail is truncated and the log is limited in count', async () => {
         const trace = new AgentTrace();
         trace.add('note', 'big', 'x'.repeat(50000));
         ok(trace.events[0].detail.length < 21000, 'not truncated');
@@ -37,7 +37,7 @@ export function traceTests(): void {
         eq(trace.events.length, 2000);
         eq(trace.jsonl().trim().split('\n').length, 2000);
     });
-    test('a turn with tools records rounds, reasoning, arguments, results, and tokens', () => {
+    await test('a turn with tools records rounds, reasoning, arguments, results, and tokens', async () => {
         const session = new ChatSession();
         let n = 0;
         const call: ToolCall = { id: 'c1', name: 'search_text', arguments: JSON.stringify({ query: 'release' }) };
@@ -47,7 +47,7 @@ export function traceTests(): void {
             req.onText('November 15.');
             return { usage: { prompt: 150, cached: 100, completion: 8 }, cancelled: false, toolCalls: [], reasoning: '' } as ChatResult;
         } };
-        settle(session.ask(input, provider, 'fake', handlers));
+        await within(session.ask(input, provider, 'fake', handlers));
         const events = session.trace.events;
         const kinds = events.map(e => e.kind);
         for (const k of ['turn', 'round', 'reasoning', 'tool', 'text', 'note'] as const) ok(kinds.includes(k), `no event ${k}`);
@@ -64,18 +64,18 @@ export function traceTests(): void {
         session.clear();
         eq(session.trace.events.length, 0);
     });
-    test('a provider error is recorded as a failed event', () => {
+    await test('a provider error is recorded as a failed event', async () => {
         const session = new ChatSession();
         const provider: Provider = { chat: async () => { throw Error('connection dropped'); } };
         let threw = false;
-        try { settle(session.ask(input, provider, 'fake', handlers)); } catch { threw = true; }
+        try { await within(session.ask(input, provider, 'fake', handlers)); } catch { threw = true; }
         ok(threw, 'the error was not propagated');
         const last = session.trace.events[session.trace.events.length - 1];
         eq(last.kind, 'error');
         contains(last.detail, 'connection dropped');
         eq(session.trace.events.find(e => e.kind === 'round')?.status, 'failed');
     });
-    test('the tree: a turn holds rounds, a round holds its steps, loose notes stay under the turn', () => {
+    await test('the tree: a turn holds rounds, a round holds its steps, loose notes stay under the turn', async () => {
         const t = new AgentTrace(() => 0, () => '2026-10-05T10:00:00');
         t.add('note', 'orphan');
         t.add('turn', 'New turn: q', '', { items: ['a.md'] });
@@ -98,11 +98,11 @@ export function traceTests(): void {
         const stats = traceStats(turnEvents(nodes, nodes[4].event.seq));
         eq([stats.rounds, stats.tools, stats.failed, stats.prompt, stats.completion], [2, 1, 1, 10, 2]);
     });
-    test('durations and sizes are shown short', () => {
+    await test('durations and sizes are shown short', async () => {
         eq([formatMs(7), formatMs(1800), formatMs(75000)], ['7 ms', '1.8 s', '1 min 15 s']);
         eq([formatSize(500), formatSize(3500)], ['500 B', '3.4 KB']);
     });
-    test('a saved log comes back as it was, damaged lines are skipped, and a running event is marked as unfinished', () => {
+    await test('a saved log comes back as it was, damaged lines are skipped, and a running event is marked as unfinished', async () => {
         const t = new AgentTrace(() => 0, () => '2026-10-05T10:00:00');
         t.add('turn', 'New turn: q', 'Question', { items: ['a.md'] });
         t.begin('round', '1', 'Calling', '', 1);

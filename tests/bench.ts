@@ -18,6 +18,7 @@
 // The results are the median, p95, and maximum; the JSON also stores the raw samples.
 
 import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
+import './host-gjs.js';   // the tests reach the runtime through host(), installed before framework.ts
 import GLib from 'gi://GLib';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
