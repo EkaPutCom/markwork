@@ -611,7 +611,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">9b061d3</span><span><span class="era">Adw</span><b>Chapter 8, Layers</b> · <code>AppSettings</code> reads and writes through a <code>SettingsStore</code>; GSettings is the store under GJS and finds each key's GVariant type in the schema. GTK keeps <code>bind()</code> and <code>create_action()</code> through <code>gsettingsOf()</code>, and listeners use <code>settings.onChanged()</code>. The DeepSeek stream moves to <code>platform().httpStream</code>; <code>GI_ALLOWED</code> shrinks to 5.</span></li>
     <li><span class="h">d5017f6</span><span><span class="era">Adw</span><b>Layers</b> · Processes join the port: <code>run()</code> for a program run to the end (git, with the watchdog for a callback GJS loses during garbage collection) and <code>spawn()</code> for a harness spoken to line by line over <code>GLib.IOChannel</code>, both in <code>platform/gjs/process.ts</code>. <code>git.ts</code> and <code>orchestrator.ts</code> drop GLib, its timers become <code>setTimeout</code>; <code>GI_ALLOWED</code> shrinks to 3.</span></li>
     <li><span class="h">62ea652</span><span><span class="era">Adw</span><b>Layers, Chapter 11</b> · <code>files.ts</code>, <code>workspace.ts</code>, and the markworkd links move behind the port (<code>platform/gjs/files.ts</code>, <code>links.ts</code>, idle scheduling), and <code>i18n.ts</code> asks <code>platform().translations</code> while gettext is bound in <code>platform/gjs/i18n.ts</code>. <code>GI_ALLOWED</code> is empty, and a new rule lets the core import only the core.</span></li>
-    <li><span class="h">app</span><span><span class="era">Adw</span><b>Layers</b> · The thirteen <code>window/</code> controllers become <code>app/</code>: they see a document's editor as a <code>TextEditor</code> and the screen as interfaces (<code>ViewScreen</code>, <code>CollabView</code>, <code>PullReviewView</code>, <code>ReviewView</code>, <code>KanbanView</code>) with dialogs passed in, and <code>window.ts</code> implements them on its widgets. <code>app/</code> imports no GI and no <code>ui/</code>.</span></li>
+    <li><span class="h">1418686</span><span><span class="era">Adw</span><b>Layers</b> · The thirteen <code>window/</code> controllers become <code>app/</code>: they see a document's editor as a <code>TextEditor</code> and the screen as interfaces (<code>ViewScreen</code>, <code>CollabView</code>, <code>PullReviewView</code>, <code>ReviewView</code>, <code>KanbanView</code>) with dialogs passed in, and <code>window.ts</code> implements them on its widgets. <code>app/</code> imports no GI and no <code>ui/</code>.</span></li>
   </ol>
 </section>
 
@@ -1698,7 +1698,7 @@ const layers = [
   ['9b061d3', 'Oct 16', 'Adw', 'Settings + stream port', 17943, 3218, 11165, 192, 6],
   ['d5017f6', 'Oct 16', 'Adw', 'Process port', 17943, 2578, 11868, 192, 6],
   ['62ea652', 'Oct 16', 'Adw', 'Core free of GI', 17943, 2203, 12375, 192, 6],
-  ['app', 'Oct 16', 'Adw', 'app/ layer', 16386, 1059, 15293, 190, 6],
+  ['1418686', 'Oct 16', 'Adw', 'app/ layer', 16386, 1059, 15293, 190, 6],
 ];
 function fit(svg, H) {
   const W = Math.max(300, Math.round(svg.parentNode.clientWidth || 900));
