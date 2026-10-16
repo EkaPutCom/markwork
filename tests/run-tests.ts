@@ -38,6 +38,7 @@ import { createContext } from './gui/context.js';
 import { widgetPixbuf } from './widgets.js';
 import { incrementalTests } from './unit/incremental.js';
 import { settingsTests } from './unit/settings.js';
+import { actionTests } from './unit/actions.js';
 import { tableTests } from './unit/table.js';
 import { codeLanguageTests } from './unit/codelang.js';
 import { discardTests } from './unit/discard.js';
@@ -87,6 +88,7 @@ function runUnitTests(): void {
     settle(runCoreTests(), 30 * 60 * 1000);
     incrementalTests();
     settingsTests();
+    actionTests();
     tableTests();
     codeLanguageTests();
     discardTests();

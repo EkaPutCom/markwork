@@ -15,18 +15,15 @@ import { _, fmt } from '../i18n.js';
 import { missingField, withField } from '../markdown/layouthint.js';
 import { errorMessage, type Doc, type DocumentHost, type TextEditor } from './document.js';
 import type { HomeData } from './home.js';
+import { commandIds } from './commands.js';
 
-// Text editing actions: off while a board, a list, or Home hides the text.
-export const TEXT_ACTIONS = new Set([
-    'find', 'replace', 'bold', 'italic', 'strike', 'inline-code', 'highlight', 'link', 'image', 'zoom-image', 'codeblock', 'table',
-    'quote', 'ulist', 'olist', 'heading0', 'heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6',
-    'table-row-below', 'table-row-above', 'table-delete-row', 'table-col-right', 'table-col-left', 'table-delete-col',
-    'table-align-left', 'table-align-center', 'table-align-right', 'table-format',
-]);
+// Which commands apply to which view is part of the registry (app/commands.ts).
+// Text editing commands: off while a board, a list, or Home hides the text.
+const TEXT_ACTIONS = commandIds('text');
 // Actions that are meaningless on Home (there is no text to save or undo).
-const DOCUMENT_ACTIONS = ['save', 'save-as', 'export-html', 'undo', 'redo', 'kanban-view', 'layout'];
+const DOCUMENT_ACTIONS = commandIds('document');
 // Actions that need a board or a list to act on.
-const STRUCTURED_ACTIONS = ['fields-edit'];
+const STRUCTURED_ACTIONS = commandIds('structured');
 
 // What the Fields… dialog is shown.
 export interface SchemaDialogOptions {
