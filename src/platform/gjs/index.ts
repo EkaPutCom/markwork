@@ -1,12 +1,12 @@
-// The platform port on GJS: GLib/Gio for files, paths, and processes, libsecret for the keyring, libsoup 3 for HTTP. The only place
+// The platform port on GJS: GLib/Gio for files, paths, processes, idle work, and daemon links, libsecret for the keyring, libsoup 3 for HTTP. The only place
 // outside the base modules where the core's runtime needs meet gi://.
 
 import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
-import { fileExists, readTextFile, writeTextFile } from '../../files.js';
-import { trashEntry } from '../../fileops.js';
-import type { EntryKind, FileSystem, Platform, Secrets } from '../index.js';
+import type { Platform, Scheduler, Secrets } from '../index.js';
+import { gjsFiles } from './files.js';
+import { gettextTranslations } from './i18n.js';
 import { soupStreamTransport, soupTransport } from './http.js';
+import { gjsLinks } from './links.js';
 import { gjsProcesses } from './process.js';
 
 // libsecret is loaded when needed; a missing typelib or a dead keyring service must not kill the app.
@@ -51,45 +51,24 @@ const secrets: Secrets = {
     },
 };
 
-function listDir(dir: string): string[] {
-    const enumerator = Gio.File.new_for_path(dir).enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
-    const names: string[] = [];
-    try {
-        for (let info = enumerator.next_file(null); info; info = enumerator.next_file(null)) names.push(info.get_name());
-    } finally {
-        enumerator.close(null);
-    }
-    return names;
-}
-
-function entryKind(path: string): EntryKind {
-    let info: Gio.FileInfo;
-    try {
-        info = Gio.File.new_for_path(path).query_info('standard::is-symlink,standard::type', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
-    } catch (e) {
-        if (e instanceof GLib.Error && e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.NOT_FOUND)) return 'missing';
-        throw e;
-    }
-    if (info.get_is_symlink()) return 'symlink';
-    const type = info.get_file_type();
-    return type === Gio.FileType.REGULAR ? 'file' : type === Gio.FileType.DIRECTORY ? 'directory' : 'other';
-}
-
-const fs: FileSystem = {
-    readText: readTextFile,
-    writeText: writeTextFile,
-    exists: fileExists,
-    remove: path => { Gio.File.new_for_path(path).delete(null); },
-    makeDirs: (path, mode) => { GLib.mkdir_with_parents(path, mode); },
-    setMode: (path, mode) => { Gio.File.new_for_path(path).set_attribute_uint32('unix::mode', mode, Gio.FileQueryInfoFlags.NONE, null); },
-    list: listDir,
-    kind: entryKind,
-    isDirectory: path => GLib.file_test(path, GLib.FileTest.IS_DIR),
-    trash: trashEntry,
+// Idle sources run after drawing and input (GLib.PRIORITY_DEFAULT_IDLE), so background work never delays a frame.
+const scheduler: Scheduler = {
+    idle(fn) {
+        let id = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            if (fn()) return GLib.SOURCE_CONTINUE;
+            id = 0;
+            return GLib.SOURCE_REMOVE;
+        });
+        return () => { if (id) { GLib.source_remove(id); id = 0; } };
+    },
+    idleAfter(ms, fn) {
+        let id = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, ms, () => { id = 0; fn(); return GLib.SOURCE_REMOVE; });
+        return () => { if (id) { GLib.source_remove(id); id = 0; } };
+    },
 };
 
 export const gjsPlatform: Platform = {
-    fs,
+    fs: gjsFiles,
     paths: {
         join: (...parts) => GLib.build_filenamev(parts),
         dirname: path => GLib.path_get_dirname(path),
@@ -102,6 +81,9 @@ export const gjsPlatform: Platform = {
     http: soupTransport,
     httpStream: soupStreamTransport,
     processes: gjsProcesses,
+    scheduler,
+    links: gjsLinks,
+    translations: gettextTranslations,
     env: name => GLib.getenv(name),
     monotonicMs: () => GLib.get_monotonic_time() / 1000,
 };

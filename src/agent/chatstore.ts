@@ -2,6 +2,7 @@
 // The file format is in transcript.ts. Dot folders are not read as manuscripts by the assistant
 // (project.ts) and do not show in the Files tree, so history does not get mixed with the manuscript.
 
+import { fileExists, readTextFile, trashFile, writeTextFile } from '../files.js';
 import { platform } from '../platform/index.js';
 import { chatFileName, parseChat, serializeChat, titleFrom, type SavedChat } from './transcript.js';
 
@@ -14,7 +15,6 @@ export interface ChatSummary {
     turns: number;
 }
 
-const fs = () => platform().fs;
 const join = (...parts: string[]) => platform().paths.join(...parts);
 
 export const chatsDir = (root: string): string => join(root, '.markwork', 'chats');
@@ -31,18 +31,18 @@ export { titleFrom };
 // Save a conversation. path = an existing file (overwritten); null = create a new file. Returns its path.
 export function saveChat(root: string, chat: SavedChat, path: string | null): string {
     const dir = chatsDir(root);
-    fs().makeDirs(dir, 0o755);
+    platform().fs.makeDirs(dir, 0o755);
     // History contains manuscript quotes: do not get committed by accident. Delete this file to allow it.
     const ignore = join(root, '.markwork', '.gitignore');
-    if (!fs().exists(ignore)) fs().writeText(ignore, '*\n');
+    if (!fileExists(ignore)) writeTextFile(ignore, '*\n');
     let target = path;
     if (!target) {
         const name = chatFileName(chat.created, chat.title);
         const base = name.replace(/\.md$/, '');
         target = join(dir, name);
-        for (let n = 2; fs().exists(target); n++) target = join(dir, `${base}-${n}.md`);
+        for (let n = 2; fileExists(target); n++) target = join(dir, `${base}-${n}.md`);
     }
-    fs().writeText(target, serializeChat(chat));
+    writeTextFile(target, serializeChat(chat));
     return target;
 }
 
@@ -52,13 +52,13 @@ export const chatLogPath = (path: string): string => path.replace(/\.md$/, '') +
 // jsonl = '' removes the file (an empty log leaves nothing behind).
 export function saveChatLog(path: string, jsonl: string): void {
     const file = chatLogPath(path);
-    if (jsonl) fs().writeText(file, jsonl);
-    else if (fs().exists(file)) fs().remove(file);
+    if (jsonl) writeTextFile(file, jsonl);
+    else if (fileExists(file)) platform().fs.remove(file);
 }
 
 export function loadChatLog(path: string): string {
     try {
-        return fs().readText(chatLogPath(path));
+        return readTextFile(chatLogPath(path));
     } catch (e) {
         return '';
     }
@@ -66,7 +66,7 @@ export function loadChatLog(path: string): string {
 
 export function loadChat(path: string): SavedChat | null {
     try {
-        return parseChat(fs().readText(path));
+        return parseChat(readTextFile(path));
     } catch (e) {
         return null;
     }
@@ -78,7 +78,7 @@ export function listChats(root: string): ChatSummary[] {
     const found: ChatSummary[] = [];
     let names: string[] = [];
     try {
-        names = fs().list(dir);
+        names = platform().fs.list(dir);
     } catch (e) {
         return [];
     }
@@ -94,7 +94,7 @@ export function listChats(root: string): ChatSummary[] {
 }
 
 export function deleteChat(path: string): void {
-    fs().trash(path);
+    trashFile(path);
     const log = chatLogPath(path);
-    if (fs().exists(log)) fs().trash(log);
+    if (fileExists(log)) trashFile(log);
 }

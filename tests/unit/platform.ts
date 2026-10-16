@@ -29,6 +29,11 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
             kind: path => files.has(path) ? 'file' : 'missing',
             isDirectory: () => false,
             trash: path => { files.delete(path); },
+            startWrite: (path, text, done) => { files.set(path, text); done(null); },
+            pumpWrites: () => {},
+            info: path => { if (!files.has(path)) throw new Error(`no ${path}`); return { name: path.slice(path.lastIndexOf('/') + 1), kind: 'file', size: files.get(path)!.length, stamp: '' }; },
+            listInfo: () => [],
+            watchDir: () => () => {},
         },
         paths: {
             join: (...parts) => parts.join('/'),
@@ -45,6 +50,9 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
         },
         http: async () => ({ status: 200, body: '' }),
         httpStream: async () => { throw new Error('no network in this fake'); },
+        scheduler: { idle: () => () => {}, idleAfter: () => () => {} },
+        translations: { text: t => t, plural: (one, many, n) => n === 1 ? one : many, context: (_c, t) => t },
+        links: { socket: () => { throw new Error('no daemon in this fake'); }, command: () => { throw new Error('no daemon in this fake'); } },
         processes: { run: async () => null, spawn: () => { throw new Error('no processes in this fake'); }, findProgram: () => null, hostName: () => 'fake' },
         env: name => options.env?.[name] ?? null,
         monotonicMs: () => 0,
@@ -144,6 +152,48 @@ export function platformTests(): void {
         let threw = false;
         try { fs.list(paths.join(dir, 'nope')); } catch (e) { threw = true; }
         ok(threw, 'listing a missing folder throws');
+    });
+
+    test('info and listInfo give kind, size, and a stamp that changes with the contents; watchDir reports a new file', () => {
+        const { fs, paths } = gjsPlatform;
+        const dir = paths.join(tmp, 'platform-info');
+        fs.makeDirs(dir, 0o755);
+        const file = paths.join(dir, 'a.md');
+        fs.writeText(file, 'one');
+        const before = fs.info(file);
+        eq([before.name, before.kind, before.size], ['a.md', 'file', 3]);
+        fs.writeText(file, 'three');
+        ok(fs.info(file).stamp !== before.stamp, 'stamp did not change');
+        eq(fs.listInfo(dir).map(e => [e.name, e.kind]), [['a.md', 'file']]);
+        let threw = false;
+        try { fs.info(paths.join(dir, 'nope')); } catch (e) { threw = true; }
+        ok(threw, 'info of a missing path throws');
+        const seen = new Promise<string>(resolve => {
+            const stop = fs.watchDir(dir, path => { if (path.endsWith('b.md')) { stop(); resolve(path); } });
+            setTimeout(() => fs.writeText(paths.join(dir, 'b.md'), 'new'), 50);
+        });
+        eq(settle(seen), paths.join(dir, 'b.md'));
+    });
+
+    test('background writes finish through pumpWrites, in order, and report their errors', () => {
+        const { fs, paths } = gjsPlatform;
+        const file = paths.join(tmp, 'platform-bg.md');
+        const results: unknown[] = [];
+        fs.startWrite(file, 'first', e => results.push(e));
+        fs.startWrite(paths.join(tmp, 'no-such-folder', 'x.md'), 'x', e => results.push(e ? 'error' : e));
+        while (results.length < 2) fs.pumpWrites(true);
+        ok(results.includes(null) && results.includes('error'), JSON.stringify(results));
+        eq(fs.readText(file), 'first');
+    });
+
+    test('idle work runs until it says stop, and a cancelled one never runs', () => {
+        const { scheduler } = gjsPlatform;
+        let runs = 0, cancelledRan = false;
+        const done = new Promise<void>(resolve => scheduler.idle(() => { runs++; if (runs < 3) return true; resolve(); return false; }));
+        scheduler.idleAfter(10, () => { cancelledRan = true; })();
+        settle(done);
+        settle(new Promise<void>(resolve => scheduler.idleAfter(30, resolve)));
+        eq([runs, cancelledRan], [3, false]);
     });
 
     section('Platform: GJS processes');

@@ -37,10 +37,24 @@ export class RuntimeMissing extends Error {}
 // What is at a path, without following a symbolic link.
 export type EntryKind = 'missing' | 'file' | 'directory' | 'symlink' | 'other';
 
-// Synchronous UTF-8 text files and folders. Each call throws on failure; handling is up to the caller.
+// A file or folder as a listing or a lookup sees it, without following a symbolic link. stamp changes whenever the
+// contents may have (size and modification time); it is compared, never parsed.
+export interface EntryInfo {
+    name: string;
+    kind: EntryKind;
+    size: number;
+    stamp: string;
+}
+
+// Raw UTF-8 text files and folders: no queueing, no change notices (files.ts adds those for the app). Each call throws on
+// failure; handling is up to the caller.
 export interface FileSystem {
     readText(path: string): string;
-    writeText(path: string, text: string): void;
+    writeText(path: string, text: string): void;      // atomic: a reader sees the old file or the new one
+    // A write off the main thread (atomic, synced to disk). done(error) runs during startWrite() when the write cannot
+    // begin, otherwise during pumpWrites(); error is null on success.
+    startWrite(path: string, text: string, done: (error: unknown) => void): void;
+    pumpWrites(wait: boolean): void;                   // run finished writes' done; wait = block until one has finished
     exists(path: string): boolean;
     remove(path: string): void;
     makeDirs(path: string, mode: number): void;
@@ -49,6 +63,11 @@ export interface FileSystem {
     kind(path: string): EntryKind;    // 'missing' only when nothing is there; any other error (no permission) throws
     isDirectory(path: string): boolean;   // a folder, also through a symbolic link
     trash(path: string): void;        // to the desktop trash, so it can be restored
+    info(path: string): EntryInfo;    // throws when nothing is there
+    listInfo(dir: string): EntryInfo[];
+    // Calls onChange with the path of each entry in dir that is created, deleted, changed, or moved (both names for a
+    // move). Throws when the folder cannot be watched (a network file system). Returns a function that stops watching.
+    watchDir(dir: string, onChange: (path: string) => void): () => void;
 }
 
 export interface Paths {
@@ -109,6 +128,34 @@ export interface SettingsStore {
     onChanged(listener: (key: string) => void): () => void;   // returns a function that stops listening
 }
 
+// Work that may wait for the window: it runs after drawing and input. fn returns true to run again on the next idle turn.
+// Each returns a function that cancels it (harmless after it ran).
+export interface Scheduler {
+    idle(fn: () => boolean): () => void;
+    idleAfter(ms: number, fn: () => void): () => void;
+}
+
+// A connection that carries lines both ways (to markworkd). onClose fires once; reason is null for a clean close.
+export interface LineLink {
+    onLine: ((line: string) => void) | null;
+    onClose: ((reason: string | null) => void) | null;
+    send(line: string): boolean;      // false if the link is already closed
+    close(): void;
+}
+export interface Links {
+    socket(path: string): LineLink;   // a Unix socket on this machine; throws if nobody listens there
+    // A command's stdin and stdout (ssh … markworkd bridge); it ends when the command does, with its stderr tail as
+    // the reason. argv[0] is looked up on PATH.
+    command(argv: string[]): LineLink;
+}
+
+// The interface text in the user's language (gettext under GJS). Without a translation the source text comes back.
+export interface Translations {
+    text(text: string): string;
+    plural(one: string, many: string, n: number): string;
+    context(context: string, text: string): string;
+}
+
 export interface Platform {
     readonly fs: FileSystem;
     readonly paths: Paths;
@@ -116,6 +163,9 @@ export interface Platform {
     readonly http: Transport;
     readonly httpStream: StreamTransport;
     readonly processes: Processes;
+    readonly scheduler: Scheduler;
+    readonly links: Links;
+    readonly translations: Translations;
     env(name: string): string | null;
     monotonicMs(): number;            // a clock that only moves forward, in milliseconds; for measuring durations
 }
@@ -124,6 +174,11 @@ let current: Platform | null = null;
 
 export function setPlatform(platform: Platform): void {
     current = platform;
+}
+
+// For i18n.ts: code that runs before an entry point installed a platform (or without one) shows the source text.
+export function installedPlatform(): Platform | null {
+    return current;
 }
 
 export function platform(): Platform {

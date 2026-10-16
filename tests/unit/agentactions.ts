@@ -3,6 +3,7 @@
 // except one test that runs real git in a temporary folder.
 
 import Gio from 'gi://Gio';
+import System from 'system';
 import GLib from 'gi://GLib';
 import type { SourceFile } from '../../src/agent/context.js';
 import { changeState, invertChange, planChange, preflight, type Change } from '../../src/agent/changes.js';
@@ -240,6 +241,10 @@ export function agentActionTests(): void {
     });
 
     section('Agent: Git history tools');
+    // Earlier unit tests run without a main loop and can leave GC pending; git's async callback (and the runGit watchdog,
+    // which is a JS callback too) arriving at that time is blocked by GJS ("callback during garbage collection"), and the
+    // run never settles. In the app the main loop always runs. Same as the forge and DeepSeek tests.
+    System.gc();
 
     test('parseGitCall validates the commit and file; formatGit tidies the log, diff, and file contents', () => {
         eq(parseGitCall('git_log', '{}'), { kind: 'log', file: null, limit: 15 });

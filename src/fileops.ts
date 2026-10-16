@@ -3,7 +3,7 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import { flushWrites, notifyDiskChange } from './files.js';
+import { flushWrites, notifyDiskChange, trashFile } from './files.js';
 
 const MARKDOWN_EXTENSION = /\.(md|markdown|mdown|mkd)$/i;
 
@@ -140,12 +140,4 @@ export function renameEntry(path: string, rawName: string): string | null {
 }
 
 // Move to the Trash (recoverable), not a permanent delete.
-export function trashEntry(path: string): void {
-    try {
-        flushWrites(path);
-        Gio.File.new_for_path(path).trash(null);
-    } catch (e) {
-        throw new Error(`Failed to delete: ${(e as Error).message}`);
-    }
-    notifyDiskChange(path);
-}
+export const trashEntry = trashFile;

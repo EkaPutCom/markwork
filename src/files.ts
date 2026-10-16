@@ -1,19 +1,29 @@
-// Read/write UTF-8 text files. Throws on failure; handling is up to the caller.
+// Read/write UTF-8 text files the way the app does: a write first waits for older background writes to the same
+// path, and every change is announced (onDiskChange). Throws on failure; handling is up to the caller. The disk itself
+// is the platform's (platform().fs; GLib and Gio under GJS).
 
-import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
-
-const enc = new TextEncoder();
-const dec = new TextDecoder();
+import { platform } from './platform/index.js';
 
 export function readTextFile(path: string): string {
-    const [, bytes] = GLib.file_get_contents(path);
-    return dec.decode(bytes);
+    return platform().fs.readText(path);
 }
 
 export function writeTextFile(path: string, text: string): void {
     flushWrites(path);
-    GLib.file_set_contents(path, enc.encode(text));
+    platform().fs.writeText(path, text);
+    notifyDiskChange(path);
+}
+
+export const fileExists = (path: string): boolean => platform().fs.exists(path);
+
+// Move to the Trash (recoverable), not a permanent delete.
+export function trashFile(path: string): void {
+    try {
+        flushWrites(path);
+        platform().fs.trash(path);
+    } catch (e) {
+        throw new Error(`Failed to delete: ${(e as Error).message}`);
+    }
     notifyDiskChange(path);
 }
 
@@ -41,33 +51,20 @@ interface Queue {
 }
 const queues = new Map<string, Queue>();
 
-// Background writes report back on their own main context, not the default one. Waiting for them
-// (flushWrites) then runs only their completions, never other application callbacks such as
-// timers or input. The default main loop drives this context with a short timer while writes run.
-const ioContext = new GLib.MainContext();
-// Finished writes whose callbacks have not been called yet. Called only from the default main loop.
+// Finished writes whose callbacks have not been called yet. Called only from the main loop, never from flushWrites.
 const finished: { done: Done[]; error: unknown }[] = [];
-let pumpTimer = 0;
+let pumpTimer: ReturnType<typeof setInterval> | null = null;
 
-function pumpIo(wait: boolean): void {
-    ioContext.push_thread_default();
-    try {
-        if (wait) ioContext.iteration(true);
-        while (ioContext.iteration(false)) { /* run all ready completions */ }
-    } finally {
-        ioContext.pop_thread_default();
-    }
-}
-
+// The main loop drives the background writes with a short timer while any are running.
 function ensurePump(): void {
     if (pumpTimer) return;
-    pumpTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 4, () => {
-        pumpIo(false);
+    pumpTimer = setInterval(() => {
+        platform().fs.pumpWrites(false);
         for (const { done, error } of finished.splice(0)) for (const d of done) d(error);
-        if (queues.size || finished.length) return GLib.SOURCE_CONTINUE;
-        pumpTimer = 0;
-        return GLib.SOURCE_REMOVE;
-    });
+        if (queues.size || finished.length) return;
+        clearInterval(pumpTimer!);
+        pumpTimer = null;
+    }, 4);
 }
 
 function start(path: string, text: string, queue: Queue): void {
@@ -83,26 +80,11 @@ function start(path: string, text: string, queue: Queue): void {
             queues.delete(path);
         }
     };
-    ioContext.push_thread_default();
-    try {
-        Gio.File.new_for_path(path).replace_contents_bytes_async(new GLib.Bytes(enc.encode(text)), null, false,
-            Gio.FileCreateFlags.NONE, null, (file, result) => {
-                try {
-                    file!.replace_contents_finish(result);
-                    complete(null);
-                } catch (e) {
-                    complete(e);
-                }
-            });
-    } catch (e) {
-        complete(e);
-    } finally {
-        ioContext.pop_thread_default();
-    }
+    platform().fs.startWrite(path, text, complete);
 }
 
-// Write a file without blocking the main thread: Gio writes to a temporary file, fsyncs, then
-// atomically replaces the target file in a worker thread. Used by autosave so the fsync pause
+// Write a file without blocking the main thread: the platform writes to a temporary file, fsyncs, then
+// atomically replaces the target file off the main thread. Used by autosave so the fsync pause
 // (can be tens of milliseconds on a slow disk) is not felt while the user keeps typing.
 // Writes to the same path finish in the order they were requested; a write that has not started
 // yet is replaced by a newer one. done is called later from the default main loop, never during
@@ -126,7 +108,6 @@ export function writeTextFileAsync(path: string, text: string, done: Done): void
 // only a few milliseconds.
 export function flushWrites(path: string): void {
     const busy = () => [...queues.keys()].some(p => p === path || p.startsWith(`${path}/`));
-    while (busy()) pumpIo(true);
+    while (busy()) platform().fs.pumpWrites(true);
 }
 
-export const fileExists = (path: string): boolean => GLib.file_test(path, GLib.FileTest.EXISTS);

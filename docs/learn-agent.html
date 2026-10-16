@@ -310,7 +310,7 @@ input[type=text] { width: 100%; }
   <div class="kpis">
     <div class="kpi"><div class="what">Tools offered to the model</div><div class="big">19</div><div class="from">from 4 · f6a4cc7 → 69d9151</div></div>
     <div class="kpi"><div class="what">Assistant tests (unit + GUI)</div><div class="big">253</div><div class="from">from 65 · all without a paid API</div></div>
-    <div class="kpi"><div class="what">Code in <code>src/agent/</code></div><div class="big">5,854 lines</div><div class="from">from 1,099 lines in 8 files → 32 files</div></div>
+    <div class="kpi"><div class="what">Code in <code>src/agent/</code></div><div class="big">5,692 lines</div><div class="from">from 1,099 lines in 8 files → 32 files</div></div>
     <div class="kpi"><div class="what">Work folder writes without approval</div><div class="big">0</div><div class="from">all through <code>Change</code> + preflight; the external harness only in another project folder (Chapter 9)</div></div>
   </div>
   <nav class="toc" aria-label="Table of contents">
@@ -363,6 +363,7 @@ input[type=text] { width: 100%; }
     <li><span class="h">69d9151</span><span><b>Chapter 11</b> · The typed fields and layouts reach the agent: <code>describe_schema</code> and <code>query_notes</code> to read them, <code>edit_note</code> and <code>edit_schema</code> to change them, every value checked against the document's own schema, and <code>verify_work</code> learns the <code>field</code> kind.</span></li>
     <li><span class="h">f56b9e1</span><span><b>Four rules</b> · “Pure” now also means “no GIO”: stopping a turn, a waiting proposal, or a commit message uses <code>Cancellable</code> from <code>cancel.ts</code> instead of <code>Gio.Cancellable</code>, the symlink check in <code>agent/path.ts</code> asks <code>platform().fs.kind()</code> (which never follows a link), and saved conversations go through <code>platform().fs</code>. Only <code>deepseek.ts</code> (libsoup streaming) and <code>daemon/streamlink.ts</code> still import <code>gi://</code>.</span></li>
     <li><span class="h">9b061d3</span><span><b>Four rules</b> · The DeepSeek client reads its SSE answer through <code>platform().httpStream</code> instead of libsoup directly: the same retries, the same partial answer when Stop is pressed mid-stream (now tested against a held-open fake stream), and a missing libsoup is a <code>RuntimeMissing</code> that is never retried. <code>agent/</code> imports <code>gi://</code> only in <code>daemon/streamlink.ts</code>.</span></li>
+    <li><span class="h">empty</span><span><b>Four rules</b> · The markworkd links (a Unix socket, or <code>ssh … markworkd bridge</code>) come from <code>platform().links</code>; the IOChannel code moves unchanged to <code>platform/gjs/links.ts</code>. Every module of <code>agent/</code> is now free of GI, and the layer check makes sure nothing it imports brings GI back.</span></li>
   </ol>
 </section>
 
@@ -1215,6 +1216,7 @@ const journey = [
   { c: '69d9151', t: 'fields + layouts for the agent', read: 9, propose: 8, control: 2, tests: 250, lines: 4699, files: 25 },
   { c: 'f56b9e1', t: 'agent/ without GIO', read: 9, propose: 8, control: 2, tests: 252, lines: 5893, files: 32 },
   { c: '9b061d3', t: 'DeepSeek on the stream port', read: 9, propose: 8, control: 2, tests: 253, lines: 5854, files: 32 },
+  { c: 'empty', t: 'agent/ free of GI', read: 9, propose: 8, control: 2, tests: 253, lines: 5692, files: 32 },
 ];
 function toolsChart() {
   const svg = $('#chart-tools');

@@ -2,8 +2,9 @@
 // [[note]] suggestions and links, and harness prompts.
 //
 // - A snapshot per folder holds the list of Markdown files with their size and modification time. Every folder in
-//   it is watched with a Gio.FileMonitor, so the folder is only walked again after something changed. Changes the
-//   app makes itself arrive at once through files.ts (onDiskChange), before the monitor reports them. A folder
+//   it is watched (platform().fs.watchDir; a Gio.FileMonitor under GJS), so the folder is only walked again after
+//   something changed. Changes the app makes itself arrive at once through files.ts (onDiskChange), before the
+//   monitor reports them. A folder
 //   that cannot be fully watched (too many folders, or a file system without monitors) is walked on every request,
 //   as before. A read can ask to walk again regardless (see Freshness).
 // - File contents are cached by size and modification time, least recently used first out, up to a memory limit.
@@ -12,9 +13,8 @@
 //   request that arrives before warming finished completes the remaining walk synchronously.
 // - Unsaved documents are read from their editor (the `unsaved` overlay), not from disk.
 
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import { onDiskChange, readTextFile } from './files.js';
+import { platform } from './platform/index.js';
 
 export interface WorkspaceFile {
     name: string;   // relative to the folder, with '/'
@@ -42,7 +42,7 @@ const MAX_ENTRIES = 20_000;                // the walk stops after this many Mar
 const MAX_WATCHED_DIRS = 512;              // more folders than this: no monitors, walk on every request
 const DEFAULT_CACHE_UNITS = 32 * 1024 * 1024;   // cached contents, in UTF-16 code units (≈ 64 MB)
 const SNAPSHOTS = 4;                       // folders kept (work folder, a document's folder, a board's folder)
-const SLICE_US = 6000;                     // time per idle slice while warming
+const SLICE_MS = 6;                        // time per idle slice while warming
 const RESCAN_DELAY_MS = 150;               // consecutive changes are merged into one background walk
 
 interface Entry {
@@ -54,32 +54,26 @@ interface Entry {
 
 type Item = Entry | { dir: string };
 
-const ATTRIBUTES = 'standard::name,standard::type,standard::size,time::modified,time::modified-usec';
-const stampOf = (info: Gio.FileInfo): string =>
-    `${info.get_size()}:${info.get_modification_date_time()?.to_unix() ?? 0}:${info.get_attribute_uint32('time::modified-usec')}`;
-
 // Walk the Markdown files under root alphabetically (excluding dot files and the tools' built-in folders). Yields
 // every folder before its contents, then its files; one folder listing is the unit of work between yields.
 function* walk(dir: string, prefix: string): Generator<Item> {
-    let children: Gio.FileInfo[] = [];
+    let children;
     try {
-        const enumerator = Gio.File.new_for_path(dir).enumerate_children(ATTRIBUTES, Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
-        for (let info = enumerator.next_file(null); info; info = enumerator.next_file(null)) children.push(info);
-        enumerator.close(null);
+        children = platform().fs.listInfo(dir);
     } catch (e) {
         return;
     }
     yield { dir };
-    children.sort((a, b) => a.get_name().localeCompare(b.get_name(), 'id', { numeric: true }));
+    children.sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true }));
     for (const info of children) {
-        const name = info.get_name();
+        const name = info.name;
         if (name.startsWith('.')) continue;
-        const path = GLib.build_filenamev([dir, name]);
-        const type = info.get_file_type();
-        if (type === Gio.FileType.DIRECTORY) {
+        const path = platform().paths.join(dir, name);
+        // Symbolic links are not followed (listInfo reports them as such).
+        if (info.kind === 'directory') {
             if (!SKIPPED_DIRS.has(name)) yield* walk(path, `${prefix}${name}/`);
-        } else if (type === Gio.FileType.REGULAR && MARKDOWN_FILE.test(name)) {
-            yield { path, name: `${prefix}${name}`, size: info.get_size(), stamp: stampOf(info) };
+        } else if (info.kind === 'file' && MARKDOWN_FILE.test(name)) {
+            yield { path, name: `${prefix}${name}`, size: info.size, stamp: info.stamp };
         }
     }
 }
@@ -94,8 +88,8 @@ class Snapshot {
     scan: Generator<void> | null = null;
     prefetch: Generator<void> | null = null;
     warm = false;                 // keep walking in the background after changes
-    rescanTimer = 0;
-    readonly monitors = new Map<string, Gio.FileMonitor>();
+    rescanTimer: (() => void) | null = null;          // cancels the pending background walk
+    readonly monitors = new Map<string, () => void>();   // folder → stops watching it
 
     constructor(readonly root: string) {}
 
@@ -105,10 +99,10 @@ class Snapshot {
     contains(path: string): boolean { return path === this.root || path.startsWith(`${this.root}/`); }
 
     close(): void {
-        for (const monitor of this.monitors.values()) monitor.cancel();
+        for (const stop of this.monitors.values()) stop();
         this.monitors.clear();
-        if (this.rescanTimer) GLib.source_remove(this.rescanTimer);
-        this.rescanTimer = 0;
+        this.rescanTimer?.();
+        this.rescanTimer = null;
         this.scan = this.prefetch = null;
     }
 }
@@ -117,7 +111,7 @@ export class WorkspaceRepository {
     private readonly snapshots = new Map<string, Snapshot>();
     private readonly texts = new Map<string, { stamp: string; text: string }>();   // insertion order = least recently used first
     private cachedUnits = 0;
-    private idle = 0;
+    private idle: (() => void) | null = null;   // cancels the idle work
     private readonly stopListening: () => void;
 
     // unsaved: absolute path → editor text of documents with unsaved changes.
@@ -167,15 +161,15 @@ export class WorkspaceRepository {
         this.stopListening();
         for (const snap of this.snapshots.values()) snap.close();
         this.snapshots.clear();
-        if (this.idle) GLib.source_remove(this.idle);
-        this.idle = 0;
+        this.idle?.();
+        this.idle = null;
         this.texts.clear();
         this.cachedUnits = 0;
     }
 
     // For tests: the contents currently cached, and whether background work is still queued.
     get cacheSize(): number { return this.cachedUnits; }
-    get busy(): boolean { return this.idle !== 0; }
+    get busy(): boolean { return this.idle !== null; }
 
     // ---------- Snapshots ----------
 
@@ -229,20 +223,14 @@ export class WorkspaceRepository {
     // Monitor exactly the folders of the last walk; give up on monitoring when there are too many.
     private watch(snap: Snapshot, dirs: string[]): void {
         const wanted = new Set(dirs.length <= MAX_WATCHED_DIRS ? dirs : []);
-        for (const [dir, monitor] of snap.monitors) {
-            if (!wanted.has(dir)) { monitor.cancel(); snap.monitors.delete(dir); }
+        for (const [dir, stop] of snap.monitors) {
+            if (!wanted.has(dir)) { stop(); snap.monitors.delete(dir); }
         }
         snap.watched = dirs.length > 0 && wanted.size === dirs.length;
         for (const dir of wanted) {
             if (snap.monitors.has(dir)) continue;
             try {
-                const monitor = Gio.File.new_for_path(dir).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
-                monitor.connect('changed', (_m, file, other) => {
-                    this.changed(file.get_path() ?? dir, snap);
-                    const moved = other?.get_path();
-                    if (moved) this.changed(moved, snap);
-                });
-                snap.monitors.set(dir, monitor);
+                snap.monitors.set(dir, platform().fs.watchDir(dir, path => this.changed(path, snap)));
             } catch (e) {
                 // Cannot be monitored (for example a network file system): walk on every request instead.
                 snap.watched = false;
@@ -264,12 +252,11 @@ export class WorkspaceRepository {
             snap.version++;
             snap.dirty = true;
             if (snap.warm && !snap.rescanTimer) {
-                snap.rescanTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, RESCAN_DELAY_MS, () => {
-                    snap.rescanTimer = 0;
+                snap.rescanTimer = platform().scheduler.idleAfter(RESCAN_DELAY_MS, () => {
+                    snap.rescanTimer = null;
                     if (!snap.valid && !snap.scan) snap.scan = this.scanner(snap);
                     snap.prefetch ??= this.prefetcher(snap);
                     this.schedule();
-                    return GLib.SOURCE_REMOVE;
                 });
             }
         }
@@ -329,16 +316,17 @@ export class WorkspaceRepository {
 
     private schedule(): void {
         if (this.idle) return;
-        this.idle = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            const end = GLib.get_monotonic_time() + SLICE_US;
-            while (GLib.get_monotonic_time() < end) {
+        const { monotonicMs, scheduler } = platform();
+        this.idle = scheduler.idle(() => {
+            const end = monotonicMs() + SLICE_MS;
+            while (monotonicMs() < end) {
                 // Walk first; read contents only once the walk (and with it the entries) is complete.
                 const snap = [...this.snapshots.values()].find(s => s.scan) ?? [...this.snapshots.values()].find(s => s.prefetch && !s.dirty);
-                if (!snap) { this.idle = 0; return GLib.SOURCE_REMOVE; }
+                if (!snap) { this.idle = null; return false; }
                 if (snap.scan) { if (snap.scan.next().done) snap.scan = null; }
                 else if (snap.prefetch!.next().done) snap.prefetch = null;
             }
-            return GLib.SOURCE_CONTINUE;
+            return true;
         });
     }
 }
@@ -346,10 +334,10 @@ export class WorkspaceRepository {
 // Refresh the size and time of a listed file that still exists as a regular file. false = it is gone or changed type.
 function restamp(entry: Entry): boolean {
     try {
-        const info = Gio.File.new_for_path(entry.path).query_info(ATTRIBUTES, Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
-        if (info.get_file_type() !== Gio.FileType.REGULAR) return false;
-        entry.size = info.get_size();
-        entry.stamp = stampOf(info);
+        const info = platform().fs.info(entry.path);
+        if (info.kind !== 'file') return false;
+        entry.size = info.size;
+        entry.stamp = info.stamp;
         return true;
     } catch (e) {
         return false;

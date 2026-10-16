@@ -2,6 +2,7 @@
 // system keyring, then a file in ~/.config/markwork (mode 0600) when the keyring is unavailable (e.g. a desktop without
 // gnome-keyring). A secret is never written to settings.json.
 
+import { fileExists, readTextFile, writeTextFile } from './files.js';
 import { platform } from './platform/index.js';
 
 export type CredentialSource = 'env' | 'keyring' | 'file';
@@ -21,14 +22,14 @@ function removeFile(credential: Credential): void {
 }
 
 export async function readCredential(credential: Credential): Promise<{ value: string; source: CredentialSource } | null> {
-    const { env, secrets, fs } = platform();
+    const { env, secrets } = platform();
     const fromEnv = env(credential.envVar)?.trim();
     if (fromEnv) return { value: fromEnv, source: 'env' };
     const fromKeyring = await secrets.lookup(credential.schema, credential.attributes);
     if (fromKeyring) return { value: fromKeyring, source: 'keyring' };
     try {
         const path = filePath(credential);
-        const fromFile = fs.exists(path) ? fs.readText(path).trim() : '';
+        const fromFile = fileExists(path) ? readTextFile(path).trim() : '';
         if (fromFile) return { value: fromFile, source: 'file' };
     } catch (e) { /* unreadable = does not exist yet */ }
     return null;
@@ -42,7 +43,7 @@ export async function saveCredential(credential: Credential, value: string): Pro
     }
     const path = filePath(credential);
     fs.makeDirs(paths.dirname(path), 0o700);
-    fs.writeText(path, value);
+    writeTextFile(path, value);
     // Restrict access: only the owner may read it.
     fs.setMode(path, 0o600);
     return 'file';

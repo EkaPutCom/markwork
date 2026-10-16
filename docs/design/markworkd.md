@@ -425,7 +425,7 @@ The TypeScript side, as built:
 | `src/agent/daemon/protocol.ts` | wire types, `parseFrame`, `encodeRequest`, `exitStatus`; pure |
 | `src/agent/daemon/client.ts` | `DaemonClient`: requests with replies and timeouts, `subscribe`, `watch`; works over any `Link`; pure apart from timers |
 | `src/agent/daemon/connection.ts` | `DaemonConnection`: connects, says hello, reconnects with a growing delay, and keeps `follow()`ers and `watch()`ers going across reconnects |
-| `src/agent/daemon/streamlink.ts` | `Link`s over real descriptors: `openSocketLink(path)` and `openCommandLink(argv)` (`sshBridgeArgv(...)` builds `ssh -T host markworkd bridge`) |
+| `src/agent/daemon/streamlink.ts` | `Link`s over real descriptors through `platform().links`: `openSocketLink(path)` and `openCommandLink(argv)` (`sshBridgeArgv(...)` builds `ssh -T host markworkd bridge`); the GJS descriptors are in `src/platform/gjs/links.ts` |
 | `src/orchestratordaemon.ts` | `daemonSpawner(conn)`: a `Spawner` for the orchestrator whose processes live in the daemon; `adoptRun()` follows a run found again after a restart |
 
 Decisions:

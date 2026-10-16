@@ -2,6 +2,7 @@
 // are commitFile()/commitFiles() and discardChanges(), and only at the user's request. Everything is async
 // (platform().processes, Gio.Subprocess under GJS) so a long history does not block the editor.
 
+import { trashFile } from './files.js';
 import { platform } from './platform/index.js';
 import { AGENT_LOG_FORMAT, LOG_FORMAT, parseLog, parseStatus, type Commit, type FileChange, type GitAnswer, type GitRequest } from './gitlog.js';
 
@@ -191,7 +192,7 @@ export async function discardChanges(files: string[]): Promise<TextResult> {
         if (run?.status !== 0) return failure(run);
     }
     try {
-        for (const path of [...added, ...untracked]) platform().fs.trash(platform().paths.join(top, path));
+        for (const path of [...added, ...untracked]) trashFile(platform().paths.join(top, path));
     } catch (e) {
         return { ok: false, reason: 'failed', message: (e as Error).message };
     }
