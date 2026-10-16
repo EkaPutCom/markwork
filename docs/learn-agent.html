@@ -362,7 +362,7 @@ input[type=text] { width: 100%; }
     <li><span class="h">1bac3b8</span><span><b>Chapter 10</b> · The assistant writes the commit message: one request without tools from the checked files' diffs within a 30,000-character budget, streamed into the commit box, which the user still reviews and commits.</span></li>
     <li><span class="h">69d9151</span><span><b>Chapter 11</b> · The typed fields and layouts reach the agent: <code>describe_schema</code> and <code>query_notes</code> to read them, <code>edit_note</code> and <code>edit_schema</code> to change them, every value checked against the document's own schema, and <code>verify_work</code> learns the <code>field</code> kind.</span></li>
     <li><span class="h">f56b9e1</span><span><b>Four rules</b> · “Pure” now also means “no GIO”: stopping a turn, a waiting proposal, or a commit message uses <code>Cancellable</code> from <code>cancel.ts</code> instead of <code>Gio.Cancellable</code>, the symlink check in <code>agent/path.ts</code> asks <code>platform().fs.kind()</code> (which never follows a link), and saved conversations go through <code>platform().fs</code>. Only <code>deepseek.ts</code> (libsoup streaming) and <code>daemon/streamlink.ts</code> still import <code>gi://</code>.</span></li>
-    <li><span class="h">settings</span><span><b>Four rules</b> · The DeepSeek client reads its SSE answer through <code>platform().httpStream</code> instead of libsoup directly: the same retries, the same partial answer when Stop is pressed mid-stream (now tested against a held-open fake stream), and a missing libsoup is a <code>RuntimeMissing</code> that is never retried. <code>agent/</code> imports <code>gi://</code> only in <code>daemon/streamlink.ts</code>.</span></li>
+    <li><span class="h">9b061d3</span><span><b>Four rules</b> · The DeepSeek client reads its SSE answer through <code>platform().httpStream</code> instead of libsoup directly: the same retries, the same partial answer when Stop is pressed mid-stream (now tested against a held-open fake stream), and a missing libsoup is a <code>RuntimeMissing</code> that is never retried. <code>agent/</code> imports <code>gi://</code> only in <code>daemon/streamlink.ts</code>.</span></li>
   </ol>
 </section>
 
@@ -1214,7 +1214,7 @@ const journey = [
   { c: '1bac3b8', t: 'commit message writer', read: 7, propose: 7, control: 2, tests: 212, lines: 3726, files: 21 },
   { c: '69d9151', t: 'fields + layouts for the agent', read: 9, propose: 8, control: 2, tests: 250, lines: 4699, files: 25 },
   { c: 'f56b9e1', t: 'agent/ without GIO', read: 9, propose: 8, control: 2, tests: 252, lines: 5893, files: 32 },
-  { c: 'settings', t: 'DeepSeek on the stream port', read: 9, propose: 8, control: 2, tests: 253, lines: 5854, files: 32 },
+  { c: '9b061d3', t: 'DeepSeek on the stream port', read: 9, propose: 8, control: 2, tests: 253, lines: 5854, files: 32 },
 ];
 function toolsChart() {
   const svg = $('#chart-tools');
