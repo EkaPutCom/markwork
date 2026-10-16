@@ -55,6 +55,7 @@ import type { HighlightResult, Heading, Marker } from './highlighter.js';
 import type { Palette } from '../colors.js';
 import { iterAtLine } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
+import type { EditorMode, TextEditor } from '../app/document.js';
 
 const TEXT_WIDTH = 780;  // maximum text column width, in pixels
 
@@ -68,7 +69,7 @@ const FILL_CHUNK_LINES = 100;
 const FILL_BUDGET_MS = 8;
 const FILL_PRIORITY = GLib.PRIORITY_HIGH_IDLE + 22;
 
-export type Mode = 'source' | 'focus' | 'typewriter';
+export type Mode = EditorMode;
 
 // Replace the whole TextView contents (through `replace`), then show from the start.
 //
@@ -89,7 +90,7 @@ export function replaceAllText(view: Gtk.TextView, replace: () => void): void {
     if (view.get_height() > 0) view.scroll_to_mark(buf.get_insert(), 0, false, 0, 0);
 }
 
-export class MarkdownView {
+export class MarkdownView implements TextEditor {
     readonly buffer: GtkSource.Buffer;
     readonly view: GtkSource.View;
     readonly widget: Gtk.ScrolledWindow;
@@ -283,6 +284,11 @@ export class MarkdownView {
         const [s, e] = this.buffer.get_bounds();
         return this.buffer.get_text(s, e, true);
     }
+
+    // TextEditor (app/document.ts): what the application layer may do with the text besides get/set/replace.
+    isModified(): boolean { return this.buffer.get_modified(); }
+    setModified(modified: boolean): void { this.buffer.set_modified(modified); }
+    insertAtCursor(text: string): void { this.buffer.insert_at_cursor(text, -1); }
 
     // Replace the whole contents without entering the undo history (used when opening a file).
     setText(text: string): void {

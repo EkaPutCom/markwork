@@ -6,22 +6,16 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango';
 import { relativeTime } from '../gitlog.js';
-import type { DiffLine } from '../gitlog.js';
 import { pack, removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
 import type { MergeMethod, PullComment, PullFile, PullRequest } from '../forge/types.js';
 import { createDiffView, fillDiff, setupDiffTags } from './historyviewer.js';
+import type { FileView, PullReviewView } from '../app/pulls.js';
 
 const MARK = { added: 'A', modified: 'M', deleted: 'D', renamed: 'R' } as const;
 
 // What the right side shows for one file: the note view (null = not a note) and the raw diff, or a sentence instead.
-export interface FileView {
-    rendered: DiffLine[] | null;
-    raw: DiffLine[];
-    note?: string;
-}
-
-export class PullView {
+export class PullView implements PullReviewView {
     readonly widget: Gtk.Box;
     readonly banner: Adw.Banner;
     readonly title: Gtk.Label;

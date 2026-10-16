@@ -91,6 +91,10 @@ function watchDir(dir: string, onChange: (path: string) => void): () => void {
 export const gjsFiles: FileSystem = {
     readText: path => dec.decode(GLib.file_get_contents(path)[1]),
     writeText: (path, text) => { GLib.file_set_contents(path, enc.encode(text)); },
+    append: (path, text) => {
+        const stream = Gio.File.new_for_path(path).append_to(Gio.FileCreateFlags.NONE, null);
+        try { stream.write_all(enc.encode(text), null); } finally { stream.close(null); }
+    },
     startWrite,
     pumpWrites,
     exists: path => GLib.file_test(path, GLib.FileTest.EXISTS),
@@ -101,6 +105,7 @@ export const gjsFiles: FileSystem = {
     kind,
     isDirectory: path => GLib.file_test(path, GLib.FileTest.IS_DIR),
     trash: path => { Gio.File.new_for_path(path).trash(null); },
+    move: (from, to) => { Gio.File.new_for_path(from).move(Gio.File.new_for_path(to), Gio.FileCopyFlags.NONE, null, null); },
     info: path => entryOf(Gio.File.new_for_path(path).query_info(ATTRIBUTES, Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null)),
     listInfo,
     watchDir,

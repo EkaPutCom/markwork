@@ -2,11 +2,32 @@
 // hands the sending to forge/contribute.ts. The result is told in a toast; the pull request itself shows up in the list.
 
 import { repoChanges, runGit } from '../git.js';
-import { sendChanges, type SendContext, type SendResult } from '../forge/contribute.js';
+import { sendChanges, type SendContext, type SendResult, type SendVia } from '../forge/contribute.js';
 import type { ForgeProvider, RepoRef } from '../forge/types.js';
-import { sendChangesDialog, type SendChangesAnswer, type SendChangesOptions } from '../ui/sendchanges.js';
+import type { FileChange } from '../gitlog.js';
 import { _, fmt } from '../i18n.js';
-import type { DocumentHost } from './doc.js';
+import type { DocumentHost } from './document.js';
+
+// What the "Send changes as pull request" dialog is shown, and what it answers.
+export interface SendChangesOptions {
+    repository: string;                  // owner/repo, shown so the user knows where it goes
+    base: string;                        // the branch the pull request asks to merge into
+    folder: string;                      // changes are shown relative to it
+    changes: readonly FileChange[];      // absolute paths
+    canPush: boolean;                    // the token may push branches to the repository itself
+}
+
+export interface SendChangesAnswer {
+    title: string;
+    body: string;
+    branch: string;
+    via: SendVia;
+    files: string[];
+}
+
+export interface ContributeDialogs {
+    send(options: SendChangesOptions): Promise<SendChangesAnswer | null>;   // null = cancelled
+}
 
 export interface ContributeHost extends DocumentHost {
     saveAll(): boolean;       // write the open documents to disk first; false = the user cancelled
@@ -20,13 +41,10 @@ export interface ContributeAccess {
 }
 
 export class ContributeController {
-    // The dialog; tests replace it with an immediate answer.
-    dialogs: { send: (options: SendChangesOptions) => Promise<SendChangesAnswer | null> } = {
-        send: options => sendChangesDialog(this.host.win, options),
-    };
     git: SendContext['git'] = runGit;
 
-    constructor(private readonly host: ContributeHost, private readonly access: ContributeAccess) {}
+    // dialogs: the frontend's send dialog; tests replace it with an immediate answer.
+    constructor(private readonly host: ContributeHost, private readonly access: ContributeAccess, public dialogs: ContributeDialogs) {}
 
     async start(): Promise<void> {
         const session = this.access.session(), folder = this.host.root();

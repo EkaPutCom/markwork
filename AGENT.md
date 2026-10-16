@@ -103,13 +103,19 @@ src/
   agent/      the AI assistant: building the manuscript context and the model client (context/session/sse/transcript are pure, without GTK; chatstore.ts uses Gio)
   editor/     the editor engine (MarkdownView, tags, highlighter, images, tables, code)
   ui/         standalone interface components (sidebar, kanban, dialogs, ...)
-  window.ts   the only place where the components are connected to each other; also manages documents/tabs (one `MarkdownView` per tab)
-  window/     feature controllers (journal, harness, Home, agent writes, autosave); each gets a narrow host, never MainWindow
-  actions.ts  all menu and shortcut actions (Gio.Action), typing the window as `ActionHost`; commands.ts holds their palette labels
+  app/        the application layer every frontend shares: feature controllers (documents, views, journal, harness, review, Home,
+              collaboration, agent writes, autosave, note links) that see widgets only through view, dialog, and TextEditor interfaces
+              (no GI, no ui/); app/commands.ts holds the palette labels
+  window.ts   the only place where the components are connected to each other: builds the app/ controllers with GTK dialogs and
+              implements their views on its widgets (one `MarkdownView` per tab)
+  window/     the GTK glue left: the Doc type with MarkdownView, the harness log windows
+  actions.ts  all menu and shortcut actions (Gio.Action), typing the window as `ActionHost`
   colors.ts   the document color palettes, pure data shared by editor/ and ui/
   gtkutil.ts  GTK 4 helpers usable by all layers (see Code conventions)
-  files.ts, fileops.ts, git.ts, settings.ts, activity.ts, orchestrator.ts
-              Gio/GLib only, no widgets: file I/O, file operations, git, GSettings, the journal activity log, the pi harness
+  files.ts, git.ts, settings.ts, activity.ts, orchestrator.ts, workspace.ts, credentials.ts, i18n.ts
+              the base of the core: no GI at all, they reach the runtime through platform() (platform/index.ts)
+  platform/   the port to the runtime: index.ts is the contract, gjs/ fills it with GLib, Gio, libsoup, libsecret, GSettings
+  fileops.ts  file operations for the file tree (Gio)
 tests/
   unit/       tests without a GUI, one file per module
   gui/        tests with a real window, one file per module
@@ -117,7 +123,7 @@ tests/
   samples/    sample documents (used by the tests and by manual checks)
 ```
 
-The direction of dependencies: `window.ts` → `window/*`, `actions.ts` → `ui/*`, `editor/*` → `markdown/*`, `agent/*`. A lower layer must not import an upper layer. `editor/` must not know about `ui/`, files, or menus; it reports through callbacks (`onHighlighted`, `onCursorMoved`, ...) that are connected in `window.ts`. Nothing imports `window.ts` except `app.ts` and tests: a controller in `window/` declares the host interface it needs and the window fills it (`makeHost()`), and a new feature that grows `window.ts` by more than a few methods goes into its own controller the same way. Shared types live at the lowest layer that uses them (e.g. `Palette` in `colors.ts`, `GitRequest` in `gitlog.ts`).
+The direction of dependencies: `window.ts` → `app/*` and `window/*`, `actions.ts` → `ui/*`, `ui/*` → `app/*` (for the view and data types), `editor/*` → `markdown/*`, `agent/*`. A lower layer must not import an upper layer. `editor/` must not know about `ui/`, files, or menus; it reports through callbacks (`onHighlighted`, `onCursorMoved`, ...) that are connected in `window.ts`. Nothing imports `window.ts` except `app.ts` and tests: a controller in `app/` declares the host, view, and dialog interfaces it needs and the window fills them (`makeHost()`, `viewScreen()`, the dialogs passed to each constructor), and a new feature that grows `window.ts` by more than a few methods goes into its own controller in `app/` the same way. A controller in `app/` never imports GI or `ui/`: a widget it needs becomes an interface with plain data and `on*` callbacks, and a dialog becomes a function that answers with a value or a Promise. Shared types live at the lowest layer that uses them (e.g. `Palette` in `colors.ts`, `GitRequest` in `gitlog.ts`).
 
 ## Code conventions
 

@@ -8,7 +8,8 @@ import { section, test, eq, ok, contains, settle, optVal, tmp } from '../framewo
 import type { GuiContext } from './context.js';
 import { descendants, widgetPixbuf } from '../widgets.js';
 import { tokenDialog } from '../../src/ui/serverdialog.js';
-import { sendChangesDialog, type SendChangesAnswer, type SendChangesOptions } from '../../src/ui/sendchanges.js';
+import { sendChangesDialog } from '../../src/ui/sendchanges.js';
+import type { SendChangesAnswer, SendChangesOptions } from '../../src/app/contribute.js';
 
 const apiPull = (n: number, extra: object = {}) => ({
     number: n, title: `Pull request ${n}`, state: 'open', merged: false, mergeable: true, user: { login: 'budi' },

@@ -113,12 +113,8 @@ export function copyEntry(source: string, destDir: string): string {
     return target;
 }
 
-// Path after source is moved to target: the path itself or what is inside it (if source is a folder).
-export function remapPath(path: string, source: string, target: string): string | null {
-    if (path === source) return target;
-    if (path.startsWith(`${source}/`)) return target + path.slice(source.length);
-    return null;
-}
+// remapPath (where a path lands when its folder moves) is in app/documents.ts; re-exported for the file tree.
+export { remapPath } from './app/documents.js';
 
 // Rename a file/folder in place. Returns the new path, or null if the name did not change.
 // Files keep a Markdown extension so they do not disappear from the tree.

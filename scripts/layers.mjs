@@ -11,7 +11,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'src');
 
 const GTK = /^gi:\/\/(Gtk|Gdk|GdkPixbuf|GdkX11|Gsk|Adw|GtkSource|WebKit|Pango|Graphene)(\?|$)/;
-const BASE = ['settings.ts', 'files.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts'];
+const BASE = ['settings.ts', 'files.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'awaitable.ts', 'activity.ts'];
 
 // The core: everything below the interface. It reaches the runtime only through platform/index.ts, never through gi:// and
 // never through platform/gjs/, so it can run on another runtime. GI_ALLOWED listed the core modules that still imported
@@ -34,6 +34,9 @@ const rules = [
     [f => isCore(f) && !GI_ALLOWED.has(f), t => t.startsWith('gi://'), 'the core reaches the runtime through platform() (platform/index.ts), not gi://'],
     [isCore, t => t.startsWith('platform/gjs/'), 'the core uses the platform port, never its GJS implementation; entry points install it'],
     [isCore, t => t.startsWith('gjs:'), 'the core does not use GJS built-in modules; what it needs is in the platform port'],
+    [isCore, t => t.startsWith('app/'), 'the core does not know the application layer above it'],
+    [f => f.startsWith('app/'), t => t.startsWith('gi://') || t.startsWith('gjs:') || t.startsWith('platform/gjs/') || !(isCore(t) || t.startsWith('app/')),
+        'app/ is the application layer every frontend shares: it imports only the core and app/, never GI, widgets, or the window'],
     [isCore, t => !t.startsWith('gi://') && !t.startsWith('gjs:') && !isCore(t), 'the core imports only the core, so it is free of GI all the way down, not only in its own imports'],
     [f => f === 'platform/index.ts', () => true, 'platform/index.ts is the contract and imports nothing'],
     [f => f.startsWith('platform/gjs/'), t => /^(ui|editor|window|agent|forge|markdown)\//.test(t) || t === 'window.ts', 'platform/gjs/ implements the port with GI and base modules; it knows nothing about the layers that use it'],

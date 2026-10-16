@@ -11,7 +11,7 @@ import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango';
 
-import { COMMAND_LABELS } from '../commands.js';
+import { COMMAND_LABELS } from '../app/commands.js';
 import { uiTemplate } from '../gtkutil.js';
 import template from './palette.ui?raw';
 

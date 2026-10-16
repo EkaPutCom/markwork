@@ -162,4 +162,8 @@ function findProgram(name: string): string | null {
     return null;
 }
 
-export const gjsProcesses: Processes = { run, spawn, findProgram, hostName: () => GLib.get_host_name() };
+function launch(argv: string[]): boolean {
+    try { return GLib.spawn_async(null, argv, null, GLib.SpawnFlags.SEARCH_PATH, null)[0]; } catch { return false; }
+}
+
+export const gjsProcesses: Processes = { run, spawn, findProgram, launch, hostName: () => GLib.get_host_name() };

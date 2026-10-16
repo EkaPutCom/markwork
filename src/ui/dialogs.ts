@@ -18,6 +18,8 @@ import { AGENT_NAME, CARD_SCHEMA, composeCard, DUE_INPUT, splitCard, withDueDate
 import type { HarnessAsk, HarnessReply } from '../agent/harness.js';
 import { isValidMachineName, isValidSshTarget } from '../agent/daemon/machines.js';
 import { _, fmt, ngettext } from '../i18n.js';
+import type { CloseAgentsChoice } from '../app/harness.js';
+import type { ChooseFileOptions, FileKind } from '../app/dialogs.js';
 
 type FilterSetup = [label: string, setup: (filter: Gtk.FileFilter) => void];
 
@@ -26,18 +28,9 @@ export const FILTERS = {
     image: [_('Images'), f => f.add_mime_type('image/*')],
     html: [_('HTML'), f => f.add_pattern('*.html')],
     all: [_('All files'), f => f.add_pattern('*')],
-} satisfies Record<string, FilterSetup>;
+} satisfies Record<FileKind, FilterSetup>;
 
-export type FilterName = keyof typeof FILTERS;
-
-export interface ChooseFileOptions {
-    title: string;
-    save?: boolean;
-    selectFolder?: boolean;     // choose a folder, not a file
-    filters?: FilterName[];
-    name?: string | null;       // suggested file name (save dialog)
-    folder?: string | null;     // initial folder
-}
+export type FilterName = FileKind;
 
 // Returns the chosen path, or null if cancelled.
 export function chooseFile(parent: Gtk.Window, { title, save = false, selectFolder = false, filters = [], name = null, folder = null }: ChooseFileOptions): Promise<string | null> {
@@ -513,7 +506,6 @@ export async function harnessTextDialog(parent: Gtk.Window | null, options: { ti
 
 // ---------- Dialogs for agents that keep running ----------
 
-export type CloseAgentsChoice = 'cancel' | 'stop' | 'keep';
 
 // Asked when the window closes while agents work. Children of this window end with it; agents that live in the
 // markworkd daemon can be left going, and are found again the next time Markwork opens.

@@ -19,59 +19,16 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
-import { dayPart, type DayPart, type InboxCount, type Task } from '../markdown/home.js';
-import type { RunStatus } from '../agent/harness.js';
-import type { ConnectionState } from '../agent/daemon/connection.js';
+import { dayPart, type DayPart, type Task } from '../markdown/home.js';
+import { RESUME_CARDS, type HomeAgentHost, type HomeData, type HomeEntry, type HomeJournal, type HomeRun } from '../app/home.js';
+import type { InboxCount } from '../markdown/home.js';
 import { ageLabel } from './inbox.js';
 import { removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
 
 const MAX_WIDTH = 720;
-// The Continue cards fill a full row in a wide window; in a narrow window the FlowBox folds them.
-export const RESUME_CARDS = 3;
 // Home is a summary: the remaining due dates are hidden behind a single row (and drawing dozens of rows is expensive too).
 const SHOWN_TASKS = 7;
-
-// One file in a Continue card or in the Recent files list.
-export interface HomeEntry {
-    path: string;
-    title: string;      // card: folder name; list: file name
-    subtitle: string;   // card: file name; list: relative folder
-    time: number;       // Unix seconds
-}
-
-export interface HomeRun {
-    id: number;
-    agent: string;
-    title: string;
-    status: RunStatus;
-}
-
-// The machine agents run on (not shown when they run as children of this window), and whether it can be reached.
-export interface HomeAgentHost {
-    label: string;
-    state: ConnectionState;
-    detail: string;
-}
-
-export interface HomeJournal {
-    exists: boolean;    // today's journal file already exists
-    notes: number;      // bullets in the Notes section
-    activity: number;   // activities recorded today (log), including those not yet in the file
-}
-
-export interface HomeData {
-    now: Date;
-    name: string | null;          // the user's first name, null = a greeting without a name
-    workspace: string | null;     // work folder; null = none yet, due dates and the inbox cannot be read
-    resume: HomeEntry[];
-    recent: HomeEntry[];
-    tasks: Task[];
-    runs: HomeRun[];
-    agentHost: HomeAgentHost | null;
-    inboxes: InboxCount[];
-    journal: HomeJournal | null;  // null = no work folder
-}
 
 export class HomeView {
     readonly widget: Gtk.ScrolledWindow;

@@ -1,6 +1,7 @@
-// Application action names for the command palette (the actions themselves are registered in actions.ts).
+// Application action names for the command palette, shared by every frontend (GTK registers the actions themselves in
+// actions.ts).
 
-import { _ } from './i18n.js';
+import { _ } from '../i18n.js';
 
 // Names shown in the command palette (Ctrl+Shift+P), in the order displayed when the search is empty.
 // Actions not listed here (e.g. each heading or table command) do not appear in the palette.

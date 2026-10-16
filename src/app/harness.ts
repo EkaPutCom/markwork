@@ -1,9 +1,9 @@
 // External harnesses (@pi cards): the card menu, choosing the project folder, answering/steering/replying to a run,
 // and its log window. The runs themselves are managed by the Orchestrator this controller owns.
 
-import GLib from 'gi://GLib';
-import { after, type Awaitable } from '../gtkutil.js';
-import { readTextFile } from '../files.js';
+import { after, type Awaitable } from '../awaitable.js';
+import { fileExists, readTextFile } from '../files.js';
+import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import { findProgram, labelWorktree, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator.js';
 import { runGit } from '../git.js';
@@ -16,20 +16,43 @@ import type { RunSummary } from '../agent/daemon/protocol.js';
 import { openCommandLink, openSocketLink } from '../agent/daemon/streamlink.js';
 import { DaemonHub, type Openers } from '../daemonhub.js';
 import { adoptRun, daemonGit, daemonSpawner } from '../orchestratordaemon.js';
-import { chooseFile, closeAgentsDialog, harnessAskDialog, harnessTextDialog, promptDialog, type CloseAgentsChoice } from '../ui/dialogs.js';
-import type { KanbanBoard } from '../ui/kanban.js';
-import { LogViewer } from '../ui/logviewer.js';
-import type { MenuEntry } from '../ui/menu.js';
+import type { MenuEntry } from './menu.js';
 import { harnessActivity, type ActivityKind } from '../markdown/journal.js';
 import { assignCard, cardBranch, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
 import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
 import type { WorkspaceRepository } from '../workspace.js';
 import { _, fmt } from '../i18n.js';
-import { docFor, type DocumentHost } from './doc.js';
+import { docFor, type DocumentHost } from './document.js';
+
+// The board on screen, as far as harness runs need it.
+export interface HarnessBoard {
+    getBoard(): Board;
+    commit(board: Board): void;      // a change made from the card menu, through the board (one undo step)
+    queueRender(): void;             // a run changed state: redraw its card
+}
+
+// A run's log window; one per run, raised again when it is already open.
+export interface HarnessLogs {
+    show(run: Run): void;
+}
+
+// What closing the window does with agents that are still working.
+export type CloseAgentsChoice = 'cancel' | 'stop' | 'keep';
+
+// The questions harness work asks the user; each answers null (or 'cancel') when dismissed.
+export interface HarnessDialogs {
+    chooseFolder(title: string): Awaitable<string | null>;
+    answer(ask: HarnessAsk, agent: string): Awaitable<HarnessReply | null>;
+    text(options: { title: string; label: string; context?: string; text?: string }): Awaitable<string | null>;
+    // The folder of a project on another machine, which cannot be browsed from here.
+    remoteFolder(machine: string, project: string | null, current: string): Awaitable<string | null>;
+    closeAgents(activity: { children: number; detachable: number; queued: number }): Awaitable<CloseAgentsChoice>;
+}
 
 export interface HarnessHost extends DocumentHost {
     readonly settings: AppSettings;
-    readonly board: KanbanBoard;
+    readonly board: HarnessBoard;
+    readonly logs: HarnessLogs;
     readonly workspace: WorkspaceRepository;
     boardShown(file: string): boolean;    // the board in `file` is the one on screen
     updateBoardFile(file: string, edit: (board: Board) => Board): string | null;
@@ -49,24 +72,6 @@ const LABEL_CARD_CHARS = 4000;   // see spawnMeta() in orchestrator.ts: a longer
 export class HarnessController {
     readonly orchestrator: Orchestrator;
     readonly hub: DaemonHub;
-    // Harness dialogs can be replaced in tests with immediate answers; the real dialog answers through a Promise.
-    dialogs: {
-        chooseFolder: (title: string) => Awaitable<string | null>;
-        answer: (ask: HarnessAsk, agent: string) => Awaitable<HarnessReply | null>;
-        text: (options: { title: string; label: string; context?: string; text?: string }) => Awaitable<string | null>;
-        // The folder of a project on another machine, which cannot be browsed from here.
-        remoteFolder: (machine: string, project: string | null, current: string) => Awaitable<string | null>;
-        closeAgents: (activity: { children: number; detachable: number; queued: number }) => Awaitable<CloseAgentsChoice>;
-    } = {
-        chooseFolder: title => chooseFile(this.host.win, { title, selectFolder: true }),
-        answer: (ask, agent) => harnessAskDialog(this.host.win, ask, agent),
-        text: options => harnessTextDialog(this.host.win, options),
-        remoteFolder: (machine, project, current) => promptDialog(this.host.win, {
-            title: project ? fmt(_('Project folder “{name}”'), { name: project }) : _('Choose a project folder'),
-            label: fmt(_('The folder of the project on {machine} (an absolute path):'), { machine }), value: current, accept: _('Save'),
-        }),
-        closeAgents: activity => closeAgentsDialog(this.host.win, activity),
-    };
     // How links to the daemons are made; tests replace them.
     openers: Openers = { socket: openSocketLink, command: openCommandLink };
     // Opens the review of a card's worktree; the window connects it.
@@ -76,10 +81,10 @@ export class HarnessController {
     private adoptMachine = '';
     private stopOnClose = false;
     private readonly trouble = new Set<string>();    // machines whose connection trouble the user was told about
-    private readonly logs = new Map<number, LogViewer>();
     private readonly logged = new WeakSet<object>();   // results already recorded in the activity log
 
-    constructor(private readonly host: HarnessHost) {
+    // dialogs: the frontend's questions; tests replace them with immediate answers.
+    constructor(private readonly host: HarnessHost, public dialogs: HarnessDialogs) {
         this.orchestrator = new Orchestrator({
             workspace: () => host.root(),
             updateBoard: (file, edit) => host.updateBoardFile(file, edit),
@@ -196,7 +201,7 @@ export class HarnessController {
     private adoptInfo(machine: string, run: RunSummary): AdoptInfo | null {
         const l = run.labels ?? {};
         if (!l.agent || !l.board || !l.card || !HARNESSES[l.agent]) return null;
-        if (l.host && l.host !== GLib.get_host_name()) return null;   // started from another computer
+        if (l.host && l.host !== platform().processes.hostName()) return null;   // started from another computer
         const card = this.cardText(l.board, l.card);
         if (!card || this.orchestrator.queue.active(l.board, card)) return null;
         const slots = Number(l.slots);
@@ -236,13 +241,13 @@ export class HarnessController {
     // as Ctrl+click; the document that is currently open is read from its editor so unsaved edits are included.
     private linkedNotes(boardFile: string, links: WikiLink[]): LinkedNote[] {
         const workspace = this.host.root();
-        const root = workspace && boardFile.startsWith(`${workspace}/`) ? workspace : GLib.path_get_dirname(boardFile);
+        const root = workspace && boardFile.startsWith(`${workspace}/`) ? workspace : platform().paths.dirname(boardFile);
         const from = boardFile.slice(root.length + 1);
         const files = this.host.workspace.names(root);
         return links.map(link => {
             const file = resolveWikiLink(link.target, files, from);
             if (!file) return { link, file: null, text: null };
-            const path = GLib.build_filenamev([root, ...file.split('/')]);
+            const path = platform().paths.join(root, ...file.split('/'));
             let text: string;
             try {
                 text = docFor(this.host, path)?.editor.getText() ?? readTextFile(path);
@@ -332,7 +337,7 @@ export class HarnessController {
     }
 
     private start(file: string, at: Position, agent: string, project: string): void {
-        const error = this.orchestrator.start(file, this.host.board.getBoard(), at, agent, project, this.folderOf(project)!, GLib.path_get_basename(file));
+        const error = this.orchestrator.start(file, this.host.board.getBoard(), at, agent, project, this.folderOf(project)!, platform().paths.basename(file));
         if (error) this.host.toast(fmt(_('Cannot run {agent}: {error}'), { agent, error }));
     }
 
@@ -353,7 +358,7 @@ export class HarnessController {
 
     private mapProjectFolder(name: string | null, path: string | null): { name: string; path: string } | null {
         if (!path) return null;
-        const project = name ?? GLib.path_get_basename(path).replace(/\s+/g, '-');
+        const project = name ?? platform().paths.basename(path).replace(/\s+/g, '-');
         const machine = this.machine;
         const remote = isRemoteMachine(machine);
         // A folder on another machine cannot be checked from here; the daemon there allows only its own roots.
@@ -396,13 +401,8 @@ export class HarnessController {
         });
     }
 
-    showLog(run: Run): LogViewer {
-        const open = this.logs.get(run.id);
-        if (open?.window.get_realized()) { open.show(); return open; }
-        const viewer = new LogViewer(this.host.win, run.trace, fmt(_('{agent} Log — {title}'), { agent: run.agent, title: run.title }));
-        this.logs.set(run.id, viewer);
-        viewer.show();
-        return viewer;
+    showLog(run: Run): void {
+        this.host.logs.show(run);
     }
 
     // From Home: an agent that is waiting for an answer is asked right away; one that is working shows its log; a queued one opens its board.
@@ -424,8 +424,9 @@ export class HarnessController {
 // Whether a folder on this computer is inside a Git repository: it or a folder above it has a .git (a folder, or a
 // file in a worktree or submodule).
 function inRepository(folder: string): boolean {
-    for (let dir = folder; dir && dir !== '/'; dir = GLib.path_get_dirname(dir)) {
-        if (GLib.file_test(GLib.build_filenamev([dir, '.git']), GLib.FileTest.EXISTS)) return true;
+    const { paths } = platform();
+    for (let dir = folder; dir && dir !== '/'; dir = paths.dirname(dir)) {
+        if (fileExists(paths.join(dir, '.git'))) return true;
     }
     return false;
 }

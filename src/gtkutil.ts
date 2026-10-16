@@ -60,8 +60,8 @@ export function removeChildren(widget: Gtk.Widget): void {
     for (const child of childrenOf(widget)) removeWidget(child);
 }
 
-// A value that may only become available later: the real dialog returns a Promise, its stand-in in tests a plain value.
-export type Awaitable<T> = T | Promise<T>;
+// Awaitable and after() live in awaitable.ts (the application layer uses them too); re-exported for the GTK code.
+export { after, type Awaitable } from './awaitable.js';
 
 // Modal dialog without a nested main loop (GTK 4 deliberately removed gtk_dialog_run(): a main loop inside a
 // handler makes other code run in the middle of that handler). `start` shows the dialog and calls
@@ -75,12 +75,6 @@ export function modal<T>(start: (finish: (value: T) => void) => void): Promise<T
             resolve(value);
         });
     });
-}
-
-// Continue with a value that may still be a Promise. A plain value (dialog stand-in in tests, or a path that
-// does not need to ask) is processed immediately so the result is synchronous too; a Promise is processed once it resolves.
-export function after<T, R>(value: Awaitable<T>, next: (value: T) => Awaitable<R>): Awaitable<R> {
-    return value instanceof Promise ? value.then(next) : next(value);
 }
 
 // Mouse button click on a widget (replacement for the button-press-event signal). `handler` receives
