@@ -3,7 +3,7 @@
 // The forge then sees the pull request's commits in the base branch and marks it merged. Git is a function passed in, so the
 // same steps run against local bare repositories in the tests.
 
-import GLib from 'gi://GLib';
+import { platform } from '../platform/index.js';
 import { credentialEnv, type GitRun, type GitRunner } from './contribute.js';
 import type { ForgeProvider } from './types.js';
 
@@ -63,7 +63,8 @@ export async function pendingMerge(git: GitRunner, folder: string): Promise<Pend
     const path = await out(git, folder, ['rev-parse', '--git-path', 'MERGE_MSG']);
     let message = '';
     if (path) {
-        try { message = new TextDecoder().decode(GLib.file_get_contents(GLib.path_is_absolute(path) ? path : GLib.build_filenamev([folder, path]))[1]); } catch (e) { message = ''; }
+        const { fs, paths } = platform();
+        try { message = fs.readText(paths.isAbsolute(path) ? path : paths.join(folder, path)); } catch (e) { message = ''; }
     }
     const number = /^Merge pull request #(\d+)/.exec(message)?.[1];
     return { pull: number ? Number(number) : null, before: await out(git, folder, ['rev-parse', 'HEAD']) ?? '', conflicts: await conflictedFiles(git, folder) };

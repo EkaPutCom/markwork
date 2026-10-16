@@ -4,7 +4,7 @@
 import GLib from 'gi://GLib';
 import { credentialEnv } from '../src/forge/contribute.js';
 import { GiteaProvider } from '../src/forge/gitea.js';
-import { soupTransport } from '../src/forge/http.js';
+import { soupTransport } from '../src/platform/gjs/http.js';
 import { parseRemote } from '../src/forge/remote.js';
 import { runGit } from '../src/git.js';
 import { errorMessage, tmp } from './framework.js';

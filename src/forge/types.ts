@@ -96,12 +96,5 @@ export interface ForgeProvider {
     markMerged(number: number, commit: string): Promise<void>;
 }
 
-// The HTTP seam: the real one is libsoup (http.ts); tests pass a fake that answers from a table.
-export interface HttpRequest {
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH';
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-}
-export interface HttpResponse { status: number; body: string }
-export type Transport = (request: HttpRequest) => Promise<HttpResponse>;
+// The HTTP seam is the platform's (platform().http); tests pass a fake that answers from a table.
+export type { HttpRequest, HttpResponse, Transport } from '../platform/index.js';

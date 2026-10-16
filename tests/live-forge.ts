@@ -10,13 +10,14 @@
 // FORGEJO_URL (default http://localhost:3000) and FORGEJO_REPO (default eka/notes) select the server and the repository.
 // Tokens are never printed.
 
+import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
 import GLib from 'gi://GLib';
 import System from 'system';
 import { CONTRIBUTOR_TOKEN, OWNER_TOKEN, REPO, SERVER_URL as URL, api, check, clone, contributor, git, owner, read, repo, stamp, waitFor, write } from './forgejo-support.js';
 import { sendChanges, type SendContext } from '../src/forge/contribute.js';
 import { fileDiff } from '../src/forge/diff.js';
 import { GiteaProvider } from '../src/forge/gitea.js';
-import { soupTransport } from '../src/forge/http.js';
+import { soupTransport } from '../src/platform/gjs/http.js';
 import { confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../src/forge/resolve.js';
 import type { PullRequest } from '../src/forge/types.js';
 import { runGit } from '../src/git.js';

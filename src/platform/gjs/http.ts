@@ -2,7 +2,7 @@
 
 import GLib from 'gi://GLib';
 import type SoupModule from 'gi://Soup?version=3.0';
-import type { HttpRequest, HttpResponse, Transport } from './types.js';
+import type { HttpRequest, HttpResponse, Transport } from '../index.js';
 
 type Soup = typeof SoupModule;
 

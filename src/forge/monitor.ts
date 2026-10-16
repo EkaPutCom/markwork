@@ -2,7 +2,6 @@
 // so it asks on a timer and compares with what it saw last time. The first poll only records a baseline, so
 // opening a folder never announces the pull requests that were already there.
 
-import GLib from 'gi://GLib';
 import { ForgeError, type ForgeProvider, type PullRequest } from './types.js';
 
 export type PullEvent =
@@ -31,7 +30,7 @@ export class PullMonitor {
     onChange: (pulls: readonly PullRequest[], events: PullEvent[]) => void = () => {};
     onError: (error: ForgeError) => void = () => {};
     private known: PullRequest[] | null = null;
-    private timer = 0;
+    private timer: ReturnType<typeof setInterval> | null = null;
     private polling = false;
 
     constructor(private readonly provider: ForgeProvider) {}
@@ -58,10 +57,10 @@ export class PullMonitor {
     start(intervalSeconds: number): void {
         this.stop();
         void this.poll();
-        this.timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, intervalSeconds, () => { void this.poll(); return GLib.SOURCE_CONTINUE; });
+        this.timer = setInterval(() => { void this.poll(); }, intervalSeconds * 1000);
     }
 
     stop(): void {
-        if (this.timer) { GLib.source_remove(this.timer); this.timer = 0; }
+        if (this.timer) { clearInterval(this.timer); this.timer = null; }
     }
 }

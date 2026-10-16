@@ -399,7 +399,7 @@ po/                       translations: POTFILES.in, LINGUAS, <language>.po
 data/                     GSettings schema (compiled into dist/ at build time), desktop and metainfo files (.in), app icon, the markwork.in launcher
 dist/                     build output (not in git)
 src/
-├── main.ts               entry point: only calls main() from app.ts
+├── main.ts               entry point: installs the GJS platform, then calls main() from app.ts
 ├── env.d.ts              types for GJS and gi:// modules (from the @girs packages)
 ├── gtkutil.ts            GTK 4 helpers for all layers: line iterators, widget children, click/key handlers, modal dialogs without a nested main loop (modal(), after()), pack(), pixbuf ↔ Gdk.Texture, icons from dist/
 ├── i18n.ts               gettext: _(), fmt(), pgettext(), ngettext(); the domain is bound before the other modules are evaluated
@@ -427,8 +427,13 @@ src/
 ├── orchestrator.ts       runs the external harness (pi) for kanban cards in the project folder: process, queue, board updates
 ├── orchestratordaemon.ts a Spawner for orchestrator.ts whose processes live in the markworkd daemon (they survive closing the window; the daemon can be on another machine)
 ├── git.ts                the git history of a file and the list of uncommitted files through the `git` command (async; read-only, except committing selected files); also runs the agent's Git tools
+├── credentials.ts        a secret (API key, forge token): environment variable, keyring, or a 0600 file; through platform()
 ├── gitlog.ts             git output parser: log, diff, relative time (pure, no GTK); also the agent's GitRequest/GitAnswer types
 ├── welcome.ts            the sample document shown on first launch
+│
+├── platform/             the port between the core and the runtime
+│   ├── index.ts          the contract (FileSystem, Paths, Secrets, Transport, env) and platform()/setPlatform(); imports nothing
+│   └── gjs/              the GJS implementation: GLib/Gio, libsecret, and libsoup 3 (http.ts, loaded on use); install.ts is imported by every entry point
 │
 ├── agent/                the AI assistant: manuscript context and model client (no GTK, except where noted)
 │   ├── tools.ts          pure: browsing tools for the model (list_files, search_documents, search_text, read_file)
@@ -454,15 +459,14 @@ src/
 │   ├── provider.ts       the Provider interface (used by the real client and the fake provider in tests)
 │   ├── sse.ts            pure: reads SSE stream lines (text, reasoning, tool-call chunks, usage) and HTTP error messages
 │   ├── deepseek.ts       DeepSeek client through libsoup 3 (GIO/GLib; loaded on use)
-│   └── apikey.ts         API key: environment variable, keyring (libsecret), or a 0600 file
+│   └── apikey.ts         the DeepSeek API key as a credential (credentials.ts)
 │
-├── forge/                Git hosting services: the pull requests of a Forgejo/Gitea repository (no GTK; the HTTP call is an injectable Transport)
+├── forge/                Git hosting services: the pull requests of a Forgejo/Gitea repository (no GI at all: the HTTP call is an injectable Transport, files and the keyring go through platform())
 │   ├── types.ts          RepoRef, PullRequest, PullFile, PullComment, ForgeProvider, Transport, ForgeError
 │   ├── remote.ts         pure: a git remote URL → server and `owner/repo`
 │   ├── gitea.ts          the Forgejo/Gitea REST client (pull requests, files, diff, content at a commit, comments, merge, fork, create)
-│   ├── http.ts           the real Transport (libsoup 3, loaded on use)
-│   ├── token.ts          the access token per server: environment variable, keyring, or a 0600 file
-│   ├── monitor.ts        polling the open pull requests and the events between two polls (the first poll is a silent baseline)
+│   ├── token.ts          the access token per server as a credential (credentials.ts)
+│   ├── monitor.ts        polling the open pull requests (setInterval) and the events between two polls (the first poll is a silent baseline)
 │   ├── diff.ts           pure: one file's part of a pull request's unified diff
 │   ├── contribute.ts     sending changes as a pull request (branch, commit, push, pull request; fork, direct, or AGit); git is a parameter
 │   └── resolve.ts        resolving a conflict here: merge the pull request into the base branch, finish and push, abort; git is a parameter
@@ -595,8 +599,9 @@ The code is divided into layers. Each layer may only use the layers below it, ne
         ├─ orchestratordaemon.ts the same harnesses through the markworkd daemon
         │    └─ agent/daemon/*    protocol, client, reconnecting connection, socket/ssh links (GLib/Gio, no GTK)
         ├─ agent/*         manuscript context and model client (no GTK)
-        ├─ forge/*         Forgejo/Gitea: pull requests, sending changes, resolving conflicts (GLib/libsoup, no GTK)
-        └─ settings.ts, files.ts, workspace.ts, git.ts, gitlog.ts, config.ts, colors.ts
+        ├─ forge/*         Forgejo/Gitea: pull requests, sending changes, resolving conflicts (no GI)
+        ├─ settings.ts, files.ts, workspace.ts, git.ts, gitlog.ts, config.ts, colors.ts, credentials.ts
+        └─ platform/index.ts the port to the runtime (implemented by platform/gjs/, installed by the entry point)
 ```
 
 - **`agent/`** is also free of GTK. `ui/chat.ts` uses it, and the window only gives it a way to fetch the manuscript (`ChatHost`: the active document, the selection, project files, the manuscript folder). `agent/` knows nothing about the editor or widgets. The panel only draws: `agent/chatcontroller.ts` owns the conversation's life cycle and tells the panel what to show through the `ChatView` interface, so sending, stopping, a folder change mid-request, and reopening a saved conversation are tested without GTK (`tests/unit/chatcontroller.ts`).
@@ -606,8 +611,9 @@ The code is divided into layers. Each layer may only use the layers below it, ne
 - **`window.ts`** is the only place where components are connected to each other. For example: after highlighting, the editor calls `onHighlighted`, and then the window passes the headings to `Outline` and the text to `StatusBar`. The open documents (tabs, open/save, the Home tab, restoring tabs) are kept by `window/documents.ts`, which tells the window what must follow a document on screen through `DocumentsHost`. Features that span several components (the journal, harness runs, Home, applying agent changes, autosave) live in `window/*` controllers too; each receives a narrow host interface built by the window from closures, never `MainWindow` itself, so they do not import `window.ts`. `actions.ts` likewise types the window as `ActionHost`.
 - **`forge/`** is free of GTK and knows nothing about widgets, the editor, the window, or the agent. The window reaches it through `window/collab.ts` (the list and the notifications), `window/pulls.ts` (the review, merging, and resolving), and `window/contribute.ts` (sending); the HTTP call and git are parameters, so the same code runs against a fake server and local repositories in the tests and against a real Forgejo in `npm run test:live:forge` and `npm run test:live:forgejo`.
 - **`orchestrator.ts`** sits between `window/harness.ts` and `agent/harness.ts`: it spawns the harness process and moves cards, using the pure parts in `agent/` and translated strings, but no GTK and no widgets.
+- **The core reaches the runtime through `platform()`.** `markdown/`, `agent/`, `forge/`, the orchestrator, and the base modules are the core: everything that is not interface. They read files, paths, the environment, the keyring, and HTTP through the interfaces in `platform/index.ts`, which every entry point (`main.ts`, the test runner, the benchmarks, `scripts/capture.ts`) fills by importing `platform/gjs/install.js` first. Tests can swap in a fake with `setPlatform()` (`tests/unit/platform.ts` runs the credential order with no keyring). Timers use `setTimeout`/`setInterval`, which GJS provides too. The goal is a core that can also run on another runtime; the modules that still import `gi://` are listed in `GI_ALLOWED` in `scripts/layers.mjs`, a list that may only shrink. `forge/`, `markdown/`, and `credentials.ts` are already free of GI.
 - **Lower layers do not reach up.** `editor/` takes the `Palette` type from `colors.ts`, not from `ui/theme.ts`; `git.ts` takes the agent's Git request types from `gitlog.ts`, not from `agent/`.
-- **The rules are checked.** [`scripts/layers.mjs`](scripts/layers.mjs) runs in `npm run build` and `npm run typecheck` and fails on a forbidden import: GI or anything outside `markdown/` in `markdown/`, GTK or `ui/`/`editor/`/`window/` in `agent/`, `ui/`/`window/`/`agent/` in `editor/`, `window.ts` in `ui/`, `window/`, or `actions.ts`, and any upper layer in the base modules.
+- **The rules are checked.** [`scripts/layers.mjs`](scripts/layers.mjs) runs in `npm run build` and `npm run typecheck` and fails on a forbidden import: GI or anything outside `markdown/` in `markdown/`, GTK or `ui/`/`editor/`/`window/` in `agent/`, `ui/`/`window/`/`agent/` in `editor/`, `window.ts` in `ui/`, `window/`, or `actions.ts`, any upper layer in the base modules, `gi://` or `platform/gjs/` in the core (except the modules in `GI_ALLOWED`; an entry whose module is clean must be removed), any import in `platform/index.ts`, and any layer above it in `platform/gjs/`.
 - **Function complexity is checked too.** The same script parses `src/` and `scripts/` with the oxc parser that Vite already ships (`rolldown/parseAst`) and fails on a function whose cyclomatic complexity (counted like ESLint's `complexity` rule; nested functions on their own) is above 15 (lowered from 20 once every function met it). The functions that were above the limit have all been split, so `COMPLEXITY_ALLOWED` is empty; an exception listed there may not grow, and its entry has to go once the function is split.
 
 ### The editor workflow

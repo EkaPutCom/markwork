@@ -4,6 +4,7 @@
 //
 // Writes PNGs and GIFs to docs/assets/. A real window is opened, so a desktop session is needed.
 
+import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
 import GLib from 'gi://GLib';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';

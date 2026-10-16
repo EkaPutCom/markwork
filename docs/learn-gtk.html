@@ -606,6 +606,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">675345c</span><span><span class="era">Adw</span><b>Chapter 12</b> · “Send changes as pull request” dialog (<code>Adw.Dialog</code> through <code>formDialog</code>): entries, a radio group of <code>Gtk.CheckButton</code>s, a checklist of changed files, and a header button in the pull requests tab next to Refresh.</span></li>
     <li><span class="h">91e2fa9</span><span><span class="era">Adw</span><b>Chapter 12</b> · Resolving a conflicting pull request here: the <code>Adw.Banner</code> gets one button whose job follows the state (<code>button-clicked</code> reads the state, not the label), a header button appears only while a merge is in progress, and the conflicted files open in ordinary tabs.</span></li>
     <li><span class="h">3060113</span><span><span class="era">Adw</span><b>Chapter 10</b> · A tidier header bar: <code>Adw.SplitButton</code> for New and Open, the title as a <code>Gtk.MenuButton</code> for the document's menu inside a <code>Gtk.Stack</code> (plain on Home), the primary menu last with <code>primary</code>, the view modes as <code>Gtk.CheckButton</code>s in the layout popover, and no Save button.</span></li>
+    <li><span class="h">platform</span><span><span class="era">Adw</span><b>Layers</b> · A port between the core and the runtime: <code>platform/index.ts</code> declares files, paths, the keyring, HTTP, and the environment; <code>platform/gjs/</code> fills it with GLib, Gio, libsecret, and libsoup. <code>forge/</code> and the new <code>credentials.ts</code> drop every <code>gi://</code> import, and <code>scripts/layers.mjs</code> keeps the 15 core modules that still use GI in a list that may only shrink.</span></li>
   </ol>
 </section>
 
@@ -630,6 +631,27 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
   <h3>When the connecting layer grows: de2924f</h3>
   <p>By October 8 <code>window.ts</code> had reached 1,642 lines and about 45 imports: tabs and files, but also the journal, harness runs, Home, applying agent changes, and autosave. Three imports also pointed the wrong way: <code>editor/</code> took the <code>Palette</code> type from <code>ui/theme.ts</code> (a file that loads Adw), <code>git.ts</code> took its request types from <code>agent/</code>, and <code>actions.ts</code> and <code>window.ts</code> imported each other. The fix moved no widget code. Shared types went down to the lowest layer that uses them (<code>colors.ts</code>, <code>gitlog.ts</code>); <code>actions.ts</code> now sees the window as a small <code>ActionHost</code> interface; and each feature became a controller in <code>window/</code> that receives a narrow host object built by <code>MainWindow.makeHost()</code> from closures, the same pattern as <code>ChatPanel.host</code>. The controllers import GLib and Gio but no GTK module, so 414 lines left the GTK layer (11,359 → 10,945) and <code>window.ts</code> dropped to about 1,190 lines. They still call widgets the window owns (the board, the chat panel, dialogs), so they are tested through the window in <code>tests/gui/</code>, not with <code>--no-gui</code>.</p>
   <div class="lesson"><b>Lesson</b>The one place allowed to connect everything is the place most likely to swallow everything. Keep it as wiring: when a feature needs more than a few methods there, give it its own module and hand it only the part of the window it uses, never the window itself.</div>
+  <h3>A port to the runtime: the core stops importing GI</h3>
+  <p>“No GTK” was never the same as “no GNOME”. In October <code>forge/</code> already had no widgets, but five of its nine files still imported GLib: the token file and libsecret in <code>token.ts</code>, libsoup in <code>http.ts</code>, a <code>GLib.timeout_add_seconds</code> poll in <code>monitor.ts</code>, <code>GLib.file_get_contents</code> in <code>resolve.ts</code>, and <code>GLib.base64_encode</code> for the git credential header. <code>agent/apikey.ts</code> repeated the same keyring-then-file code line for line. None of that is GTK, but all of it ties the code to GJS.</p>
+  <p>The fix is a <b>port</b>: an interface the core calls, filled by the runtime at start-up.</p>
+  <div class="flow" aria-label="The platform port">
+    <span class="node pure">forge/* · credentials.ts</span><span class="to">→</span>
+    <span class="node pure">platform/index.ts (interfaces)</span><span class="to">←</span>
+    <span class="node gio">platform/gjs/ (GLib · Gio · libsecret · libsoup)</span><span class="to">←</span>
+    <span class="node gtk">main.ts · test runner (install.js)</span>
+  </div>
+<pre><code>// before: forge/token.ts
+import GLib from 'gi://GLib';
+const env = GLib.getenv('MARKWORK_FORGE_TOKEN');
+const Secret = (await import('gi://Secret')).default; …
+
+// after: forge/token.ts (no gi://)
+const forgeToken = (host: string): Credential =&gt; ({ envVar: 'MARKWORK_FORGE_TOKEN', schema: 'com.ekaput.markwork.forge', attributes: { host }, … });
+export const systemTokenStore = { get: host =&gt; readCredential(forgeToken(host)), … };
+// credentials.ts reads platform().env, platform().secrets, platform().fs</code></pre>
+  <p>Timers needed no port: GJS has provided <code>setTimeout</code>/<code>setInterval</code> on the GLib main loop since 1.72, so <code>PullMonitor</code> uses <code>setInterval</code>. Base64 became twelve lines of plain TypeScript, checked against <code>GLib.base64_encode</code> for every padding length. In <code>git show</code> numbers, 359 lines moved from the GLib-only layer to the pure one (5,054 → 4,695 and 9,095 → 9,554). The keyring order is now tested with a fake platform (<code>tests/unit/platform.ts</code>), so the tests never touch a real keyring or <code>~/.config</code>.</p>
+  <p>The rule is checked like the others: a core module (<code>markdown/</code>, <code>agent/</code>, <code>forge/</code>, the orchestrator, the base modules) may not import <code>gi://</code> or <code>platform/gjs/</code>. The modules not moved yet are listed in <code>GI_ALLOWED</code>, and <code>layers.mjs</code> fails when a listed module no longer imports GI, so the list can only get shorter. This is the same pattern as <code>COMPLEXITY_ALLOWED</code>.</p>
+  <div class="lesson"><b>Lesson</b>A layer rule that names a library (“no GTK”) stops at that library. To keep a core movable, name what it may use: the interfaces of a port. Leave the libraries to the side that implements it.</div>
 </section>
 
 <!-- ============================================================ -->
@@ -1642,6 +1664,8 @@ const layers = [
   ['f74d5b5', 'Oct 8', 'Adw', 'Home past 300 files', 11316, 1723, 4668, 121, 6],
   ['de2924f', 'Oct 9', 'Adw', 'window/ controllers', 10945, 2384, 4703, 123, 6],
   ['1bac3b8', 'Oct 9', 'Adw', 'Commit message writer', 11521, 3397, 5055, 125, 6],
+  ['e5bd23a', 'Oct 16', 'Adw', 'markworkd shims', 17940, 5054, 9095, 192, 6],
+  ['platform', 'Oct 16', 'Adw', 'Platform port', 17940, 4695, 9554, 192, 6],
 ];
 function fit(svg, H) {
   const W = Math.max(300, Math.round(svg.parentNode.clientWidth || 900));
@@ -1655,7 +1679,7 @@ function drawLayers() {
   const narrow = (svg.parentNode.clientWidth || 900) < 620;
   const row = narrow ? 34 : 26, T = 4, H = T + row * layers.length + 20;
   const W = fit(svg, H), L = narrow ? 92 : 230, R = 54;
-  const max = 18000;
+  const max = Math.max(...layers.map(d => d[4] + d[5] + d[6])) * 1.04;
   const x = v => (W - L - R) * v / max;
   const parts = [[4, '--before'], [5, '--after'], [6, '--third']];
   layers.forEach((d, i) => {
@@ -1675,7 +1699,7 @@ function drawLayers() {
       '<br>GTK/Adw files: ' + int(d[4]) + ' lines<br>Gio/GLib only: ' + int(d[5]) + ' lines<br>No GI import: ' + int(d[6]) + ' lines' +
       '<br><span style="color:var(--text-2)">' + d[7] + ' Adw.* references · ' + d[8] + ' .ui files</span>');
   });
-  for (const v of [0, 6000, 12000, 18000]) {
+  for (const v of [0, 10000, 20000, 30000].filter(v => v <= max)) {
     el('text', { x: L + x(v), y: H - 4, 'text-anchor': v ? 'end' : 'start' }, svg).textContent = v ? (v / 1000) + 'k' : '0';
   }
 }
