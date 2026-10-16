@@ -9,12 +9,7 @@ import { fieldNameProblem, OPTION_COLORS, optionProblem, type FieldDef, type Fie
 import { removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
 import { formDialog } from './dialogs.js';
-
-export interface SchemaDialogOptions {
-    fields: FieldDef[];                              // the fields the document declares, in order
-    reserved: readonly string[];                     // names the document uses itself (due, agent)
-    uses(key: string, option?: string): number;      // how many notes have a value for the field (or that option)
-}
+import type { SchemaDialogOptions } from '../app/views.js';
 
 const TYPES: readonly FieldType[] = ['text', 'number', 'select', 'date', 'progress', 'person', 'agent', 'link'];
 const TYPE_LABEL: Record<FieldType, () => string> = {

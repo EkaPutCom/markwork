@@ -2,7 +2,6 @@
 // when one is opened or updated. The forge layer does the talking; this controller connects it to the sidebar tab,
 // the token dialog, and desktop notifications.
 
-import Gio from 'gi://Gio';
 import { runGit } from '../git.js';
 import { GiteaProvider } from '../forge/gitea.js';
 import { PullMonitor, type PullEvent } from '../forge/monitor.js';
@@ -11,15 +10,31 @@ import { systemTokenStore, type TokenSource, type TokenStore } from '../forge/to
 import { ForgeError, type ForgeProvider, type PullRequest, type RepoRef, type Transport } from '../forge/types.js';
 import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
-import type { CollabPanel } from '../ui/collab.js';
-import { tokenDialog } from '../ui/serverdialog.js';
 import { _, fmt } from '../i18n.js';
-import type { DocumentHost } from './doc.js';
+import type { DocumentHost } from './document.js';
+
+// The pull requests tab: it draws what it is given and reports the user's actions through the on* callbacks.
+export interface CollabView {
+    onOpen: (pull: PullRequest) => void;
+    onRefresh: () => void;
+    onServer: () => void;
+    onSend: () => void;
+    setNote(text: string | null): void;
+    setServer(label: string | null): void;
+    setPulls(pulls: readonly PullRequest[]): void;
+}
+
+// The token dialog; null = cancelled, '' = forget the saved token.
+export interface CollabDialogs {
+    token(repo: RepoRef, hasToken: boolean, source?: TokenSource): Promise<string | null>;
+}
 
 export interface CollabHost extends DocumentHost {
     readonly settings: AppSettings;
-    readonly app: Gio.Application;
-    readonly collabPanel: CollabPanel;
+    readonly collabPanel: CollabView;
+    isActive(): boolean;                                   // the window has the focus: a toast reaches the user
+    notify(id: string, title: string, body: string): void;   // a desktop notification, for when it does not
+    openUri(uri: string): void;                            // in the browser
 }
 
 // What the controller reaches outside the process through; tests replace them.
@@ -50,15 +65,8 @@ export class CollabController {
     private generation = 0;                 // a folder change makes the answers of the previous folder stale
     private failing = false;                // the last round failed: report the next failure only after a success
     private notified = new Set<string>();
-    // The token dialog; tests replace it with an immediate answer.
-    dialogs: { token: (repo: RepoRef, hasToken: boolean, source?: TokenSource) => Promise<string | null> } = {
-        token: (repo, hasToken, source) => tokenDialog(this.host.win, {
-            host: repo.host, repository: `${repo.owner}/${repo.repo}`, hasToken, source,
-            test: token => this.test(repo, token),
-        }),
-    };
-
-    constructor(private readonly host: CollabHost, readonly services: CollabServices = { ...defaultServices }) {
+    // dialogs: the frontend's token dialog (it can try a token with test()); tests replace it with an immediate answer.
+    constructor(private readonly host: CollabHost, public dialogs: CollabDialogs, readonly services: CollabServices = { ...defaultServices }) {
         const panel = host.collabPanel;
         panel.onRefresh = () => void this.refresh();
         panel.onServer = () => void this.editToken();
@@ -68,7 +76,7 @@ export class CollabController {
     }
 
     // A pull request was chosen in the list; the window connects this to the review (the browser page until then).
-    onOpenPull: (pull: PullRequest) => void = pull => { if (pull.url) Gio.AppInfo.launch_default_for_uri(pull.url, null); };
+    onOpenPull: (pull: PullRequest) => void = pull => { if (pull.url) this.host.openUri(pull.url); };
 
     // The send button of the tab; the window connects it to ContributeController.
     onSend: () => void = () => {};
@@ -159,13 +167,8 @@ export class CollabController {
             const title = event.kind === 'opened'
                 ? fmt(_('{author} opened pull request #{number}'), { author: event.pull.author, number: event.pull.number })
                 : fmt(_('Pull request #{number} was updated'), { number: event.pull.number });
-            if (this.host.win.is_active) this.host.toast(`${title}: ${event.pull.title}`);
-            else {
-                const notification = new Gio.Notification();
-                notification.set_title(title);
-                notification.set_body(event.pull.title);
-                this.host.app.send_notification(`pull-${event.pull.number}`, notification);
-            }
+            if (this.host.isActive()) this.host.toast(`${title}: ${event.pull.title}`);
+            else this.host.notify(`pull-${event.pull.number}`, title, event.pull.title);
         }
     }
 

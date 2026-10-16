@@ -10,7 +10,8 @@ import Pango from 'gi://Pango';
 import type { DiffLine } from '../gitlog.js';
 import { pack, removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
-import type { ChangedFile, Commit, MergeMethod, RanCommand } from '../agent/worktreereview.js';
+import type { ChangedFile, Commit } from '../agent/worktreereview.js';
+import type { FinishAction, ReviewTab, ReviewView, SummaryView } from '../app/harnessreview.js';
 import { createDiffView, fillDiff, setupDiffTags } from './historyviewer.js';
 
 const MARK = { added: 'A', modified: 'M', deleted: 'D', renamed: 'R' } as const;
@@ -25,18 +26,7 @@ function rectangle(x: number, y: number, width: number, height: number): Gdk.Rec
     return r;
 }
 
-export type ReviewTab = 'changes' | 'summary' | 'log';
-
-// What finishing the review can do, from the merge button and its menu.
-export type FinishAction = MergeMethod | 'keep' | 'discard';
-
-export interface SummaryView {
-    answer: string;              // the harness's last answer ('' = none known)
-    commands: RanCommand[];
-    hasLog: boolean;
-}
-
-export class HarnessReviewView {
+export class HarnessReviewView implements ReviewView {
     readonly widget: Gtk.Box;
     readonly banner: Adw.Banner;
     readonly title: Gtk.Label;
@@ -292,6 +282,10 @@ export class HarnessReviewView {
         for (const c of commits) line(c.subject, c.hash);
         if (uncommitted) line(_('Uncommitted changes'), _('Merging commits them first'));
         if (!commits.length && !uncommitted) line(_('None'), '');
+    }
+
+    setStatus(text: string): void {
+        this.status.set_label(text);
     }
 
     setMessage(text: string): void {

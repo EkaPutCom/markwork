@@ -611,6 +611,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">9b061d3</span><span><span class="era">Adw</span><b>Chapter 8, Layers</b> · <code>AppSettings</code> reads and writes through a <code>SettingsStore</code>; GSettings is the store under GJS and finds each key's GVariant type in the schema. GTK keeps <code>bind()</code> and <code>create_action()</code> through <code>gsettingsOf()</code>, and listeners use <code>settings.onChanged()</code>. The DeepSeek stream moves to <code>platform().httpStream</code>; <code>GI_ALLOWED</code> shrinks to 5.</span></li>
     <li><span class="h">d5017f6</span><span><span class="era">Adw</span><b>Layers</b> · Processes join the port: <code>run()</code> for a program run to the end (git, with the watchdog for a callback GJS loses during garbage collection) and <code>spawn()</code> for a harness spoken to line by line over <code>GLib.IOChannel</code>, both in <code>platform/gjs/process.ts</code>. <code>git.ts</code> and <code>orchestrator.ts</code> drop GLib, its timers become <code>setTimeout</code>; <code>GI_ALLOWED</code> shrinks to 3.</span></li>
     <li><span class="h">62ea652</span><span><span class="era">Adw</span><b>Layers, Chapter 11</b> · <code>files.ts</code>, <code>workspace.ts</code>, and the markworkd links move behind the port (<code>platform/gjs/files.ts</code>, <code>links.ts</code>, idle scheduling), and <code>i18n.ts</code> asks <code>platform().translations</code> while gettext is bound in <code>platform/gjs/i18n.ts</code>. <code>GI_ALLOWED</code> is empty, and a new rule lets the core import only the core.</span></li>
+    <li><span class="h">app</span><span><span class="era">Adw</span><b>Layers</b> · The thirteen <code>window/</code> controllers become <code>app/</code>: they see a document's editor as a <code>TextEditor</code> and the screen as interfaces (<code>ViewScreen</code>, <code>CollabView</code>, <code>PullReviewView</code>, <code>ReviewView</code>, <code>KanbanView</code>) with dialogs passed in, and <code>window.ts</code> implements them on its widgets. <code>app/</code> imports no GI and no <code>ui/</code>.</span></li>
   </ol>
 </section>
 
@@ -659,6 +660,25 @@ export const systemTokenStore = { get: host =&gt; readCredential(forgeToken(host
   <p>Settings and the DeepSeek stream followed (Chapter 8 tells the GSettings side), then processes. <code>orchestrator.ts</code> already had a seam, the <code>Spawner</code> type that the markworkd daemon also fills, so its local spawner moved to <code>platform/gjs/process.ts</code> almost unchanged, next to git's <code>run()</code> with its watchdog. The port's contract kept one quirk on purpose: <code>spawn()</code> takes a path from <code>findProgram()</code> and never searches <code>PATH</code> itself, the way the harness always ran. Three core modules are left in <code>GI_ALLOWED</code>: the daemon socket (<code>agent/daemon/streamlink.ts</code>), file watching (<code>workspace.ts</code>), and the background writes (<code>files.ts</code>). The GLib-only layer is down to 2,578 lines.</p>
   <p>The last three needed the most new contract: whole-file reads and atomic writes, background writes with a pump (the private <code>GLib.MainContext</code> that lets <code>flushWrites</code> wait for writes without running timers or input moved into <code>platform/gjs/files.ts</code>, while the queue per path stayed in <code>files.ts</code>), listings with a size-and-time stamp, folder monitors, idle-priority scheduling for the workspace warm-up, and line links for markworkd. With them <code>GI_ALLOWED</code> became empty. Checking it then showed a leak the per-file rule could not see: <code>orchestrator.ts</code> imported <code>i18n.ts</code>, which imported Gio and GJS's <code>gettext</code>. So <code>i18n.ts</code> moved behind the port too, and <code>layers.mjs</code> gained a rule that a core module imports only core modules and no GJS built-in, which makes “no GI in the core” true all the way down.</p>
   <div class="lesson"><b>Lesson</b>An allowlist that reaches zero proves only what its rule checks. Check the closure, not the file: a rule on what a layer may import is complete only when it also limits which modules the layer may reach.</div>
+  <h3>The window's controllers become an application layer</h3>
+  <p>With the core free of GI, the next seam was the one de2924f started: the <code>window/</code> controllers. They held no widgets of their own, but each reached into GTK somewhere. It might be a dialog opened on <code>host.win</code>, a page named with <code>content.visible_child_name</code>, the status bar, a <code>Gio.Action</code>'s state, or a document's <code>MarkdownView</code> (<code>buffer.get_modified()</code>). Each of those became an interface the controller declares, and the controllers moved to <code>app/</code>:</p>
+  <div class="flow" aria-label="The application layer">
+    <span class="node gtk">window.ts (widgets)</span><span class="to">→ implements</span>
+    <span class="node pure">ViewScreen · CollabView · ReviewView · dialogs</span><span class="to">← used by</span>
+    <span class="node pure">app/* controllers</span><span class="to">→</span>
+    <span class="node pure">core</span>
+  </div>
+<pre><code>// before: window/views.ts
+host.content.visible_child_name = 'home';
+host.home.render(host.homePage.data());
+const action = host.app.lookup_action('kanban-view');
+if (action instanceof Gio.SimpleAction) action.set_state(GLib.Variant.new_boolean(false));
+
+// after: app/views.ts (window.ts implements ViewScreen on the Gtk.Stack, HomeView, and actions)
+screen.showHome(this.host.homePage.data());
+screen.setStructuredState(false);</code></pre>
+  <p>A document's editor became a <code>TextEditor</code>: the dozen things a controller does with the text (read it, replace it as one undo step, the modified flag, headings, the cursor, source mode). <code>MarkdownView</code> implements it with three new one-line methods. Controllers that hand documents back to the window (<code>DocumentController</code>, <code>ViewController</code>, the agent writes) are generic over the editor, so the window still gets <code>Doc&lt;MarkdownView&gt;</code> back and keeps its widget calls typed. Dialogs that tests already replaced (<code>dialogs.capture</code>, <code>dialogs.merge</code>, …) became constructor parameters; their GTK versions moved into <code>window.ts</code> unchanged, so no test had to learn a new seam. Data types that the widgets and controllers share (<code>HomeData</code>, <code>MenuEntry</code>, <code>FileView</code>, <code>ChooseFileOptions</code>) moved down to <code>app/</code>, and the widgets import them from there.</p>
+  <div class="lesson"><b>Lesson</b>A controller is portable when what it asks of the screen is data and callbacks, not widgets. Turn each widget call into the smallest method that says what the controller wants (“show Home with this data”), and let the toolkit decide how.</div>
   <div class="lesson"><b>Lesson</b>A layer rule that names a library (“no GTK”) stops at that library. To keep a core movable, name what it may use: the interfaces of a port. Leave the libraries to the side that implements it.</div>
 </section>
 
@@ -1678,6 +1698,7 @@ const layers = [
   ['9b061d3', 'Oct 16', 'Adw', 'Settings + stream port', 17943, 3218, 11165, 192, 6],
   ['d5017f6', 'Oct 16', 'Adw', 'Process port', 17943, 2578, 11868, 192, 6],
   ['62ea652', 'Oct 16', 'Adw', 'Core free of GI', 17943, 2203, 12375, 192, 6],
+  ['app', 'Oct 16', 'Adw', 'app/ layer', 16386, 1059, 15293, 190, 6],
 ];
 function fit(svg, H) {
   const W = Math.max(300, Math.round(svg.parentNode.clientWidth || 900));

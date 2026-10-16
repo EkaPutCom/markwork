@@ -9,7 +9,7 @@
 
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import { COMMAND_LABELS } from '../commands.js';
+import { COMMAND_LABELS } from '../app/commands.js';
 import { _ } from '../i18n.js';
 
 // Dialog sections and the actions in them, in the order displayed.

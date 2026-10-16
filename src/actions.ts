@@ -17,7 +17,7 @@ import type { Mode, MarkdownView } from './editor/view.js';
 import type { FindBar } from './ui/findbar.js';
 import type { AppSettings } from './settings.js';
 import type { Awaitable } from './gtkutil.js';
-import type { JournalController } from './window/journal.js';
+import type { JournalController } from './app/journal.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
 
 // View options that can be changed from the menu.
@@ -57,15 +57,6 @@ export interface ActionHost {
 }
 
 const TABLE_TEMPLATE: [before: string, after: string] = ['| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| ', ' |  |  |\n'];
-
-// Actions that edit the document text. While the kanban board is shown, its text is hidden, so
-// these actions are disabled (menu dims, shortcuts and palette do not trigger them).
-export const TEXT_ACTIONS = new Set([
-    'find', 'replace', 'bold', 'italic', 'strike', 'inline-code', 'highlight', 'link', 'image', 'zoom-image', 'codeblock', 'table',
-    'quote', 'ulist', 'olist', 'heading0', 'heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6',
-    'table-row-below', 'table-row-above', 'table-delete-row', 'table-col-right', 'table-col-left', 'table-delete-col',
-    'table-align-left', 'table-align-center', 'table-align-right', 'table-format',
-]);
 
 export function registerActions(app: Adw.Application, w: ActionHost): void {
     const action = (name: string, accels: string[] | null, run: () => void) => {

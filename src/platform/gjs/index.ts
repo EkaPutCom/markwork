@@ -1,6 +1,7 @@
 // The platform port on GJS: GLib/Gio for files, paths, processes, idle work, and daemon links, libsecret for the keyring, libsoup 3 for HTTP. The only place
 // outside the base modules where the core's runtime needs meet gi://.
 
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import type { Platform, Scheduler, Secrets } from '../index.js';
 import { gjsFiles } from './files.js';
@@ -72,9 +73,12 @@ export const gjsPlatform: Platform = {
     paths: {
         join: (...parts) => GLib.build_filenamev(parts),
         dirname: path => GLib.path_get_dirname(path),
+        resolve: path => Gio.File.new_for_path(path).get_path() ?? path,
+        relative: (dir, path) => Gio.File.new_for_path(dir).get_relative_path(Gio.File.new_for_path(path)),
         basename: path => GLib.path_get_basename(path),
         isAbsolute: path => GLib.path_is_absolute(path),
         configDir: () => GLib.get_user_config_dir(),
+        homeDir: () => GLib.get_home_dir(),
         runtimeDir: () => GLib.get_user_runtime_dir(),
     },
     secrets,
@@ -85,5 +89,6 @@ export const gjsPlatform: Platform = {
     links: gjsLinks,
     translations: gettextTranslations,
     env: name => GLib.getenv(name),
+    realName: () => { const name = GLib.get_real_name(); return name && name !== 'Unknown' ? name : null; },
     monotonicMs: () => GLib.get_monotonic_time() / 1000,
 };

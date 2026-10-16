@@ -1,10 +1,10 @@
 // Following [[note]] links from the editor, a board card, or an inbox item.
 
-import GLib from 'gi://GLib';
 import { newNotePath, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
+import { platform } from '../platform/index.js';
 import type { WorkspaceRepository } from '../workspace.js';
 import { _, fmt } from '../i18n.js';
-import type { Doc, DocumentHost } from './doc.js';
+import type { Doc, DocumentHost } from './document.js';
 
 export interface NoteHost extends DocumentHost {
     readonly workspace: WorkspaceRepository;
@@ -18,7 +18,7 @@ export class NoteLinks {
     rootFor(doc: Doc): string | null {
         const root = this.host.root();
         if (root && (!doc.file || doc.file.startsWith(`${root}/`))) return root;
-        return doc.file ? GLib.path_get_dirname(doc.file) : null;
+        return doc.file ? platform().paths.dirname(doc.file) : null;
     }
 
     // Note names for [[ suggestions from `doc`.
@@ -47,8 +47,9 @@ export class NoteLinks {
             host.toast(fmt(_('Invalid note name: {target}'), { target: link.target }));
             return;
         }
-        const path = GLib.build_filenamev([root, ...rel.split('/')]);
-        if (!found) GLib.mkdir_with_parents(GLib.path_get_dirname(path), 0o755);
+        const { fs, paths } = platform();
+        const path = paths.join(root, ...rel.split('/'));
+        if (!found) fs.makeDirs(paths.dirname(path), 0o755);
         if (!host.openInTab(path)) return;
         if (!found) host.toast(fmt(_('New note: {rel} (saved once filled in)'), { rel }));
         else if (link.heading) this.jumpToHeading(host.active(), link.heading);

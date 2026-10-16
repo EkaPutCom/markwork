@@ -51,6 +51,7 @@ export interface EntryInfo {
 export interface FileSystem {
     readText(path: string): string;
     writeText(path: string, text: string): void;      // atomic: a reader sees the old file or the new one
+    append(path: string, text: string): void;         // to the end, creating the file if needed
     // A write off the main thread (atomic, synced to disk). done(error) runs during startWrite() when the write cannot
     // begin, otherwise during pumpWrites(); error is null on success.
     startWrite(path: string, text: string, done: (error: unknown) => void): void;
@@ -63,6 +64,7 @@ export interface FileSystem {
     kind(path: string): EntryKind;    // 'missing' only when nothing is there; any other error (no permission) throws
     isDirectory(path: string): boolean;   // a folder, also through a symbolic link
     trash(path: string): void;        // to the desktop trash, so it can be restored
+    move(from: string, to: string): void;   // a file or folder; fails when something is already at `to`
     info(path: string): EntryInfo;    // throws when nothing is there
     listInfo(dir: string): EntryInfo[];
     // Calls onChange with the path of each entry in dir that is created, deleted, changed, or moved (both names for a
@@ -73,9 +75,12 @@ export interface FileSystem {
 export interface Paths {
     join(...parts: string[]): string;
     dirname(path: string): string;
+    resolve(path: string): string;                       // absolute and without . or .. parts
+    relative(dir: string, path: string): string | null;  // path relative to dir; null when it is not inside dir
     basename(path: string): string;
     isAbsolute(path: string): boolean;
     configDir(): string;              // the per-user configuration folder (~/.config on Linux)
+    homeDir(): string;
     runtimeDir(): string;             // the per-user folder for sockets and other runtime files ($XDG_RUNTIME_DIR on Linux)
 }
 
@@ -115,6 +120,7 @@ export interface Processes {
     spawn(argv: string[], cwd: string, handlers: ChildHandlers): ChildProcess;
     // The program's path, also in the user's own bin folders that a desktop launch may leave out of PATH; null = not found.
     findProgram(name: string): string | null;
+    launch(argv: string[]): boolean;                  // starts a program and lets it run on its own (a terminal); argv[0] on PATH
     hostName(): string;
 }
 
@@ -167,6 +173,7 @@ export interface Platform {
     readonly links: Links;
     readonly translations: Translations;
     env(name: string): string | null;
+    realName(): string | null;        // the user's full name, when the system knows it
     monotonicMs(): number;            // a clock that only moves forward, in milliseconds; for measuring durations
 }
 

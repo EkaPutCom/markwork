@@ -9,25 +9,9 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-// One menu item. An empty label = a section separator; submenu = an item containing a child menu.
-export interface MenuEntry {
-    label: string;
-    enabled?: boolean;   // default true
-    run?: () => void;
-    submenu?: MenuEntry[];
-}
-
-export const separator = (): MenuEntry => ({ label: '' });
-
-// Find an entry by label (also inside submenus).
-export function findEntry(entries: MenuEntry[], label: string): MenuEntry | undefined {
-    for (const entry of entries) {
-        if (entry.label === label) return entry;
-        const inner = entry.submenu && findEntry(entry.submenu, label);
-        if (inner) return inner;
-    }
-    return undefined;
-}
+// The menu data (MenuEntry, separator, findEntry) is in app/menu.ts; re-exported for the GTK code.
+export { findEntry, separator, type MenuEntry } from '../app/menu.js';
+import type { MenuEntry } from '../app/menu.js';
 
 // Build the Gio.Menu and its actions (in group `group`, prefix "menu.").
 function buildModel(entries: MenuEntry[], group: Gio.SimpleActionGroup, counter: { n: number }): Gio.Menu {

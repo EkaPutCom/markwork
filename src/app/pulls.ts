@@ -2,10 +2,8 @@
 // forge, shows each as a note or as a raw diff, and merges on request. After a merge the folder is brought up to date with
 // git when it is on the base branch. The forge itself comes from CollabController through `access`.
 
-import Gio from 'gi://Gio';
-import type Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib';
 import { readTextFile } from '../files.js';
+import { platform } from '../platform/index.js';
 import { runGit } from '../git.js';
 import { parseDiff, type DiffLine } from '../gitlog.js';
 import type { GitRunner } from '../forge/contribute.js';
@@ -13,15 +11,49 @@ import { fileDiff, isBinaryDiff } from '../forge/diff.js';
 import { abortLocalMerge, confirmMerged, finishLocalMerge, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge, type PendingMerge } from '../forge/resolve.js';
 import { ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest, type RepoRef } from '../forge/types.js';
 import { diffNote, type NoteDiff } from '../markdown/notediff.js';
-import { decideDialog, mergeDialog } from '../ui/dialogs.js';
-import type { FileView, PullView } from '../ui/pullview.js';
 import { _, fmt, ngettext } from '../i18n.js';
-import { docFor, type DocumentHost } from './doc.js';
+import { docFor, type DocumentHost } from './document.js';
+
+// One changed file of a pull request: as a note (null when it cannot be shown that way), and as a raw diff.
+export interface FileView {
+    rendered: DiffLine[] | null;
+    raw: DiffLine[];
+    note?: string;
+}
+
+// The review page: it draws what it is given and reports the user's actions through the on* callbacks.
+export interface PullReviewView {
+    onClose: () => void;
+    onSelect: (path: string) => void;
+    onMerge: (method: MergeMethod) => void;
+    onBrowser: () => void;
+    onComment: (text: string) => void;
+    onResolve: () => void;
+    onFinish: () => void;
+    onAbort: () => void;
+    setPull(pull: PullRequest): void;
+    setResolving(files: number | null): void;     // conflicted files left in a local merge; null = no local merge
+    setBusy(busy: boolean): void;
+    setFiles(files: readonly PullFile[]): void;
+    setMessage(text: string): void;
+    setFileView(view: FileView): void;
+    setDiscussion(pull: PullRequest, comments: readonly PullComment[]): void;
+    setCommenting(busy: boolean): void;
+    clearComment(): void;
+}
+
+// The confirmations before merging; tests replace them with immediate answers.
+export interface PullDialogs {
+    merge(pull: PullRequest, method: MergeMethod): Promise<boolean>;
+    local(pull: PullRequest): Promise<boolean>;
+    abort(pull: PullRequest): Promise<boolean>;
+}
 
 export interface PullHost extends DocumentHost {
-    readonly content: Gtk.Stack;
-    readonly pullView: PullView;
+    readonly pullView: PullReviewView;
+    showPull(): void;              // the content area shows the review page
     showDocument(): void;          // the content area shows the active document again
+    openUri(uri: string): void;
     saveAll(): boolean;            // write the open documents to disk; false = the user cancelled
     refreshTree(): void;
 }
@@ -38,6 +70,9 @@ const MAX_NOTE_CHARS = 300_000;
 const NOTE_FILE = /\.(md|markdown|mdown|txt)$/i;
 
 const METHOD_NAME: Record<MergeMethod, string> = { merge: 'Merge commit', squash: 'Squash and merge', rebase: 'Rebase and merge' };
+
+// The merge method as the forge's own button calls it, translated.
+export const mergeMethodName = (method: MergeMethod): string => _(METHOD_NAME[method]);
 
 // The note view as diff lines: what changed in the fields, then the whole text with the changes marked.
 export function noteLines(diff: NoteDiff): DiffLine[] {
@@ -65,21 +100,8 @@ export class PullReviewController {
     // The local merge in progress: where it started, and the files that conflicted.
     private local: { merge: LocalMerge; files: string[]; before: string } | null = null;
     git: GitRunner = runGit;
-    // The merge confirmation; tests replace it with an immediate answer.
-    dialogs: {
-        merge: (pull: PullRequest, method: MergeMethod) => Promise<boolean>;
-        local: (pull: PullRequest) => Promise<boolean>;
-        abort: (pull: PullRequest) => Promise<boolean>;
-    } = {
-        local: pull => decideDialog(this.host.win, fmt(_('Merge pull request #{number} in this folder?'), { number: pull.number }),
-            fmt(_('Markwork will merge it into your {base}. Files that conflict get conflict markers; you edit them in their tabs and then finish, which pushes the result to the server. “Abort merge” undoes it.'), { base: pull.baseRef }), _('Merge Here')),
-        abort: pull => decideDialog(this.host.win, fmt(_('Undo the merge of pull request #{number}?'), { number: pull.number }),
-            _('The folder goes back to what it was before. Your edits to the conflicting files are lost.'), _('Undo the Merge'), true),
-        merge: (pull, method) => mergeDialog(this.host.win, fmt(_('Merge pull request #{number}?'), { number: pull.number }),
-            fmt(_('“{title}” will be merged into {base} on the server with “{method}”. Everybody who uses this repository sees it.'), { title: pull.title, base: pull.baseRef, method: _(METHOD_NAME[method]) })),
-    };
-
-    constructor(private readonly host: PullHost, private readonly access: PullAccess) {
+    // dialogs: the frontend's merge confirmations; tests replace them with immediate answers.
+    constructor(private readonly host: PullHost, private readonly access: PullAccess, public dialogs: PullDialogs) {
         const view = host.pullView;
         view.onClose = () => this.close();
         view.onSelect = path => void this.select(path);
@@ -88,7 +110,7 @@ export class PullReviewController {
         view.onResolve = () => void this.resolve();
         view.onFinish = () => void this.finish();
         view.onAbort = () => void this.abort();
-        view.onBrowser = () => { if (this.pull?.url) Gio.AppInfo.launch_default_for_uri(this.pull.url, null); };
+        view.onBrowser = () => { if (this.pull?.url) this.host.openUri(this.pull.url); };
     }
 
     get current(): PullRequest | null { return this.pull; }
@@ -118,7 +140,7 @@ export class PullReviewController {
         pullView.setDiscussion(pull, []);
         pullView.clearComment();
         pullView.setMessage(_('Loading…'));
-        this.host.content.visible_child_name = 'pull';
+        this.host.showPull();
         const provider = this.access.provider();
         if (!provider) return pullView.setMessage(_('Not connected to a server.'));
         try {
@@ -235,12 +257,12 @@ export class PullReviewController {
     // merge). The open documents were saved before git ran, so no edit is lost.
     private reloadOpen(): void {
         for (const doc of this.host.docs()) {
-            if (!doc.file || doc.editor.buffer.get_modified()) continue;
+            if (!doc.file || doc.editor.isModified()) continue;
             let text: string;
             try { text = readTextFile(doc.file); } catch (e) { continue; }
             if (text === doc.editor.getText()) continue;
             doc.editor.replaceText(text);
-            doc.editor.buffer.set_modified(false);
+            doc.editor.setModified(false);
         }
     }
 
@@ -329,7 +351,7 @@ export class PullReviewController {
         if (!this.host.saveAll()) return;
         const left = this.remaining();
         this.host.pullView.setResolving(left.length);
-        if (left.length) return this.host.toast(fmt(_('Still has conflict markers: {files}'), { files: left.map(f => GLib.path_get_basename(f)).join(', ') }));
+        if (left.length) return this.host.toast(fmt(_('Still has conflict markers: {files}'), { files: left.map(f => platform().paths.basename(f)).join(', ') }));
         const result = await finishLocalMerge(this.git, local.merge, local.files);
         if (!result.ok) return this.host.toast(result.message);
         this.local = null;

@@ -1,22 +1,31 @@
 // The daily journal and the activity log behind it: opening today's journal, quick capture, the end-of-day
 // summary through the Assistant, and recording work activity (cards, agent changes, harness runs).
 
-import GLib from 'gi://GLib';
-import { after, type Awaitable } from '../gtkutil.js';
+import { after, type Awaitable } from '../awaitable.js';
 import { readTextFile, writeTextFile, flushWrites, fileExists } from '../files.js';
+import { platform } from '../platform/index.js';
 import { commitsBetween } from '../git.js';
 import { readActivity, recordActivity } from '../activity.js';
-import { promptDialog } from '../ui/dialogs.js';
-import type { ChatPanel } from '../ui/chat.js';
-import type { HomeData } from '../ui/home.js';
+import type { HomeJournal } from './home.js';
 import { localDate } from '../markdown/home.js';
 import { activityLines, addNote, boardEvents, clock, commitActivity, journalName, journalStats, mergeActivity, newJournal, type Activity, type ActivityKind } from '../markdown/journal.js';
 import type { Board } from '../markdown/kanban.js';
 import { _, fmt } from '../i18n.js';
-import { docFor, errorMessage, type Doc, type DocumentHost } from './doc.js';
+import { docFor, errorMessage, type Doc, type DocumentHost } from './document.js';
+
+// What the journal needs from the Assistant: whether it is working, and a way to ask it something.
+export interface JournalChat {
+    readonly busy: boolean;
+    ask(question: string): Promise<void>;
+}
+
+// The quick capture question ("Add to Journal"); null = cancelled.
+export interface JournalDialogs {
+    capture(): Awaitable<string | null>;
+}
 
 export interface JournalHost extends DocumentHost {
-    readonly chat: ChatPanel;
+    readonly chat: JournalChat;
     write(path: string, text: string): boolean;   // shows an error dialog on failure
     refreshTree(): void;
     refreshHome(): void;
@@ -25,16 +34,12 @@ export interface JournalHost extends DocumentHost {
 }
 
 export class JournalController {
-    // The quick capture dialog; replaced in tests with an immediate answer.
-    dialogs: { capture: () => Awaitable<string | null> } = {
-        capture: () => promptDialog(this.host.win, { title: _('Add to Journal'), label: _('Recorded in today\'s journal with the current time.'), accept: _('Add') }),
-    };
-
-    constructor(private readonly host: JournalHost) {}
+    // dialogs: the frontend's quick capture dialog; tests replace it with an immediate answer.
+    constructor(private readonly host: JournalHost, public dialogs: JournalDialogs) {}
 
     private path(date: string): string | null {
         const root = this.host.root();
-        return root ? GLib.build_filenamev([root, ...journalName(date).split('/')]) : null;
+        return root ? platform().paths.join(root, ...journalName(date).split('/')) : null;
     }
 
     // Journal title, e.g. "Thursday, October 8, 2026", by the system locale like the date on Home.
@@ -66,7 +71,7 @@ export class JournalController {
             return null;
         }
         if (!docFor(this.host, path) && !fileExists(path)) {
-            GLib.mkdir_with_parents(GLib.path_get_dirname(path), 0o755);
+            platform().fs.makeDirs(platform().paths.dirname(path), 0o755);
             if (!this.host.write(path, newJournal(this.title(date)))) return null;
             this.host.refreshTree();
         }
@@ -110,7 +115,7 @@ export class JournalController {
             else {
                 flushWrites(path);
                 const text = fileExists(path) ? readTextFile(path) : newJournal(this.title(date));
-                GLib.mkdir_with_parents(GLib.path_get_dirname(path), 0o755);
+                platform().fs.makeDirs(platform().paths.dirname(path), 0o755);
                 writeTextFile(path, addNote(text, clock(now), note));
                 this.host.refreshTree();
             }
@@ -142,7 +147,7 @@ export class JournalController {
     }
 
     // Today's journal row on Home.
-    summary(root: string, date: string): HomeData['journal'] {
+    summary(root: string, date: string): HomeJournal | null {
         const path = this.path(date)!;
         const doc = docFor(this.host, path);
         let text: string | null = null;

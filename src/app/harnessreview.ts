@@ -3,27 +3,68 @@
 // the harness, merges the work into the base branch, keeps only the branch, or discards it. The card is found again
 // by its `[branch:: …]` field, so a review works after Markwork was restarted too.
 
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
-import Gtk from 'gi://Gtk?version=4.0';
 import { HARNESSES, cardProject, isActive, locateCard, type Run } from '../agent/harness.js';
 import { isRemoteMachine } from '../agent/daemon/machines.js';
 import { findWorktree, removeWorktree, type Worktree } from '../agent/worktree.js';
-import { commandsRun, commentsReply, mergeWorktree, newLineNumbers, readReview, type LineComment, type MergeMethod, type Review } from '../agent/worktreereview.js';
+import { commandsRun, commentsReply, mergeWorktree, newLineNumbers, readReview, type ChangedFile, type Commit, type LineComment, type MergeMethod, type RanCommand, type Review } from '../agent/worktreereview.js';
 import { parseDiff, type DiffLine } from '../gitlog.js';
 import { worktreeActivity, type ActivityKind } from '../markdown/journal.js';
 import { cardBranch, cardMeta, parseBoard, type Board, type Card } from '../markdown/kanban.js';
 import { readTextFile } from '../files.js';
-import { decideDialog } from '../ui/dialogs.js';
-import type { FinishAction, HarnessReviewView, ReviewTab } from '../ui/harnessreview.js';
+import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import { _, fmt, ngettext } from '../i18n.js';
-import { docFor, type DocumentHost } from './doc.js';
+import { docFor, type DocumentHost } from './document.js';
 import type { HarnessController } from './harness.js';
 
+export type ReviewTab = 'changes' | 'summary' | 'log';
+
+// What finishing the review can do, from the merge button and its menu.
+export type FinishAction = MergeMethod | 'keep' | 'discard';
+
+export interface SummaryView {
+    answer: string;              // the harness's last answer ('' = none known)
+    commands: RanCommand[];
+    hasLog: boolean;
+}
+
+// The review page: it draws what it is given and reports the user's actions through the on* callbacks.
+export interface ReviewView {
+    onClose: () => void;
+    onSelect: (index: number) => void;
+    onInclude: (index: number, included: boolean) => void;
+    onFinish: (action: FinishAction) => void;
+    onReply: () => void;
+    onFolder: () => void;
+    onTerminal: () => void;
+    onTab: (tab: ReviewTab) => void;
+    onLog: () => void;
+    onBanner: () => void;
+    onComment: (line: number, text: string) => void;     // a comment on line `line` of the diff shown
+    setHeader(title: string, meta: string, base: string, local: boolean): void;
+    setFiles(files: readonly ChangedFile[], included: readonly boolean[], comments: readonly number[], selected: number): void;
+    setIncluded(included: readonly boolean[], blocked?: boolean): void;   // blocked = the boxes cannot change (a merge runs)
+    setBusy(busy: boolean, label?: string): void;
+    setCommits(commits: readonly Commit[], uncommitted: boolean): void;
+    setStatus(text: string): void;
+    setMessage(text: string): void;
+    setDiff(lines: DiffLine[], commented: ReadonlySet<number>): void;
+    showTab(tab: ReviewTab): void;
+    setSummary(view: SummaryView): void;
+    setReplyCount(comments: number): void;
+    setBanner(title: string | null, button?: string | null): void;
+}
+
+// The confirmations before merging or discarding; tests replace them with immediate answers.
+export interface ReviewDialogs {
+    merge(title: string, base: string, method: MergeMethod, partial: string | null): Promise<boolean>;
+    discard(title: string, branch: string): Promise<boolean>;
+}
+
 export interface ReviewHost extends DocumentHost {
-    readonly content: Gtk.Stack;
-    readonly reviewView: HarnessReviewView;
+    readonly reviewView: ReviewView;
+    showReview(): void;                // the content area shows the review page
+    openFolder(path: string): void;    // in the file manager
     readonly settings: AppSettings;
     readonly harness: Pick<HarnessController, 'orchestrator' | 'git' | 'machine' | 'machineLabel' | 'folderOf' | 'isolation' | 'showLog' | 'dialogs'>;
     showDocument(): void;
@@ -51,22 +92,11 @@ interface Open {
 export class HarnessReviewController {
     private current: Open | null = null;
     private generation = 0;    // answers for a review that is no longer shown are dropped
-    // Confirmations; tests replace them with immediate answers.
-    dialogs: {
-        merge: (title: string, base: string, method: MergeMethod, partial: string | null) => Promise<boolean>;
-        discard: (title: string, branch: string) => Promise<boolean>;
-    } = {
-        merge: (title, base, method, partial) => decideDialog(this.host.win, fmt(_('Merge “{title}” into {base}?'), { title, base }),
-            [method === 'squash' || partial ? _('Everything becomes one commit on the base branch of the project folder.') : _('A merge commit joins the branch to the base branch of the project folder.'), partial, _('The worktree is removed afterwards.')].filter(Boolean).join(' '), _('Merge')),
-        discard: (title, branch) => decideDialog(this.host.win, fmt(_('Discard the Work on “{title}”?'), { title }),
-            fmt(_('The worktree and the branch {branch} are deleted, with every change in them. The project folder is not touched.'), { branch }), _('Discard'), true),
-    };
     // Runs a terminal; tests replace it.
-    launch: (argv: string[]) => boolean = argv => {
-        try { return GLib.spawn_async(null, argv, null, GLib.SpawnFlags.SEARCH_PATH, null)[0]; } catch { return false; }
-    };
+    launch: (argv: string[]) => boolean = argv => platform().processes.launch(argv);
 
-    constructor(private readonly host: ReviewHost) {
+    // dialogs: the frontend's confirmations; tests replace them with immediate answers.
+    constructor(private readonly host: ReviewHost, public dialogs: ReviewDialogs) {
         const view = host.reviewView;
         view.onClose = () => this.close();
         view.onSelect = index => this.select(index);
@@ -101,7 +131,7 @@ export class HarnessReviewController {
         view.setCommits([], false);
         view.setMessage(isRemoteMachine(this.host.harness.machine) ? fmt(_('Reading the changes from {machine}…'), { machine: this.host.harness.machine }) : _('Reading the changes…'));
         view.showTab('changes');
-        this.host.content.visible_child_name = 'review';
+        this.host.showReview();
         void this.load(generation, { board: boardFile, card: card.text, title: meta.title, agent: meta.agent ?? 'pi', project, folder, branch });
         return null;
     }
@@ -138,7 +168,7 @@ export class HarnessReviewController {
         const run = this.run();
         view.setSummary({ answer: run?.result?.summary ?? '', commands: run ? commandsRun(run.trace.events) : [], hasLog: !!run });
         const total = c.review.files.reduce((n, f) => n + f.additions, 0), removed = c.review.files.reduce((n, f) => n + f.deletions, 0);
-        view.status.set_label(fmt(ngettext('{n} file · +{add} −{del}', '{n} files · +{add} −{del}', c.review.files.length), { n: c.review.files.length, add: total, del: removed }));
+        view.setStatus(fmt(ngettext('{n} file · +{add} −{del}', '{n} files · +{add} −{del}', c.review.files.length), { n: c.review.files.length, add: total, del: removed }));
         if (c.review.files.length) this.select(c.selected);
     }
 
@@ -220,7 +250,7 @@ export class HarnessReviewController {
         if (!c) return;
         const card = this.cardNow();
         if (!card) { this.host.toast(_('The card is not on its board any more')); return; }
-        const error = this.host.harness.orchestrator.continueInWorktree(c.board, card, c.wt, c.agent, c.project, c.folder, text, GLib.path_get_basename(c.board));
+        const error = this.host.harness.orchestrator.continueInWorktree(c.board, card, c.wt, c.agent, c.project, c.folder, text, platform().paths.basename(c.board));
         if (error) { this.host.toast(fmt(_('Cannot reply: {error}'), { error })); return; }
         c.comments = [];
         this.close();
@@ -297,7 +327,7 @@ export class HarnessReviewController {
     private openFolder(): void {
         const c = this.current;
         if (!c) return;
-        new Gtk.FileLauncher({ file: Gio.File.new_for_path(c.wt.cwd) }).launch(this.host.win, null, null);
+        this.host.openFolder(c.wt.cwd);
     }
 
     // A terminal in the worktree: here, or through ssh on the agents' machine.
@@ -308,7 +338,7 @@ export class HarnessReviewController {
         const target = isRemoteMachine(machine) ? this.host.settings.machines[machine] : null;
         const inside = target ? ['ssh', '-t', '--', target, `cd '${c.wt.cwd.replace(/'/g, `'\\''`)}' && exec "$SHELL" -l`] : null;
         for (const [program, ...args] of terminals(c.wt.cwd, inside)) {
-            if (GLib.find_program_in_path(program) && this.launch([program, ...args])) return;
+            if (platform().processes.findProgram(program) && this.launch([program, ...args])) return;
         }
         this.host.toast(target ? fmt(_('No terminal found; run: ssh -t {target} and cd {path}'), { target, path: c.wt.cwd }) : fmt(_('No terminal found; the worktree is {path}'), { path: c.wt.cwd }));
     }

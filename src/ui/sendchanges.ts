@@ -4,25 +4,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import { branchError, slug, type SendVia } from '../forge/contribute.js';
-import type { FileChange } from '../gitlog.js';
+import type { SendChangesAnswer, SendChangesOptions } from '../app/contribute.js';
 import { _, fmt } from '../i18n.js';
 import { formDialog } from './dialogs.js';
-
-export interface SendChangesOptions {
-    repository: string;                  // owner/repo, shown so the user knows where it goes
-    base: string;                        // the branch the pull request asks to merge into
-    folder: string;                      // changes are shown relative to it
-    changes: readonly FileChange[];      // absolute paths
-    canPush: boolean;                    // the token may push branches to the repository itself
-}
-
-export interface SendChangesAnswer {
-    title: string;
-    body: string;
-    branch: string;
-    via: SendVia;
-    files: string[];
-}
 
 const VIA: [SendVia, string, string][] = [
     ['fork', _('Through my fork'), _('Your own copy of the repository is created if you do not have one')],

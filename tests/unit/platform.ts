@@ -21,6 +21,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
         fs: {
             readText: path => { const text = files.get(path); if (text === undefined) throw new Error(`no ${path}`); return text; },
             writeText: (path, text) => { files.set(path, text); },
+            append: (path, text) => { files.set(path, (files.get(path) ?? '') + text); },
             exists: path => files.has(path),
             remove: path => { if (!files.delete(path)) throw new Error(`no ${path}`); },
             makeDirs: () => {},
@@ -29,6 +30,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
             kind: path => files.has(path) ? 'file' : 'missing',
             isDirectory: () => false,
             trash: path => { files.delete(path); },
+            move: (from, to) => { files.set(to, files.get(from)!); files.delete(from); },
             startWrite: (path, text, done) => { files.set(path, text); done(null); },
             pumpWrites: () => {},
             info: path => { if (!files.has(path)) throw new Error(`no ${path}`); return { name: path.slice(path.lastIndexOf('/') + 1), kind: 'file', size: files.get(path)!.length, stamp: '' }; },
@@ -38,9 +40,12 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
         paths: {
             join: (...parts) => parts.join('/'),
             dirname: path => path.slice(0, path.lastIndexOf('/')),
+            resolve: path => path,
+            relative: (dir, path) => path.startsWith(`${dir}/`) ? path.slice(dir.length + 1) : null,
             basename: path => path.slice(path.lastIndexOf('/') + 1),
             isAbsolute: path => path.startsWith('/'),
             configDir: () => '/config',
+            homeDir: () => '/home/test',
             runtimeDir: () => '/run',
         },
         secrets: {
@@ -53,8 +58,9 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
         scheduler: { idle: () => () => {}, idleAfter: () => () => {} },
         translations: { text: t => t, plural: (one, many, n) => n === 1 ? one : many, context: (_c, t) => t },
         links: { socket: () => { throw new Error('no daemon in this fake'); }, command: () => { throw new Error('no daemon in this fake'); } },
-        processes: { run: async () => null, spawn: () => { throw new Error('no processes in this fake'); }, findProgram: () => null, hostName: () => 'fake' },
+        processes: { run: async () => null, spawn: () => { throw new Error('no processes in this fake'); }, findProgram: () => null, launch: () => false, hostName: () => 'fake' },
         env: name => options.env?.[name] ?? null,
+        realName: () => null,
         monotonicMs: () => 0,
     };
     return { fake, files, modes, ring };
