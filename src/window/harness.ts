@@ -107,7 +107,7 @@ export class HarnessController {
         this.orchestrator.adopter = (runId, upTo, handlers) => adoptRun(this.hub.connection(this.adoptMachine), runId, 1, handlers, {}, upTo);
         this.orchestrator.localFolders = !isRemoteMachine(this.machine);
         this.hub.onState((machine, state, detail) => this.machineState(machine, state, detail));
-        for (const key of ['harness-machine', 'machines', 'daemon-command']) settings.gsettings.connect(`changed::${key}`, () => this.machineSettingsChanged());
+        settings.onChanged(['harness-machine', 'machines', 'daemon-command'], () => this.machineSettingsChanged());
     }
 
     // Where harnesses run: '' = children of this window, 'local' = the daemon on this computer, else an SSH machine.

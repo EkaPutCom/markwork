@@ -606,6 +606,11 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">675345c</span><span><span class="era">Adw</span><b>Chapter 12</b> · “Send changes as pull request” dialog (<code>Adw.Dialog</code> through <code>formDialog</code>): entries, a radio group of <code>Gtk.CheckButton</code>s, a checklist of changed files, and a header button in the pull requests tab next to Refresh.</span></li>
     <li><span class="h">91e2fa9</span><span><span class="era">Adw</span><b>Chapter 12</b> · Resolving a conflicting pull request here: the <code>Adw.Banner</code> gets one button whose job follows the state (<code>button-clicked</code> reads the state, not the label), a header button appears only while a merge is in progress, and the conflicted files open in ordinary tabs.</span></li>
     <li><span class="h">3060113</span><span><span class="era">Adw</span><b>Chapter 10</b> · A tidier header bar: <code>Adw.SplitButton</code> for New and Open, the title as a <code>Gtk.MenuButton</code> for the document's menu inside a <code>Gtk.Stack</code> (plain on Home), the primary menu last with <code>primary</code>, the view modes as <code>Gtk.CheckButton</code>s in the layout popover, and no Save button.</span></li>
+    <li><span class="h">c6d52cf</span><span><span class="era">Adw</span><b>Layers</b> · A port between the core and the runtime: <code>platform/index.ts</code> declares files, paths, the keyring, HTTP, and the environment; <code>platform/gjs/</code> fills it with GLib, Gio, libsecret, and libsoup. <code>forge/</code> and the new <code>credentials.ts</code> drop every <code>gi://</code> import, and <code>scripts/layers.mjs</code> keeps the 15 core modules that still use GI in a list that may only shrink.</span></li>
+    <li><span class="h">f56b9e1</span><span><span class="era">Adw</span><b>Layers</b> · The port grows: <code>FileSystem</code> learns <code>list</code>, <code>kind</code> (never follows a link), and <code>trash</code>; <code>Paths</code> learns <code>runtimeDir</code>; a monotonic clock joins; and <code>cancel.ts</code> replaces <code>Gio.Cancellable</code>. <code>agent/</code> keeps <code>gi://</code> only in <code>deepseek.ts</code> and <code>daemon/streamlink.ts</code>, and <code>GI_ALLOWED</code> shrinks from 15 to 7.</span></li>
+    <li><span class="h">9b061d3</span><span><span class="era">Adw</span><b>Chapter 8, Layers</b> · <code>AppSettings</code> reads and writes through a <code>SettingsStore</code>; GSettings is the store under GJS and finds each key's GVariant type in the schema. GTK keeps <code>bind()</code> and <code>create_action()</code> through <code>gsettingsOf()</code>, and listeners use <code>settings.onChanged()</code>. The DeepSeek stream moves to <code>platform().httpStream</code>; <code>GI_ALLOWED</code> shrinks to 5.</span></li>
+    <li><span class="h">d5017f6</span><span><span class="era">Adw</span><b>Layers</b> · Processes join the port: <code>run()</code> for a program run to the end (git, with the watchdog for a callback GJS loses during garbage collection) and <code>spawn()</code> for a harness spoken to line by line over <code>GLib.IOChannel</code>, both in <code>platform/gjs/process.ts</code>. <code>git.ts</code> and <code>orchestrator.ts</code> drop GLib, its timers become <code>setTimeout</code>; <code>GI_ALLOWED</code> shrinks to 3.</span></li>
+    <li><span class="h">62ea652</span><span><span class="era">Adw</span><b>Layers, Chapter 11</b> · <code>files.ts</code>, <code>workspace.ts</code>, and the markworkd links move behind the port (<code>platform/gjs/files.ts</code>, <code>links.ts</code>, idle scheduling), and <code>i18n.ts</code> asks <code>platform().translations</code> while gettext is bound in <code>platform/gjs/i18n.ts</code>. <code>GI_ALLOWED</code> is empty, and a new rule lets the core import only the core.</span></li>
   </ol>
 </section>
 
@@ -630,6 +635,31 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
   <h3>When the connecting layer grows: de2924f</h3>
   <p>By October 8 <code>window.ts</code> had reached 1,642 lines and about 45 imports: tabs and files, but also the journal, harness runs, Home, applying agent changes, and autosave. Three imports also pointed the wrong way: <code>editor/</code> took the <code>Palette</code> type from <code>ui/theme.ts</code> (a file that loads Adw), <code>git.ts</code> took its request types from <code>agent/</code>, and <code>actions.ts</code> and <code>window.ts</code> imported each other. The fix moved no widget code. Shared types went down to the lowest layer that uses them (<code>colors.ts</code>, <code>gitlog.ts</code>); <code>actions.ts</code> now sees the window as a small <code>ActionHost</code> interface; and each feature became a controller in <code>window/</code> that receives a narrow host object built by <code>MainWindow.makeHost()</code> from closures, the same pattern as <code>ChatPanel.host</code>. The controllers import GLib and Gio but no GTK module, so 414 lines left the GTK layer (11,359 → 10,945) and <code>window.ts</code> dropped to about 1,190 lines. They still call widgets the window owns (the board, the chat panel, dialogs), so they are tested through the window in <code>tests/gui/</code>, not with <code>--no-gui</code>.</p>
   <div class="lesson"><b>Lesson</b>The one place allowed to connect everything is the place most likely to swallow everything. Keep it as wiring: when a feature needs more than a few methods there, give it its own module and hand it only the part of the window it uses, never the window itself.</div>
+  <h3>A port to the runtime: the core stops importing GI</h3>
+  <p>“No GTK” was never the same as “no GNOME”. In October <code>forge/</code> already had no widgets, but five of its nine files still imported GLib: the token file and libsecret in <code>token.ts</code>, libsoup in <code>http.ts</code>, a <code>GLib.timeout_add_seconds</code> poll in <code>monitor.ts</code>, <code>GLib.file_get_contents</code> in <code>resolve.ts</code>, and <code>GLib.base64_encode</code> for the git credential header. <code>agent/apikey.ts</code> repeated the same keyring-then-file code line for line. None of that is GTK, but all of it ties the code to GJS.</p>
+  <p>The fix is a <b>port</b>: an interface the core calls, filled by the runtime at start-up.</p>
+  <div class="flow" aria-label="The platform port">
+    <span class="node pure">forge/* · credentials.ts</span><span class="to">→</span>
+    <span class="node pure">platform/index.ts (interfaces)</span><span class="to">←</span>
+    <span class="node gio">platform/gjs/ (GLib · Gio · libsecret · libsoup)</span><span class="to">←</span>
+    <span class="node gtk">main.ts · test runner (install.js)</span>
+  </div>
+<pre><code>// before: forge/token.ts
+import GLib from 'gi://GLib';
+const env = GLib.getenv('MARKWORK_FORGE_TOKEN');
+const Secret = (await import('gi://Secret')).default; …
+
+// after: forge/token.ts (no gi://)
+const forgeToken = (host: string): Credential =&gt; ({ envVar: 'MARKWORK_FORGE_TOKEN', schema: 'com.ekaput.markwork.forge', attributes: { host }, … });
+export const systemTokenStore = { get: host =&gt; readCredential(forgeToken(host)), … };
+// credentials.ts reads platform().env, platform().secrets, platform().fs</code></pre>
+  <p>Timers needed no port: GJS has provided <code>setTimeout</code>/<code>setInterval</code> on the GLib main loop since 1.72, so <code>PullMonitor</code> uses <code>setInterval</code>. Base64 became twelve lines of plain TypeScript, checked against <code>GLib.base64_encode</code> for every padding length. In <code>git show</code> numbers, 359 lines moved from the GLib-only layer to the pure one (5,054 → 4,695 and 9,095 → 9,554). The keyring order is now tested with a fake platform (<code>tests/unit/platform.ts</code>), so the tests never touch a real keyring or <code>~/.config</code>.</p>
+  <p>The rule is checked like the others: a core module (<code>markdown/</code>, <code>agent/</code>, <code>forge/</code>, the orchestrator, the base modules) may not import <code>gi://</code> or <code>platform/gjs/</code>. The modules not moved yet are listed in <code>GI_ALLOWED</code>, and <code>layers.mjs</code> fails when a listed module no longer imports GI, so the list can only get shorter. This is the same pattern as <code>COMPLEXITY_ALLOWED</code>.</p>
+  <p>The next step showed how little of <code>agent/</code> really needed GIO. Four of its files imported Gio only for the type <code>Gio.Cancellable</code>. A twenty-line <code>Cancellable</code> in <code>cancel.ts</code> replaced it. The UI that creates one (the commit message writer, the proposal card) needs no Gio for it either. The libsoup request in <code>deepseek.ts</code> makes its own <code>Gio.Cancellable</code> and cancels it from ours. With <code>list</code>, <code>kind</code>, and <code>trash</code> added to the port, saved conversations and the symlink check followed. <code>GI_ALLOWED</code> went from 15 to 7 entries, and another 1,317 lines left the GLib-only layer (4,695 → 3,378).</p>
+  <p>Settings and the DeepSeek stream followed (Chapter 8 tells the GSettings side), then processes. <code>orchestrator.ts</code> already had a seam, the <code>Spawner</code> type that the markworkd daemon also fills, so its local spawner moved to <code>platform/gjs/process.ts</code> almost unchanged, next to git's <code>run()</code> with its watchdog. The port's contract kept one quirk on purpose: <code>spawn()</code> takes a path from <code>findProgram()</code> and never searches <code>PATH</code> itself, the way the harness always ran. Three core modules are left in <code>GI_ALLOWED</code>: the daemon socket (<code>agent/daemon/streamlink.ts</code>), file watching (<code>workspace.ts</code>), and the background writes (<code>files.ts</code>). The GLib-only layer is down to 2,578 lines.</p>
+  <p>The last three needed the most new contract: whole-file reads and atomic writes, background writes with a pump (the private <code>GLib.MainContext</code> that lets <code>flushWrites</code> wait for writes without running timers or input moved into <code>platform/gjs/files.ts</code>, while the queue per path stayed in <code>files.ts</code>), listings with a size-and-time stamp, folder monitors, idle-priority scheduling for the workspace warm-up, and line links for markworkd. With them <code>GI_ALLOWED</code> became empty. Checking it then showed a leak the per-file rule could not see: <code>orchestrator.ts</code> imported <code>i18n.ts</code>, which imported Gio and GJS's <code>gettext</code>. So <code>i18n.ts</code> moved behind the port too, and <code>layers.mjs</code> gained a rule that a core module imports only core modules and no GJS built-in, which makes “no GI in the core” true all the way down.</p>
+  <div class="lesson"><b>Lesson</b>An allowlist that reaches zero proves only what its rule checks. Check the closure, not the file: a rule on what a layer may import is complete only when it also limits which modules the layer may reach.</div>
+  <div class="lesson"><b>Lesson</b>A layer rule that names a library (“no GTK”) stops at that library. To keep a core movable, name what it may use: the interfaces of a port. Leave the libraries to the side that implements it.</div>
 </section>
 
 <!-- ============================================================ -->
@@ -781,13 +811,13 @@ app.connect('activate', () =&gt; {
     </div>
     <div class="panel">
       <h4><span class="tag new">Now</span> GTK 4 + libadwaita</h4>
-<pre><code>import './i18n.js';   // gettext first
+<pre><code>import './platform/gjs/install.js';   // platform + gettext first
 import Adw from 'gi://Adw?version=1';
 const app = new Adw.Application({
   application_id: APP_ID,
   flags: Gio.ApplicationFlags.NON_UNIQUE });
 app.connect('activate', () =&gt; {
-  new MainWindow(app, new AppSettings(), path);
+  new MainWindow(app, systemSettings(), path);
 });   // GSettings saves itself</code></pre>
     </div>
   </div>
@@ -1272,8 +1302,9 @@ action('journal-capture', ['&lt;Control&gt;&lt;Shift&gt;j'], () =&gt; w.journal.
   <ul>
     <li><code>gsettings.create_action(key)</code>: a stateful toggle action whose state <i>is</i> the key (sidebar, Assistant, focus mode, typewriter, autosave).</li>
     <li><code>gsettings.bind(key, widget, 'property', DEFAULT)</code>: the split view's <code>show-sidebar</code> and the preference switches follow the key both ways.</li>
-    <li><code>Gio.memory_settings_backend_new()</code>: tests get <code>AppSettings.inMemory()</code> and never touch the user's dconf.</li>
+    <li><code>Gio.memory_settings_backend_new()</code>: tests get <code>inMemorySettings()</code> and never touch the user's dconf.</li>
   </ul>
+  <p><b>GSettings behind a port.</b> Later the typed <code>AppSettings</code> in <code>settings.ts</code> stopped holding a <code>Gio.Settings</code>. It now reads and writes through a <code>SettingsStore</code> (<code>get</code>, <code>set</code>, <code>onChanged</code>), and <code>platform/gjs/settings.ts</code> is the GSettings store: it finds each key's GVariant type in the schema, so <code>set('tabs', [['/a.md', 3]])</code> becomes an <code>a(si)</code> without a type written in <code>AppSettings</code>. The two features above that are pure GTK stay: <code>actions.ts</code>, the preferences dialog, and <code>bindPanel()</code> ask for the real <code>Gio.Settings</code> with <code>gsettingsOf(settings)</code>. Code that only reacts to a change (<code>window/harness.ts</code>, <code>window/collab.ts</code>, the project page, <code>MainWindow.onSettingChanged</code>) uses <code>settings.onChanged(keys, …)</code> and no longer needs Gio for it.</p>
   <p><b>The palette</b> (Ctrl+Shift+P) lists the enabled actions that have a label in <code>commands.ts</code>, filtered as you type. Its rows are <code>Command</code> GObjects in a <code>Gio.ListStore</code> (Chapter 9).</p>
   <div class="lesson"><b>Lesson</b>If something can be triggered from two places, make it an action. If something must be remembered, make it a GSettings key and bind it; do not write save/load code.</div>
 </section>
@@ -1388,7 +1419,7 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
   <h2>Becoming a GNOME citizen: ID, translations, accessibility, packaging</h2>
   <ul>
     <li><b>App ID</b> <code>com.ekaput.Markwork</code> names the D-Bus service, the GSettings schema, the desktop file, the metainfo, and the icons. The About dialog and the window icon use it too.</li>
-    <li><b>gettext</b>: <code>_()</code>, <code>ngettext()</code>, <code>pgettext()</code> from <code>src/i18n.ts</code>. Text with values uses <code>fmt(_('… {name} …'), { name })</code>, never a template literal, so xgettext can extract it and translators can reorder words. <code>i18n.ts</code> is imported first in <code>main.ts</code> because ES modules evaluate dependencies first, and some labels are built at module top level.</li>
+    <li><b>gettext</b>: <code>_()</code>, <code>ngettext()</code>, <code>pgettext()</code> from <code>src/i18n.ts</code>. Text with values uses <code>fmt(_('… {name} …'), { name })</code>, never a template literal, so xgettext can extract it and translators can reorder words. The gettext domain is bound in <code>platform/gjs/i18n.ts</code>, which <code>main.ts</code> imports first (through <code>platform/gjs/install.js</code>) because ES modules evaluate dependencies first, and some labels are built at module top level. <code>i18n.ts</code> itself only asks <code>platform().translations</code>, so the core can show translated text without importing gettext.</li>
     <li><b>Accessibility</b>: a status is never only a color or icon. Rows get <code>accessible_role</code> and <code>update_property(Gtk.AccessibleProperty.LABEL, …)</code>; everything is reachable by keyboard; the shortcuts dialog (Ctrl+?) lists the accelerators.</li>
     <li><b>Packaging</b>: Meson installs the bundle, the schema, the icons (<code>hicolor/scalable</code> + <code>symbolic</code>), the desktop file, and the metainfo; the Flatpak manifest targets the GNOME 50 runtime. When running from <code>dist/</code>, <code>addBundledIcons()</code> adds the icon folder to <code>Gtk.IconTheme</code>.</li>
   </ul>
@@ -1519,16 +1550,15 @@ new Gtk.ListView({ model: selection, factory });</code></pre>
   <div class="widgets">
     <code class="gio">files.ts · GLib.file_get_contents, replace_contents_bytes_async</code>
     <code class="gio">fileops.ts · Gio.File.move, trash</code>
-    <code class="gio">git.ts · Gio.SubprocessLauncher + communicate_utf8_async</code>
-    <code class="gio">orchestrator.ts · GLib.spawn_async_with_pipes + IOChannel</code>
-    <code class="gio">settings.ts · Gio.Settings + SettingsSchemaSource</code>
+    <code class="gio">platform/gjs/process.ts · Gio.SubprocessLauncher for git, GLib.spawn_async_with_pipes + IOChannel for the harness</code>
+    <code class="gio">platform/gjs/settings.ts · Gio.Settings + SettingsSchemaSource</code>
     <code class="gio">activity.ts · append-only JSONL</code>
-    <code class="gio">agent/deepseek.ts · libsoup streaming</code>
-    <code class="gio">agent/apikey.ts · libsecret</code>
+    <code class="gio">platform/gjs/http.ts · libsoup requests and streaming</code>
+    <code class="gio">platform/gjs/index.ts · libsecret, files, paths</code>
     <code class="gio">workspace.ts · Gio.FileEnumerator + FileMonitor</code>
     <code class="gio">window/*.ts · feature controllers on a narrow host; GLib timers and paths</code>
   </div>
-  <p class="note">One GJS detail from <code>orchestrator.ts</code>: after GTK is loaded, <code>Gio.Subprocess.get_stdout_pipe()</code> triggers a Gjs-WARNING about <code>Gio.UnixInputStream</code>, so the harness reads its pipes with <code>GLib.IOChannel</code> and writes bytes with an explicit length.</p>
+  <p class="note">Since the platform port, <code>git.ts</code>, <code>orchestrator.ts</code>, <code>settings.ts</code>, and the agent no longer import GI: they ask <code>platform()</code>, and the GLib/Gio calls above live in <code>platform/gjs/</code>. One GJS detail from <code>platform/gjs/process.ts</code> (it began in <code>orchestrator.ts</code>): after GTK is loaded, <code>Gio.Subprocess.get_stdout_pipe()</code> triggers a Gjs-WARNING about <code>Gio.UnixInputStream</code>, so the harness reads its pipes with <code>GLib.IOChannel</code> and writes bytes with an explicit length.</p>
   <h3>Why the split pays off</h3>
   <ul>
     <li><b>Tests</b>: 28 unit test files run without a display; 29 GUI test files cover what only a window can show.</li>
@@ -1642,6 +1672,12 @@ const layers = [
   ['f74d5b5', 'Oct 8', 'Adw', 'Home past 300 files', 11316, 1723, 4668, 121, 6],
   ['de2924f', 'Oct 9', 'Adw', 'window/ controllers', 10945, 2384, 4703, 123, 6],
   ['1bac3b8', 'Oct 9', 'Adw', 'Commit message writer', 11521, 3397, 5055, 125, 6],
+  ['e5bd23a', 'Oct 16', 'Adw', 'markworkd shims', 17940, 5054, 9095, 192, 6],
+  ['c6d52cf', 'Oct 16', 'Adw', 'Platform port', 17940, 4695, 9554, 192, 6],
+  ['f56b9e1', 'Oct 16', 'Adw', 'agent/ without GIO', 17940, 3378, 10938, 192, 6],
+  ['9b061d3', 'Oct 16', 'Adw', 'Settings + stream port', 17943, 3218, 11165, 192, 6],
+  ['d5017f6', 'Oct 16', 'Adw', 'Process port', 17943, 2578, 11868, 192, 6],
+  ['62ea652', 'Oct 16', 'Adw', 'Core free of GI', 17943, 2203, 12375, 192, 6],
 ];
 function fit(svg, H) {
   const W = Math.max(300, Math.round(svg.parentNode.clientWidth || 900));
@@ -1655,7 +1691,7 @@ function drawLayers() {
   const narrow = (svg.parentNode.clientWidth || 900) < 620;
   const row = narrow ? 34 : 26, T = 4, H = T + row * layers.length + 20;
   const W = fit(svg, H), L = narrow ? 92 : 230, R = 54;
-  const max = 18000;
+  const max = Math.max(...layers.map(d => d[4] + d[5] + d[6])) * 1.04;
   const x = v => (W - L - R) * v / max;
   const parts = [[4, '--before'], [5, '--after'], [6, '--third']];
   layers.forEach((d, i) => {
@@ -1675,7 +1711,7 @@ function drawLayers() {
       '<br>GTK/Adw files: ' + int(d[4]) + ' lines<br>Gio/GLib only: ' + int(d[5]) + ' lines<br>No GI import: ' + int(d[6]) + ' lines' +
       '<br><span style="color:var(--text-2)">' + d[7] + ' Adw.* references · ' + d[8] + ' .ui files</span>');
   });
-  for (const v of [0, 6000, 12000, 18000]) {
+  for (const v of [0, 10000, 20000, 30000].filter(v => v <= max)) {
     el('text', { x: L + x(v), y: H - 4, 'text-anchor': v ? 'end' : 'start' }, svg).textContent = v ? (v / 1000) + 'k' : '0';
   }
 }

@@ -14,6 +14,7 @@ import { registerActions } from '../../src/actions.js';
 import { descendants, widgetPixbuf } from '../widgets.js';
 import { FakeDaemon } from '../unit/daemon-fake.js';
 import type { GuiContext } from './context.js';
+import { inMemorySettings } from '../../src/platform/gjs/settings.js';
 
 const ev = (o: object) => JSON.stringify(o);
 const STATE = ev({ id: 'markwork-state', type: 'response', command: 'get_state', success: true, data: { sessionId: 'remote-session' } });
@@ -57,7 +58,7 @@ export function agentsHostTests(c: GuiContext): void {
     // A window whose agents run on the machine "vps" (or another choice), with the daemon replaced.
     const open = (column: 'plan' | 'doing', extra: Partial<AppSettings> = {}) => {
         GLib.file_set_contents(board, BOARD(column));
-        const settings = AppSettings.inMemory({ welcomed: true, home: false, dark: false, autosave: false, folder: dir, sidebar: false, machines: { vps: 'eka@vps.example.com' }, machineProjects: { 'vps:shop': '/srv/shop' }, ...extra });
+        const settings = inMemorySettings({ welcomed: true, home: false, dark: false, autosave: false, folder: dir, sidebar: false, machines: { vps: 'eka@vps.example.com' }, machineProjects: { 'vps:shop': '/srv/shop' }, ...extra });
         const win = new MainWindow(c.app, settings, null);
         win.harness.openers = openers;   // before the first idle, which is when the daemon is first looked for
         settle();

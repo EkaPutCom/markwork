@@ -11,7 +11,15 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'src');
 
 const GTK = /^gi:\/\/(Gtk|Gdk|GdkPixbuf|GdkX11|Gsk|Adw|GtkSource|WebKit|Pango|Graphene)(\?|$)/;
-const BASE = ['settings.ts', 'files.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts'];
+const BASE = ['settings.ts', 'files.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts'];
+
+// The core: everything below the interface. It reaches the runtime only through platform/index.ts, never through gi:// and
+// never through platform/gjs/, so it can run on another runtime. GI_ALLOWED listed the core modules that still imported
+// gi:// while they were moved behind the port; it is empty now that every one is. An entry may not be added back, and one
+// has to go once its module is clean.
+const isCore = f => /^(markdown|agent|forge)\//.test(f) || BASE.includes(f)
+    || ['orchestrator.ts', 'orchestratordaemon.ts', 'daemonhub.ts', 'platform/index.ts'].includes(f);
+const GI_ALLOWED = new Set([]);
 
 // [files the rule applies to, what they may not import, why]. Targets are src-relative paths of
 // local modules or gi:// specifiers.
@@ -23,12 +31,20 @@ const rules = [
     [f => f.startsWith('ui/') || f.startsWith('window/') || f === 'actions.ts', t => t === 'window.ts', 'only app.ts composes MainWindow; components and controllers get a host interface'],
     [f => BASE.includes(f), t => /^(ui|editor|agent|window)\//.test(t) || t === 'window.ts', 'base modules do not reach up into the layers above them'],
     [f => f === 'orchestrator.ts' || f === 'orchestratordaemon.ts' || f === 'daemonhub.ts', t => GTK.test(t) || /^(ui|editor|window)\//.test(t) || t === 'window.ts', 'the orchestrator runs harness processes for window/harness.ts; it uses agent/, markdown/, and base modules, never GTK, widgets, or the window'],
+    [f => isCore(f) && !GI_ALLOWED.has(f), t => t.startsWith('gi://'), 'the core reaches the runtime through platform() (platform/index.ts), not gi://'],
+    [isCore, t => t.startsWith('platform/gjs/'), 'the core uses the platform port, never its GJS implementation; entry points install it'],
+    [isCore, t => t.startsWith('gjs:'), 'the core does not use GJS built-in modules; what it needs is in the platform port'],
+    [isCore, t => !t.startsWith('gi://') && !t.startsWith('gjs:') && !isCore(t), 'the core imports only the core, so it is free of GI all the way down, not only in its own imports'],
+    [f => f === 'platform/index.ts', () => true, 'platform/index.ts is the contract and imports nothing'],
+    [f => f.startsWith('platform/gjs/'), t => /^(ui|editor|window|agent|forge|markdown)\//.test(t) || t === 'window.ts', 'platform/gjs/ implements the port with GI and base modules; it knows nothing about the layers that use it'],
 ];
 
+const GJS_BUILTINS = new Set(['system', 'gettext', 'cairo', 'console', 'byteArray', 'mainloop']);
 const files = readdirSync(src, { recursive: true }).filter(f => f.endsWith('.ts') && !f.endsWith('.d.ts')).map(f => f.split('\\').join('/'));
 const IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'"]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
 
 const errors = [];
+const giImporters = new Set();
 for (const file of files) {
     const text = readFileSync(join(src, file), 'utf8');
     for (const m of text.matchAll(IMPORT)) {
@@ -36,11 +52,19 @@ for (const file of files) {
         let target = spec;
         if (spec.startsWith('.')) {
             target = relative(src, normalize(join(src, dirname(file), spec.split('?')[0]))).split('\\').join('/').replace(/\.js$/, '.ts');
-        } else if (!spec.startsWith('gi://')) continue;   // gjs built-ins (system, cairo) and npm packages
+        } else if (GJS_BUILTINS.has(spec)) {
+            target = `gjs:${spec}`;   // a GJS built-in module (system, gettext, cairo)
+        } else if (!spec.startsWith('gi://')) continue;   // npm packages
+        if (target.startsWith('gi://')) giImporters.add(file);
         for (const [applies, forbidden, why] of rules) {
             if (applies(file) && forbidden(target)) errors.push(`src/${file}: imports ${spec} (${why})`);
         }
     }
+}
+
+for (const file of GI_ALLOWED) {
+    if (!files.includes(file)) errors.push(`scripts/layers.mjs: GI_ALLOWED lists ${file}, which no longer exists; remove the entry`);
+    else if (!giImporters.has(file)) errors.push(`scripts/layers.mjs: src/${file} no longer imports gi://; remove it from GI_ALLOWED`);
 }
 
 // ---------- Cyclomatic complexity ----------
@@ -134,4 +158,4 @@ if (errors.length) {
     console.error(`Layer and complexity violations:\n  ${errors.join('\n  ')}`);
     process.exit(1);
 }
-console.log(`Layer rules: ${files.length} modules checked; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`);
+console.log(`Layer rules: ${files.length} modules checked, ${GI_ALLOWED.size} core modules still on gi://; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`);

@@ -5,11 +5,11 @@
 import Gio from 'gi://Gio';
 import { runGit } from '../git.js';
 import { GiteaProvider } from '../forge/gitea.js';
-import { soupTransport } from '../forge/http.js';
 import { PullMonitor, type PullEvent } from '../forge/monitor.js';
 import { parseRemote } from '../forge/remote.js';
 import { systemTokenStore, type TokenSource, type TokenStore } from '../forge/token.js';
 import { ForgeError, type ForgeProvider, type PullRequest, type RepoRef, type Transport } from '../forge/types.js';
+import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import type { CollabPanel } from '../ui/collab.js';
 import { tokenDialog } from '../ui/serverdialog.js';
@@ -31,7 +31,7 @@ export interface CollabServices {
 
 const defaultServices: CollabServices = {
     tokens: systemTokenStore,
-    transport: soupTransport,
+    transport: request => platform().http(request),
     async remoteUrl(folder) {
         const run = await runGit(folder, ['remote', 'get-url', 'origin']);
         return run && run.status === 0 && run.out.trim() ? run.out.trim() : null;
@@ -64,7 +64,7 @@ export class CollabController {
         panel.onServer = () => void this.editToken();
         panel.onSend = () => this.onSend();
         panel.onOpen = pull => this.onOpenPull(pull);
-        host.settings.gsettings.connect('changed::forge-poll-seconds', () => this.monitor?.start(host.settings.forgePollSeconds));
+        host.settings.onChanged(['forge-poll-seconds'], () => this.monitor?.start(host.settings.forgePollSeconds));
     }
 
     // A pull request was chosen in the list; the window connects this to the review (the browser page until then).

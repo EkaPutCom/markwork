@@ -399,10 +399,10 @@ po/                       translations: POTFILES.in, LINGUAS, <language>.po
 data/                     GSettings schema (compiled into dist/ at build time), desktop and metainfo files (.in), app icon, the markwork.in launcher
 dist/                     build output (not in git)
 src/
-├── main.ts               entry point: only calls main() from app.ts
+├── main.ts               entry point: installs the GJS platform (and with it the gettext domain) first, then calls main() from app.ts
 ├── env.d.ts              types for GJS and gi:// modules (from the @girs packages)
 ├── gtkutil.ts            GTK 4 helpers for all layers: line iterators, widget children, click/key handlers, modal dialogs without a nested main loop (modal(), after()), pack(), pixbuf ↔ Gdk.Texture, icons from dist/
-├── i18n.ts               gettext: _(), fmt(), pgettext(), ngettext(); the domain is bound before the other modules are evaluated
+├── i18n.ts               _(), fmt(), pgettext(), ngettext() over platform().translations (gettext under GJS, its domain bound by platform/gjs/install.js before the other modules are evaluated)
 ├── app.ts                creates the Gtk.Application and the window
 ├── window.ts             MainWindow: assembles the components and connects them; shows the documents kept by window/documents.ts; export
 ├── window/               feature controllers of the window, each given a narrow host instead of MainWindow
@@ -418,17 +418,23 @@ src/
 ├── actions.ts            all the app's Gio.Actions and their shortcuts (setting toggles use Gio.Settings.create_action); sees the window only as `ActionHost`
 ├── colors.ts             the document color palettes (pure data, shared by editor/ and ui/)
 ├── config.ts             app name, ID, version, and fonts
-├── settings.ts           AppSettings: typed properties on top of Gio.Settings (schema in data/com.ekaput.Markwork.gschema.xml)
+├── settings.ts           AppSettings: typed properties on top of a SettingsStore (GSettings under GJS, schema in data/com.ekaput.Markwork.gschema.xml); onChanged()
 ├── commands.ts           action names for the command palette
 ├── activity.ts           daily activity log for the journal at <work folder>/.markwork/activity (append-only JSONL)
-├── files.ts              read/write UTF-8 text files; background writes queued per path; onDiskChange for the app's own changes
-├── workspace.ts          WorkspaceRepository: the Markdown files of a work folder (snapshot watched by file monitors, LRU contents cache, unsaved overlay, background warming); used by chat, Home, [[ suggestions, harness (GLib/GIO)
+├── files.ts              read/write UTF-8 text files the app's way: background writes queued per path, flushWrites, trashFile, onDiskChange for the app's own changes (the disk through platform().fs)
+├── workspace.ts          WorkspaceRepository: the Markdown files of a work folder (snapshot watched through platform().fs.watchDir, LRU contents cache, unsaved overlay, background warming); used by chat, Home, [[ suggestions, harness (GLib/GIO)
 ├── fileops.ts            create, rename, delete (to the trash), and move files/folders on disk (no GTK; used by the file tree)
-├── orchestrator.ts       runs the external harness (pi) for kanban cards in the project folder: process, queue, board updates
+├── orchestrator.ts       runs the external harness (pi) for kanban cards in the project folder: queue, board updates; the process through platform().processes.spawn
 ├── orchestratordaemon.ts a Spawner for orchestrator.ts whose processes live in the markworkd daemon (they survive closing the window; the daemon can be on another machine)
-├── git.ts                the git history of a file and the list of uncommitted files through the `git` command (async; read-only, except committing selected files); also runs the agent's Git tools
+├── git.ts                the git history of a file and the list of uncommitted files through the `git` command (async, platform().processes.run; read-only, except committing selected files); also runs the agent's Git tools
+├── cancel.ts             Cancellable: cancelling a model request, a waiting proposal, or a commit message without Gio.Cancellable
+├── credentials.ts        a secret (API key, forge token): environment variable, keyring, or a 0600 file; through platform()
 ├── gitlog.ts             git output parser: log, diff, relative time (pure, no GTK); also the agent's GitRequest/GitAnswer types
 ├── welcome.ts            the sample document shown on first launch
+│
+├── platform/             the port between the core and the runtime
+│   ├── index.ts          the contract (FileSystem, Paths, Secrets, Transport, env) and platform()/setPlatform(); imports nothing
+│   └── gjs/              the GJS implementation: GLib/Gio, libsecret, libsoup 3 (http.ts: requests and streams, loaded on use), files (files.ts: whole-file reads, atomic and background writes, listings, folder monitors), daemon links (links.ts: Unix socket and command stdio over IOChannels), gettext (i18n.ts), processes (process.ts: git runs with a watchdog, harness children over IOChannels, findProgram), GSettings (settings.ts: GSettingsStore, gsettingsOf() for GTK bindings, inMemorySettings() for tests); install.ts is imported by every entry point
 │
 ├── agent/                the AI assistant: manuscript context and model client (no GTK, except where noted)
 │   ├── tools.ts          pure: browsing tools for the model (list_files, search_documents, search_text, read_file)
@@ -448,21 +454,20 @@ src/
 │   ├── verification.ts   pure: text checks (per file or the whole folder), a note's group and done status, the value of a note's field, and Markdown structure with no new problems in the actual content
 │   ├── journal.ts        pure: the action history and reconciliation of interruptions from the actual content
 │   ├── recovery.ts       pure: limited retries and excerpts of old history
-│   ├── path.ts           path validation and symlink rejection when writing (Gio)
+│   ├── path.ts           path validation and symlink rejection when writing (platform().fs.kind, which does not follow links)
 │   ├── transcript.ts     pure: conversation ↔ Markdown text (frontmatter + `## You` / `## Assistant`), titles and file names
-│   ├── chatstore.ts      save, list, load, and discard conversations in `<folder>/.markwork/chats` (Gio)
+│   ├── chatstore.ts      save, list, load, and discard conversations in `<folder>/.markwork/chats` (through platform())
 │   ├── provider.ts       the Provider interface (used by the real client and the fake provider in tests)
 │   ├── sse.ts            pure: reads SSE stream lines (text, reasoning, tool-call chunks, usage) and HTTP error messages
-│   ├── deepseek.ts       DeepSeek client through libsoup 3 (GIO/GLib; loaded on use)
-│   └── apikey.ts         API key: environment variable, keyring (libsecret), or a 0600 file
+│   ├── deepseek.ts       DeepSeek client: the SSE answer read line by line through platform().httpStream
+│   └── apikey.ts         the DeepSeek API key as a credential (credentials.ts)
 │
-├── forge/                Git hosting services: the pull requests of a Forgejo/Gitea repository (no GTK; the HTTP call is an injectable Transport)
+├── forge/                Git hosting services: the pull requests of a Forgejo/Gitea repository (no GI at all: the HTTP call is an injectable Transport, files and the keyring go through platform())
 │   ├── types.ts          RepoRef, PullRequest, PullFile, PullComment, ForgeProvider, Transport, ForgeError
 │   ├── remote.ts         pure: a git remote URL → server and `owner/repo`
 │   ├── gitea.ts          the Forgejo/Gitea REST client (pull requests, files, diff, content at a commit, comments, merge, fork, create)
-│   ├── http.ts           the real Transport (libsoup 3, loaded on use)
-│   ├── token.ts          the access token per server: environment variable, keyring, or a 0600 file
-│   ├── monitor.ts        polling the open pull requests and the events between two polls (the first poll is a silent baseline)
+│   ├── token.ts          the access token per server as a credential (credentials.ts)
+│   ├── monitor.ts        polling the open pull requests (setInterval) and the events between two polls (the first poll is a silent baseline)
 │   ├── diff.ts           pure: one file's part of a pull request's unified diff
 │   ├── contribute.ts     sending changes as a pull request (branch, commit, push, pull request; fork, direct, or AGit); git is a parameter
 │   └── resolve.ts        resolving a conflict here: merge the pull request into the base branch, finish and push, abort; git is a parameter
@@ -590,13 +595,14 @@ The code is divided into layers. Each layer may only use the layers below it, ne
         ├─ ui/*            interface components
         ├─ editor/*        the editor engine
         │    └─ markdown/* Markdown rules (no GTK)
-        ├─ orchestrator.ts runs harness processes (pi) for window/harness.ts (GLib, no GTK)
+        ├─ orchestrator.ts runs harness processes (pi) for window/harness.ts (no GI)
         │    └─ agent/harness.ts  prompts, RPC, the pi stream reader, the run queue
         ├─ orchestratordaemon.ts the same harnesses through the markworkd daemon
-        │    └─ agent/daemon/*    protocol, client, reconnecting connection, socket/ssh links (GLib/Gio, no GTK)
+        │    └─ agent/daemon/*    protocol, client, reconnecting connection, socket/ssh links (no GI; the descriptors are platform().links)
         ├─ agent/*         manuscript context and model client (no GTK)
-        ├─ forge/*         Forgejo/Gitea: pull requests, sending changes, resolving conflicts (GLib/libsoup, no GTK)
-        └─ settings.ts, files.ts, workspace.ts, git.ts, gitlog.ts, config.ts, colors.ts
+        ├─ forge/*         Forgejo/Gitea: pull requests, sending changes, resolving conflicts (no GI)
+        ├─ settings.ts, files.ts, workspace.ts, git.ts, gitlog.ts, config.ts, colors.ts, credentials.ts
+        └─ platform/index.ts the port to the runtime (implemented by platform/gjs/, installed by the entry point)
 ```
 
 - **`agent/`** is also free of GTK. `ui/chat.ts` uses it, and the window only gives it a way to fetch the manuscript (`ChatHost`: the active document, the selection, project files, the manuscript folder). `agent/` knows nothing about the editor or widgets. The panel only draws: `agent/chatcontroller.ts` owns the conversation's life cycle and tells the panel what to show through the `ChatView` interface, so sending, stopping, a folder change mid-request, and reopening a saved conversation are tested without GTK (`tests/unit/chatcontroller.ts`).
@@ -606,8 +612,9 @@ The code is divided into layers. Each layer may only use the layers below it, ne
 - **`window.ts`** is the only place where components are connected to each other. For example: after highlighting, the editor calls `onHighlighted`, and then the window passes the headings to `Outline` and the text to `StatusBar`. The open documents (tabs, open/save, the Home tab, restoring tabs) are kept by `window/documents.ts`, which tells the window what must follow a document on screen through `DocumentsHost`. Features that span several components (the journal, harness runs, Home, applying agent changes, autosave) live in `window/*` controllers too; each receives a narrow host interface built by the window from closures, never `MainWindow` itself, so they do not import `window.ts`. `actions.ts` likewise types the window as `ActionHost`.
 - **`forge/`** is free of GTK and knows nothing about widgets, the editor, the window, or the agent. The window reaches it through `window/collab.ts` (the list and the notifications), `window/pulls.ts` (the review, merging, and resolving), and `window/contribute.ts` (sending); the HTTP call and git are parameters, so the same code runs against a fake server and local repositories in the tests and against a real Forgejo in `npm run test:live:forge` and `npm run test:live:forgejo`.
 - **`orchestrator.ts`** sits between `window/harness.ts` and `agent/harness.ts`: it spawns the harness process and moves cards, using the pure parts in `agent/` and translated strings, but no GTK and no widgets.
+- **The core reaches the runtime through `platform()`.** `markdown/`, `agent/`, `forge/`, the orchestrator, and the base modules are the core: everything that is not interface. They read files and folders (and watch folders), paths, the environment, the keyring, a monotonic clock, idle-time scheduling, stored settings, processes (run once, or spoken to line by line), links to markworkd, and HTTP (whole responses and line-by-line streams) through the interfaces in `platform/index.ts`, which every entry point (`main.ts`, the test runner, the benchmarks, `scripts/capture.ts`) fills by importing `platform/gjs/install.js` first. Tests can swap in a fake with `setPlatform()` (`tests/unit/platform.ts` runs the credential order with no keyring). Timers use `setTimeout`/`setInterval`, which GJS provides too, and cancelling uses `Cancellable` from `cancel.ts`, which the GJS stream transport links to a `Gio.Cancellable` for libsoup. A library that is not installed is reported as `RuntimeMissing`, which is never retried. The goal is a core that can also run on another runtime, and no core module imports `gi://` any more: `GI_ALLOWED` in `scripts/layers.mjs`, the list of modules that still did while they were moved, is empty and may not grow. The checker also makes this hold all the way down: a core module may import only core modules (no GJS built-ins such as `gettext`, no `fileops.ts`), so `platform/index.ts` is the whole contract a second runtime would implement. Interface text goes through `i18n.ts`, whose translating is `platform().translations` (gettext in `platform/gjs/i18n.ts`, bound by `install.js` before any module calls `_()`); `fileops.ts`, `activity.ts`, and the GTK layers stay with the GJS frontend.
 - **Lower layers do not reach up.** `editor/` takes the `Palette` type from `colors.ts`, not from `ui/theme.ts`; `git.ts` takes the agent's Git request types from `gitlog.ts`, not from `agent/`.
-- **The rules are checked.** [`scripts/layers.mjs`](scripts/layers.mjs) runs in `npm run build` and `npm run typecheck` and fails on a forbidden import: GI or anything outside `markdown/` in `markdown/`, GTK or `ui/`/`editor/`/`window/` in `agent/`, `ui/`/`window/`/`agent/` in `editor/`, `window.ts` in `ui/`, `window/`, or `actions.ts`, and any upper layer in the base modules.
+- **The rules are checked.** [`scripts/layers.mjs`](scripts/layers.mjs) runs in `npm run build` and `npm run typecheck` and fails on a forbidden import: GI or anything outside `markdown/` in `markdown/`, GTK or `ui/`/`editor/`/`window/` in `agent/`, `ui/`/`window/`/`agent/` in `editor/`, `window.ts` in `ui/`, `window/`, or `actions.ts`, any upper layer in the base modules, `gi://`, a GJS built-in module, `platform/gjs/`, or any module outside the core in the core (`GI_ALLOWED` is empty and may not grow), any import in `platform/index.ts`, and any layer above it in `platform/gjs/`.
 - **Function complexity is checked too.** The same script parses `src/` and `scripts/` with the oxc parser that Vite already ships (`rolldown/parseAst`) and fails on a function whose cyclomatic complexity (counted like ESLint's `complexity` rule; nested functions on their own) is above 15 (lowered from 20 once every function met it). The functions that were above the limit have all been split, so `COMPLEXITY_ALLOWED` is empty; an exception listed there may not grow, and its entry has to go once the function is split.
 
 ### The editor workflow
@@ -689,7 +696,7 @@ Markwork runs on GTK 4, GtkSourceView 5, and WebKitGTK 6.0. Some GTK 4 behaviors
 - **The selection must not become empty in the middle of an edit.** On X11, a selection that was briefly empty releases the PRIMARY clipboard, and GTK 4 cancels the next selection as soon as the server confirms that release. `wrapSelection()` (`editor/editing.ts`) therefore only inserts/removes the delimiters at both ends, without first deleting the whole selection; without that, a second Ctrl+B does not remove the `**`.
 - **The file tree (TreeListModel + ListView) and drag and drop.** Each folder is a `Gio.ListStore<FileNode>`; `Gtk.TreeListModel` also calls the child-creating function just to check whether a row can be expanded, so folder contents are stored in `dirStores` and read once. Dragging uses `Gtk.DragSource`/`Gtk.DropTarget` on the ListView; the row at the cursor is found with `pick()` (rows are direct children of the ListView, with a `TreeExpander` inside). The drop target marker uses row selection. The drag icon is taken from the icon theme; a widget as the icon (`GtkDragIcon`) triggers a Gtk-CRITICAL when the drag ends.
 - **Gtk.Template without glib-compile-resources.** `.ui` files are imported as text (`import xml from './x.ui?raw'`) and given to `Template:` as a `Uint8Array` (`uiTemplate()` in `gtkutil.ts`); there is no GResource to compile. `Adw.HeaderBar` is a final class, so `HeaderBar` wraps it in an `Adw.Bin`.
-- **Settings in GSettings.** The schema is in `data/` and compiled into `dist/` by the Vite plugin; `settings.ts` loads it from the bundle folder if present, otherwise from the system schema directory (the installed version). The menu toggles (`sidebar`, `chat`, `focus`, `typewriter`, `autosave`) are `Gio.Settings.create_action`, the sidebar and the Assistant panel are bound with `Gio.Settings.bind` to `show-sidebar` (through `bindPanel()`, see the adaptive layout), and `MainWindow.onSettingChanged` applies the rest (including changes from the preferences dialog).
+- **Settings in GSettings.** The schema is in `data/` and compiled into `dist/` by the Vite plugin; `platform/gjs/settings.ts` loads it from the bundle folder if present, otherwise from the system schema directory (the installed version). `AppSettings` itself only knows a `SettingsStore`; GTK code that binds to GSettings asks for it with `gsettingsOf(settings)`, and code that only reacts to a change uses `settings.onChanged(keys, …)`. The menu toggles (`sidebar`, `chat`, `focus`, `typewriter`, `autosave`) are `Gio.Settings.create_action`, the sidebar and the Assistant panel are bound with `Gio.Settings.bind` to `show-sidebar` (through `bindPanel()`, see the adaptive layout), and `MainWindow.onSettingChanged` applies the rest (including changes from the preferences dialog).
 - **Colors.** The interface (sidebar, Assistant panel, board, status colors) uses named Adwaita colors (`@accent_color`, `@card_bg_color`, `@error_bg_color`, ...), so it follows the system accent and the high contrast mode. Document surfaces (the editor, tables, text tags, diagrams) still use the `colors.ts` palette because `GtkTextTag` and diagram rendering need real color values and the `hidden` tag must be exactly the same as the editor background; the accent is taken from `Adw.StyleManager.get_accent_color_rgba()` if libadwaita ≥ 1.6.
 - **Context menus as data.** `Gtk.Menu` no longer exists. Right-click menus (the file tree, cards, lists) are built as `MenuEntry[]` (`ui/menu.ts`) and then turned into a `Gtk.PopoverMenu` with `menu.*` actions; tests only need to find an entry and call `run()`.
 - **Screenshots.** `gdk_pixbuf_get_from_window()` no longer exists. `tests/widgets.ts` draws a widget through `Gtk.WidgetPaintable` and then renders it into a texture with its window's renderer (used by `--screenshot` and `scripts/capture.ts`).

@@ -1,14 +1,11 @@
-// User settings in GSettings (schema: data/com.ekaput.Markwork.gschema.xml).
+// User settings with typed properties, on top of a SettingsStore (platform/index.ts). Under GJS the store is GSettings
+// (platform/gjs/settings.ts, schema: data/com.ekaput.Markwork.gschema.xml).
 //
-// AppSettings only wraps Gio.Settings with typed properties, so other code still
-// writes `settings.autosave = true`. Every write is saved immediately; there is no save().
-// The preferences dialog binds its widgets to the same `gsettings`, and the window listens to
-// "changed::<key>" to apply those changes.
+// Other code writes `settings.autosave = true`; every write is saved immediately, there is no save(). Code that reacts to a
+// change listens with onChanged(); the GTK preferences and actions also bind widgets straight to GSettings (gsettingsOf).
 
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
-import { APP_ID } from './config.js';
 import type { RecentFile } from './markdown/home.js';
+import type { SettingValue, SettingsStore } from './platform/index.js';
 
 // File-backed tabs that were open when the last window was closed, restored on the next launch.
 export interface SavedTab {
@@ -18,124 +15,92 @@ export interface SavedTab {
 
 export type SidebarPage = 'files' | 'search' | 'outline' | 'history' | 'collab';
 
-// When run from dist/, the compiled schema is next to the bundle (see vite.config.ts).
-// When installed (Meson/Flatpak), the schema is in the system schema directory and there is no copy next to the bundle.
-function loadSchema(): Gio.SettingsSchema {
-    // Shared code is bundled into dist/chunks/, so also look one level above.
-    let folder = Gio.File.new_for_uri(import.meta.url).get_parent()!;
-    if (!folder.get_child('gschemas.compiled').query_exists(null)) folder = folder.get_parent()!;
-    const dir = folder.get_path()!;
-    const system = Gio.SettingsSchemaSource.get_default();
-    const source = folder.get_child('gschemas.compiled').query_exists(null)
-        ? Gio.SettingsSchemaSource.new_from_directory(dir, system, false)
-        : system;
-    const schema = source?.lookup(APP_ID, true) ?? null;
-    if (!schema) throw new Error(`schema ${APP_ID} not found in ${dir} or the system schema directory`);
-    return schema;
-}
-
 export class AppSettings {
-    readonly gsettings: Gio.Settings;
+    constructor(readonly store: SettingsStore) {}
 
-    // backend: tests use Gio.memory_settings_backend_new() so the user's dconf is not touched.
-    constructor(backend?: Gio.SettingsBackend) {
-        this.gsettings = new Gio.Settings({ settings_schema: loadSchema(), ...(backend && { backend }) });
+    // listener gets the changed key; keys = only those. Returns a function that stops listening.
+    onChanged(keys: readonly string[] | null, listener: (key: string) => void): () => void {
+        return this.store.onChanged(key => { if (!keys || keys.includes(key)) listener(key); });
     }
+
+    private bool(key: string): boolean { return this.store.get(key) as boolean; }
+    private str(key: string): string { return this.store.get(key) as string; }
+    private num(key: string): number { return this.store.get(key) as number; }
+    private map(key: string): Record<string, string> { return { ...this.store.get(key) as Record<string, string> }; }
+    private set(key: string, value: SettingValue): void { this.store.set(key, value); }
 
     // null = follow the system theme.
     get dark(): boolean | null {
-        const scheme = this.gsettings.get_string('color-scheme');
+        const scheme = this.str('color-scheme');
         return scheme === 'system' ? null : scheme === 'dark';
     }
-    set dark(value: boolean | null) { this.gsettings.set_string('color-scheme', value === null ? 'system' : value ? 'dark' : 'light'); }
+    set dark(value: boolean | null) { this.set('color-scheme', value === null ? 'system' : value ? 'dark' : 'light'); }
 
-    get sidebar(): boolean { return this.gsettings.get_boolean('sidebar'); }
-    set sidebar(value: boolean) { this.gsettings.set_boolean('sidebar', value); }
-    get sidebarPage(): SidebarPage { return this.gsettings.get_string('sidebar-page') as SidebarPage; }
-    set sidebarPage(value: SidebarPage) { this.gsettings.set_string('sidebar-page', value); }
+    get sidebar(): boolean { return this.bool('sidebar'); }
+    set sidebar(value: boolean) { this.set('sidebar', value); }
+    get sidebarPage(): SidebarPage { return this.str('sidebar-page') as SidebarPage; }
+    set sidebarPage(value: SidebarPage) { this.set('sidebar-page', value); }
 
     // Collaboration: how often to ask the forge for pull requests, and whether a new one raises a desktop notification.
-    get forgePollSeconds(): number { return this.gsettings.get_uint('forge-poll-seconds'); }
-    set forgePollSeconds(value: number) { this.gsettings.set_uint('forge-poll-seconds', value); }
-    get forgeNotify(): boolean { return this.gsettings.get_boolean('forge-notify'); }
-    set forgeNotify(value: boolean) { this.gsettings.set_boolean('forge-notify', value); }
-    get chat(): boolean { return this.gsettings.get_boolean('chat'); }
-    set chat(value: boolean) { this.gsettings.set_boolean('chat', value); }
-    get chatModel(): string { return this.gsettings.get_string('chat-model'); }
-    set chatModel(value: string) { this.gsettings.set_string('chat-model', value); }
-    get chatThinking(): boolean { return this.gsettings.get_boolean('chat-thinking'); }
-    set chatThinking(value: boolean) { this.gsettings.set_boolean('chat-thinking', value); }
-    get chatSave(): boolean { return this.gsettings.get_boolean('chat-save'); }
-    set chatSave(value: boolean) { this.gsettings.set_boolean('chat-save', value); }
-    get typewriter(): boolean { return this.gsettings.get_boolean('typewriter'); }
-    set typewriter(value: boolean) { this.gsettings.set_boolean('typewriter', value); }
-    get focus(): boolean { return this.gsettings.get_boolean('focus'); }
-    set focus(value: boolean) { this.gsettings.set_boolean('focus', value); }
-    get autosave(): boolean { return this.gsettings.get_boolean('autosave'); }
-    set autosave(value: boolean) { this.gsettings.set_boolean('autosave', value); }
-    get home(): boolean { return this.gsettings.get_boolean('home'); }
-    set home(value: boolean) { this.gsettings.set_boolean('home', value); }
-    get welcomed(): boolean { return this.gsettings.get_boolean('welcomed'); }
-    set welcomed(value: boolean) { this.gsettings.set_boolean('welcomed', value); }
-    get width(): number { return this.gsettings.get_int('width'); }
-    set width(value: number) { this.gsettings.set_int('width', Math.round(value)); }
-    get height(): number { return this.gsettings.get_int('height'); }
-    set height(value: number) { this.gsettings.set_int('height', Math.round(value)); }
-    get activeTab(): number { return this.gsettings.get_int('active-tab'); }
-    set activeTab(value: number) { this.gsettings.set_int('active-tab', value); }
+    get forgePollSeconds(): number { return this.num('forge-poll-seconds'); }
+    set forgePollSeconds(value: number) { this.set('forge-poll-seconds', value); }
+    get forgeNotify(): boolean { return this.bool('forge-notify'); }
+    set forgeNotify(value: boolean) { this.set('forge-notify', value); }
+    get chat(): boolean { return this.bool('chat'); }
+    set chat(value: boolean) { this.set('chat', value); }
+    get chatModel(): string { return this.str('chat-model'); }
+    set chatModel(value: string) { this.set('chat-model', value); }
+    get chatThinking(): boolean { return this.bool('chat-thinking'); }
+    set chatThinking(value: boolean) { this.set('chat-thinking', value); }
+    get chatSave(): boolean { return this.bool('chat-save'); }
+    set chatSave(value: boolean) { this.set('chat-save', value); }
+    get typewriter(): boolean { return this.bool('typewriter'); }
+    set typewriter(value: boolean) { this.set('typewriter', value); }
+    get focus(): boolean { return this.bool('focus'); }
+    set focus(value: boolean) { this.set('focus', value); }
+    get autosave(): boolean { return this.bool('autosave'); }
+    set autosave(value: boolean) { this.set('autosave', value); }
+    get home(): boolean { return this.bool('home'); }
+    set home(value: boolean) { this.set('home', value); }
+    get welcomed(): boolean { return this.bool('welcomed'); }
+    set welcomed(value: boolean) { this.set('welcomed', value); }
+    get width(): number { return this.num('width'); }
+    set width(value: number) { this.set('width', Math.round(value)); }
+    get height(): number { return this.num('height'); }
+    set height(value: number) { this.set('height', Math.round(value)); }
+    get activeTab(): number { return this.num('active-tab'); }
+    set activeTab(value: number) { this.set('active-tab', value); }
 
     // Last folder; null = none.
-    get folder(): string | null { return this.gsettings.get_string('folder') || null; }
-    set folder(value: string | null) { this.gsettings.set_string('folder', value ?? ''); }
+    get folder(): string | null { return this.str('folder') || null; }
+    set folder(value: string | null) { this.set('folder', value ?? ''); }
 
     get tabs(): SavedTab[] {
-        return (this.gsettings.get_value('tabs').deepUnpack() as [string, number][]).map(([file, cursor]) => ({ file, cursor }));
+        return (this.store.get('tabs') as [string, number][]).map(([file, cursor]) => ({ file, cursor }));
     }
-    set tabs(value: SavedTab[]) {
-        this.gsettings.set_value('tabs', new GLib.Variant('a(si)', value.map(t => [t.file, t.cursor] as [string, number])));
-    }
+    set tabs(value: SavedTab[]) { this.set('tabs', value.map(t => [t.file, t.cursor] as [string, number])); }
 
     get recentFiles(): RecentFile[] {
-        return (this.gsettings.get_value('recent-files').deepUnpack() as [string, number][]).map(([path, time]) => ({ path, time: Number(time) }));
+        return (this.store.get('recent-files') as [string, number][]).map(([path, time]) => ({ path, time: Number(time) }));
     }
-    set recentFiles(value: RecentFile[]) {
-        this.gsettings.set_value('recent-files', new GLib.Variant('a(sx)', value.map(r => [r.path, r.time] as [string, number])));
-    }
+    set recentFiles(value: RecentFile[]) { this.set('recent-files', value.map(r => [r.path, r.time] as [string, number])); }
 
-    get projects(): Record<string, string> {
-        return this.gsettings.get_value('projects').deepUnpack() as Record<string, string>;
-    }
-    set projects(value: Record<string, string>) {
-        this.gsettings.set_value('projects', new GLib.Variant('a{ss}', value));
-    }
+    get projects(): Record<string, string> { return this.map('projects'); }
+    set projects(value: Record<string, string>) { this.set('projects', value); }
 
     // Where harnesses run: '' = children of this window, 'local' = the markworkd daemon on this computer, otherwise
     // the name of an SSH machine in `machines`.
-    get harnessMachine(): string { return this.gsettings.get_string('harness-machine'); }
-    set harnessMachine(value: string) { this.gsettings.set_string('harness-machine', value); }
-    get machines(): Record<string, string> {
-        return this.gsettings.get_value('machines').deepUnpack() as Record<string, string>;
-    }
-    set machines(value: Record<string, string>) {
-        this.gsettings.set_value('machines', new GLib.Variant('a{ss}', value));
-    }
-    get projectOptions(): Record<string, string> {
-        return this.gsettings.get_value('project-options').deepUnpack() as Record<string, string>;
-    }
-    set projectOptions(value: Record<string, string>) {
-        this.gsettings.set_value('project-options', new GLib.Variant('a{ss}', value));
-    }
-    get machineProjects(): Record<string, string> {
-        return this.gsettings.get_value('machine-projects').deepUnpack() as Record<string, string>;
-    }
-    set machineProjects(value: Record<string, string>) {
-        this.gsettings.set_value('machine-projects', new GLib.Variant('a{ss}', value));
-    }
-    get daemonCommand(): string { return this.gsettings.get_string('daemon-command'); }
-    set daemonCommand(value: string) { this.gsettings.set_string('daemon-command', value); }
-
-    // In-memory settings with default values, plus `overrides`; for tests, bench, and screenshots.
-    static inMemory(overrides: Partial<Omit<AppSettings, 'gsettings'>> = {}): AppSettings {
-        return Object.assign(new AppSettings(Gio.memory_settings_backend_new()), overrides);
-    }
+    get harnessMachine(): string { return this.str('harness-machine'); }
+    set harnessMachine(value: string) { this.set('harness-machine', value); }
+    get machines(): Record<string, string> { return this.map('machines'); }
+    set machines(value: Record<string, string>) { this.set('machines', value); }
+    get projectOptions(): Record<string, string> { return this.map('project-options'); }
+    set projectOptions(value: Record<string, string>) { this.set('project-options', value); }
+    get machineProjects(): Record<string, string> { return this.map('machine-projects'); }
+    set machineProjects(value: Record<string, string>) { this.set('machine-projects', value); }
+    get daemonCommand(): string { return this.str('daemon-command'); }
+    set daemonCommand(value: string) { this.set('daemon-command', value); }
 }
+
+// The properties a test or a screenshot may preset.
+export type SettingOverrides = Partial<Omit<AppSettings, 'store' | 'onChanged'>>;

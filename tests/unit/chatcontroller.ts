@@ -1,7 +1,6 @@
 // Conversation life cycle without widgets: ChatController with a recording view and fake providers.
 
 import GLib from 'gi://GLib';
-import type Gio from 'gi://Gio';
 import { ChatController, FOLDER_CHANGED, type ChatControllerHost, type ChatView, type TurnOutcome } from '../../src/agent/chatcontroller.js';
 import type { KeyStore } from '../../src/agent/apikey.js';
 import type { Change } from '../../src/agent/changes.js';
@@ -9,6 +8,7 @@ import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import type { ProposalResult } from '../../src/agent/session.js';
 import { chatLogPath } from '../../src/agent/chatstore.js';
 import { section, test, eq, ok, settle, tmp } from '../framework.js';
+import type { Cancellable } from '../../src/cancel.js';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
 const answer = (text: string): Provider => ({
@@ -33,7 +33,7 @@ function recordingView() {
                 end: outcome => { outcomes.push(outcome); log.push(`end ${'error' in outcome ? `error ${outcome.error}` : outcome.cancelled ? 'cancelled' : text}`); },
             };
         },
-        review: async (change, apply, _cancelled: Gio.Cancellable) => { log.push('review'); return decide(change, apply); },
+        review: async (change, apply, _cancelled: Cancellable) => { log.push('review'); return decide(change, apply); },
     };
     return { view, log, outcomes, decideWith: (fn: typeof decide) => { decide = fn; } };
 }
@@ -141,7 +141,7 @@ export function chatControllerTests(): void {
     test('stop cancels the running turn; busy ends', () => {
         const { c, log } = setup(null);
         c.makeProvider = () => ({
-            chat: req => new Promise(resolve => { req.cancellable?.connect(() => resolve({ usage: null, cancelled: true, toolCalls: [], reasoning: '' })); }),
+            chat: req => new Promise(resolve => { req.cancellable?.onCancel(() => resolve({ usage: null, cancelled: true, toolCalls: [], reasoning: '' })); }),
         });
         const sending = c.send('slow');
         GLib.idle_add(GLib.PRIORITY_DEFAULT, () => { ok(c.busy, 'not busy while sending'); c.stop(); return GLib.SOURCE_REMOVE; });

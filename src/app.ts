@@ -5,7 +5,7 @@ import Gio from 'gi://Gio';
 import System from 'system';
 
 import { APP_ID } from './config.js';
-import { AppSettings } from './settings.js';
+import { systemSettings } from './platform/gjs/settings.js';
 import { MainWindow } from './window.js';
 
 // argv: command-line arguments; the first argument that is not an option = the file or folder to open.
@@ -14,7 +14,7 @@ export function main(argv: string[]): number {
     // NON_UNIQUE: every command opens its own window (process).
     const app = new Adw.Application({ application_id: APP_ID, flags: Gio.ApplicationFlags.NON_UNIQUE });
     app.connect('activate', () => {
-        new MainWindow(app, new AppSettings(), path);
+        new MainWindow(app, systemSettings(), path);
     });
     // Arguments are not passed on to GApplication; the path was already read above.
     return app.run([System.programInvocationName]);

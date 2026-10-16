@@ -11,6 +11,7 @@
 // white vs black ship) and runs ChatSession + DeepSeek + the same browsing tools as the app.
 // The key is never printed.
 
+import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
 import { liveAgentic } from './live-agentic.js';
 import { liveCommitMessage } from './live-commit.js';
 import { liveStructured } from './live-structured.js';

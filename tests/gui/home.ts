@@ -11,6 +11,7 @@ import { MainWindow } from '../../src/window.js';
 import { registerActions } from '../../src/actions.js';
 import { descendants, widgetPixbuf } from '../widgets.js';
 import type { GuiContext } from './context.js';
+import { inMemorySettings } from '../../src/platform/gjs/settings.js';
 
 export function homeTests(c: GuiContext): void {
     const { w, pump } = c;
@@ -34,7 +35,7 @@ export function homeTests(c: GuiContext): void {
     const rowTitles = (win: MainWindow) => descendants(win.home.widget).filter((x): x is Adw.ActionRow => x instanceof Adw.ActionRow).map(r => r.title);
     const actionEnabled = (name: string) => c.app.lookup_action(name)?.get_enabled();
     const open = (extra: Partial<AppSettings> = {}) => {
-        const s = AppSettings.inMemory({ welcomed: true, dark: false, autosave: false, folder: ws, sidebar: false, ...extra });
+        const s = inMemorySettings({ welcomed: true, dark: false, autosave: false, folder: ws, sidebar: false, ...extra });
         const win = new MainWindow(c.app, s, null);
         settle();
         return { win, s };

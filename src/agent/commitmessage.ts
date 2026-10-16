@@ -2,7 +2,7 @@
 // last commit and the repository's recent commit subjects. The message lands in the commit box, where the
 // user reviews it; nothing is committed here. Without GTK; git and the key come in through CommitSources.
 
-import type Gio from 'gi://Gio';
+import type { Cancellable } from '../cancel.js';
 import type { KeyStore } from './apikey.js';
 import type { ChatMessage, Provider } from './provider.js';
 
@@ -79,7 +79,7 @@ export type WriteResult =
 
 // onText gets the cleaned message so far each time more of it streams in.
 export async function writeCommitMessage(sources: CommitSources, files: string[], onText: (message: string) => void,
-    cancellable?: Gio.Cancellable): Promise<WriteResult> {
+    cancellable?: Cancellable): Promise<WriteResult> {
     const found = await sources.keyStore.get();
     if (!found) return { ok: false, reason: 'no-key', message: 'There is no DeepSeek API key yet' };
     // One unreadable diff (e.g. a file whose folder is gone) does not stop the rest; all of them failing does.

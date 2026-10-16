@@ -1,31 +1,15 @@
-// Interface translations (gettext). The source language is English: text in code and .ui files
-// is written in English and wrapped in _(), then po/*.po translates it.
-//
-// The domain is bound when this module is evaluated, before other modules that call _() at the top
-// level (e.g. command palette labels), because ES modules are evaluated in order from the innermost
-// import. .ui files (Gtk.Template) use the default domain set by textdomain() here.
+// Interface translations. The source language is English: text in code and .ui files is written in English and
+// wrapped in _(), then po/*.po translates it. The translating itself is the platform's (gettext under GJS, bound in
+// platform/gjs/i18n.ts before other modules are evaluated); without a platform the source text is shown.
 
-import gettext from 'gettext';
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
+import { installedPlatform } from './platform/index.js';
 
-export const GETTEXT_DOMAIN = 'markwork';
+const translations = () => installedPlatform()?.translations;
 
-// Locale folder: installed = <prefix>/share/locale (bundle in <prefix>/share/markwork), from dist/ =
-// <repo>/locale which usually does not exist, so the source text is shown as is.
-function localeDir(): string {
-    let dir = Gio.File.new_for_uri(import.meta.url).get_parent();
-    if (dir && !dir.get_child('markwork.js').query_exists(null)) dir = dir.get_parent();   // from dist/chunks/
-    return GLib.build_filenamev([dir?.get_parent()?.get_path() ?? '.', 'locale']);
-}
-
-gettext.bindtextdomain(GETTEXT_DOMAIN, localeDir());
-gettext.textdomain(GETTEXT_DOMAIN);
-
-export const _ = (text: string): string => gettext.dgettext(GETTEXT_DOMAIN, text);
-export const ngettext = (one: string, many: string, n: number): string => gettext.dngettext(GETTEXT_DOMAIN, one, many, n);
+export const _ = (text: string): string => translations()?.text(text) ?? text;
+export const ngettext = (one: string, many: string, n: number): string => translations()?.plural(one, many, n) ?? (n === 1 ? one : many);
 // The same text with different meanings (e.g. "Open" button vs title) is distinguished with a context.
-export const pgettext = (context: string, text: string): string => gettext.dpgettext(GETTEXT_DOMAIN, context, text);
+export const pgettext = (context: string, text: string): string => translations()?.context(context, text) ?? text;
 
 // Fill {name} in translated text. Named placeholders (not template literals) so xgettext can
 // extract the text and translators can reorder words.

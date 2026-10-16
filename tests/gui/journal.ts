@@ -19,6 +19,7 @@ import type { HarnessResult } from '../../src/agent/harness.js';
 import { promptDialog } from '../../src/ui/dialogs.js';
 import { descendants, whenDialogReady, widgetPixbuf } from '../widgets.js';
 import type { GuiContext } from './context.js';
+import { inMemorySettings } from '../../src/platform/gjs/settings.js';
 
 export function journalTests(c: GuiContext): void {
     const { w, pump } = c;
@@ -46,7 +47,7 @@ export function journalTests(c: GuiContext): void {
     const settle = () => { for (let i = 0; i < 30; i++) { pump(); GLib.usleep(8000); } };
     const rowTitles = (win: MainWindow) => descendants(win.home.widget).filter((x): x is Adw.ActionRow => x instanceof Adw.ActionRow).map(r => [r.title, r.subtitle]);
     const open = (extra: Partial<AppSettings> = {}) => {
-        const s = AppSettings.inMemory({ welcomed: true, dark: false, autosave: false, folder: ws, sidebar: false, chat: false, ...extra });
+        const s = inMemorySettings({ welcomed: true, dark: false, autosave: false, folder: ws, sidebar: false, chat: false, ...extra });
         const win = new MainWindow(c.app, s, null);
         settle();
         return { win, s };

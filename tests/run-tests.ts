@@ -24,6 +24,7 @@
 //
 // GUI tests open real windows, so a desktop session (X11/Wayland) is needed.
 
+import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib';
 import Gdk from 'gi://Gdk?version=4.0';
@@ -68,6 +69,7 @@ import { traceTests } from './unit/trace.js';
 import { changeTests } from './unit/changes.js';
 import { deepseekTests } from './unit/deepseek.js';
 import { forgeTests } from './unit/forge.js';
+import { platformTests } from './unit/platform.js';
 import { noteDiffTests } from './unit/notediff.js';
 import { contributeTests } from './unit/contribute.js';
 import { resolveTests } from './unit/resolve.js';
@@ -152,6 +154,7 @@ function runUnitTests(): void {
     changeTests();
     deepseekTests();
     forgeTests();
+    platformTests();
     noteDiffTests();
     contributeTests();
     resolveTests();

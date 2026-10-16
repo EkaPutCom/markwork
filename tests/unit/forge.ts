@@ -4,7 +4,7 @@
 import Soup from 'gi://Soup?version=3.0';
 import System from 'system';
 import { GiteaProvider } from '../../src/forge/gitea.js';
-import { soupTransport } from '../../src/forge/http.js';
+import { soupTransport } from '../../src/platform/gjs/http.js';
 import { diffPulls, PullMonitor } from '../../src/forge/monitor.js';
 import { parseRemote } from '../../src/forge/remote.js';
 import { ForgeError, type HttpRequest, type HttpResponse, type PullRequest, type RepoRef, type Transport } from '../../src/forge/types.js';

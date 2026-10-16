@@ -1,7 +1,7 @@
 // Model provider interface. The real client (deepseek.ts) and the fake provider in tests use the same shape.
 // Pure TypeScript without GTK.
 
-import type Gio from 'gi://Gio';
+import type { Cancellable } from '../cancel.js';
 
 // One tool the model may call. `parameters` is a JSON Schema.
 export interface ToolSpec {
@@ -35,7 +35,7 @@ export interface ChatRequest {
     thinking?: boolean;      // model thinking mode; off = faster and cheaper
     onText: (delta: string) => void;
     onReasoning?: (delta: string) => void;   // the model's "thoughts", separate from the answer
-    cancellable?: Gio.Cancellable;
+    cancellable?: Cancellable;
 }
 
 export interface ChatResult {

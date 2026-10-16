@@ -1,4 +1,5 @@
 // Measure the cost of the new feature locally, without a model provider or widgets.
+import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
 import GLib from 'gi://GLib';
 import { planBatch } from '../src/agent/batch.js';
 import { verifyWork } from '../src/agent/verification.js';

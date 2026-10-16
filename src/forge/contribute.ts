@@ -2,7 +2,6 @@
 // itself. The forge is a ForgeProvider and git is a function, both passed in, so the same steps run against a fake forge and
 // local repositories in the tests. A step that fails stops the rest and says which step it was.
 
-import GLib from 'gi://GLib';
 import type { ForgeProvider, PullRequest, RepoInfo, RepoRef } from './types.js';
 
 // fork: push to the user's own copy; direct: push a branch to the repository itself (needs the right to);
@@ -47,10 +46,24 @@ export function slug(text: string): string {
     return text.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '');
 }
 
+const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+// Standard base64 with padding (RFC 4648), so the header does not depend on the runtime.
+export function base64(bytes: Uint8Array): string {
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+        const n = bytes[i] << 16 | (bytes[i + 1] ?? 0) << 8 | (bytes[i + 2] ?? 0);
+        out += BASE64[n >> 18 & 63] + BASE64[n >> 12 & 63];
+        out += i + 1 < bytes.length ? BASE64[n >> 6 & 63] : '=';
+        out += i + 2 < bytes.length ? BASE64[n & 63] : '=';
+    }
+    return out;
+}
+
 // The token goes to git in the environment, as the password of a Basic header: not in the arguments, which `ps` shows to
 // everybody, and not in the remote URL, which git writes to .git/config.
 export function credentialEnv(login: string, token: string): Record<string, string> {
-    const basic = GLib.base64_encode(new TextEncoder().encode(`${login}:${token}`));
+    const basic = base64(new TextEncoder().encode(`${login}:${token}`));
     return { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'http.extraHeader', GIT_CONFIG_VALUE_0: `Authorization: Basic ${basic}` };
 }
 

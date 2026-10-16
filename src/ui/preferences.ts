@@ -14,6 +14,7 @@ import { machineDialog } from './dialogs.js';
 import { ProjectsGroup, type ProjectsAccess } from './projectsettings.js';
 import type { AppSettings } from '../settings.js';
 import template from './preferences.ui?raw';
+import { gsettingsOf } from '../platform/gjs/settings.js';
 
 // The same order as the "Color scheme" items in preferences.ui.
 const SCHEMES = ['system', 'light', 'dark'];
@@ -50,7 +51,7 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
     // projects: the harness controller, for the Projects group of the Agents page (left out in tests that do not need it).
     constructor(settings: AppSettings, projects?: ProjectsAccess) {
         super();
-        const gs = settings.gsettings;
+        const gs = gsettingsOf(settings);
         const flags = Gio.SettingsBindFlags.DEFAULT;
         gs.bind('focus', this._focus, 'active', flags);
         gs.bind('typewriter', this._typewriter, 'active', flags);

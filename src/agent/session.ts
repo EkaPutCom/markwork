@@ -11,7 +11,7 @@ import { structureCheck, VERIFY_TOOL, verifyWork } from './verification.js';
 import { describeGitCall, formatGit, GIT_TOOLS, isGitTool, parseGitCall, type GitAnswer, type GitRequest } from './gittools.js';
 import { journalText, reconcileEvents, type ActionEvent } from './journal.js';
 import { compactHistory } from './recovery.js';
-import type Gio from 'gi://Gio';
+import type { Cancellable } from '../cancel.js';
 import { buildContext, buildMessages, estimateTokens, type BuiltContext, type ContextInput, type SourceFile, type Turn } from './context.js';
 import type { ChatMessage, ChatResult, Provider, ToolCall, ToolSpec, Usage } from './provider.js';
 import { describeCall, runTool, TOOLS } from './tools.js';
@@ -112,7 +112,7 @@ export class ChatSession {
 
     // Throws if the provider fails; the history is unchanged in that case. An answer cancelled halfway
     // is still saved (its fragments), because the user has already read it.
-    async ask(input: TurnInput, provider: Provider, model: string, handlers: TurnHandlers, cancellable?: Gio.Cancellable): Promise<TurnResult> {
+    async ask(input: TurnInput, provider: Provider, model: string, handlers: TurnHandlers, cancellable?: Cancellable): Promise<TurnResult> {
         const generation = this.generation;
         return new TurnRun(this, () => generation !== this.generation, input, provider, model, handlers, cancellable).run();
     }
@@ -147,7 +147,7 @@ class TurnRun {
 
     constructor(private readonly session: ChatSession, private readonly stale: () => boolean, private readonly input: TurnInput,
                 private readonly provider: Provider, private readonly model: string, private readonly handlers: TurnHandlers,
-                private readonly cancellable?: Gio.Cancellable) {
+                private readonly cancellable?: Cancellable) {
         const project = input.options.project;
         this.canPropose = !!handlers.onProposal && project;
         this.built = buildContext({ ...input, recent: session.questions, canPropose: this.canPropose, canGit: !!handlers.git });
@@ -280,7 +280,7 @@ class TurnRun {
         if (!result.toolCalls.length) return false;
         this.messages.push({ role: 'assistant', content: roundText, reasoning: result.reasoning || undefined, toolCalls: result.toolCalls });
         for (const call of result.toolCalls) {
-            if (this.cancellable?.is_cancelled()) { this.cancelled = true; return false; }
+            if (this.cancellable?.cancelled) { this.cancelled = true; return false; }
             trace.begin('tool', `${this.round}:${call.id}`, `Tool: ${call.name}`, '', this.round, { args: prettyArguments(call.arguments) });
             await this.runTool(call, useTools);
         }

@@ -1,7 +1,6 @@
 // GUI tests: the git History tab.
 
 import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import type { WriteResult } from '../../src/agent/commitmessage.js';
@@ -13,6 +12,7 @@ import type { GuiContext } from './context.js';
 import { iterAtLine } from '../../src/gtkutil.js';
 import { childrenOf } from '../../src/gtkutil.js';
 import { listRows, widgetPixbuf } from '../widgets.js';
+import type { Cancellable } from '../../src/cancel.js';
 
 export function historyTests(c: GuiContext): void {
     const { w, pump, setText } = c;
@@ -415,7 +415,7 @@ export function historyTests(c: GuiContext): void {
         const calls: string[][] = [];
         let onText: (m: string) => void = () => {};
         let finish: (r: WriteResult) => void = () => {};
-        let cancellable: Gio.Cancellable | null = null;
+        let cancellable: Cancellable | null = null;
         writer.write = (files, text, cancel) => {
             calls.push(files); onText = text; cancellable = cancel;
             return new Promise(resolve => { finish = resolve; });
@@ -449,7 +449,7 @@ export function historyTests(c: GuiContext): void {
             writer.button.emit('clicked');
             onText('Half');
             writer.button.emit('clicked');
-            ok(cancellable!.is_cancelled(), 'Stop did not cancel');
+            ok(cancellable!.cancelled, 'Stop did not cancel');
             finish({ ok: true, message: 'Half', shortened: false, cancelled: true });
             ok(waitFor(() => !writer.busy), 'still busy');
             eq(w.history.message.text, 'Half');

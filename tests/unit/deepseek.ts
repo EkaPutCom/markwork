@@ -1,11 +1,11 @@
 // DeepSeek client tests against a fake SSE server on 127.0.0.1 (libsoup), without a real network.
 
-import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Soup from 'gi://Soup?version=3.0';
 import System from 'system';
 import { DeepSeek } from '../../src/agent/deepseek.js';
 import { section, test, eq, ok, contains, settle } from '../framework.js';
+import { Cancellable } from '../../src/cancel.js';
 
 const enc = new TextEncoder();
 
@@ -16,15 +16,24 @@ export function deepseekTests(): void {
     System.gc();
 
     let auth = '', requested = '';
-    let mode: 'stream' | 'unauthorized' | 'tools' | 'busy' | 'truncated' = 'stream';
+    let mode: 'stream' | 'unauthorized' | 'tools' | 'busy' | 'truncated' | 'hold' = 'stream';
     let body: any = null;
     let requests = 0;
+    const held: Soup.ServerMessage[] = [];
     const server = new Soup.Server();
     server.add_handler('/chat/completions', (_server, msg) => {
         requests++;
         if (mode === 'busy') {
             if (requests === 1) { msg.set_status(503, null); msg.get_response_body().append(enc.encode('{}')); return; }
             mode = 'stream';
+        }
+        if (mode === 'hold') {
+            // One piece of text, then the stream stays open (chunked, body never completed) until the client gives up.
+            msg.set_status(200, null);
+            msg.get_response_headers().set_encoding(Soup.Encoding.CHUNKED);
+            msg.get_response_body().append(enc.encode('data: {"choices":[{"delta":{"content":"Hello "}}]}\n\n'));
+            held.push(msg);
+            return;
         }
         if (mode === 'truncated') {
             msg.set_status(200, null);
@@ -126,12 +135,20 @@ export function deepseekTests(): void {
 
     test('cancellation during the retry pause finishes without sending a second request', () => {
         mode = 'busy'; requests = 0;
-        const cancellable = new Gio.Cancellable();
+        const cancellable = new Cancellable();
         const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => { cancellable.cancel(); return GLib.SOURCE_REMOVE; });
         const r = settle(client('sk-test').chat({ ...request, cancellable, onText: () => {} }));
         eq(r.cancelled, true); eq(requests, 1);
         // The timer has run by the time settle finishes.
         ok(timer > 0, 'the timer was not created');
+    });
+
+    test('cancelling while the answer streams keeps the text so far and stops reading', () => {
+        mode = 'hold'; requests = 0;
+        const cancellable = new Cancellable();
+        let partial = '';
+        const r = settle(client('sk-test').chat({ ...request, cancellable, onText: d => { partial += d; cancellable.cancel(); } }));
+        eq([r.cancelled, partial, requests], [true, 'Hello ', 1]);
     });
 
     test('status 401 becomes an error with the server message', () => {
@@ -148,7 +165,7 @@ export function deepseekTests(): void {
 
     test('a request that was already cancelled finishes as cancelled, not as an error', () => {
         mode = 'stream';
-        const cancellable = new Gio.Cancellable();
+        const cancellable = new Cancellable();
         cancellable.cancel();
         const result = settle(client('sk-test').chat({ ...request, onText: () => {}, cancellable }));
         ok(result.cancelled, 'should have been cancelled');
@@ -164,6 +181,7 @@ export function deepseekTests(): void {
         contains(message, 'DeepSeek');
     });
 
+    for (const msg of held) msg.get_response_body().complete();
     server.disconnect();
     GLib.usleep(1000);
 }

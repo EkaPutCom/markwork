@@ -3,7 +3,6 @@
 // is the same as rejecting.
 
 import Gtk from 'gi://Gtk?version=4.0';
-import type Gio from 'gi://Gio';
 import type { ChatController } from '../agent/chatcontroller.js';
 import type { ActionEvent } from '../agent/journal.js';
 import type { ProposalResult } from '../agent/session.js';
@@ -11,6 +10,7 @@ import { diffPreview, describeChange, type Change } from '../agent/changes.js';
 import { escapeMarkup } from '../markdown/pango.js';
 import { ProposalViewer } from './proposalviewer.js';
 import { _, fmt } from '../i18n.js';
+import type { Cancellable } from '../cancel.js';
 
 export interface ProposalEnv {
     controller: ChatController;
@@ -25,7 +25,7 @@ export class ProposalCards {
     constructor(private readonly env: ProposalEnv) {}
 
     // A card for the proposal; `start` opens the review window and resolves with the user's decision.
-    card(change: Change | Change[], apply: (change: Change | Change[]) => string | null, cancelled: Gio.Cancellable): { widget: Gtk.Box; start: () => Promise<ProposalResult> } {
+    card(change: Change | Change[], apply: (change: Change | Change[]) => string | null, cancelled: Cancellable): { widget: Gtk.Box; start: () => Promise<ProposalResult> } {
         const changes = Array.isArray(change) ? change : [change];
         const description = Array.isArray(change) ? fmt(_('Change batch · {count} files'), { count: changes.length }) : describeChange(change);
         const reasonText = changes.map(c => `${c.file}: ${c.reason}`).join('\n');
@@ -49,7 +49,7 @@ export class ProposalCards {
         return { widget: card, start: () => this.decide(change, changes, apply, cancelled, card, status, review) };
     }
 
-    private decide(change: Change | Change[], changes: Change[], apply: (change: Change | Change[]) => string | null, cancelled: Gio.Cancellable,
+    private decide(change: Change | Change[], changes: Change[], apply: (change: Change | Change[]) => string | null, cancelled: Cancellable,
                    card: Gtk.Box, status: Gtk.Label, review: Gtk.Button): Promise<ProposalResult> {
         return new Promise<ProposalResult>(resolve => {
             let done = false;
@@ -83,7 +83,7 @@ export class ProposalCards {
                 viewer.show();
             };
             review.connect('clicked', open);
-            cancelled.connect(() => {
+            cancelled.onCancel(() => {
                 const viewer = this.viewer;
                 finish({ applied: false }, _('Cancelled.'));
                 viewer?.close();

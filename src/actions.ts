@@ -18,6 +18,7 @@ import type { FindBar } from './ui/findbar.js';
 import type { AppSettings } from './settings.js';
 import type { Awaitable } from './gtkutil.js';
 import type { JournalController } from './window/journal.js';
+import { gsettingsOf } from './platform/gjs/settings.js';
 
 // View options that can be changed from the menu.
 export type Option = 'sidebar' | 'chat' | 'dark' | 'autosave' | Mode;
@@ -165,7 +166,7 @@ export function registerActions(app: Adw.Application, w: ActionHost): void {
     const s = w.settings;
     // Toggle bound to a GSettings key: the action's state follows that key.
     const setting = (key: string, accels: string[]) => {
-        app.add_action(s.gsettings.create_action(key));
+        app.add_action(gsettingsOf(s).create_action(key));
         if (accels.length) app.set_accels_for_action(`app.${key}`, accels);
     };
     setting('sidebar', ['<Control>backslash', '<Control><Shift>1']);
