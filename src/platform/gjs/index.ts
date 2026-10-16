@@ -1,4 +1,4 @@
-// The platform port on GJS: GLib/Gio for files and paths, libsecret for the keyring, libsoup 3 for HTTP. The only place
+// The platform port on GJS: GLib/Gio for files, paths, and processes, libsecret for the keyring, libsoup 3 for HTTP. The only place
 // outside the base modules where the core's runtime needs meet gi://.
 
 import GLib from 'gi://GLib';
@@ -7,6 +7,7 @@ import { fileExists, readTextFile, writeTextFile } from '../../files.js';
 import { trashEntry } from '../../fileops.js';
 import type { EntryKind, FileSystem, Platform, Secrets } from '../index.js';
 import { soupStreamTransport, soupTransport } from './http.js';
+import { gjsProcesses } from './process.js';
 
 // libsecret is loaded when needed; a missing typelib or a dead keyring service must not kill the app.
 async function loadSecret() {
@@ -83,6 +84,7 @@ const fs: FileSystem = {
     setMode: (path, mode) => { Gio.File.new_for_path(path).set_attribute_uint32('unix::mode', mode, Gio.FileQueryInfoFlags.NONE, null); },
     list: listDir,
     kind: entryKind,
+    isDirectory: path => GLib.file_test(path, GLib.FileTest.IS_DIR),
     trash: trashEntry,
 };
 
@@ -91,6 +93,7 @@ export const gjsPlatform: Platform = {
     paths: {
         join: (...parts) => GLib.build_filenamev(parts),
         dirname: path => GLib.path_get_dirname(path),
+        basename: path => GLib.path_get_basename(path),
         isAbsolute: path => GLib.path_is_absolute(path),
         configDir: () => GLib.get_user_config_dir(),
         runtimeDir: () => GLib.get_user_runtime_dir(),
@@ -98,6 +101,7 @@ export const gjsPlatform: Platform = {
     secrets,
     http: soupTransport,
     httpStream: soupStreamTransport,
+    processes: gjsProcesses,
     env: name => GLib.getenv(name),
     monotonicMs: () => GLib.get_monotonic_time() / 1000,
 };

@@ -21,8 +21,6 @@ const isCore = f => /^(markdown|agent|forge)\//.test(f) || BASE.includes(f)
 const GI_ALLOWED = new Set([
     'agent/daemon/streamlink.ts',
     'files.ts',
-    'git.ts',
-    'orchestrator.ts',
     'workspace.ts',
 ]);
 

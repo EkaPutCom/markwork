@@ -1,9 +1,8 @@
 // Reads a file's git history through the `git` command. The only changes to the repository
-// are commitFile()/commitFiles() and discardChanges(), and only at the user's request. Everything is async (Gio.Subprocess) so a long history does not block the editor.
+// are commitFile()/commitFiles() and discardChanges(), and only at the user's request. Everything is async
+// (platform().processes, Gio.Subprocess under GJS) so a long history does not block the editor.
 
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
-import { trashEntry } from './fileops.js';
+import { platform } from './platform/index.js';
 import { AGENT_LOG_FORMAT, LOG_FORMAT, parseLog, parseStatus, type Commit, type FileChange, type GitAnswer, type GitRequest } from './gitlog.js';
 
 export type GitFailure = 'no-git' | 'no-repo' | 'failed';
@@ -18,60 +17,21 @@ export type TextResult =
 
 interface Run { status: number; out: string; err: string }
 
-// GJS 1.80 can block an async callback that arrives while it is garbage collecting ("Attempting to run a JS
-// callback during garbage collection"): communicate_utf8_async() then never calls back although git has finished,
-// and whatever awaits it (the History tab, an agent Git tool) waits forever. A watchdog settles the run instead,
-// as a failure: the output is gone, and a commit must not be repeated blindly. It also stops a git that hangs,
-// e.g. on a signing passphrase prompt. Changeable by tests.
+// A run whose result the runtime lost, or a git that hangs (e.g. on a signing passphrase prompt), ends as a failure
+// instead of waiting forever (see platform/gjs/process.ts). Changeable by tests.
 export const gitLimits = {
-    lostMs: 5000,       // after git has exited without the callback arriving
+    lostMs: 5000,       // after git has exited without its output arriving
     runMs: 120000,      // for git to finish at all
 };
 
 // null = git cannot be run (not installed, or the folder does not exist).
 // extra = environment variables for this one run (a credential for a push stays out of the arguments, which `ps` shows).
 export function runGit(cwd: string, args: string[], extra: Record<string, string> = {}): Promise<Run | null> {
-    return new Promise(resolve => {
-        let done = false, watchdog = 0;
-        const finish = (run: Run | null) => {
-            if (done) return;
-            done = true;
-            if (watchdog) GLib.source_remove(watchdog);
-            resolve(run);
-        };
-        try {
-            const launcher = new Gio.SubprocessLauncher({ flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE });
-            launcher.set_cwd(cwd);
-            // Do not compete for the index lock with another git the user is running.
-            launcher.setenv('GIT_OPTIONAL_LOCKS', '0', true);
-            // A fetch or pull that needs a password must fail, not wait for a terminal this process does not have.
-            launcher.setenv('GIT_TERMINAL_PROMPT', '0', true);
-            for (const [name, value] of Object.entries(extra)) launcher.setenv(name, value, true);
-            const proc = launcher.spawnv(['git', '-c', 'core.quotePath=false', ...args]);
-            const started = GLib.get_monotonic_time();
-            let exitedAt = 0;
-            watchdog = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-                const now = GLib.get_monotonic_time();
-                if (!exitedAt && proc.get_identifier() === null) exitedAt = now;   // reaped: git has exited
-                const lost = exitedAt > 0 && now - exitedAt > gitLimits.lostMs * 1000;
-                const hung = !exitedAt && now - started > gitLimits.runMs * 1000;
-                if (!lost && !hung) return GLib.SOURCE_CONTINUE;
-                watchdog = 0;
-                if (hung) proc.force_exit();
-                finish({ status: -1, out: '', err: lost ? 'git finished but its result was lost; try again' : `git did not finish within ${Math.round(gitLimits.runMs / 1000)} seconds and was stopped` });
-                return GLib.SOURCE_REMOVE;
-            });
-            proc.communicate_utf8_async(null, null, (_proc, result) => {
-                try {
-                    const [, out, err] = proc.communicate_utf8_finish(result);
-                    finish({ status: proc.get_if_exited() ? proc.get_exit_status() : -1, out: out ?? '', err: err ?? '' });
-                } catch (e) {
-                    finish(null);
-                }
-            });
-        } catch (e) {
-            finish(null);
-        }
+    return platform().processes.run({
+        argv: ['git', '-c', 'core.quotePath=false', ...args], cwd, timeoutMs: gitLimits.runMs, lostMs: gitLimits.lostMs,
+        // Do not compete for the index lock with another git the user is running. A fetch or pull that needs a password
+        // must fail, not wait for a terminal this process does not have.
+        env: { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', ...extra },
     });
 }
 
@@ -82,8 +42,8 @@ function failure(run: Run | null): { ok: false; reason: GitFailure; message: str
     return { ok: false, reason: /not a git repository/i.test(message) ? 'no-repo' : 'failed', message };
 }
 
-const dirOf = (file: string) => GLib.path_get_dirname(file);
-const nameOf = (file: string) => GLib.path_get_basename(file);
+const dirOf = (file: string) => platform().paths.dirname(file);
+const nameOf = (file: string) => platform().paths.basename(file);
 
 // Commits that touch the file, newest first, following renames. skip/limit for incremental loading.
 export async function fileLog(file: string, skip: number, limit: number): Promise<LogResult> {
@@ -147,7 +107,7 @@ export async function repoChanges(dir: string): Promise<ChangesResult> {
     const run = await runGit(dir, ['status', '--porcelain=v1', '--untracked-files=all']);
     if (run?.status !== 0) return failure(run);
     const top = root.out.trim();
-    return { ok: true, changes: parseStatus(run.out).map(c => ({ ...c, path: GLib.build_filenamev([top, c.path]) })) };
+    return { ok: true, changes: parseStatus(run.out).map(c => ({ ...c, path: platform().paths.join(top, c.path) })) };
 }
 
 // Subjects of the repository's latest commits, newest first; empty without git, a repo, or commits.
@@ -231,7 +191,7 @@ export async function discardChanges(files: string[]): Promise<TextResult> {
         if (run?.status !== 0) return failure(run);
     }
     try {
-        for (const path of [...added, ...untracked]) trashEntry(GLib.build_filenamev([top, path]));
+        for (const path of [...added, ...untracked]) platform().fs.trash(platform().paths.join(top, path));
     } catch (e) {
         return { ok: false, reason: 'failed', message: (e as Error).message };
     }

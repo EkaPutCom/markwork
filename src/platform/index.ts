@@ -47,12 +47,14 @@ export interface FileSystem {
     setMode(path: string, mode: number): void;
     list(dir: string): string[];      // the names of a folder's entries, in no particular order
     kind(path: string): EntryKind;    // 'missing' only when nothing is there; any other error (no permission) throws
+    isDirectory(path: string): boolean;   // a folder, also through a symbolic link
     trash(path: string): void;        // to the desktop trash, so it can be restored
 }
 
 export interface Paths {
     join(...parts: string[]): string;
     dirname(path: string): string;
+    basename(path: string): string;
     isAbsolute(path: string): boolean;
     configDir(): string;              // the per-user configuration folder (~/.config on Linux)
     runtimeDir(): string;             // the per-user folder for sockets and other runtime files ($XDG_RUNTIME_DIR on Linux)
@@ -63,6 +65,38 @@ export interface Secrets {
     lookup(schema: string, attributes: Record<string, string>): Promise<string | null>;
     store(schema: string, attributes: Record<string, string>, label: string, secret: string): Promise<boolean>;
     clear(schema: string, attributes: Record<string, string>): Promise<void>;
+}
+
+// A program run once to the end, its output collected (git). status -1 = it was stopped or its result was lost; err says
+// which. The run is null when the program could not be started (not installed, or the folder does not exist).
+export interface RunRequest {
+    argv: string[];
+    cwd: string;
+    env?: Record<string, string>;     // added to the inherited environment
+    timeoutMs?: number;               // stop a run that has not finished by then
+    lostMs?: number;                  // after the program has exited, how long to wait for its output before giving up
+}
+export interface RunResult { status: number; out: string; err: string }
+
+// A long-running program spoken to line by line: commands to its stdin, its stdout read as lines (LF only). exit gets the
+// exit code (128 + signal for a signal) and the tail of stderr, once, after both outputs are drained.
+export interface ChildHandlers {
+    line(text: string): void;
+    exit(status: number, stderr: string): void;
+}
+export interface ChildProcess {
+    write(line: string): boolean;     // false if stdin is already closed or failed
+    closeInput(): void;
+    stop(): void;                     // SIGTERM, then SIGKILL if it is ignored
+}
+
+export interface Processes {
+    run(request: RunRequest): Promise<RunResult | null>;   // argv[0] is looked up on PATH
+    // argv[0] is a path (from findProgram), not looked up on PATH. Throws if the program cannot be run.
+    spawn(argv: string[], cwd: string, handlers: ChildHandlers): ChildProcess;
+    // The program's path, also in the user's own bin folders that a desktop launch may leave out of PATH; null = not found.
+    findProgram(name: string): string | null;
+    hostName(): string;
 }
 
 // The app's stored preferences, by key. The values are the shapes AppSettings (settings.ts) reads and writes; which keys
@@ -81,6 +115,7 @@ export interface Platform {
     readonly secrets: Secrets;
     readonly http: Transport;
     readonly httpStream: StreamTransport;
+    readonly processes: Processes;
     env(name: string): string | null;
     monotonicMs(): number;            // a clock that only moves forward, in milliseconds; for measuring durations
 }

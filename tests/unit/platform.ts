@@ -27,11 +27,13 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
             setMode: (path, mode) => { modes.set(path, mode); },
             list: () => [],
             kind: path => files.has(path) ? 'file' : 'missing',
+            isDirectory: () => false,
             trash: path => { files.delete(path); },
         },
         paths: {
             join: (...parts) => parts.join('/'),
             dirname: path => path.slice(0, path.lastIndexOf('/')),
+            basename: path => path.slice(path.lastIndexOf('/') + 1),
             isAbsolute: path => path.startsWith('/'),
             configDir: () => '/config',
             runtimeDir: () => '/run',
@@ -43,6 +45,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
         },
         http: async () => ({ status: 200, body: '' }),
         httpStream: async () => { throw new Error('no network in this fake'); },
+        processes: { run: async () => null, spawn: () => { throw new Error('no processes in this fake'); }, findProgram: () => null, hostName: () => 'fake' },
         env: name => options.env?.[name] ?? null,
         monotonicMs: () => 0,
     };
@@ -141,6 +144,43 @@ export function platformTests(): void {
         let threw = false;
         try { fs.list(paths.join(dir, 'nope')); } catch (e) { threw = true; }
         ok(threw, 'listing a missing folder throws');
+    });
+
+    section('Platform: GJS processes');
+
+    test('run collects the output, the exit status, and the extra environment; a missing program gives null', () => {
+        const { processes } = gjsPlatform;
+        const r = settle(processes.run({ argv: ['sh', '-c', 'echo "$GREETING"; echo oops >&2; exit 3'], cwd: tmp, env: { GREETING: 'hello' } }));
+        eq(r, { status: 3, out: 'hello\n', err: 'oops\n' });
+        eq(settle(processes.run({ argv: ['markwork-no-such-program'], cwd: tmp })), null);
+    });
+
+    test('spawn speaks line by line: stdin in, stdout lines out, the exit status after both outputs are drained', () => {
+        const lines: string[] = [];
+        const ended = new Promise<[number, string]>(resolve => {
+            const child = gjsPlatform.processes.spawn([gjsPlatform.processes.findProgram('sh')!, '-c', 'while read -r l; do echo "got $l"; done; echo bye >&2; exit 4'], tmp, {
+                line: text => lines.push(text),
+                exit: (status, stderr) => resolve([status, stderr]),
+            });
+            ok(child.write('one') && child.write('two'), 'writes accepted');
+            child.closeInput();
+            ok(!child.write('late'), 'no writes after stdin is closed');
+        });
+        eq(settle(ended), [4, 'bye\n']);
+        eq(lines, ['got one', 'got two']);
+    });
+
+    test('stop ends a child that does not end by itself', () => {
+        const ended = new Promise<number>(resolve => {
+            const child = gjsPlatform.processes.spawn([gjsPlatform.processes.findProgram('sleep')!, '30'], tmp, { line: () => {}, exit: status => resolve(status) });
+            child.stop();
+        });
+        eq(settle(ended), 128 + 15);   // SIGTERM
+    });
+
+    test('findProgram finds a program on PATH and not one that does not exist', () => {
+        ok(gjsPlatform.processes.findProgram('sh')?.endsWith('/sh'), 'sh not found');
+        eq(gjsPlatform.processes.findProgram('markwork-no-such-program'), null);
     });
 
     section('Platform: base64');
