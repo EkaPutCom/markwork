@@ -9,8 +9,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import { COLOR_SCHEMES, type PreferencesData, type PreferencesView } from '../app/preferences.js';
 import { uiTemplate } from '../gtkutil.js';
 import { _ } from '../i18n.js';
-import { ProjectsGroup, type ProjectsAccess } from './projectsettings.js';
-import type { AppSettings } from '../settings.js';
+import type { ProjectPage, WorktreeList } from '../app/projects.js';
+import { ProjectsGroup, ProjectSubpage } from './projectsettings.js';
 import template from './preferences.ui?raw';
 
 export class PreferencesDialog extends Adw.PreferencesDialog {
@@ -43,8 +43,10 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
     private machinesShown = '';
     private filling = false;   // the widgets are being set from the values: that is not a change of the user's
 
-    // projects: the settings and the harness controller, for the Projects group of the Agents page (left out in tests that do not need it).
-    constructor(private readonly view: PreferencesView, data: PreferencesData, projects?: { settings: AppSettings; access: ProjectsAccess }) {
+    private readonly projects: ProjectsGroup;
+    private subpage: ProjectSubpage | null = null;
+
+    constructor(private readonly view: PreferencesView, data: PreferencesData) {
         super();
         const set = (key: Parameters<PreferencesView['onSet']>[0], value: string | number | boolean) => { if (!this.filling) this.view.onSet(key, value); };
         const bindSwitch = (row: Adw.SwitchRow, key: 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatThinking' | 'chatSave' | 'forgeNotify') =>
@@ -62,7 +64,8 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
         this._daemonCommand.connect('notify::text', () => set('daemonCommand', this._daemonCommand.text));
         this._harnessMachine.connect('notify::selected', () => set('harnessMachine', this.choices[this._harnessMachine.selected] ?? ''));
         this._addMachine.connect('clicked', () => void this.view.onAddMachine());
-        if (projects) this._agentsPage.add(new ProjectsGroup(this, projects.settings, projects.access).group);
+        this.projects = new ProjectsGroup(view);
+        this._agentsPage.add(this.projects.group);
         this.showValues(data);
     }
 
@@ -88,7 +91,18 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
         this._chatModel.selected = Math.max(0, this.models.indexOf(data.chatModel));
         if (this._daemonCommand.text !== data.daemonCommand) this._daemonCommand.text = data.daemonCommand;
         this.fillMachines(data);
+        this.projects.setRows(data.projects);
         this.filling = false;
+    }
+
+    // A project's page, pushed over the dialog; the worktrees follow as git answers.
+    showProject(page: ProjectPage): void {
+        this.subpage = new ProjectSubpage(this.view, page);
+        this.push_subpage(this.subpage.navigation);
+    }
+
+    showWorktrees(list: WorktreeList): void {
+        if (this.subpage?.name === list.project) this.subpage.showWorktrees(list);
     }
 
     // Rebuilds the "Run agents" choices and the list of machines.
@@ -119,14 +133,16 @@ export class PreferencesPresenter implements PreferencesView {
     onSet: PreferencesView['onSet'] = () => {};
     onAddMachine: PreferencesView['onAddMachine'] = () => {};
     onRemoveMachine: PreferencesView['onRemoveMachine'] = () => {};
+    onOpenProject: PreferencesView['onOpenProject'] = () => {};
+    onSetProject: PreferencesView['onSetProject'] = () => 'preferences are not available';
+    onRemoveWorktree: PreferencesView['onRemoveWorktree'] = () => 'preferences are not available';
     private dialog: PreferencesDialog | null = null;
 
-    // parent: the window to present over; projects: see PreferencesDialog; closed: told when the dialog closes.
-    constructor(private readonly parent: () => Gtk.Widget, private readonly projects: () => { settings: AppSettings; access: ProjectsAccess },
-                private readonly closed: () => void) {}
+    // parent: the window to present over; closed: told when the dialog closes.
+    constructor(private readonly parent: () => Gtk.Widget, private readonly closed: () => void) {}
 
     open(data: PreferencesData): void {
-        const dialog = new PreferencesDialog(this, data, this.projects());
+        const dialog = new PreferencesDialog(this, data);
         this.dialog = dialog;
         dialog.connect('closed', () => { if (this.dialog === dialog) this.dialog = null; this.closed(); });
         dialog.present(this.parent());
@@ -134,5 +150,13 @@ export class PreferencesPresenter implements PreferencesView {
 
     showValues(data: PreferencesData): void {
         this.dialog?.showValues(data);
+    }
+
+    showProject(page: ProjectPage): void {
+        this.dialog?.showProject(page);
+    }
+
+    showWorktrees(list: WorktreeList): void {
+        this.dialog?.showWorktrees(list);
     }
 }

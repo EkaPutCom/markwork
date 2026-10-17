@@ -8,7 +8,9 @@ import { DEEPSEEK_MODELS } from '../agent/models.js';
 import { LOCAL_MACHINE, isValidMachineName, isValidSshTarget, machineProjectKey } from '../agent/daemon/machines.js';
 import type { AppSettings } from '../settings.js';
 import type { Awaitable } from '../awaitable.js';
+import type { Isolation } from '../agent/worktree.js';
 import { _ } from '../i18n.js';
+import { ProjectsPages, type ProjectPage, type ProjectRow, type ProjectsAccess, type WorktreeList } from './projects.js';
 
 export const COLOR_SCHEMES = ['system', 'light', 'dark'] as const;
 export const FORGE_POLL_RANGE = { min: 30, max: 3600 } as const;   // seconds; the same as the schema's
@@ -41,6 +43,7 @@ export interface PreferencesData {
     harnessMachine: string;
     machineChoices: MachineChoice[];
     machines: MachineDraft[];
+    projects: ProjectRow[];        // the projects agents work on, on the machine they run on
 }
 
 // The settings the dialog may change by key, with what each accepts.
@@ -52,16 +55,23 @@ export interface PreferencesView {
     onSet: (key: PreferenceKey, value: Plain) => void;
     onAddMachine: () => Awaitable<void>;
     onRemoveMachine: (name: string) => void;
+    onOpenProject: (name: string) => void;       // a project's row was chosen: its page and worktrees follow
+    onSetProject: (name: string, patch: Partial<Isolation>) => string | null;   // an error message, or null once written
+    onRemoveWorktree: (name: string, path: string) => Awaitable<string | null>;
     open(data: PreferencesData): void;           // show the dialog
     showValues(data: PreferencesData): void;     // a setting changed while it is open
+    showProject(page: ProjectPage): void;        // a project's page
+    showWorktrees(list: WorktreeList): void;     // the card worktrees of a project
 }
 
 export interface PreferencesDialogs {
     machine(taken: string[]): Awaitable<MachineDraft | null>;
+    removeWorktree(branch: string): Awaitable<boolean>;
 }
 
 export interface PreferencesHost {
     readonly settings: AppSettings;
+    readonly harness: ProjectsAccess;
     readonly preferencesView: PreferencesView;
 }
 
@@ -70,6 +80,7 @@ const isString = (v: Plain): v is string => typeof v === 'string';
 
 export class PreferencesController {
     private isOpen = false;
+    private readonly projects: ProjectsPages;
     private readonly stop: () => void;
     // The writer of each key; it answers false for a value the key does not take.
     private readonly writers: Record<PreferenceKey, (value: Plain) => boolean>;
@@ -95,6 +106,10 @@ export class PreferencesController {
         view.onSet = (key, value) => this.set(key, value);
         view.onAddMachine = () => this.addMachine();
         view.onRemoveMachine = name => this.removeMachine(name);
+        this.projects = new ProjectsPages(s, host.harness, dialogs, list => host.preferencesView.showWorktrees(list));
+        view.onOpenProject = name => this.openProject(name);
+        view.onSetProject = (name, patch) => this.projects.set(name, patch);
+        view.onRemoveWorktree = (name, path) => this.projects.remove(name, path);
         // The dialog follows the settings it shows, whoever changes them.
         this.stop = s.onChanged(null, () => { if (this.isOpen) host.preferencesView.showValues(this.data()); });
     }
@@ -123,7 +138,16 @@ export class PreferencesController {
             harnessMachine: s.harnessMachine,
             machineChoices: this.machineChoices(),
             machines: Object.entries(s.machines).map(([name, target]) => ({ name, target })),
+            projects: this.projects.rows(),
         };
+    }
+
+    // A project's row was chosen: send its page, then its card worktrees as git answers.
+    private openProject(name: string): void {
+        const page = this.projects.page(name);
+        if (!page) return;
+        this.host.preferencesView.showProject(page);
+        void this.projects.load(name);
     }
 
     // The choices of "Run agents": in this window, this computer, then the SSH machines.

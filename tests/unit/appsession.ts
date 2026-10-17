@@ -103,7 +103,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
             tabOrder: () => [1],
         }),
         // The file dialogs are a plain object a test can fill in; they answer "cancelled" until it does.
-        dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({ files: { name: () => null, confirm: () => false, error: () => {} }, search: { confirm: () => false }, preferences: { machine: () => null } }),
+        dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({ files: { name: () => null, confirm: () => false, error: () => {} }, search: { confirm: () => false }, preferences: { machine: () => null, removeWorktree: () => false } }),
     };
 }
 
