@@ -5,6 +5,7 @@
 
 import { inlineTests } from './unit/inline.js';
 import { appSessionTests } from './unit/appsession.js';
+import { assistantTests } from './unit/assistant.js';
 import { wikiLinkTests } from './unit/wikilink.js';
 import { searchFilterTests, searchTests } from './unit/search.js';
 import { kanbanModelTests } from './unit/kanban.js';
@@ -93,6 +94,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await forgeTests();
     await platformTests();
     await appSessionTests();
+    await assistantTests();
     noteDiffTests();
     await contributeTests();
     await resolveTests();

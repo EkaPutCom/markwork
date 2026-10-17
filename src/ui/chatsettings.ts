@@ -3,7 +3,6 @@
 
 import Gtk from 'gi://Gtk?version=4.0';
 import type { KeySource } from '../agent/apikey.js';
-import type { ChatController } from '../agent/chatcontroller.js';
 import { DEEPSEEK_MODELS } from '../agent/models.js';
 import { _, fmt } from '../i18n.js';
 
@@ -24,13 +23,20 @@ export interface SettingsWidgets {
     saveCheck: Gtk.CheckButton;
 }
 
-export class ChatSettings {
-    // What the user changed, for the window to remember in its settings.
-    onModelChanged: (model: string) => void = () => {};
-    onThinkingChanged: (thinking: boolean) => void = () => {};
-    onSaveChanged: (save: boolean) => void = () => {};
+// What the popover reports; the Assistant (app/assistant.ts) keeps the settings and the key store.
+export interface SettingsActions {
+    model(model: string): void;
+    thinking(thinking: boolean): void;
+    saveChats(save: boolean): void;
+    keyStatus(): Promise<KeySource | null>;
+    saveKey(key: string): Promise<KeySource>;
+    forgetKey(): Promise<void>;
+}
 
-    constructor(private readonly w: SettingsWidgets, private readonly controller: ChatController) {
+export class ChatSettings {
+    private model = DEEPSEEK_MODELS[0];
+
+    constructor(private readonly w: SettingsWidgets, private readonly actions: SettingsActions) {
         w.popover.connect('show', () => void this.refreshKeyStatus());
         w.saveKeyButton.connect('clicked', () => void this.saveKey());
         w.keyEntry.connect('activate', () => void this.saveKey());
@@ -38,47 +44,33 @@ export class ChatSettings {
         w.modelDrop.set_model(Gtk.StringList.new(DEEPSEEK_MODELS));
         w.modelDrop.connect('notify::selected', () => {
             const id = DEEPSEEK_MODELS[w.modelDrop.get_selected()];
-            if (!id || id === controller.model) return;
-            controller.model = id;
-            this.onModelChanged(id);
+            if (!id || id === this.model) return;
+            this.model = id;
+            actions.model(id);
         });
-        w.thinkingCheck.connect('toggled', () => {
-            controller.session.thinking = w.thinkingCheck.active;
-            this.onThinkingChanged(w.thinkingCheck.active);
-        });
-        w.saveCheck.active = controller.saveChats;
-        w.saveCheck.connect('toggled', () => {
-            controller.saveChats = w.saveCheck.active;
-            this.onSaveChanged(controller.saveChats);
-        });
+        w.thinkingCheck.connect('toggled', () => actions.thinking(w.thinkingCheck.active));
+        w.saveCheck.connect('toggled', () => actions.saveChats(w.saveCheck.active));
     }
 
-    // An old or unknown model name (e.g. from a settings version) is replaced with the default model.
-    setModel(model: string): void {
-        this.controller.setModel(model);
-        this.w.modelDrop.set_selected(DEEPSEEK_MODELS.indexOf(this.controller.model));
-    }
-
-    setThinking(thinking: boolean): void {
-        this.w.thinkingCheck.set_active(thinking);
-        this.controller.session.thinking = thinking;
-    }
-
-    setSaveChats(save: boolean): void {
-        this.w.saveCheck.set_active(save);
-        this.controller.saveChats = save;
+    // The settings as the core has them; a widget that already shows its value is left alone, so nothing is reported back.
+    show(settings: { model: string; thinking: boolean; saveChats: boolean }): void {
+        this.model = settings.model;
+        const index = DEEPSEEK_MODELS.indexOf(settings.model);
+        if (index >= 0 && this.w.modelDrop.get_selected() !== index) this.w.modelDrop.set_selected(index);
+        if (this.w.thinkingCheck.active !== settings.thinking) this.w.thinkingCheck.set_active(settings.thinking);
+        if (this.w.saveCheck.active !== settings.saveChats) this.w.saveCheck.set_active(settings.saveChats);
     }
 
     private async refreshKeyStatus(): Promise<void> {
-        const found = await this.controller.keyStore.get();
-        this.w.keyStatus.set_text(found ? SOURCE_TEXT[found.source] : _('No key yet. Create one at platform.deepseek.com.'));
+        const source = await this.actions.keyStatus();
+        this.w.keyStatus.set_text(source ? SOURCE_TEXT[source] : _('No key yet. Create one at platform.deepseek.com.'));
     }
 
     private async saveKey(): Promise<void> {
         const key = this.w.keyEntry.text.trim();
         if (!key) return;
         try {
-            const source = await this.controller.keyStore.set(key);
+            const source = await this.actions.saveKey(key);
             this.w.keyEntry.set_text('');
             this.w.keyStatus.set_text(SOURCE_TEXT[source]);
         } catch (e) {
@@ -87,7 +79,7 @@ export class ChatSettings {
     }
 
     private async forgetKey(): Promise<void> {
-        await this.controller.keyStore.clear();
+        await this.actions.forgetKey();
         await this.refreshKeyStatus();
     }
 }

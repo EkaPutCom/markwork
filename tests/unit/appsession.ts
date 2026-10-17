@@ -9,7 +9,7 @@ import { addCard } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
-function memorySettings(): AppSettings {
+export function memorySettings(): AppSettings {
     const values = new Map<string, SettingValue>([['tabs', []], ['recent-files', []], ['projects', {}], ['machines', {}], ['project-options', {}], ['machine-projects', {}]]);
     const listeners = new Set<(key: string) => void>();
     return new AppSettings({
@@ -19,11 +19,13 @@ function memorySettings(): AppSettings {
     });
 }
 
-class FakeEditor implements TextEditor {
+export class FakeEditor implements TextEditor {
     text = '';
     modified = false;
     readonly headings = [];
     readonly cursorOffset = 0;
+    readonly cursorLine = 0;
+    readonly selection = '';
     getText(): string { return this.text; }
     setText(text: string): void { this.text = text; this.modified = false; }
     replaceText(text: string): void { this.text = text; this.modified = true; }
@@ -40,7 +42,7 @@ class FakeEditor implements TextEditor {
 // changes once the frontend has applied a write (docs/design/protocol.md, 5.4 and 5.5). Reading the text while a write
 // is still on its way throws, so a controller that reads back its own write in the same turn fails here, on Node, long
 // before a second frontend exists. Opening a file (setText) is not a write the frontend can refuse, so it lands at once.
-class LaggingEditor extends FakeEditor {
+export class LaggingEditor extends FakeEditor {
     private pending: string | null = null;
     private readonly waiting: ((text: string) => string | null)[] = [];
     override getText(): string {
@@ -69,24 +71,27 @@ class LaggingEditor extends FakeEditor {
 }
 
 // Any member the test does not care about does nothing.
-const quiet = <T extends object>(members: Partial<T>): T => new Proxy(members, { get: (target, key) => key in target ? (target as never)[key] : () => undefined }) as T;
+export const quiet = <T extends object>(members: Partial<T>): T => new Proxy(members, { get: (target, key) => key in target ? (target as never)[key] : () => undefined }) as T;
 
-function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor: () => FakeEditor = () => new FakeEditor()): AppFrontend<FakeEditor> {
+// extra: host members a test sets itself (the work folder, the Assistant panel); root also answers for the documents.
+export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor: () => FakeEditor = () => new FakeEditor(),
+                             extra: Partial<FrontendHost<FakeEditor>> = {}): AppFrontend<FakeEditor> {
     return {
         host: quiet<FrontendHost<FakeEditor>>({
             screen: quiet<FrontendHost<FakeEditor>['screen']>({ page: () => 'doc-1' }),
             settings,
-            chat: quiet<FrontendHost<FakeEditor>['chat']>({ busy: false }),
+            chatPanel: quiet<FrontendHost<FakeEditor>['chatPanel']>({}),
             board: quiet({}), inbox: quiet({}), table: quiet({}), layouts: quiet({}),
             collabPanel: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}),
             root: () => null,
             toast: message => { toasts.push(message); },
+            ...extra,
         }),
         documents: quiet<AppFrontend<FakeEditor>['documents']>({
             settings,
             dialogs: quiet({}),
             createEditor: makeEditor,
-            root: () => null,
+            root: extra.root ?? (() => null),
             toast: message => { toasts.push(message); },
             tabOrder: () => [1],
         }),

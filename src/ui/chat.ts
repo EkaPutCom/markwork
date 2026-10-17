@@ -1,7 +1,7 @@
 // The Assistant panel on the right side: a chat with a model (DeepSeek) that knows the manuscript contents.
-// The panel only draws: the conversation's life cycle (sending, stopping, saving, reopening, undo) is in
-// agent/chatcontroller.ts, which tells the panel what to show through ChatView. The window provides the manuscript
-// through `host`. Context composition is in agent/context.ts, and calling the model goes through the Provider.
+// The panel only draws and reports: the Assistant lives in the application layer (app/assistant.ts, owned by
+// AppSession), which tells the panel what to show through ChatPanelView and gets what the user did through its on*
+// actions. A change proposal is an ask: the panel shows it and asks the core to apply; it never writes a file.
 //
 //   ┌ ASSISTANT               ⌫ ⚙ ┐
 //   │ (messages, newest below)     │
@@ -15,12 +15,17 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
-import type { KeyStore } from '../agent/apikey.js';
+import type { KeySource } from '../agent/apikey.js';
 import type { BuiltContext, ContextOptions } from '../agent/context.js';
-import { ChatController, type ChatControllerHost, type ChatView, type TurnOutcome, type TurnView } from '../agent/chatcontroller.js';
-import type { Provider, Usage } from '../agent/provider.js';
-import type { ChatSession, ProposalResult } from '../agent/session.js';
+import type { TurnOutcome } from '../agent/chatcontroller.js';
+import type { ChatSummary } from '../agent/chatstore.js';
+import type { Usage } from '../agent/provider.js';
+import type { ToolStep } from '../agent/session.js';
 import type { Change } from '../agent/changes.js';
+import type { SavedChat } from '../agent/transcript.js';
+import type { WorkState } from '../agent/work.js';
+import { AgentTrace } from '../agent/trace.js';
+import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } from '../app/assistant.js';
 import type { ProposalViewer } from './proposalviewer.js';
 import { ChatSettings } from './chatsettings.js';
 import { ChatHistoryList } from './chathistory.js';
@@ -34,13 +39,6 @@ import type { Palette } from '../colors.js';
 import { childrenOf, onKeyPress, uiTemplate } from '../gtkutil.js';
 import template from './chat.ui?raw';
 import { _, fmt, ngettext } from '../i18n.js';
-import type { Cancellable } from '../cancel.js';
-
-// What the panel needs to know from the window: the controller's host plus a parent for its windows.
-export interface ChatHost extends ChatControllerHost {
-    window?(): Gtk.Window | null;                                           // parent of the proposal review and log windows
-    insertText?(text: string): boolean;                                     // put text into the open note, at the cursor
-}
 
 const SUGGESTIONS = [
     _('Summarize this document in a few points'),
@@ -61,7 +59,18 @@ interface Bubble {
     markdown: boolean;
 }
 
-export class ChatPanel extends Gtk.Box implements ChatView {
+// The parts of one live answer in the panel.
+interface AnswerParts {
+    bubble: Bubble;
+    status: TurnStatus;
+    work: WorkList;
+    cards: Gtk.Box;
+    actions: Gtk.Widget;
+    footer: Gtk.Label;
+    reasoning: string;
+}
+
+export class ChatPanel extends Gtk.Box implements ChatPanelView {
     static {
         GObject.registerClass({
             GTypeName: 'MarkworkChatPanel',
@@ -102,8 +111,33 @@ export class ChatPanel extends Gtk.Box implements ChatView {
     declare private readonly _contextSelection: Gtk.CheckButton;
     declare private readonly _contextProject: Gtk.CheckButton;
 
-    readonly controller = new ChatController(this);
-    private chatHost: ChatHost = { active: () => null, selection: () => '', files: () => [], root: () => null };
+    // What the user did; the Assistant (app/assistant.ts) sets these.
+    onSend: (text: string) => Promise<void> = () => Promise.resolve();
+    onStop: () => void = () => {};
+    onReset: () => void = () => {};
+    onPreview: (draft: string) => BuiltContext = () => ({ system: '', note: '', items: [], tokens: 0, unknownMentions: [] });
+    onOptions: (options: ContextOptions) => void = () => {};
+    onChats: () => ChatSummary[] | null = () => null;
+    onOpenChat: (path: string) => SavedChat | null = () => null;
+    onDeleteChat: (path: string) => string | null = () => null;
+    onApply: (ask: number, chosen: number[] | null) => string | null = () => 'applying is not available';
+    onUndo: (changes: Change[]) => string | null = () => 'applying is not available';
+    onInsert: (text: string) => boolean = () => false;
+    onModel: (model: string) => void = () => {};
+    onThinking: (thinking: boolean) => void = () => {};
+    onSaveChats: (save: boolean) => void = () => {};
+    onKeyStatus: () => Promise<KeySource | null> = () => Promise.resolve(null);
+    onSaveKey: (key: string) => Promise<KeySource> = () => Promise.reject(new Error('no key store'));
+    onForgetKey: () => Promise<void> = () => Promise.resolve();
+
+    // The window's parent for the review and log windows, and the live agent log the log window follows.
+    window: () => Gtk.Window | null = () => null;
+    trace = new AgentTrace();
+
+    private shown: ChatPanelSettings = { model: '', thinking: false, saveChats: true, options: { activeDocument: true, selection: true, project: true }, budget: 0 };
+    private running = false;
+    private turn = 0;                          // the turn whose answer is shown live
+    private answer: AnswerParts | null = null;
 
 
     private colors: MarkupColors = { code: '#c7254e', codeBg: '#f3f4f4', link: '#1c71d8', mark: '#fff3a3' };
@@ -124,14 +158,20 @@ export class ChatPanel extends Gtk.Box implements ChatView {
         super();
         this._clearButton.connect('clicked', () => this.reset());
         this._logButton.connect('clicked', () => this.showLog());
-        new ChatHistoryList(this.historyButton, this._historyPopover, this.chatList, this.controller, path => this.openChat(path), message => this.addNote(message, true));
+        new ChatHistoryList(this.historyButton, this._historyPopover, this.chatList, () => this.onChats(), path => this.onDeleteChat(path),
+            path => this.openChat(path), message => this.addNote(message, true));
         this.settings = new ChatSettings({
             popover: this._settingsPopover, keyEntry: this.keyEntry, keyStatus: this.keyStatus, saveKeyButton: this._saveKeyButton,
             forgetKeyButton: this._forgetKeyButton, modelDrop: this.modelDrop, thinkingCheck: this.thinkingCheck, saveCheck: this.saveCheck,
-        }, this.controller);
+        }, {
+            model: model => this.onModel(model), thinking: thinking => this.onThinking(thinking), saveChats: save => this.onSaveChats(save),
+            keyStatus: () => this.onKeyStatus(), saveKey: key => this.onSaveKey(key), forgetKey: () => this.onForgetKey(),
+        });
         this.proposals = new ProposalCards({
-            controller: this.controller,
-            window: () => this.host.window?.() ?? null,
+            apply: (ask, chosen) => this.onApply(ask, chosen),
+            undo: changes => this.onUndo(changes),
+            busy: () => this.running,
+            window: () => this.window(),
             dark: () => this.dark,
             note: (text, error) => this.addNote(text, error),
         });
@@ -156,7 +196,7 @@ export class ChatPanel extends Gtk.Box implements ChatView {
         this.contextPart = new ContextPreview({
             button: this.contextButton, popover: this._contextPopover, list: this.contextList,
             checks: [[this._contextDocument, 'activeDocument'], [this._contextSelection, 'selection'], [this._contextProject, 'project']],
-        }, () => this.options, () => this.previewContext(), () => this.budget);
+        }, () => this.shown.options, options => { this.shown.options = options; this.onOptions(options); }, () => this.previewContext(), () => this.shown.budget);
 
         // Input. CAPTURE phase: before the TextView itself inserts a new line for Enter.
         onKeyPress(this.input, (keyval, state) => this.onInputKey(keyval, state), Gtk.PropagationPhase.CAPTURE);
@@ -195,23 +235,8 @@ export class ChatPanel extends Gtk.Box implements ChatView {
         this.stickIdle = 0;
     }
 
-    // The conversation state lives in the controller; these pass through for the window and tests.
-    get session(): ChatSession { return this.controller.session; }
-    get host(): ChatHost { return this.chatHost; }
-    set host(host: ChatHost) { this.chatHost = host; this.controller.host = host; }
-    get makeProvider(): (key: string) => Provider { return this.controller.makeProvider; }
-    set makeProvider(make: (key: string) => Provider) { this.controller.makeProvider = make; }
-    get keyStore(): KeyStore { return this.controller.keyStore; }
-    set keyStore(store: KeyStore) { this.controller.keyStore = store; }
-    get model(): string { return this.controller.model; }   // sent to the API as is; setModel() normalizes it
-    set model(model: string) { this.controller.model = model; }
-    get saveChats(): boolean { return this.controller.saveChats; }
-    set saveChats(save: boolean) { this.controller.saveChats = save; }
-    get options(): ContextOptions { return this.controller.options; }
-    set options(options: ContextOptions) { this.controller.options = options; }
-    get budget(): number { return this.controller.budget; }
-    set budget(budget: number) { this.controller.budget = budget; }
-    get busy(): boolean { return this.controller.busy; }
+    // A turn is running (from busyChanged).
+    get busy(): boolean { return this.running; }
     get viewer(): ProposalViewer | null { return this.proposals.viewer; }   // the review window waiting for a decision
 
     setPalette(palette: Palette): void {
@@ -233,7 +258,8 @@ export class ChatPanel extends Gtk.Box implements ChatView {
     // ---------- Conversation ----------
 
     reset(): void {
-        this.controller.reset();
+        this.onReset();
+        this.answer = null;
         this.clearMessages();
         this.updateContextSummary();
     }
@@ -245,13 +271,13 @@ export class ChatPanel extends Gtk.Box implements ChatView {
     }
 
     stop(): void {
-        this.controller.stop();
+        this.onStop();
     }
 
     // Open (or focus) the agent log monitor window.
     showLog(): void {
         if (this.logViewer?.window.get_realized()) { this.logViewer.show(); return; }
-        this.logViewer = new LogViewer(this.host.window?.() ?? null, this.session.trace);
+        this.logViewer = new LogViewer(this.window(), this.trace);
         this.logViewer.show();
     }
 
@@ -262,10 +288,16 @@ export class ChatPanel extends Gtk.Box implements ChatView {
     }
 
     send(): Promise<void> {
-        return this.controller.send(this.input.buffer.text);
+        return this.onSend(this.input.buffer.text);
     }
 
-    // ---------- ChatView: what the controller shows ----------
+    // ---------- ChatPanelView: what the Assistant shows ----------
+
+    setSettings(settings: ChatPanelSettings): void {
+        this.shown = { ...settings, options: { ...settings.options } };
+        this.settings.show(settings);
+        this.contextPart.show(this.shown.options);
+    }
 
     noKey(): void {
         this.addNote('There is no DeepSeek API key yet. Open the settings (gear icon), paste the key, then send again.', true);
@@ -277,59 +309,86 @@ export class ChatPanel extends Gtk.Box implements ChatView {
     }
 
     busyChanged(busy: boolean): void {
+        this.running = busy;
         this.updateSendButton();
         if (!busy) this.updateContextSummary();
     }
 
-    startTurn(question: string): TurnView {
+    startTurn(turn: number, question: string): void {
         this.input.buffer.set_text('', -1);
         this.empty.hide();
         this.addUser(question);
-        const answer = this.addAssistant(question);
-        this.cardsBox = answer.cards;
+        this.turn = turn;
+        this.answer = { ...this.addAssistant(question), reasoning: '' };
+        this.cardsBox = this.answer.cards;
         this.stick = true;
-        let reasoning = '';
-        return {
-            context: built => {
-                this.contextPart.setSummary(built);
-                answer.status.setContext(describeContext(built));
-            },
-            text: delta => { answer.status.writing(); answer.bubble.text += delta; this.queueRender(answer.bubble); },
-            reasoning: delta => {
-                reasoning += delta;
-                answer.status.setReasoning(reasoning.trim());
-            },
-            step: step => answer.status.step(step),
-            work: (work, running, elapsed) => {
-                answer.work.update(work, running, elapsed);
-                answer.work.widget.show();
-            },
-            end: (outcome: TurnOutcome) => {
-                this.render(answer.bubble);
-                answer.actions.set_visible(!!answer.bubble.text.trim());
-                if ('error' in outcome) {
-                    answer.status.finish('failed');
-                    answer.footer.set_markup(`<span foreground="#c9372c">${escapeMarkup(outcome.error)}</span>`);
-                    answer.footer.show();
-                    if (!answer.bubble.text) answer.bubble.label.hide();
-                    return;
-                }
-                answer.status.finish(outcome.cancelled ? 'stopped' : 'done', !!answer.bubble.text.trim());
-                if (!outcome.cancelled && outcome.usage) answer.footer.set_text(usageText(outcome.usage, outcome.toolCalls, outcome.applied));
-                answer.footer.set_visible(!!answer.footer.get_text());
-            },
-        };
+    }
+
+    // The live answer of `turn`; a notice of another turn (one a reset dropped) is not drawn.
+    private parts(turn: number): AnswerParts | null {
+        return turn === this.turn ? this.answer : null;
+    }
+
+    turnContext(turn: number, built: BuiltContext): void {
+        const answer = this.parts(turn);
+        if (!answer) return;
+        this.contextPart.setSummary(built);
+        answer.status.setContext(describeContext(built));
+    }
+
+    turnText(turn: number, delta: string): void {
+        const answer = this.parts(turn);
+        if (!answer) return;
+        answer.status.writing();
+        answer.bubble.text += delta;
+        this.queueRender(answer.bubble);
+    }
+
+    turnReasoning(turn: number, delta: string): void {
+        const answer = this.parts(turn);
+        if (!answer) return;
+        answer.reasoning += delta;
+        answer.status.setReasoning(answer.reasoning.trim());
+    }
+
+    turnStep(turn: number, step: ToolStep): void {
+        this.parts(turn)?.status.step(step);
+    }
+
+    turnWork(turn: number, work: WorkState, running: boolean, elapsedSeconds: number): void {
+        const answer = this.parts(turn);
+        if (!answer) return;
+        answer.work.update(work, running, elapsedSeconds);
+        answer.work.widget.show();
+    }
+
+    turnEnd(turn: number, outcome: TurnOutcome): void {
+        const answer = this.parts(turn);
+        if (!answer) return;
+        this.render(answer.bubble);
+        answer.actions.set_visible(!!answer.bubble.text.trim());
+        if ('error' in outcome) {
+            answer.status.finish('failed');
+            answer.footer.set_markup(`<span foreground="#c9372c">${escapeMarkup(outcome.error)}</span>`);
+            answer.footer.show();
+            if (!answer.bubble.text) answer.bubble.label.hide();
+            return;
+        }
+        answer.status.finish(outcome.cancelled ? 'stopped' : 'done', !!answer.bubble.text.trim());
+        if (!outcome.cancelled && outcome.usage) answer.footer.set_text(usageText(outcome.usage, outcome.toolCalls, outcome.applied));
+        answer.footer.set_visible(!!answer.footer.get_text());
     }
 
     // ---------- History on disk ----------
 
     // Show a saved conversation and continue from there: the next turns are appended to the same file.
     openChat(path: string): boolean {
-        const chat = this.controller.open(path);
+        const chat = this.onOpenChat(path);
         if (!chat) {
             this.addNote('The conversation file could not be read.', true);
             return false;
         }
+        this.answer = null;
         this.clearMessages();
         this.empty.hide();
         for (const turn of chat.turns) {
@@ -341,15 +400,16 @@ export class ChatPanel extends Gtk.Box implements ChatView {
                 this.render(answer.bubble);
             }
         }
-        if (this.session.events.length) {
-            this.addNote(journalText(this.session.events));
-            for (const event of this.session.events.filter(e => e.changes.length).slice(-20)) this.messages.append(this.proposals.historyRow(event));
+        const events = chat.events ?? [];
+        if (events.length) {
+            this.addNote(journalText(events));
+            for (const event of events.filter(e => e.changes.length).slice(-20)) this.messages.append(this.proposals.historyRow(event));
         }
-        if (this.session.work) {
+        if (chat.work) {
             const list = new WorkList();
-            list.update(this.session.work, false);
+            list.update(chat.work, false);
             this.messages.append(list.widget);
-            if (this.session.work.status !== 'complete') {
+            if (chat.work.status !== 'complete') {
                 const resume = new Gtk.Button({ label: _('Resume work'), halign: Gtk.Align.START });
                 resume.connect('clicked', () => { resume.set_sensitive(false); void this.ask('Resume the saved work. Read the actual contents, check the journal, and do not repeat changes that were already applied.'); });
                 this.messages.append(resume);
@@ -364,7 +424,7 @@ export class ChatPanel extends Gtk.Box implements ChatView {
 
     // Builds the context for the text being typed, without sending anything.
     previewContext(): BuiltContext {
-        return this.controller.preview(this.input.buffer.text);
+        return this.onPreview(this.input.buffer.text);
     }
 
     // Building the context touches the whole project, so the summary is only updated while the panel is visible
@@ -446,7 +506,7 @@ export class ChatPanel extends Gtk.Box implements ChatView {
         const cards = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 6, visible: false });
         const actions = actionBar({
             text: () => bubble.text,
-            insert: this.host.insertText ? text => this.host.insertText?.(text) ?? false : undefined,
+            insert: text => this.onInsert(text),
             retry: () => { if (question) void this.ask(question); },
             log: () => this.showLog(),
         });
@@ -467,13 +527,17 @@ export class ChatPanel extends Gtk.Box implements ChatView {
     }
 
     // Change proposal: a card in the panel and the review window (see ProposalCards).
-    review(change: Change | Change[], apply: (change: Change | Change[]) => string | null, cancelled: Cancellable): Promise<ProposalResult> {
-        const { widget, start } = this.proposals.card(change, apply, cancelled);
+    review(ask: ProposalAsk): Promise<ProposalAnswer> {
+        const { widget, start } = this.proposals.card(ask);
         this.empty.hide();
         (this.cardsBox ?? this.messages).append(widget);
         this.cardsBox?.show();
         this.stick = true;
         return start();
+    }
+
+    cancelReview(ask: number): void {
+        this.proposals.cancel(ask);
     }
 
     private addNote(text: string, error = false, cssClass = 'side-meta'): void {

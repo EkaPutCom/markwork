@@ -35,14 +35,24 @@ export interface ContextWidgets {
 }
 
 export class ContextPreview {
-    // options: the switches change it in place; preview: builds the context of the text being typed; budget: in tokens.
-    constructor(private readonly w: ContextWidgets, private readonly options: () => ContextOptions,
+    // options: what is sent now; changed: a switch was turned (the new options); preview: builds the context of the text
+    // being typed; budget: in tokens.
+    constructor(private readonly w: ContextWidgets, private readonly options: () => ContextOptions, changed: (options: ContextOptions) => void,
                 private readonly preview: () => BuiltContext, private readonly budget: () => number) {
         for (const [check, key] of w.checks) {
             check.active = options()[key];
-            check.connect('toggled', () => { this.options()[key] = check.active; this.update(); });
+            check.connect('toggled', () => {
+                if (this.options()[key] === check.active) return;
+                changed({ ...this.options(), [key]: check.active });
+                this.update();
+            });
         }
         w.popover.connect('show', () => this.update());
+    }
+
+    // The switches follow the options the core has.
+    show(options: ContextOptions): void {
+        for (const [check, key] of this.w.checks) if (check.active !== options[key]) check.set_active(options[key]);
     }
 
     setSummary(built: BuiltContext): void {

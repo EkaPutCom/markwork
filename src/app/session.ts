@@ -17,16 +17,17 @@ import { ViewController, type ViewDialogs, type ViewHost } from './views.js';
 import { NoteLinks, type NoteHost } from './notes.js';
 import { DocumentController, type DocumentsHost } from './documents.js';
 import type { AgentWriteHost } from './agentwrites.js';
+import { AssistantController, type AssistantHost } from './assistant.js';
 import type { Doc, TextEditor } from './document.js';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
 export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>
-    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost;
+    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E>;
 
 // What the session answers itself, from the controllers it owns.
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
     | 'fileBack' | 'newDocument' | 'showDocument' | 'saveAll' | 'showChat' | 'boardShown' | 'updateBoardFile' | 'record' | 'agentHost' | 'runs'
-    | 'journalSummary' | 'refreshHome';
+    | 'journalSummary' | 'refreshHome' | 'chat';
 
 // The views, notices, and system services of the frontend: the host members that are not another controller.
 export type FrontendHost<E extends TextEditor> = Omit<ControllerHost<E>, SessionProvided>;
@@ -64,6 +65,7 @@ export class AppSession<E extends TextEditor> {
     readonly views: ViewController<E>;
     readonly notes: NoteLinks;
     readonly documents: DocumentController<E>;
+    readonly assistant: AssistantController<E>;
     readonly host: ControllerHost<E>;
 
     constructor(private readonly frontend: AppFrontend<E>) {
@@ -90,6 +92,10 @@ export class AppSession<E extends TextEditor> {
         this.homePage = new HomeController(host);
         this.views = new ViewController(host, dialogs.views);
         this.notes = new NoteLinks(host);
+        this.assistant = new AssistantController(host, {
+            nameOf: doc => this.documents.nameOf(doc),
+            canInsert: () => !this.views.structuredMode && !this.views.homeMode,
+        });
         this.documents = new DocumentController(Object.create(frontend.documents, {
             autosaver: { get: () => this.autosaver },
             refreshHome: { value: () => this.refreshHome() },
@@ -103,6 +109,7 @@ export class AppSession<E extends TextEditor> {
         return {
             harness: get(() => this.harness),
             journal: get(() => this.journal),
+            chat: get(() => this.assistant),
             homePage: get(() => this.homePage),
             workspace: get(() => this.workspace),
             active: value((): Doc<E> => this.documents.active),
@@ -139,6 +146,7 @@ export class AppSession<E extends TextEditor> {
     // Stop the timers and background work of the controllers (the frontend destroys its editors and widgets).
     dispose(): void {
         for (const doc of this.documents.all) this.autosaver.cancel(doc);
+        this.assistant.dispose();
         this.harness.dispose();
         this.collab.dispose();
         this.workspace.close();

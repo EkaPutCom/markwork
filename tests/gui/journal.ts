@@ -92,7 +92,7 @@ export function journalTests(c: GuiContext): void {
         win.openFile(board); settle();
         ok(win.boardMode, 'the board is not shown as a board');
         win.board.commit(moveCard(win.board.getBoard(), { column: 0, index: 0 }, { column: 1, index: 0 })); settle();
-        const error = win.chat.host.applyChange!({ kind: 'edit', file: 'plan.md', before: '# Plan\n\nRelease on 15 November.\n', after: '# Plan\n\nRelease on 22 November.\n', reason: 'test' });
+        const error = win.session.assistant.chat.host.applyChange!({ kind: 'edit', file: 'plan.md', before: '# Plan\n\nRelease on 15 November.\n', after: '# Plan\n\nRelease on 22 November.\n', reason: 'test' });
         eq(error, null, 'agent change');
         const texts = readActivity(ws, today).map(a => a.text);
         eq(texts, ['Card “Release material” → In Progress · [[tasks]]', 'Agent changed [[plan]]']);
@@ -195,8 +195,8 @@ export function journalTests(c: GuiContext): void {
             },
         };
         const keyStore: KeyStore = { get: async () => ({ key: 'test', source: 'keyring' }), set: async () => 'keyring', clear: async () => {} };
-        win.chat.makeProvider = () => provider;
-        win.chat.keyStore = keyStore;
+        win.session.assistant.chat.makeProvider = () => provider;
+        win.session.assistant.chat.keyStore = keyStore;
         const asking = win.journal.summarize();
         ok(asking, 'the summary did not run');
         settlePromise(asking!);

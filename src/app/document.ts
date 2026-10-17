@@ -23,6 +23,8 @@ export interface TextEditor {
     jumpToLine(line: number): void;
     setMode(mode: EditorMode, enabled: boolean): void;
     readonly cursorOffset: number;               // code points from the start
+    readonly cursorLine: number;                 // the line of the cursor, from 0
+    readonly selection: string;                  // the selected text; empty when nothing is selected
     restoreCursor(offset: number): void;         // put the cursor back (a reopened tab) without taking the focus
 }
 
