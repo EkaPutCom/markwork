@@ -87,6 +87,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
                              extra: Partial<FrontendHost<FakeEditor>> = {}): AppFrontend<FakeEditor> {
     return {
         settings,
+        createEditor: makeEditor,
         host: quiet<FrontendHost<FakeEditor>>({
             screen: quiet<FrontendHost<FakeEditor>['screen']>({ page: () => 'doc-1' }),
             chatPanel: quiet<FrontendHost<FakeEditor>['chatPanel']>({}),
@@ -97,7 +98,6 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
         }),
         documents: quiet<AppFrontend<FakeEditor>['documents']>({
             dialogs: quiet({}),
-            createEditor: makeEditor,
             tabOrder: () => [1],
         }),
         // The file dialogs are a plain object a test can fill in; they answer "cancelled" until it does.

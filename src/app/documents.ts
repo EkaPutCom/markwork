@@ -35,21 +35,21 @@ export function remapPath(path: string, source: string, target: string): string 
 export interface DocumentsHost<E extends TextEditor> {
     readonly settings: AppSettings;
     readonly dialogs: DocumentDialogs;
-    createEditor(): E;                          // the frontend's editor for a new document
+    createEditor(id: number): E;                // the editor for a new document (a MarkdownView under GTK, a replica over the protocol)
     readonly autosaver: Autosaver;
     root(): string | null;
     toast(message: string, action?: ToastAction): void;
     // A new document: connect its editor, and add its page and tab. Called before it joins the list, so the
     // active document is still the previous one (a new document inherits its modes).
-    attach(doc: Doc<E>): void;
+    attach(id: number): void;
     // A closed document: remove its tab and page and destroy its editor (it is no longer in the list).
-    detach(doc: Doc<E>): void;
+    detach(id: number): void;
     // doc became the active document: the outline, search, tab row, and side panels follow it.
-    activated(doc: Doc<E>): void;
+    activated(id: number): void;
     // The active document's contents or file changed: pick the view (text/board/inbox/Home), the title, the tree highlight, history.
-    contentChanged(doc: Doc<E>): void;
-    refreshTitle(doc: Doc<E>): void;
-    setIcon(doc: Doc<E>, icon: string | null): void;
+    contentChanged(id: number): void;
+    refreshTitle(id: number): void;
+    setIcon(id: number, icon: string | null): void;
     tabOrder(): number[];                       // document ids in the order of the tab row
     refreshHome(): void;
     openFolder(path: string): void;
@@ -82,8 +82,9 @@ export class DocumentController<E extends TextEditor> {
 
     // Create an empty document together with its editor, without activating it.
     add(): Doc<E> {
-        const doc: Doc<E> = { id: this.nextId++, editor: this.host.createEditor(), file: null, home: false };
-        this.host.attach(doc);
+        const id = this.nextId++;
+        const doc: Doc<E> = { id, editor: this.host.createEditor(id), file: null, home: false };
+        this.host.attach(id);
         this.docs.push(doc);
         return doc;
     }
@@ -95,7 +96,7 @@ export class DocumentController<E extends TextEditor> {
         this.current = doc;
         this.host.autosaver.now(previous);   // leaving a tab = a safe point to save
         if (doc.file) this.rememberRecent(doc.file);
-        this.host.activated(doc);
+        this.host.activated(doc.id);
     }
 
     // Tab name/title for a document.
@@ -148,7 +149,7 @@ export class DocumentController<E extends TextEditor> {
         this.docs.splice(index, 1);
         // Move first, then destroy: the search and other components still point at this editor.
         if (doc === this.current) this.activate(this.docs[Math.min(index, this.docs.length - 1)]);
-        this.host.detach(doc);
+        this.host.detach(doc.id);
         return true;
     }
 
@@ -189,9 +190,9 @@ export class DocumentController<E extends TextEditor> {
     reset(doc: Doc<E>, text = ''): void {
         this.activate(doc);
         this.set(doc, { file: null, home: false });
-        this.host.setIcon(doc, null);
+        this.host.setIcon(doc.id, null);
         doc.editor.setText(text);
-        this.host.contentChanged(doc);
+        this.host.contentChanged(doc.id);
     }
 
     // Fill the active document with the absolute file that has been read (text).
@@ -201,7 +202,7 @@ export class DocumentController<E extends TextEditor> {
         this.set(doc, { file: absolute });
         this.rememberRecent(absolute);
         doc.editor.setText(text);
-        this.host.contentChanged(doc);
+        this.host.contentChanged(doc.id);
     }
 
     private read(absolute: string): string | null {
@@ -267,9 +268,9 @@ export class DocumentController<E extends TextEditor> {
 
     private makeHome(doc: Doc<E>): void {
         this.set(doc, { file: null, home: true });
-        this.host.setIcon(doc, 'user-home-symbolic');
+        this.host.setIcon(doc.id, 'user-home-symbolic');
         this.activate(doc);
-        this.host.contentChanged(doc);
+        this.host.contentChanged(doc.id);
     }
 
     // ---------- Saving ----------
@@ -309,7 +310,7 @@ export class DocumentController<E extends TextEditor> {
         if (!/\.[^/]+$/.test(platform().paths.basename(path))) path += '.md';
         this.activate(doc);
         this.set(doc, { file: path });
-        this.host.refreshTitle(doc);
+        this.host.refreshTitle(doc.id);
         if (!this.save()) return false;
         this.host.fileSaved(path);
         return true;
@@ -347,21 +348,21 @@ export class DocumentController<E extends TextEditor> {
     // The document's file was moved or renamed (in the tree, or by an agent change); the contents do not change.
     fileMoved(doc: Doc<E>, path: string): void {
         this.set(doc, { file: path });
-        this.host.refreshTitle(doc);
+        this.host.refreshTitle(doc.id);
     }
 
     // The document's file was deleted: its contents stay in the editor, marked as unsaved.
     fileGone(doc: Doc<E>): void {
         this.set(doc, { file: null });
         doc.editor.setModified(true);
-        this.host.refreshTitle(doc);
+        this.host.refreshTitle(doc.id);
     }
 
     // A deleted file was written back with the editor's contents (an undone delete): the document is saved again.
     fileBack(doc: Doc<E>, path: string): void {
         this.set(doc, { file: path });
         doc.editor.setModified(false);
-        this.host.refreshTitle(doc);
+        this.host.refreshTitle(doc.id);
     }
 
     // ---------- Files moved or deleted in the tree ----------

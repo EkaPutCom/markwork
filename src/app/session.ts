@@ -59,7 +59,9 @@ export interface AppFrontend<E extends TextEditor> {
     // The settings belong to the core: the frontend is given the store they live in, not a view of them (docs/design/protocol.md 9.2).
     readonly settings: AppSettings;
     readonly host: FrontendHost<E>;
-    readonly documents: Omit<DocumentsHost<E>, 'autosaver' | 'refreshHome' | 'root' | 'settings' | 'toast'>;
+    readonly documents: Omit<DocumentsHost<E>, 'autosaver' | 'refreshHome' | 'root' | 'settings' | 'toast' | 'createEditor'>;
+    // The editor of a new document. Over the protocol the core makes it itself (a replica of the text); under GTK it is the widget.
+    createEditor(id: number): E;
     readonly dialogs: AppDialogs;
 }
 
@@ -130,6 +132,7 @@ export class AppSession<E extends TextEditor> {
             refreshHome: { value: () => this.refreshHome() },
             root: { value: () => this.files.root },
             settings: { value: this.settings },
+            createEditor: { value: (id: number) => frontend.createEditor(id) },
             toast: { value: (message: string, action?: ToastAction) => this.toast(message, action) },
         }) as DocumentsHost<E>);
     }
