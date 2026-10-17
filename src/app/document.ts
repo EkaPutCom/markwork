@@ -19,7 +19,7 @@ export interface TextEditor {
     insertAtCursor(text: string): void;
     isModified(): boolean;                       // changed since it was last opened or saved
     setModified(modified: boolean): void;
-    readonly headings: readonly { text: string; line: number }[];
+    readonly headings: readonly { level: number; text: string; line: number }[];
     jumpToLine(line: number): void;
     setMode(mode: EditorMode, enabled: boolean): void;
     readonly cursorOffset: number;               // code points from the start

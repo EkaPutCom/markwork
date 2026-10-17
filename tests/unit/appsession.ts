@@ -22,7 +22,8 @@ export function memorySettings(): AppSettings {
 export class FakeEditor implements TextEditor {
     text = '';
     modified = false;
-    readonly headings = [];
+    headings: { level: number; text: string; line: number }[] = [];
+    jumped: number | null = null;
     readonly cursorOffset = 0;
     readonly cursorLine = 0;
     readonly selection = '';
@@ -33,7 +34,7 @@ export class FakeEditor implements TextEditor {
     update(edit: (text: string) => string | null): void { const next = edit(this.text); if (next !== null) this.replaceText(next); }
     isModified(): boolean { return this.modified; }
     setModified(modified: boolean): void { this.modified = modified; }
-    jumpToLine(): void {}
+    jumpToLine(line: number): void { this.jumped = line; }
     setMode(): void {}
     restoreCursor(): void {}
     selected: [number, number, number] | null = null;
@@ -90,7 +91,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
             settings,
             chatPanel: quiet<FrontendHost<FakeEditor>['chatPanel']>({}),
             board: quiet({}), inbox: quiet({}), table: quiet({}), layouts: quiet({}),
-            collabPanel: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}), fileTree: quiet({}), searchView: quiet({}),
+            collabPanel: quiet({}), outlineView: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}), fileTree: quiet({}), searchView: quiet({}),
             toast: message => { toasts.push(message); },
             ...extra,
         }),

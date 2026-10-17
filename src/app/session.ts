@@ -19,13 +19,14 @@ import { DocumentController, type DocumentsHost } from './documents.js';
 import type { AgentWriteHost } from './agentwrites.js';
 import { AssistantController, type AssistantHost } from './assistant.js';
 import { HistoryController, type HistoryDialogs, type HistoryHost } from './history.js';
+import { OutlineController, type OutlineHost } from './outline.js';
 import { FilesController, type FilesDialogs, type FilesHost } from './files.js';
 import { SearchController, type SearchDialogs, type SearchHost } from './search.js';
 import type { Doc, TextEditor } from './document.js';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
 export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>
-    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost & SearchHost<E>;
+    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost & SearchHost<E> & OutlineHost<E>;
 
 // What the session answers itself, from the controllers it owns.
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
@@ -76,6 +77,7 @@ export class AppSession<E extends TextEditor> {
     // The work folder and the Files tab; created first, since every other controller asks for the folder.
     readonly files: FilesController;
     readonly search: SearchController<E>;
+    readonly outline: OutlineController<E>;
     readonly host: ControllerHost<E>;
 
     constructor(private readonly frontend: AppFrontend<E>) {
@@ -113,6 +115,7 @@ export class AppSession<E extends TextEditor> {
             return { keyStore: chat.keyStore, makeProvider: key => chat.makeProvider(key), model: () => chat.model };
         });
         this.search = new SearchController(host, dialogs.search);
+        this.outline = new OutlineController(host);
         this.documents = new DocumentController(Object.create(frontend.documents, {
             autosaver: { get: () => this.autosaver },
             refreshHome: { value: () => this.refreshHome() },
