@@ -4,7 +4,7 @@
 
 ## Ringkasan
 
-Fondasi untuk frontend kedua sudah selesai, tetapi protokol yang dibutuhkan Electron belum ditulis satu baris pun. Core sudah berjalan di Node (619 tes core lulus di Node v24), dan `AppSession` sudah memegang semua keputusan aplikasi. Antarmuka ke frontend juga sudah hanya menerima data biasa.
+Fondasi untuk frontend kedua sudah selesai, tetapi protokol yang dibutuhkan Electron belum ditulis satu baris pun. Core sudah berjalan di Node (632 tes core lulus di Node v24), dan `AppSession` sudah memegang semua keputusan aplikasi. Antarmuka ke frontend juga sudah hanya menerima data biasa.
 
 Electron tidak memerlukan sidecar terpisah karena sudah membawa Node. Core cukup berjalan di *utility process* dan berbicara dengan renderer lewat `MessagePort`. Pekerjaan yang tersisa adalah lapisan `app/protocol/`, entry point untuk utility process, dan frontend web-nya sendiri, termasuk perintah editor untuk CodeMirror.
 
@@ -127,3 +127,21 @@ Risiko pertama, perintah editor ditulis dua kali, terlihat seperti ini. Perintah
 ![Perintah editor: sekarang vs setelah logika teks dipisah](electron/perintah-editor.png)
 
 Kalau logikanya dipisah menjadi fungsi murni (teks dan seleksi masuk, edit dan posisi kursor keluar), GTK dan CodeMirror cukup menyediakan adaptor tipis. Fungsi murni itu bisa diuji di Node seperti core lainnya.
+
+## Celah yang belum tercatat (audit 17 Oktober 2026)
+
+Audit seluruh codebase menemukan celah yang belum masuk tahapan di atas. Sebagian besar juga berguna untuk frontend GTK dan bisa diuji di Node, jadi bisa dikerjakan sebelum protokol.
+
+| Celah | Di mana | Yang dibutuhkan |
+| --- | --- | --- |
+| Peluncuran terminal khusus GNOME ada di core | `src/app/harnessreview.ts` (`kgx`, `ptyxis`, `gnome-terminal`, `xdg-terminal-exec`) | Layanan frontend atau platform, misalnya `openTerminal(folder, command?)`; di macOS dan Windows tidak ada satu pun yang ketemu |
+| `fileUri()` mengasumsikan path POSIX | `src/files.ts` | URI `file:///C:/…` untuk path Windows, lewat port atau fungsi yang sadar huruf drive |
+| Pengecekan path absolut memakai `startsWith('/')` | `src/agent/harness.ts`, `src/app/harness.ts`, `src/agent/worktree.ts` | `platform().paths.isAbsolute`; sisanya (±59 tempat `split('/')` atau `'/'` di core) diaudit, karena path relatif repo dan git memang benar memakai `/` |
+| Logika highlighter terikat GTK | `src/editor/highlighter.ts` (markers, spans, headings, gambar, blok kode, tabel, langsung lewat `Gtk.TextIter`) | Pisahkan parse menjadi fungsi murni (teks masuk, spans dan markers keluar), seperti `editcommands.ts`; tanpa itu CodeMirror menulis ulang highlight dan perilaku menyembunyikan sintaks |
+| Rendering inline hanya ke Pango markup | `src/markdown/pango.ts`, `src/markdown/chatmarkup.ts` (kartu kanban, inbox, tabel, chat) | Padanan HTML yang aman untuk renderer; `src/markdown/html.ts` saat ini hanya untuk ekspor |
+| Katalog `.mo` dan schema GSettings hanya dibangun meson | `po/`, `data/com.ekaput.Markwork.gschema.xml` | Langkah build sendiri untuk Electron (`po/LINGUAS` masih kosong, jadi belum mendesak) |
+| `markworkd` hanya untuk Linux | `markworkd/contrib/` (systemd, Docker); `runtimeDir` jatuh ke `~/.cache` tanpa XDG | Cara menjalankan daemon dan jalur socket di macOS dan Windows |
+| Belum ada CI | tidak ada `.github/` | `npm run test:core:node` di Linux, macOS, dan Windows (syarat tahap 3) |
+| Dependensi Electron belum ada | `package.json` | `electron`, CodeMirror 6, framework UI renderer, dan electron-builder atau Forge |
+
+Urutan yang disarankan: pisahkan parse highlighter dan rapikan path di core lebih dulu, lalu protokol tahap 1 (`messages.ts`, `replica.ts`, tes fuzz), lalu irisan board dari ujung ke ujung.
