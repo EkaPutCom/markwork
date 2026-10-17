@@ -18,6 +18,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
     const ring = new Map<string, string>();
     const key = (schema: string, attributes: Record<string, string>) => `${schema}|${JSON.stringify(attributes)}`;
     const fake: Platform = {
+        os: 'linux',
         fs: {
             readText: path => { const text = files.get(path); if (text === undefined) throw new Error(`no ${path}`); return text; },
             writeText: (path, text) => { files.set(path, text); },

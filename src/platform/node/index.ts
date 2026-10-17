@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import type { Platform, Scheduler, Secrets } from '../index.js';
+import type { OS, Platform, Scheduler, Secrets } from '../index.js';
+import { userDirs } from './dirs.js';
 import { catalogTranslations, userCatalog } from './i18n.js';
 import { nodeFiles } from './files.js';
 import { fetchStreamTransport, fetchTransport } from './http.js';
@@ -27,7 +28,19 @@ function secretTool(args: string[], input?: string): Promise<{ ok: boolean; out:
 const attributeArgs = (schema: string, attributes: Record<string, string>) =>
     ['xdg:schema', schema, ...Object.entries(attributes).flat()];
 
-const secrets: Secrets = {
+const os: OS = process.platform === 'win32' ? 'win32' : process.platform === 'darwin' ? 'darwin' : 'linux';
+const dirs = () => userDirs(os, process.env, homedir(), join);
+
+// Only Linux has secret-tool. Elsewhere the answers are the ones the contract gives for a missing keyring, and the
+// credentials fall back to a file in the user's config folder. A frontend with a keychain of its own (Electron's
+// safeStorage, which only its main process can reach) replaces this port's secrets.
+const noKeyring: Secrets = {
+    lookup: async () => null,
+    store: async () => false,
+    clear: async () => { /* nothing is kept */ },
+};
+
+const secretToolKeyring: Secrets = {
     async lookup(schema, attributes) {
         const { ok, out } = await secretTool(['lookup', ...attributeArgs(schema, attributes)]);
         return ok && out ? out : null;
@@ -39,6 +52,8 @@ const secrets: Secrets = {
         await secretTool(['clear', ...attributeArgs(schema, attributes)]);
     },
 };
+
+const secrets = os === 'linux' ? secretToolKeyring : noKeyring;
 
 // Node has no frames to wait for; idle work runs after the pending I/O callbacks (setImmediate).
 const scheduler: Scheduler = {
@@ -57,6 +72,7 @@ const scheduler: Scheduler = {
 
 // The full name from the passwd entry (the GECOS field up to the first comma), as GLib.get_real_name() reads it.
 function realName(): string | null {
+    if (os === 'win32') return null;
     try {
         const user = userInfo().username;
         const entry = readFileSync('/etc/passwd', 'utf8').split('\n').find(line => line.startsWith(`${user}:`));
@@ -68,6 +84,7 @@ function realName(): string | null {
 }
 
 export const nodePlatform: Platform = {
+    os,
     fs: nodeFiles,
     paths: {
         join: (...parts) => join(...parts),
@@ -79,9 +96,9 @@ export const nodePlatform: Platform = {
         },
         basename: path => basename(path),
         isAbsolute: path => isAbsolute(path),
-        configDir: () => process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
+        configDir: () => dirs().config,
         homeDir: () => homedir(),
-        runtimeDir: () => process.env.XDG_RUNTIME_DIR || process.env.XDG_CACHE_HOME || join(homedir(), '.cache'),
+        runtimeDir: () => dirs().runtime,
     },
     secrets,
     http: fetchTransport,

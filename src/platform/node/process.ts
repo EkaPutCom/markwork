@@ -5,6 +5,7 @@ import { spawn as spawnChild, type ChildProcessWithoutNullStreams } from 'node:c
 import { accessSync, constants, statSync } from 'node:fs';
 import { homedir, hostname } from 'node:os';
 import { basename, delimiter, join } from 'node:path';
+import { programNames } from './dirs.js';
 import type { ChildHandlers, ChildProcess, Processes, RunRequest, RunResult } from '../index.js';
 
 const STDERR_TAIL = 8000;
@@ -138,13 +139,16 @@ function executable(path: string): boolean {
 
 // Apps launched from the desktop menu often do not inherit the shell PATH (e.g. ~/.local/bin from the profile).
 function findProgram(name: string): string | null {
-    if (name.includes('/')) return executable(name) ? name : null;
-    for (const dir of (process.env.PATH ?? '').split(delimiter)) {
-        if (dir && executable(join(dir, name))) return join(dir, name);
-    }
-    for (const dir of ['.local/bin', '.npm-global/bin', 'bin', '.local/share/mise/shims']) {
-        const path = join(homedir(), dir, name);
-        if (executable(path)) return path;
+    const windows = process.platform === 'win32';
+    const names = programNames(windows ? 'win32' : 'linux', name, process.env.PATHEXT);
+    const first = (paths: string[]): string | null => paths.find(executable) ?? null;
+    if (name.includes('/') || (windows && name.includes('\\'))) return first(names);
+    const dirs = (process.env.PATH ?? '').split(delimiter).filter(Boolean);
+    const own = windows ? [join(process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'npm')]
+        : ['.local/bin', '.npm-global/bin', 'bin', '.local/share/mise/shims'].map(dir => join(homedir(), dir));
+    for (const dir of [...dirs, ...own]) {
+        const found = first(names.map(n => join(dir, n)));
+        if (found) return found;
     }
     return null;
 }

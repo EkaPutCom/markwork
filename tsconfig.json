@@ -13,5 +13,5 @@
     "noImplicitOverride": true
   },
   "include": ["src", "tests", "scripts/capture.ts", "scripts/gifenc.d.ts"],
-  "exclude": ["src/platform/node", "tests/host-node.ts", "tests/run-core-node.ts", "tests/unit/nodeplatform.ts"]
+  "exclude": ["src/platform/node", "tests/host-node.ts", "tests/run-core-node.ts", "tests/unit/nodeplatform.ts", "tests/unit/crossos.ts"]
 }
