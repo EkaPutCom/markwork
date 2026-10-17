@@ -6,6 +6,8 @@ import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost,
 import { AppSession, type AppFrontend, type FrontendHost } from '../../src/app/session.js';
 import type { TextEditor, ToastButton } from '../../src/app/document.js';
 import { addCard, parseBoard } from '../../src/markdown/kanban.js';
+import { applyChangeBatch } from '../../src/app/agentwrites.js';
+import { platform, setPlatform } from '../../src/platform/index.js';
 import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
@@ -213,6 +215,35 @@ export async function appSessionTests(): Promise<void> {
         session.harness.runMenu(9999);
         eq(toasts.length, 1, 'an old token and an unknown one do nothing');
         ok(second.every(e => first.every(f => f.token !== e.token)), 'tokens are not reused');
+        session.dispose();
+    });
+
+    await test('a batch that fails after writing an open document restores it, even when the editor applies writes a turn later', async () => {
+        const session = new AppSession(fakeFrontend(memorySettings(), [], () => new LaggingEditor()));
+        session.start();
+        const dir = disk.join(tmp, 'appsession-rollback');
+        disk.mkdirs(dir);
+        disk.write(disk.join(dir, 'a.md'), 'one\n');
+        disk.write(disk.join(dir, 'second.md'), 'first\n');
+        session.files.setRoot(dir);
+        ok(session.host.openInTab(disk.join(dir, 'a.md')), 'openInTab');
+        // The disk refuses the second file, after the first one (open in its editor) was written.
+        const real = platform();
+        const fs = new Proxy(real.fs, { get: (target, key) => key === 'writeText'
+            ? (path: string, text: string) => { if (path.endsWith('second.md') && text === 'second\n') throw new Error('disk full'); target.writeText(path, text); }
+            : Reflect.get(target, key) });
+        setPlatform({ ...real, fs });
+        let error: string | null;
+        try {
+            error = applyChangeBatch(session.host, [
+                { kind: 'edit', file: 'a.md', before: 'one\n', after: 'two\n', reason: 'edit' },
+                { kind: 'edit', file: 'second.md', before: 'first\n', after: 'second\n', reason: 'edit' },
+            ]);
+        } finally { setPlatform(real); }
+        ok(error !== null && error.includes('restored'), `error: ${error}`);
+        await pause(10);
+        eq(session.documents.active.editor.getText(), 'one\n', 'the open document is back to what it was');
+        eq(disk.read(disk.join(dir, 'second.md')), 'first\n');
         session.dispose();
     });
 

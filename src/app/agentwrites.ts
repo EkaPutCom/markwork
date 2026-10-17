@@ -33,7 +33,8 @@ export function applyChangeBatch<E extends TextEditor>(host: AgentWriteHost<E>, 
     const openDoc = (path: string) => docFor(host, path);
     const writeText = (path: string, text: string) => {
         const open = openDoc(path);
-        if (open) open.editor.replaceText(text);
+        // Through update(): a write, or the rollback of one, may follow another write that has not landed yet (protocol.md 5.5).
+        if (open) open.editor.update(() => text);
         else { fs.makeDirs(paths.dirname(path), 0o755); writeTextFile(path, text); }
     };
     const relocate = (from: string, to: string) => {
