@@ -391,6 +391,15 @@ export class MarkdownView implements TextEditor {
         return this.buffer.get_iter_at_mark(this.buffer.get_insert()).get_offset();
     }
 
+    get cursorLine(): number {
+        return this.buffer.get_iter_at_mark(this.buffer.get_insert()).get_line();
+    }
+
+    get selection(): string {
+        const [selected, start, end] = this.buffer.get_selection_bounds();
+        return selected ? this.buffer.get_text(start, end, false) : '';
+    }
+
     // Put the cursor at offset (clamped to the end of the document if the file got shorter) and scroll there.
     // Without grab_focus(): a background tab's editor must not steal focus. The scroll is deferred to idle
     // so it applies after the editor gets a size, including tabs that have never been shown.

@@ -1,6 +1,7 @@
 // Review window for agent change proposals: the diff is shown like a Git history diff, with
 // Reject and Apply buttons at the bottom. Closing the window without choosing is the same as rejecting. The decision is returned
-// through `onDecision` exactly once; applying to files is done by the caller.
+// through `onDecision` exactly once. Apply asks the core to write the chosen files (`onApply`, see app/assistant.ts); the
+// window never writes a file itself.
 //
 // A batch has a checkbox per file: the user may apply only some. The note box is passed to the agent
 // together with the decision (e.g. the reason for rejecting), so the agent can improve its proposal.
@@ -34,11 +35,13 @@ export class ProposalViewer {
     private decided = false;
     // Called once. applied=false without an error = rejected (including the window being closed).
     onDecision: (applied: boolean) => void = () => {};
+    // Ask the core to apply the chosen files of a batch (null = the whole proposal): an error message, or null once written.
+    onApply: (chosen: number[] | null) => string | null = () => _('History is read-only');
     error = '';
     accepted: number[] | null = null;   // indices applied if only part of the batch
     note = '';
 
-    constructor(parent: Gtk.Window | null, readonly change: Change | Change[], dark: boolean, private apply: (change: Change | Change[]) => string | null, readOnly = false) {
+    constructor(parent: Gtk.Window | null, readonly change: Change | Change[], dark: boolean, readOnly = false) {
         this.window = new Adw.Window({ transient_for: parent, default_width: 860, default_height: 620 });
         const changes = Array.isArray(change) ? change : [change];
         const title = changes.length > 1 ? fmt(_('Batch: {count} files'), { count: changes.length }) : describeChange(changes[0]);
@@ -107,7 +110,7 @@ export class ProposalViewer {
             const chosen = this.checks.length ? changes.map((_, i) => i).filter(i => this.checks[i].active) : null;
             if (chosen && !chosen.length) return;
             const partial = chosen && chosen.length < changes.length ? chosen : null;
-            const error = this.apply(Array.isArray(change) ? changes.filter((_, i) => !chosen || chosen.includes(i)) : change);
+            const error = this.onApply(partial);
             if (error) {
                 // Stays open so the user can read the reason; Reject/close finishes the turn.
                 this.status.set_text(fmt(_('Failed to apply: {error}'), { error }));

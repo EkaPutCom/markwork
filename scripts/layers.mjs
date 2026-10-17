@@ -81,7 +81,6 @@ for (const file of files) {
 // UI_ACTS_ALLOWED lists the imports that still do it while they are moved; an entry may not be added, and has to go once
 // the import is gone.
 const UI_ACTS_ALLOWED = new Set([
-    'ui/chat.ts -> agent/chatcontroller.ts',
     'ui/filetree.ts -> fileops.ts',
     'ui/history.ts -> git.ts',
     'ui/historyviewer.ts -> git.ts',

@@ -40,7 +40,7 @@ import { ChatPanel } from './ui/chat.js';
 import { WorkspaceRepository } from './workspace.js';
 import type { WikiLink } from './markdown/wikilink.js';
 import type { SearchHit } from './markdown/search.js';
-import { agentGit, recentSubjects, workingDiff } from './git.js';
+import { recentSubjects, workingDiff } from './git.js';
 import { writeCommitMessage } from './agent/commitmessage.js';
 import type { MessageWriter } from './ui/messagewriter.js';
 import { FindBar } from './ui/findbar.js';
@@ -81,7 +81,7 @@ import type { ViewScreen } from './app/views.js';
 import { editSchemaDialog } from './ui/schemadialog.js';
 import type { ToastAction } from './app/document.js';
 import { UNTITLED, type DocumentController } from './app/documents.js';
-import { applyChange, applyChangeBatch } from './app/agentwrites.js';
+import { applyChangeBatch } from './app/agentwrites.js';
 import { AppSession, type AppDialogs, type AppFrontend, type FrontendHost } from './app/session.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
 import { sendChangesDialog } from './ui/sendchanges.js';
@@ -196,6 +196,9 @@ export class MainWindow implements CommandHost {
         ({ journal: this.journal, collab: this.collab, pulls: this.pulls, contribute: this.contribute, harness: this.harness,
             review: this.review, homePage: this.homePage, documents: this.documents, workspace: this.workspace } = session);
         session.start();
+        // The log window follows the live agent log; the review and log windows are transient for the main window.
+        this.chat.trace = session.assistant.chat.session.trace;
+        this.chat.window = () => this.win;
         this.doc.editor.modes.focus = settings.focus;
         this.doc.editor.modes.typewriter = settings.typewriter;
         this.findBar = new FindBar(this.doc.editor.buffer, this.doc.editor.view);
@@ -267,37 +270,6 @@ export class MainWindow implements CommandHost {
             viewer.beforeDiscard = () => this.documents.saveOpenFiles();
             viewer.onDiscarded = paths => this.changesDiscarded(paths);
             viewer.show();
-        };
-        this.chat.settings.setModel(settings.chatModel);
-        this.chat.settings.setThinking(settings.chatThinking);
-        this.chat.settings.onModelChanged = model => {
-            this.settings.chatModel = model;
-        };
-        this.chat.settings.setSaveChats(settings.chatSave);
-        this.chat.settings.onSaveChanged = save => {
-            this.settings.chatSave = save;
-        };
-        this.chat.settings.onThinkingChanged = thinking => {
-            this.settings.chatThinking = thinking;
-        };
-        this.chat.host = {
-            active: () => {
-                const buf = this.editor.buffer;
-                return { name: this.projectName(this.file) ?? this.documentName, text: this.editor.getText(), cursorLine: buf.get_iter_at_mark(buf.get_insert()).get_line() };
-            },
-            selection: () => {
-                const buf = this.editor.buffer;
-                const bounds = buf.get_selection_bounds();
-                return bounds[0] ? buf.get_text(bounds[1], bounds[2], false) : '';
-            },
-            root: () => this.fileTree.root,
-            applyChange: change => applyChange(this.session.host, change),
-            applyBatch: changes => applyChangeBatch(this.session.host, changes),
-            git: request => this.fileTree.root ? agentGit(this.fileTree.root, request) : Promise.resolve({ ok: false, message: 'no work folder' }),
-            window: () => this.win,
-            insertText: text => this.insertIntoNote(text),
-            // Other unsaved tabs are read from their editor, not the version on disk (see workspace).
-            files: freshness => this.fileTree.root ? this.workspace.files(this.fileTree.root, { except: this.file, freshness }) : [],
         };
         this.sidebar.onPageChanged = page => {
             this.settings.sidebarPage = page;
@@ -422,7 +394,7 @@ export class MainWindow implements CommandHost {
         return {
             screen: this.viewScreen(),
             get settings() { return w.settings; },
-            get chat() { return w.chat; },
+            get chatPanel() { return w.chat; },
             get board() { return w.board; },
             get logs() { return w.harnessLogs; },
             get collabPanel() { return w.collabPanel; },
@@ -733,16 +705,6 @@ export class MainWindow implements CommandHost {
 
     // ---------- Views: text, board, inbox, Home ----------
 
-    // The assistant's answer goes into the open note at the cursor, as one undo step. false: no editable note is shown.
-    private insertIntoNote(text: string): boolean {
-        if (this.session.views.structuredMode || this.homeMode) return false;
-        const buffer = this.editor.buffer;
-        buffer.begin_user_action();
-        const inserted = buffer.insert_interactive_at_cursor(`${text.trim()}\n`, -1, true);
-        buffer.end_user_action();
-        return inserted;
-    }
-
     get boardMode(): boolean {
         return this.session.views.boardMode;
     }
@@ -835,7 +797,7 @@ export class MainWindow implements CommandHost {
     // A commit form's assistant button writes with the Assistant panel's key and model.
     private connectWriter(writer: MessageWriter): void {
         writer.write = (files, onText, cancellable) => writeCommitMessage({
-            keyStore: this.chat.keyStore, makeProvider: this.chat.makeProvider, model: () => this.chat.model,
+            keyStore: this.session.assistant.chat.keyStore, makeProvider: key => this.session.assistant.chat.makeProvider(key), model: () => this.session.assistant.chat.model,
             diff: workingDiff, subjects: recentSubjects,
         }, files, onText, cancellable);
         writer.onOpenSettings = () => {
@@ -872,9 +834,6 @@ export class MainWindow implements CommandHost {
         } else if (key === 'focus' || key === 'typewriter') for (const doc of this.docs) doc.editor.setMode(key, s[key]);
         else if (key === 'autosave') { if (s.autosave) for (const doc of this.docs) this.session.autosaver.queue(doc); }
         else if (key === 'recent-files') this.refreshRecent();
-        else if (key === 'chat-model') this.chat.settings.setModel(s.chatModel);
-        else if (key === 'chat-thinking') this.chat.settings.setThinking(s.chatThinking);
-        else if (key === 'chat-save') this.chat.settings.setSaveChats(s.chatSave);
     }
 
     // ---------- Auto save ----------

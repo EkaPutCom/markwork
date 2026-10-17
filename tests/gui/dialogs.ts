@@ -185,7 +185,7 @@ export function dialogTests(c: GuiContext): void {
 
         comboRow('Model').selected = 1; settleP();
         eq(w.settings.chatModel, 'deepseek-v4-pro', 'the assistant model is saved');
-        eq(w.chat.model, 'deepseek-v4-pro', 'the assistant panel follows');
+        eq(w.session.assistant.chat.model, 'deepseek-v4-pro', 'the assistant follows');
         w.settings.chatModel = 'deepseek-flash'; settleP();
 
         (dialog as Adw.Dialog).force_close();

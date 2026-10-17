@@ -148,7 +148,7 @@ export function tabTests(c: GuiContext): void {
         w.switchTab(-1); settle();
         eq(w.file, ch1, 'active file');
         w.setOption('autosave', false);
-        const other = w.chat.host.files().find(f => f.name === 'chapter-2.md');
+        const other = w.session.assistant.chat.host.files().find(f => f.name === 'chapter-2.md');
         ok(other?.text.includes('NOT-SAVED'), 'the assistant read the version on disk');
         // Clean up: close the second tab without saving.
         w.switchTab(1); settle();

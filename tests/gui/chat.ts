@@ -17,6 +17,7 @@ import type { ProposalViewer } from '../../src/ui/proposalviewer.js';
 export function chatTests(c: GuiContext): void {
     const { w, setText, cursorTo, pump } = c;
     const panel = w.chat;
+    const chat = w.session.assistant.chat;   // the conversation, owned by the application session
 
     section('Assistant (chat)');
 
@@ -36,8 +37,8 @@ export function chatTests(c: GuiContext): void {
         set: async key => { stored = key; return 'keyring'; },
         clear: async () => { stored = null; },
     };
-    panel.makeProvider = () => provider;
-    panel.keyStore = keyStore;
+    chat.makeProvider = () => provider;
+    chat.keyStore = keyStore;
 
     const book = GLib.build_filenamev([tmp, 'assistant-book']);
     GLib.mkdir_with_parents(book, 0o755);
@@ -83,7 +84,7 @@ export function chatTests(c: GuiContext): void {
         settle(panel.ask('How are you?'));
         contains(all(), 'There is no DeepSeek API key yet');
         eq(seen.length, 0);
-        eq(panel.session.history.length, 0);
+        eq(chat.session.history.length, 0);
         panel.settingsButton.get_popover()?.popdown();
         pump();
     });
@@ -94,7 +95,7 @@ export function chatTests(c: GuiContext): void {
         for (let i = 0; i < 100 && panel.keyEntry.text; i++) { pump(); GLib.usleep(2000); }
         eq(stored, 'sk-secret');
         eq(panel.keyEntry.text, '');   // the key does not remain in the entry field
-        panel.keyStore = keyStore;
+        chat.keyStore = keyStore;
     });
 
     test('the question is sent with the active document, the selection, and snippets from other files', () => {
@@ -129,7 +130,7 @@ export function chatTests(c: GuiContext): void {
         contains(text, 'excerpt from chapter-1.md');
         contains(text, '1.5k in (1.2k from cache) · 12 out');
         ok(panel.contextButton.get_label()!.startsWith('Context · ≈'), `context button: ${panel.contextButton.get_label()}`);
-        eq(panel.session.history.length, 2);
+        eq(chat.session.history.length, 2);
         ok(!panel.busy, 'still busy');
         eq(panel.sendButton.get_tooltip_text(), 'Send (Enter)');
     });
@@ -145,14 +146,14 @@ export function chatTests(c: GuiContext): void {
         contains(rows(), 'Reasoning');
         contains(rows(), 'Answer');
         contains(detail(), 'Model and tools');   // the summary of the finished turn
-        panel.session.trace.add('error', 'New event');
+        chat.session.trace.add('error', 'New event');
         for (let i = 0; i < 30 && !rows().includes('New event'); i++) { pump(); GLib.usleep(10000); }
         contains(rows(), 'New event');
         // The detail follows the newest step until the user picks one.
         contains(detail(), 'New event');
         viewer.list.select_row(viewer.list.get_row_at_index(1));
         pump();
-        panel.session.trace.add('error', 'Later event');
+        chat.session.trace.add('error', 'Later event');
         for (let i = 0; i < 30; i++) { pump(); GLib.usleep(10000); }
         ok(!detail().includes('Later event'), 'the detail jumped away from what the user chose');
         viewer.window.destroy();
@@ -182,25 +183,27 @@ export function chatTests(c: GuiContext): void {
         viewer.window.destroy();
     });
 
-    test('the answer actions: Insert into note passes the answer to the window; Retry asks the same question again', () => {
-        const historyBefore = panel.session.history.length;
-        const inserted: string[] = [];
-        panel.host = { ...panel.host, insertText: text => { inserted.push(text); return true; } };
+    test('the answer actions: Insert into note puts the answer into the open note; Retry asks the same question again', () => {
+        const historyBefore = chat.session.history.length;
+        const noteBefore = w.editor.getText();
+        const modifiedBefore = w.editor.buffer.get_modified();
+        cursorTo(noteBefore.length);
         const asked: string[] = [];
-        panel.makeProvider = () => ({ chat: async req => { asked.push(String(req.messages[req.messages.length - 1].content)); req.onText('The answer.'); return { usage: null, cancelled: false, toolCalls: [], reasoning: '' }; } });
+        chat.makeProvider = () => ({ chat: async req => { asked.push(String(req.messages[req.messages.length - 1].content)); req.onText('The answer.'); return { usage: null, cancelled: false, toolCalls: [], reasoning: '' }; } });
         settle(panel.ask('A question for the actions'));
         ok(button('Insert into note') !== null, 'the insert action is missing although the window can insert');
         button('Insert into note')!.emit('clicked');
-        eq(inserted, ['The answer.']);
+        eq(w.editor.getText(), `${noteBefore}The answer.\n`);
         contains(all(), 'Inserted');
         button('Retry')!.emit('clicked');
         for (let i = 0; i < 200 && asked.length < 2; i++) { pump(); GLib.usleep(5000); }
         for (let i = 0; i < 200 && panel.busy; i++) { pump(); GLib.usleep(5000); }
         eq(asked.length, 2);
         contains(asked[1], 'A question for the actions');
-        panel.host = { ...panel.host, insertText: undefined };
-        panel.session.history.splice(historyBefore);   // the next tests expect the earlier conversation
-        panel.makeProvider = () => provider;
+        setText(noteBefore);
+        w.editor.buffer.set_modified(modifiedBefore);
+        chat.session.history.splice(historyBefore);   // the next tests expect the earlier conversation
+        chat.makeProvider = () => provider;
     });
 
     test('the second question carries the history and the context is not repeated in old turns', () => {
@@ -240,24 +243,22 @@ export function chatTests(c: GuiContext): void {
 
     test('turning off the context options changes what is sent', () => {
         seen.length = 0;
-        panel.options.activeDocument = false;
-        panel.options.selection = false;
-        panel.options.project = false;
+        chat.options = { activeDocument: false, selection: false, project: false };
         settle(panel.ask('Just a general question'));
         const msgs = seen[0].messages;
         ok(!msgs[0].content.includes('Laras'), 'the manuscript was still sent');
         eq(msgs[msgs.length - 1].content, 'Just a general question');
-        Object.assign(panel.options, { activeDocument: true, selection: true, project: true });
+        chat.options = { activeDocument: true, selection: true, project: true };
     });
 
     test('an error from the model is shown in the assistant message and does not enter the history', () => {
-        const before = panel.session.history.length;
-        panel.makeProvider = () => ({ chat: () => Promise.reject(new Error('Insufficient DeepSeek account balance')) });
+        const before = chat.session.history.length;
+        chat.makeProvider = () => ({ chat: () => Promise.reject(new Error('Insufficient DeepSeek account balance')) });
         settle(panel.ask('Try again'));
         contains(all(), 'Insufficient DeepSeek account balance');
-        eq(panel.session.history.length, before);
+        eq(chat.session.history.length, before);
         ok(!panel.busy, 'the send button stayed locked after the error');
-        panel.makeProvider = () => provider;
+        chat.makeProvider = () => provider;
     });
 
     test('the send button inside the message box: disabled when empty, primary button when there is text', () => {
@@ -284,8 +285,8 @@ export function chatTests(c: GuiContext): void {
     });
 
     test('the stop button cancels the answer being streamed; its fragment stays shown and saved', () => {
-        const before = panel.session.history.length;
-        panel.makeProvider = () => ({
+        const before = chat.session.history.length;
+        chat.makeProvider = () => ({
             chat: req => new Promise(resolve => {
                 req.onText('Half the answer ');
                 req.cancellable?.onCancel(() => resolve({ usage: null, cancelled: true, toolCalls: [], reasoning: '' }));
@@ -301,9 +302,9 @@ export function chatTests(c: GuiContext): void {
         contains(all(), 'Half the answer');
         contains(all(), 'Stopped');
         ok(button('Retry') !== null, 'no Retry after stopping');
-        eq(panel.session.history.length, before + 2);
+        eq(chat.session.history.length, before + 2);
         ok(!panel.busy, 'still busy after being stopped');
-        panel.makeProvider = () => provider;
+        chat.makeProvider = () => provider;
     });
 
     test('typing a long message without spaces does not widen the panel or shift the editor', () => {
@@ -315,12 +316,12 @@ export function chatTests(c: GuiContext): void {
         eq(panel.widget.get_allocated_width(), before.panel);
         eq(w.editor.widget.get_allocated_width(), before.editor);
         // An answer with one very long word (e.g. a URL) must not widen the panel either.
-        panel.makeProvider = () => ({ chat: async req => { req.onText('x'.repeat(500)); return { usage: null, cancelled: false, toolCalls: [], reasoning: '' }; } });
+        chat.makeProvider = () => ({ chat: async req => { req.onText('x'.repeat(500)); return { usage: null, cancelled: false, toolCalls: [], reasoning: '' }; } });
         panel.input.buffer.set_text('', -1);
         settle(panel.ask('long'));
         for (let i = 0; i < 40; i++) { pump(); GLib.usleep(10000); }
         eq(panel.widget.get_allocated_width(), before.panel);
-        panel.makeProvider = () => provider;
+        chat.makeProvider = () => provider;
         panel.input.buffer.set_text('', -1);
     });
 
@@ -337,14 +338,14 @@ export function chatTests(c: GuiContext): void {
 
     test('a new conversation clears the messages and the history', () => {
         panel.reset();
-        eq(panel.session.history.length, 0);
+        eq(chat.session.history.length, 0);
         ok(!all().includes('And her father?'), 'the old message is still shown');
         ok(panel.empty.get_visible(), 'the empty state is not shown');
     });
 
     test('the selected model is saved to the settings', () => {
-        panel.settings.setModel('deepseek-v4-pro');
-        eq(panel.model, 'deepseek-v4-pro');
+        w.settings.chatModel = 'deepseek-v4-pro';
+        eq(chat.model, 'deepseek-v4-pro');
         panel.modelDrop.set_selected(0);  // deepseek-flash
         eq(w.settings.chatModel, 'deepseek-flash');
     });
@@ -352,7 +353,7 @@ export function chatTests(c: GuiContext): void {
     test('the assistant browses the manuscript itself: the browsing steps are shown and the tool results reach the model', () => {
         let round = 0;
         let toolResult = '';
-        panel.makeProvider = () => ({
+        chat.makeProvider = () => ({
             async chat(req) {
                 round++;
                 const last = req.messages[req.messages.length - 1];
@@ -373,14 +374,14 @@ export function chatTests(c: GuiContext): void {
         contains(text, '400 in (100 from cache) · 13 out · 2 lookups');
         contains(text, '2 lookups');   // the status card of the finished turn
         contains(toolResult, 'The storm hit the ship.');
-        panel.makeProvider = () => provider;
+        chat.makeProvider = () => provider;
     });
 
     test('the old model is normalized; the thinking mode is saved and passed on to the session', () => {
-        panel.settings.setModel('deepseek-chat');   // name from the settings of a previous version
-        eq(panel.model, 'deepseek-flash');
+        w.settings.chatModel = 'deepseek-chat';   // name from the settings of a previous version
+        eq(chat.model, 'deepseek-flash');
         panel.thinkingCheck.set_active(true);
-        eq(panel.session.thinking, true);
+        eq(chat.session.thinking, true);
         eq(w.settings.chatThinking, true);
         panel.thinkingCheck.set_active(false);
         eq(w.settings.chatThinking, false);
@@ -416,7 +417,7 @@ export function chatTests(c: GuiContext): void {
 
     test('the history is not read by the assistant as manuscript', () => {
         w.openFolder(book, false);
-        ok(!w.chat.host.files().some(f => f.name.includes('.markwork')), 'the history entered the manuscript file list');
+        ok(!chat.host.files().some(f => f.name.includes('.markwork')), 'the history entered the manuscript file list');
     });
 
     test('New conversation creates a new file; the list contains both, newest first', () => {
@@ -446,8 +447,8 @@ export function chatTests(c: GuiContext): void {
     test('opening an old conversation restores the messages and the history, then continues it in that file', () => {
         const first = savedFiles().find(c => c.title === 'History question one')!;
         ok(panel.openChat(first.path), 'openChat() failed');
-        eq(panel.session.history.length, 4);
-        ok(panel.session.trace.events.some(e => e.kind === 'turn' && e.title.includes('History question one')), 'the agent log did not come back with the conversation');
+        eq(chat.session.history.length, 4);
+        ok(chat.session.trace.events.some(e => e.kind === 'turn' && e.title.includes('History question one')), 'the agent log did not come back with the conversation');
         contains(all(), 'History question one');
         contains(all(), 'Follow-up one');
         contains(all(), 'Laras hid the letter.');
@@ -480,12 +481,12 @@ export function chatTests(c: GuiContext): void {
     });
 
     test('without a manuscript folder nothing is written', () => {
-        const rootBefore = panel.host.root;
-        panel.host.root = () => null;
+        const rootBefore = chat.host.root;
+        chat.host.root = () => null;
         panel.reset();
         settle(panel.ask('Without a folder'));
         eq(savedFiles().length, 0, 'a file was written without a folder');
-        panel.host.root = rootBefore;
+        chat.host.root = rootBefore;
         panel.reset();
     });
 
@@ -505,7 +506,7 @@ export function chatTests(c: GuiContext): void {
     let lastDiff = '';
     let shotCount = 0;
     const proposeAndPress = (provider: Provider, button: 'apply' | 'reject' | 'close', prepare?: (viewer: ProposalViewer) => void): void => {
-        panel.makeProvider = () => provider;
+        chat.makeProvider = () => provider;
         panel.reset();
         const done = panel.ask('Please change');
         for (let i = 0; i < 300 && !panel.viewer; i++) { pump(); GLib.usleep(5000); }
@@ -519,6 +520,12 @@ export function chatTests(c: GuiContext): void {
             const n = shotCount++;
             widgetPixbuf(viewer.window)?.savev(`${prefix}-${n}-review.png`, 'png', [], []);
             widgetPixbuf(w.win)?.savev(`${prefix}-${n}-main.png`, 'png', [], []);
+            const oldDark = w.dark;
+            w.setDark(!oldDark);
+            for (let i = 0; i < 40; i++) { pump(); GLib.usleep(10000); }
+            widgetPixbuf(viewer.window)?.savev(`${prefix}-${n}-review-${oldDark ? 'light' : 'dark'}.png`, 'png', [], []);
+            widgetPixbuf(w.win)?.savev(`${prefix}-${n}-main-${oldDark ? 'light' : 'dark'}.png`, 'png', [], []);
+            w.setDark(oldDark);
         }
         const agenticShot = optVal('shot-agentic');
         if (agenticShot && Array.isArray(viewer.change)) {
@@ -536,7 +543,7 @@ export function chatTests(c: GuiContext): void {
         else if (button === 'reject') viewer.rejectButton.emit('clicked');
         else viewer.window.destroy();
         settle(done);
-        panel.makeProvider = () => provider;
+        chat.makeProvider = () => provider;
     };
     const diskOf = (name: string) => readTextFile(GLib.build_filenamev([book, name]));
 
@@ -579,7 +586,7 @@ export function chatTests(c: GuiContext): void {
     });
 
     test('Stop while a proposal is waiting: the review window closes and the card becomes Cancelled', () => {
-        panel.makeProvider = () => proposalProvider('edit_file', { name: 'chapter-1.md', old_text: 'Raka met Laras', new_text: 'x', reason: 'x' });
+        chat.makeProvider = () => proposalProvider('edit_file', { name: 'chapter-1.md', old_text: 'Raka met Laras', new_text: 'x', reason: 'x' });
         panel.reset();
         const before = diskOf('chapter-1.md');
         const done = panel.ask('Please change');
@@ -640,7 +647,7 @@ export function chatTests(c: GuiContext): void {
         const saved = listChats(book).find(chat => readTextFile(chat.path).includes('propose_batch'));
         ok(saved, 'the batch checkpoint was not saved');
         ok(panel.openChat(saved.path), 'restoring failed');
-        eq(panel.session.events.find(e => e.tool === 'propose_batch')?.status, 'applied');
+        eq(chat.session.events.find(e => e.tool === 'propose_batch')?.status, 'applied');
         contains(all(), 'Applied: propose_batch');
         const prefix = optVal('shot-agentic');
         if (prefix) {
@@ -651,7 +658,7 @@ export function chatTests(c: GuiContext): void {
 
     test('the plan checkpoint opens again with the resume button, light and dark theme', () => {
         panel.reset();
-        panel.makeProvider = () => proposalProvider('set_work', { goal: 'Sync the release schedule', steps: [{ text: 'Read the meeting decisions', status: 'done' }, { text: 'Check the plan and task cards', status: 'pending' }], note: 'Release date: 22 November' });
+        chat.makeProvider = () => proposalProvider('set_work', { goal: 'Sync the release schedule', steps: [{ text: 'Read the meeting decisions', status: 'done' }, { text: 'Check the plan and task cards', status: 'pending' }], note: 'Release date: 22 November' });
         settle(panel.ask('Sync the release schedule'));
         // The plan is shown as a checklist: one row per step, not "- [x]" text, and not repeated in the step row.
         const workRows = (): Gtk.Widget[] => {
@@ -672,7 +679,7 @@ export function chatTests(c: GuiContext): void {
         const saved = listChats(book).find(chat => readTextFile(chat.path).includes('work:'));
         ok(saved, 'the plan was not saved');
         ok(panel.openChat(saved.path), 'the plan did not open');
-        eq(panel.session.work?.status, 'paused');
+        eq(chat.session.work?.status, 'paused');
         const resume = childrenOf(panel.messages).find(w => w instanceof Gtk.Button && w.get_label() === 'Resume work');
         ok(resume, 'the resume button is missing');
         eq(workRows().length, 2);
@@ -732,7 +739,7 @@ export function chatTests(c: GuiContext): void {
         undo.emit('clicked');
         eq(diskOf('schedule-a.md'), 'Release 15 November\n');
         contains(all(), 'Undone.');
-        eq(panel.session.events.map(e => e.status), ['reverted', 'rejected']);
+        eq(chat.session.events.map(e => e.status), ['reverted', 'rejected']);
     });
 
     test('Undo fails without overwriting if the file has been edited again', () => {
@@ -741,7 +748,7 @@ export function chatTests(c: GuiContext): void {
         buttons().find(b => b.get_label() === 'Undo')!.emit('clicked');
         eq(diskOf('schedule-a.md'), 'Edited by the user\n');
         contains(all(), 'Cannot be undone: schedule-a.md changed since it was proposed');
-        eq(panel.session.events[0].status, 'applied');
+        eq(chat.session.events[0].status, 'applied');
     });
 
     test('Reject with a note: the note reaches the model and appears on the card', () => {
@@ -785,7 +792,7 @@ export function chatTests(c: GuiContext): void {
     });
 
     test('applying rejects content that changed since it was proposed and paths outside the folder', () => {
-        const apply = panel.host.applyChange!;
+        const apply = chat.host.applyChange!;
         const stale = apply({ kind: 'edit', file: 'chapter-1.md', before: 'old content', after: 'new content', reason: '' });
         contains(stale ?? '', 'changed since it was proposed');
         contains(apply({ kind: 'create', file: '../outside.md', before: '', after: 'x', reason: '' }) ?? '', 'outside the work folder');
@@ -796,7 +803,7 @@ export function chatTests(c: GuiContext): void {
     test('long answer: the panel sticks to the bottom down to the last line and the footer is visible', () => {
         const long = Array.from({ length: 14 }, (_, i) => `${i + 1}. **Item ${i + 1}** — example \`code ${i}\` with a sentence long enough to wrap onto several lines in a narrow panel.`).join('\n')
             + '\n\nIf you like, I can propose one concrete change. Shall I draft the proposal?';
-        panel.makeProvider = () => ({
+        chat.makeProvider = () => ({
             async chat(req) {
                 for (const part of long.match(/\S+\s*/g) ?? []) req.onText(part);
                 return { usage: { prompt: 3600, cached: 3000, completion: 400 }, cancelled: false, toolCalls: [], reasoning: '' };
@@ -821,8 +828,15 @@ export function chatTests(c: GuiContext): void {
         const bottom = bounds[1].get_y() + bounds[1].get_height();
         ok(bounds[1].get_y() >= 0 && bottom <= panel.scroller.get_height() + 1, `footer outside the visible area: y=${bounds[1].get_y().toFixed(0)}, bottom=${bottom.toFixed(0)}, height=${panel.scroller.get_height()}`);
         const prefix = optVal('shot-chat');
-        if (prefix) widgetPixbuf(w.win)?.savev(`${prefix}.png`, 'png', [], []);
-        panel.makeProvider = () => provider;
+        if (prefix) {
+            widgetPixbuf(w.win)?.savev(`${prefix}.png`, 'png', [], []);
+            const oldDark = w.dark;
+            w.setDark(!oldDark);
+            for (let i = 0; i < 40; i++) { pump(); GLib.usleep(10000); }
+            widgetPixbuf(w.win)?.savev(`${prefix}-${oldDark ? 'light' : 'dark'}.png`, 'png', [], []);
+            w.setDark(oldDark);
+        }
+        chat.makeProvider = () => provider;
         panel.reset();
     });
 

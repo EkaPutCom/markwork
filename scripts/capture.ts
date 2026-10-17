@@ -782,9 +782,9 @@ One file. Change the layout: line and the same notes become a list, a table, a c
         GLib.mkdir_with_parents(this.proj, 0o755);
         this.plan = GLib.build_filenamev([this.proj, 'plans', 'launch.md']);
         this.openWork();
-        w.chat.keyStore = { get: async () => ({ key: 'example', source: 'env' }), set: async () => 'env', clear: async () => {} };
+        w.session.assistant.chat.keyStore = { get: async () => ({ key: 'example', source: 'env' }), set: async () => 'env', clear: async () => {} };
         for (const dark of [false, true]) {
-            w.chat.makeProvider = () => this.scripted([
+            w.session.assistant.chat.makeProvider = () => this.scripted([
                 [{ id: 'a', name: 'search_text', arguments: '{"text":"Public release"}' }, { id: 'b', name: 'read_file', arguments: '{"name":"meeting-1-oct"}' }],
                 ANSWER,
             ]);
@@ -805,7 +805,7 @@ One file. Change the layout: line and the same notes become a list, a table, a c
     // The agent proposes changes (review window, then applied).
     proposals(): void {
         const w = this.w;
-        w.chat.makeProvider = () => this.scripted([
+        w.session.assistant.chat.makeProvider = () => this.scripted([
             [{ id: 'u1', name: 'edit_file', arguments: JSON.stringify({ name: 'plans/launch.md', old_text: '- Public release: 15 November', new_text: '- Public release: 22 November', reason: 'The 1 October meeting postponed the public release to 22 November.' }) }],
             [{ id: 'u2', name: 'edit_note', arguments: JSON.stringify({ name: 'tasks.md', action: 'move', note: 'Prepare the release material', group: 'In Progress', reason: 'Sari started preparing the release material.' }) }],
             ANSWER_ACT,
@@ -941,7 +941,7 @@ One file. Change the layout: line and the same notes become a list, a table, a c
         w.sidebar.setPage('files');
         w.setOption('chat', true);
         w.chat.reset();
-        w.chat.makeProvider = () => this.scripted([ANSWER]);
+        w.session.assistant.chat.makeProvider = () => this.scripted([ANSWER]);
         void w.chat.ask(ASK_READ);
         this.idle(1500);
         for (const dark of [false, true]) {
@@ -971,7 +971,7 @@ One file. Change the layout: line and the same notes become a list, a table, a c
         w.setOption('sidebar', false);
         const steps = (...status: string[]) => ['Find meeting decisions that are not in the plan yet', 'Update the plan, the board, and the meeting notes', 'Check the result'].map((text, i) => ({ text, status: status[i] }));
         const goal = 'Sync the release schedule with the 1 October meeting decisions';
-        w.chat.makeProvider = () => this.scripted([
+        w.session.assistant.chat.makeProvider = () => this.scripted([
             [tool('p1', 'set_work', { goal, steps: steps('done', 'pending', 'pending'), note: 'The public release is postponed to 22 November.' })],
             [tool('p2', 'propose_batch', { actions: [
                 { tool: 'edit_file', arguments: JSON.stringify({ name: 'plans/launch.md', old_text: '- Public release: 15 November', new_text: '- Public release: 22 November', reason: 'The 1 October meeting postponed the public release.' }) },
@@ -1033,7 +1033,7 @@ One file. Change the layout: line and the same notes become a list, a table, a c
         w.load(this.note);
         w.setOption('sidebar', true);
         w.sidebar.setPage('history');
-        w.chat.makeProvider = () => this.scripted([
+        w.session.assistant.chat.makeProvider = () => this.scripted([
             [tool('g1', 'git_log', { file: 'plan.md' })],
             [tool('g2', 'show_commit', { commit: 'HEAD', file: 'plan.md' })],
             'The date **15 November** first entered in the commit *Clarify the goal and the dates* by Eka Putra; the earlier commit only wrote "Closed beta: October". The line *Evaluation: 30 November* is not committed yet.',
