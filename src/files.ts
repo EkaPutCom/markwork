@@ -16,8 +16,15 @@ export function writeTextFile(path: string, text: string): void {
 
 export const fileExists = (path: string): boolean => platform().fs.exists(path);
 
-// An absolute path as a file:// URI, each part percent-encoded.
-export const fileUri = (path: string): string => `file://${path.split('/').map(encodeURIComponent).join('/')}`;
+// An absolute path as a file:// URI, each part percent-encoded. A Windows path (C:\a b\c) becomes file:///C:/a%20b/c.
+export function fileUri(path: string): string {
+    const encode = (parts: string[]) => parts.map(encodeURIComponent).join('/');
+    if (/^[A-Za-z]:[\\/]/.test(path)) {
+        const [drive, ...rest] = path.replace(/\\/g, '/').split('/');
+        return `file:///${drive}/${encode(rest)}`;
+    }
+    return `file://${encode(path.split('/'))}`;
+}
 
 // Move to the Trash (recoverable), not a permanent delete.
 export function trashFile(path: string): void {

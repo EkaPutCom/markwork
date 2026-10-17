@@ -4,7 +4,7 @@
 // reports what the user did; a worktree it names is one the core listed for that project, and a change is checked here.
 
 import { isRemoteMachine, machineProjectKey } from '../agent/daemon/machines.js';
-import { BRANCH_PREFIX, listWorktrees, MAX_SLOTS, parseIsolation, removeWorktree, worktreeRoot, writeIsolation, type Isolation } from '../agent/worktree.js';
+import { BRANCH_PREFIX, isAbsoluteDir, listWorktrees, MAX_SLOTS, parseIsolation, removeWorktree, worktreeRoot, writeIsolation, type Isolation } from '../agent/worktree.js';
 import type { GitRunner } from '../forge/contribute.js';
 import type { AppSettings } from '../settings.js';
 import { _, fmt } from '../i18n.js';
@@ -110,7 +110,7 @@ export class ProjectsPages {
         if ('worktrees' in patch && typeof patch.worktrees !== 'boolean') return 'worktrees is a switch';
         if ('slots' in patch && !(Number.isInteger(patch.slots) && patch.slots! >= 1 && patch.slots! <= MAX_SLOTS)) return `cards at the same time: 1 to ${MAX_SLOTS}`;
         if ('base' in patch && typeof patch.base !== 'string') return 'the base branch is a name';
-        if ('dir' in patch && (typeof patch.dir !== 'string' || (patch.dir !== '' && !patch.dir.startsWith('/')))) return _('The worktree folder must be an absolute path');
+        if ('dir' in patch && (typeof patch.dir !== 'string' || (patch.dir !== '' && !isAbsoluteDir(patch.dir)))) return _('The worktree folder must be an absolute path');
         if ('afterMerge' in patch && !AFTER_MERGE.includes(patch.afterMerge!)) return 'after merging: remove or keep the branch';
         return null;
     }

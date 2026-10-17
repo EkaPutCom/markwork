@@ -1,6 +1,6 @@
 // Background write tests: ordering per path, coalescing, and an explicit flush.
 
-import { flushWrites, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/files.js';
+import { fileUri, flushWrites, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/files.js';
 import { section, test, eq, ok, tmp, until, disk } from '../framework.js';
 
 export async function fileWriteTests(): Promise<void> {
@@ -8,6 +8,12 @@ export async function fileWriteTests(): Promise<void> {
     const base = disk.join(tmp, 'writes');
     disk.mkdirs(base);
     const at = (name: string) => disk.join(base, name);
+
+    await test('fileUri encodes each part, and a Windows drive path gets file:///C:/', () => {
+        eq(fileUri('/home/eka/my notes/a#b.md'), 'file:///home/eka/my%20notes/a%23b.md');
+        eq(fileUri('C:\\Users\\eka\\my notes\\a.md'), 'file:///C:/Users/eka/my%20notes/a.md');
+        eq(fileUri('d:/x/y.md'), 'file:///d:/x/y.md');
+    });
 
     await test('overlapping background writes to one file end with the newest text', async () => {
         const path = at('burst.md');
