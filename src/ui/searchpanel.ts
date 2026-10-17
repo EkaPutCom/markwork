@@ -1,24 +1,17 @@
 // The Search panel in the sidebar: search (and replace) in all the Markdown files of the work folder.
 // Results are grouped per file, as a flat list of file rows and hit rows in a Gtk.ListView; a file row folds its hits.
-// The panel does not know where the files come from or how a change is applied; the window supplies both.
+// The panel is a view (SearchView, app/search.ts): it reports the query and what the user did, and draws the results it
+// is sent. Where the files come from and how a change is applied is the controller's.
 
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
-import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, MAX_HITS, type FileHits, type SearchHit, type SearchOptions } from '../markdown/search.js';
-import type { Change } from '../agent/changes.js';
+import { activeFilters, type FileHits, type SearchOptions } from '../markdown/search.js';
+import type { SearchQuery, SearchResults, SearchView } from '../app/search.js';
 import { pack } from '../gtkutil.js';
-import { _, fmt, ngettext } from '../i18n.js';
-
-export interface SearchHost {
-    root(): string | null;
-    files(): { name: string; text: string }[];            // the Markdown files with their current contents
-    open(file: string, hit: SearchHit): void;             // show a hit in the editor
-    replace(changes: Change[]): string | null;            // apply the changes; an error message or null
-    confirm(message: string, detail: string, accept: string): Promise<boolean>;
-}
+import { _ } from '../i18n.js';
 
 const DEBOUNCE_MS = 250;
 
@@ -31,12 +24,12 @@ class Row extends GObject.Object {
     count = 0;
     expanded = true;
     file = '';
-    hit: SearchHit | null = null;
+    index = 0;            // the hit's place in its file's list
 }
 
 const esc = (s: string): string => GLib.markup_escape_text(s, -1);
 
-export class SearchPanel {
+export class SearchPanel implements SearchView {
     readonly widget: Gtk.Box;
     readonly entry: Gtk.Entry;
     readonly replaceEntry: Gtk.Entry;
@@ -54,11 +47,13 @@ export class SearchPanel {
     readonly store = new Gio.ListStore({ item_type: Row.$gtype });
     readonly list: Gtk.ListView;
     private results: FileHits[] = [];
+    onSearch: (query: SearchQuery) => void = () => {};
+    onOpenHit: (file: string, index: number) => void = () => {};
+    onReplaceAll: (replacement: string) => void = () => {};
     private readonly folded = new Set<string>();
     private timer = 0;
-    private pattern: RegExp | null = null;
 
-    constructor(private readonly host: SearchHost) {
+    constructor() {
         const title = new Gtk.Label({ label: _('SEARCH'), xalign: 0, margin_start: 16 });
         title.add_css_class('side-title');
         const refresh = Gtk.Button.new_from_icon_name('view-refresh-symbolic');
@@ -148,12 +143,12 @@ export class SearchPanel {
             this.replaceRow.reveal_child = this.expand.active;
             this.expand.icon_name = this.expand.active ? 'pan-down-symbolic' : 'pan-end-symbolic';
         });
-        this.replaceEntry.connect('activate', () => void this.replaceEverything());
-        this.replaceAll.connect('clicked', () => void this.replaceEverything());
+        this.replaceEntry.connect('activate', () => this.onReplaceAll(this.replaceEntry.text));
+        this.replaceAll.connect('clicked', () => this.onReplaceAll(this.replaceEntry.text));
         this.list.connect('activate', (_list, position) => {
             const row = this.store.get_item(position) as Row | null;
             if (!row) return;
-            if (row.kind === 'hit') this.host.open(row.file, row.hit!);
+            if (row.kind === 'hit') this.onOpenHit(row.file, row.index);
             else this.toggleFile(row.file);
         });
     }
@@ -179,39 +174,23 @@ export class SearchPanel {
         });
     }
 
+    // Report the query as the fields hold it; the controller searches and sends the results back.
     run(): void {
         if (this.timer) { GLib.source_remove(this.timer); this.timer = 0; }
-        const pattern = buildPattern(this.entry.text, this.options);
-        this.pattern = null;
-        this.results = [];
+        this.onSearch({ text: this.entry.text, ...this.options, include: this.includeEntry.text, exclude: this.excludeEntry.text });
+    }
+
+    showResults(results: SearchResults): void {
+        this.results = results.files;
         this.entry.remove_css_class('error');
-        if (!pattern) this.setSummary('');
-        else if (!(pattern instanceof RegExp)) {
-            this.entry.add_css_class('error');
-            this.setSummary(pattern.error);
-        } else if (!this.host.root()) this.setSummary(_('Open a folder to search in its notes.'));
-        else {
-            this.pattern = pattern;
-            const keep = pathFilter(this.includeEntry.text, this.excludeEntry.text);
-            const files = this.host.files();
-            const found = searchFiles(keep ? files.filter(f => keep(f.name)) : files, pattern);
-            this.results = found.files;
-            this.setSummary(this.describe(found.total, found.files.length, found.truncated));
-        }
+        if (results.invalid) this.entry.add_css_class('error');
+        this.setSummary(results.message);
         this.fill();
     }
 
     private markFilter(): void {
         if (activeFilters(this.includeEntry.text, this.excludeEntry.text)) this.filterButton.add_css_class('accent');
         else this.filterButton.remove_css_class('accent');
-    }
-
-    private describe(total: number, files: number, truncated: boolean): string {
-        const filters = activeFilters(this.includeEntry.text, this.excludeEntry.text);
-        const note = filters ? ` · ${fmt(ngettext('{count} filter', '{count} filters', filters), { count: filters })}` : '';
-        if (total === 0) return _('No results') + note;
-        const text = fmt(ngettext('{count} result in {files} file', '{count} results in {files} files', total), { count: total, files });
-        return (truncated ? fmt(_('{text} (only the first {max} are shown)'), { text, max: MAX_HITS }) : text) + note;
     }
 
     private setSummary(text: string): void {
@@ -236,40 +215,14 @@ export class SearchPanel {
             Object.assign(head, { kind: 'file', file, count: hits.length, expanded: !folded, markup: `<b>${esc(file.slice(slash + 1))}</b>${dir}` });
             rows.push(head);
             if (folded) continue;
-            for (const hit of hits) {
+            for (const [index, hit] of hits.entries()) {
                 const row = new Row();
                 const line = `${esc(hit.before)}<span background="#e5a50a" bgalpha="40%">${esc(hit.match)}</span>${esc(hit.after)}`;
-                Object.assign(row, { kind: 'hit', file, hit, markup: `<span alpha="55%">${hit.line + 1}</span>  ${line}` });
+                Object.assign(row, { kind: 'hit', file, index, markup: `<span alpha="55%">${hit.line + 1}</span>  ${line}` });
                 rows.push(row);
             }
         }
         this.store.splice(0, this.store.get_n_items(), rows);
-    }
-
-    // The changes that replace every hit; files are re-read through the host so unsaved text is what changes.
-    plan(): Change[] {
-        if (!this.pattern) return [];
-        const { regex } = this.options;
-        const wanted = new Set(this.results.map(f => f.file));
-        const changes: Change[] = [];
-        for (const file of this.host.files()) {
-            if (!wanted.has(file.name)) continue;
-            const { text, count } = replaceMatches(file.text, this.pattern, this.replaceEntry.text, regex);
-            if (count > 0 && text !== file.text) changes.push({ kind: 'edit', file: file.name, before: file.text, after: text, reason: _('Replace in all notes') });
-        }
-        return changes;
-    }
-
-    async replaceEverything(): Promise<void> {
-        const changes = this.plan();
-        if (!changes.length) return;
-        const total = this.results.reduce((n, f) => n + f.hits.length, 0);
-        const detail = fmt(ngettext('{count} occurrence in {files} file will be replaced. Open files can be undone with Ctrl+Z; other files are written right away.',
-            '{count} occurrences in {files} files will be replaced. Open files can be undone with Ctrl+Z; other files are written right away.', total), { count: total, files: changes.length });
-        if (!await this.host.confirm(_('Replace in all notes?'), detail, _('Replace All'))) return;
-        const error = this.host.replace(changes);
-        if (error) this.setSummary(error);
-        else this.run();
     }
 
     private createFactory(): Gtk.SignalListItemFactory {

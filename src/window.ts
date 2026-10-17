@@ -37,11 +37,9 @@ import { FileTree } from './ui/filetree.js';
 import { isImageFile } from './app/files.js';
 import { Sidebar } from './ui/sidebar.js';
 import { SearchPanel } from './ui/searchpanel.js';
-import { cpLength } from './editor/offsets.js';
 import { ChatPanel } from './ui/chat.js';
 import { WorkspaceRepository } from './workspace.js';
 import type { WikiLink } from './markdown/wikilink.js';
-import type { SearchHit } from './markdown/search.js';
 import { FindBar } from './ui/findbar.js';
 import { StatusBar } from './ui/statusbar.js';
 import { TabBar } from './ui/tabbar.js';
@@ -80,7 +78,6 @@ import type { ViewScreen } from './app/views.js';
 import { editSchemaDialog } from './ui/schemadialog.js';
 import type { ToastAction } from './app/document.js';
 import { UNTITLED, type DocumentController } from './app/documents.js';
-import { applyChangeBatch } from './app/agentwrites.js';
 import { AppSession, type AppDialogs, type AppFrontend, type FrontendHost } from './app/session.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
 import { sendChangesDialog } from './ui/sendchanges.js';
@@ -174,13 +171,7 @@ export class MainWindow implements CommandHost {
         this.collabPanel = new CollabPanel();
         this.pullView = new PullView();
         this.reviewView = new HarnessReviewView();
-        this.searchPanel = new SearchPanel({
-            root: () => this.root,
-            files: () => this.root ? this.workspace.files(this.root, { freshness: 'current', limit: 5000 }) : [],
-            open: (file, hit) => this.openSearchHit(file, hit),
-            replace: changes => applyChangeBatch(this.session.host, changes),
-            confirm: (message, detail, accept) => decideDialog(this.win, message, detail, accept),
-        });
+        this.searchPanel = new SearchPanel();
         this.sidebar = new Sidebar(this.fileTree.widget, this.searchPanel.widget, this.outline.widget, this.history.widget, this.collabPanel.widget);
         this.statusBar = new StatusBar();
         this.board = new KanbanBoard();
@@ -377,6 +368,7 @@ export class MainWindow implements CommandHost {
             get table() { return w.table; },
             get layouts() { return w.layouts; },
             get fileTree() { return w.fileTree; },
+            get searchView() { return w.searchPanel; },
             openFile: path => this.openFile(path),
             toast: (message, action) => this.toast(message, action),
             refreshTree: () => { if (this.root) this.session.files.refresh(this.root); },
@@ -399,6 +391,9 @@ export class MainWindow implements CommandHost {
     // The questions the application layer asks, as GTK dialogs (AppFrontend.dialogs).
     private appDialogs(): AppDialogs {
         return {
+            search: {
+                confirm: (message, detail, accept) => decideDialog(this.win, message, detail, accept),
+            },
             files: {
                 name: (title, label, value) => promptDialog(this.win, { title, label, value }),
                 confirm: (message, detail) => confirmDialog(this.win, message, detail),
@@ -866,14 +861,6 @@ export class MainWindow implements CommandHost {
     // Open a file in a tab: its own tab if already open, the active empty document, or a new tab.
     openInTab(path: string): boolean {
         return this.documents.openInTab(path);
-    }
-
-    // A hit of the Search panel: open the file and select the match.
-    private openSearchHit(file: string, hit: SearchHit): void {
-        const root = this.root;
-        if (!root || !this.openInTab(GLib.build_filenamev([root, ...file.split('/')]))) return;
-        const line = this.editor.getText().split('\n')[hit.line] ?? '';
-        this.editor.selectRange(hit.line, cpLength(line.slice(0, hit.start)), cpLength(line.slice(hit.start, hit.end)));
     }
 
     // Ctrl+Shift+F: show the Search panel with the selected text as the query.

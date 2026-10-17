@@ -371,8 +371,7 @@ export function folderTests(c: GuiContext): void {
         panel.includeEntry.text = ''; panel.filterButton.active = false;
         ok(!panel.filterButton.has_css_class('accent'), 'the mark stays after the filters are cleared');
         panel.entry.text = '# C'; panel.run();
-        panel.replaceEntry.text = '# Z';
-        const [change] = panel.plan();
+        const [change] = w.session.search.plan('# Z');
         eq(change.after, '# Z', 'planned change');
         panel.regexButton.active = true; panel.entry.text = '('; panel.run();
         ok(panel.entry.has_css_class('error'), 'an invalid regular expression is not marked');

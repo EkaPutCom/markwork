@@ -25,6 +25,7 @@ export interface TextEditor {
     readonly cursorOffset: number;               // code points from the start
     readonly cursorLine: number;                 // the line of the cursor, from 0
     readonly selection: string;                  // the selected text; empty when nothing is selected
+    selectRange(line: number, column: number, length: number): void;   // select `length` code points from `column` on a line, and scroll to them
     restoreCursor(offset: number): void;         // put the cursor back (a reopened tab) without taking the focus
 }
 
