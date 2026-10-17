@@ -19,6 +19,7 @@ import { DocumentController, type DocumentsHost } from './documents.js';
 import type { AgentWriteHost } from './agentwrites.js';
 import { AssistantController, type AssistantHost } from './assistant.js';
 import { HistoryController, type HistoryDialogs, type HistoryHost } from './history.js';
+import { PreferencesController, type PreferencesDialogs, type PreferencesHost } from './preferences.js';
 import { OutlineController, type OutlineHost } from './outline.js';
 import { FilesController, type FilesDialogs, type FilesHost } from './files.js';
 import { SearchController, type SearchDialogs, type SearchHost } from './search.js';
@@ -26,7 +27,7 @@ import type { Doc, TextEditor } from './document.js';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
 export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>
-    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost & SearchHost<E> & OutlineHost<E>;
+    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost & SearchHost<E> & OutlineHost<E> & PreferencesHost;
 
 // What the session answers itself, from the controllers it owns.
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
@@ -48,6 +49,7 @@ export interface AppDialogs {
     history: HistoryDialogs;
     files: FilesDialogs;
     search: SearchDialogs;
+    preferences: PreferencesDialogs;
 }
 
 export interface AppFrontend<E extends TextEditor> {
@@ -78,6 +80,7 @@ export class AppSession<E extends TextEditor> {
     readonly files: FilesController;
     readonly search: SearchController<E>;
     readonly outline: OutlineController<E>;
+    readonly preferences: PreferencesController;
     readonly host: ControllerHost<E>;
 
     constructor(private readonly frontend: AppFrontend<E>) {
@@ -116,6 +119,7 @@ export class AppSession<E extends TextEditor> {
         });
         this.search = new SearchController(host, dialogs.search);
         this.outline = new OutlineController(host);
+        this.preferences = new PreferencesController(host, dialogs.preferences);
         this.documents = new DocumentController(Object.create(frontend.documents, {
             autosaver: { get: () => this.autosaver },
             refreshHome: { value: () => this.refreshHome() },
@@ -176,6 +180,7 @@ export class AppSession<E extends TextEditor> {
         this.history.dispose();
         this.harness.dispose();
         this.collab.dispose();
+        this.preferences.dispose();
         this.files.dispose();
         this.workspace.close();
     }

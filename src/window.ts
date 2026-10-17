@@ -46,11 +46,11 @@ import { TabBar } from './ui/tabbar.js';
 import { HeaderBar, LAYOUT_CHOICES } from './ui/headerbar.js';
 import type { Palette } from './colors.js';
 import { applyTheme, systemPrefersDark } from './ui/theme.js';
-import { askSaveChanges, chooseFile, closeAgentsDialog, confirmDialog, decideDialog, harnessAskDialog, harnessTextDialog, mergeDialog, promptDialog, showAbout, showError } from './ui/dialogs.js';
+import { askSaveChanges, chooseFile, closeAgentsDialog, confirmDialog, decideDialog, harnessAskDialog, harnessTextDialog, machineDialog, mergeDialog, promptDialog, showAbout, showError } from './ui/dialogs.js';
 import { registerActions } from './actions.js';
 import type { CommandHost, EditCommands, ViewOption } from './app/commands.js';
 import { wrapSelection, insertLink, insertBlock, togglePrefix, setHeading } from './editor/editing.js';
-import { PreferencesDialog } from './ui/preferences.js';
+import { PreferencesPresenter } from './ui/preferences.js';
 import { CommandPalette } from './ui/palette.js';
 import { showShortcuts } from './ui/shortcuts.js';
 import { ImageViewer } from './ui/imageviewer.js';
@@ -105,6 +105,7 @@ export class MainWindow implements CommandHost {
     readonly fileTree: FileTree;
     readonly sidebar: Sidebar;
     readonly searchPanel: SearchPanel;
+    readonly preferences: PreferencesPresenter;
     readonly findBar: FindBar;
     // The last notification text (for tests; the toast itself disappears on its own).
     lastToast = '';
@@ -172,6 +173,7 @@ export class MainWindow implements CommandHost {
         this.pullView = new PullView();
         this.reviewView = new HarnessReviewView();
         this.searchPanel = new SearchPanel();
+        this.preferences = new PreferencesPresenter(() => this.win, () => ({ settings: this.settings, access: this.harness }), () => this.session.preferences.closed());
         this.sidebar = new Sidebar(this.fileTree.widget, this.searchPanel.widget, this.outline.widget, this.history.widget, this.collabPanel.widget);
         this.statusBar = new StatusBar();
         this.board = new KanbanBoard();
@@ -369,6 +371,7 @@ export class MainWindow implements CommandHost {
             get fileTree() { return w.fileTree; },
             get searchView() { return w.searchPanel; },
             get outlineView() { return w.outline; },
+            get preferencesView() { return w.preferences; },
             openFile: path => this.openFile(path),
             toast: (message, action) => this.toast(message, action),
             refreshTree: () => { if (this.root) this.session.files.refresh(this.root); },
@@ -391,6 +394,9 @@ export class MainWindow implements CommandHost {
     // The questions the application layer asks, as GTK dialogs (AppFrontend.dialogs).
     private appDialogs(): AppDialogs {
         return {
+            preferences: {
+                machine: taken => machineDialog(this.win, taken),
+            },
             search: {
                 confirm: (message, detail, accept) => decideDialog(this.win, message, detail, accept),
             },
@@ -965,7 +971,7 @@ export class MainWindow implements CommandHost {
     }
 
     showPreferences(): void {
-        new PreferencesDialog(this.settings, this.harness).present(this.win);
+        this.session.preferences.open();
     }
 
     showPalette(): void {

@@ -26,6 +26,7 @@ import { fileOpsTests } from './unit/fileops.js';
 import { filesControllerTests } from './unit/filescontroller.js';
 import { searchControllerTests } from './unit/searchcontroller.js';
 import { outlineTests } from './unit/outline.js';
+import { preferencesTests } from './unit/preferences.js';
 import { workspaceTests } from './unit/workspace.js';
 import { chatControllerTests } from './unit/chatcontroller.js';
 import { agentTests, apiKeyTests, toolTests } from './unit/agent.js';
@@ -87,6 +88,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await filesControllerTests();
     await searchControllerTests();
     await outlineTests();
+    await preferencesTests();
     await workspaceTests();
     await chatControllerTests();
     await agentTests();

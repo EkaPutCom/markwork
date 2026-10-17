@@ -1,23 +1,17 @@
-// Preferences dialog. Its widgets are declared in preferences.ui and bound directly to
-// GSettings; the main window applies the changes through the "changed" signal.
+// Preferences dialog. Its widgets are declared in preferences.ui. It is a view (PreferencesView, app/preferences.ts):
+// it shows the values it is sent, reports each change as a key and a value, and is sent the values again when a setting
+// changes anywhere. Only the Projects group of the Agents page still reads the settings itself.
 
 import Adw from 'gi://Adw?version=1';
-import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk?version=4.0';
 
-import { DEEPSEEK_MODELS } from '../agent/models.js';
-import { LOCAL_MACHINE, machineProjectKey } from '../agent/daemon/machines.js';
+import { COLOR_SCHEMES, type PreferencesData, type PreferencesView } from '../app/preferences.js';
 import { uiTemplate } from '../gtkutil.js';
 import { _ } from '../i18n.js';
-import { machineDialog } from './dialogs.js';
 import { ProjectsGroup, type ProjectsAccess } from './projectsettings.js';
 import type { AppSettings } from '../settings.js';
 import template from './preferences.ui?raw';
-import { gsettingsOf } from '../platform/gjs/settings.js';
-
-// The same order as the "Color scheme" items in preferences.ui.
-const SCHEMES = ['system', 'light', 'dark'];
 
 export class PreferencesDialog extends Adw.PreferencesDialog {
     static {
@@ -46,85 +40,99 @@ export class PreferencesDialog extends Adw.PreferencesDialog {
     declare _addMachine: Gtk.Button;
     declare _agentsPage: Adw.PreferencesPage;
     private machineRows: Adw.ActionRow[] = [];
-    private fillingMachines = false;
+    private machinesShown = '';
+    private filling = false;   // the widgets are being set from the values: that is not a change of the user's
 
-    // projects: the harness controller, for the Projects group of the Agents page (left out in tests that do not need it).
-    constructor(settings: AppSettings, projects?: ProjectsAccess) {
+    // projects: the settings and the harness controller, for the Projects group of the Agents page (left out in tests that do not need it).
+    constructor(private readonly view: PreferencesView, data: PreferencesData, projects?: { settings: AppSettings; access: ProjectsAccess }) {
         super();
-        const gs = gsettingsOf(settings);
-        const flags = Gio.SettingsBindFlags.DEFAULT;
-        gs.bind('focus', this._focus, 'active', flags);
-        gs.bind('typewriter', this._typewriter, 'active', flags);
-        gs.bind('home', this._home, 'active', flags);
-        gs.bind('autosave', this._autosave, 'active', flags);
-        gs.bind('chat-thinking', this._chatThinking, 'active', flags);
-        gs.bind('chat-save', this._chatSave, 'active', flags);
-        gs.bind('forge-poll-seconds', this._forgePoll, 'value', flags);
-        gs.bind('forge-notify', this._forgeNotify, 'active', flags);
-
-        this.bindChoice(gs, 'color-scheme', this._colorScheme, SCHEMES);
-        for (const model of DEEPSEEK_MODELS) this._chatModels.append(model);
-        this.bindChoice(gs, 'chat-model', this._chatModel, DEEPSEEK_MODELS);
-
-        gs.bind('daemon-command', this._daemonCommand, 'text', flags);
-        this.fillMachines(settings);
-        gs.connect('changed::machines', () => this.fillMachines(settings));
-        gs.connect('changed::harness-machine', () => this.fillMachines(settings));
-        this._harnessMachine.connect('notify::selected', () => {
-            if (!this.fillingMachines) settings.harnessMachine = this.machineChoices(settings)[this._harnessMachine.selected] ?? '';
-        });
-        this._addMachine.connect('clicked', () => void this.addMachine(settings));
-        if (projects) this._agentsPage.add(new ProjectsGroup(this, settings, projects).group);
+        const set = (key: Parameters<PreferencesView['onSet']>[0], value: string | number | boolean) => { if (!this.filling) this.view.onSet(key, value); };
+        const bindSwitch = (row: Adw.SwitchRow, key: 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatThinking' | 'chatSave' | 'forgeNotify') =>
+            row.connect('notify::active', () => set(key, row.active));
+        bindSwitch(this._focus, 'focus');
+        bindSwitch(this._typewriter, 'typewriter');
+        bindSwitch(this._home, 'home');
+        bindSwitch(this._autosave, 'autosave');
+        bindSwitch(this._chatThinking, 'chatThinking');
+        bindSwitch(this._chatSave, 'chatSave');
+        bindSwitch(this._forgeNotify, 'forgeNotify');
+        this._forgePoll.connect('notify::value', () => set('forgePollSeconds', Math.round(this._forgePoll.value)));
+        this._colorScheme.connect('notify::selected', () => set('colorScheme', COLOR_SCHEMES[this._colorScheme.selected] ?? 'system'));
+        this._chatModel.connect('notify::selected', () => set('chatModel', this.models[this._chatModel.selected] ?? ''));
+        this._daemonCommand.connect('notify::text', () => set('daemonCommand', this._daemonCommand.text));
+        this._harnessMachine.connect('notify::selected', () => set('harnessMachine', this.choices[this._harnessMachine.selected] ?? ''));
+        this._addMachine.connect('clicked', () => void this.view.onAddMachine());
+        if (projects) this._agentsPage.add(new ProjectsGroup(this, projects.settings, projects.access).group);
+        this.showValues(data);
     }
 
-    // The values of "Run agents", in the order of its rows: in this window, this computer, then the SSH machines.
-    private machineChoices(settings: AppSettings): string[] {
-        return ['', LOCAL_MACHINE, ...Object.keys(settings.machines)];
+    private models: string[] = [];
+    private choices: string[] = [];
+
+    // Set the widgets from the values; a widget that already shows its value is left alone.
+    showValues(data: PreferencesData): void {
+        this.filling = true;
+        this._focus.active = data.focus;
+        this._typewriter.active = data.typewriter;
+        this._home.active = data.home;
+        this._autosave.active = data.autosave;
+        this._chatThinking.active = data.chatThinking;
+        this._chatSave.active = data.chatSave;
+        this._forgeNotify.active = data.forgeNotify;
+        if (Math.round(this._forgePoll.value) !== data.forgePollSeconds) this._forgePoll.value = data.forgePollSeconds;
+        this._colorScheme.selected = Math.max(0, COLOR_SCHEMES.indexOf(data.colorScheme as typeof COLOR_SCHEMES[number]));
+        if (this.models.join() !== data.chatModels.join()) {
+            this.models = data.chatModels;
+            this._chatModels.splice(0, this._chatModels.get_n_items(), this.models);
+        }
+        this._chatModel.selected = Math.max(0, this.models.indexOf(data.chatModel));
+        if (this._daemonCommand.text !== data.daemonCommand) this._daemonCommand.text = data.daemonCommand;
+        this.fillMachines(data);
+        this.filling = false;
     }
 
-    // Rebuilds the "Run agents" choices and the list of machines from the settings.
-    private fillMachines(settings: AppSettings): void {
-        const machines = settings.machines;
-        this.fillingMachines = true;
-        this._harnessMachines.splice(0, this._harnessMachines.get_n_items(), [_('In this window'), _('This computer (markworkd)'), ...Object.keys(machines)]);
-        this._harnessMachine.selected = Math.max(0, this.machineChoices(settings).indexOf(settings.harnessMachine));
-        this.fillingMachines = false;
+    // Rebuilds the "Run agents" choices and the list of machines.
+    private fillMachines(data: PreferencesData): void {
+        this.choices = data.machineChoices.map(c => c.value);
+        this._harnessMachines.splice(0, this._harnessMachines.get_n_items(), data.machineChoices.map(c => c.label));
+        this._harnessMachine.selected = Math.max(0, this.choices.indexOf(data.harnessMachine));
 
+        const shown = JSON.stringify(data.machines);
+        if (shown === this.machinesShown) return;
+        this.machinesShown = shown;
         for (const row of this.machineRows.splice(0)) this._machinesGroup.remove(row);
-        for (const [name, target] of Object.entries(machines)) {
+        for (const { name, target } of data.machines) {
             const row = new Adw.ActionRow({ title: name, subtitle: target, subtitle_selectable: true });
             const remove = new Gtk.Button({ icon_name: 'user-trash-symbolic', valign: Gtk.Align.CENTER, tooltip_text: _('Remove Machine') });
             remove.add_css_class('flat');
             remove.update_property([Gtk.AccessibleProperty.LABEL], [`${_('Remove Machine')}: ${name}`]);
-            remove.connect('clicked', () => this.removeMachine(settings, name));
+            remove.connect('clicked', () => this.view.onRemoveMachine(name));
             row.add_suffix(remove);
             this._machinesGroup.add(row);
             this.machineRows.push(row);
         }
     }
+}
 
-    private async addMachine(settings: AppSettings): Promise<void> {
-        const root = this.get_root();
-        const machine = await machineDialog(root instanceof Gtk.Window ? root : null, Object.keys(settings.machines));
-        if (machine) settings.machines = { ...settings.machines, [machine.name]: machine.target };
+// The presenter the window hands the controller: it makes the dialog on `open` and keeps it up to date until it closes.
+export class PreferencesPresenter implements PreferencesView {
+    onSet: PreferencesView['onSet'] = () => {};
+    onAddMachine: PreferencesView['onAddMachine'] = () => {};
+    onRemoveMachine: PreferencesView['onRemoveMachine'] = () => {};
+    private dialog: PreferencesDialog | null = null;
+
+    // parent: the window to present over; projects: see PreferencesDialog; closed: told when the dialog closes.
+    constructor(private readonly parent: () => Gtk.Widget, private readonly projects: () => { settings: AppSettings; access: ProjectsAccess },
+                private readonly closed: () => void) {}
+
+    open(data: PreferencesData): void {
+        const dialog = new PreferencesDialog(this, data, this.projects());
+        this.dialog = dialog;
+        dialog.connect('closed', () => { if (this.dialog === dialog) this.dialog = null; this.closed(); });
+        dialog.present(this.parent());
     }
 
-    private removeMachine(settings: AppSettings, name: string): void {
-        const { [name]: _removed, ...rest } = settings.machines;
-        if (settings.harnessMachine === name) settings.harnessMachine = '';
-        const projects = Object.fromEntries(Object.entries(settings.machineProjects).filter(([key]) => !key.startsWith(machineProjectKey(name, ''))));
-        settings.machineProjects = projects;
-        settings.machines = rest;
-    }
-
-    // ComboRow ↔ string-typed key: the row index is the position of its value in `values`.
-    private bindChoice(gs: Gio.Settings, key: string, row: Adw.ComboRow, values: string[]): void {
-        const sync = () => {
-            const index = values.indexOf(gs.get_string(key));
-            if (index >= 0 && row.selected !== index) row.selected = index;
-        };
-        sync();
-        gs.connect(`changed::${key}`, sync);
-        row.connect('notify::selected', () => gs.set_string(key, values[row.selected]));
+    showValues(data: PreferencesData): void {
+        this.dialog?.showValues(data);
     }
 }
