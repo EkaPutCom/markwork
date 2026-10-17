@@ -82,8 +82,6 @@ for (const file of files) {
 // the import is gone.
 const UI_ACTS_ALLOWED = new Set([
     'ui/filetree.ts -> fileops.ts',
-    'ui/history.ts -> git.ts',
-    'ui/historyviewer.ts -> git.ts',
 ]);
 const acting = new Map();
 const acts = file => {

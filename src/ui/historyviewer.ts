@@ -1,17 +1,18 @@
 // Reading window for one commit (or, with a null commit, a file's uncommitted changes): the Changes tab (diff against the previous commit) and
 // the Contents tab (the whole file at that commit). Read-only; the window is not modal so the document
-// can still be compared while editing.
+// can still be compared while editing. A view of app/history.ts: HistoryViewers opens the windows the controller asks
+// for, draws what it sends, and reports the commit, discard, and message writer of a window by its number.
 
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
-import { commitContent, commitDiff, commitFile, discardChanges, workingDiff, workingState, type TextResult } from '../git.js';
-import { parseDiff, type ChangeKind, type Commit, type DiffLine } from '../gitlog.js';
+import type { WriteResult } from '../agent/commitmessage.js';
+import type { DiscardOutcome, HistoryText, HistoryViewerSpec, HistoryViewersView } from '../app/history.js';
+import type { Commit, DiffLine } from '../gitlog.js';
 import { replaceAllText } from '../editor/view.js';
 import { iterAtLine, onKeyPress, pack } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
-import { askDiscard } from './discard.js';
 import { MessageBox } from './messagebox.js';
 import { MessageWriter, setStatus } from './messagewriter.js';
 
@@ -64,18 +65,24 @@ export class HistoryViewer {
     readonly contentView: Gtk.TextView;
     readonly stack: Gtk.Stack;
     closed = false;
+    readonly file: string;
+    readonly commit: Commit | null;
     readonly message: MessageBox;              // commit message (uncommitted-changes mode only)
     readonly commitButton: Gtk.Button;
     readonly status: Gtk.Label;
     readonly writer: MessageWriter;            // the assistant button next to the message
-    beforeCommit: () => boolean = () => true;  // save the document first; false = cancel the commit
-    onCommitted: () => void = () => {};
     readonly discardButton: Gtk.Button;        // throws away this file's uncommitted changes (uncommitted-changes mode only)
-    beforeDiscard: () => boolean = () => true;
-    onDiscarded: (paths: string[]) => void = () => {};
-    confirmDiscard: (kind: ChangeKind, path: string) => Promise<boolean> = (kind, path) => askDiscard(this.window, kind, path);
+    private streamed: (text: string) => void = () => {};
+    onCommit: (message: string) => Promise<string | null> = async () => null;
+    onDiscard: () => Promise<DiscardOutcome> = async () => 'declined';
+    onWrite: () => Promise<WriteResult> = async () => ({ ok: false, reason: 'failed', message: 'not connected' });
+    onStopWriting: () => void = () => {};
+    onClosed: () => void = () => {};
 
-    constructor(parent: Gtk.Window | null, file: string, readonly commit: Commit | null, dark: boolean) {
+    constructor(parent: Gtk.Window | null, spec: HistoryViewerSpec, dark: boolean) {
+        const { file, commit } = spec;
+        this.file = file;
+        this.commit = commit;
         this.window = new Adw.Window({
             transient_for: parent, default_width: 860, default_height: 620,
         });
@@ -117,6 +124,12 @@ export class HistoryViewer {
         this.status = new Gtk.Label({ xalign: 0, wrap: true, visible: false, margin_start: 12, margin_end: 12, margin_bottom: 8 });
         this.writer = new MessageWriter(this.message, this.status, () => commit ? [] : [file],
             _("Write the message with the assistant (reads this file's changes)"));
+        // The message streams back as messageText notices; Stop and a closed window end the writing in the controller.
+        this.writer.write = (_files, onText, cancellable) => {
+            this.streamed = onText;
+            cancellable.onCancel(() => this.onStopWriting());
+            return this.onWrite();
+        };
         this.writer.onBusy = busy => { this.commitButton.set_sensitive(!busy); this.discardButton.set_sensitive(!busy); };
         if (!commit) {
             const bar = new Gtk.Box({ spacing: 8, margin_top: 10, margin_bottom: 10, margin_start: 10, margin_end: 10 });
@@ -129,16 +142,21 @@ export class HistoryViewer {
             body.append(new Gtk.Separator());
             body.append(bar);
             body.append(this.status);
-            this.commitButton.connect('clicked', () => this.doCommit(file));
-            this.discardButton.connect('clicked', () => void this.doDiscard(file));
-            this.message.onActivate = () => void this.doCommit(file);
+            this.commitButton.connect('clicked', () => void this.doCommit());
+            this.discardButton.connect('clicked', () => void this.doDiscard());
+            this.message.onActivate = () => void this.doCommit();
         }
         const view = new Adw.ToolbarView({ content: body });
         view.add_top_bar(header);
         this.window.set_content(view);
 
         // The window is destroyed (GTK 4 does not emit "destroy" while its object is held by JavaScript).
-        this.window.connect('unrealize', () => { this.closed = true; this.writer.stop(); });
+        this.window.connect('unrealize', () => {
+            if (this.closed) return;
+            this.closed = true;
+            this.writer.stop();
+            this.onClosed();
+        });
         onKeyPress(this.window, keyval => {
             if (keyval !== Gdk.KEY_Escape) return false;
             this.window.destroy();
@@ -146,45 +164,31 @@ export class HistoryViewer {
         });
 
         setupDiffTags(this.diffView, dark);
-        this.setPlaceholder('Loading…');
-        if (commit) {
-            commitDiff(file, commit).then(result => this.showDiff(result));
-            commitContent(file, commit).then(result => this.showContent(result));
-        } else {
-            workingDiff(file).then(result => this.showDiff(result));
-        }
+        this.setPlaceholder(_('Loading…'));
     }
 
-    private async doCommit(file: string): Promise<void> {
+    // The commit went through, or the changes were discarded: there is nothing left to show.
+    close(): void {
+        if (!this.closed) this.window.destroy();
+    }
+
+    private async doCommit(): Promise<void> {
         if (this.writer.busy) return;
-        const message = this.message.text.trim();
-        if (!message) return this.showStatus('Enter a commit message first');
-        if (!this.beforeCommit()) return this.showStatus('The document failed to save; the commit was cancelled');
         this.commitButton.set_sensitive(false);
         this.writer.locked = true;
-        const result = await commitFile(file, message);
-        if (this.closed) return;
-        if (!result.ok) {
-            this.writer.locked = false;
-            this.commitButton.set_sensitive(true);
-            return this.showStatus(fmt(_('Commit failed: {message}'), { message: result.message }));
-        }
-        this.onCommitted();
-        this.window.destroy();
+        const error = await this.onCommit(this.message.text);
+        if (this.closed || !error) return;
+        this.writer.locked = false;
+        this.commitButton.set_sensitive(true);
+        this.showStatus(error);
     }
 
-    // Asks, then throws the file's uncommitted changes away and closes the window (there is nothing left to show).
-    private async doDiscard(file: string): Promise<void> {
+    // The controller asks first, then closes the window once the changes are gone.
+    private async doDiscard(): Promise<void> {
         if (this.writer.busy) return;
-        const state = await workingState(file);
-        if (this.closed || !state.ok || state.state === 'clean') return;
-        if (!await this.confirmDiscard(state.state === 'untracked' ? 'untracked' : 'modified', file) || this.closed) return;
-        if (!this.beforeDiscard()) return this.showStatus('The document failed to save; the changes were not discarded');
-        const result = await discardChanges([file]);
-        if (this.closed) return;
-        if (!result.ok) return this.showStatus(fmt(_('Could not discard the changes: {message}'), { message: result.message }));
-        this.onDiscarded([file]);
-        this.window.destroy();
+        const outcome = await this.onDiscard();
+        if (this.closed || typeof outcome === 'string') return;
+        this.showStatus(outcome.error);
     }
 
     private showStatus(text: string): void {
@@ -210,20 +214,79 @@ export class HistoryViewer {
         return scroll;
     }
 
-    private showDiff(result: TextResult): void {
+    showDiff(diff: HistoryText): void {
         if (this.closed) return;
-        const buffer = this.diffView.buffer;
-        if (!result.ok) return buffer.set_text(fmt(_('Failed to read the changes:\n{message}'), { message: result.message }), -1);
-        const lines = parseDiff(result.text);
-        if (!lines.length) return buffer.set_text(this.commit
-            ? _('There are no content changes in this commit (for example only a rename)')
-            : _('There are no uncommitted changes'), -1);
-        fillDiff(this.diffView, lines);
+        if ('text' in diff) this.diffView.buffer.set_text(diff.text, -1);
+        else fillDiff(this.diffView, diff.lines);
     }
 
-    private showContent(result: TextResult): void {
+    showContent(text: string): void {
         if (this.closed) return;
-        replaceAllText(this.contentView, () =>
-            this.contentView.buffer.set_text(result.ok ? result.text : fmt(_('Failed to read the file contents:\n{message}'), { message: result.message }), -1));
+        replaceAllText(this.contentView, () => this.contentView.buffer.set_text(text, -1));
+    }
+
+    messageText(text: string): void {
+        this.streamed(text);
+    }
+}
+
+// The viewer windows of the main window, by the number the controller gave each one (HistoryViewersView).
+export class HistoryViewers implements HistoryViewersView {
+    private readonly windows = new Map<number, HistoryViewer>();
+    onCommit: (viewer: number, message: string) => Promise<string | null> = async () => null;
+    onDiscard: (viewer: number) => Promise<DiscardOutcome> = async () => 'declined';
+    onWrite: (viewer: number) => Promise<WriteResult> = async () => ({ ok: false, reason: 'failed', message: 'not connected' });
+    onStopWriting: (viewer: number) => void = () => {};
+    onClosed: (viewer: number) => void = () => {};
+    onOpenSettings: () => void = () => {};     // the "no API key" link of a commit form
+
+    constructor(private readonly parent: () => Gtk.Window | null, private readonly dark: () => boolean) {}
+
+    // The window of a viewer, if it is still open (the parent of its questions; tests).
+    get(viewer: number): HistoryViewer | undefined {
+        return this.windows.get(viewer);
+    }
+
+    // The most recently opened window that is still open.
+    get last(): HistoryViewer | undefined {
+        return [...this.windows.values()].at(-1);
+    }
+
+    open(viewer: number, spec: HistoryViewerSpec): void {
+        const window = new HistoryViewer(this.parent(), spec, this.dark());
+        window.onCommit = message => this.onCommit(viewer, message);
+        window.onDiscard = () => this.onDiscard(viewer);
+        window.onWrite = () => this.onWrite(viewer);
+        window.onStopWriting = () => this.onStopWriting(viewer);
+        window.onClosed = () => {
+            this.windows.delete(viewer);
+            this.onClosed(viewer);
+        };
+        window.writer.onOpenSettings = () => this.onOpenSettings();
+        this.windows.set(viewer, window);
+        window.show();
+    }
+
+    showDiff(viewer: number, diff: HistoryText): void {
+        this.windows.get(viewer)?.showDiff(diff);
+    }
+
+    showContent(viewer: number, text: string): void {
+        this.windows.get(viewer)?.showContent(text);
+    }
+
+    messageText(viewer: number, text: string): void {
+        this.windows.get(viewer)?.messageText(text);
+    }
+
+    close(viewer: number): void {
+        const window = this.windows.get(viewer);
+        this.windows.delete(viewer);
+        window?.close();
+    }
+
+    // The main window is going away.
+    destroy(): void {
+        for (const window of [...this.windows.values()]) window.close();
     }
 }

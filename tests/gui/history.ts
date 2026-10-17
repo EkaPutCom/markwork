@@ -4,9 +4,9 @@ import GLib from 'gi://GLib';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import type { WriteResult } from '../../src/agent/commitmessage.js';
+import type { ChatResult } from '../../src/agent/provider.js';
 import { setStatus } from '../../src/ui/messagewriter.js';
-import { HistoryViewer } from '../../src/ui/historyviewer.js';
-import type { Commit } from '../../src/gitlog.js';
+import type { HistoryViewer } from '../../src/ui/historyviewer.js';
 import { section, test, eq, ok, tmp, optVal } from '../framework.js';
 import type { GuiContext } from './context.js';
 import { iterAtLine } from '../../src/gtkutil.js';
@@ -33,6 +33,15 @@ export function historyTests(c: GuiContext): void {
         return cond();
     };
     const rows = () => w.history.store.n_items;
+    const history = w.session.history;
+    const dialogs = { ...history.dialogs };
+    // The viewer the controller opened last; a test closes it in its finally.
+    const opened = (): HistoryViewer => {
+        const viewer = w.historyViewers.last;
+        if (!viewer) throw new Error('no history viewer was opened');
+        return viewer;
+    };
+    const text = (view: Gtk.TextView) => view.buffer.get_text(view.buffer.get_start_iter(), view.buffer.get_end_iter(), false);
     // --shot-commit=<prefix>: save the commit form with the assistant button (<prefix>-<state>.png) for visual inspection.
     const shotPrefix = optVal('shot-commit');
     const shot = (name: string, widget: Gtk.Widget = w.win) => {
@@ -76,10 +85,6 @@ export function historyTests(c: GuiContext): void {
         ok(!w.history.commitBar.compute_expand(Gtk.Orientation.HORIZONTAL), 'the commit field demands spare space');
         ok(!w.history.changedBox.compute_expand(Gtk.Orientation.HORIZONTAL), 'the change list demands spare space');
     });
-    test('the uncommitted list with a message field does not make the sidebar expand', () => {
-        ok(!w.history.commitBar.compute_expand(Gtk.Orientation.HORIZONTAL), 'the commit field demands spare space');
-        ok(!w.history.changedBox.compute_expand(Gtk.Orientation.HORIZONTAL), 'the change list demands spare space');
-    });
     test('the file history is shown newest first', () => {
         w.load(a);
         ok(waitFor(() => rows() === 2), 'number of history rows');
@@ -97,7 +102,7 @@ export function historyTests(c: GuiContext): void {
         ok(waitFor(() => w.history.note.label.includes('is not in a git repository')), `message: ${w.history.note.label}`);
     });
     test('a document without a file shows a hint to save', () => {
-        w.history.setFile(null);
+        history.show(null);
         ok(w.history.note.label.includes('Save the document'), `message: ${w.history.note.label}`);
         ok(w.history.note.get_mapped(), 'the message is not shown');
     });
@@ -112,19 +117,16 @@ export function historyTests(c: GuiContext): void {
     test('reloading picks up the new commit', () => {
         write(a, V2 + 'three\n');
         git('commit', '-q', '-a', '-m', 'Add line three');
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => rows() === 3), 'the new commit did not appear');
     });
 
-    let commits: Commit[] = [];
     test('clicking a commit opens the viewer with the diff and the contents of that version', () => {
-        w.history.onOpen = commit => { commits.push(commit); };
         w.history.list.emit('activate', 1);
-        eq(commits.length, 1, 'the commit was opened');
-        eq(commits[0].subject, 'Add line two');
-        const viewer = new HistoryViewer(w.win, a, commits[0], false);
+        const viewer = opened();
         try {
-            const diff = () => viewer.diffView.buffer.get_text(viewer.diffView.buffer.get_start_iter(), viewer.diffView.buffer.get_end_iter(), false);
+            eq(viewer.commit?.subject, 'Add line two', 'the commit opened');
+            const diff = () => text(viewer.diffView);
             ok(waitFor(() => diff().includes('+two')), `diff: ${diff()}`);
             ok(!diff().includes('diff --git'), 'the diff header was not removed');
             const table = viewer.diffView.buffer.get_tag_table();
@@ -133,27 +135,22 @@ export function historyTests(c: GuiContext): void {
             const added = diff().split('\n').findIndex(l => l === '+two');
             eq(lineTags(added), ['add'], 'added line tag');
             ok(table.lookup('del') !== null, 'the delete tag exists');
-            const content = () => viewer.contentView.buffer.get_text(viewer.contentView.buffer.get_start_iter(), viewer.contentView.buffer.get_end_iter(), false);
-            ok(waitFor(() => content() === V2), `contents of that version: ${JSON.stringify(content())}`);
+            ok(waitFor(() => text(viewer.contentView) === V2), `contents of that version: ${JSON.stringify(text(viewer.contentView))}`);
             ok(!viewer.contentView.editable, 'the contents are editable');
             eq(viewer.diffView.wrap_mode, Gtk.WrapMode.WORD_CHAR, 'the diff is not wrapped');
             eq(viewer.contentView.wrap_mode, Gtk.WrapMode.WORD_CHAR, 'the contents are not wrapped');
         } finally {
             viewer.window.destroy();
         }
+        ok(w.historyViewers.last === undefined, 'the closed viewer is still known');
     });
     test('the viewer shows the contents of the first version for the initial commit', () => {
-        const first = commits[0];
-        w.history.onOpen = commit => { commits.push(commit); };
         w.history.list.emit('activate', 2);
-        const root = commits[commits.length - 1];
-        ok(root !== first, 'the initial commit was not opened');
-        const viewer = new HistoryViewer(w.win, a, root, true);
+        const viewer = opened();
         try {
-            const content = () => viewer.contentView.buffer.get_text(viewer.contentView.buffer.get_start_iter(), viewer.contentView.buffer.get_end_iter(), false);
-            ok(waitFor(() => content() === V1), `contents of the initial version: ${JSON.stringify(content())}`);
-            const diff = () => viewer.diffView.buffer.get_text(viewer.diffView.buffer.get_start_iter(), viewer.diffView.buffer.get_end_iter(), false);
-            ok(waitFor(() => diff().includes('+# Title')), `diff of the initial commit:  ${diff()}`);
+            eq(viewer.commit?.subject, 'Create note', 'the initial commit was not opened');
+            ok(waitFor(() => text(viewer.contentView) === V1), `contents of the initial version: ${JSON.stringify(text(viewer.contentView))}`);
+            ok(waitFor(() => text(viewer.diffView).includes('+# Title')), `diff of the initial commit:  ${text(viewer.diffView)}`);
         } finally {
             viewer.window.destroy();
         }
@@ -164,12 +161,14 @@ export function historyTests(c: GuiContext): void {
         ok(waitFor(() => rows() === 3), 'the history was loaded');
         ok(waitFor(() => !w.history.changes.get_visible()), 'the changes button is shown although the file is clean');
         write(a, V2 + 'three\nfour\n');
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => w.history.changes.get_visible()), 'the changes button is not shown');
         ok(w.history.changes.label!.includes('Uncommitted changes'), String(w.history.changes.label));
-        const viewer = new HistoryViewer(w.win, a, null, false);
+        w.history.changes.emit('clicked');
+        const viewer = opened();
         try {
-            const diff = () => viewer.diffView.buffer.get_text(viewer.diffView.buffer.get_start_iter(), viewer.diffView.buffer.get_end_iter(), false);
+            eq(viewer.file, a, 'the file of the viewer');
+            const diff = () => text(viewer.diffView);
             ok(waitFor(() => diff().includes('+four')), `diff: ${diff()}`);
             ok(!diff().includes('+three'), 'a committed line was shown as an addition');
             ok(viewer.stack.get_child_by_name('content') === null, 'the version contents tab appeared too');
@@ -177,17 +176,17 @@ export function historyTests(c: GuiContext): void {
             viewer.window.destroy();
         }
         git('commit', '-q', '-a', '-m', 'Add line four');
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => !w.history.changes.get_visible()), 'the button did not vanish after the commit');
     });
     test('the diff of an untracked new file is its entire contents', () => {
         w.load(untracked);
         ok(waitFor(() => w.history.changes.get_visible()), 'the button is not shown');
         ok(w.history.changes.label!.includes('New file'), String(w.history.changes.label));
-        const viewer = new HistoryViewer(w.win, untracked, null, false);
+        w.history.changes.emit('clicked');
+        const viewer = opened();
         try {
-            const diff = () => viewer.diffView.buffer.get_text(viewer.diffView.buffer.get_start_iter(), viewer.diffView.buffer.get_end_iter(), false);
-            ok(waitFor(() => diff().includes('+# Not in git yet')), `diff: ${diff()}`);
+            ok(waitFor(() => text(viewer.diffView).includes('+# Not in git yet')), `diff: ${text(viewer.diffView)}`);
         } finally {
             viewer.window.destroy();
         }
@@ -199,36 +198,38 @@ export function historyTests(c: GuiContext): void {
         git('add', 'new.md');
         w.load(a);
         ok(waitFor(() => w.history.changes.get_visible()), 'changes button');
-        const viewer = new HistoryViewer(w.win, a, null, false);
-        let done = 0;
-        viewer.onCommitted = () => { done++; };
+        history.openChanges(a);
+        const viewer = opened();
         try {
+            w.lastToast = '';
             viewer.commitButton.emit('clicked');
-            ok(viewer.status.get_text().includes('message'), 'an empty message was not rejected');
-            eq(done, 0, 'commit without a message');
+            ok(waitFor(() => viewer.status.get_text().includes('message')), 'an empty message was not rejected');
+            ok(!viewer.closed && w.lastToast === '', 'commit without a message');
             viewer.message.text = 'Add line five';
             viewer.commitButton.emit('clicked');
-            ok(waitFor(() => done === 1), `commit failed: ${viewer.closed ? '' : viewer.status.get_text()}`);
+            ok(waitFor(() => viewer.closed), `commit failed: ${viewer.closed ? '' : viewer.status.get_text()}`);
+            eq(w.lastToast, 'Committed successfully');
         } finally {
             if (!viewer.closed) viewer.window.destroy();   // a successful commit closes its own window
         }
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => rows() === 5 && !w.history.changes.get_visible()), 'the history did not load the new commit');
+        ok(waitFor(() => !w.history.changedBox.get_visible() || !listRows(w.history.changedList).some(r => r.get_tooltip_text() === a)), 'a.md is still uncommitted');
         w.load(untracked);
         ok(waitFor(() => w.history.changes.get_visible()), 'the other file was committed too');
     });
     test('commit an untracked new file', () => {
-        const viewer = new HistoryViewer(w.win, untracked, null, false);
-        let done = 0;
-        viewer.onCommitted = () => { done++; };
+        history.openChanges(untracked);
+        const viewer = opened();
         try {
+            eq(viewer.file, untracked);
             viewer.message.text = 'Add a new note';
             viewer.commitButton.emit('clicked');
-            ok(waitFor(() => done === 1), `commit failed: ${viewer.closed ? '' : viewer.status.get_text()}`);
+            ok(waitFor(() => viewer.closed), `commit failed: ${viewer.closed ? '' : viewer.status.get_text()}`);
         } finally {
             if (!viewer.closed) viewer.window.destroy();   // a successful commit closes its own window
         }
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => rows() === 1 && !w.history.changes.get_visible()), 'history of the new file');
     });
 
@@ -240,28 +241,24 @@ export function historyTests(c: GuiContext): void {
         write(b, '# B\nchange\n');
         write(GLib.build_filenamev([repo, 'c.md']), '# C\n');
         w.load(a);
-        w.history.refresh();
+        history.refresh();
         const names = () => listRows(w.history.changedList).map(r => (childrenOf(r.get_child()!)[2] as Gtk.Label).label);
         ok(waitFor(() => names().length === 2), `list: ${names()}`);
         eq(names().sort(), ['b.md', 'c.md']);
         ok(w.history.changedBox.get_visible() && (w.history.changedBox.label ?? '').includes('(2)'), `label: ${w.history.changedBox.label}`);
-        const opened: string[] = [];
-        w.history.onOpenChanges = f => { opened.push(f); };
         const idx = names().indexOf('b.md');
         w.history.changedList.emit('row-activated', w.history.changedList.get_row_at_index(idx)!);
-        eq(opened, [b], 'the opened file');
-        const viewer = new HistoryViewer(w.win, b, null, false);
+        const viewer = opened();
         try {
-            const diff = () => viewer.diffView.buffer.get_text(viewer.diffView.buffer.get_start_iter(), viewer.diffView.buffer.get_end_iter(), false);
-            ok(waitFor(() => diff().includes('+change')), `diff: ${diff()}`);
+            eq(viewer.file, b, 'the opened file');
+            ok(waitFor(() => text(viewer.diffView).includes('+change')), `diff: ${text(viewer.diffView)}`);
         } finally {
             viewer.window.destroy();
         }
         git('add', '-A');
         git('commit', '-q', '-m', 'Clean up');
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => !w.history.changedBox.get_visible()), 'the list did not vanish after everything was committed');
-        w.history.onOpenChanges = () => {};
     });
 
     test('several files are checked and then committed at once', () => {
@@ -273,27 +270,25 @@ export function historyTests(c: GuiContext): void {
         write(e, '# E\n');
         git('add', 'c.md');
         w.load(a);
-        w.history.refresh();
+        history.refresh();
         const names = () => listRows(w.history.changedList).map(r => (childrenOf(r.get_child()!)[2] as Gtk.Label).label);
         ok(waitFor(() => names().length >= 3 && w.history.commitButton.label === 'Commit 3 files'), `list: ${names()} / ${w.history.commitButton.label}`);
         const check = (name: string) => (w.history.changedList.get_row_at_index(names().indexOf(name))!.get_child()!.get_first_child() as Gtk.CheckButton);
         check('e.md').active = false;
         eq(w.history.commitButton.label, 'Commit 2 files');
         w.history.commitButton.emit('clicked');
-        ok(w.history.commitStatus.get_text().includes('message'), 'an empty message was not rejected');
-        let done = 0;
-        w.history.onCommitted = () => { done++; };
+        ok(waitFor(() => w.history.commitStatus.get_text().includes('message')), 'an empty message was not rejected');
+        w.lastToast = '';
         w.history.message.text = 'Commit b and c';
         w.history.commitButton.emit('clicked');
-        ok(waitFor(() => done === 1), `commit failed: ${w.history.commitStatus.get_text()}`);
-        w.history.refresh();
+        ok(waitFor(() => w.lastToast === 'Committed successfully'), `commit failed: ${w.history.commitStatus.get_text()}`);
+        history.refresh();
         ok(waitFor(() => names().join() === 'e.md'), `rest of the list: ${names()}`);
         ok(!check('e.md').active, 'the e.md check vanished after reloading');
         eq(w.history.message.text, '', 'the message was not cleared');
         git('add', '-A');
         git('commit', '-q', '-m', 'Clean up e');
-        w.history.onCommitted = () => {};
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => !w.history.changedBox.get_visible()), 'the list did not vanish');
     });
 
@@ -305,20 +300,20 @@ export function historyTests(c: GuiContext): void {
         w.load(a);
         const committed = read(a);
         write(a, committed + 'junk\n');
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => names().includes('a.md')), `list: ${names()}`);
         eq(undoButton('a.md').get_tooltip_text(), 'Discard the changes to this file');
         shot('discard');
         let asked = '';
-        w.history.confirmDiscard = (kind, path) => { asked = `${kind} ${GLib.path_get_basename(path)}`; return Promise.resolve(false); };
+        history.dialogs.discard = (kind, path, viewer) => { asked = `${kind} ${GLib.path_get_basename(path)} ${viewer}`; return Promise.resolve(false); };
         undoButton('a.md').emit('clicked');
         ok(waitFor(() => asked !== ''), 'the question was not asked');
-        eq(asked, 'modified a.md');
+        eq(asked, 'modified a.md null');
         eq(read(a), committed + 'junk\n');
     });
     test('confirming goes back to the last commit, and the open document takes the file again as one undo step', () => {
         const committed = (() => { const t = read(a); return t.slice(0, t.length - 'junk\n'.length); })();
-        w.history.confirmDiscard = () => Promise.resolve(true);
+        history.dialogs.discard = () => true;
         setText(committed + 'typed in the editor\n');
         undoButton('a.md').emit('clicked');
         ok(waitFor(() => read(a) === committed), `file: ${read(a)}`);
@@ -333,44 +328,45 @@ export function historyTests(c: GuiContext): void {
         const f = GLib.build_filenamev([repo, 'discard-new.md']);
         write(f, '# New\n');
         w.load(f);
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => names().includes('discard-new.md')), `list: ${names()}`);
         eq(undoButton('discard-new.md').get_tooltip_text(), 'Delete this new file');
         let kind = '';
-        w.history.confirmDiscard = k => { kind = k; return Promise.resolve(true); };
+        history.dialogs.discard = k => { kind = k; return Promise.resolve(true); };
         undoButton('discard-new.md').emit('clicked');
         ok(waitFor(() => !GLib.file_test(f, GLib.FileTest.EXISTS)), 'the file is still there');
         eq(kind, 'untracked');
         ok(waitFor(() => w.file === null), `the document still has the file ${w.file}`);
-        w.history.confirmDiscard = () => Promise.resolve(false);
+        history.dialogs.discard = dialogs.discard;
     });
     test('the changes window has a Discard Changes button too', () => {
         w.load(a);
         const committed = read(a);
         write(a, committed + 'junk\n');
-        const viewer = new HistoryViewer(w.win, a, null, false);
+        history.openChanges(a);
+        const viewer = opened();
+        let asked: number | null = null;
+        history.dialogs.discard = (_kind, _path, from) => { asked = from; return Promise.resolve(true); };
         try {
-            let discarded: string[] = [];
-            viewer.confirmDiscard = () => Promise.resolve(true);
-            viewer.onDiscarded = paths => { discarded = paths; };
-            viewer.show();
             eq(viewer.discardButton.get_label(), 'Discard Changes');
             viewer.discardButton.emit('clicked');
-            ok(waitFor(() => discarded.length === 1), 'the changes were not discarded');
-            eq(read(a), committed);
             ok(waitFor(() => viewer.closed), 'the window stayed open');
+            eq(read(a), committed, 'the changes were not discarded');
+            ok(asked !== null && w.historyViewers.get(asked) === undefined, 'the question was not asked over the viewer');
+            eq(w.lastToast, 'The changes were discarded');
         } finally {
-            viewer.window.destroy();
+            history.dialogs.discard = dialogs.discard;
+            if (!viewer.closed) viewer.window.destroy();
         }
     });
 
     test('without a file, the opened folder still shows the uncommitted files', () => {
         write(GLib.build_filenamev([repo, 'd.md']), '# D\n');
         w.file = null; setText('');
-        w.history.setFile(null, true, repo);
+        history.show(null, repo, true);
         ok(waitFor(() => listRows(w.history.changedList).length === 1), 'the list is empty although the folder has a new file');
         ok(w.history.note.label.includes('Save the document'), 'the save hint vanished');
-        w.history.setFile(null, true, null);
+        history.show(null, null, true);
         ok(waitFor(() => listRows(w.history.changedList).length === 0), 'the list was not emptied without a folder');
     });
 
@@ -410,7 +406,7 @@ export function historyTests(c: GuiContext): void {
         const e = GLib.build_filenamev([repo, 'e.md']);
         write(e, '# E\nnew line\n');
         w.load(a);
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => listRows(w.history.changedList).length === 1), 'the changed file is not listed');
         const calls: string[][] = [];
         let onText: (m: string) => void = () => {};
@@ -494,31 +490,44 @@ export function historyTests(c: GuiContext): void {
         }
         git('add', '-A');
         git('commit', '-q', '-m', 'Add e');
-        w.history.refresh();
+        history.refresh();
         ok(waitFor(() => !w.history.changedBox.get_visible()), 'the list did not vanish');
     });
-    test('the changes window has the same assistant button, reading only its file', () => {
+    test('the changes window has the same assistant button; the controller writes from only its file', () => {
         write(a, V2 + 'three\nfour\nfive\nsix\n');
-        const viewer = new HistoryViewer(w.win, a, null, false);
-        const calls: string[][] = [];
+        const chat = w.session.assistant.chat;
+        const { keyStore, makeProvider } = chat;
+        const asked: string[] = [];
+        chat.keyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
+        chat.makeProvider = () => ({
+            chat: async (req): Promise<ChatResult> => {
+                asked.push(String(req.messages[req.messages.length - 1].content));
+                req.onText('Add line ');
+                req.onText('six');
+                return { usage: null, cancelled: false, toolCalls: [], reasoning: '' };
+            },
+        });
+        history.openChanges(a);
+        const viewer = opened();
         try {
-            ok(!viewer.writer.button.get_visible(), 'shown without an assistant');
-            viewer.writer.write = async (files, text) => { calls.push(files); text('Add line six'); return { ok: true, message: 'Add line six', shortened: false, cancelled: false }; };
             ok(viewer.writer.button.get_visible() && viewer.writer.button.sensitive, 'the button is not usable');
             viewer.writer.button.emit('clicked');
             ok(waitFor(() => !viewer.writer.busy), 'still busy');
             eq(viewer.message.text, 'Add line six');
-            eq(calls, [[a]]);
+            eq(asked.length, 1, 'the model was not asked once');
+            ok(asked[0].includes('+six') && !asked[0].includes('e.md'), 'the prompt is not the diff of a.md alone');
             ok(viewer.status.get_text().includes('from 1 file'), viewer.status.get_text());
-            if (shotPrefix) { viewer.show(); shot('viewer', viewer.window); }
+            shot('viewer', viewer.window);
         } finally {
+            chat.keyStore = keyStore;
+            chat.makeProvider = makeProvider;
             viewer.window.destroy();
         }
         git('commit', '-q', '-a', '-m', 'Add line six');
     });
 
     // Restore the state for the next tests.
-    w.history.onOpen = () => {};
+    Object.assign(history.dialogs, dialogs);
     w.sidebar.setPage('outline');
     w.file = null; setText('');
 }
