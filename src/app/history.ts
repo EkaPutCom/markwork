@@ -116,6 +116,7 @@ export class HistoryController<E extends TextEditor = TextEditor> {
     private viewerCount = 0;
     private readonly viewers = new Map<number, HistoryViewerSpec>();
     private readonly writing = new Map<number, Cancellable>();
+    private readonly running = new Set<Promise<unknown>>();   // git reads not answered yet
 
     constructor(private readonly host: HistoryHost<E>, readonly dialogs: HistoryDialogs, private readonly writer: () => WriterSources) {
         this.connectTab(host.historyTab);
@@ -136,13 +137,23 @@ export class HistoryController<E extends TextEditor = TextEditor> {
             this.host.historyTab.showChanges({ file, state: null, changed: [] });
             this.showLog(file ? _('Loading…') : _('Save the document to a file, and its git history will show up here'), false);
         }
-        if (file) void this.load(0, same);
-        void this.loadChanges();
+        if (file) this.track(this.load(0, same));
+        this.track(this.loadChanges());
     }
 
     // Read what is shown again (after a commit, or the window came back to the front).
     refresh(): void {
         if (this.file !== undefined) this.show(this.file, this.folder, true);
+    }
+
+    // Resolves once the git reads started so far have answered (tests wait for it before they dispose of a session).
+    async settled(): Promise<void> {
+        while (this.running.size) await Promise.all(this.running);
+    }
+
+    private track(work: Promise<unknown>): void {
+        const done = work.catch(() => {}).finally(() => this.running.delete(done));
+        this.running.add(done);
     }
 
     // Git results still being awaited are ignored, and a message being written stops.
@@ -156,7 +167,7 @@ export class HistoryController<E extends TextEditor = TextEditor> {
 
     private connectTab(tab: HistoryTabView): void {
         tab.onRefresh = () => this.refresh();
-        tab.onMore = () => void this.load(this.commits.length, false);
+        tab.onMore = () => this.track(this.load(this.commits.length, false));
         tab.onOpen = hash => this.openCommit(hash);
         tab.onOpenChanges = path => this.openChanges(path);
         tab.onCommit = (files, message) => this.commitTab(files, message);
@@ -255,21 +266,21 @@ export class HistoryController<E extends TextEditor = TextEditor> {
         const file = this.file;
         const id = this.openViewer({ file, commit });
         const views = this.host.historyViewers;
-        void commitDiff(file, commit).then(result => {
+        this.track(commitDiff(file, commit).then(result => {
             if (this.viewers.has(id)) views.showDiff(id, this.diffText(result, _('There are no content changes in this commit (for example only a rename)')));
-        });
-        void commitContent(file, commit).then(result => {
+        }));
+        this.track(commitContent(file, commit).then(result => {
             if (this.viewers.has(id)) views.showContent(id, result.ok ? result.text : fmt(_('Failed to read the file contents:\n{message}'), { message: result.message }));
-        });
+        }));
     }
 
     // A file's uncommitted changes against the last commit, with a form to commit or discard them.
     openChanges(path: string): void {
         if (path !== this.file && !this.changed.some(c => c.path === path)) return;
         const id = this.openViewer({ file: path, commit: null });
-        void workingDiff(path).then(result => {
+        this.track(workingDiff(path).then(result => {
             if (this.viewers.has(id)) this.host.historyViewers.showDiff(id, this.diffText(result, _('There are no uncommitted changes')));
-        });
+        }));
     }
 
     private diffText(result: TextResult, empty: string): HistoryText {

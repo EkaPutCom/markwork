@@ -93,6 +93,7 @@ export async function historyControllerTests(): Promise<void> {
         for (const notice of [...logs, ...changes]) eq(JSON.parse(JSON.stringify(notice)), notice, 'a notice is not plain data');
         history.show(null, root, true);
         eq(lastLog().note, 'Save the document to a file, and its git history will show up here');
+        await within(history.settled());
         session.dispose();
     });
 
@@ -103,6 +104,7 @@ export async function historyControllerTests(): Promise<void> {
         disk.write(disk.join(plain, 'x.md'), '# x\n');
         history.show(disk.join(plain, 'x.md'), null);
         await until(() => lastLog().note.includes('not in a git repository'));
+        await within(history.settled());
         session.dispose();
     });
 
@@ -127,6 +129,7 @@ export async function historyControllerTests(): Promise<void> {
         session.host.historyViewers.onClosed(3);
         await pause(300);
         ok(!diffs.has(3) && !contents.has(3), 'a closed viewer was drawn on');
+        await within(history.settled());
         session.dispose();
     });
 
@@ -151,6 +154,7 @@ export async function historyControllerTests(): Promise<void> {
         await until(() => lastLog().commits.length === 3 && lastChanges().changed.length === 1);
         eq(lastLog().commits[0].subject, 'Commit a and b');
         eq(lastChanges().changed.map(f => f.name), ['c.md'], 'c.md was committed too');
+        await within(history.settled());
         session.dispose();
     });
 
@@ -174,6 +178,7 @@ export async function historyControllerTests(): Promise<void> {
         await until(() => lastLog().commits.length === 3);
         eq(await viewers.onCommit(1, 'Again'), 'There is nothing to commit here', 'a closed viewer committed');
         eq(await git(root, 'status', '--porcelain'), '');
+        await within(history.settled());
         session.dispose();
     });
 
@@ -202,6 +207,7 @@ export async function historyControllerTests(): Promise<void> {
         eq(toasts.at(-1), 'The changes were discarded');
         await until(() => lastChanges().changed.length === 0);
         eq(await tab.onDiscard(a), { error: 'The file is no longer in the list of changes' });
+        await within(history.settled());
         session.dispose();
     });
 
@@ -215,6 +221,7 @@ export async function historyControllerTests(): Promise<void> {
         eq(asked, ['modified a.md 1']);
         eq(closed, [1]);
         eq(read(a), V2);
+        await within(history.settled());
         session.dispose();
     });
 
@@ -251,6 +258,7 @@ export async function historyControllerTests(): Promise<void> {
         const stopped = await within(second);
         ok(stopped.ok && stopped.cancelled, JSON.stringify(stopped));
         eq(await tab.onWrite([disk.join(root, 'secret.md')]), { ok: false, reason: 'failed', message: 'there is nothing to describe' });
+        await within(history.settled());
         session.dispose();
     });
 }
