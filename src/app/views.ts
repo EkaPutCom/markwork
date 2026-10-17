@@ -309,32 +309,69 @@ export class ViewController<E extends TextEditor> {
 
     // Changes from the board → document text (one undo step).
     private writeBoard(board: Board): void {
+        this.host.active().editor.replaceText(this.boardWritten(board));
+    }
+
+    // What writing `board` to the active document involves besides the text itself: the journal records the change, the
+    // board recognizes the text as its own, and the counts follow. Returns the text.
+    private boardWritten(board: Board): string {
         const doc = this.host.active();
         const state = this.state(doc);
         if (state.boardText) this.host.journal.recordBoard(doc.file, parseBoard(state.boardText), board);
         const text = serializeBoard(board);
         state.boardText = text;   // recognize this change as the board's own
-        doc.editor.replaceText(text);
         this.showBoardCounts(board);
+        return text;
     }
 
-    // Change the board in `file` for the orchestrator: through its editor if open (one undo step), otherwise directly on disk.
+    // Change the board in `file` for the orchestrator: through its editor if open (one undo step), otherwise directly on
+    // disk. The error, if any; an open document whose editor applies the change later (over the app protocol) reports
+    // its error as a toast instead.
     updateBoardFile(file: string, edit: (board: Board) => Board): string | null {
         const doc = this.host.docs().find(d => d.file === file);
+        if (!doc) return this.updateBoardOnDisk(file, edit);
+        let returned = false, error: string | null = null;
+        doc.editor.update(text => {
+            const result = this.editedBoard(doc, file, text, edit);
+            if (typeof result === 'string' || result === null) {
+                error = result;
+                if (error && returned) this.host.toast(error);   // applied later: the caller has its answer already
+                return null;
+            }
+            return result.text;
+        });
+        returned = true;
+        return error;
+    }
+
+    // The board of an open document after `edit`: its text, null when nothing changed, or an error. Applied as the editor
+    // runs it, so it reads the text as it is then, including earlier writes of the same turn.
+    private editedBoard(doc: Doc<E>, file: string, text: string, edit: (board: Board) => Board): { text: string } | string | null {
         try {
-            if (!doc) flushWrites(file);
-            const text = doc ? doc.editor.getText() : readTextFile(file);
             if (!isStructured(text)) return 'the board file is no longer a board (its frontmatter has no "layout:")';
             const board = parseBoard(text);
             const next = edit(board);
             if (next === board) return null;
             if (doc === this.host.active() && this.boardMode) {
                 this.setBoardView(next);
-                this.writeBoard(next);   // records its own activity
-                return null;
+                return { text: this.boardWritten(next) };   // records its own activity
             }
-            if (doc) doc.editor.replaceText(serializeBoard(next));
-            else writeTextFile(file, serializeBoard(next));
+            this.host.journal.recordBoard(file, board, next);
+            return { text: serializeBoard(next) };
+        } catch (e) {
+            return errorMessage(e);
+        }
+    }
+
+    private updateBoardOnDisk(file: string, edit: (board: Board) => Board): string | null {
+        try {
+            flushWrites(file);
+            const text = readTextFile(file);
+            if (!isStructured(text)) return 'the board file is no longer a board (its frontmatter has no "layout:")';
+            const board = parseBoard(text);
+            const next = edit(board);
+            if (next === board) return null;
+            writeTextFile(file, serializeBoard(next));
             this.host.journal.recordBoard(file, board, next);
             return null;
         } catch (e) {

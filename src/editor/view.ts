@@ -289,6 +289,10 @@ export class MarkdownView implements TextEditor {
     isModified(): boolean { return this.buffer.get_modified(); }
     setModified(modified: boolean): void { this.buffer.set_modified(modified); }
     insertAtCursor(text: string): void { this.buffer.insert_at_cursor(text, -1); }
+    update(edit: (text: string) => string | null): void {
+        const next = edit(this.getText());
+        if (next !== null) this.replaceText(next);
+    }
 
     // Replace the whole contents without entering the undo history (used when opening a file).
     setText(text: string): void {
