@@ -4,7 +4,10 @@
 
 import { AppSession } from '../../src/app/session.js';
 import type { MachineDraft, PreferencesData, PreferencesView } from '../../src/app/preferences.js';
-import { section, test, eq, ok } from '../framework.js';
+import type { ProjectPage, WorktreeList } from '../../src/app/projects.js';
+import { runGit } from '../../src/git.js';
+import { section, test, eq, ok, within, until, tmp, disk } from '../framework.js';
+import { host as testHost } from '../host.js';
 import { fakeFrontend, memorySettings, quiet } from './appsession.js';
 
 export async function preferencesTests(): Promise<void> {
@@ -97,6 +100,87 @@ export async function preferencesTests(): Promise<void> {
         eq(settings.machineProjects, { 'vps:shop': '/srv/shop' });
         view.onRemoveMachine('ghost');
         eq(Object.keys(settings.machines), ['vps'], 'an unknown name changes nothing');
+        session.dispose();
+    });
+
+    // A repository with one card worktree, and a session whose preferences are open on it.
+    const gitIn = async (cwd: string, ...args: string[]): Promise<string> => {
+        const run = await within(runGit(cwd, args));
+        if (run?.status !== 0) throw new Error(`git ${args.join(' ')}: ${run?.err}`);
+        return run.out.trim();
+    };
+    let n = 0;
+    const projectSetup = async () => {
+        for (const [name, value] of Object.entries({ GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 't@example.com' })) testHost().setenv(name, value);
+        const parent = disk.join(tmp, `projects-${++n}`);
+        const repo = disk.join(parent, 'shop');
+        disk.mkdirs(repo);
+        await gitIn(repo, 'init', '-q', '-b', 'main');
+        disk.write(disk.join(repo, 'a.txt'), 'a\n');
+        await gitIn(repo, 'add', '-A');
+        await gitIn(repo, 'commit', '-q', '-m', 'First');
+        const wt = disk.join(parent, '.markwork-worktrees', 'shop', 'fix-login');
+        await gitIn(repo, 'worktree', 'add', '-q', '-b', 'markwork/fix-login', wt);
+        const pages: ProjectPage[] = [];
+        const lists: WorktreeList[] = [];
+        const removals: string[] = [];
+        const answers = { remove: true };
+        const settings = memorySettings();
+        settings.harnessMachine = '';
+        settings.projects = { shop: repo };
+        const view = quiet<PreferencesView>({ showProject: p => { pages.push(p); }, showWorktrees: l => { lists.push(l); } });
+        const session = new AppSession(fakeFrontend(settings, [], undefined, { preferencesView: view }));
+        Object.assign(session.preferences.dialogs, { removeWorktree: (branch: string) => { removals.push(branch); return answers.remove; } });
+        session.start();
+        return { session, settings, view, pages, lists, removals, answers, repo, wt };
+    };
+
+    await test('the Projects group is sent as plain rows; a project\'s page and its card worktrees follow when it is chosen', async () => {
+        const { session, view, pages, lists, repo, wt } = await projectSetup();
+        eq(session.preferences.data().projects, [{ name: 'shop', folder: repo, worktrees: true }]);
+        view.onOpenProject('ghost');
+        eq(pages.length, 0, 'a project that is not one');
+        view.onOpenProject('shop');
+        eq([pages[0].name, pages[0].folder, pages[0].remote, pages[0].isolation.slots, pages[0].branchPrefix], ['shop', repo, false, 2, 'markwork/']);
+        eq(JSON.parse(JSON.stringify(pages[0])), pages[0], 'not plain data');
+        await until(() => lists.some(l => !l.loading));
+        eq(lists[0].loading, true, 'first "looking"');
+        eq(lists.at(-1)!.items, [{ branch: 'markwork/fix-login', path: wt }]);
+        session.dispose();
+    });
+
+    await test('a change to a project is checked before it is written; a field that is not an isolation setting is left out', async () => {
+        const { session, settings, view } = await projectSetup();
+        const stored = () => JSON.parse(settings.projectOptions.shop ?? '{}');
+        eq(view.onSetProject('shop', { slots: 3 }), null);
+        eq(stored().slots, 3);
+        for (const bad of [{ slots: 99 }, { slots: 1.5 }, { slots: 0 }, { dir: 'relative/path' }, { afterMerge: 'bogus' as never }, { worktrees: 'yes' as never }, { base: 3 as never }]) {
+            ok(view.onSetProject('shop', bad) !== null, JSON.stringify(bad));
+        }
+        eq(stored().slots, 3, 'nothing else was written');
+        ok(view.onSetProject('ghost', { slots: 2 }) !== null, 'an unknown project');
+        eq(view.onSetProject('shop', { base: 'main', evil: 1 } as never), null);
+        eq(Object.keys(stored()).sort(), ['afterMerge', 'base', 'dir', 'slots', 'worktrees'], 'only isolation settings');
+        eq(view.onSetProject('shop', { dir: '/srv/trees', worktrees: false }), null);
+        eq([stored().dir, stored().worktrees], ['/srv/trees', false]);
+        session.dispose();
+    });
+
+    await test('removing a worktree: only one the core listed, only after asking, then the list is sent again', async () => {
+        const { session, view, lists, removals, answers, repo, wt } = await projectSetup();
+        view.onOpenProject('shop');
+        await until(() => lists.some(l => !l.loading));
+        ok(await view.onRemoveWorktree('shop', repo) !== null, 'the project folder itself is not a card worktree');
+        ok(await view.onRemoveWorktree('shop', '/etc') !== null, 'a path that was not listed');
+        eq(removals, [], 'no question for those');
+        answers.remove = false;
+        eq(await view.onRemoveWorktree('shop', wt), null);
+        eq([removals, disk.exists(wt)], [['markwork/fix-login'], true], 'asked, declined, kept');
+        answers.remove = true;
+        eq(await view.onRemoveWorktree('shop', wt), null);
+        eq(disk.exists(wt), false, 'the worktree folder is gone');
+        eq(lists.at(-1)!.items, [], 'the list was read again');
+        eq(await gitIn(repo, 'branch', '--list', 'markwork/*'), '', 'with its branch');
         session.dispose();
     });
 }

@@ -173,7 +173,7 @@ export class MainWindow implements CommandHost {
         this.pullView = new PullView();
         this.reviewView = new HarnessReviewView();
         this.searchPanel = new SearchPanel();
-        this.preferences = new PreferencesPresenter(() => this.win, () => ({ settings: this.settings, access: this.harness }), () => this.session.preferences.closed());
+        this.preferences = new PreferencesPresenter(() => this.win, () => this.session.preferences.closed());
         this.sidebar = new Sidebar(this.fileTree.widget, this.searchPanel.widget, this.outline.widget, this.history.widget, this.collabPanel.widget);
         this.statusBar = new StatusBar();
         this.board = new KanbanBoard();
@@ -395,6 +395,8 @@ export class MainWindow implements CommandHost {
         return {
             preferences: {
                 machine: taken => machineDialog(this.win, taken),
+                removeWorktree: branch => decideDialog(this.win, fmt(_('Remove the worktree of {branch}?'), { branch }),
+                    _('Its folder and its branch are deleted, with every change in them that was not merged. The project folder is not touched.'), _('Remove'), true),
             },
             search: {
                 confirm: (message, detail, accept) => decideDialog(this.win, message, detail, accept),
