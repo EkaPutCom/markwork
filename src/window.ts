@@ -222,6 +222,7 @@ export class MainWindow implements CommandHost {
         this.board.harness = {
             status: card => this.harness.status(card),
             menu: (card, at) => this.harness.menu(card, at),
+            runMenu: token => this.harness.runMenu(token),
         };
         this.tabBar.onSelect = id => {
             const doc = this.docs.find(d => d.id === id);

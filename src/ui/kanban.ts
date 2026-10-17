@@ -32,6 +32,7 @@ import { confirmDialog, editCardDialog, promptDialog, type CardDraft } from './d
 import type { Palette } from '../colors.js';
 import { after, childrenOf, onChipClick, onClick, onKeyPress, pack, removeChildren, type Awaitable } from '../gtkutil.js';
 import { popupMenu, separator, type MenuEntry } from './menu.js';
+import type { HarnessMenuEntry } from '../app/harness.js';
 import { _, fmt, pgettext } from '../i18n.js';
 
 const COLUMN_WIDTH = 290;
@@ -59,7 +60,8 @@ export interface BoardDialogs {
 export type CardRunStatus = 'queued' | 'working' | 'waiting' | 'done' | 'failed' | 'stopped';
 export interface BoardHarness {
     status(card: Card): CardRunStatus | null;
-    menu(card: Card, at: Position): MenuEntry[];
+    menu(card: Card, at: Position): HarnessMenuEntry[];
+    runMenu(token: number): void;
 }
 
 export interface ColumnView {
@@ -501,6 +503,11 @@ export class KanbanBoard {
 
     // ---------- Menu ----------
 
+    // The harness's entries for a card, each running through its token.
+    private harnessEntries(harness: BoardHarness, card: Card, at: Position): MenuEntry[] {
+        return harness.menu(card, at).map(({ label, enabled, token }) => ({ label, enabled, run: () => harness.runMenu(token) }));
+    }
+
     cardMenu(column: number, index: number): MenuEntry[] {
         const col = this.board.columns[column];
         const card = col.cards[index];
@@ -515,7 +522,7 @@ export class KanbanBoard {
             { label: _('Move to'), enabled: this.board.columns.length > 1, submenu: move },
             { label: _('Move Up'), enabled: index > 0, run: () => this.commit(moveCard(this.board, at, { column, index: index - 1 })) },
             { label: _('Move Down'), enabled: index < col.cards.length - 1, run: () => this.commit(moveCard(this.board, at, { column, index: index + 1 })) },
-            ...(this.harness && this.agentsEnabled ? [separator(), ...this.harness.menu(card, at)] : []),
+            ...(this.harness && this.agentsEnabled ? [separator(), ...this.harnessEntries(this.harness, card, at)] : []),
             separator(),
             { label: _('Delete'), run: () => this.deleteCardConfirm(at) },
         ];

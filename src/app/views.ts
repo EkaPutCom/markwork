@@ -107,6 +107,8 @@ export class ViewController<E extends TextEditor> {
     private readonly states = new WeakMap<Doc<E>, ViewState>();
     // While the board is grouped by a field (`group:`): the document's own board and the one the board view shows.
     private grouped: { source: Board; view: Grouped; field: FieldDef } | null = null;
+    // The document's board as the board view last got it or reported it: the core holds the board, it does not ask the view.
+    private board: Board | null = null;
 
     private state(doc: Doc<E>): ViewState {
         let state = this.states.get(doc);
@@ -214,7 +216,7 @@ export class ViewController<E extends TextEditor> {
 
     // The view that shows a board, a list, a table, or one of the other layouts (they all read the same model); null for the others.
     private viewOf(view: View | null): { setBoard(board: Board): void; getBoard(): Board; commit(board: Board): void } | null {
-        if (view === 'board') return { setBoard: b => this.setBoardView(b), getBoard: () => this.grouped?.source ?? this.host.board.getBoard(), commit: b => this.commitBoardView(b) };
+        if (view === 'board') return { setBoard: b => this.setBoardView(b), getBoard: () => this.currentBoard(), commit: b => this.commitBoard(b) };
         if (view === 'inbox') return this.host.inbox;
         if (view === 'table') return this.host.table;
         return view === 'calendar' || view === 'timeline' || view === 'gallery' || view === 'chart' ? this.host.layouts[view] : null;
@@ -222,6 +224,7 @@ export class ViewController<E extends TextEditor> {
 
     // The board view gets the document's board, or the board made from the values of a field when the document says `group:`.
     private setBoardView(source: Board): void {
+        this.board = source;
         const field = groupFieldOf(source, boardSchema(source));
         this.grouped = field ? { source, view: groupBoard(source, field), field } : null;
         this.host.board.agentsEnabled = !field;
@@ -232,15 +235,21 @@ export class ViewController<E extends TextEditor> {
     // A change from the board view; for a grouped board it is written back to the notes first.
     private boardChanged(board: Board): void {
         const grouped = this.grouped;
-        if (!grouped) { this.writeBoard(board); return; }
+        if (!grouped) { this.board = board; this.writeBoard(board); return; }
         const source = ungroupBoard(grouped.source, grouped.view, board, grouped.field);
+        this.board = source;
         this.grouped = { ...grouped, source, view: groupBoard(source, grouped.field) };
         this.host.board.replace(this.grouped.view.board);
         this.writeBoard(source);
     }
 
-    // A change made outside the board view (the Fields… dialog): shown and written.
-    private commitBoardView(board: Board): void {
+    // The document's board: the one the view shows (the source of a grouped one), or the document's text when none was shown.
+    currentBoard(): Board {
+        return this.grouped?.source ?? this.board ?? parseBoard(this.host.active().editor.getText());
+    }
+
+    // A change made outside the board view (the Fields… dialog, a card's menu): shown and written.
+    commitBoard(board: Board): void {
         this.setBoardView(board);
         this.writeBoard(board);
     }

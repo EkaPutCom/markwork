@@ -23,6 +23,7 @@ import { PreferencesController, type PreferencesDialogs, type PreferencesHost } 
 import { OutlineController, type OutlineHost } from './outline.js';
 import { FilesController, type FilesDialogs, type FilesHost } from './files.js';
 import { SearchController, type SearchDialogs, type SearchHost } from './search.js';
+import type { Board } from '../markdown/kanban.js';
 import type { Doc, TextEditor, ToastAction, ToastButton } from './document.js';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
@@ -32,7 +33,7 @@ export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & 
 // What the session answers itself, from the controllers it owns.
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
     | 'fileBack' | 'newDocument' | 'showDocument' | 'saveAll' | 'showChat' | 'boardShown' | 'updateBoardFile' | 'record' | 'agentHost' | 'runs'
-    | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted' | 'settings' | 'toast';
+    | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted' | 'settings' | 'toast' | 'boardNow' | 'commitBoard';
 
 // The views, notices, and system services of the frontend: the host members that are not another controller. A toast
 // button reaches it as a token, which it gives back to AppSession.toastActivated when the user presses the button.
@@ -167,6 +168,8 @@ export class AppSession<E extends TextEditor> {
             refreshHome: value(() => this.refreshHome()),
             root: value(() => this.files.root),
             settings: get(() => this.settings),
+            boardNow: value(() => this.views.currentBoard()),
+            commitBoard: value((board: Board) => this.views.commitBoard(board)),
             toast: value((message: string, action?: ToastAction) => this.toast(message, action)),
             // A file or folder moved, renamed, or trashed in the Files tab: the open documents follow, then the frontend
             // highlights the active file again and re-reads its history.
