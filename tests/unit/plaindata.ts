@@ -63,9 +63,7 @@ type KNOWN =
     | 'documents.settings.onChanged' | 'documents.settings.store.onChanged' | 'dialogs.collab.token' | 'dialogs.views.editSchema'
     // A live object: a Doc with its editor, the editor itself, a harness Run (5.2, 6.5).
     | 'documents.attach' | 'documents.detach' | 'documents.activated' | 'documents.contentChanged' | 'documents.refreshTitle'
-    | 'documents.setIcon' | 'documents.createEditor' | 'screen.showText' | 'logs.show'
-    // Not JSON: a Set of commented lines, a Date in HomeData, an Iterable of command names (4.4).
-    | 'reviewView.setDiff' | 'screen.showHome' | 'screen.enableActions';
+    | 'documents.setIcon' | 'documents.createEditor' | 'screen.showText' | 'logs.show';
 
 // Fails to typecheck, naming the members, when Found and KNOWN differ in either direction.
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;

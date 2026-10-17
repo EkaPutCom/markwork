@@ -67,13 +67,13 @@ export class HomeView {
         if (data.runs.length || data.agentHost) this.addSection(_('Agent'), this.list([...(data.agentHost ? [this.hostRow(data.agentHost)] : []), ...data.runs.map(run => this.runRow(run))]));
         this.addSection(_('Due dates'), this.taskList(data));
         if (data.inboxes.length) this.addSection(_('Inbox'), this.list(data.inboxes.map(inbox => this.inboxRow(inbox))));
-        if (data.recent.length) this.addSection(_('Recent files'), this.list(data.recent.map(entry => this.recentRow(entry, data.now))));
+        if (data.recent.length) this.addSection(_('Recent files'), this.list(data.recent.map(entry => this.recentRow(entry, new Date(data.now)))));
     }
 
     // ---------- Sections ----------
 
     private greeting(data: HomeData): string {
-        const part: DayPart = dayPart(data.now.getHours());
+        const part: DayPart = dayPart(new Date(data.now).getHours());
         const { name } = data;
         if (!name) return { morning: _('Good morning'), midday: _('Good afternoon'), afternoon: _('Good afternoon'), evening: _('Good evening') }[part];
         const text = { morning: _('Good morning, {name}'), midday: _('Good afternoon, {name}'), afternoon: _('Good afternoon, {name}'), evening: _('Good evening, {name}') }[part];
@@ -84,7 +84,7 @@ export class HomeView {
         const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, margin_bottom: 8 });
         const title = new Gtk.Label({ label: this.greeting(data), xalign: 0, wrap: true });
         title.add_css_class('title-1');
-        const date = new Gtk.Label({ label: data.now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), xalign: 0, wrap: true });
+        const date = new Gtk.Label({ label: new Date(data.now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), xalign: 0, wrap: true });
         date.add_css_class('dim-label');
         box.append(title);
         box.append(date);
@@ -148,7 +148,7 @@ export class HomeView {
             const folder = new Gtk.Label({ label: entry.title, xalign: 0, ellipsize: Pango.EllipsizeMode.END });
             folder.add_css_class('heading');
             const file = new Gtk.Label({ label: entry.subtitle, xalign: 0, ellipsize: Pango.EllipsizeMode.MIDDLE });
-            const time = new Gtk.Label({ label: ageLabel(new Date(entry.time * 1000), data.now), xalign: 0, ellipsize: Pango.EllipsizeMode.END });
+            const time = new Gtk.Label({ label: ageLabel(new Date(entry.time * 1000), new Date(data.now)), xalign: 0, ellipsize: Pango.EllipsizeMode.END });
             time.add_css_class('dim-label');
             time.add_css_class('caption');
             const icon = new Gtk.Image({ icon_name: 'folder-documents-symbolic', halign: Gtk.Align.START, margin_bottom: 4 });

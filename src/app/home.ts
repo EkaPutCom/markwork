@@ -46,7 +46,7 @@ export interface HomeJournal {
 
 // Everything the Home page shows; the frontend only draws it.
 export interface HomeData {
-    now: Date;
+    now: number;                  // the moment the page was made, in milliseconds since 1970
     name: string | null;          // the user's first name, null = a greeting without a name
     workspace: string | null;     // work folder; null = none yet, due dates and the inbox cannot be read
     resume: HomeEntry[];
@@ -79,7 +79,7 @@ export class HomeController {
         const files = root ? this.host.workspace.files(root, { keep: isStructured }) : [];
         const realName = platform().realName();
         return {
-            now,
+            now: now.getTime(),
             name: realName ? realName.split(/\s+/)[0] : null,
             workspace: root,
             resume: resume.map(r => this.entry(r, true)),
