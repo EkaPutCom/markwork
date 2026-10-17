@@ -8,7 +8,7 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
-import type { Heading } from '../editor/highlighter.js';
+import type { OutlineHeading, OutlineView } from '../app/outline.js';
 import { _ } from '../i18n.js';
 
 // One outline row: only what affects its display. The target line number of a click is read from the latest list of headings.
@@ -31,13 +31,13 @@ const CHUNK = 25;   // new outline items per turn when fed in piece by piece
 
 interface Shown { level: number; text: string }
 
-export class Outline {
+export class Outline implements OutlineView {
     readonly store = new Gio.ListStore({ item_type: HeadingItem.$gtype });
     readonly list: Gtk.ListView;
     readonly widget: Gtk.Box;
-    onJump: (line: number) => void = () => {};  // heading clicked
+    onJump: (index: number) => void = () => {};  // heading clicked: its place in the list the panel was sent
 
-    private headings: Heading[] = [];
+    private headings: readonly OutlineHeading[] = [];
     private shown: Shown[] = [];   // the store's current contents (can lag behind headings while being fed in)
     private filling = 0;
 
@@ -57,10 +57,7 @@ export class Outline {
         });
         this.list = new Gtk.ListView({ model: new Gtk.NoSelection({ model: this.store }), factory, single_click_activate: true });
         this.list.add_css_class('navigation-sidebar');
-        this.list.connect('activate', (_list, position) => {
-            const heading = this.headings[position];
-            if (heading) this.onJump(heading.line);
-        });
+        this.list.connect('activate', (_list, position) => this.onJump(position));
 
         const placeholder = new Gtk.Label({ label: _('No headings yet'), margin_top: 16, margin_bottom: 16, margin_start: 16, margin_end: 16, valign: Gtk.Align.START });
         placeholder.add_css_class('dim-label');
@@ -82,9 +79,9 @@ export class Outline {
         return this.store.n_items;
     }
 
-    // headings from editor/highlighter.ts
-    update(headings: Heading[]): void {
-        // Line shifts change the click target, not the label's appearance.
+    // The headings of the active document (app/outline.ts).
+    showHeadings(headings: readonly OutlineHeading[]): void {
+        // Line shifts change the click target, which the controller keeps, not the label's appearance.
         this.headings = headings;
         if (this.filling || this.step(SMALL)) return;
         // Opening another document: creating all items at once holds up the main loop (±0.1 ms per item,
@@ -103,7 +100,7 @@ export class Outline {
     // so the other rows are not redrawn.
     private step(limit: number): boolean {
         const shown = this.shown, headings = this.headings;
-        const same = (a: Shown, b: Heading) => a.level === b.level && a.text === b.text;
+        const same = (a: Shown, b: OutlineHeading) => a.level === b.level && a.text === b.text;
         let first = 0, oldEnd = shown.length, newEnd = headings.length;
         while (first < oldEnd && first < newEnd && same(shown[first], headings[first])) first++;
         while (oldEnd > first && newEnd > first && same(shown[oldEnd - 1], headings[newEnd - 1])) { oldEnd--; newEnd--; }

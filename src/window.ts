@@ -198,12 +198,12 @@ export class MainWindow implements CommandHost {
 
         // The components do not know each other; the window is what connects them.
         this.inbox.onOpenNote = link => this.openNote(link);
-        this.inbox.listNotes = () => this.session.notes.names(this.doc);
+        this.inbox.listNotes = () => this.session.notes.namesFor(this.doc.id);
         this.table.onOpenNote = link => this.openNote(link);
-        this.table.listNotes = () => this.session.notes.names(this.doc);
+        this.table.listNotes = () => this.session.notes.namesFor(this.doc.id);
         for (const view of Object.values(this.layouts)) {
             view.onOpenNote = link => this.openNote(link);
-            view.listNotes = () => this.session.notes.names(this.doc);
+            view.listNotes = () => this.session.notes.namesFor(this.doc.id);
         }
         this.gallery.baseDir = () => (this.doc.file ? GLib.path_get_dirname(this.doc.file) : null);
         this.home.onOpenFile = path => this.openInTab(path);
@@ -216,12 +216,11 @@ export class MainWindow implements CommandHost {
         this.home.onOpenJournal = () => this.journal.open();
         this.home.onCaptureJournal = () => this.journal.capture();
         this.board.onOpenNote = link => this.openNote(link);
-        this.board.listNotes = () => this.session.notes.names(this.doc);
+        this.board.listNotes = () => this.session.notes.namesFor(this.doc.id);
         this.board.harness = {
             status: card => this.harness.status(card),
             menu: (card, at) => this.harness.menu(card, at),
         };
-        this.outline.onJump = line => this.editor.jumpToLine(line);
         this.tabBar.onSelect = id => {
             const doc = this.docs.find(d => d.id === id);
             if (doc) this.activate(doc);
@@ -369,6 +368,7 @@ export class MainWindow implements CommandHost {
             get layouts() { return w.layouts; },
             get fileTree() { return w.fileTree; },
             get searchView() { return w.searchPanel; },
+            get outlineView() { return w.outline; },
             openFile: path => this.openFile(path),
             toast: (message, action) => this.toast(message, action),
             refreshTree: () => { if (this.root) this.session.files.refresh(this.root); },
@@ -537,7 +537,7 @@ export class MainWindow implements CommandHost {
             activated: doc => {
                 this.findBar.setTarget(doc.editor.buffer, doc.editor.view);
                 this.tabBar.setActive(doc.id);
-                this.outline.update(doc.editor.headings);
+                this.session.outline.show(doc);
                 this.session.views.sync();
                 this.updateTitle();
                 this.fileTree.reveal(doc.file);
@@ -567,9 +567,9 @@ export class MainWindow implements CommandHost {
     private attach(doc: Doc): void {
         const editor = doc.editor;
         // Editor callbacks only apply while their document is active; background ones do not touch the outline and status bar.
-        editor.onHighlighted = ({ headings, words, characters }) => {
+        editor.onHighlighted = ({ words, characters }) => {
             if (doc !== this.doc) return;
-            this.outline.update(headings);
+            this.session.outline.changed(doc);
             if (!this.session.views.structuredMode) this.statusBar.setDocumentCounts(words, characters);
         };
         editor.onCursorMoved = (line, column) => {
@@ -582,7 +582,7 @@ export class MainWindow implements CommandHost {
         editor.getBaseDir = () => doc.file ? GLib.path_get_dirname(doc.file) : GLib.get_home_dir();
         editor.onOpenNote = link => this.openNote(link, doc);
         editor.onOpenDocument = path => this.openInTab(path);
-        editor.listNotes = () => this.session.notes.names(doc);
+        editor.listNotes = () => this.session.notes.namesFor(doc.id);
         editor.buffer.connect('modified-changed', () => this.refreshTitle(doc));
         // Text changed while the board is shown and not by the board itself (undo/redo): re-read.
         editor.buffer.connect('changed', () => {

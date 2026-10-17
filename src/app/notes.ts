@@ -27,6 +27,13 @@ export class NoteLinks {
         return root ? this.host.workspace.names(root) : [];
     }
 
+    // The same for a document named by its id, as a frontend in another process asks (docs/design/protocol.md 7);
+    // none for an id that is not open.
+    namesFor(id: number): string[] {
+        const doc = this.host.docs().find(d => d.id === id);
+        return doc ? this.names(doc) : [];
+    }
+
     // Ctrl+click [[note]]: open its file in a tab. A note that does not exist yet is opened as an empty document
     // next to the source document and only written to disk when saved, so a mistaken click leaves no file behind.
     open(link: WikiLink, doc: Doc): void {
