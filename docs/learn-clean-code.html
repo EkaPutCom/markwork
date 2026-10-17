@@ -474,6 +474,35 @@ this.session = new AppSession&lt;MarkdownView&gt;({ host: this.frontendHost(), d
   <h3>Commands as data</h3>
   <p>Commands were <code>Gio.Action</code>s in <code>actions.ts</code> with only their labels in <code>app/commands.ts</code>, so the default keys, which commands apply to a text editor, and what each one does lived in GTK. <code>COMMANDS</code> is now the table: an id, a palette label, default keys in a neutral notation (<code>Ctrl+Shift+P</code>), a scope (<code>text</code>, <code>document</code>, <code>structured</code>), and a <code>run</code> that acts only through <code>CommandHost</code>. <code>actions.ts</code> shrank from 171 to 69 lines: it maps the table onto actions and accelerators (<code>gtkAccelerators()</code>), and a test checks every key against the accelerator the action had before. <code>ViewController</code> enables the actions of a scope from the same table instead of keeping three name lists.</p>
   <div class="lesson"><b>Lesson</b>A composition root is code a second frontend would have to copy. Find the lines that connect controllers to each other and move them behind one constructor; what stays is only what needs a widget.</div>
+  <h3>What the window still decided</h3>
+  <p>Once every feature had a controller, a pass over <code>window.ts</code> asked a narrower question: which of its lines make a decision, rather than draw? It found twelve. Starting the window (folder, file, last tabs, welcome text, or Home), the order of the questions when it closes, the six controllers told about a newly opened folder, the fan-out after a document became active, whether a file from the tree is an image or a tab, how a relative link resolves, the Recent list, the titles, the command host, and the sentences of five dialogs. Each moved into <code>AppSession</code> or the controller that asks, and the window now only <i>reports</i>: <code>edited(id)</code>, <code>windowFocused(active)</code>, <code>sidebarShown(page)</code>.</p>
+<pre><code>// before: window.ts decided what a new folder means
+private applyFolder(absolute: string, show: boolean): void {
+    this.session.files.setRoot(absolute);
+    this.workspace.warm(absolute);
+    this.syncHistory();
+    this.pulls.folderChanged();
+    void this.collab.setFolder(absolute);
+    this.settings.folder = absolute;
+    // …
+}
+
+// after: window.ts only forwards; AppSession.openFolder() holds the list
+openFolder(path: string, show = true): void {
+    void this.session.openFolder(path, show);
+}</code></pre>
+  <p>Two of the moves changed a shape, not only a place. A board view used to report the board that resulted (<code>onChange(board)</code>); it now reports what the user did, a <code>NoteEdit</code> in <code>markdown/noteedit.ts</code>, and <code>ViewController</code> applies it to the board it holds, so an edit that arrives after a harness run changed the text is applied to the text as it is. And a view callback that answered at once (<code>onApply</code>, <code>onMove</code>, <code>onSetProject</code>, …) now returns an <code>Awaitable</code>, so its view already copes with an answer that comes a turn later.</p>
+  <div class="scroll-x"><table>
+    <thead><tr><th>Measure</th><th class="num">Before</th><th class="num">After</th></tr></thead>
+    <tbody>
+      <tr><td><code>window.ts</code> lines</td><td class="num">1,026</td><td class="num">933</td></tr>
+      <tr><td><code>window.ts</code> local imports (fan-out)</td><td class="num">61</td><td class="num">58</td></tr>
+      <tr><td><code>GLib.</code>/<code>Gio.</code> uses in <code>window.ts</code></td><td class="num">25</td><td class="num">16</td></tr>
+      <tr><td><code>app/session.ts</code> lines</td><td class="num">225</td><td class="num">513</td></tr>
+    </tbody>
+  </table></div>
+  <p>The tests that pin the moves run on both runtimes: what the window opens with, closing, a folder switch, the history read only while its tab is shown, titles and links, the command runners, and the note edits applied after a write that had not landed (<code>tests/unit/appsession.ts</code>, <code>tests/unit/noteedit.ts</code>).</p>
+  <div class="lesson"><b>Lesson</b>“Every feature has a controller” is not the same as “the frontend decides nothing”. Read the frontend for <code>if</code>s and for sequences of calls into different controllers: those are decisions, and each one is code a second frontend would copy.</div>
   <h3>The same shape for a small feature</h3>
   <p>The commit message writer (1bac3b8) needs git, the API key, the model client, and the chosen model. None of those is imported. The function lists them as a parameter, and the composition root fills it in:</p>
 <pre><code>// agent/commitmessage.ts: only type imports
@@ -609,6 +638,7 @@ if (open) host.fileMoved(open, to);</code></pre></div>
     <li><span class="h">df69ada</span><span>The Assistant in the application layer (chapter 4): <code>AppSession</code> owns the <code>ChatController</code> through <code>app/assistant.ts</code>, <code>ui/chat.ts</code> implements the plain-data <code>ChatPanelView</code>, and a proposal is an ask whose apply is a request; <code>UI_ACTS_ALLOWED</code> loses its first entry.</span></li>
     <li><span class="h">5dc2af6</span><span>The git history in the application layer (chapter 4): <code>app/history.ts</code> runs git and the commit message writer for <code>AppSession</code>, <code>ui/history.ts</code> and <code>ui/historyviewer.ts</code> implement plain-data views, and <code>UI_ACTS_ALLOWED</code> loses both history entries.</span></li>
     <li><span class="h">11e7c6a</span><span>The file tree in the application layer (chapter 4): <code>app/files.ts</code> lists, watches, and changes files through the port for <code>AppSession</code>, <code>ui/filetree.ts</code> is a view, and <code>UI_ACTS_ALLOWED</code> is empty.</span></li>
+    <li><span class="h">af73360</span><span>What the window still decided (chapter 5): starting and closing, opening a folder, a file, or a link, the fan-out after a document became active, titles, the Recent list, and the command host move into <code>AppSession</code>; views report a <code>NoteEdit</code> instead of a whole board, wait for answers as <code>Awaitable</code>, and the core writes the dialogs' sentences. <code>window.ts</code> is 1,026 → 933 lines.</span></li>
   </ol>
 </div>
 </section>
