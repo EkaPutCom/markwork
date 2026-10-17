@@ -56,6 +56,12 @@ export class LaggingEditor extends FakeEditor {
         setTimeout(() => this.land(), 0);
     }
     override insertAtCursor(text: string): void { this.update(t => t + text); }
+    // Marking the document saved after writing it (a discard that took the file again) arrives after that write, as messages
+    // keep their order (4.3), so it waits behind it instead of being undone when the write lands.
+    override setModified(modified: boolean): void {
+        if (this.pending === null) { this.modified = modified; return; }
+        this.waiting.push(() => { this.modified = modified; return null; });
+    }
     // Runs at once when nothing is on its way, otherwise after the write lands, against the text it left.
     override update(edit: (text: string) => string | null): void {
         if (this.pending !== null) { this.waiting.push(edit); return; }

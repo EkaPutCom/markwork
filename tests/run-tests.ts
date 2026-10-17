@@ -5,6 +5,7 @@
 //   gjs -m dist/run-tests.js --no-gui                only the Markdown → HTML conversion tests
 //   gjs -m dist/run-tests.js --only-agents          only the GUI tests of agents on another machine (needs a display)
 //   gjs -m dist/run-tests.js --only-harness         only the GUI tests of kanban cards worked on by a fake pi (needs a display)
+//   gjs -m dist/run-tests.js --only-history         only the GUI tests of the History tab and the history viewer (needs a display)
 //   gjs -m dist/run-tests.js --only-worktrees        only the harness queue and the worktree per card (real git, no display)
 //   gjs -m dist/run-tests.js --only-daemon           only the markworkd client tests (the live part needs Go to build the daemon)
 //   gjs -m dist/run-tests.js --mouse                 add real mouse clicks (the pointer will move)
@@ -142,6 +143,12 @@ function runGuiTests(app: Adw.Application): void {
     }
     if (opt('only-harness')) {
         harnessTests(c);
+        c.buf.set_modified(false);
+        c.w.win.destroy();
+        return;
+    }
+    if (opt('only-history')) {
+        historyTests(c);
         c.buf.set_modified(false);
         c.w.win.destroy();
         return;

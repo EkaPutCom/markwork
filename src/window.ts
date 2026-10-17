@@ -24,14 +24,15 @@ import GdkPixbuf from 'gi://GdkPixbuf';
 import { APP_ID, APP_NAME } from './config.js';
 import { addBundledIcons, after, type Awaitable } from './gtkutil.js';
 import { type AppSettings } from './settings.js';
-import { fileExists, readTextFile } from './files.js';
+import { fileExists } from './files.js';
 import { WELCOME } from './welcome.js';
 import { MarkdownView, type Mode } from './editor/view.js';
 import { Outline } from './ui/outline.js';
 import { CollabPanel } from './ui/collab.js';
 import { PullView } from './ui/pullview.js';
 import { History } from './ui/history.js';
-import { HistoryViewer } from './ui/historyviewer.js';
+import { HistoryViewers } from './ui/historyviewer.js';
+import { askDiscard } from './ui/discard.js';
 import { FileTree, isDirectory, isImageFile } from './ui/filetree.js';
 import { Sidebar } from './ui/sidebar.js';
 import { SearchPanel } from './ui/searchpanel.js';
@@ -40,9 +41,6 @@ import { ChatPanel } from './ui/chat.js';
 import { WorkspaceRepository } from './workspace.js';
 import type { WikiLink } from './markdown/wikilink.js';
 import type { SearchHit } from './markdown/search.js';
-import { recentSubjects, workingDiff } from './git.js';
-import { writeCommitMessage } from './agent/commitmessage.js';
-import type { MessageWriter } from './ui/messagewriter.js';
 import { FindBar } from './ui/findbar.js';
 import { StatusBar } from './ui/statusbar.js';
 import { TabBar } from './ui/tabbar.js';
@@ -103,6 +101,7 @@ export class MainWindow implements CommandHost {
     readonly settings: AppSettings;
     readonly outline: Outline;
     readonly history: History;
+    readonly historyViewers = new HistoryViewers(() => this.win, () => this.dark);
     readonly fileTree: FileTree;
     readonly sidebar: Sidebar;
     readonly searchPanel: SearchPanel;
@@ -247,30 +246,9 @@ export class MainWindow implements CommandHost {
             this.fileTree.reveal(this.file);
             this.syncHistory(true);
         };
-        this.history.onOpen = commit => {
-            if (this.file) new HistoryViewer(this.win, this.file, commit, this.dark).show();
-        };
-        // Only save file documents that have changes; without a file, do not bring up a save dialog.
-        this.history.beforeCommit = () => this.documents.saveOpenFiles();
-        this.history.onCommitted = () => {
-            this.toast(_('Committed successfully'));
-            this.syncHistory(true);
-        };
-        this.connectWriter(this.history.writer);
-        this.history.beforeDiscard = () => this.documents.saveOpenFiles();
-        this.history.onDiscarded = paths => this.changesDiscarded(paths);
-        this.history.onOpenChanges = file => {
-            const viewer = new HistoryViewer(this.win, file, null, this.dark);
-            this.connectWriter(viewer.writer);
-            viewer.beforeCommit = () => this.documents.saveOpenFiles();
-            viewer.onCommitted = () => {
-                this.toast(_('Committed successfully'));
-                this.syncHistory(true);
-            };
-            viewer.beforeDiscard = () => this.documents.saveOpenFiles();
-            viewer.onDiscarded = paths => this.changesDiscarded(paths);
-            viewer.show();
-        };
+        // The "no API key" link of a commit form opens the Assistant's settings.
+        this.history.writer.onOpenSettings = () => this.openChatSettings();
+        this.historyViewers.onOpenSettings = () => this.openChatSettings();
         this.sidebar.onPageChanged = page => {
             this.settings.sidebarPage = page;
             this.syncHistory();
@@ -395,6 +373,8 @@ export class MainWindow implements CommandHost {
             screen: this.viewScreen(),
             get settings() { return w.settings; },
             get chatPanel() { return w.chat; },
+            get historyTab() { return w.history; },
+            get historyViewers() { return w.historyViewers; },
             get board() { return w.board; },
             get logs() { return w.harnessLogs; },
             get collabPanel() { return w.collabPanel; },
@@ -425,6 +405,10 @@ export class MainWindow implements CommandHost {
     // The questions the application layer asks, as GTK dialogs (AppFrontend.dialogs).
     private appDialogs(): AppDialogs {
         return {
+            history: {
+                // Asked over the window it came from: the History tab's main window, or the viewer.
+                discard: (kind, path, viewer) => askDiscard(viewer === null ? this.win : this.historyViewers.get(viewer)?.window ?? this.win, kind, path),
+            },
             journal: {
                 capture: () => promptDialog(this.win, { title: _('Add to Journal'), label: _('Recorded in today\'s journal with the current time.'), accept: _('Add') }),
             },
@@ -778,39 +762,16 @@ export class MainWindow implements CommandHost {
 
     // ---------- Git history ----------
 
-    // The uncommitted changes of these files were thrown away on disk: an open document takes the file's contents again (one undo
-    // step, as when the assistant writes to it), or loses its file when the file is gone (a new file that went to the Trash).
-    private changesDiscarded(paths: string[]): void {
-        for (const path of paths) {
-            const doc = this.docs.find(d => d.file === path);
-            if (!doc) continue;
-            if (fileExists(path)) {
-                doc.editor.replaceText(readTextFile(path));
-                doc.editor.buffer.set_modified(false);
-            } else this.documents.fileDeleted(path);
-        }
-        this.toast(_('The changes were discarded'));
-        if (this.fileTree.root) this.fileTree.refresh(this.fileTree.root);
-        this.syncHistory(true);
+    private openChatSettings(): void {
+        this.settings.chat = true;
+        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => { this.chat.openSettings(); return GLib.SOURCE_REMOVE; });
     }
 
-    // A commit form's assistant button writes with the Assistant panel's key and model.
-    private connectWriter(writer: MessageWriter): void {
-        writer.write = (files, onText, cancellable) => writeCommitMessage({
-            keyStore: this.session.assistant.chat.keyStore, makeProvider: key => this.session.assistant.chat.makeProvider(key), model: () => this.session.assistant.chat.model,
-            diff: workingDiff, subjects: recentSubjects,
-        }, files, onText, cancellable);
-        writer.onOpenSettings = () => {
-            this.settings.chat = true;
-            GLib.idle_add(GLib.PRIORITY_DEFAULT, () => { this.chat.openSettings(); return GLib.SOURCE_REMOVE; });
-        };
-    }
-
-    // History is only loaded while its tab is visible, so git is not called needlessly.
+    // History is only loaded while its tab is visible, so git is not called needlessly (app/history.ts runs it).
     // force = re-read even for the same file.
     syncHistory(force = false): void {
         if (!this.sidebar.visible || this.sidebar.page !== 'history') return;
-        this.history.setFile(this.file, force, this.fileTree.root);
+        this.session.history.show(this.file, this.fileTree.root, force);
     }
 
     // Change a view option. All but source mode are GSettings keys: writing them is enough,
@@ -1039,6 +1000,7 @@ export class MainWindow implements CommandHost {
         this.session.dispose();
         this.chat.destroy();
         this.history.destroy();
+        this.historyViewers.destroy();
         this.fileTree.destroy();
     }
 }

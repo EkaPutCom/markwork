@@ -18,11 +18,12 @@ import { NoteLinks, type NoteHost } from './notes.js';
 import { DocumentController, type DocumentsHost } from './documents.js';
 import type { AgentWriteHost } from './agentwrites.js';
 import { AssistantController, type AssistantHost } from './assistant.js';
+import { HistoryController, type HistoryDialogs, type HistoryHost } from './history.js';
 import type { Doc, TextEditor } from './document.js';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
 export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>
-    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E>;
+    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E>;
 
 // What the session answers itself, from the controllers it owns.
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
@@ -41,6 +42,7 @@ export interface AppDialogs {
     harness: HarnessDialogs;
     review: ReviewDialogs;
     views: ViewDialogs;
+    history: HistoryDialogs;
 }
 
 export interface AppFrontend<E extends TextEditor> {
@@ -66,6 +68,7 @@ export class AppSession<E extends TextEditor> {
     readonly notes: NoteLinks;
     readonly documents: DocumentController<E>;
     readonly assistant: AssistantController<E>;
+    readonly history: HistoryController<E>;
     readonly host: ControllerHost<E>;
 
     constructor(private readonly frontend: AppFrontend<E>) {
@@ -95,6 +98,11 @@ export class AppSession<E extends TextEditor> {
         this.assistant = new AssistantController(host, {
             nameOf: doc => this.documents.nameOf(doc),
             canInsert: () => !this.views.structuredMode && !this.views.homeMode,
+        });
+        // The commit message writer uses the Assistant's key and model, read each time it starts.
+        this.history = new HistoryController(host, dialogs.history, () => {
+            const { chat } = this.assistant;
+            return { keyStore: chat.keyStore, makeProvider: key => chat.makeProvider(key), model: () => chat.model };
         });
         this.documents = new DocumentController(Object.create(frontend.documents, {
             autosaver: { get: () => this.autosaver },
@@ -147,6 +155,7 @@ export class AppSession<E extends TextEditor> {
     dispose(): void {
         for (const doc of this.documents.all) this.autosaver.cancel(doc);
         this.assistant.dispose();
+        this.history.dispose();
         this.harness.dispose();
         this.collab.dispose();
         this.workspace.close();

@@ -1,27 +1,20 @@
-// The History tab in the sidebar: git commits that touch the active file, newest first.
-// Click a commit to see its changes and contents (ui/historyviewer.ts, opened by the window).
+// The History tab in the sidebar: git commits that touch the active file, newest first, the uncommitted files of its
+// repository, and the commit form. A view of app/history.ts: it draws what the controller sends and reports clicks
+// through its on* actions; git and the commit message writer run in the controller. A click on a commit opens the
+// history viewer (ui/historyviewer.ts) through the controller.
 
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
-import { commitFiles, discardChanges, fileLog, repoChanges, workingState, type GitFailure } from '../git.js';
-import { relativeTime, type ChangeKind, type Commit, type FileChange } from '../gitlog.js';
+import type { WriteResult } from '../agent/commitmessage.js';
+import type { ChangedFile, DiscardOutcome, HistoryChanges, HistoryLog, HistoryTabView } from '../app/history.js';
+import { relativeTime, type ChangeKind, type Commit } from '../gitlog.js';
 import { pack, removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
-import { askDiscard } from './discard.js';
 import { MessageBox } from './messagebox.js';
 import { MessageWriter, setStatus } from './messagewriter.js';
-
-// Commits loaded per request; a long history is loaded incrementally.
-const PAGE_SIZE = 100;
-
-const FAILURE_TEXT: Record<GitFailure, string> = {
-    'no-git': _('git is not installed'),
-    'no-repo': _('This file is not in a git repository'),
-    'failed': _('The history could not be read'),
-};
 
 const KIND_MARK: Record<ChangeKind, string> = { modified: 'M', added: 'A', deleted: 'D', renamed: 'R', untracked: 'U' };
 
@@ -32,17 +25,15 @@ class CommitItem extends GObject.Object {
     now = 0;
 }
 
-export class History {
+export class History implements HistoryTabView {
     readonly store = new Gio.ListStore({ item_type: CommitItem.$gtype });
     readonly list: Gtk.ListView;
     readonly widget: Gtk.Box;
     readonly more: Gtk.Button;
     readonly changes: Gtk.Button;              // the "uncommitted" row, shown only if the file changed
-    onOpen: (commit: Commit) => void = () => {};   // a commit was clicked
-    onOpenChanges: (file: string) => void = () => {};   // uncommitted changes were clicked (the active file or a file from the list)
     readonly changedList: Gtk.ListBox;         // all uncommitted files in the repository
     readonly changedBox: Gtk.Expander;
-    private changed: FileChange[] = [];
+    private changed: ChangedFile[] = [];
     private readonly unchecked = new Set<string>();   // list files that are not committed; the rest are checked
     private readonly checks = new Map<string, Gtk.CheckButton>();
     readonly commitBar: Gtk.Box;
@@ -50,28 +41,28 @@ export class History {
     readonly commitButton: Gtk.Button;
     readonly commitStatus: Gtk.Label;
     readonly writer: MessageWriter;            // the assistant button next to the message
-    beforeCommit: () => boolean = () => true;      // save the document first; false = cancel the commit
-    onCommitted: () => void = () => {};
-    beforeDiscard: () => boolean = () => true;     // save the open documents first, so no pending write brings the changes back
-    onDiscarded: (paths: string[]) => void = () => {};   // the changes of these files were thrown away
-    confirmDiscard: (kind: ChangeKind, path: string) => Promise<boolean> = (kind, path) => {
-        const root = this.widget.get_root();
-        return askDiscard(root instanceof Gtk.Window ? root : null, kind, path);
-    };
     private readonly discards: Gtk.Button[] = [];
-
-    private folder: string | null = null;     // the open folder; source of the changes list when there is no file yet
-    private file: string | null | undefined;   // undefined = never loaded
     private commits: Commit[] = [];
-    private token = 0;                         // stale git results (the file has changed) are ignored
+    private file: string | null = null;        // the active file, for the changes button
+    private streamed: (text: string) => void = () => {};
     readonly note: Gtk.Label;                  // message when the list is empty
+
+    // What the user did; set by the controller (app/history.ts).
+    onRefresh: () => void = () => {};
+    onMore: () => void = () => {};
+    onOpen: (hash: string) => void = () => {};
+    onOpenChanges: (path: string) => void = () => {};
+    onCommit: (files: string[], message: string) => Promise<string | null> = async () => null;
+    onDiscard: (path: string) => Promise<DiscardOutcome> = async () => 'declined';
+    onWrite: (files: string[]) => Promise<WriteResult> = async () => ({ ok: false, reason: 'failed', message: 'not connected' });
+    onStopWriting: () => void = () => {};
 
     constructor() {
         this.list = new Gtk.ListView({ model: new Gtk.NoSelection({ model: this.store }), factory: this.createFactory(), single_click_activate: true });
         this.list.add_css_class('navigation-sidebar');
         this.list.connect('activate', (_list, position) => {
             const commit = this.commits[position];
-            if (commit) this.onOpen(commit);
+            if (commit) this.onOpen(commit.hash);
         });
         // Empty list: a message (loading, not a repository, no commits yet) replaces the list.
         this.note = new Gtk.Label({ margin_top: 16, margin_bottom: 16, margin_start: 16, margin_end: 16, wrap: true, xalign: 0, max_width_chars: 24, valign: Gtk.Align.START });
@@ -84,7 +75,7 @@ export class History {
         const refresh = Gtk.Button.new_from_icon_name('view-refresh-symbolic');
         refresh.set_has_frame(false);
         refresh.set_tooltip_text(_('Reload history'));
-        refresh.connect('clicked', () => this.refresh());
+        refresh.connect('clicked', () => this.onRefresh());
         const header = new Gtk.Box({ margin_top: 4, margin_bottom: 8, margin_end: 6 });
         pack(header, title, true);
         header.append(refresh);
@@ -93,7 +84,6 @@ export class History {
         this.changes.set_has_frame(false);
         this.changes.set_tooltip_text(_('View changes against the last commit'));
         this.changes.connect('clicked', () => { if (this.file) this.onOpenChanges(this.file); });
-
         this.changedList = new Gtk.ListBox({ activate_on_single_click: true });
         this.changedList.set_selection_mode(Gtk.SelectionMode.NONE);
         this.changedList.connect('row-activated', (_list, row) => {
@@ -113,6 +103,12 @@ export class History {
         this.message.onActivate = () => void this.commitSelected();
         this.writer = new MessageWriter(this.message, this.commitStatus, () => this.selected(),
             _('Write the message with the assistant (reads the checked changes)'));
+        // The message streams back as messageText notices; Stop and a closed window end the writing in the controller.
+        this.writer.write = (files, onText, cancellable) => {
+            this.streamed = onText;
+            cancellable.onCancel(() => this.onStopWriting());
+            return this.onWrite(files);
+        };
         this.writer.onBusy = () => this.updateCommitButton();
         // The message takes the full width; the assistant button sits beside Commit.
         const commitRow = new Gtk.Box({ spacing: 6 });
@@ -137,7 +133,7 @@ export class History {
         pages.visible_child_name = 'note';
         this.store.connect('items-changed', () => { pages.visible_child_name = this.store.n_items ? 'list' : 'note'; });
         this.more = new Gtk.Button({ label: _('Load more'), margin_top: 8, margin_bottom: 8, margin_start: 8, margin_end: 8, visible: false });
-        this.more.connect('clicked', () => this.load(this.commits.length, false));
+        this.more.connect('clicked', () => this.onMore());
 
         // hexpand false: the title in the header expands, and GTK 4 passes that up to the sidebar.
         this.widget = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, hexpand: false });
@@ -148,64 +144,49 @@ export class History {
         this.widget.append(this.more);
     }
 
-    // Show this file's history. Calling again with the same file does nothing
-    // unless force, so it is safe to call often.
-    setFile(file: string | null, force = false, folder: string | null = this.folder): void {
-        if (!force && file === this.file && folder === this.folder) return;
-        const same = file === this.file;
-        this.file = file;
-        this.folder = folder;
-        this.token++;
-        // Reloading the same file does not empty the list first; the list is only replaced if its contents changed.
-        if (!same) this.clear();
-        this.changes.set_visible(false);
-        if (!same) this.setChanged([]);
-        if (!file) {
-            this.note.set_text(_('Save the document to a file, and its git history will show up here'));
-            this.loadChanges();
-            return;
-        }
-        if (!same) this.note.set_text(_('Loading…'));
-        this.load(0, same);
-        this.loadChanges();
-    }
-
-    refresh(): void {
-        if (this.file !== undefined) this.setFile(this.file, true);
-    }
-
-    // Window closed: git results still being awaited are ignored.
+    // Window closed: a message being written stops.
     destroy(): void {
-        this.token++;
         this.writer.stop();
     }
 
-    // The changes button only shows if the file contents differ from the last commit.
-    private async loadChanges(): Promise<void> {
-        const token = this.token, file = this.file;
-        const dir = file ? GLib.path_get_dirname(file) : this.folder;
-        if (!dir) return this.setChanged([]);
-        const [state, repo] = await Promise.all([file ? workingState(file) : null, repoChanges(dir)]);
-        if (token !== this.token) return;
-        this.setChanged(repo.ok ? repo.changes : []);
-        if (!state || !state.ok || state.state === 'clean') return this.changes.set_visible(false);
-        this.changes.set_label(state.state === 'untracked' ? _('● New file, not committed yet') : _('● Uncommitted changes'));
-        this.changes.set_visible(true);
+    // ---------- What the controller shows ----------
+
+    // The list is only rebuilt where it changed, so the scroll position does not jump on a reload or "Load more".
+    showLog(log: HistoryLog): void {
+        const shown = this.commits;
+        const grows = shown.length <= log.commits.length && shown.every((c, i) => c.hash === log.commits[i].hash);
+        if (!grows) this.store.remove_all();
+        const added = log.commits.slice(grows ? shown.length : 0);
+        const now = Math.floor(Date.now() / 1000);
+        this.commits = log.commits;
+        this.note.set_text(log.note);
+        this.store.splice(this.store.n_items, 0, added.map(commit => Object.assign(new CommitItem(), { commit, now })));
+        this.more.set_visible(log.more);
+    }
+
+    showChanges(changes: HistoryChanges): void {
+        this.file = changes.file;
+        const changed = changes.state !== null && changes.state !== 'clean';
+        this.changes.set_visible(changed);
+        if (changed) this.changes.set_label(changes.state === 'untracked' ? _('● New file, not committed yet') : _('● Uncommitted changes'));
+        this.setChanged(changes.changed);
+    }
+
+    messageText(text: string): void {
+        this.streamed(text);
     }
 
     // The file list changed; it is not rebuilt if the same, so the scroll position does not jump on reload.
-    private setChanged(changes: FileChange[]): void {
+    private setChanged(changes: ChangedFile[]): void {
         const same = changes.length === this.changed.length
-            && changes.every((c, i) => c.path === this.changed[i].path && c.kind === this.changed[i].kind);
+            && changes.every((c, i) => c.path === this.changed[i].path && c.kind === this.changed[i].kind && c.name === this.changed[i].name);
         if (same) return;
         this.changed = changes;
         this.checks.clear();
         this.discards.length = 0;
         removeChildren(this.changedList);
         for (const path of [...this.unchecked]) if (!changes.some(c => c.path === path)) this.unchecked.delete(path);
-        const dir = this.file ? GLib.path_get_dirname(this.file) : this.folder ?? '';
         for (const change of changes) {
-            const rel = dir && change.path.startsWith(dir + '/') ? change.path.slice(dir.length + 1) : change.path;
             const check = new Gtk.CheckButton({ active: !this.unchecked.has(change.path), sensitive: !this.writer.busy });
             check.set_tooltip_text(_('Include in the commit'));
             check.connect('toggled', () => {
@@ -215,7 +196,7 @@ export class History {
             this.checks.set(change.path, check);
             const mark = new Gtk.Label({ label: KIND_MARK[change.kind], xalign: 0, width_chars: 1 });
             mark.add_css_class('side-meta');
-            const name = new Gtk.Label({ label: rel, xalign: 0, ellipsize: Pango.EllipsizeMode.START });
+            const name = new Gtk.Label({ label: change.name, xalign: 0, ellipsize: Pango.EllipsizeMode.START });
             const box = new Gtk.Box({ spacing: 8, margin_start: 4, margin_end: 4, margin_top: 0, margin_bottom: 0 });
             box.append(check);
             box.append(mark);
@@ -230,7 +211,7 @@ export class History {
     }
 
     // The button at the end of a row: undo the changes of that file (after asking). Not for a rename, which git cannot undo per file.
-    private discardButton(change: FileChange): Gtk.Button {
+    private discardButton(change: ChangedFile): Gtk.Button {
         const button = Gtk.Button.new_from_icon_name('edit-undo-symbolic');
         button.add_css_class('flat');
         button.set_valign(Gtk.Align.CENTER);
@@ -243,13 +224,12 @@ export class History {
         return button;
     }
 
-    private async discard(change: FileChange): Promise<void> {
-        if (this.writer.busy || !await this.confirmDiscard(change.kind, change.path)) return;
-        if (!this.beforeDiscard()) return this.showCommitStatus('The document failed to save; the changes were not discarded');
-        const result = await discardChanges([change.path]);
-        if (!result.ok) return this.showCommitStatus(fmt(_('Could not discard the changes: {message}'), { message: result.message }));
-        this.commitStatus.set_visible(false);
-        this.onDiscarded([change.path]);
+    private async discard(change: ChangedFile): Promise<void> {
+        if (this.writer.busy) return;
+        const outcome = await this.onDiscard(change.path);
+        if (outcome === 'declined') return;
+        if (outcome === 'done') this.commitStatus.set_visible(false);
+        else this.showCommitStatus(outcome.error);
     }
 
     // The checked files; the order follows the list.
@@ -274,49 +254,14 @@ export class History {
 
     private async commitSelected(): Promise<void> {
         if (this.writer.busy) return;
-        const files = this.selected();
-        const message = this.message.text.trim();
-        if (!files.length) return this.showCommitStatus('Select the files to commit');
-        if (!message) return this.showCommitStatus('Enter a commit message first');
-        if (!this.beforeCommit()) return this.showCommitStatus('The document failed to save; the commit was cancelled');
         this.commitButton.set_sensitive(false);
         this.writer.locked = true;
-        const result = await commitFiles(files, message);
+        const error = await this.onCommit(this.selected(), this.message.text);
         this.writer.locked = false;
         this.updateCommitButton();
-        if (!result.ok) return this.showCommitStatus(fmt(_('Commit failed: {message}'), { message: result.message }));
+        if (error) return this.showCommitStatus(error);
         this.message.text = '';
         this.commitStatus.set_visible(false);
-        this.onCommitted();
-    }
-
-    private clear(): void {
-        this.commits = [];
-        this.more.set_visible(false);
-        this.store.remove_all();
-    }
-
-    private async load(skip: number, keep: boolean): Promise<void> {
-        const token = this.token, file = this.file;
-        if (!file) return;
-        const result = await fileLog(file, skip, PAGE_SIZE);
-        if (token !== this.token) return;
-        if (!result.ok) {
-            this.clear();
-            this.note.set_text(FAILURE_TEXT[result.reason]);
-            return;
-        }
-        if (skip === 0) {
-            // Reloading a result identical to what is displayed: leave the list (and its scroll position) alone.
-            const shown = this.commits.slice(0, result.commits.length);
-            if (keep && shown.length === result.commits.length && shown.every((c, i) => c.hash === result.commits[i].hash)) return;
-            this.clear();
-            this.note.set_text(_('There are no commits for this file yet'));
-        }
-        const now = Math.floor(Date.now() / 1000);
-        this.commits.push(...result.commits);
-        this.store.splice(this.store.n_items, 0, result.commits.map(commit => Object.assign(new CommitItem(), { commit, now })));
-        this.more.set_visible(result.commits.length === PAGE_SIZE);
     }
 
     private createFactory(): Gtk.SignalListItemFactory {
