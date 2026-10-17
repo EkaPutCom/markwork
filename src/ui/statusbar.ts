@@ -5,7 +5,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GObject from 'gi://GObject';
 
-import { cpLength, countWords } from '../editor/offsets.js';
+import { cpLength, countWords } from '../markdown/offsets.js';
 import { uiTemplate } from '../gtkutil.js';
 import template from './statusbar.ui?raw';
 import { _, fmt, ngettext } from '../i18n.js';

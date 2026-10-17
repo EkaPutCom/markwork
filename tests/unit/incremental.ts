@@ -1,9 +1,10 @@
 // The parser based on edited ranges compared with an independent full parse.
 import Gtk from 'gi://Gtk?version=4.0';
-import { HighlightCache, highlight, type HighlightResult } from '../../src/editor/highlighter.js';
+import { highlight } from '../../src/editor/highlighter.js';
+import { HighlightCache, type HighlightResult } from '../../src/markdown/highlight.js';
 import { createTags, SYNTAX_TAGS } from '../../src/editor/tags.js';
 import { LineTagger, tagRanges } from '../../src/editor/tagsync.js';
-import { cpLength } from '../../src/editor/offsets.js';
+import { cpLength } from '../../src/markdown/offsets.js';
 import { section, test, eq, ok } from '../framework.js';
 import { iterAtLine } from '../../src/gtkutil.js';
 
@@ -12,7 +13,7 @@ export function incrementalTests(): void {
     const buffer = new Gtk.TextBuffer();
     const tags = createTags(buffer);
     const tagger = new LineTagger(buffer, SYNTAX_TAGS.map(n => tags[n]));
-    const cache = new HighlightCache();
+    const cache = new HighlightCache(tags);
     const start = buffer.create_mark(null, buffer.get_start_iter(), true);
     const end = buffer.create_mark(null, buffer.get_start_iter(), false);
     let dirty = false;
@@ -26,27 +27,27 @@ export function incrementalTests(): void {
     });
     buffer.connect_after('delete-range', (_buf, a) => mark(a, a));
     const text = () => { const [a, b] = buffer.get_bounds(); return buffer.get_text(a, b, true); };
-    const reset = (source: string): HighlightResult => {
+    const reset = (source: string): HighlightResult<Gtk.TextTag> => {
         buffer.set_text(source, -1);
         tagger.edited(0, buffer.get_line_count() - 1, buffer.get_line_count());
         dirty = false;
-        return highlight(buffer, tags, tagger, cache);
+        return highlight(buffer, cache, tagger);
     };
-    const flush = (): HighlightResult => {
+    const flush = (): HighlightResult<Gtk.TextTag> => {
         const first = buffer.get_iter_at_mark(start).get_line(), last = buffer.get_iter_at_mark(end).get_line();
         if (dirty) tagger.edited(first, last, buffer.get_line_count());
-        const result = highlight(buffer, tags, tagger, cache, dirty ? [first, last] : null);
+        const result = highlight(buffer, cache, tagger, dirty ? [first, last] : null);
         dirty = false;
         return result;
     };
     const reference = new Gtk.TextBuffer();
     const refTags = createTags(reference);
-    const check = (result: HighlightResult) => {
+    const check = (result: HighlightResult<Gtk.TextTag>) => {
         reference.set_text(text(), -1);
-        const fresh = highlight(reference, refTags, new LineTagger(reference, SYNTAX_TAGS.map(n => refTags[n])));
+        const fresh = highlight(reference, new HighlightCache(refTags), new LineTagger(reference, SYNTAX_TAGS.map(n => refTags[n])));
         for (const field of ['text', 'lines', 'starts', 'markers', 'headings', 'tables', 'codeBlocks', 'words', 'characters'] as const)
             eq(result[field], fresh[field], `result ${field}`);
-        const imageFields = (r: HighlightResult) => r.images.map(img => [img.line, img.url, img.alt]);
+        const imageFields = (r: HighlightResult<Gtk.TextTag>) => r.images.map(img => [img.line, img.url, img.alt]);
         eq(imageFields(result), imageFields(fresh), 'result of images');
         for (const name of SYNTAX_TAGS)
             eq(tagRanges(buffer, tags[name]), tagRanges(reference, refTags[name]), `tag ${name}`);

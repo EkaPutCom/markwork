@@ -9,7 +9,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import { onKeyPress, removeChildren } from '../gtkutil.js';
-import { cpLength } from './offsets.js';
+import { cpLength } from '../markdown/offsets.js';
 import { lineText } from './editing.js';
 import { suggestNotes, wikiQuery, wikiTargetFor } from '../markdown/wikilink.js';
 

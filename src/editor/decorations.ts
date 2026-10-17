@@ -1,7 +1,7 @@
 // Decorations that depend on the cursor position. Called every time the cursor changes line.
 
 import type Gtk from 'gi://Gtk?version=4.0';
-import type { Marker } from './highlighter.js';
+import type { Marker } from '../markdown/highlight.js';
 import { setTagRanges, type LineSpan, type LineTagger } from './tagsync.js';
 import { iterAtLine } from '../gtkutil.js';
 

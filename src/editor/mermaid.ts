@@ -19,7 +19,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import GdkPixbuf from 'gi://GdkPixbuf';
-import type { CodeBlock } from './highlighter.js';
+import type { CodeBlock } from '../markdown/highlight.js';
 import { mermaidRenderer, type DiagramTheme } from './mermaidrender.js';
 import { dbmlToMermaid } from '../markdown/dbml.js';
 import { setTagGroup, setTagRanges, type Range } from './tagsync.js';

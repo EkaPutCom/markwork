@@ -1,7 +1,7 @@
 // Meaning of clicks on text: checking task boxes, reading link URLs, and [[wikilink]] targets.
 
 import type Gtk from 'gi://Gtk?version=4.0';
-import { cpToU16, cpLength } from './offsets.js';
+import { cpToU16, cpLength } from '../markdown/offsets.js';
 import type { Tags } from './tags.js';
 import { lineText } from './editing.js';
 import { WIKILINK, parseWikiLink, type WikiLink } from '../markdown/wikilink.js';

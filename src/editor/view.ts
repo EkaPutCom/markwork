@@ -33,7 +33,8 @@ import { onClick, onKeyPress } from '../gtkutil.js';
 import { ListIndent } from './listindent.js';
 import { createTags, paintTags, setTagMargins, SYNTAX_TAGS } from './tags.js';
 import { LineTagger } from './tagsync.js';
-import { highlight, HighlightCache } from './highlighter.js';
+import { highlight, type GtkHighlightCache } from './highlighter.js';
+import { HighlightCache } from '../markdown/highlight.js';
 import { MarkerConcealer, dimOutsideParagraph } from './decorations.js';
 import { continueBlock, indentListItem } from './lists.js';
 import { isInCodeBlock } from '../markdown/editcommands.js';
@@ -48,10 +49,10 @@ import { ConflictLayer } from './conflictlayer.js';
 import { MermaidLayer } from './mermaid.js';
 import { cellStart, type TableRange } from '../markdown/table.js';
 import { enterInTable, tabInTable, runTableCommand, type TableCommand } from './tableedit.js';
-import { cpLength } from './offsets.js';
+import { cpLength } from '../markdown/offsets.js';
 import type { Tags } from './tags.js';
 import type { LineSpan } from './tagsync.js';
-import type { HighlightResult, Heading, Marker } from './highlighter.js';
+import type { HighlightResult, Heading, Marker } from '../markdown/highlight.js';
 import type { Palette } from '../colors.js';
 import { iterAtLine } from '../gtkutil.js';
 import { _ } from '../i18n.js';
@@ -110,7 +111,7 @@ export class MarkdownView implements TextEditor {
     spans: LineSpan[][] = [];
     modes: Record<Mode, boolean> = { source: false, focus: false, typewriter: false };
 
-    onHighlighted: (result: HighlightResult) => void = () => {};
+    onHighlighted: (result: HighlightResult<Gtk.TextTag>) => void = () => {};
     onCursorMoved: (line: number, column: number) => void = () => {};
     onMessage: (text: string) => void = () => {};
     onViewImage: (pixbuf: GdkPixbuf.Pixbuf, title: string) => void = () => {};  // an image is asked to be enlarged
@@ -128,7 +129,7 @@ export class MarkdownView implements TextEditor {
     private cursorKey = '';
     private highlightQueued = 0;
     private resetHighlight = false;
-    private highlightCache: HighlightCache;
+    private highlightCache: GtkHighlightCache;
     private cursorQueued = 0;
     private fillQueued = 0;
     private destroyed = false;
@@ -155,7 +156,7 @@ export class MarkdownView implements TextEditor {
         const syntaxTags = SYNTAX_TAGS.map(n => this.tags[n]);
         // List indent tags are created on demand; LineTagger needs to know in order to clear them.
         this.listIndent = new ListIndent(this.view, this.buffer, tag => syntaxTags.push(tag));
-        this.highlightCache = new HighlightCache(this.listIndent);
+        this.highlightCache = new HighlightCache(this.tags, this.listIndent);
         this.syntaxTagger = new LineTagger(this.buffer, syntaxTags);
         this.concealer = new MarkerConcealer(new LineTagger(this.buffer, [this.tags.hidden]), this.tags.hidden);
         this.dirtyStart = this.buffer.create_mark(null, this.buffer.get_start_iter(), true);
@@ -493,7 +494,7 @@ export class MarkdownView implements TextEditor {
             this.syntaxTagger.edited(first, last, count);
             this.concealer.edited(first, last, count);
         }
-        const result = highlight(this.buffer, this.tags, this.syntaxTagger, this.highlightCache, reset ? undefined : edited);
+        const result = highlight(this.buffer, this.highlightCache, this.syntaxTagger, reset ? undefined : edited);
         // Without edits, the cache returns the same result: no lines are re-parsed.
         if (result.markers !== this.markers) this.concealer.reparsed(result.markers, ...result.reparsed);
         this.markers = result.markers;
