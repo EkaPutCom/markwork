@@ -33,10 +33,17 @@ export function section(name: string): void { say(`\n${name}`); }
 const pass = (name: string) => { passed++; say(`  ${GREEN}✓${RESET} ${name}`); };
 const fail = (name: string, e: unknown) => { failed++; say(`  ${RED}✗ ${name}${RESET}\n    ${errorMessage(e).split('\n').join('\n    ')}`); };
 
+// GJS collects garbage incrementally, and until a collection has finished sweeping it drops every signal callback into
+// JavaScript ("Attempting to call back into JSAPI during the sweeping phase of GC"). Such a sweep can outlast the test
+// that started it, and the next tests' buffer and window handlers then never run, so the GUI tests finish it first.
+let collectFirst = false;
+export function collectBeforeEachTest(on: boolean): void { collectFirst = on; }
+
 // A synchronous test is recorded before test() returns; an async one when the returned Promise settles, so a module
 // whose tests wait awaits each test() in turn.
 export function test(name: string, fn: () => void | Promise<void>): Promise<void> {
     let result: void | Promise<void>;
+    if (collectFirst) host().gc();
     try {
         result = fn();
     } catch (e) {

@@ -3,6 +3,12 @@
 //
 // The popover does not take focus: the cursor stays in the TextView, and MarkdownView.onKey passes
 // arrows/Enter/Tab/Esc to it while the suggestion is visible.
+//
+// The popover is a child of the TextView only while it is shown. GtkTextView's dispose removes its children
+// with gtk_text_view_remove(), which does not know a child added with set_parent(): it only warns
+// ("GtkPopover is not a child of GtkSourceView") and leaves it there, so the loop never ends. destroy() alone
+// is not enough to prevent that: GJS drops signal callbacks while a garbage collection is sweeping, so the
+// "unrealize" that leads to destroy() may never reach JavaScript, and the view is then disposed with the popover.
 
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
@@ -37,7 +43,11 @@ export class WikiCompleter {
             child: scroller, autohide: false, has_arrow: false, can_focus: false,
             position: Gtk.PositionType.BOTTOM, halign: Gtk.Align.START,
         });
-        this.popover.set_parent(view);
+        // GTK can also close it by itself (e.g. the view is unmapped): detach it afterwards, unless it opened again.
+        this.popover.connect('closed', () => GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            if (!this.popover.get_visible()) this.detach();
+            return GLib.SOURCE_REMOVE;
+        }));
     }
 
     get visible(): boolean {
@@ -68,6 +78,7 @@ export class WikiCompleter {
             this.selected = 0;
             this.fill();
         }
+        if (!this.popover.get_parent()) this.popover.set_parent(this.view);
         const iter = buffer.get_iter_at_mark(buffer.get_insert());
         const rect = this.view.get_iter_location(iter);
         const [x, y] = this.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, rect.x, rect.y);
@@ -79,6 +90,7 @@ export class WikiCompleter {
         this.files = null;
         this.items = [];
         if (this.visible) this.popover.popdown();
+        this.detach();
     }
 
     // Keys while the suggestion is visible. true = handled.
@@ -124,7 +136,11 @@ export class WikiCompleter {
         this.destroyed = true;
         if (this.queued) GLib.source_remove(this.queued);
         this.queued = 0;
-        this.popover.unparent();
+        this.detach();
+    }
+
+    private detach(): void {
+        if (this.popover.get_parent()) this.popover.unparent();
     }
 
     private query(): string | null {
