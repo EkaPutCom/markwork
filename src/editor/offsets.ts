@@ -17,6 +17,19 @@ export function makeCpMap(text: string): (offset: number) => number {
     return x => map[x];
 }
 
+// Returns a function: code point offset → UTF-16 offset, the inverse of makeCpMap.
+export function makeU16Map(text: string): (offset: number) => number {
+    if (!/[\uD800-\uDFFF]/.test(text)) return x => x;
+    const map: number[] = [];
+    for (let i = 0; i < text.length; i++) {
+        map.push(i);
+        const c = text.charCodeAt(i);
+        if (c >= 0xD800 && c <= 0xDBFF && i + 1 < text.length) i++;
+    }
+    map.push(text.length);
+    return x => map[x] ?? text.length;
+}
+
 // Code point offset → UTF-16 offset inside string s.
 export const cpToU16 = (s: string, cp: number): number => Array.from(s).slice(0, cp).join('').length;
 
