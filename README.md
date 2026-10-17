@@ -421,6 +421,7 @@ src/
 │   ├── collab.ts         the pull requests tab and its notifications through CollabView
 │   ├── pulls.ts          reviewing and merging one pull request through PullReviewView
 │   ├── contribute.ts     sending changes as a pull request
+│   ├── assistant.ts      the Assistant: owns the ChatController, builds its host from the session, draws through ChatPanelView; a proposal is an ask, written only by the core
 │   ├── agentwrites.ts    applying approved Assistant changes (editor for open files, disk otherwise, rollback)
 │   ├── autosave.ts       autosave timers and quiet saves
 │   ├── notes.ts          NoteLinks: following [[note]] links and the note names for [[ suggestions
@@ -456,7 +457,7 @@ src/
 │   ├── notechanges.ts    pure: the proposal tools edit_note and edit_schema, validated against the document's own fields
 │   ├── context.ts        pure: splitting the manuscript per heading, BM25 search, building the context within a token budget, trimming the history
 │   ├── session.ts        pure: one conversation (history) and the one-turn agent loop (model ↔ tools, including waiting for approval of proposals)
-│   ├── chatcontroller.ts the conversation life cycle without widgets: send/stop, folder-change guards, saving and reopening history, undo, context preview; drives the panel through ChatView
+│   ├── chatcontroller.ts the conversation life cycle without widgets: send/stop, folder-change guards, saving and reopening history, undo, context preview; owned by app/assistant.ts, which it draws through
 │   ├── changes.ts        pure: the proposal tools (create, edit, insert, delete, move, kanban, note, schema), validation into a `Change`, change inversion and preflight, diff preview; never writes
 │   ├── gittools.ts       pure: the agent's Git history tools (git_log, show_commit, file_at_commit): argument validation and output tidying
 │   ├── work.ts           pure: goal, plan, work status and the set_work tool
@@ -552,11 +553,11 @@ src/
     ├── fieldpopover.ts    the popover that changes one field in place: select options, calendar, validated entry
     ├── schemadialog.ts the Fields… dialog: add and reorder fields, edit the options of a select
     ├── home.ts           Home tab: Continue card, agent, deadlines, inbox, recent files
-    ├── chat.ts           Assistant panel on the right: draws the messages and the input (implements ChatView)
+    ├── chat.ts           Assistant panel on the right: draws the messages and the input, reports actions (implements ChatPanelView of app/assistant.ts)
     ├── chatsettings.ts   its settings popover: API key, model, thinking mode, saving conversations
     ├── chathistory.ts    its history popover: saved conversations to reopen or delete
     ├── chatcontext.ts    its Context button and popover: token estimate, parts, switches
-    ├── proposalcard.ts   change proposal cards, the review window they open, and Undo
+    ├── proposalcard.ts   change proposal cards, the review window they open, and Undo (the core applies; the card only asks)
     └── theme.ts          fonts and CSS from the palette in colors.ts (named Adwaita colors for the interface, the system accent if available)
 tests/
 ├── run-tests.ts          entry point and registration of unit/GUI tests
@@ -606,7 +607,7 @@ The code is divided into layers. Each layer may only use the layers below it, ne
    └─ window.ts ── actions.ts
         ├─ window/*        GTK glue left: the Doc type and the harness log windows
         ├─ ui/*            interface components; implement the views that app/ controllers draw through
-        ├─ app/*           feature controllers (documents, views, note links, journal, harness, review, Home, collaboration, agent writes, autosave)
+        ├─ app/*           feature controllers (documents, views, note links, journal, harness, review, Home, collaboration, the Assistant, agent writes, autosave)
         ├─ editor/*        the editor engine
         │    └─ markdown/* Markdown rules (no GTK)
         ├─ orchestrator.ts runs harness processes (pi) for app/harness.ts (no GI)
@@ -619,7 +620,7 @@ The code is divided into layers. Each layer may only use the layers below it, ne
         └─ platform/index.ts the port to the runtime (implemented by platform/gjs/ and platform/node/, installed by the entry point)
 ```
 
-- **`agent/`** is also free of GTK. `ui/chat.ts` uses it, and the window only gives it a way to fetch the manuscript (`ChatHost`: the active document, the selection, project files, the manuscript folder). `agent/` knows nothing about the editor or widgets. The panel only draws: `agent/chatcontroller.ts` owns the conversation's life cycle and tells the panel what to show through the `ChatView` interface, so sending, stopping, a folder change mid-request, and reopening a saved conversation are tested without GTK (`tests/unit/chatcontroller.ts`).
+- **`agent/`** is also free of GTK and knows nothing about the editor or widgets. `agent/chatcontroller.ts` owns the conversation's life cycle (sending, stopping, a folder change mid-request, reopening a saved conversation, undo), tested without GTK in `tests/unit/chatcontroller.ts`. `AppSession` owns it through `app/assistant.ts`, which gives it the manuscript from the session (the active document and its selection, the workspace's files, the work folder, Git, and `app/agentwrites.ts` for approved changes) and draws through `ChatPanelView`: plain notices (`startTurn`, `turnText`, `turnEnd`, …) and `on*` actions (`onSend`, `onApply`, `onUndo`, …). `ui/chat.ts` implements that view and never imports the controller. A change proposal is an ask: the panel gets the changes as data, asks the core to write them with `onApply(ask, chosen)`, and answers with its note; the result the agent is told is what the core wrote. Tested without GTK in `tests/unit/assistant.ts`.
 - **`markdown/`** does not import GTK at all. It only contains string → data functions, so it is the easiest to study and test.
 - **`editor/`** knows nothing about files, menus, or the sidebar. `MarkdownView` only reports through callbacks (`onHighlighted`, `onCursorMoved`, `onMessage`).
 - **`ui/`** holds self-contained components. `Outline` does not know the editor; it only receives a list of headings and calls `onJump(line)` when clicked. `FileTree` is the same: it only displays folders and calls `onOpenFile(path)`; the window decides how to open the file (a new tab, switching to an existing tab, or reusing an empty document).

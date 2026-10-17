@@ -319,7 +319,7 @@ A token is valid until the core replaces the view it belongs to. A token that ar
 | `CollabView` (app/collab.ts) | `view.collab` `{note, server, pulls}` | `act.collab.open`, `.refresh`, `.server`, `.send` |
 | `PullReviewView` (app/pulls.ts) | `view.pull` with `pull`, `files`, `fileView`, `discussion`, `busy`, `resolving`, `message`, `commenting` | `act.pull.close`, `.select`, `.merge`, `.browser`, `.comment`, `.resolve`, `.finish`, `.abort` |
 | `ReviewView` (app/harnessreview.ts) | `view.review` with `header`, `files`, `included`, `busy`, `commits`, `status`, `diff` (commented lines as an array), `tab`, `summary`, `replies`, `banner` | `act.review.close`, `.select`, `.include`, `.finish`, `.reply`, `.folder`, `.terminal`, `.tab`, `.log`, `.banner`, `.comment` |
-| `ChatView`, `TurnView` (agent/chatcontroller.ts) | `chat.busy`, `chat.turn` `{turn, question}`, `chat.text` / `chat.reasoning` `{turn, delta}`, `chat.tool`, `chat.end` `{turn, outcome}`, `chat.noKey`, `chat.saveFailed` | `act.chat.send`, `.stop`, `.reset`, `.open` |
+| `ChatPanelView` (app/assistant.ts) | `chat.settings`, `chat.busy`, `chat.turn` `{turn, question}`, `chat.context`, `chat.text` / `chat.reasoning` `{turn, delta}`, `chat.tool`, `chat.work`, `chat.end` `{turn, outcome}`, `chat.noKey`, `chat.saveFailed` | `act.chat.send`, `.stop`, `.reset`, `.preview`, `.options`, `.chats`, `.open`, `.delete`, `.undo`, `.insert`, `.model`, `.thinking`, `.save`, `.key` |
 
 A streamed answer is many small `chat.text` notices; the frontend appends. They are the only high-rate notices the core sends.
 
@@ -337,7 +337,7 @@ core → frontend   {"ev":"ask.cancel","ask":"c61"}
 
 An answer and a cancel can cross on the wire. The core decides, because it is the one that acts on the answer:
 
-- Once the core has sent `ask.cancel`, the ask is over. An answer that arrives after that is dropped, even one the frontend sent first. The code that was waiting has already gone on as if the user said no (a cancelled proposal ends as rejected, as `ChatView.review` does today), so a change the user approved in that instant is not written; the turn that proposed it was stopped anyway.
+- Once the core has sent `ask.cancel`, the ask is over. An answer that arrives after that is dropped, even one the frontend sent first. The code that was waiting has already gone on as if the user said no (a cancelled proposal ends as rejected, as `ChatPanelView.review` does today: `onApply` after `cancelReview` is refused), so a change the user approved in that instant is not written; the turn that proposed it was stopped anyway.
 - The frontend ignores an `ask.cancel` for an ask it has already answered.
 
 Whatever the answer, the code that continues after it checks again that what it is about to act on still exists (the document is open, the card is there, the pull request is still open), as `AGENT.md` already asks of every continuation after a dialog. Over the protocol the wait is longer, so the check matters more, not less.
@@ -354,7 +354,7 @@ Whatever the answer, the code that continues after it checks again that what it 
 | `HarnessDialogs.*` | `ask.folder`, `ask.harness.answer {ask, agent}`, `ask.text`, `ask.remoteFolder`, `ask.closeAgents` | as today |
 | `ReviewDialogs.merge / discard` | `ask.review.merge`, `ask.review.discard` | `true` / `false` |
 | `ViewDialogs.editSchema` | `ask.schema {fields, reserved, uses}`: `uses()` is a callback today, so the core sends the counts it would answer (`{"due": 4, "status:Done": 9}`) | `FieldDef[]` or `null` |
-| `ChatView.review` (agent/chatcontroller.ts) | `ask.proposal {changes}`; while it is open the viewer may apply part of it with `act.proposal.apply {ask, chosen}`, answered with an error or `null` | the `ProposalResult` |
+| `ChatPanelView.review` (app/assistant.ts) | `ask.proposal {changes, batch}`; while it is open the viewer may apply part of it with `act.proposal.apply {ask, chosen}` (`onApply`), answered with an error or `null`; `cancelReview` is the `ask.cancel` | `{note}`; the `ProposalResult` the agent gets is built by the core from what it wrote |
 
 The last row keeps the agent's rule intact: a change is written only by the core, only after the user's decision in the frontend, and the core checks the text again before writing (`applyChange()`), whatever the frontend sent.
 
@@ -470,8 +470,8 @@ Not everything a frontend shows goes through `AppSession` yet. These are wired s
 
 | Feature | Today | Needed |
 | --- | --- | --- |
-| Assistant | `ui/chat.ts` owns its `ChatController`; `window.ts` fills its host | `AppSession` owns the `ChatController`; `ChatView`/`TurnView` become notices (6.5) |
-| Proposal review | `ui/proposalviewer.ts` calls `apply` itself | `ask.proposal` (7) |
+| Assistant | done: `AppSession` owns the `ChatController` through `app/assistant.ts`, which builds its host from the session; `ui/chat.ts` implements `ChatPanelView` (plain notices with a turn number, `on*` actions). Left: the log window follows the live `AgentTrace`, handed to the panel by `window.ts`; Undo names the changes by the objects the panel was given | a `chat.log` notice stream; Undo by an id of the applied changes |
+| Proposal review | done: `ChatPanelView.review` is `ask.proposal`; the viewer asks `onApply(ask, chosen)` and the core writes, re-checking in `applyChange()`; an apply after `cancelReview` is refused | `ask.proposal` (7) |
 | File tree | `ui/filetree.ts` reads folders and moves files through `fileops.ts` (Gio) | a files controller in `app/`; file operations through the platform port |
 | Search and replace | `ui/searchpanel.ts` calls `markdown/search.ts` and builds `Change`s | a search controller; results as a view |
 | History and commits | `ui/history.ts` calls `git.ts`; `window.ts` calls `writeCommitMessage` | a history controller; the commit message writer behind it |
@@ -487,9 +487,9 @@ Moving these is worth doing for the GTK app on its own: it is the same direction
 
 The protocol is built later (section 15); what makes it cheap then is that the code it carries is already shaped for it. Three checks hold that shape now, each with a list of today's exceptions that may only shrink:
 
-- **Views do not act** (`scripts/layers.mjs`, `UI_ACTS_ALLOWED`). A module in `ui/` may not import, for its values, a core module that reaches the runtime (one that imports `platform/index.ts`, directly or through others; `i18n.ts` does not count). Pure core modules and `import type` are fine. Exceptions today: `ui/chat.ts` → `agent/chatcontroller.ts`, `ui/filetree.ts` → `fileops.ts`, `ui/history.ts` and `ui/historyviewer.ts` → `git.ts`; the rows of section 13 that move them remove the entries.
+- **Views do not act** (`scripts/layers.mjs`, `UI_ACTS_ALLOWED`). A module in `ui/` may not import, for its values, a core module that reaches the runtime (one that imports `platform/index.ts`, directly or through others; `i18n.ts` does not count). Pure core modules and `import type` are fine. Exceptions today: `ui/filetree.ts` → `fileops.ts`, `ui/history.ts` and `ui/historyviewer.ts` → `git.ts`; the rows of section 13 that move them remove the entries.
 - **The frontend gets plain data** (`tests/unit/plaindata.ts`, `KNOWN`, checked by `tsc`). Every method of `AppFrontend` and `AppDialogs` takes and returns plain data (4.4), a Promise of it, or nothing; a field is plain data or a view checked the same way. A new member that takes a callback, a `Set`, a `Date`, or a live object fails the typecheck, and so does fixing one without removing it from `KNOWN`. Exceptions today: 20 members, the callbacks of toasts, settings listeners, the token and Fields… dialogs, the document hooks that receive a `Doc`, `showText`, `logs.show`, `setDiff`, `showHome`, and `enableActions`.
-- **Writes land later** (`LaggingEditor` in `tests/unit/appsession.ts`, on both runtimes). An editor whose writes land a turn later, the way they will over the protocol, and which throws when the text is read while a write is on its way, or when a whole text is written over one. Scenarios that drive `AppSession` with it catch a controller that reads back its own write (5.5). The first scenario, two board updates in one turn, found `updateBoardFile()`; more scenarios are added as the controllers of section 13 move.
+- **Writes land later** (`LaggingEditor` in `tests/unit/appsession.ts`, on both runtimes). An editor whose writes land a turn later, the way they will over the protocol, and which throws when the text is read while a write is on its way, or when a whole text is written over one. Scenarios that drive `AppSession` with it catch a controller that reads back its own write (5.5). The first scenario, two board updates in one turn, found `updateBoardFile()`; more scenarios are added as the controllers of section 13 move. The Assistant's (`tests/unit/assistant.ts`) applies an approved edit to an open document, lets the agent read the file again in the same turn, and undoes it in a later one; it passed without a change, since `applyChangeBatch()` reads each file once before it writes. Not covered yet: the rollback of a batch whose later write fails writes the earlier file's whole text again (`replaceText(before)`) while the first write may still be on its way; it should go through `update()`.
 
 ## 14. Module layout
 
