@@ -91,10 +91,11 @@ export async function searchControllerTests(): Promise<void> {
     });
 
     await test('Replace All in an open document whose writes land a turn later does not read its own write', async () => {
-        const { dir, session, view } = setup(() => new LaggingEditor());
+        const { dir, session, view, last } = setup(() => new LaggingEditor());
         session.host.openInTab(disk.join(dir, 'a.md'));
         view.onSearch({ ...QUERY, text: 'foo' });
         await view.onReplaceAll('baz');
+        eq(last().total, 0, 'the results already follow the replacement, before the editor has applied it');
         await pause(5);
         eq(session.documents.active.editor.getText(), '# Alpha\nbaz bar\n');
         session.dispose();

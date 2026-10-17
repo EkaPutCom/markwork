@@ -65,17 +65,18 @@ export class SearchController<E extends TextEditor = TextEditor> {
     }
 
     // Search again with the last query (files changed, or the user asked); nothing when there was no query yet.
-    refresh(): void {
-        if (this.query) this.search(this.query);
+    // `texts`: the contents some files have now, by name, for a write that has not reached the workspace yet.
+    refresh(texts: ReadonlyMap<string, string> = new Map()): void {
+        if (this.query) this.search(this.query, texts);
     }
 
-    search(query: SearchQuery): void {
+    search(query: SearchQuery, texts: ReadonlyMap<string, string> = new Map()): void {
         this.query = query;
         this.pattern = null;
-        this.show(this.run(query));
+        this.show(this.run(query, texts));
     }
 
-    private run(query: SearchQuery): SearchResults {
+    private run(query: SearchQuery, texts: ReadonlyMap<string, string>): SearchResults {
         const pattern = buildPattern(query.text, query);
         if (!pattern) return NOTHING;
         if (!(pattern instanceof RegExp)) return { ...NOTHING, message: pattern.error, invalid: true };
@@ -83,7 +84,7 @@ export class SearchController<E extends TextEditor = TextEditor> {
         if (!root) return { ...NOTHING, message: _('Open a folder to search in its notes.') };
         this.pattern = pattern;
         const keep = pathFilter(query.include, query.exclude);
-        const files = this.host.workspace.files(root, { freshness: 'current', limit: MAX_FILES });
+        const files = this.host.workspace.files(root, { freshness: 'current', limit: MAX_FILES }).map(f => ({ name: f.name, text: texts.get(f.name) ?? f.text }));
         const found = searchFiles(keep ? files.filter(f => keep(f.name)) : files, pattern);
         return { message: this.describe(query, found.total, found.files.length, found.truncated), invalid: false, files: found.files, total: found.total };
     }
@@ -136,6 +137,6 @@ export class SearchController<E extends TextEditor = TextEditor> {
         if (!await this.dialogs.confirm(_('Replace in all notes?'), detail, _('Replace All'))) return;
         const error = applyChangeBatch(this.host, changes);
         if (error) this.show({ ...this.results, message: error });
-        else this.refresh();
+        else this.refresh(new Map(changes.map(c => [c.file, c.after])));
     }
 }
