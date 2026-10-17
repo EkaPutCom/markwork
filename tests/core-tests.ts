@@ -22,6 +22,8 @@ import { htmlTests } from './unit/html.js';
 import { dbmlTests } from './unit/dbml.js';
 import { gitLogTests } from './unit/gitlog.js';
 import { fileWriteTests } from './unit/files.js';
+import { fileOpsTests } from './unit/fileops.js';
+import { filesControllerTests } from './unit/filescontroller.js';
 import { workspaceTests } from './unit/workspace.js';
 import { chatControllerTests } from './unit/chatcontroller.js';
 import { agentTests, apiKeyTests, toolTests } from './unit/agent.js';
@@ -79,6 +81,8 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     dbmlTests();
     gitLogTests();
     await fileWriteTests();
+    fileOpsTests();
+    await filesControllerTests();
     await workspaceTests();
     await chatControllerTests();
     await agentTests();

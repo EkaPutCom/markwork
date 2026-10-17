@@ -65,6 +65,9 @@ export interface FileSystem {
     isDirectory(path: string): boolean;   // a folder, also through a symbolic link
     trash(path: string): void;        // to the desktop trash, so it can be restored
     move(from: string, to: string): void;   // a file or folder; fails when something is already at `to`
+    // A file, or a folder with everything in it, without following symbolic links (a link is copied as a link); fails
+    // when something is already at `to`. The bytes are copied as they are, so it is the way to copy an image.
+    copy(from: string, to: string): void;
     info(path: string): EntryInfo;    // throws when nothing is there
     listInfo(dir: string): EntryInfo[];
     // Calls onChange with the path of each entry in dir that is created, deleted, changed, or moved (both names for a

@@ -11,7 +11,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'src');
 
 const GTK = /^gi:\/\/(Gtk|Gdk|GdkPixbuf|GdkX11|Gsk|Adw|GtkSource|WebKit|Pango|Graphene)(\?|$)/;
-const BASE = ['settings.ts', 'files.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'awaitable.ts', 'activity.ts'];
+const BASE = ['settings.ts', 'files.ts', 'fileops.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'awaitable.ts', 'activity.ts'];
 
 // The core: everything below the interface. It reaches the runtime only through platform/index.ts, never through gi:// and
 // never through platform/gjs/, so it can run on another runtime. GI_ALLOWED listed the core modules that still imported
@@ -78,11 +78,9 @@ for (const file of files) {
 // be asked for by a frontend in another process (docs/design/protocol.md, section 13). A core module "acts" when it
 // reaches the runtime: it imports platform/index.ts, directly or through other modules (i18n.ts does not count, it only
 // translates text). ui/ may import such a module for its types (`import type`), and pure core modules freely.
-// UI_ACTS_ALLOWED lists the imports that still do it while they are moved; an entry may not be added, and has to go once
-// the import is gone.
-const UI_ACTS_ALLOWED = new Set([
-    'ui/filetree.ts -> fileops.ts',
-]);
+// UI_ACTS_ALLOWED listed the imports that still did it while they were moved (the Assistant, History, and the file tree);
+// it is empty now and may not grow.
+const UI_ACTS_ALLOWED = new Set([]);
 const acting = new Map();
 const acts = file => {
     if (!acting.has(file)) {

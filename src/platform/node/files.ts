@@ -199,6 +199,10 @@ export const nodeFiles: FileSystem = {
     isDirectory,
     trash,
     move,
+    copy: (from, to) => {
+        if (kind(to) !== 'missing') throw new Error(`${to} already exists`);
+        cpSync(from, to, { recursive: true, errorOnExist: true, force: false, verbatimSymlinks: true });
+    },
     info: path => entryOf(basename(path), lstatSync(path)),
     listInfo,
     watchDir,

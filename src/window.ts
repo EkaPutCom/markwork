@@ -33,7 +33,8 @@ import { PullView } from './ui/pullview.js';
 import { History } from './ui/history.js';
 import { HistoryViewers } from './ui/historyviewer.js';
 import { askDiscard } from './ui/discard.js';
-import { FileTree, isDirectory, isImageFile } from './ui/filetree.js';
+import { FileTree } from './ui/filetree.js';
+import { isImageFile } from './app/files.js';
 import { Sidebar } from './ui/sidebar.js';
 import { SearchPanel } from './ui/searchpanel.js';
 import { cpLength } from './editor/offsets.js';
@@ -47,7 +48,7 @@ import { TabBar } from './ui/tabbar.js';
 import { HeaderBar, LAYOUT_CHOICES } from './ui/headerbar.js';
 import type { Palette } from './colors.js';
 import { applyTheme, systemPrefersDark } from './ui/theme.js';
-import { askSaveChanges, chooseFile, closeAgentsDialog, decideDialog, harnessAskDialog, harnessTextDialog, mergeDialog, promptDialog, showAbout, showError } from './ui/dialogs.js';
+import { askSaveChanges, chooseFile, closeAgentsDialog, confirmDialog, decideDialog, harnessAskDialog, harnessTextDialog, mergeDialog, promptDialog, showAbout, showError } from './ui/dialogs.js';
 import { registerActions } from './actions.js';
 import type { CommandHost, EditCommands, ViewOption } from './app/commands.js';
 import { wrapSelection, insertLink, insertBlock, togglePrefix, setHeading } from './editor/editing.js';
@@ -84,6 +85,8 @@ import { AppSession, type AppDialogs, type AppFrontend, type FrontendHost } from
 import { gsettingsOf } from './platform/gjs/settings.js';
 import { sendChangesDialog } from './ui/sendchanges.js';
 import { tokenDialog } from './ui/serverdialog.js';
+
+const isFolder = (path: string): boolean => GLib.file_test(path, GLib.FileTest.IS_DIR);
 
 // The saved window size may be larger than the screen (for example after moving
 // to a smaller monitor); limit it to the monitor size. GTK 4 no longer gives the general
@@ -172,8 +175,8 @@ export class MainWindow implements CommandHost {
         this.pullView = new PullView();
         this.reviewView = new HarnessReviewView();
         this.searchPanel = new SearchPanel({
-            root: () => this.fileTree.root,
-            files: () => this.fileTree.root ? this.workspace.files(this.fileTree.root, { freshness: 'current', limit: 5000 }) : [],
+            root: () => this.root,
+            files: () => this.root ? this.workspace.files(this.root, { freshness: 'current', limit: 5000 }) : [],
             open: (file, hit) => this.openSearchHit(file, hit),
             replace: changes => applyChangeBatch(this.session.host, changes),
             confirm: (message, detail, accept) => decideDialog(this.win, message, detail, accept),
@@ -235,16 +238,6 @@ export class MainWindow implements CommandHost {
         this.tabBar.onClose = id => {
             const doc = this.docs.find(d => d.id === id);
             if (doc) this.closeTab(doc);
-        };
-        this.fileTree.onOpenFile = file => this.openFile(file);
-        this.fileTree.onMoved = (from, to) => {
-            this.documents.filesMoved(from, to);
-            this.syncHistory(true);
-        };
-        this.fileTree.onDeleted = path => {
-            this.documents.fileDeleted(path);
-            this.fileTree.reveal(this.file);
-            this.syncHistory(true);
         };
         // The "no API key" link of a commit form opens the Assistant's settings.
         this.history.writer.onOpenSettings = () => this.openChatSettings();
@@ -331,9 +324,9 @@ export class MainWindow implements CommandHost {
         // Initial contents: the folder from the argument, or the last folder; then the file, or the last tabs
         // if opened without an argument (a path on the command line means the user asked for specific contents).
         this.sidebar.setPage(settings.sidebarPage);
-        if (path && isDirectory(path)) this.openFolder(path);
-        else if (settings.folder && isDirectory(settings.folder)) this.openFolder(settings.folder, false);
-        if (path && !isDirectory(path)) {
+        if (path && isFolder(path)) this.openFolder(path);
+        else if (settings.folder && isFolder(settings.folder)) this.openFolder(settings.folder, false);
+        if (path && !isFolder(path)) {
             this.load(path);
         } else if (!path && this.documents.restoreTabs()) {
             // the last tabs are restored
@@ -383,9 +376,10 @@ export class MainWindow implements CommandHost {
             get inbox() { return w.inbox; },
             get table() { return w.table; },
             get layouts() { return w.layouts; },
-            root: () => this.fileTree.root,
+            get fileTree() { return w.fileTree; },
+            openFile: path => this.openFile(path),
             toast: (message, action) => this.toast(message, action),
-            refreshTree: () => { if (this.fileTree.root) this.fileTree.refresh(this.fileTree.root); },
+            refreshTree: () => { if (this.root) this.session.files.refresh(this.root); },
             filesMoved: () => { this.fileTree.reveal(this.file); this.syncHistory(true); },
             projectName: path => this.projectName(path),
             isActive: () => this.win.is_active,
@@ -405,6 +399,11 @@ export class MainWindow implements CommandHost {
     // The questions the application layer asks, as GTK dialogs (AppFrontend.dialogs).
     private appDialogs(): AppDialogs {
         return {
+            files: {
+                name: (title, label, value) => promptDialog(this.win, { title, label, value }),
+                confirm: (message, detail) => confirmDialog(this.win, message, detail),
+                error: message => void showError(this.win, message),
+            },
             history: {
                 // Asked over the window it came from: the History tab's main window, or the viewer.
                 discard: (kind, path, viewer) => askDiscard(viewer === null ? this.win : this.historyViewers.get(viewer)?.window ?? this.win, kind, path),
@@ -491,6 +490,11 @@ export class MainWindow implements CommandHost {
     }
 
     // The active document's path, null = never saved.
+    // The work folder, as the Files tab shows it (app/files.ts).
+    get root(): string | null {
+        return this.session.files.root;
+    }
+
     get file(): string | null {
         return this.doc.file;
     }
@@ -528,7 +532,6 @@ export class MainWindow implements CommandHost {
             },
             createEditor: () => new MarkdownView(),
             get settings() { return w.settings; },
-            root: () => this.fileTree.root,
             toast: (message, action) => this.toast(message, action),
             attach: doc => this.attach(doc),
             detach: doc => {
@@ -558,8 +561,8 @@ export class MainWindow implements CommandHost {
             openFolder: path => this.openFolder(path),
             fileSaved: path => {
                 // Show the new file in the tree without waiting for the disk monitor.
-                this.fileTree.refresh(GLib.path_get_dirname(path));
-                this.fileTree.reveal(path);
+                this.session.files.refresh(GLib.path_get_dirname(path));
+                this.session.files.reveal(path);
                 this.syncHistory();
             },
         };
@@ -676,7 +679,7 @@ export class MainWindow implements CommandHost {
 
     // File name relative to the project folder (the same as the name in workspace.ts); null if outside the folder or not saved.
     private projectName(path: string | null): string | null {
-        const root = this.fileTree.root;
+        const root = this.root;
         return path && root && path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path ? GLib.path_get_basename(path) : null;
     }
 
@@ -771,7 +774,7 @@ export class MainWindow implements CommandHost {
     // force = re-read even for the same file.
     syncHistory(force = false): void {
         if (!this.sidebar.visible || this.sidebar.page !== 'history') return;
-        this.session.history.show(this.file, this.fileTree.root, force);
+        this.session.history.show(this.file, this.root, force);
     }
 
     // Change a view option. All but source mode are GSettings keys: writing them is enough,
@@ -825,7 +828,7 @@ export class MainWindow implements CommandHost {
 
     // The Recent list of the New menu and the document's menu: the last files that still exist.
     private refreshRecent(): void {
-        this.header.setRecent(this.settings.recentFiles.filter(r => fileExists(r.path) && !isDirectory(r.path)).slice(0, 5).map(r => r.path));
+        this.header.setRecent(this.settings.recentFiles.filter(r => fileExists(r.path) && !isFolder(r.path)).slice(0, 5).map(r => r.path));
     }
 
     // Tab title for doc, and the window title if doc is active.
@@ -836,7 +839,7 @@ export class MainWindow implements CommandHost {
         this.tabBar.setTitle(doc.id, `${mark}${name}`, doc.file);
         if (doc !== this.doc) return;
         if (doc.home) {
-            this.header.setTitle(name, this.fileTree.root ? GLib.path_get_basename(this.fileTree.root) : APP_NAME);
+            this.header.setTitle(name, this.root ? GLib.path_get_basename(this.root) : APP_NAME);
             this.win.set_title(`${name} — ${APP_NAME}`);
             return;
         }
@@ -867,7 +870,7 @@ export class MainWindow implements CommandHost {
 
     // A hit of the Search panel: open the file and select the match.
     private openSearchHit(file: string, hit: SearchHit): void {
-        const root = this.fileTree.root;
+        const root = this.root;
         if (!root || !this.openInTab(GLib.build_filenamev([root, ...file.split('/')]))) return;
         const line = this.editor.getText().split('\n')[hit.line] ?? '';
         this.editor.selectRange(hit.line, cpLength(line.slice(0, hit.start)), cpLength(line.slice(hit.start, hit.end)));
@@ -896,7 +899,7 @@ export class MainWindow implements CommandHost {
     }
 
     async chooseFolder(): Promise<void> {
-        const path = await chooseFile(this.win, { title: _('Open Folder'), selectFolder: true, folder: this.fileTree.root });
+        const path = await chooseFile(this.win, { title: _('Open Folder'), selectFolder: true, folder: this.root });
         if (path) this.openFolder(path);
     }
 
@@ -906,7 +909,7 @@ export class MainWindow implements CommandHost {
     openFolder(path: string, show = true): void {
         const absolute = Gio.File.new_for_path(path).get_path() ?? path;
         // Switching to another folder: the files of the old folder do not belong here, close their tabs first.
-        if (this.fileTree.root && this.fileTree.root !== absolute) {
+        if (this.root && this.root !== absolute) {
             void after(this.documents.closeOutside(absolute), yes => {
                 if (yes) this.applyFolder(absolute, show);
             });
@@ -916,7 +919,7 @@ export class MainWindow implements CommandHost {
     }
 
     private applyFolder(absolute: string, show: boolean): void {
-        this.fileTree.setRoot(absolute);
+        this.session.files.setRoot(absolute);
         this.workspace.warm(absolute);
         this.fileTree.reveal(this.file);
         this.syncHistory();

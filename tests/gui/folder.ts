@@ -3,7 +3,7 @@
 import GLib from 'gi://GLib';
 import { parseBoard } from '../../src/markdown/kanban.js';
 import { isBoard } from '../../src/markdown/layout.js';
-import { listFolder } from '../../src/ui/filetree.js';
+import { listFolder } from '../../src/app/files.js';
 import { MainWindow } from '../../src/window.js';
 import { widgetPixbuf } from '../widgets.js';
 import { section, test, eq, ok, tmp, optVal } from '../framework.js';
@@ -95,7 +95,7 @@ export function folderTests(c: GuiContext): void {
         ok(childNames().includes('picture.png'), 'the .png file was not shown');
     });
     test('load() with a folder path opens the folder, not an error', () => {
-        ft.setRoot(null);
+        w.session.files.setRoot(null);
         // Before the fix, this showed an "Is a directory" error dialog (and the test hung on that dialog).
         ok(w.load(proj), 'load() failed');
         pump();
@@ -134,13 +134,13 @@ export function folderTests(c: GuiContext): void {
     const prompts: (string | null)[] = [];
     const errors: string[] = [];
     const confirms: boolean[] = [];
-    ft.dialogs = { prompt: () => prompts.shift() ?? null, confirm: () => confirms.shift() ?? false, error: msg => { errors.push(msg); } };
+    Object.assign(w.session.files.dialogs, { name: () => prompts.shift() ?? null, confirm: () => confirms.shift() ?? false, error: (msg: string) => { errors.push(msg); } });
     const menuLabels = (m: MenuEntry[]) => m.map(i => i.label);
     const activate = (m: MenuEntry[], label: string) => m.find(i => i.label === label)!.run!();
     const opened: string[] = [];
-    const openBefore = ft.onOpenFile;
-    ft.onOpenFile = p => { opened.push(p); openBefore(p); };
-    ft.setRoot(proj);
+    const openBefore = w.openFile;
+    w.openFile = p => { opened.push(p); openBefore.call(w, p); };
+    w.session.files.setRoot(proj);
     w.file = null;
     buf.set_modified(false);
 
@@ -343,7 +343,7 @@ export function folderTests(c: GuiContext): void {
     });
     buf.set_modified(false);
     w.file = null;
-    ft.onOpenFile = openBefore;
+    w.openFile = openBefore;
 
     test('the Search panel finds a note, opens the hit with the match selected, and plans the replacement', () => {
         w.showSearch(); pump();
@@ -387,7 +387,7 @@ export function folderTests(c: GuiContext): void {
         eq([w.sidebar.page, w.settings.sidebarPage], ['files', 'files'], 'files');
     });
     test('closing the folder empties the tree', () => {
-        ft.setRoot(null);
+        w.session.files.setRoot(null);
         eq(childNames(), [], 'rows');
     });
     buf.set_modified(false);

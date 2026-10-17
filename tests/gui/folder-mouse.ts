@@ -66,6 +66,6 @@ export function folderMouseTests(c: GuiContext): void {
     } finally {
         if (held) input.up();
         input.close();
-        ft.setRoot(null);
+        w.session.files.setRoot(null);
     }
 }

@@ -52,7 +52,8 @@ export async function assistantTests(): Promise<void> {
         const settings = memorySettings();
         settings.chatSave = false;
         const rec = recordingPanel();
-        const session = new AppSession(fakeFrontend(settings, [], makeEditor, { root: () => root, chatPanel: rec.panel, settings }));
+        const session = new AppSession(fakeFrontend(settings, [], makeEditor, { chatPanel: rec.panel, settings }));
+        session.files.root = root;   // the work folder without the Files tab: nothing is listed or watched
         session.start();
         session.assistant.chat.keyStore = KEY;
         return { session, root, settings, chat: session.assistant.chat, ...rec };

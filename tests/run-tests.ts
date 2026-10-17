@@ -43,7 +43,6 @@ import { actionTests } from './unit/actions.js';
 import { tableTests } from './unit/table.js';
 import { codeLanguageTests } from './unit/codelang.js';
 import { discardTests } from './unit/discard.js';
-import { fileOpsTests } from './unit/fileops.js';
 import { gjsPortTests } from './unit/gjsport.js';
 import { runCoreTests } from './core-tests.js';
 import { dialogTests } from './gui/dialogs.js';
@@ -93,7 +92,6 @@ function runUnitTests(): void {
     tableTests();
     codeLanguageTests();
     discardTests();
-    fileOpsTests();
     settle(gjsPortTests(), 60 * 1000);
 }
 
