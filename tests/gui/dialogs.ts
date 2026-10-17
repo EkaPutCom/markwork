@@ -78,7 +78,7 @@ export function dialogTests(c: GuiContext): void {
     test('fields dialog: a new field gets a name, a type, and options; a taken name blocks saving; existing fields are kept in order', () => {
         const existing = parseSchema('---\nfields:\n  prio: select(a, b)\n---\n').fields;
         const seen: Record<string, unknown> = {};
-        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: ['due'], uses: (key, option) => (key === 'prio' && option === 'a' ? 3 : 0) }), d => {
+        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: ['due'], uses: [{ key: 'prio', option: 'a', count: 3 }] }), d => {
             const labels = () => descendants(d).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(l => l.label);
             // the last one: the new field is at the end, and every select field has its own entry for adding an option
             const entryBy = (placeholder: string) => descendants(d).filter((x): x is Gtk.Entry => x instanceof Gtk.Entry && x.placeholder_text === placeholder).at(-1)!;
@@ -101,7 +101,7 @@ export function dialogTests(c: GuiContext): void {
 
     test('fields dialog: options and fields can be moved and removed; Cancel returns null', () => {
         const existing = parseSchema('---\nfields:\n  one: select(a, b, c)\n  two: text\n---\n').fields;
-        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: () => 0 }), d => {
+        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: [] }), d => {
             const moveDown = descendants(d).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.tooltip_text === 'Move down');
             moveDown[0].emit('clicked'); c.pump();   // the first field goes below the second
             const remove = descendants(d).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.tooltip_text === 'Remove option');
@@ -109,13 +109,13 @@ export function dialogTests(c: GuiContext): void {
             button(d, 'Save').emit('clicked');
         });
         eq(result?.map(f => [f.key, f.options]), [['two', []], ['one', ['b', 'c']]]);
-        eq(drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: () => 0 }), d => button(d, 'Cancel').emit('clicked')), null);
+        eq(drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: [] }), d => button(d, 'Cancel').emit('clicked')), null);
     });
 
     test('fields dialog: a color is chosen from the dot of an option (and taken back with Automatic); a colon in an option blocks saving', () => {
         const existing = parseSchema('---\nfields:\n  prio: select(a, b:blue)\n---\n').fields;
         const seen: Record<string, unknown> = {};
-        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: () => 0 }), d => {
+        const result = drive('Fields', () => editSchemaDialog(w.win, { fields: existing, reserved: [], uses: [] }), d => {
             const buttons = (tip: string) => descendants(d).filter((x): x is Gtk.Button => x instanceof Gtk.Button && x.tooltip_text === tip);
             seen.dotClasses = buttons('Color of this option').map(b => b.has_css_class('opt-dot-blue') ? 'blue' : b.has_css_class('opt-dot-auto') ? 'auto' : '?');
             buttons('Color of this option')[0].emit('clicked'); c.pump();

@@ -63,7 +63,7 @@ export async function historyControllerTests(): Promise<void> {
         const rec = recordingViews();
         const toasts: string[] = [];
         const settings = memorySettings();
-        const session = new AppSession(fakeFrontend(settings, toasts, makeEditor, { settings, historyTab: rec.tab, historyViewers: rec.viewers }));
+        const session = new AppSession(fakeFrontend(settings, toasts, makeEditor, { historyTab: rec.tab, historyViewers: rec.viewers }));
         session.files.root = root;   // the work folder without the Files tab: nothing is listed or watched
         session.start();
         const asked: string[] = [];

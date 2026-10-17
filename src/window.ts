@@ -76,7 +76,7 @@ import { HarnessReviewView } from './ui/harnessreview.js';
 import type { HomeController } from './app/home.js';
 import type { ViewScreen } from './app/views.js';
 import { editSchemaDialog } from './ui/schemadialog.js';
-import type { ToastAction } from './app/document.js';
+import type { ToastButton } from './app/document.js';
 import { UNTITLED, type DocumentController } from './app/documents.js';
 import { AppSession, type AppDialogs, type AppFrontend, type FrontendHost } from './app/session.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
@@ -109,7 +109,7 @@ export class MainWindow implements CommandHost {
     readonly findBar: FindBar;
     // The last notification text (for tests; the toast itself disappears on its own).
     lastToast = '';
-    lastToastAction: ToastAction | null = null;
+    lastToastAction: ToastButton | null = null;
     private readonly toasts = new Adw.ToastOverlay();
     readonly statusBar: StatusBar;
     readonly tabBar: TabBar;
@@ -186,7 +186,7 @@ export class MainWindow implements CommandHost {
         this.header = new HeaderBar();
 
         // The application layer: its controllers are created before the first document, whose buffer already queues autosaves.
-        this.session = new AppSession<MarkdownView>({ host: this.frontendHost(), documents: this.documentsHost(), dialogs: this.appDialogs() });
+        this.session = new AppSession<MarkdownView>({ settings, host: this.frontendHost(), documents: this.documentsHost(), dialogs: this.appDialogs() });
         const session = this.session;
         ({ journal: this.journal, collab: this.collab, pulls: this.pulls, contribute: this.contribute, harness: this.harness,
             review: this.review, homePage: this.homePage, documents: this.documents, workspace: this.workspace } = session);
@@ -340,13 +340,13 @@ export class MainWindow implements CommandHost {
     }
 
     // A short notification that disappears on its own (Adw.Toast).
-    toast(message: string, action?: ToastAction): void {
+    toast(message: string, action?: ToastButton): void {
         this.lastToast = message;
         this.lastToastAction = action ?? null;
         const toast = new Adw.Toast({ title: message, timeout: action ? 8 : 3 });
         if (action) {
             toast.set_button_label(action.label);
-            toast.connect('button-clicked', action.run);
+            toast.connect('button-clicked', () => this.session.toastActivated(action.token));
         }
         this.toasts.add_toast(toast);
     }
@@ -356,7 +356,6 @@ export class MainWindow implements CommandHost {
         const w = this;
         return {
             screen: this.viewScreen(),
-            get settings() { return w.settings; },
             get chatPanel() { return w.chat; },
             get historyTab() { return w.history; },
             get historyViewers() { return w.historyViewers; },
@@ -413,9 +412,11 @@ export class MainWindow implements CommandHost {
                 capture: () => promptDialog(this.win, { title: _('Add to Journal'), label: _('Recorded in today\'s journal with the current time.'), accept: _('Add') }),
             },
             collab: {
-                token: (repo, hasToken, source, test) => tokenDialog(this.win, {
-                    host: repo.host, repository: `${repo.owner}/${repo.repo}`, hasToken, source, test,
+                token: (repo, hasToken, source) => tokenDialog(this.win, {
+                    host: repo.host, repository: `${repo.owner}/${repo.repo}`, hasToken, source,
+                    test: token => this.collab.dialogs.onTestToken(repo, token),
                 }),
+                onTestToken: async () => '',
             },
             pulls: {
                 local: pull => decideDialog(this.win, fmt(_('Merge pull request #{number} in this folder?'), { number: pull.number }),
@@ -524,7 +525,6 @@ export class MainWindow implements CommandHost {
 
     // What follows the documents on screen.
     private documentsHost(): AppFrontend<MarkdownView>['documents'] {
-        const w = this;
         return {
             dialogs: {
                 askSaveChanges: name => askSaveChanges(this.win, name),
@@ -532,8 +532,6 @@ export class MainWindow implements CommandHost {
                 chooseFile: options => chooseFile(this.win, options),
             },
             createEditor: () => new MarkdownView(),
-            get settings() { return w.settings; },
-            toast: (message, action) => this.toast(message, action),
             attach: doc => this.attach(doc),
             detach: doc => {
                 this.tabBar.remove(doc.id);

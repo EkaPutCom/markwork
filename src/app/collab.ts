@@ -24,10 +24,12 @@ export interface CollabView {
     setPulls(pulls: readonly PullRequest[]): void;
 }
 
-// The token dialog; null = cancelled, '' = forget the saved token. `test` tries a typed token without saving it (see
-// CollabController.test): it resolves to a sentence for the user and rejects with the reason.
+// The token dialog; null = cancelled, '' = forget the saved token. While it is open the dialog can try a typed token
+// without saving it through `onTestToken`, which the controller sets (see CollabController.test): it resolves to a sentence
+// for the user and rejects with the reason.
 export interface CollabDialogs {
-    token(repo: RepoRef, hasToken: boolean, source: TokenSource | undefined, test: (token: string) => Promise<string>): Promise<string | null>;
+    token(repo: RepoRef, hasToken: boolean, source: TokenSource | undefined): Promise<string | null>;
+    onTestToken: (repo: RepoRef, token: string) => Promise<string>;
 }
 
 export interface CollabHost extends DocumentHost {
@@ -69,6 +71,7 @@ export class CollabController {
     // dialogs: the frontend's token dialog (it can try a token with test()); tests replace it with an immediate answer.
     constructor(private readonly host: CollabHost, public dialogs: CollabDialogs, readonly services: CollabServices = { ...defaultServices }) {
         const panel = host.collabPanel;
+        dialogs.onTestToken = (repo, token) => this.test(repo, token);
         panel.onRefresh = () => void this.refresh();
         panel.onServer = () => void this.editToken();
         panel.onSend = () => this.onSend();
@@ -184,7 +187,7 @@ export class CollabController {
         const repo = this.repo ?? (this.folder ? parseRemote((await this.services.remoteUrl(this.folder)) ?? '') : null);
         if (!repo) return;
         const saved = await this.services.tokens.get(repo.host);
-        const answer = await this.dialogs.token(repo, !!saved, saved?.source, token => this.test(repo, token));
+        const answer = await this.dialogs.token(repo, !!saved, saved?.source);
         if (answer === null) return;
         if (answer === '') await this.services.tokens.clear(repo.host);
         else await this.services.tokens.set(repo.host, answer);
