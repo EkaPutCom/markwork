@@ -48,7 +48,7 @@ export interface ReviewView {
     setCommits(commits: readonly Commit[], uncommitted: boolean): void;
     setStatus(text: string): void;
     setMessage(text: string): void;
-    setDiff(lines: DiffLine[], commented: ReadonlySet<number>): void;
+    setDiff(lines: DiffLine[], commented: readonly number[]): void;   // commented = the lines that have a comment
     showTab(tab: ReviewTab): void;
     setSummary(view: SummaryView): void;
     setReplyCount(comments: number): void;
@@ -204,7 +204,7 @@ export class HarnessReviewController {
         const view = this.host.reviewView;
         if (file.binary) { view.setMessage(_('A binary file: there is no text to compare.')); return; }
         if (!c.lines.length) { view.setMessage(file.status === 'renamed' ? fmt(_('Renamed from {old}, unchanged.'), { old: file.oldPath ?? '' }) : _('No change in the text (only its mode).')); return; }
-        view.setDiff(c.lines, new Set(c.comments.filter(x => x.file === index).map(x => x.index)));
+        view.setDiff(c.lines, c.comments.filter(x => x.file === index).map(x => x.index));
         view.showTab('changes');
     }
 

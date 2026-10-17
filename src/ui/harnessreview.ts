@@ -294,7 +294,7 @@ export class HarnessReviewView implements ReviewView {
     }
 
     // The change of one file; `commented` are the lines that have a comment.
-    setDiff(lines: DiffLine[], commented: ReadonlySet<number>): void {
+    setDiff(lines: DiffLine[], commented: readonly number[]): void {
         this.lines = lines;
         setupDiffTags(this.diffView, Adw.StyleManager.get_default().get_dark());
         fillDiff(this.diffView, lines);

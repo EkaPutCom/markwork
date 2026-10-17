@@ -75,7 +75,7 @@ export interface ViewScreen<E extends TextEditor> {
     setInboxCounts(items: number): void;
     showLayout(layout: Layout | '' | null): void;   // the layout button and menu: '' = the text view, null = hidden (Home)
     setStructuredState(on: boolean): void;          // the Board View toggle
-    enableActions(names: Iterable<string>, enabled: boolean): void;
+    enableActions(names: readonly string[], enabled: boolean): void;
 }
 
 export interface ViewHost<E extends TextEditor> extends DocumentHost<E> {
