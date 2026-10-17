@@ -2,7 +2,7 @@
 // summary through the Assistant, and recording work activity (cards, agent changes, harness runs).
 
 import { after, type Awaitable } from '../awaitable.js';
-import { readTextFile, writeTextFile, flushWrites, fileExists } from '../files.js';
+import { readTextFile, writeTextFile, flushWrites, fileExists, insideName } from '../files.js';
 import { platform } from '../platform/index.js';
 import { commitsBetween } from '../git.js';
 import { readActivity, recordActivity } from '../activity.js';
@@ -58,8 +58,9 @@ export class JournalController {
     // Board changes (in the work folder) → card activity.
     recordBoard(file: string | null, before: Board, after: Board): void {
         const root = this.host.root();
-        if (!root || !file?.startsWith(`${root}/`)) return;
-        for (const text of boardEvents(before, after, file.slice(root.length + 1))) this.record('card', text);
+        const name = root && file ? insideName(root, file) : null;
+        if (!name) return;
+        for (const text of boardEvents(before, after, name)) this.record('card', text);
     }
 
     // Ctrl+Alt+J: open today's journal (created from the template if missing), then fill in the Activity section.

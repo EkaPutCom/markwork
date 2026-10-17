@@ -26,6 +26,13 @@ export function fileUri(path: string): string {
     return `file://${encode(path.split('/'))}`;
 }
 
+// Where `path` lies inside `root`, as a name with / for a separator (the form notes and boards use whatever the system's
+// separator is); null when it is not strictly inside (the root itself, or elsewhere).
+export function insideName(root: string, path: string): string | null {
+    const rel = platform().paths.relative(root, path);
+    return rel && /^[A-Za-z]:/.test(root) ? rel.replace(/\\/g, '/') : rel;
+}
+
 // Move to the Trash (recoverable), not a permanent delete.
 export function trashFile(path: string): void {
     try {

@@ -72,9 +72,9 @@ async function out(git: GitRunner, cwd: string, args: string[]): Promise<string 
 
 // ---------- Paths and names ----------
 
-const trimSlash = (path: string): string => path.replace(/\/+$/, '') || '/';
-const parentOf = (path: string): string => trimSlash(path).replace(/\/[^/]*$/, '') || '/';
-const baseName = (path: string): string => trimSlash(path).split('/').pop() ?? '';
+const trimSlash = (path: string): string => path.replace(/[\\/]+$/, '') || '/';
+const parentOf = (path: string): string => trimSlash(path).replace(/[\\/][^\\/]*$/, '') || '/';
+const baseName = (path: string): string => trimSlash(path).split(/[\\/]/).pop() ?? '';
 const join = (...parts: string[]): string => parts.filter(Boolean).join('/').replace(/\/{2,}/g, '/');
 
 // The folder the project's worktrees go in.

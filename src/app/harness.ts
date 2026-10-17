@@ -2,7 +2,7 @@
 // and its log window. The runs themselves are managed by the Orchestrator this controller owns.
 
 import { after, type Awaitable } from '../awaitable.js';
-import { fileExists, readTextFile } from '../files.js';
+import { fileExists, insideName, readTextFile } from '../files.js';
 import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import { findProgram, labelWorktree, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator.js';
@@ -273,8 +273,8 @@ export class HarnessController {
     // as Ctrl+click; the document that is currently open is read from its editor so unsaved edits are included.
     private linkedNotes(boardFile: string, links: WikiLink[]): LinkedNote[] {
         const workspace = this.host.root();
-        const root = workspace && boardFile.startsWith(`${workspace}/`) ? workspace : platform().paths.dirname(boardFile);
-        const from = boardFile.slice(root.length + 1);
+        const root = workspace && insideName(workspace, boardFile) !== null ? workspace : platform().paths.dirname(boardFile);
+        const from = insideName(root, boardFile) ?? platform().paths.basename(boardFile);
         const files = this.host.workspace.names(root);
         return links.map(link => {
             const file = resolveWikiLink(link.target, files, from);
