@@ -15,6 +15,7 @@ import { inboxModelTests } from './unit/inbox.js';
 import { fieldsModelTests } from './unit/fields.js';
 import { layoutTests } from './unit/layout.js';
 import { tableLayoutTests } from './unit/tablelayout.js';
+import { editCommandTests } from './unit/editcommands.js';
 import { sampleDocumentTests } from './unit/samples.js';
 import { layoutsModelTests } from './unit/layouts.js';
 import { homeModelTests } from './unit/home.js';
@@ -77,6 +78,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     fieldsModelTests();
     layoutTests();
     tableLayoutTests();
+    editCommandTests();
     layoutsModelTests();
     sampleDocumentTests();
     homeModelTests();
