@@ -24,7 +24,7 @@ type StartFields = Partial<Pick<TraceEvent, 'round' | 'status' | 'ms' | 'args' |
 type EndFields = Partial<Pick<TraceEvent, 'result' | 'usage'>>;
 
 const MAX_DETAIL = 20000;
-const MAX_EVENTS = 2000;
+export const MAX_EVENTS = 2000;
 
 const clip = (text: string): string => text.length > MAX_DETAIL ? `${text.slice(0, MAX_DETAIL)}\n… (${text.length - MAX_DETAIL} more characters truncated)` : text;
 
@@ -72,7 +72,8 @@ export class AgentTrace {
     private seq = 0;
     private open = new Map<string, number>();   // key → index of the event still in progress, to be completed later
     private starts = new Map<string, number>();
-    onChange: () => void = () => {};
+    // Told of each event that was added or changed; null = the whole log was replaced or cleared. (TraceFeed turns these into updates.)
+    onChange: (event: TraceEvent | null) => void = () => {};
 
     constructor(private readonly now: () => number = Date.now, private readonly stamp: () => string = () => new Date().toISOString().slice(0, 19)) {}
 
@@ -80,7 +81,7 @@ export class AgentTrace {
         this.events.length = 0;
         this.open.clear();
         this.starts.clear();
-        this.onChange();
+        this.onChange(null);
     }
 
     add(kind: TraceKind, title: string, detail = '', extra: StartFields = {}): TraceEvent {
@@ -91,7 +92,7 @@ export class AgentTrace {
             this.events.splice(0, this.events.length - MAX_EVENTS);
             this.open.clear();   // indices shift; events still in progress are too old to be completed
         }
-        this.onChange();
+        this.onChange(event);
         return event;
     }
 
@@ -117,7 +118,7 @@ export class AgentTrace {
         if (extra.result !== undefined) event.result = clip(extra.result);
         if (extra.usage) event.usage = extra.usage;
         if (started !== undefined) event.ms = this.now() - started;
-        this.onChange();
+        this.onChange(event);
     }
 
     // Reasoning and answers stream in little by little: append to the last event of the same kind in the same round.
@@ -125,7 +126,7 @@ export class AgentTrace {
         const last = this.events[this.events.length - 1];
         if (last && last.kind === kind && last.round === round) {
             last.detail = clip(last.detail + delta);
-            this.onChange();
+            this.onChange(last);
         } else {
             this.add(kind, kind === 'reasoning' ? 'Model reasoning' : 'Model answer', delta, { round });
         }
@@ -151,7 +152,7 @@ export class AgentTrace {
         this.seq = events.reduce((max, e) => Math.max(max, e.seq), 0);
         this.open.clear();
         this.starts.clear();
-        this.onChange();
+        this.onChange(null);
     }
 
     // One event as plain text, to copy or export.

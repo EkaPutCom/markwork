@@ -21,11 +21,10 @@ import type { TurnOutcome } from '../agent/chatcontroller.js';
 import type { ChatSummary } from '../agent/chatstore.js';
 import type { Usage } from '../agent/provider.js';
 import type { ToolStep } from '../agent/session.js';
-import type { Change } from '../agent/changes.js';
 import type { SavedChat } from '../agent/transcript.js';
 import type { WorkState } from '../agent/work.js';
-import { AgentTrace } from '../agent/trace.js';
-import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } from '../app/assistant.js';
+import { TraceReplica, type TraceUpdate } from '../agent/tracefeed.js';
+import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk, UndoTarget } from '../app/assistant.js';
 import type { ProposalViewer } from './proposalviewer.js';
 import { ChatSettings } from './chatsettings.js';
 import { ChatHistoryList } from './chathistory.js';
@@ -121,7 +120,8 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
     onOpenChat: (path: string) => SavedChat | null = () => null;
     onDeleteChat: (path: string) => string | null = () => null;
     onApply: (ask: number, chosen: number[] | null) => string | null = () => 'applying is not available';
-    onUndo: (changes: Change[]) => string | null = () => 'applying is not available';
+    onUndo: (target: UndoTarget) => string | null = () => 'applying is not available';
+    onClearLog: () => void = () => {};
     onInsert: (text: string) => boolean = () => false;
     onModel: (model: string) => void = () => {};
     onThinking: (thinking: boolean) => void = () => {};
@@ -132,7 +132,8 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
 
     // The window's parent for the review and log windows, and the live agent log the log window follows.
     window: () => Gtk.Window | null = () => null;
-    trace = new AgentTrace();
+    // The agent log: a copy of the conversation's trace, kept up to date by the updates the core sends (logUpdate).
+    readonly log = new TraceReplica();
 
     private shown: ChatPanelSettings = { model: '', thinking: false, saveChats: true, options: { activeDocument: true, selection: true, project: true }, budget: 0 };
     private running = false;
@@ -156,6 +157,7 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
 
     constructor() {
         super();
+        this.log.onClear = () => this.onClearLog();
         this._clearButton.connect('clicked', () => this.reset());
         this._logButton.connect('clicked', () => this.showLog());
         new ChatHistoryList(this.historyButton, this._historyPopover, this.chatList, () => this.onChats(), path => this.onDeleteChat(path),
@@ -169,7 +171,7 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
         });
         this.proposals = new ProposalCards({
             apply: (ask, chosen) => this.onApply(ask, chosen),
-            undo: changes => this.onUndo(changes),
+            undo: target => this.onUndo(target),
             busy: () => this.running,
             window: () => this.window(),
             dark: () => this.dark,
@@ -274,10 +276,15 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
         this.onStop();
     }
 
+    // The core sent the agent log, or the events that changed in it.
+    logUpdate(update: TraceUpdate): void {
+        this.log.apply(update);
+    }
+
     // Open (or focus) the agent log monitor window.
     showLog(): void {
         if (this.logViewer?.window.get_realized()) { this.logViewer.show(); return; }
-        this.logViewer = new LogViewer(this.window(), this.trace);
+        this.logViewer = new LogViewer(this.window(), this.log);
         this.logViewer.show();
     }
 

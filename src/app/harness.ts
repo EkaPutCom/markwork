@@ -17,6 +17,7 @@ import { openCommandLink, openSocketLink } from '../agent/daemon/streamlink.js';
 import { DaemonHub, type Openers } from '../daemonhub.js';
 import { adoptRun, daemonGit, daemonSpawner } from '../orchestratordaemon.js';
 import type { MenuEntry } from './menu.js';
+import { TraceFeed, type TraceUpdate } from '../agent/tracefeed.js';
 import { harnessActivity, type ActivityKind } from '../markdown/journal.js';
 import { assignCard, cardBranch, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
 import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
@@ -26,14 +27,23 @@ import { docFor, type DocumentHost } from './document.js';
 
 // The board on screen, as far as harness runs need it.
 export interface HarnessBoard {
-    getBoard(): Board;
-    commit(board: Board): void;      // a change made from the card menu, through the board (one undo step)
     queueRender(): void;             // a run changed state: redraw its card
 }
 
+// One entry of a card's menu as the board view gets it: the menu is the core's, the entry is chosen by its token (runMenu).
+export interface HarnessMenuEntry {
+    label: string;
+    enabled?: boolean;
+    token: number;
+}
+
 // A run's log window; one per run, raised again when it is already open.
+// The frontend keeps a copy of the log (a TraceReplica) and is sent updates while its window is open.
 export interface HarnessLogs {
-    show(runId: number): void;
+    onClear: (runId: number) => void;       // the viewer asked for the log to be cleared
+    onClosed: (runId: number) => void;      // the log window was closed
+    show(runId: number, title: string): void;
+    update(runId: number, update: TraceUpdate): void;
 }
 
 // What closing the window does with agents that are still working.
@@ -52,6 +62,8 @@ export interface HarnessDialogs {
 export interface HarnessHost extends DocumentHost {
     readonly settings: AppSettings;
     readonly board: HarnessBoard;
+    boardNow(): Board;                    // the board of the active document
+    commitBoard(board: Board): void;      // a change made from the card menu: shown on the board and written (one undo step)
     readonly logs: HarnessLogs;
     readonly workspace: WorkspaceRepository;
     boardShown(file: string): boolean;    // the board in `file` is the one on screen
@@ -85,6 +97,8 @@ export class HarnessController {
 
     // dialogs: the frontend's questions; tests replace them with immediate answers.
     constructor(private readonly host: HarnessHost, public dialogs: HarnessDialogs) {
+        host.logs.onClear = runId => this.orchestrator.queue.runs.find(r => r.id === runId)?.trace.clear();
+        host.logs.onClosed = runId => this.stopLog(runId);
         this.orchestrator = new Orchestrator({
             workspace: () => host.root(),
             updateBoard: (file, edit) => host.updateBoardFile(file, edit),
@@ -258,13 +272,31 @@ export class HarnessController {
         });
     }
 
-    // Card menu entries to assign, stop, and monitor harnesses.
-    menu(card: Card, at: Position): MenuEntry[] {
+    // Card menu entries to assign, stop, and monitor harnesses. An entry is chosen with runMenu(token); the tokens of the
+    // menu before this one are forgotten, as the board view only offers the latest.
+    menu(card: Card, at: Position): HarnessMenuEntry[] {
+        const entries = this.menuEntries(card, at);
+        this.menuActions.clear();
+        return entries.map(({ label, enabled, run }) => {
+            const token = ++this.lastMenuToken;
+            if (run) this.menuActions.set(token, run);
+            return enabled === undefined ? { label, token } : { label, enabled, token };
+        });
+    }
+
+    private readonly menuActions = new Map<number, () => void>();
+    private lastMenuToken = 0;
+
+    runMenu(token: number): void {
+        this.menuActions.get(token)?.();
+    }
+
+    private menuEntries(card: Card, at: Position): MenuEntry[] {
         const file = this.host.active().file;
         const run = file ? this.orchestrator.queue.find(file, card.text) : null;
         const active = run && isActive(run.status) ? run : null;
         const review: MenuEntry[] = file && cardBranch(card.text) && !active
-            ? [{ label: _('Review Changes'), run: () => this.onReview(file, card, this.host.board.getBoard()) }] : [];
+            ? [{ label: _('Review Changes'), run: () => this.onReview(file, card, this.host.boardNow()) }] : [];
         return [...review, ...this.assignEntries(card, at, !!file && !active), ...(run ? this.runEntries(run, active) : []), ...this.cardEntries(card, at, !active)];
     }
 
@@ -300,22 +332,20 @@ export class HarnessController {
 
     // Removing an assignment (when nothing runs) and changing the card's remembered project folder.
     private cardEntries(card: Card, at: Position, idle: boolean): MenuEntry[] {
-        const board = this.host.board;
         const entries: MenuEntry[] = [];
-        if (cardMeta(card.text).agent && idle) entries.push({ label: _('Remove Assignment'), run: () => board.commit(updateCard(board.getBoard(), at, { text: assignCard(card.text, null) })) });
-        const project = cardProject(board.getBoard(), card);
+        if (cardMeta(card.text).agent && idle) entries.push({ label: _('Remove Assignment'), run: () => this.host.commitBoard(updateCard(this.host.boardNow(), at, { text: assignCard(card.text, null) })) });
+        const project = cardProject(this.host.boardNow(), card);
         if (project && this.folderOf(project)) entries.push({ label: _('Change Project Folder…'), run: () => this.chooseProjectFolder(project) });
         return entries;
     }
 
     // Run a harness for a card on the active board. The project folder is asked once and then remembered in the settings.
     run(at: Position, agent: string): void {
-        const board = this.host.board;
         const file = this.host.active().file;
         if (!file) { this.host.toast(_('Save the board first before assigning cards')); return; }
-        const card = board.getBoard().columns[at.column]?.cards[at.index];
+        const card = this.host.boardNow().columns[at.column]?.cards[at.index];
         if (!card) return;
-        const project = cardProject(board.getBoard(), card);
+        const project = cardProject(this.host.boardNow(), card);
         if (project && this.folderOf(project)) {
             this.start(file, at, agent, project);
             return;
@@ -323,21 +353,21 @@ export class HarnessController {
         void after(this.chooseProjectFolder(project), folder => {
             if (!folder) return;
             // The folder dialog can stay open for a long time: the assigned card must still be on the same board.
-            if (this.host.active().file !== file || board.getBoard().columns[at.column]?.cards[at.index]?.text !== card.text) {
+            if (this.host.active().file !== file || this.host.boardNow().columns[at.column]?.cards[at.index]?.text !== card.text) {
                 this.host.toast(_('The board changed while choosing a folder; assign the card again'));
                 return;
             }
             if (!project) {
                 // No project name yet: use the folder name and note it on the card so the next turn does not ask again.
                 const tagged = `${card.text} #project/${folder.name}`;
-                board.commit(updateCard(board.getBoard(), at, { text: tagged }));
+                this.host.commitBoard(updateCard(this.host.boardNow(), at, { text: tagged }));
             }
             this.start(file, at, agent, project ?? folder.name);
         });
     }
 
     private start(file: string, at: Position, agent: string, project: string): void {
-        const error = this.orchestrator.start(file, this.host.board.getBoard(), at, agent, project, this.folderOf(project)!, platform().paths.basename(file));
+        const error = this.orchestrator.start(file, this.host.boardNow(), at, agent, project, this.folderOf(project)!, platform().paths.basename(file));
         if (error) this.host.toast(fmt(_('Cannot run {agent}: {error}'), { agent, error }));
     }
 
@@ -401,8 +431,20 @@ export class HarnessController {
         });
     }
 
+    // Open a run's log window (or raise it) and send it the log, then what changes in it while the window is open.
     showLog(run: Run): void {
-        this.host.logs.show(run.id);
+        this.host.logs.show(run.id, fmt(_('{agent} Log — {title}'), { agent: run.agent, title: run.title }));
+        if (this.logFeeds.has(run.id)) return;
+        const feed = new TraceFeed(run.trace, update => this.host.logs.update(run.id, update));
+        this.logFeeds.set(run.id, feed);
+        feed.start();
+    }
+
+    private readonly logFeeds = new Map<number, TraceFeed>();
+
+    private stopLog(runId: number): void {
+        this.logFeeds.get(runId)?.stop();
+        this.logFeeds.delete(runId);
     }
 
     // From Home: an agent that is waiting for an answer is asked right away; one that is working shows its log; a queued one opens its board.
@@ -415,6 +457,7 @@ export class HarnessController {
     }
 
     dispose(): void {
+        for (const runId of [...this.logFeeds.keys()]) this.stopLog(runId);
         this.unwatch?.();
         this.orchestrator.dispose(this.stopOnClose);
         this.hub.dispose();

@@ -1112,9 +1112,10 @@ One file. Change the layout: line and the same notes become a list, a table, a c
         }
         const done = runOf('Checkout');
         if (!done) return;
-        const log = this.w.harnessLogs.show(done.id);
-        if (!log) return;
+        this.w.harness.showLog(done);
         this.idle(600);
+        const log = this.w.harnessLogs.viewerOf(done.id);
+        if (!log) return;
         saveWidget(log.window, 'pi-log');
         log.window.destroy();
     }

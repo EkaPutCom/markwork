@@ -12,6 +12,7 @@ import type { BuiltContext, ContextOptions } from '../agent/context.js';
 import type { ChatSummary } from '../agent/chatstore.js';
 import type { ProposalResult, ToolStep } from '../agent/session.js';
 import type { Change } from '../agent/changes.js';
+import { TraceFeed, type TraceUpdate } from '../agent/tracefeed.js';
 import type { SavedChat } from '../agent/transcript.js';
 import type { WorkState } from '../agent/work.js';
 import type { Cancellable } from '../cancel.js';
@@ -41,6 +42,10 @@ export interface ChatPanelSettings {
     budget: number;
 }
 
+// What Undo names: a proposal of this conversation that was applied (by its ask), or an action of a conversation that was
+// opened again (by its event id). The core undoes the changes it wrote, not changes the panel sends.
+export type UndoTarget = { ask: number } | { event: string };
+
 export interface ChatPanelView {
     // What the user did; the controller sets these.
     onSend: (text: string) => Promise<void>;
@@ -53,7 +58,8 @@ export interface ChatPanelView {
     onDeleteChat: (path: string) => string | null;                    // an error message, or null
     // Apply part of an open proposal (chosen = indices of a batch, null = all): an error message, or null once written.
     onApply: (ask: number, chosen: number[] | null) => string | null;
-    onUndo: (changes: Change[]) => string | null;                     // undo applied changes: an error message, or null
+    onUndo: (target: UndoTarget) => string | null;                    // undo applied changes: an error message, or null
+    onClearLog: () => void;                                           // empty the agent log
     onInsert: (text: string) => boolean;                              // put an answer into the open note
     onModel: (model: string) => void;
     onThinking: (thinking: boolean) => void;
@@ -78,6 +84,7 @@ export interface ChatPanelView {
     // Show a proposal and wait for the user to close it. Closing without an apply that succeeded is rejecting.
     review(ask: ProposalAsk): Promise<ProposalAnswer>;
     cancelReview(ask: number): void;                                  // the turn was stopped: close the review, do not answer
+    logUpdate(update: TraceUpdate): void;                             // the agent log: the whole log, or the events that changed
 }
 
 export interface AssistantHost<E extends TextEditor = TextEditor> extends AgentWriteHost<E> {
@@ -105,6 +112,8 @@ export class AssistantController<E extends TextEditor = TextEditor> {
     private turns = 0;
     private asks = 0;
     private readonly open = new Map<number, OpenAsk>();
+    private readonly applied = new Map<number, Change[]>();   // the changes written for an ask, for Undo
+    private feed: TraceFeed | null = null;
     private readonly unlisten: () => void;
 
     constructor(private readonly host: AssistantHost<E>, private readonly session: AssistantSession<E>) {
@@ -155,7 +164,19 @@ export class AssistantController<E extends TextEditor = TextEditor> {
         this.chat.stop();
     }
 
+    // act.undo: the changes are the ones the core wrote for that ask, or the applied action of that event.
+    private undo(target: UndoTarget): string | null {
+        const changes = 'ask' in target
+            ? this.applied.get(target.ask)
+            : this.chat.session.events.find(e => e.id === target.event && e.status === 'applied')?.changes;
+        if (!changes) return 'there is nothing to undo';
+        const error = this.chat.undo(changes);
+        if (!error && 'ask' in target) this.applied.delete(target.ask);
+        return error;
+    }
+
     dispose(): void {
+        this.feed?.stop();
         this.chat.stop();
         this.unlisten();
     }
@@ -179,7 +200,8 @@ export class AssistantController<E extends TextEditor = TextEditor> {
             try { chat.deleteChat(path); return null; } catch (e) { return errorMessage(e); }
         };
         panel.onApply = (ask, chosen) => this.apply(ask, chosen);
-        panel.onUndo = changes => chat.undo(changes);
+        panel.onUndo = target => this.undo(target);
+        panel.onClearLog = () => chat.session.trace.clear();
         panel.onInsert = text => {
             if (!this.session.canInsert()) return false;
             host.active().editor.insertAtCursor(`${text.trim()}\n`);
@@ -192,6 +214,9 @@ export class AssistantController<E extends TextEditor = TextEditor> {
         panel.onKeyStatus = async () => (await chat.keyStore.get())?.source ?? null;
         panel.onSaveKey = key => chat.keyStore.set(key);
         panel.onForgetKey = () => chat.keyStore.clear();
+        // The agent log follows the conversation's trace.
+        this.feed = new TraceFeed(chat.session.trace, update => panel.logUpdate(update));
+        this.feed.start();
     }
 
     // The conversation draws through the panel: each turn gets a number, so a late notice of an older turn names it.
@@ -256,8 +281,10 @@ export class AssistantController<E extends TextEditor = TextEditor> {
         const picked = chosen ? [...new Set(chosen)].filter(i => Number.isInteger(i) && i >= 0 && i < all.length).sort((a, b) => a - b) : null;
         if (picked && !picked.length) return 'no file was chosen';
         const partial = picked && picked.length < all.length ? picked : null;
-        const error = ask.apply(Array.isArray(ask.changes) ? (partial ? partial.map(i => all[i]) : all) : ask.changes);
+        const written = partial ? partial.map(i => all[i]) : all;
+        const error = ask.apply(Array.isArray(ask.changes) ? written : ask.changes);
         ask.result = error ? { applied: false, error } : { applied: true, ...partial ? { accepted: partial } : {} };
+        if (!error) this.applied.set(id, written);
         return error;
     }
 }

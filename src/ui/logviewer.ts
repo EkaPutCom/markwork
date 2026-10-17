@@ -1,11 +1,12 @@
 // Agent activity monitor window: the tree of each turn (model rounds, reasoning, tools) on the left, everything
-// about the selected step on the right. Updates itself while the agent works; only reads AgentTrace.
+// about the selected step on the right. Updates itself while the agent works; only reads a LogSource (a replica of the core's AgentTrace).
 
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
-import { AgentTrace, type TraceEvent, type TraceKind } from '../agent/trace.js';
+import { type TraceEvent, type TraceKind } from '../agent/trace.js';
+import type { LogSource } from '../agent/tracefeed.js';
 import { formatMs, traceTree, type TraceNode } from '../agent/tracetree.js';
 import { onKeyPress } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
@@ -52,7 +53,7 @@ export class LogViewer {
     private stick = true;
     private stickIdle = 0;
 
-    constructor(parent: Gtk.Window | null, private readonly trace: AgentTrace, title = _('Agent log')) {
+    constructor(parent: Gtk.Window | null, private readonly trace: LogSource, title = _('Agent log')) {
         this.window = new Adw.Window({ transient_for: parent, default_width: 980, default_height: 660, title });
         const header = new Adw.HeaderBar();
 

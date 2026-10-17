@@ -1,9 +1,10 @@
 // Agent activity log: pure recording and real results from the agent loop with a fake provider.
 import { AgentTrace } from '../../src/agent/trace.js';
+import { TraceFeed, TraceReplica, type TraceUpdate } from '../../src/agent/tracefeed.js';
 import { ChatSession } from '../../src/agent/session.js';
 import type { ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
 import { traceTree, descendants, traceStats, turnEvents, formatMs, formatSize } from '../../src/agent/tracetree.js';
-import { section, test, eq, ok, contains, within } from '../framework.js';
+import { section, test, eq, ok, contains, within, pause } from '../framework.js';
 
 const files = [{ name: 'a.md', text: '# A\nRelease November 15\n' }];
 const input = { question: 'When is the release?', active: null, selection: '', files, mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 };
@@ -124,5 +125,49 @@ export async function traceTests(): Promise<void> {
         eq(changes, 1);
         fresh.add('note', 'next');
         eq(fresh.events[4].seq, back[3].seq + 1, 'new events continue the numbering');
+    });
+
+    await test('a feed sends the log, then batched updates; a replica that applies them holds the same events', async () => {
+        const trace = new AgentTrace(() => 0, () => '2026-10-05T10:00:00');
+        trace.add('note', 'before');
+        const updates: TraceUpdate[] = [];
+        const replica = new TraceReplica();
+        const feed = new TraceFeed(trace, u => { updates.push(u); replica.apply(u); });
+        feed.start();
+        eq([updates.length, updates[0].reset, updates[0].events.length], [1, true, 1], 'the log as it is');
+        trace.begin('tool', 'k', 'Tool: read', '', 1, { args: '{}' });
+        for (const word of ['a', 'b', 'c']) trace.append('text', 1, word);
+        trace.finish('tool', 'k', 'ok', undefined, undefined, { result: 'done' });
+        eq(updates.length, 1, 'nothing is sent until the interval is over');
+        await pause(80);
+        eq(updates.length, 2);
+        eq(updates[1].reset, false);
+        eq(updates[1].events.map(e => e.seq), [2, 3], 'each event that changed, once');
+        eq(JSON.parse(JSON.stringify(updates[1])), updates[1], 'not plain data');
+        eq(replica.events.map(e => [e.seq, e.status, e.detail]), trace.events.map(e => [e.seq, e.status, e.detail]));
+        ok(replica.text() === trace.text(), 'the same text');
+        feed.stop();
+        trace.add('note', 'after');
+        await pause(80);
+        eq(updates.length, 2, 'a stopped feed sends nothing');
+    });
+
+    await test('clearing or restoring the log resets the replica; a clear asked for by the viewer reaches the core', async () => {
+        const trace = new AgentTrace();
+        const replica = new TraceReplica();
+        const feed = new TraceFeed(trace, u => replica.apply(u));
+        feed.start();
+        trace.add('note', 'one');
+        trace.add('note', 'two');
+        feed.flush();
+        eq(replica.events.length, 2);
+        replica.onClear = () => trace.clear();
+        replica.clear();
+        feed.flush();
+        eq([trace.events.length, replica.events.length], [0, 0], 'cleared on both sides');
+        trace.restore([{ seq: 9, time: 't', kind: 'note', title: 'saved', detail: '' }]);
+        feed.flush();
+        eq(replica.events.map(e => e.title), ['saved']);
+        feed.stop();
     });
 }

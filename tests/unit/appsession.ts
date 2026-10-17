@@ -5,7 +5,9 @@ import type { SettingValue } from '../../src/platform/index.js';
 import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost, type EditCommands } from '../../src/app/commands.js';
 import { AppSession, type AppFrontend, type FrontendHost } from '../../src/app/session.js';
 import type { TextEditor, ToastButton } from '../../src/app/document.js';
-import { addCard } from '../../src/markdown/kanban.js';
+import { addCard, parseBoard } from '../../src/markdown/kanban.js';
+import { applyChangeBatch } from '../../src/app/agentwrites.js';
+import { platform, setPlatform } from '../../src/platform/index.js';
 import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
@@ -179,6 +181,69 @@ export async function appSessionTests(): Promise<void> {
         eq(ran, ['first'], 'a toast long gone has no action');
         session.toastActivated(buttons.at(-1)!.token);
         eq(ran, ['first', 'more'], 'the latest still works');
+        session.dispose();
+    });
+
+    await test('the core holds the board: it reads it from the document, not from the view', () => {
+        const session = new AppSession(fakeFrontend(memorySettings(), [], () => new LaggingEditor()));
+        session.start();
+        const dir = disk.join(tmp, 'appsession-board');
+        disk.mkdirs(dir);
+        const file = disk.join(dir, 'board.md');
+        disk.write(file, '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n');
+        ok(session.host.openInTab(file), 'openInTab');
+        eq(session.host.boardNow().columns[0].cards.map(c => c.text), ['One']);
+        session.host.commitBoard(addCard(session.host.boardNow(), 0, 'Two'));
+        eq(session.host.boardNow().columns[0].cards.map(c => c.text), ['One', 'Two'], 'the board committed is the board read back, before the write lands');
+        session.dispose();
+    });
+
+    await test('a card\'s harness menu is plain entries with tokens; a token runs its action, and the tokens of an earlier menu are forgotten', () => {
+        const toasts: string[] = [];
+        const session = new AppSession(fakeFrontend(memorySettings(), toasts));
+        session.start();
+        const board = parseBoard('---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n');
+        const card = board.columns[0].cards[0];
+        const first = session.harness.menu(card, { column: 0, index: 0 });
+        ok(first.length > 0 && first.every(e => typeof e.token === 'number' && !('run' in e)), JSON.stringify(first));
+        eq(JSON.parse(JSON.stringify(first)), first, 'not plain data');
+        const assign = first.find(e => e.label.startsWith('Work on it with'))!;
+        session.harness.runMenu(assign.token);
+        eq(toasts, ['Save the board first before assigning cards'], 'the entry ran its action');
+        const second = session.harness.menu(card, { column: 0, index: 0 });
+        session.harness.runMenu(assign.token);
+        session.harness.runMenu(9999);
+        eq(toasts.length, 1, 'an old token and an unknown one do nothing');
+        ok(second.every(e => first.every(f => f.token !== e.token)), 'tokens are not reused');
+        session.dispose();
+    });
+
+    await test('a batch that fails after writing an open document restores it, even when the editor applies writes a turn later', async () => {
+        const session = new AppSession(fakeFrontend(memorySettings(), [], () => new LaggingEditor()));
+        session.start();
+        const dir = disk.join(tmp, 'appsession-rollback');
+        disk.mkdirs(dir);
+        disk.write(disk.join(dir, 'a.md'), 'one\n');
+        disk.write(disk.join(dir, 'second.md'), 'first\n');
+        session.files.setRoot(dir);
+        ok(session.host.openInTab(disk.join(dir, 'a.md')), 'openInTab');
+        // The disk refuses the second file, after the first one (open in its editor) was written.
+        const real = platform();
+        const fs = new Proxy(real.fs, { get: (target, key) => key === 'writeText'
+            ? (path: string, text: string) => { if (path.endsWith('second.md') && text === 'second\n') throw new Error('disk full'); target.writeText(path, text); }
+            : Reflect.get(target, key) });
+        setPlatform({ ...real, fs });
+        let error: string | null;
+        try {
+            error = applyChangeBatch(session.host, [
+                { kind: 'edit', file: 'a.md', before: 'one\n', after: 'two\n', reason: 'edit' },
+                { kind: 'edit', file: 'second.md', before: 'first\n', after: 'second\n', reason: 'edit' },
+            ]);
+        } finally { setPlatform(real); }
+        ok(error !== null && error.includes('restored'), `error: ${error}`);
+        await pause(10);
+        eq(session.documents.active.editor.getText(), 'one\n', 'the open document is back to what it was');
+        eq(disk.read(disk.join(dir, 'second.md')), 'first\n');
         session.dispose();
     });
 
