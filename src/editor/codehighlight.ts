@@ -18,7 +18,7 @@ import GtkSource from 'gi://GtkSource?version=5';
 import Pango from 'gi://Pango';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
-import type { CodeBlock } from './highlighter.js';
+import type { CodeBlock } from '../markdown/highlight.js';
 import { setTagGroup, type Range } from './tagsync.js';
 
 const CACHE_LIMIT = 300;  // number of blocks kept; the cache is cleared if exceeded

@@ -6,6 +6,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import { WELCOME } from '../../src/welcome.js';
 import { readTextFile } from '../../src/files.js';
 import { highlight } from '../../src/editor/highlighter.js';
+import { HighlightCache } from '../../src/markdown/highlight.js';
 import { createTags, SYNTAX_TAGS } from '../../src/editor/tags.js';
 import { LineTagger, normalize, tagRanges } from '../../src/editor/tagsync.js';
 import { section, test, ok, eq, tmp, opt, DIM, RESET } from '../framework.js';
@@ -160,7 +161,7 @@ export function robustnessTests(c: GuiContext): void {
         const reference = new Gtk.TextBuffer();
         const tags = createTags(reference);
         reference.set_text(text(), -1);
-        highlight(reference, tags, new LineTagger(reference, SYNTAX_TAGS.map(n => tags[n])));
+        highlight(reference, new HighlightCache(tags), new LineTagger(reference, SYNTAX_TAGS.map(n => tags[n])));
         for (const name of SYNTAX_TAGS)
             eq(JSON.stringify(tagRanges(buf, ed.tags[name])), JSON.stringify(tagRanges(reference, tags[name])), `tag ${name}`);
         const line = buf.get_iter_at_mark(buf.get_insert()).get_line();
@@ -192,7 +193,7 @@ export function robustnessTests(c: GuiContext): void {
         const tags = createTags(reference);
         const check = () => {
             reference.set_text(text(), -1);
-            const fresh = highlight(reference, tags, new LineTagger(reference, SYNTAX_TAGS.map(n => tags[n])));
+            const fresh = highlight(reference, new HighlightCache(tags), new LineTagger(reference, SYNTAX_TAGS.map(n => tags[n])));
             eq(ed.markers, fresh.markers, 'marker cache');
             eq(ed.headings, fresh.headings, 'heading cache');
             eq(ed.tables, fresh.tables, 'table cache');

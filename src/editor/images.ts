@@ -19,7 +19,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import type { ImageRef } from './highlighter.js';
+import type { ImageRef } from '../markdown/highlight.js';
 import { setTagGroup, type Range } from './tagsync.js';
 import { OverlaySlots } from './overlays.js';
 import { iterAtLine, onClick, removeChildren, textureFromPixbuf } from '../gtkutil.js';

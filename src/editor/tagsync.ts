@@ -5,6 +5,7 @@
 // that is the most expensive thing when typing or moving the cursor in a long document.
 
 import type Gtk from 'gi://Gtk?version=4.0';
+import type { LineSpan as SyntaxSpan } from '../markdown/highlight.js';
 
 // Range [start, end) in code point offsets.
 export type Range = [start: number, end: number];
@@ -94,7 +95,7 @@ export function setTagGroup(buffer: Gtk.TextBuffer, tags: Iterable<Gtk.TextTag>,
 // the same tags even though their position moved.
 
 // Tags on one line: offsets relative to the start of the line; the end may include the newline.
-export type LineSpan = [tag: Gtk.TextTag, start: number, end: number];
+export type LineSpan = SyntaxSpan<Gtk.TextTag>;
 
 const sameSpans = (a: LineSpan[], b: LineSpan[]): boolean =>
     a.length === b.length && a.every((s, k) => s[0] === b[k][0] && s[1] === b[k][1] && s[2] === b[k][2]);

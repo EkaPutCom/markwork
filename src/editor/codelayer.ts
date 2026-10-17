@@ -17,7 +17,7 @@
 
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
-import type { CodeBlock } from './highlighter.js';
+import type { CodeBlock } from '../markdown/highlight.js';
 import type { CodeHighlighter } from './codehighlight.js';
 import { diagramKind } from './mermaid.js';
 import { setTagGroup, setTagRanges, type Range } from './tagsync.js';

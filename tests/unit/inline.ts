@@ -1,6 +1,6 @@
 // parseInline tests.
 
-import { makeCpMap, cpLength, countWords } from '../../src/editor/offsets.js';
+import { makeCpMap, cpLength, countWords } from '../../src/markdown/offsets.js';
 import { parseInline } from '../../src/markdown/inline.js';
 import { section, test, eq, ok } from '../framework.js';
 

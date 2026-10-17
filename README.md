@@ -491,6 +491,8 @@ src/
 ├── markdown/             understanding Markdown (pure TypeScript, no GTK)
 │   ├── syntax.ts         regexes for headings, lists, quotes, tables, emphasis
 │   ├── inline.ts         parseInline(): formatting within a single line
+│   ├── highlight.ts      the syntax of a document as data (styles per line, markers, headings, images, code blocks, tables), re-parsing only the edited range; generic over the editor's style
+│   ├── offsets.ts        UTF-16 ↔ code point position conversion, word count
 │   ├── table.ts          tables: recognizing blocks, splitting cells, tidying, adding/removing rows and columns
 │   ├── layout.ts         the `layout:` line of the frontmatter (board, list, or table) and one-line options such as `add:`
 │   ├── kanban.ts         the model of a board and of a list: reading/writing Markdown (groups of notes), card and group operations, tags, dates, and @harness assignment
@@ -510,7 +512,7 @@ src/
 ├── editor/               the editor engine
 │   ├── view.ts           MarkdownView: the editor widget, ties together the modules below
 │   ├── tags.ts           text styles (GtkTextTag) and their colors
-│   ├── highlighter.ts    applies tags according to the syntax, collects markers
+│   ├── highlighter.ts    hands markdown/highlight.ts the buffer's lines and applies its spans as tags
 │   ├── decorations.ts    hides markers, dims text (focus mode)
 │   ├── editing.ts        formatting commands: bold, link, heading, quote
 │   ├── lists.ts          Enter and Tab in lists and quotes
@@ -526,8 +528,7 @@ src/
 │   ├── overlays.ts       overlay widget slots reused by images, tables, and diagrams
 │   ├── tableedit.ts      Tab/Enter in tables and the Edit Table menu commands
 │   ├── codehighlight.ts  colors the contents of code blocks according to their language
-│   ├── tagsync.ts        applies tags by diff (only the ranges/lines that changed)
-│   └── offsets.ts        UTF-16 ↔ code point position conversion
+│   └── tagsync.ts        applies tags by diff (only the ranges/lines that changed)
 │
 └── ui/                   interface components
     ├── *.ui              declarative layouts (Gtk.Template) for the headerbar, statusbar, findbar, preferences, palette, and chat; bundled by Vite as text (`?raw`)
@@ -666,7 +667,7 @@ Both are deferred with `GLib.idle_add(PRIORITY_HIGH_IDLE)`. Several consecutive 
 
 ### How the hidden syntax effect works
 
-1. **`highlighter.ts`** reads the whole document when it is first opened, and then only the edited range when the text changes. For each syntax it applies a style tag to the contents (for example `bold` on "bold" in `**bold**`) and records the position of its delimiters (`**`) as **markers**.
+1. **`markdown/highlight.ts`** parses the whole document when it is first opened, and then only the edited range when the text changes; `editor/highlighter.ts` hands it the buffer's lines and applies what it returns. The parser knows no editor: the editor gives it one style per syntax name (a `Gtk.TextTag` here) and gets them back in the spans, so another editor (CodeMirror) can use the same parser with its own decorations. For each syntax it applies a style tag to the contents (for example `bold` on "bold" in `**bold**`) and records the position of its delimiters (`**`) as **markers**.
 2. Each marker stores the range of lines where it is "active": `[start, end, firstLine, lastLine, line]`. For inline formats the range is just its own line. For ```` ``` ```` fences the range is the whole code block, so the fences appear as long as the cursor is inside the block.
 3. **`decorations.ts`** applies the `hidden` tag to every marker whose line range does not contain the cursor. When the cursor changes line, only this step is repeated; the full highlight does not need to run again.
 
@@ -684,7 +685,7 @@ Both are deferred with `GLib.idle_add(PRIORITY_HIGH_IDLE)`. Several consecutive 
 
 ### Technical things to know
 
-**Text positions (`editor/offsets.ts`).** GtkTextBuffer counts positions per Unicode character, while JavaScript strings count per UTF-16 unit. The emoji 🎉 is 1 in GTK but 2 in JavaScript. The highlighter works with JavaScript positions, and converts them with `makeCpMap()` just before touching the buffer.
+**Text positions (`markdown/offsets.ts`).** GtkTextBuffer counts positions per Unicode character, while JavaScript strings count per UTF-16 unit. The emoji 🎉 is 1 in GTK but 2 in JavaScript. The highlighter works with JavaScript positions, and converts them with `makeCpMap()` just before touching the buffer.
 
 **Hiding text without `invisible` (`editor/tags.ts`).** The `invisible` attribute of GtkTextView in GTK 3 could trigger the crash *"Byte index is off the end of the line"*. That is why the `hidden` tag makes the text very small and the same color as the background. The result on screen is the same, but the problematic GTK code path is not touched. This approach was kept after moving to GTK 4 because the whole layout of tables, diagrams, and markers depends on it.
 

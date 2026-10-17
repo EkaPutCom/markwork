@@ -4,7 +4,7 @@
 
 import type Gtk from 'gi://Gtk?version=4.0';
 import { applyChanges, type TextEdit, type TextState } from '../markdown/editcommands.js';
-import { makeCpMap, makeU16Map } from './offsets.js';
+import { makeCpMap, makeU16Map } from '../markdown/offsets.js';
 
 // What a command reads: the lines the selection touches (enough for every command that works on lines) or the whole
 // document (the table commands, which find the table from its first line).
