@@ -111,6 +111,25 @@ export function wikiLinkGuiTests(c: GuiContext): void {
         eq(text(), '[[Plan]]', 'text');
         eq(buf.get_iter_at_mark(buf.get_insert()).get_offset(), 8, 'cursor after ]]');
     });
+    // GtkTextView's dispose cannot remove a popover added with set_parent() and loops on it forever, so the suggestions
+    // popover must only be the view's child while it is open (see editor/wikicomplete.ts).
+    test('the suggestions popover is a child of the editor only while it is open', () => {
+        setText('');
+        ok(ed.completer.popover.get_parent() === null, 'the closed popover is still a child of the editor');
+        type('[[pl');
+        ok(ed.completer.visible, 'the suggestions did not appear');
+        ok(ed.completer.popover.get_parent() === ed.view, 'the open popover is not a child of the editor');
+        ed.onKey(Gdk.KEY_Escape, 0);
+        pump();
+        ok(ed.completer.popover.get_parent() === null, 'Esc left the popover attached to the editor');
+        type('[[pl');
+        ed.view.set_visible(false);   // GTK closes it by itself when the view is unmapped
+        for (let i = 0; i < 5; i++) pump();
+        ed.view.set_visible(true);
+        pump();
+        ok(!ed.completer.visible && ed.completer.popover.get_parent() === null, 'closing by GTK left the popover attached');
+        setText('');
+    });
     test('moving the cursor to an old [[ does not show suggestions', () => {
         setText('[[Idea\n\nx');
         placeAtEnd();

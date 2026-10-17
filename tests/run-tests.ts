@@ -33,9 +33,9 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio';
 import System from 'system';
 
-import { DIM, GREEN, RED, RESET, errorMessage, opt, optVal, recordFailure, setRoot, settle, summary } from './framework.js';
+import { DIM, GREEN, RED, RESET, collectBeforeEachTest, errorMessage, opt, optVal, recordFailure, setRoot, settle, summary } from './framework.js';
 import { WELCOME } from '../src/welcome.js';
-import { createContext } from './gui/context.js';
+import { createContext, type GuiContext } from './gui/context.js';
 import { widgetPixbuf } from './widgets.js';
 import { incrementalTests } from './unit/incremental.js';
 import { settingsTests } from './unit/settings.js';
@@ -95,72 +95,73 @@ function runUnitTests(): void {
     settle(gjsPortTests(), 60 * 1000);
 }
 
+// Close the shared test window. Its "unrealize" handler destroys the editors; if it never ran (GJS drops callbacks while
+// a collection is sweeping), the editor's widgets would reach the final collection still wired up, so say so here.
+function closeMain(c: GuiContext): void {
+    c.buf.set_modified(false);
+    c.w.win.destroy();
+    if (!c.ed.isDestroyed) {
+        recordFailure();
+        print(`${RED}The test window closed without destroying its editor (its unrealize handler did not run)${RESET}`);
+    }
+}
+
 function runGuiTests(app: Adw.Application): void {
+    collectBeforeEachTest(true);
     const c = createContext(app);
     if (opt('only-agents')) {
         agentsHostTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-dialogs')) {
         dialogTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-gnome')) {
         gnomeTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-chat')) {
         chatTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-forgejo')) {
         forgejoTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-collab')) {
         collabTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-journal')) {
         journalTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-harness')) {
         harnessTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-history')) {
         historyTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-home')) {
         homeTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     if (opt('only-folder-mouse')) {
         folderMouseTests(c);
-        c.buf.set_modified(false);
-        c.w.win.destroy();
+        closeMain(c);
         return;
     }
     const { w, ed, buf, pump, setText, cursorTo } = c;
@@ -212,8 +213,7 @@ function runGuiTests(app: Adw.Application): void {
         print(`\n${DIM}Screenshot: ${shot}${RESET}`);
     }
 
-    buf.set_modified(false);
-    w.win.destroy();
+    closeMain(c);
 }
 
 // ───────────────────────── Run ─────────────────────────
