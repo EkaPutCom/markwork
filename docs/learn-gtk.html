@@ -613,6 +613,7 @@ svg.ic { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor
     <li><span class="h">62ea652</span><span><span class="era">Adw</span><b>Layers, Chapter 11</b> · <code>files.ts</code>, <code>workspace.ts</code>, and the markworkd links move behind the port (<code>platform/gjs/files.ts</code>, <code>links.ts</code>, idle scheduling), and <code>i18n.ts</code> asks <code>platform().translations</code> while gettext is bound in <code>platform/gjs/i18n.ts</code>. <code>GI_ALLOWED</code> is empty, and a new rule lets the core import only the core.</span></li>
     <li><span class="h">1418686</span><span><span class="era">Adw</span><b>Layers</b> · The thirteen <code>window/</code> controllers become <code>app/</code>: they see a document's editor as a <code>TextEditor</code> and the screen as interfaces (<code>ViewScreen</code>, <code>CollabView</code>, <code>PullReviewView</code>, <code>ReviewView</code>, <code>KanbanView</code>) with dialogs passed in, and <code>window.ts</code> implements them on its widgets. <code>app/</code> imports no GI and no <code>ui/</code>.</span></li>
     <li><span class="h">2612ad7</span><span><span class="era">Adw</span><b>Layers</b> · The window stops composing the application: <code>AppSession</code> (<code>app/session.ts</code>) builds the controllers from one <code>AppFrontend</code> (views, dialogs, hooks), and commands become data (<code>COMMANDS</code> in <code>app/commands.ts</code>) that <code>actions.ts</code> maps onto <code>Gio.Action</code>s and accelerators. <code>actions.ts</code> shrinks 171 → 69 lines.</span></li>
+    <li><span class="h">5dc2af6</span><span><span class="era">Adw</span><b>Layers</b> · The History tab and the commit viewer stop running git: <code>app/history.ts</code> loads the log, the uncommitted files, and the diffs, commits and discards, and writes the commit message; <code>ui/history.ts</code> and <code>ui/historyviewer.ts</code> draw plain data and report <code>on*</code> actions, the viewer windows named by a number.</span></li>
   </ol>
 </section>
 
@@ -685,6 +686,20 @@ screen.setStructuredState(false);</code></pre>
 command('prev-tab', { label: _('Previous Tab'), keys: ['Ctrl+PageUp', 'Ctrl+Shift+Tab'], run: h => h.switchTab(-1) })
 // actions.ts: the GTK side
 app.set_accels_for_action('app.prev-tab', gtkAccelerators(c.keys));   // + '&lt;Control&gt;&lt;Shift&gt;ISO_Left_Tab'</code></pre>
+  <h3>A sidebar tab that only draws: the History tab</h3>
+  <p>The History tab and the commit viewer were GTK widgets that ran git themselves: <code>ui/history.ts</code> called <code>fileLog</code>, <code>repoChanges</code>, <code>commitFiles</code>, and <code>discardChanges</code>, and each <code>HistoryViewer</code> loaded its own diff in its constructor. In 5dc2af6 that work moved to <code>app/history.ts</code>. The widgets stayed the same (the <code>Gtk.ListView</code> over a <code>Gio.ListStore</code> of commits, the <code>Gtk.Expander</code> with a <code>Gtk.ListBox</code> of check rows, the <code>Adw.Window</code> with a <code>Gtk.StackSwitcher</code>), but what fills them now arrives as plain data, and a click becomes an <code>on*</code> action.</p>
+<pre><code>// before: ui/history.ts
+const result = await fileLog(file, skip, PAGE_SIZE);
+this.store.splice(this.store.n_items, 0, result.commits.map(commit =&gt; …));
+
+// after: the controller sends the list, the view keeps the rows it already has
+showLog(log: HistoryLog): void {
+    const grows = shown.length &lt;= log.commits.length &amp;&amp; shown.every((c, i) =&gt; c.hash === log.commits[i].hash);
+    if (!grows) this.store.remove_all();
+    this.store.splice(this.store.n_items, 0, log.commits.slice(grows ? shown.length : 0).map(…));
+}</code></pre>
+  <p>Two GTK details carried the move. A <code>Gio.ListStore</code> keeps its scroll position only if its rows are not replaced, so the view compares the list it is sent with the one it shows and appends the tail on “Load more” instead of rebuilding. And the viewer windows are not one view but many, so <code>HistoryViewers</code> keeps a <code>Map</code> from the number the controller gave each window to its <code>Adw.Window</code>; the window's <code>unrealize</code> (GTK 4 does not emit <code>destroy</code> for a widget JavaScript holds) reports <code>onClosed</code>, and the discard question is asked over the window it came from. The screenshots of the tab and the viewer, light and dark, matched the ones before the move pixel for pixel apart from commit hashes, times, and the temporary path.</p>
+  <div class="lesson"><b>Lesson</b>When a widget owns a list model, let it decide how to update its rows, and let the controller decide what the rows are. Sending the whole list and diffing it in the view keeps the scroll position without the controller knowing a <code>ListStore</code> exists.</div>
   <div class="lesson"><b>Lesson</b>Keep the toolkit's own vocabulary (actions, accelerator strings, state variants) at the edge and the meaning (what a command is, when it applies, what it does) in data; then a different toolkit needs only its own mapping.</div>
   <div class="lesson"><b>Lesson</b>A controller is portable when what it asks of the screen is data and callbacks, not widgets. Turn each widget call into the smallest method that says what the controller wants (“show Home with this data”), and let the toolkit decide how.</div>
   <div class="lesson"><b>Lesson</b>A layer rule that names a library (“no GTK”) stops at that library. To keep a core movable, name what it may use: the interfaces of a port. Leave the libraries to the side that implements it.</div>
