@@ -126,7 +126,7 @@ export class MainWindow implements CommandHost {
     readonly pulls: PullReviewController;
     readonly contribute: ContributeController;
     readonly harness: HarnessController;
-    readonly harnessLogs = new HarnessLogWindows(() => this.win, id => this.harness.orchestrator.queue.runs.find(r => r.id === id));
+    readonly harnessLogs = new HarnessLogWindows(() => this.win);
     readonly reviewView: HarnessReviewView;
     readonly review: HarnessReviewController;
     readonly homePage: HomeController;
@@ -192,7 +192,6 @@ export class MainWindow implements CommandHost {
             review: this.review, homePage: this.homePage, documents: this.documents, workspace: this.workspace } = session);
         session.start();
         // The log window follows the live agent log; the review and log windows are transient for the main window.
-        this.chat.trace = session.assistant.chat.session.trace;
         this.chat.window = () => this.win;
         this.doc.editor.modes.focus = settings.focus;
         this.doc.editor.modes.typewriter = settings.typewriter;

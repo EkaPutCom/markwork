@@ -3,6 +3,7 @@
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import { AgentTrace } from '../../src/agent/trace.js';
+import { TraceReplica } from '../../src/agent/tracefeed.js';
 import { LogViewer } from '../../src/ui/logviewer.js';
 import type { KeyStore } from '../../src/agent/apikey.js';
 import { chatsDir, listChats } from '../../src/agent/chatstore.js';
@@ -167,7 +168,9 @@ export function chatTests(c: GuiContext): void {
         trace.begin('tool', '1:a', 'Tool: read_file', '', 1, { args: '{\n  "path": "a.md"\n}' });
         trace.finish('tool', '1:a', 'ok', undefined, undefined, { result: '# A\nbody text' });
         trace.finish('round', '1', 'ok', 'Tokens', undefined, { usage: { prompt: 1200, cached: 0, completion: 30 } });
-        const viewer = new LogViewer(null, trace);
+        const replica = new TraceReplica();
+        replica.apply({ reset: true, events: [...trace.events] });
+        const viewer = new LogViewer(null, replica);
         viewer.show();
         pump();
         const labels = (): string => { const out: string[] = []; const walk = (x: Gtk.Widget) => { if (x instanceof Gtk.Label) out.push(x.get_text()); childrenOf(x).forEach(walk); }; walk(viewer.detail.widget); return out.join('\n'); };

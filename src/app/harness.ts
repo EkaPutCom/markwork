@@ -17,6 +17,7 @@ import { openCommandLink, openSocketLink } from '../agent/daemon/streamlink.js';
 import { DaemonHub, type Openers } from '../daemonhub.js';
 import { adoptRun, daemonGit, daemonSpawner } from '../orchestratordaemon.js';
 import type { MenuEntry } from './menu.js';
+import { TraceFeed, type TraceUpdate } from '../agent/tracefeed.js';
 import { harnessActivity, type ActivityKind } from '../markdown/journal.js';
 import { assignCard, cardBranch, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
 import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
@@ -37,8 +38,12 @@ export interface HarnessMenuEntry {
 }
 
 // A run's log window; one per run, raised again when it is already open.
+// The frontend keeps a copy of the log (a TraceReplica) and is sent updates while its window is open.
 export interface HarnessLogs {
-    show(runId: number): void;
+    onClear: (runId: number) => void;       // the viewer asked for the log to be cleared
+    onClosed: (runId: number) => void;      // the log window was closed
+    show(runId: number, title: string): void;
+    update(runId: number, update: TraceUpdate): void;
 }
 
 // What closing the window does with agents that are still working.
@@ -92,6 +97,8 @@ export class HarnessController {
 
     // dialogs: the frontend's questions; tests replace them with immediate answers.
     constructor(private readonly host: HarnessHost, public dialogs: HarnessDialogs) {
+        host.logs.onClear = runId => this.orchestrator.queue.runs.find(r => r.id === runId)?.trace.clear();
+        host.logs.onClosed = runId => this.stopLog(runId);
         this.orchestrator = new Orchestrator({
             workspace: () => host.root(),
             updateBoard: (file, edit) => host.updateBoardFile(file, edit),
@@ -424,8 +431,20 @@ export class HarnessController {
         });
     }
 
+    // Open a run's log window (or raise it) and send it the log, then what changes in it while the window is open.
     showLog(run: Run): void {
-        this.host.logs.show(run.id);
+        this.host.logs.show(run.id, fmt(_('{agent} Log — {title}'), { agent: run.agent, title: run.title }));
+        if (this.logFeeds.has(run.id)) return;
+        const feed = new TraceFeed(run.trace, update => this.host.logs.update(run.id, update));
+        this.logFeeds.set(run.id, feed);
+        feed.start();
+    }
+
+    private readonly logFeeds = new Map<number, TraceFeed>();
+
+    private stopLog(runId: number): void {
+        this.logFeeds.get(runId)?.stop();
+        this.logFeeds.delete(runId);
     }
 
     // From Home: an agent that is waiting for an answer is asked right away; one that is working shows its log; a queued one opens its board.
@@ -438,6 +457,7 @@ export class HarnessController {
     }
 
     dispose(): void {
+        for (const runId of [...this.logFeeds.keys()]) this.stopLog(runId);
         this.unwatch?.();
         this.orchestrator.dispose(this.stopOnClose);
         this.hub.dispose();

@@ -1,27 +1,38 @@
-// The log windows of harness runs (HarnessLogs in app/harness.ts): one LogViewer per run, raised again when it is
-// already open.
+// The log windows of harness runs (HarnessLogs in app/harness.ts): one LogViewer per run, raised again when it is already
+// open. The viewer reads a TraceReplica, which the core keeps up to date with the updates it sends while the window is open.
 
 import type Gtk from 'gi://Gtk?version=4.0';
-import type { Run } from '../agent/harness.js';
 import type { HarnessLogs } from '../app/harness.js';
+import { TraceReplica, type TraceUpdate } from '../agent/tracefeed.js';
 import { LogViewer } from '../ui/logviewer.js';
-import { _, fmt } from '../i18n.js';
 
 export class HarnessLogWindows implements HarnessLogs {
-    private readonly logs = new Map<number, LogViewer>();
+    onClear: (runId: number) => void = () => {};
+    onClosed: (runId: number) => void = () => {};
+    private readonly open = new Map<number, { replica: TraceReplica; viewer: LogViewer }>();
 
-    // runOf: the run with an id, from the queue.
-    constructor(private readonly parent: () => Gtk.Window, private readonly runOf: (id: number) => Run | undefined) {}
+    constructor(private readonly parent: () => Gtk.Window) {}
 
-    // The log window of the run with this id, made if needed; null for a run that is not in the queue.
-    show(runId: number): LogViewer | null {
-        const run = this.runOf(runId);
-        if (!run) return null;
-        const open = this.logs.get(run.id);
-        if (open?.window.get_realized()) { open.show(); return open; }
-        const viewer = new LogViewer(this.parent(), run.trace, fmt(_('{agent} Log — {title}'), { agent: run.agent, title: run.title }));
-        this.logs.set(run.id, viewer);
+    show(runId: number, title: string): void {
+        const open = this.open.get(runId);
+        if (open?.viewer.window.get_realized()) { open.viewer.show(); return; }
+        const replica = new TraceReplica();
+        replica.onClear = () => this.onClear(runId);
+        const viewer = new LogViewer(this.parent(), replica, title);
+        viewer.window.connect('unrealize', () => {
+            if (this.open.get(runId)?.viewer === viewer) this.open.delete(runId);
+            this.onClosed(runId);
+        });
+        this.open.set(runId, { replica, viewer });
         viewer.show();
-        return viewer;
+    }
+
+    update(runId: number, update: TraceUpdate): void {
+        this.open.get(runId)?.replica.apply(update);
+    }
+
+    // The window of a run, if it is open.
+    viewerOf(runId: number): LogViewer | undefined {
+        return this.open.get(runId)?.viewer;
     }
 }

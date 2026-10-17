@@ -4,15 +4,15 @@
 
 import Gtk from 'gi://Gtk?version=4.0';
 import type { ActionEvent } from '../agent/journal.js';
-import type { ProposalAnswer, ProposalAsk } from '../app/assistant.js';
-import { diffPreview, describeChange, type Change } from '../agent/changes.js';
+import type { ProposalAnswer, ProposalAsk, UndoTarget } from '../app/assistant.js';
+import { diffPreview, describeChange } from '../agent/changes.js';
 import { escapeMarkup } from '../markdown/pango.js';
 import { ProposalViewer } from './proposalviewer.js';
 import { _, fmt } from '../i18n.js';
 
 export interface ProposalEnv {
     apply(ask: number, chosen: number[] | null): string | null;   // ask the core to write: an error message, or null
-    undo(changes: Change[]): string | null;
+    undo(target: UndoTarget): string | null;
     busy(): boolean;
     window(): Gtk.Window | null;                  // parent of the review window
     dark(): boolean;
@@ -71,9 +71,9 @@ export class ProposalCards {
                 status.add_css_class(error ? 'chat-error' : 'side-meta');
                 resolve({ note });
             };
-            const applied = (kept: Change[], note: string, text: string) => {
+            const applied = (note: string, text: string) => {
                 finish(note, text);
-                card.append(this.undoButton(kept, status));
+                card.append(this.undoButton({ ask: ask.id }, status));
             };
             const open = () => {
                 if (done) return;
@@ -82,8 +82,8 @@ export class ProposalCards {
                 viewer.onApply = chosen => this.env.apply(ask.id, chosen);
                 viewer.onDecision = ok => {
                     const { note } = viewer;
-                    if (ok && viewer.accepted) applied(viewer.accepted.map(i => changes[i]), note, fmt(_('Applied {applied} of {count} files.'), { applied: viewer.accepted.length, count: changes.length }));
-                    else if (ok) applied(changes, note, _('Applied.'));
+                    if (ok && viewer.accepted) applied(note, fmt(_('Applied {applied} of {count} files.'), { applied: viewer.accepted.length, count: changes.length }));
+                    else if (ok) applied(note, _('Applied.'));
                     else if (viewer.error) finish(note, fmt(_('Failed to apply: {error}'), { error: viewer.error }), true);
                     else finish(note, note ? fmt(_('Rejected: {note}'), { note }) : _('Rejected.'));
                 };
@@ -106,16 +106,16 @@ export class ProposalCards {
         const review = new Gtk.Button({ label: fmt(_('View diff · {count} files'), { count: event.changes.length }), tooltip_text: event.changes.map(c => c.file).join('\n') });
         review.connect('clicked', () => new ProposalViewer(this.env.window(), event.changes, this.env.dark(), true).show());
         row.append(review);
-        if (event.status === 'applied') row.append(this.undoButton(event.changes, null));
+        if (event.status === 'applied') row.append(this.undoButton({ event: event.id }, null));
         return row;
     }
 
     // The Undo button for agent changes that were already applied (see ChatController.undo); the core writes the reverse.
-    private undoButton(changes: Change[], status: Gtk.Label | null): Gtk.Button {
+    private undoButton(target: UndoTarget, status: Gtk.Label | null): Gtk.Button {
         const button = new Gtk.Button({ label: _('Undo'), halign: Gtk.Align.START, tooltip_text: _('Restore the files to their contents before this change') });
         button.connect('clicked', () => {
             if (this.env.busy()) { this.env.note('Wait for the agent to finish before undoing the change.', true); return; }
-            const error = this.env.undo(changes);
+            const error = this.env.undo(target);
             if (error) { this.env.note(fmt(_('Cannot be undone: {error}'), { error }), true); return; }
             button.hide();
             status?.set_text(_('Undone.'));

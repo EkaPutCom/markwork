@@ -5,6 +5,7 @@
 import { AppSession } from '../../src/app/session.js';
 import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } from '../../src/app/assistant.js';
 import type { KeyStore } from '../../src/agent/apikey.js';
+import type { TraceUpdate } from '../../src/agent/tracefeed.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import { section, test, eq, ok, contains, within, until, pause, tmp, disk } from '../framework.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
@@ -29,6 +30,7 @@ function recordingPanel() {
     const log: string[] = [];
     const asks: ProposalAsk[] = [];
     const shown: ChatPanelSettings[] = [];
+    const updates: TraceUpdate[] = [];
     let decide: (ask: ProposalAsk, panel: ChatPanelView) => Promise<ProposalAnswer> = async () => ({ note: '' });
     const panel: ChatPanelView = quiet<ChatPanelView>({
         setSettings: settings => { shown.push(settings); },
@@ -37,8 +39,9 @@ function recordingPanel() {
         turnEnd: (turn, outcome) => { log.push(`end ${turn} ${'error' in outcome ? outcome.error : outcome.cancelled ? 'cancelled' : 'ok'}`); },
         review: ask => { asks.push(ask); log.push(`review ${ask.id}`); return decide(ask, panel); },
         cancelReview: ask => { log.push(`cancel ${ask}`); },
+        logUpdate: update => { updates.push(update); },
     });
-    return { panel, log, asks, shown, decideWith: (fn: typeof decide) => { decide = fn; } };
+    return { panel, log, asks, shown, updates, decideWith: (fn: typeof decide) => { decide = fn; } };
 }
 
 export async function assistantTests(): Promise<void> {
@@ -79,6 +82,49 @@ export async function assistantTests(): Promise<void> {
         eq(asks[0].batch, false);
         ok(replies.some(r => r.includes('User note: thanks')), replies.join('\n'));
         eq(chat.session.events[0].status, 'applied');
+    });
+
+    await test('Undo names an ask or an event; the core undoes what it wrote, and nothing the panel makes up', async () => {
+        const { root, chat, panel, decideWith } = setup();
+        const replies: string[] = [];
+        let askId = 0;
+        decideWith(async (ask, view) => { askId = ask.id; eq(view.onApply(ask.id, null), null, 'apply'); return { note: '' }; });
+        chat.makeProvider = () => proposing('edit_file', edit('notes'), replies);
+        await within(chat.send('move the release'));
+        eq(read(root, 'notes.md'), 'Release 22 November\n');
+        ok(panel.onUndo({ ask: askId + 5 }) !== null, 'an ask that was never applied');
+        ok(panel.onUndo({ event: 'no-such-event' }) !== null, 'an event that does not exist');
+        eq(read(root, 'notes.md'), 'Release 22 November\n', 'nothing changed');
+        eq(panel.onUndo({ ask: askId }), null, 'undo by ask');
+        eq(read(root, 'notes.md'), 'Release 15 November\n');
+        ok(panel.onUndo({ ask: askId }) !== null, 'once only');
+        eq(chat.session.events[0].status, 'reverted');
+    });
+
+    await test('an applied action of an opened conversation is undone by its event id', async () => {
+        const { root, chat, panel, decideWith } = setup();
+        decideWith(async (ask, view) => { view.onApply(ask.id, null); return { note: '' }; });
+        chat.makeProvider = () => proposing('edit_file', edit('notes'), []);
+        await within(chat.send('move the release'));
+        const event = chat.session.events[0];
+        eq(panel.onUndo({ event: event.id }), null, 'undo by event');
+        eq(read(root, 'notes.md'), 'Release 15 November\n');
+        ok(panel.onUndo({ event: event.id }) !== null, 'a reverted event is not undone again');
+    });
+
+    await test('the agent log reaches the panel as updates of plain events, and clearing it is asked of the core', async () => {
+        const { chat, panel, updates } = setup();
+        eq([updates.length, updates[0].reset, updates[0].events.length], [1, true, 0], 'the log as it is when the panel is connected');
+        chat.makeProvider = () => proposing('read_file', { name: 'notes' }, []);
+        await within(chat.send('what is in notes'));
+        await pause(80);
+        const events = updates.flatMap(u => u.events);
+        ok(events.some(e => e.kind === 'turn') && events.some(e => e.kind === 'tool'), JSON.stringify(events.map(e => e.kind)));
+        eq(JSON.parse(JSON.stringify(updates)), updates, 'not plain data');
+        panel.onClearLog();
+        await pause(80);
+        eq([updates.at(-1)!.reset, updates.at(-1)!.events.length], [true, 0], 'cleared');
+        eq(chat.session.trace.events.length, 0);
     });
 
     await test('a review that closes without an apply is a rejection, whatever the panel answers', async () => {

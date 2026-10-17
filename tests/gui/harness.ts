@@ -156,8 +156,9 @@ export function harnessTests(c: GuiContext): void {
 
     test('the pi log contains the session, tools, and cost', () => {
         const r = runOf('Checkout')!;
-        const viewer = w.harnessLogs.show(r.id)!;
+        w.harness.showLog(r);
         pump();
+        const viewer = w.harnessLogs.viewerOf(r.id)!;
         ok(viewer.window.title?.includes('pi Log'), `title: ${viewer.window.title}`);
         const text = r.trace.text();
         contains(text, 'pi --session test-session');
