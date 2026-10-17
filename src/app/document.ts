@@ -12,6 +12,10 @@ export interface TextEditor {
     getText(): string;
     setText(text: string): void;                 // the whole contents, outside the undo history (opening a file)
     replaceText(text: string): void;             // the smallest edit, as one undo step
+    // Change the text from what it is when the change is applied (null = leave it), as one undo step. In one process that
+    // is now; over the app protocol it may be after an earlier write has landed (docs/design/protocol.md 5.5), so a
+    // read-modify-write that may follow another write in the same turn goes through here, not getText() + replaceText().
+    update(edit: (text: string) => string | null): void;
     insertAtCursor(text: string): void;
     isModified(): boolean;                       // changed since it was last opened or saved
     setModified(modified: boolean): void;

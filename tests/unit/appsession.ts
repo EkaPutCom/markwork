@@ -5,7 +5,8 @@ import type { SettingValue } from '../../src/platform/index.js';
 import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost, type EditCommands } from '../../src/app/commands.js';
 import { AppSession, type AppFrontend, type FrontendHost } from '../../src/app/session.js';
 import type { TextEditor } from '../../src/app/document.js';
-import { section, test, eq, ok, tmp, disk } from '../framework.js';
+import { addCard } from '../../src/markdown/kanban.js';
+import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
 function memorySettings(): AppSettings {
@@ -27,6 +28,7 @@ class FakeEditor implements TextEditor {
     setText(text: string): void { this.text = text; this.modified = false; }
     replaceText(text: string): void { this.text = text; this.modified = true; }
     insertAtCursor(text: string): void { this.text += text; this.modified = true; }
+    update(edit: (text: string) => string | null): void { const next = edit(this.text); if (next !== null) this.replaceText(next); }
     isModified(): boolean { return this.modified; }
     setModified(modified: boolean): void { this.modified = modified; }
     jumpToLine(): void {}
@@ -34,10 +36,42 @@ class FakeEditor implements TextEditor {
     restoreCursor(): void {}
 }
 
+// An editor whose writes land one turn later, the way they will over the app protocol: there the core's replica only
+// changes once the frontend has applied a write (docs/design/protocol.md, 5.4 and 5.5). Reading the text while a write
+// is still on its way throws, so a controller that reads back its own write in the same turn fails here, on Node, long
+// before a second frontend exists. Opening a file (setText) is not a write the frontend can refuse, so it lands at once.
+class LaggingEditor extends FakeEditor {
+    private pending: string | null = null;
+    private readonly waiting: ((text: string) => string | null)[] = [];
+    override getText(): string {
+        if (this.pending !== null) throw new Error('read the text while a write to it had not landed (docs/design/protocol.md 5.5)');
+        return this.text;
+    }
+    // A whole text computed while a write is on its way would undo that write; update() is the way to follow one.
+    override replaceText(text: string): void {
+        if (this.pending !== null) throw new Error('wrote a whole text before the previous write had landed; use update() (docs/design/protocol.md 5.5)');
+        this.pending = text;
+        setTimeout(() => this.land(), 0);
+    }
+    override insertAtCursor(text: string): void { this.update(t => t + text); }
+    // Runs at once when nothing is on its way, otherwise after the write lands, against the text it left.
+    override update(edit: (text: string) => string | null): void {
+        if (this.pending !== null) { this.waiting.push(edit); return; }
+        const next = edit(this.text);
+        if (next !== null) this.replaceText(next);
+    }
+    private land(): void {
+        this.text = this.pending!;
+        this.pending = null;
+        this.modified = true;
+        while (this.pending === null && this.waiting.length) this.update(this.waiting.shift()!);
+    }
+}
+
 // Any member the test does not care about does nothing.
 const quiet = <T extends object>(members: Partial<T>): T => new Proxy(members, { get: (target, key) => key in target ? (target as never)[key] : () => undefined }) as T;
 
-function fakeFrontend(settings: AppSettings, toasts: string[]): AppFrontend<FakeEditor> {
+function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor: () => FakeEditor = () => new FakeEditor()): AppFrontend<FakeEditor> {
     return {
         host: quiet<FrontendHost<FakeEditor>>({
             screen: quiet<FrontendHost<FakeEditor>['screen']>({ page: () => 'doc-1' }),
@@ -51,7 +85,7 @@ function fakeFrontend(settings: AppSettings, toasts: string[]): AppFrontend<Fake
         documents: quiet<AppFrontend<FakeEditor>['documents']>({
             settings,
             dialogs: quiet({}),
-            createEditor: () => new FakeEditor(),
+            createEditor: makeEditor,
             root: () => null,
             toast: message => { toasts.push(message); },
             tabOrder: () => [1],
@@ -110,6 +144,23 @@ export async function appSessionTests(): Promise<void> {
         eq(session.host.active(), session.documents.active, 'the host answers from the document controller');
         eq(session.host.docs().length, 1, 'the empty first tab was reused');
         ok(session.harness && session.journal && session.collab && session.pulls && session.contribute && session.review && session.homePage, 'controllers');
+        session.dispose();
+    });
+
+    await test('writes to an open board land even when the editor applies them a turn later', async () => {
+        const session = new AppSession(fakeFrontend(memorySettings(), [], () => new LaggingEditor()));
+        session.start();
+        const dir = disk.join(tmp, 'appsession-lag');
+        disk.mkdirs(dir);
+        const file = disk.join(dir, 'board.md');
+        disk.write(file, '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n');
+        ok(session.host.openInTab(file), 'openInTab');
+        // Two harness runs that end in the same turn, each moving its own card.
+        eq(session.host.updateBoardFile(file, b => addCard(b, 0, 'Two')), null, 'first');
+        eq(session.host.updateBoardFile(file, b => addCard(b, 0, 'Three')), null, 'second');
+        await pause(5);
+        const text = session.documents.active.editor.getText();
+        ok(text.includes('- [ ] Two') && text.includes('- [ ] Three'), text);
         session.dispose();
     });
 }

@@ -4,7 +4,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import type { KeySource } from '../agent/apikey.js';
 import type { ChatController } from '../agent/chatcontroller.js';
-import { DEEPSEEK_MODELS } from '../agent/deepseek.js';
+import { DEEPSEEK_MODELS } from '../agent/models.js';
 import { _, fmt } from '../i18n.js';
 
 const SOURCE_TEXT: Record<KeySource, string> = {

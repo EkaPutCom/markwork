@@ -47,14 +47,15 @@ const rules = [
 
 const GJS_BUILTINS = new Set(['system', 'gettext', 'cairo', 'console', 'byteArray', 'mainloop']);
 const files = readdirSync(src, { recursive: true }).filter(f => f.endsWith('.ts') && !f.endsWith('.d.ts')).map(f => f.split('\\').join('/'));
-const IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'"]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
+const IMPORT = /(?:^|\n)\s*(?:import|export)(\s+type\b)?[^'"]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
 
 const errors = [];
 const giImporters = new Set();
+const valueImports = new Map();   // src-relative module → the local modules it imports for their values (not `import type`)
 for (const file of files) {
     const text = readFileSync(join(src, file), 'utf8');
     for (const m of text.matchAll(IMPORT)) {
-        const spec = m[1] ?? m[2] ?? m[3];
+        const spec = m[2] ?? m[3] ?? m[4];
         let target = spec;
         if (spec.startsWith('.')) {
             target = relative(src, normalize(join(src, dirname(file), spec.split('?')[0]))).split('\\').join('/').replace(/\.js$/, '.ts');
@@ -64,10 +65,46 @@ for (const file of files) {
             target = spec;   // a Node built-in module
         } else if (!spec.startsWith('gi://')) continue;   // npm packages
         if (target.startsWith('gi://')) giImporters.add(file);
+        if (!m[1] && spec.startsWith('.')) valueImports.set(file, [...valueImports.get(file) ?? [], target]);
         for (const [applies, forbidden, why] of rules) {
             if (applies(file) && forbidden(target)) errors.push(`src/${file}: imports ${spec} (${why})`);
         }
     }
+}
+
+// ---------- Views do not act ----------
+//
+// A component in ui/ draws and reports; the work it starts goes through app/ (or the window), so the same work can later
+// be asked for by a frontend in another process (docs/design/protocol.md, section 13). A core module "acts" when it
+// reaches the runtime: it imports platform/index.ts, directly or through other modules (i18n.ts does not count, it only
+// translates text). ui/ may import such a module for its types (`import type`), and pure core modules freely.
+// UI_ACTS_ALLOWED lists the imports that still do it while they are moved; an entry may not be added, and has to go once
+// the import is gone.
+const UI_ACTS_ALLOWED = new Set([
+    'ui/chat.ts -> agent/chatcontroller.ts',
+    'ui/filetree.ts -> fileops.ts',
+    'ui/history.ts -> git.ts',
+    'ui/historyviewer.ts -> git.ts',
+]);
+const acting = new Map();
+const acts = file => {
+    if (!acting.has(file)) {
+        acting.set(file, false);   // a cycle does not act by itself
+        acting.set(file, file === 'platform/index.ts' || (valueImports.get(file) ?? []).some(t => t !== 'i18n.ts' && acts(t)));
+    }
+    return acting.get(file);
+};
+const uiActs = new Set();
+for (const file of files.filter(f => f.startsWith('ui/'))) {
+    for (const target of valueImports.get(file) ?? []) {
+        if (!(isCore(target) || target === 'fileops.ts') || target === 'i18n.ts' || !acts(target)) continue;
+        const pair = `${file} -> ${target}`;
+        uiActs.add(pair);
+        if (!UI_ACTS_ALLOWED.has(pair)) errors.push(`src/${file}: imports ${target}, which reaches the runtime (a view draws and reports; the work goes through app/, see docs/design/protocol.md section 13; import its types with \`import type\`)`);
+    }
+}
+for (const pair of UI_ACTS_ALLOWED) {
+    if (!uiActs.has(pair)) errors.push(`scripts/layers.mjs: ${pair} is no longer an import that acts; remove it from UI_ACTS_ALLOWED`);
 }
 
 for (const file of GI_ALLOWED) {
@@ -166,4 +203,4 @@ if (errors.length) {
     console.error(`Layer and complexity violations:\n  ${errors.join('\n  ')}`);
     process.exit(1);
 }
-console.log(`Layer rules: ${files.length} modules checked, ${GI_ALLOWED.size} core modules still on gi://; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`);
+console.log(`Layer rules: ${files.length} modules checked, ${GI_ALLOWED.size} core modules still on gi://, ${UI_ACTS_ALLOWED.size} views still acting; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`);

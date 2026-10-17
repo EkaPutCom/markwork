@@ -7,8 +7,7 @@ import type { ChatMessage, ChatRequest, ChatResult, Provider, ToolCall, Usage } 
 import { httpErrorMessage, parseStreamLine } from './sse.js';
 
 export const DEEPSEEK_URL = 'https://api.deepseek.com';
-// Models listed in the current DeepSeek documentation (1M token context, supporting tools and thinking mode).
-export const DEEPSEEK_MODELS = ['deepseek-flash', 'deepseek-v4-pro'];
+export { DEEPSEEK_MODELS } from './models.js';
 
 // Message shape in the API (snake_case). When thinking mode is active, reasoning_content must be sent back together with tool_calls.
 export function toApiMessage(m: ChatMessage): Record<string, unknown> {

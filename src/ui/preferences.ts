@@ -6,7 +6,7 @@ import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk?version=4.0';
 
-import { DEEPSEEK_MODELS } from '../agent/deepseek.js';
+import { DEEPSEEK_MODELS } from '../agent/models.js';
 import { LOCAL_MACHINE, machineProjectKey } from '../agent/daemon/machines.js';
 import { uiTemplate } from '../gtkutil.js';
 import { _ } from '../i18n.js';
