@@ -36,6 +36,8 @@ export class FakeEditor implements TextEditor {
     jumpToLine(): void {}
     setMode(): void {}
     restoreCursor(): void {}
+    selected: [number, number, number] | null = null;
+    selectRange(line: number, column: number, length: number): void { this.selected = [line, column, length]; }
 }
 
 // An editor whose writes land one turn later, the way they will over the app protocol: there the core's replica only
@@ -88,7 +90,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
             settings,
             chatPanel: quiet<FrontendHost<FakeEditor>['chatPanel']>({}),
             board: quiet({}), inbox: quiet({}), table: quiet({}), layouts: quiet({}),
-            collabPanel: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}), fileTree: quiet({}),
+            collabPanel: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}), fileTree: quiet({}), searchView: quiet({}),
             toast: message => { toasts.push(message); },
             ...extra,
         }),
@@ -100,7 +102,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
             tabOrder: () => [1],
         }),
         // The file dialogs are a plain object a test can fill in; they answer "cancelled" until it does.
-        dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({ files: { name: () => null, confirm: () => false, error: () => {} } }),
+        dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({ files: { name: () => null, confirm: () => false, error: () => {} }, search: { confirm: () => false } }),
     };
 }
 

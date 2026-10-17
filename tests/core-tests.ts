@@ -24,6 +24,7 @@ import { gitLogTests } from './unit/gitlog.js';
 import { fileWriteTests } from './unit/files.js';
 import { fileOpsTests } from './unit/fileops.js';
 import { filesControllerTests } from './unit/filescontroller.js';
+import { searchControllerTests } from './unit/searchcontroller.js';
 import { workspaceTests } from './unit/workspace.js';
 import { chatControllerTests } from './unit/chatcontroller.js';
 import { agentTests, apiKeyTests, toolTests } from './unit/agent.js';
@@ -83,6 +84,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await fileWriteTests();
     fileOpsTests();
     await filesControllerTests();
+    await searchControllerTests();
     await workspaceTests();
     await chatControllerTests();
     await agentTests();

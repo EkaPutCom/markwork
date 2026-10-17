@@ -20,11 +20,12 @@ import type { AgentWriteHost } from './agentwrites.js';
 import { AssistantController, type AssistantHost } from './assistant.js';
 import { HistoryController, type HistoryDialogs, type HistoryHost } from './history.js';
 import { FilesController, type FilesDialogs, type FilesHost } from './files.js';
+import { SearchController, type SearchDialogs, type SearchHost } from './search.js';
 import type { Doc, TextEditor } from './document.js';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
 export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>
-    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost;
+    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost & SearchHost<E>;
 
 // What the session answers itself, from the controllers it owns.
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
@@ -45,6 +46,7 @@ export interface AppDialogs {
     views: ViewDialogs;
     history: HistoryDialogs;
     files: FilesDialogs;
+    search: SearchDialogs;
 }
 
 export interface AppFrontend<E extends TextEditor> {
@@ -73,6 +75,7 @@ export class AppSession<E extends TextEditor> {
     readonly history: HistoryController<E>;
     // The work folder and the Files tab; created first, since every other controller asks for the folder.
     readonly files: FilesController;
+    readonly search: SearchController<E>;
     readonly host: ControllerHost<E>;
 
     constructor(private readonly frontend: AppFrontend<E>) {
@@ -109,6 +112,7 @@ export class AppSession<E extends TextEditor> {
             const { chat } = this.assistant;
             return { keyStore: chat.keyStore, makeProvider: key => chat.makeProvider(key), model: () => chat.model };
         });
+        this.search = new SearchController(host, dialogs.search);
         this.documents = new DocumentController(Object.create(frontend.documents, {
             autosaver: { get: () => this.autosaver },
             refreshHome: { value: () => this.refreshHome() },
