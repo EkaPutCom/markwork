@@ -43,6 +43,7 @@ src/app/contribute.ts
 src/app/harness.ts
 src/window/harnesslogs.ts
 src/app/harnessreview.ts
+src/app/files.ts
 src/app/history.ts
 src/app/home.ts
 src/app/journal.ts

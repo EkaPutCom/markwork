@@ -170,6 +170,6 @@ export function wikiLinkGuiTests(c: GuiContext): void {
     setText('');
     buf.set_modified(false);
     w.file = null;
-    w.fileTree.setRoot(null);
+    w.session.files.setRoot(null);
     pump();
 }

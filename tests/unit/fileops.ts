@@ -1,8 +1,8 @@
 // File operation tests: create files/folders and move.
 
-import GLib from 'gi://GLib';
-import { copyEntry, createFile, createFolder, moveEntry, remapPath, renameEntry } from '../../src/fileops.js';
-import { section, test, eq, ok, tmp } from '../framework.js';
+import { copyEntry, createFile, createFolder, moveEntry, renameEntry } from '../../src/fileops.js';
+import { remapPath } from '../../src/app/documents.js';
+import { section, test, eq, ok, tmp, disk } from '../framework.js';
 
 const throws = (fn: () => unknown, part: string): void => {
     try { fn(); } catch (e) { ok((e as Error).message.includes(part), `message "${(e as Error).message}" does not contain "${part}"`); return; }
@@ -11,10 +11,10 @@ const throws = (fn: () => unknown, part: string): void => {
 
 export function fileOpsTests(): void {
     section('File operations');
-    const base = GLib.build_filenamev([tmp, 'ops']);
-    const at = (...parts: string[]) => GLib.build_filenamev([base, ...parts]);
-    const exists = (path: string) => GLib.file_test(path, GLib.FileTest.EXISTS);
-    GLib.mkdir_with_parents(base, 0o755);
+    const base = disk.join(tmp, 'ops');
+    const at = (...parts: string[]) => disk.join(base, ...parts);
+    const exists = (path: string) => disk.exists(path);
+    disk.mkdirs(base);
 
     test('createFile appends .md if it is not a Markdown extension', () => {
         eq(createFile(base, 'notes'), at('notes.md'), 'path');
@@ -29,7 +29,7 @@ export function fileOpsTests(): void {
     });
     test('createFolder creates a folder and rejects duplicates', () => {
         eq(createFolder(base, 'chapter'), at('chapter'), 'path');
-        ok(GLib.file_test(at('chapter'), GLib.FileTest.IS_DIR), 'not a folder');
+        ok(disk.isDirectory(at('chapter')), 'not a folder');
         throws(() => createFolder(base, 'chapter'), 'already exists');
     });
     test('moveEntry moves a file into a folder and back out', () => {
@@ -61,7 +61,7 @@ export function fileOpsTests(): void {
     });
     test('copyEntry copies files and folders, numbering a name clash, and refuses into itself', () => {
         createFolder(base, 'cp'); createFile(at('cp'), 'inside');
-        GLib.file_set_contents(at('pic.png'), 'x');
+        disk.write(at('pic.png'), 'x');
         eq(copyEntry(at('pic.png'), at('cp')), at('cp', 'pic.png'), 'file');
         eq(copyEntry(at('pic.png'), at('cp')), at('cp', 'pic (2).png'), 'clash');
         ok(exists(at('pic.png')), 'the source stays');

@@ -31,6 +31,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
             isDirectory: () => false,
             trash: path => { files.delete(path); },
             move: (from, to) => { files.set(to, files.get(from)!); files.delete(from); },
+            copy: (from, to) => { files.set(to, files.get(from)!); },
             startWrite: (path, text, done) => { files.set(path, text); done(null); },
             pumpWrites: () => {},
             info: path => { if (!files.has(path)) throw new Error(`no ${path}`); return { name: path.slice(path.lastIndexOf('/') + 1), kind: 'file', size: files.get(path)!.length, stamp: '' }; },
@@ -180,6 +181,24 @@ export async function platformTests(): Promise<void> {
             setTimeout(() => fs.writeText(paths.join(dir, 'b.md'), 'new'), 50);
         });
         eq(await within(seen), paths.join(dir, 'b.md'));
+    });
+
+    await test('copy takes a folder with its files and links as they are, and refuses a target that exists', async () => {
+        const { fs, paths } = installed;
+        const dir = paths.join(tmp, 'platform-copy');
+        fs.makeDirs(paths.join(dir, 'from', 'sub'), 0o755);
+        fs.writeText(paths.join(dir, 'from', 'a.md'), 'a');
+        fs.writeText(paths.join(dir, 'from', 'sub', 'b.md'), 'b');
+        host().symlink('a.md', paths.join(dir, 'from', 'link.md'));
+        fs.copy(paths.join(dir, 'from'), paths.join(dir, 'to'));
+        eq(fs.list(paths.join(dir, 'to')).sort(), ['a.md', 'link.md', 'sub']);
+        eq(fs.readText(paths.join(dir, 'to', 'sub', 'b.md')), 'b');
+        eq(fs.kind(paths.join(dir, 'to', 'link.md')), 'symlink', 'a link stays a link');
+        fs.copy(paths.join(dir, 'from', 'a.md'), paths.join(dir, 'single.md'));
+        eq(fs.readText(paths.join(dir, 'single.md')), 'a');
+        let threw = false;
+        try { fs.copy(paths.join(dir, 'from', 'a.md'), paths.join(dir, 'single.md')); } catch { threw = true; }
+        ok(threw, 'copying onto something that exists throws');
     });
 
     await test('background writes finish through pumpWrites, in order, and report their errors', async () => {

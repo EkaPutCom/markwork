@@ -88,8 +88,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
             settings,
             chatPanel: quiet<FrontendHost<FakeEditor>['chatPanel']>({}),
             board: quiet({}), inbox: quiet({}), table: quiet({}), layouts: quiet({}),
-            collabPanel: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}),
-            root: () => null,
+            collabPanel: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}), fileTree: quiet({}),
             toast: message => { toasts.push(message); },
             ...extra,
         }),
@@ -97,11 +96,11 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
             settings,
             dialogs: quiet({}),
             createEditor: makeEditor,
-            root: extra.root ?? (() => null),
             toast: message => { toasts.push(message); },
             tabOrder: () => [1],
         }),
-        dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({}),
+        // The file dialogs are a plain object a test can fill in; they answer "cancelled" until it does.
+        dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({ files: { name: () => null, confirm: () => false, error: () => {} } }),
     };
 }
 

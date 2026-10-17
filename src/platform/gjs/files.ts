@@ -78,6 +78,20 @@ function kind(path: string): EntryKind {
     }
 }
 
+function copyTree(source: Gio.File, target: Gio.File): void {
+    if (source.query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) !== Gio.FileType.DIRECTORY) {
+        source.copy(target, Gio.FileCopyFlags.NOFOLLOW_SYMLINKS, null, null);
+        return;
+    }
+    target.make_directory(null);
+    const children = source.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+    try {
+        for (let info = children.next_file(null); info; info = children.next_file(null)) copyTree(source.get_child(info.get_name()), target.get_child(info.get_name()));
+    } finally {
+        children.close(null);
+    }
+}
+
 function watchDir(dir: string, onChange: (path: string) => void): () => void {
     const monitor = Gio.File.new_for_path(dir).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
     monitor.connect('changed', (_m, file, other) => {
@@ -106,6 +120,7 @@ export const gjsFiles: FileSystem = {
     isDirectory: path => GLib.file_test(path, GLib.FileTest.IS_DIR),
     trash: path => { Gio.File.new_for_path(path).trash(null); },
     move: (from, to) => { Gio.File.new_for_path(from).move(Gio.File.new_for_path(to), Gio.FileCopyFlags.NONE, null, null); },
+    copy: (from, to) => copyTree(Gio.File.new_for_path(from), Gio.File.new_for_path(to)),
     info: path => entryOf(Gio.File.new_for_path(path).query_info(ATTRIBUTES, Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null)),
     listInfo,
     watchDir,

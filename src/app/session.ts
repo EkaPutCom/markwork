@@ -19,16 +19,17 @@ import { DocumentController, type DocumentsHost } from './documents.js';
 import type { AgentWriteHost } from './agentwrites.js';
 import { AssistantController, type AssistantHost } from './assistant.js';
 import { HistoryController, type HistoryDialogs, type HistoryHost } from './history.js';
+import { FilesController, type FilesDialogs, type FilesHost } from './files.js';
 import type { Doc, TextEditor } from './document.js';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
 export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>
-    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E>;
+    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost;
 
 // What the session answers itself, from the controllers it owns.
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
     | 'fileBack' | 'newDocument' | 'showDocument' | 'saveAll' | 'showChat' | 'boardShown' | 'updateBoardFile' | 'record' | 'agentHost' | 'runs'
-    | 'journalSummary' | 'refreshHome' | 'chat';
+    | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted';
 
 // The views, notices, and system services of the frontend: the host members that are not another controller.
 export type FrontendHost<E extends TextEditor> = Omit<ControllerHost<E>, SessionProvided>;
@@ -43,11 +44,12 @@ export interface AppDialogs {
     review: ReviewDialogs;
     views: ViewDialogs;
     history: HistoryDialogs;
+    files: FilesDialogs;
 }
 
 export interface AppFrontend<E extends TextEditor> {
     readonly host: FrontendHost<E>;
-    readonly documents: Omit<DocumentsHost<E>, 'autosaver' | 'refreshHome'>;
+    readonly documents: Omit<DocumentsHost<E>, 'autosaver' | 'refreshHome' | 'root'>;
     readonly dialogs: AppDialogs;
 }
 
@@ -69,6 +71,8 @@ export class AppSession<E extends TextEditor> {
     readonly documents: DocumentController<E>;
     readonly assistant: AssistantController<E>;
     readonly history: HistoryController<E>;
+    // The work folder and the Files tab; created first, since every other controller asks for the folder.
+    readonly files: FilesController;
     readonly host: ControllerHost<E>;
 
     constructor(private readonly frontend: AppFrontend<E>) {
@@ -79,6 +83,7 @@ export class AppSession<E extends TextEditor> {
         const { dialogs } = frontend;
 
         // Feature controllers: created before the first document, whose buffer already queues autosaves.
+        this.files = new FilesController(host, dialogs.files);
         this.autosaver = new Autosaver(host);
         this.journal = new JournalController(host, dialogs.journal);
         this.collab = new CollabController(host, dialogs.collab);
@@ -107,6 +112,7 @@ export class AppSession<E extends TextEditor> {
         this.documents = new DocumentController(Object.create(frontend.documents, {
             autosaver: { get: () => this.autosaver },
             refreshHome: { value: () => this.refreshHome() },
+            root: { value: () => this.files.root },
         }) as DocumentsHost<E>);
     }
 
@@ -138,6 +144,11 @@ export class AppSession<E extends TextEditor> {
             runs: value(() => this.harness.orchestrator.queue.runs),
             journalSummary: value((root: string, date: string) => this.journal.summary(root, date)),
             refreshHome: value(() => this.refreshHome()),
+            root: value(() => this.files.root),
+            // A file or folder moved, renamed, or trashed in the Files tab: the open documents follow, then the frontend
+            // highlights the active file again and re-reads its history.
+            entryMoved: value((from: string, to: string) => { this.documents.filesMoved(from, to); this.frontend.host.filesMoved(); }),
+            entryDeleted: value((path: string) => { this.documents.fileDeleted(path); this.frontend.host.filesMoved(); }),
         };
     }
 
@@ -158,6 +169,7 @@ export class AppSession<E extends TextEditor> {
         this.history.dispose();
         this.harness.dispose();
         this.collab.dispose();
+        this.files.dispose();
         this.workspace.close();
     }
 }
