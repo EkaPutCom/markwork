@@ -29,8 +29,11 @@ export interface TextEditor {
     restoreCursor(offset: number): void;         // put the cursor back (a reopened tab) without taking the focus
 }
 
-// A button on a toast.
+// A button on a toast, as a controller asks for it: what it does is a function the session keeps.
 export interface ToastAction { label: string; run: () => void }
+
+// The same button as the frontend gets it: a token it reports back through AppSession.toastActivated.
+export interface ToastButton { label: string; token: number }
 
 // One open document (one tab). The file and Home flag change only through the document controller; the view and
 // autosave state of a document is kept by the controllers that own it.

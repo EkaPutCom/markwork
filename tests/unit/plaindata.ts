@@ -58,9 +58,6 @@ type Frontend = AppFrontend<TextEditor>;
 type Found = HostOffenders<Frontend['host']> | ViewOffenders<Frontend['documents'], 'documents'> | DialogOffenders<AppDialogs>;
 
 type KNOWN =
-    // A callback: a toast's button, a settings listener, the token dialog's Test, the Fields… dialog's counts (6.4, 7, 9.2).
-    | 'host.toast' | 'documents.toast' | 'settings.onChanged' | 'settings.store.onChanged'
-    | 'documents.settings.onChanged' | 'documents.settings.store.onChanged' | 'dialogs.collab.token' | 'dialogs.views.editSchema'
     // A live object: a Doc with its editor, the editor itself, a harness Run (5.2, 6.5).
     | 'documents.attach' | 'documents.detach' | 'documents.activated' | 'documents.contentChanged' | 'documents.refreshTitle'
     | 'documents.setIcon' | 'documents.createEditor' | 'screen.showText' | 'logs.show';

@@ -4,7 +4,7 @@ import { AppSettings } from '../../src/settings.js';
 import type { SettingValue } from '../../src/platform/index.js';
 import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost, type EditCommands } from '../../src/app/commands.js';
 import { AppSession, type AppFrontend, type FrontendHost } from '../../src/app/session.js';
-import type { TextEditor } from '../../src/app/document.js';
+import type { TextEditor, ToastButton } from '../../src/app/document.js';
 import { addCard } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
 
@@ -86,9 +86,9 @@ export const quiet = <T extends object>(members: Partial<T>): T => new Proxy(mem
 export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor: () => FakeEditor = () => new FakeEditor(),
                              extra: Partial<FrontendHost<FakeEditor>> = {}): AppFrontend<FakeEditor> {
     return {
+        settings,
         host: quiet<FrontendHost<FakeEditor>>({
             screen: quiet<FrontendHost<FakeEditor>['screen']>({ page: () => 'doc-1' }),
-            settings,
             chatPanel: quiet<FrontendHost<FakeEditor>['chatPanel']>({}),
             board: quiet({}), inbox: quiet({}), table: quiet({}), layouts: quiet({}),
             collabPanel: quiet({}), outlineView: quiet({}), preferencesView: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}), fileTree: quiet({}), searchView: quiet({}),
@@ -96,10 +96,8 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
             ...extra,
         }),
         documents: quiet<AppFrontend<FakeEditor>['documents']>({
-            settings,
             dialogs: quiet({}),
             createEditor: makeEditor,
-            toast: message => { toasts.push(message); },
             tabOrder: () => [1],
         }),
         // The file dialogs are a plain object a test can fill in; they answer "cancelled" until it does.
@@ -157,6 +155,30 @@ export async function appSessionTests(): Promise<void> {
         eq(session.host.active(), session.documents.active, 'the host answers from the document controller');
         eq(session.host.docs().length, 1, 'the empty first tab was reused');
         ok(session.harness && session.journal && session.collab && session.pulls && session.contribute && session.review && session.homePage, 'controllers');
+        session.dispose();
+    });
+
+    await test('a toast button reaches the frontend as a token; the session runs its action once, and forgets old ones', () => {
+        const buttons: (ToastButton | undefined)[] = [];
+        const session = new AppSession(fakeFrontend(memorySettings(), [], undefined, { toast: (_message, button) => { buttons.push(button); } }));
+        session.start();
+        const ran: string[] = [];
+        session.host.toast('Plain');
+        session.host.toast('First', { label: 'Open', run: () => ran.push('first') });
+        eq(buttons[0], undefined, 'no button');
+        eq(buttons[1]?.label, 'Open');
+        eq(JSON.parse(JSON.stringify(buttons[1])), buttons[1], 'not plain data');
+        session.toastActivated(buttons[1]!.token);
+        session.toastActivated(buttons[1]!.token);
+        session.toastActivated(9999);
+        eq(ran, ['first'], 'once, and an unknown token does nothing');
+        session.host.toast('Old', { label: 'Old', run: () => ran.push('old') });
+        const old = buttons.at(-1)!.token;
+        for (let i = 0; i < 10; i++) session.host.toast('More', { label: 'More', run: () => ran.push('more') });
+        session.toastActivated(old);
+        eq(ran, ['first'], 'a toast long gone has no action');
+        session.toastActivated(buttons.at(-1)!.token);
+        eq(ran, ['first', 'more'], 'the latest still works');
         session.dispose();
     });
 

@@ -44,7 +44,11 @@ class SchemaForm {
     private readonly names = new Map<number, Gtk.Entry>();
     private readonly optionEntries = new Map<string, Gtk.Entry>();
 
+    // How many notes use each option, by field key and option text.
+    private readonly usage = new Map<string, number>();
+
     constructor(private readonly draft: DraftField[], private readonly options: SchemaDialogOptions) {
+        for (const use of options.uses) if (use.option !== null) this.usage.set(`${use.key}\u0000${use.option}`, use.count);
         const scroll = new Gtk.ScrolledWindow({ min_content_height: 240, max_content_height: 520, propagate_natural_height: true, hexpand: true, vexpand: true, hscrollbar_policy: Gtk.PolicyType.NEVER, has_frame: true });
         this.list.set_margin_top(8);
         this.list.set_margin_bottom(8);
@@ -209,7 +213,7 @@ class SchemaForm {
         });
         this.optionEntries.set(`${i}.${j}`, entry);
         line.append(entry);
-        const uses = fresh ? 0 : this.options.uses(def.key, option.text);
+        const uses = fresh ? 0 : this.usage.get(`${def.key}\u0000${option.text}`) ?? 0;
         if (uses > 0) {
             const count = new Gtk.Label({ label: fmt(ngettext('{n} note', '{n} notes', uses), { n: uses }), valign: Gtk.Align.CENTER });
             count.add_css_class('dim-label');

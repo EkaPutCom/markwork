@@ -29,7 +29,14 @@ const STRUCTURED_ACTIONS = commandIds('structured');
 export interface SchemaDialogOptions {
     fields: FieldDef[];                              // the fields the document declares, in order
     reserved: readonly string[];                     // names the document uses itself (due, agent)
-    uses(key: string, option?: string): number;      // how many notes have a value for the field (or that option)
+    uses: readonly FieldUse[];                       // how many notes have a value for each declared field and option
+}
+
+// How many notes have a value for a field (option = null), or for one of its options.
+export interface FieldUse {
+    key: string;
+    option: string | null;
+    count: number;
 }
 
 // The dialogs of this controller; tests replace them.
@@ -275,7 +282,12 @@ export class ViewController<E extends TextEditor> {
         const view = this.viewOf(this.currentView());
         if (!view) return;
         const board = view.getBoard();
-        const options: SchemaDialogOptions = { fields: declaredFields(board), reserved: reservedFields(board), uses: (key, option) => fieldUses(board, key, option) };
+        const fields = declaredFields(board);
+        const uses = fields.flatMap((f): FieldUse[] => [
+            { key: f.key, option: null, count: fieldUses(board, f.key) },
+            ...f.options.map(option => ({ key: f.key, option, count: fieldUses(board, f.key, option) })),
+        ]);
+        const options: SchemaDialogOptions = { fields, reserved: reservedFields(board), uses };
         void after(this.dialogs.editSchema(options), fields => {
             if (fields) view.commit(withSchema(view.getBoard(), fields));
         });

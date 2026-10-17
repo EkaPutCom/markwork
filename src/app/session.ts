@@ -23,7 +23,7 @@ import { PreferencesController, type PreferencesDialogs, type PreferencesHost } 
 import { OutlineController, type OutlineHost } from './outline.js';
 import { FilesController, type FilesDialogs, type FilesHost } from './files.js';
 import { SearchController, type SearchDialogs, type SearchHost } from './search.js';
-import type { Doc, TextEditor } from './document.js';
+import type { Doc, TextEditor, ToastAction, ToastButton } from './document.js';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
 export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>
@@ -32,10 +32,13 @@ export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & 
 // What the session answers itself, from the controllers it owns.
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
     | 'fileBack' | 'newDocument' | 'showDocument' | 'saveAll' | 'showChat' | 'boardShown' | 'updateBoardFile' | 'record' | 'agentHost' | 'runs'
-    | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted';
+    | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted' | 'settings' | 'toast';
 
-// The views, notices, and system services of the frontend: the host members that are not another controller.
-export type FrontendHost<E extends TextEditor> = Omit<ControllerHost<E>, SessionProvided>;
+// The views, notices, and system services of the frontend: the host members that are not another controller. A toast
+// button reaches it as a token, which it gives back to AppSession.toastActivated when the user presses the button.
+export type FrontendHost<E extends TextEditor> = Omit<ControllerHost<E>, SessionProvided> & {
+    toast(message: string, action?: ToastButton): void;
+};
 
 // The questions the controllers ask the user. A dialog answers with a value or a Promise; tests replace them.
 export interface AppDialogs {
@@ -53,8 +56,10 @@ export interface AppDialogs {
 }
 
 export interface AppFrontend<E extends TextEditor> {
+    // The settings belong to the core: the frontend is given the store they live in, not a view of them (docs/design/protocol.md 9.2).
+    readonly settings: AppSettings;
     readonly host: FrontendHost<E>;
-    readonly documents: Omit<DocumentsHost<E>, 'autosaver' | 'refreshHome' | 'root'>;
+    readonly documents: Omit<DocumentsHost<E>, 'autosaver' | 'refreshHome' | 'root' | 'settings' | 'toast'>;
     readonly dialogs: AppDialogs;
 }
 
@@ -84,7 +89,7 @@ export class AppSession<E extends TextEditor> {
     readonly host: ControllerHost<E>;
 
     constructor(private readonly frontend: AppFrontend<E>) {
-        this.settings = frontend.documents.settings;
+        this.settings = frontend.settings;
         // The frontend's members stay reachable through the prototype, so its getters keep working.
         this.host = Object.create(frontend.host, this.provided()) as ControllerHost<E>;
         const { host } = this;
@@ -124,6 +129,8 @@ export class AppSession<E extends TextEditor> {
             autosaver: { get: () => this.autosaver },
             refreshHome: { value: () => this.refreshHome() },
             root: { value: () => this.files.root },
+            settings: { value: this.settings },
+            toast: { value: (message: string, action?: ToastAction) => this.toast(message, action) },
         }) as DocumentsHost<E>);
     }
 
@@ -156,11 +163,36 @@ export class AppSession<E extends TextEditor> {
             journalSummary: value((root: string, date: string) => this.journal.summary(root, date)),
             refreshHome: value(() => this.refreshHome()),
             root: value(() => this.files.root),
+            settings: get(() => this.settings),
+            toast: value((message: string, action?: ToastAction) => this.toast(message, action)),
             // A file or folder moved, renamed, or trashed in the Files tab: the open documents follow, then the frontend
             // highlights the active file again and re-reads its history.
             entryMoved: value((from: string, to: string) => { this.documents.filesMoved(from, to); this.frontend.host.filesMoved(); }),
             entryDeleted: value((path: string) => { this.documents.fileDeleted(path); this.frontend.host.filesMoved(); }),
         };
+    }
+
+    // A toast for the frontend. A button's action stays here; the frontend gets a token for it. Only the latest few are kept:
+    // a toast is gone from the screen in seconds.
+    private readonly toastActions = new Map<number, () => void>();
+    private lastToast = 0;
+
+    private toast(message: string, action?: ToastAction): void {
+        let button: ToastButton | undefined;
+        if (action) {
+            const token = ++this.lastToast;
+            this.toastActions.set(token, action.run);
+            for (const old of [...this.toastActions.keys()].slice(0, -8)) this.toastActions.delete(old);
+            button = { label: action.label, token };
+        }
+        this.frontend.host.toast(message, button);
+    }
+
+    // The user pressed the button of a toast; a token that is gone or was used does nothing.
+    toastActivated(token: number): void {
+        const run = this.toastActions.get(token);
+        this.toastActions.delete(token);
+        run?.();
     }
 
     // Open the tabs of the last session (or the first document) and start the documents.

@@ -189,13 +189,13 @@ export function layoutsGuiTests(c: GuiContext): void {
         choose('calendar');
         ok(w.lastToast.includes('date field'), w.lastToast);
         ok(w.lastToastAction?.label.includes('due'), 'a button names the field');
-        w.lastToastAction!.run();
+        w.session.toastActivated(w.lastToastAction!.token);
         settle();
         ok(/fields:\n {2}due: date/.test(text()), text().slice(0, 120));
         w.lastToast = '';
         choose('chart');
         ok(w.lastToast.includes('select field'), w.lastToast);
-        w.lastToastAction!.run();
+        w.session.toastActivated(w.lastToastAction!.token);
         settle();
         ok(/status: select\(todo, doing, done\)/.test(text()) || /status: select/.test(text()), text().slice(0, 160));
         w.lastToast = '';
