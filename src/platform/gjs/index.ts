@@ -89,6 +89,7 @@ export const gjsPlatform: Platform = {
     links: gjsLinks,
     translations: gettextTranslations,
     env: name => GLib.getenv(name),
+    os: 'linux',
     realName: () => { const name = GLib.get_real_name(); return name && name !== 'Unknown' ? name : null; },
     monotonicMs: () => GLib.get_monotonic_time() / 1000,
 };

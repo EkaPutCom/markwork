@@ -165,7 +165,10 @@ export interface Translations {
     context(context: string, text: string): string;
 }
 
+export type OS = 'linux' | 'darwin' | 'win32';
+
 export interface Platform {
+    readonly os: OS;
     readonly fs: FileSystem;
     readonly paths: Paths;
     readonly secrets: Secrets;

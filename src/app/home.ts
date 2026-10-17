@@ -1,7 +1,7 @@
 // The data behind the Home tab (recent files, due tasks, agent runs, inboxes, today's journal) and the actions
 // taken from it. Everything is recomputed from the files on every render.
 
-import { fileExists } from '../files.js';
+import { fileExists, insideName } from '../files.js';
 import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import type { WorkspaceRepository } from '../workspace.js';
@@ -99,8 +99,7 @@ export class HomeController {
         const dir = paths.dirname(r.path), file = paths.basename(r.path);
         if (card) return { path: r.path, title: paths.basename(dir), subtitle: file, time: r.time };
         const folder = root && dir === root ? paths.basename(root)
-            : root && dir.startsWith(`${root}/`) ? dir.slice(root.length + 1)
-            : dir.replace(paths.homeDir(), '~');
+            : (root && insideName(root, dir)) || dir.replace(paths.homeDir(), '~');
         return { path: r.path, title: file, subtitle: folder, time: r.time };
     }
 

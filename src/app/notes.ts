@@ -2,6 +2,7 @@
 
 import { newNotePath, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
 import { platform } from '../platform/index.js';
+import { insideName } from '../files.js';
 import type { WorkspaceRepository } from '../workspace.js';
 import { _, fmt } from '../i18n.js';
 import type { Doc, DocumentHost } from './document.js';
@@ -17,7 +18,7 @@ export class NoteLinks {
     // otherwise the document's own folder.
     rootFor(doc: Doc): string | null {
         const root = this.host.root();
-        if (root && (!doc.file || doc.file.startsWith(`${root}/`))) return root;
+        if (root && (!doc.file || insideName(root, doc.file) !== null)) return root;
         return doc.file ? platform().paths.dirname(doc.file) : null;
     }
 
@@ -47,7 +48,7 @@ export class NoteLinks {
             host.toast(_('Open a folder or save the document first to follow [[note]] links'));
             return;
         }
-        const from = doc.file?.startsWith(`${root}/`) ? doc.file.slice(root.length + 1) : null;
+        const from = doc.file ? insideName(root, doc.file) : null;
         const found = resolveWikiLink(link.target, host.workspace.names(root), from);
         const rel = found ?? newNotePath(link.target, from);
         if (!rel) {

@@ -9,6 +9,7 @@
 // A card may link notes in the Markwork work folder with [[Note]] (in its title or notes). The contents of those notes
 // are copied into the prompt as context, because the harness works in another project folder and cannot read them.
 
+import { platform } from '../platform/index.js';
 import { cardMeta, type Board, type Card, type Position } from '../markdown/kanban.js';
 import { AgentTrace, prettyArguments } from './trace.js';
 import { wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
@@ -101,11 +102,14 @@ export function cardProject(board: Board, card: Card): string | null {
 
 // The project folder must not be the Markwork work folder or part of it: the harness writes freely there without a review window.
 export function checkProjectFolder(folder: string, workspace: string | null): string | null {
-    if (!folder.startsWith('/')) return 'the project folder must be an absolute path';
-    const clean = folder.replace(/\/+$/, '') || '/';
-    if (clean === '/') return 'the project folder must not be the root';
+    if (!platform().paths.isAbsolute(folder)) return 'the project folder must be an absolute path';
+    // A Windows path (C:\Users\eka\web) is compared with / for a separator and without regard to case.
+    const windows = /^[A-Za-z]:/.test(folder);
+    const norm = (p: string) => windows ? p.replace(/\\/g, '/').toLowerCase() : p;
+    const clean = norm(folder).replace(/\/+$/, '') || '/';
+    if (clean === '/' || /^[a-z]:$/.test(clean)) return 'the project folder must not be the root';
     if (workspace) {
-        const ws = workspace.replace(/\/+$/, '');
+        const ws = norm(workspace).replace(/\/+$/, '');
         if (clean === ws || clean.startsWith(`${ws}/`)) return 'the project folder must not be inside the Markwork work folder';
         if (ws.startsWith(`${clean}/`)) return 'the project folder must not contain the Markwork work folder';
     }

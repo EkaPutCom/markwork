@@ -172,7 +172,7 @@ export function daemonSpawner(conn: DaemonConnection, opts: DaemonSpawnerOptions
         const run = (opts.newRunId ?? newRunId)();
         const proc = new DaemonProcess(conn, run, handlers, opts);
         proc.create({
-            run, program: argv[0].split('/').pop() ?? argv[0], args: argv.slice(1), cwd,
+            run, program: argv[0].split(/[\\/]/).pop() ?? argv[0], args: argv.slice(1), cwd,
             ...(meta ? { lane: meta.lane, lane_slots: meta.slots, labels: meta.labels } : {}),
         });
         return proc;

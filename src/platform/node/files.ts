@@ -1,6 +1,7 @@
 // Files and folders on Node: node:fs for whole-file reads and atomic writes, listings, lookups, and folder watches; a
 // worker thread for background writes. Raw: the queueing per path and the app's change notices are in files.ts.
 
+import { execFileSync } from 'node:child_process';
 import { appendFileSync, chmodSync, closeSync, cpSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmdirSync, rmSync, statSync, watch, writeSync, type Stats } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
@@ -153,7 +154,7 @@ const trashInfo = (path: string) => [
     '',
 ].join('\n');
 
-function trash(path: string): void {
+function trashFreedesktop(path: string): void {
     const dir = trashDir(path);
     mkdirSync(join(dir, 'files'), { recursive: true, mode: 0o700 });
     mkdirSync(join(dir, 'info'), { recursive: true, mode: 0o700 });
@@ -168,6 +169,34 @@ function trash(path: string): void {
         throw e;
     }
 }
+
+// macOS: the user's ~/.Trash, under a name that is free there. (Finder's "Put Back" needs its own record, so it is not offered.)
+function trashMac(path: string): void {
+    const dir = join(homedir(), '.Trash');
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const name = basename(path);
+    let unique = name;
+    for (let n = 2; existsSync(join(dir, unique)); n++) unique = `${name}.${n}`;
+    renameSync(path, join(dir, unique));
+}
+
+// Windows: the Recycle Bin, through the shell's own call in PowerShell (there is no synchronous API in Node). The path
+// goes in the environment, not in the script, so no quoting can change what is deleted.
+const RECYCLE = [
+    'Add-Type -AssemblyName Microsoft.VisualBasic',
+    '$p = $env:MARKWORK_TRASH_PATH',
+    "if (Test-Path -LiteralPath $p -PathType Container) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }",
+    "else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }",
+].join('; ');
+
+function trashWindows(path: string): void {
+    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', RECYCLE], {
+        env: { ...process.env, MARKWORK_TRASH_PATH: path }, stdio: 'ignore', timeout: 30000,
+    });
+}
+
+const trash = (path: string): void =>
+    process.platform === 'darwin' ? trashMac(path) : process.platform === 'win32' ? trashWindows(path) : trashFreedesktop(path);
 
 function listInfo(dir: string): EntryInfo[] {
     return readdirSync(dir).map(name => entryOf(name, lstatSync(join(dir, name))));

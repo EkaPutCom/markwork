@@ -9,6 +9,11 @@
 // in the branch's own Git config (branch.<name>.markworkBase), so it can be reviewed after Markwork restarted.
 
 import type { GitRun, GitRunner } from '../forge/contribute.js';
+import { platform } from '../platform/index.js';
+
+// A worktree folder is absolute on the machine the project is on: a POSIX path (a project on another machine) or one
+// that is absolute on this computer (C:\... on Windows).
+export const isAbsoluteDir = (dir: string): boolean => dir.startsWith('/') || platform().paths.isAbsolute(dir);
 
 export const BRANCH_PREFIX = 'markwork/';
 export const WORKTREES_DIR = '.markwork-worktrees';
@@ -37,7 +42,7 @@ export function parseIsolation(json: string | undefined): Isolation {
         worktrees: typeof raw.worktrees === 'boolean' ? raw.worktrees : d.worktrees,
         slots,
         base: typeof raw.base === 'string' ? raw.base.trim() : d.base,
-        dir: typeof raw.dir === 'string' && (raw.dir === '' || raw.dir.startsWith('/')) ? raw.dir : d.dir,
+        dir: typeof raw.dir === 'string' && (raw.dir === '' || isAbsoluteDir(raw.dir)) ? raw.dir : d.dir,
         afterMerge: raw.afterMerge === 'keep-branch' ? 'keep-branch' : d.afterMerge,
     };
 }
@@ -67,9 +72,9 @@ async function out(git: GitRunner, cwd: string, args: string[]): Promise<string 
 
 // ---------- Paths and names ----------
 
-const trimSlash = (path: string): string => path.replace(/\/+$/, '') || '/';
-const parentOf = (path: string): string => trimSlash(path).replace(/\/[^/]*$/, '') || '/';
-const baseName = (path: string): string => trimSlash(path).split('/').pop() ?? '';
+const trimSlash = (path: string): string => path.replace(/[\\/]+$/, '') || '/';
+const parentOf = (path: string): string => trimSlash(path).replace(/[\\/][^\\/]*$/, '') || '/';
+const baseName = (path: string): string => trimSlash(path).split(/[\\/]/).pop() ?? '';
 const join = (...parts: string[]): string => parts.filter(Boolean).join('/').replace(/\/{2,}/g, '/');
 
 // The folder the project's worktrees go in.

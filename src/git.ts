@@ -2,7 +2,7 @@
 // are commitFile()/commitFiles() and discardChanges(), and only at the user's request. Everything is async
 // (platform().processes, Gio.Subprocess under GJS) so a long history does not block the editor.
 
-import { trashFile } from './files.js';
+import { insideName, trashFile } from './files.js';
 import { platform } from './platform/index.js';
 import { AGENT_LOG_FORMAT, LOG_FORMAT, parseLog, parseStatus, type Commit, type FileChange, type GitAnswer, type GitRequest } from './gitlog.js';
 
@@ -156,7 +156,7 @@ export async function commitFiles(files: string[], message: string): Promise<Tex
     const root = await runGit(dir, ['rev-parse', '--show-toplevel']);
     if (root?.status !== 0) return failure(root);
     const top = root.out.trim();
-    const specs = files.map(f => `:(top,literal)${f.startsWith(top + '/') ? f.slice(top.length + 1) : f}`);
+    const specs = files.map(f => `:(top,literal)${insideName(top, f) ?? f}`);
     const add = await runGit(dir, ['add', '--all', '--', ...specs]);
     if (add?.status !== 0) return failure(add);
     const run = await runGit(dir, ['commit', '--only', '--no-verify', '-m', message, '--', ...specs]);
@@ -174,7 +174,7 @@ export async function discardChanges(files: string[]): Promise<TextResult> {
     if (root?.status !== 0) return failure(root);
     const top = root.out.trim();
     const specOf = (path: string) => `:(top,literal)${path}`;
-    const wanted = new Set(files.map(f => f.startsWith(top + '/') ? f.slice(top.length + 1) : f));
+    const wanted = new Set(files.map(f => insideName(top, f) ?? f));
     // The whole repository, not just these paths: with a pathspec git no longer pairs a rename's two names, and the new name alone
     // looks like an added file.
     const status = await runGit(dir, ['status', '--porcelain=v1', '--untracked-files=all']);

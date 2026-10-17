@@ -5,7 +5,7 @@
 
 import type { AppSettings, SidebarPage } from '../settings.js';
 import { WorkspaceRepository } from '../workspace.js';
-import { fileExists, fileUri } from '../files.js';
+import { fileExists, fileUri, insideName } from '../files.js';
 import { platform } from '../platform/index.js';
 import { after, type Awaitable } from '../awaitable.js';
 import { WELCOME } from '../welcome.js';
@@ -477,14 +477,15 @@ export class AppSession<E extends TextEditor> {
         if (doc.home) return { name, file: null, home: true, place: root ? paths.basename(root) : null };
         if (!doc.file) return { name, file: null, home: false, place: null };
         const dir = paths.dirname(doc.file), home = paths.homeDir();
-        const place = dir === home || dir.startsWith(`${home}/`) ? `~${dir.slice(home.length)}` : dir;
+        const below = insideName(home, dir);
+        const place = dir === home ? '~' : below !== null ? `~/${below}` : dir;
         return { name, file: doc.file, home: false, place };
     }
 
     // A file's name in the work folder (the same as the name in workspace.ts), or its base name outside it; null if not saved.
     private projectName(path: string | null): string | null {
         const root = this.files.root;
-        return path && root && path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path ? platform().paths.basename(path) : null;
+        return path && (root && insideName(root, path) || platform().paths.basename(path));
     }
 
     // The Recent list of the menus: the last files that still exist.

@@ -5,7 +5,7 @@
 
 import { after, type Awaitable } from '../awaitable.js';
 import type { AppSettings } from '../settings.js';
-import { readTextFile, writeTextFile, fileExists } from '../files.js';
+import { readTextFile, writeTextFile, fileExists, insideName } from '../files.js';
 import { platform } from '../platform/index.js';
 import { moveRecent, rememberRecent } from '../markdown/home.js';
 import { markdownToHtml } from '../markdown/html.js';
@@ -127,8 +127,7 @@ export class DocumentController<E extends TextEditor> {
     // Close the tabs whose file lies outside folder (asks about unsaved changes first).
     // false = the user cancelled, so the folder should not be switched.
     closeOutside(folder: string): Awaitable<boolean> {
-        const prefix = folder.endsWith('/') ? folder : `${folder}/`;
-        const stale = this.docs.filter(d => d.file && !d.file.startsWith(prefix));
+        const stale = this.docs.filter(d => d.file && insideName(folder, d.file) === null);
         if (stale.length === 0) return true;
         return after(this.confirmDiscardAll(stale), yes => {
             if (!yes) return false;

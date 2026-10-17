@@ -1,6 +1,6 @@
 // Background write tests: ordering per path, coalescing, and an explicit flush.
 
-import { flushWrites, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/files.js';
+import { fileUri, flushWrites, insideName, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/files.js';
 import { section, test, eq, ok, tmp, until, disk } from '../framework.js';
 
 export async function fileWriteTests(): Promise<void> {
@@ -8,6 +8,20 @@ export async function fileWriteTests(): Promise<void> {
     const base = disk.join(tmp, 'writes');
     disk.mkdirs(base);
     const at = (name: string) => disk.join(base, name);
+
+    await test('fileUri encodes each part, and a Windows drive path gets file:///C:/', () => {
+        eq(fileUri('/home/eka/my notes/a#b.md'), 'file:///home/eka/my%20notes/a%23b.md');
+        eq(fileUri('C:\\Users\\eka\\my notes\\a.md'), 'file:///C:/Users/eka/my%20notes/a.md');
+        eq(fileUri('d:/x/y.md'), 'file:///d:/x/y.md');
+    });
+
+    await test('insideName gives the / name below a folder, and null for the folder itself or elsewhere', () => {
+        eq(insideName('/home/eka/notes', '/home/eka/notes/a/b.md'), 'a/b.md');
+        eq(insideName('/home/eka/notes/', '/home/eka/notes/b.md'), 'b.md', 'a trailing slash');
+        eq(insideName('/home/eka/notes', '/home/eka/notes'), null, 'the folder itself');
+        eq(insideName('/home/eka/notes', '/home/eka/notes-other/b.md'), null, 'the same name prefix is not inside');
+        eq(insideName('/home/eka/notes', '/home/eka/b.md'), null, 'outside');
+    });
 
     await test('overlapping background writes to one file end with the newest text', async () => {
         const path = at('burst.md');

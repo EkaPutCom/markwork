@@ -5,6 +5,7 @@
 // dropped in from outside (copied, never written over).
 
 import { platform } from '../platform/index.js';
+import { insideName } from '../files.js';
 import { copyEntry, createFile, createFolder, moveEntry, renameEntry, trashEntry } from '../fileops.js';
 import { newList } from '../markdown/inbox.js';
 import { newTable } from '../markdown/tablelayout.js';
@@ -257,7 +258,7 @@ export class FilesController {
     // Stop showing a folder and every folder inside it.
     private close(dir: string): void {
         for (const other of [...this.open.keys()]) {
-            if (other !== dir && !other.startsWith(`${dir}/`)) continue;
+            if (other !== dir && insideName(dir, other) === null) continue;
             this.open.get(other)?.();
             this.open.delete(other);
             this.pending.get(other)?.();

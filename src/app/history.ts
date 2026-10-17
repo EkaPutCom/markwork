@@ -9,7 +9,7 @@ import { commitContent, commitDiff, commitFile, commitFiles, discardChanges, fil
 import { parseDiff, type ChangeKind, type Commit, type DiffLine, type FileChange } from '../gitlog.js';
 import { writeCommitMessage, type CommitSources, type WriteResult } from '../agent/commitmessage.js';
 import { Cancellable } from '../cancel.js';
-import { fileExists, readTextFile } from '../files.js';
+import { fileExists, insideName, readTextFile } from '../files.js';
 import { platform } from '../platform/index.js';
 import { after, type Awaitable } from '../awaitable.js';
 import { _, fmt } from '../i18n.js';
@@ -210,7 +210,7 @@ export class HistoryController<E extends TextEditor = TextEditor> {
         const [state, repo] = await Promise.all([file ? workingState(file) : null, repoChanges(dir)]);
         if (token !== this.token) return;
         this.changed = repo.ok ? repo.changes : [];
-        const name = (path: string) => path.startsWith(dir + '/') ? path.slice(dir.length + 1) : path;
+        const name = (path: string) => insideName(dir, path) ?? path;
         this.host.historyTab.showChanges({
             file,
             state: state?.ok ? state.state : null,
