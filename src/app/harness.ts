@@ -33,7 +33,7 @@ export interface HarnessBoard {
 
 // A run's log window; one per run, raised again when it is already open.
 export interface HarnessLogs {
-    show(run: Run): void;
+    show(runId: number): void;
 }
 
 // What closing the window does with agents that are still working.
@@ -402,7 +402,7 @@ export class HarnessController {
     }
 
     showLog(run: Run): void {
-        this.host.logs.show(run);
+        this.host.logs.show(run.id);
     }
 
     // From Home: an agent that is waiting for an answer is asked right away; one that is working shows its log; a queued one opens its board.

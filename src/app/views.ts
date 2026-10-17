@@ -73,7 +73,7 @@ export interface CaptureView extends NotesView {
 export interface ViewScreen<E extends TextEditor> {
     page(): string | null;           // 'home', a structured page name, or another page (a document's text, a review)
     showHome(data: HomeData): void;
-    showText(doc: Doc<E>): void;     // the document's own editor page, with the cursor shown and focused
+    showText(id: number): void;      // the document's own editor page, with the cursor shown and focused
     showPage(page: StructuredPage): void;
     closeFind(): void;
     setStatusVisible(visible: boolean): void;
@@ -162,7 +162,7 @@ export class ViewController<E extends TextEditor> {
             screen.closeFind();
             screen.showHome(this.host.homePage.data());
         } else if (view === 'text') {
-            screen.showText(doc);
+            screen.showText(doc.id);
             screen.setCounts(doc.editor.getText());
         } else {
             // The view gets its contents before it is shown.

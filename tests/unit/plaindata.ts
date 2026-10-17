@@ -57,10 +57,7 @@ type DialogOffenders<D> = { [K in keyof D & string]-?: ViewOffenders<D[K], `dial
 type Frontend = AppFrontend<TextEditor>;
 type Found = HostOffenders<Frontend['host']> | ViewOffenders<Frontend['documents'], 'documents'> | DialogOffenders<AppDialogs>;
 
-type KNOWN =
-    // A live object: a Doc with its editor, the editor itself, a harness Run (5.2, 6.5).
-    | 'documents.attach' | 'documents.detach' | 'documents.activated' | 'documents.contentChanged' | 'documents.refreshTitle'
-    | 'documents.setIcon' | 'documents.createEditor' | 'screen.showText' | 'logs.show';
+type KNOWN = never;
 
 // Fails to typecheck, naming the members, when Found and KNOWN differ in either direction.
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;

@@ -126,7 +126,7 @@ export class MainWindow implements CommandHost {
     readonly pulls: PullReviewController;
     readonly contribute: ContributeController;
     readonly harness: HarnessController;
-    readonly harnessLogs = new HarnessLogWindows(() => this.win);
+    readonly harnessLogs = new HarnessLogWindows(() => this.win, id => this.harness.orchestrator.queue.runs.find(r => r.id === id));
     readonly reviewView: HarnessReviewView;
     readonly review: HarnessReviewController;
     readonly homePage: HomeController;
@@ -186,7 +186,7 @@ export class MainWindow implements CommandHost {
         this.header = new HeaderBar();
 
         // The application layer: its controllers are created before the first document, whose buffer already queues autosaves.
-        this.session = new AppSession<MarkdownView>({ settings, host: this.frontendHost(), documents: this.documentsHost(), dialogs: this.appDialogs() });
+        this.session = new AppSession<MarkdownView>({ settings, createEditor: id => this.createEditor(id), host: this.frontendHost(), documents: this.documentsHost(), dialogs: this.appDialogs() });
         const session = this.session;
         ({ journal: this.journal, collab: this.collab, pulls: this.pulls, contribute: this.contribute, harness: this.harness,
             review: this.review, homePage: this.homePage, documents: this.documents, workspace: this.workspace } = session);
@@ -459,10 +459,12 @@ export class MainWindow implements CommandHost {
                 this.content.visible_child_name = 'home';
                 this.home.render(data);
             },
-            showText: doc => {
-                this.content.visible_child_name = `doc-${doc.id}`;
-                doc.editor.updateCursor(true);
-                doc.editor.view.grab_focus();
+            showText: id => {
+                const editor = this.editors.get(id);
+                if (!editor) return;
+                this.content.visible_child_name = `doc-${id}`;
+                editor.updateCursor(true);
+                editor.view.grab_focus();
             },
             showPage: page => { this.content.visible_child_name = page; },
             closeFind: () => this.findBar.close(),
@@ -531,16 +533,20 @@ export class MainWindow implements CommandHost {
                 showError: message => void showError(this.win, message),
                 chooseFile: options => chooseFile(this.win, options),
             },
-            createEditor: () => new MarkdownView(),
-            attach: doc => this.attach(doc),
-            detach: doc => {
-                this.tabBar.remove(doc.id);
-                doc.editor.destroy();
-                this.content.remove(doc.editor.widget);
+            attach: id => this.attach(id),
+            detach: id => {
+                const editor = this.editors.get(id);
+                this.editors.delete(id);
+                this.tabBar.remove(id);
+                if (!editor) return;
+                editor.destroy();
+                this.content.remove(editor.widget);
             },
-            activated: doc => {
+            activated: id => {
+                const doc = this.docById(id);
+                if (!doc) return;
                 this.findBar.setTarget(doc.editor.buffer, doc.editor.view);
-                this.tabBar.setActive(doc.id);
+                this.tabBar.setActive(id);
                 this.session.outline.show(doc);
                 this.session.views.sync();
                 this.updateTitle();
@@ -548,14 +554,16 @@ export class MainWindow implements CommandHost {
                 this.syncHistory();
                 if (this.chatSplit.show_sidebar) this.chat.updateContextSummary();
             },
-            contentChanged: doc => {
+            contentChanged: id => {
+                const doc = this.docById(id);
+                if (!doc) return;
                 this.session.views.replaced(doc);
                 this.updateTitle();
                 this.fileTree.reveal(doc.file);
                 if (!doc.home) this.syncHistory();
             },
-            refreshTitle: doc => this.refreshTitle(doc),
-            setIcon: (doc, icon) => this.tabBar.setIcon(doc.id, icon),
+            refreshTitle: id => { const doc = this.docById(id); if (doc) this.refreshTitle(doc); },
+            setIcon: (id, icon) => this.tabBar.setIcon(id, icon),
             tabOrder: () => this.tabBar.ids(),
             openFolder: path => this.openFolder(path),
             fileSaved: path => {
@@ -567,29 +575,45 @@ export class MainWindow implements CommandHost {
         };
     }
 
+    // The editors of the open documents by id: the application layer names a document by its id, and the widgets are found here.
+    private readonly editors = new Map<number, MarkdownView>();
+
+    private createEditor(id: number): MarkdownView {
+        const editor = new MarkdownView();
+        this.editors.set(id, editor);
+        return editor;
+    }
+
+    private docById(id: number): Doc | undefined {
+        return this.docs.find(d => d.id === id);
+    }
+
     // Connect a new document's editor, and add its page and tab.
-    private attach(doc: Doc): void {
-        const editor = doc.editor;
+    private attach(id: number): void {
+        const editor = this.editors.get(id)!;
         // Editor callbacks only apply while their document is active; background ones do not touch the outline and status bar.
         editor.onHighlighted = ({ words, characters }) => {
-            if (doc !== this.doc) return;
+            const doc = this.docById(id);
+            if (!doc || doc !== this.doc) return;
             this.session.outline.changed(doc);
             if (!this.session.views.structuredMode) this.statusBar.setDocumentCounts(words, characters);
         };
         editor.onCursorMoved = (line, column) => {
-            if (doc !== this.doc) return;
+            if (id !== this.doc.id) return;
             this.statusBar.setCursor(line, column);
             this.statusBar.setModes((Object.keys(MODE_LABELS) as Mode[]).filter(m => editor.modes[m]).map(m => MODE_LABELS[m]));
         };
         editor.onMessage = msg => this.toast(msg);
         editor.onViewImage = (pixbuf, title) => new ImageViewer(this.win, pixbuf, title).show();
-        editor.getBaseDir = () => doc.file ? GLib.path_get_dirname(doc.file) : GLib.get_home_dir();
-        editor.onOpenNote = link => this.openNote(link, doc);
+        editor.getBaseDir = () => { const file = this.docById(id)?.file; return file ? GLib.path_get_dirname(file) : GLib.get_home_dir(); };
+        editor.onOpenNote = link => { const doc = this.docById(id); if (doc) this.openNote(link, doc); };
         editor.onOpenDocument = path => this.openInTab(path);
-        editor.listNotes = () => this.session.notes.namesFor(doc.id);
-        editor.buffer.connect('modified-changed', () => this.refreshTitle(doc));
+        editor.listNotes = () => this.session.notes.namesFor(id);
+        editor.buffer.connect('modified-changed', () => { const doc = this.docById(id); if (doc) this.refreshTitle(doc); });
         // Text changed while the board is shown and not by the board itself (undo/redo): re-read.
         editor.buffer.connect('changed', () => {
+            const doc = this.docById(id);
+            if (!doc) return;
             this.session.views.queueReload(doc);
             this.session.autosaver.edited(doc);
         });
@@ -599,8 +623,8 @@ export class MainWindow implements CommandHost {
             for (const mode of Object.keys(MODE_LABELS) as Mode[]) if (this.doc.editor.modes[mode]) editor.setMode(mode, true);
         }
         if (this.palette) editor.setPalette(this.palette);
-        this.content.add_named(editor.widget, `doc-${doc.id}`);
-        this.tabBar.add(doc.id, UNTITLED);
+        this.content.add_named(editor.widget, `doc-${id}`);
+        this.tabBar.add(id, UNTITLED);
     }
 
     // The tab after/before the active one (wraps around).
