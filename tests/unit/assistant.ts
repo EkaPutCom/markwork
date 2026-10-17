@@ -7,7 +7,7 @@ import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } fr
 import type { KeyStore } from '../../src/agent/apikey.js';
 import type { TraceUpdate } from '../../src/agent/tracefeed.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within, until, pause, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, contains, within, until, pause, tmp, disk, sync } from '../framework.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
@@ -144,7 +144,7 @@ export async function assistantTests(): Promise<void> {
         decideWith(async (ask, panel) => {
             eq(ask.batch, true);
             eq(ask.changes.map(c => c.file), ['notes.md', 'plan.md']);
-            answers.push(panel.onApply(ask.id, [1]), panel.onApply(ask.id, [0]));
+            answers.push(sync(panel.onApply(ask.id, [1])), sync(panel.onApply(ask.id, [0])));
             return { note: '' };
         });
         const actions = ['notes', 'plan'].map(name => ({ tool: 'edit_file', arguments: JSON.stringify(edit(name)) }));
@@ -163,7 +163,7 @@ export async function assistantTests(): Promise<void> {
         let answer: string | null = null;
         decideWith(async (ask, panel) => {
             disk.write(disk.join(root, 'notes.md'), 'Release 15 November, maybe\n');
-            answer = panel.onApply(ask.id, null);
+            answer = sync(panel.onApply(ask.id, null));
             return { note: '' };
         });
         chat.makeProvider = () => proposing('edit_file', edit('notes'), replies);
@@ -179,7 +179,7 @@ export async function assistantTests(): Promise<void> {
         decideWith((ask, panel) => new Promise(resolve => {
             setTimeout(() => {
                 chat.stop();
-                late = panel.onApply(ask.id, null);
+                late = sync(panel.onApply(ask.id, null));
                 resolve({ note: '' });
             }, 0);
         }));
@@ -218,7 +218,7 @@ export async function assistantTests(): Promise<void> {
         ok(session.host.openInTab(disk.join(root, 'notes.md')), 'openInTab');
         const editor = session.documents.active.editor;
         const replies: string[] = [];
-        decideWith(async (ask, panel) => ({ note: panel.onApply(ask.id, null) ?? '' }));
+        decideWith(async (ask, panel) => ({ note: sync(panel.onApply(ask.id, null)) ?? '' }));
         // The model reads the file again right after the change was applied, in the same turn of the main loop.
         let round = 0;
         chat.makeProvider = () => ({

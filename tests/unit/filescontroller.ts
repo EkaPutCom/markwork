@@ -32,12 +32,13 @@ export async function filesControllerTests(): Promise<void> {
         disk.write(disk.join(dir, 'b.md'), '# B\n');
         disk.write(disk.join(dir, 'sub', 'inner.md'), '# Inner\n');
         const rec = recordingTree();
-        const opened: string[] = [];
         const errors: string[] = [];
         const answers: (string | null)[] = [];
-        const session = new AppSession(fakeFrontend(memorySettings(), [], undefined, { fileTree: rec.tree, openFile: path => { opened.push(path); } }));
+        const session = new AppSession(fakeFrontend(memorySettings(), [], undefined, { fileTree: rec.tree }));
         Object.assign(session.files.dialogs, { name: () => answers.shift() ?? null, confirm: () => false, error: (m: string) => { errors.push(m); } });
         session.start();
+        // The files opened in tabs: a file chosen in the tree opens there (AppSession answers FilesHost.openFile).
+        const opened = () => session.documents.all.map(d => d.file).filter(f => f !== null);
         return { dir, session, files: session.files, opened, errors, answers, ...rec };
     };
 
@@ -86,10 +87,10 @@ export async function filesControllerTests(): Promise<void> {
         eq(await session.host.fileTree.onCreate('board', dir), disk.join(dir, 'plan.md'));
         ok(disk.read(disk.join(dir, 'plan.md')).includes('layout: board'), 'a board file');
         eq(folders.get(dir), ['sub', 'b.md', 'plan.md']);
-        eq([revealed.at(-1), opened.at(-1)], [disk.join(dir, 'plan.md'), disk.join(dir, 'plan.md')]);
+        eq([revealed.at(-1), opened().at(-1)], [disk.join(dir, 'plan.md'), disk.join(dir, 'plan.md')]);
         answers.push('chapters');
         eq(await session.host.fileTree.onCreate('folder', dir), disk.join(dir, 'chapters'));
-        eq(opened.length, 1, 'a folder is not opened');
+        eq(opened().length, 1, 'a folder is not opened');
         answers.push('.secret');
         eq(await session.host.fileTree.onCreate('file', dir), null);
         eq(errors, ['Name cannot start with a dot (it would be hidden from the tree).']);

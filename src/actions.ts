@@ -12,7 +12,8 @@ import { COMMANDS, type Command, type CommandHost } from './app/commands.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
 
 // What the actions need from the main window: the commands, the settings their toggles follow, and the colors.
-export interface ActionHost extends CommandHost {
+export interface ActionHost {
+    readonly commands: CommandHost;
     readonly settings: AppSettings;
     readonly dark: boolean;
     syncActionsEnabled(): void;
@@ -48,19 +49,19 @@ export function registerActions(app: Adw.Application, w: ActionHost): void {
             const choice = c.id === 'layout'
                 ? Gio.SimpleAction.new_stateful(c.id, GLib.VariantType.new('s'), GLib.Variant.new_string(''))
                 : new Gio.SimpleAction({ name: c.id, parameter_type: GLib.VariantType.new('s') });
-            choice.connect(c.id === 'layout' ? 'change-state' : 'activate', (_a, value) => { if (value) c.run(w, value.get_string()[0]); });
+            choice.connect(c.id === 'layout' ? 'change-state' : 'activate', (_a, value) => { if (value) c.run(w.commands, value.get_string()[0]); });
             app.add_action(choice);
         } else if (c.kind === 'toggle') {
             const toggle = Gio.SimpleAction.new_stateful(c.id, null, GLib.Variant.new_boolean(c.id === 'dark' ? w.dark : false));
             toggle.connect('change-state', (act, value) => {
                 if (!value) return;
                 if (!c.ownsState) act.set_state(value);
-                c.run(w, value.get_boolean());
+                c.run(w.commands, value.get_boolean());
             });
             app.add_action(toggle);
         } else {
             const action = new Gio.SimpleAction({ name: c.id });
-            action.connect('activate', () => c.run(w));
+            action.connect('activate', () => c.run(w.commands));
             app.add_action(action);
         }
         accels(c);

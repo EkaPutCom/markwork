@@ -3,14 +3,14 @@
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import { readTextFile } from '../../src/files.js';
-import { addCard, parseBoard } from '../../src/markdown/kanban.js';
+import { parseBoard } from '../../src/markdown/kanban.js';
 import { isBoard } from '../../src/markdown/layout.js';
 import { KanbanBoard } from '../../src/ui/kanban.js';
 import { dueField, editCardDialog, findDialog } from '../../src/ui/dialogs.js';
 import { findEntry, type MenuEntry } from '../../src/ui/menu.js';
 import { childrenOf } from '../../src/gtkutil.js';
 import { descendants, whenDialogReady, widgetPixbuf } from '../widgets.js';
-import { section, test, eq, ok, tmp, optVal, settle } from '../framework.js';
+import { section, test, eq, ok, tmp, optVal, settle, sync } from '../framework.js';
 import { BOARD } from '../fixtures.js';
 import type { GuiContext } from './context.js';
 
@@ -213,22 +213,22 @@ export function kanbanBoardTests(c: GuiContext): void {
     });
     test('card menu: delete, move to another list, up/down, mark done', () => {
         openBoard();
-        const menu = kb.cardMenu(0, 0);
+        const menu = sync(kb.cardMenu(0, 0));
         ok(!kbMenu(menu, 'Move Up').enabled && kbMenu(menu, 'Move Down').enabled, 'Move Up/Move Down on the first card');
         kbMenu(menu, 'Move Down').activate(); settleK();
         eq(kb.cardTexts(0), ['Send invitations', 'Write report #important [due:: 2026-10-20]'], 'down');
-        const submenu = kbMenu(kb.cardMenu(0, 0), 'Move to').item.submenu!;
+        const submenu = kbMenu(sync(kb.cardMenu(0, 0)), 'Move to').item.submenu!;
         eq(submenu.map(e => e.label), ['In Progress', 'Done'], 'the destinations do not include the source list');
         submenu.find(e => e.label === 'Done')!.run!(); settleK();
         eq([kb.cardTexts(0).length, kb.cardTexts(2).at(-1)], [1, 'Send invitations'], 'moved to the end of the target list');
-        kbMenu(kb.cardMenu(2, 2), 'Mark Done').activate(); settleK();
+        kbMenu(sync(kb.cardMenu(2, 2)), 'Mark Done').activate(); settleK();
         eq(kb.getBoard().columns[2].cards[2].done, true, 'mark done');
         let yes = false;
         const asked = stubDialogs({ confirm: () => yes });
-        kbMenu(kb.cardMenu(2, 2), 'Delete').activate(); settleK();
+        kbMenu(sync(kb.cardMenu(2, 2)), 'Delete').activate(); settleK();
         eq(kb.cardTexts(2).length, 3, 'declined: nothing is deleted');
         yes = true;
-        kbMenu(kb.cardMenu(2, 2), 'Delete').activate(); settleK();
+        kbMenu(sync(kb.cardMenu(2, 2)), 'Delete').activate(); settleK();
         eq(kb.cardTexts(2).length, 2, 'delete');
         void asked;
     });
@@ -338,8 +338,8 @@ export function kanbanBoardTests(c: GuiContext): void {
     });
     test('undo and redo restore the board and the text, one step per change', () => {
         openBoard();
-        kb.commit(addCard(kb.getBoard(), 0, 'One'));
-        kb.commit(addCard(kb.getBoard(), 0, 'Two')); settleK();
+        kb.edit({ kind: 'add', column: 0, text: 'One', notes: [], now: Date.now() });
+        kb.edit({ kind: 'add', column: 0, text: 'Two', notes: [], now: Date.now() }); settleK();
         eq(kb.cardTexts(0).length, 4, 'two cards were added');
         action('undo'); settleK();
         eq([kb.cardTexts(0).length, text().includes('Two')], [3, false], 'the first undo only reverted "Two"');
@@ -387,7 +387,7 @@ export function kanbanBoardTests(c: GuiContext): void {
     });
     test('saving writes Markdown that can be read back as the same board', () => {
         openBoard();
-        kb.commit(addCard(kb.getBoard(), 1, 'Saved'));
+        kb.edit({ kind: 'add', column: 1, text: 'Saved', notes: [], now: Date.now() });
         const out = GLib.build_filenamev([tmp, 'save.md']);
         w.file = out;
         ok(w.save(), 'save() failed');

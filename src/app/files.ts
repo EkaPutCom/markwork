@@ -69,8 +69,8 @@ export interface FileTreeView {
     onCreate: (kind: NewKind, dir: string) => Awaitable<string | null>;
     onRename: (path: string) => Awaitable<string | null>;
     onRemove: (path: string) => Awaitable<boolean>;
-    onMove: (source: string, dir: string) => boolean;            // dragged inside the tree
-    onCopy: (sources: string[], dir: string) => boolean;         // dropped in from a file manager
+    onMove: (source: string, dir: string) => Awaitable<boolean>;            // dragged inside the tree
+    onCopy: (sources: string[], dir: string) => Awaitable<boolean>;         // dropped in from a file manager
     showRoot(root: string | null, entries: FolderEntry[]): void;  // the work folder (null = none) and its contents
     showFolder(dir: string, entries: FolderEntry[]): void;        // the contents of a folder the tree has open
     expand(dir: string): void;

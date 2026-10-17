@@ -13,7 +13,7 @@ import GLib from 'gi://GLib';
 import { describeChange, diffPreview, unifiedDiff, type Change } from '../agent/changes.js';
 import { parseDiff, type DiffLine } from '../gitlog.js';
 import { createDiffView, fillDiff, setupDiffTags } from './historyviewer.js';
-import { onKeyPress, pack } from '../gtkutil.js';
+import { after, onKeyPress, pack, type Awaitable } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
 
 // Diff lines for one change; delete and move get a caption because the content diff alone does not explain them.
@@ -36,7 +36,7 @@ export class ProposalViewer {
     // Called once. applied=false without an error = rejected (including the window being closed).
     onDecision: (applied: boolean) => void = () => {};
     // Ask the core to apply the chosen files of a batch (null = the whole proposal): an error message, or null once written.
-    onApply: (chosen: number[] | null) => string | null = () => _('History is read-only');
+    onApply: (chosen: number[] | null) => Awaitable<string | null> = () => _('History is read-only');
     error = '';
     accepted: number[] | null = null;   // indices applied if only part of the batch
     note = '';
@@ -110,18 +110,8 @@ export class ProposalViewer {
             const chosen = this.checks.length ? changes.map((_, i) => i).filter(i => this.checks[i].active) : null;
             if (chosen && !chosen.length) return;
             const partial = chosen && chosen.length < changes.length ? chosen : null;
-            const error = this.onApply(partial);
-            if (error) {
-                // Stays open so the user can read the reason; Reject/close finishes the turn.
-                this.status.set_text(fmt(_('Failed to apply: {error}'), { error }));
-                this.status.show();
-                this.applyButton.set_sensitive(false);
-                this.finish(false, error);
-            } else {
-                this.accepted = partial;
-                this.finish(true);
-                this.window.destroy();
-            }
+            this.applyButton.set_sensitive(false);
+            void after(this.onApply(partial), error => this.applied(partial, error));
         });
         this.rejectButton.connect('clicked', () => { this.finish(false); this.window.destroy(); });
         // GTK 4 does not emit "destroy" while its object is held by JavaScript; "unrealize" marks the window as closed.
@@ -138,6 +128,20 @@ export class ProposalViewer {
         const n = this.checks.filter(c => c.active).length;
         this.applyButton.set_label(n === this.checks.length ? _('Apply') : fmt(_('Apply {n} of {length}'), { n, length: this.checks.length }));
         this.applyButton.set_sensitive(n > 0);
+    }
+
+    // The core's answer to Apply: an error keeps the window open so the user can read the reason (Reject or closing it
+    // finishes the turn); otherwise the window closes.
+    private applied(partial: number[] | null, error: string | null): void {
+        if (error) {
+            this.status.set_text(fmt(_('Failed to apply: {error}'), { error }));
+            this.status.show();
+            this.finish(false, error);
+            return;
+        }
+        this.accepted = partial;
+        this.finish(true);
+        this.window.destroy();
     }
 
     private finish(applied: boolean, error = ''): void {

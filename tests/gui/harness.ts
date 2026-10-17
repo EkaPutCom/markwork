@@ -8,7 +8,7 @@ import { parseBoard } from '../../src/markdown/kanban.js';
 import { findEntry } from '../../src/ui/menu.js';
 import { findDialog, harnessAskDialog } from '../../src/ui/dialogs.js';
 import { descendants, whenDialogReady, widgetPixbuf } from '../widgets.js';
-import { section, test, eq, ok, contains, tmp, optVal, settle } from '../framework.js';
+import { section, test, eq, ok, contains, tmp, optVal, settle, sync } from '../framework.js';
 import type { HarnessAsk, HarnessReply } from '../../src/agent/harness.js';
 import type { GuiContext } from './context.js';
 
@@ -118,7 +118,7 @@ export function harnessTests(c: GuiContext): void {
     };
     const menu = (text: string, label: string) => {
         const { column, index } = at(text);
-        const entry = findEntry(kb.cardMenu(column, index), label);
+        const entry = findEntry(sync(kb.cardMenu(column, index)), label);
         if (!entry) throw new Error(`menu "${label}" does not exist for card "${text}"`);
         return entry;
     };
@@ -143,7 +143,7 @@ export function harnessTests(c: GuiContext): void {
         eq(read('cwd').trim(), project, 'cwd = project folder');
         contains(read('prompt'), '# Checkout with QRIS');
         contains(read('prompt'), 'Use the official SDK.');
-        eq(findEntry(kb.cardMenu(1, 0), 'Work on it with pi')?.enabled, false, 'cannot be run twice');
+        eq(findEntry(sync(kb.cardMenu(1, 0)), 'Work on it with pi')?.enabled, false, 'cannot be run twice');
         GLib.file_set_contents(GLib.build_filenamev([dir, 'release']), '');
         ok(waitFor(() => runOf('Checkout')?.status === 'done'), `status: ${runOf('Checkout')?.status}`);
         eq(titles(2), ['Checkout with QRIS [agent:: pi] #feature'], 'moved to Review when done');
@@ -271,7 +271,7 @@ export function harnessTests(c: GuiContext): void {
         contains(badge('Checkout'), 'waiting for an answer');
         eq(titles(1), ['Checkout with QRIS [agent:: pi] #feature'], 'the card waits in In Progress');
         eq(runOf('Checkout')?.ask?.kind, 'confirm');
-        eq(findEntry(kb.cardMenu(1, 0), 'Work on it with pi')?.enabled, false, 'cannot be run twice while waiting');
+        eq(findEntry(sync(kb.cardMenu(1, 0)), 'Work on it with pi')?.enabled, false, 'cannot be run twice while waiting');
         const shot = optVal('shot-harness');
         if (shot) {
             for (let i = 0; i < 20; i++) { pump(); GLib.usleep(10000); }
@@ -521,7 +521,7 @@ export function harnessTests(c: GuiContext): void {
         const card = kb.getBoard().columns[2].cards.find(c => c.text.startsWith('Tidy up'))!;
         eq(card.text.includes('[branch::'), false);
         contains(card.notes.at(-1) ?? '', 'discarded');
-        ok(!findEntry(kb.cardMenu(at('Tidy up').column, at('Tidy up').index), 'Review Changes'), 'nothing left to review');
+        ok(!findEntry(sync(kb.cardMenu(at('Tidy up').column, at('Tidy up').index)), 'Review Changes'), 'nothing left to review');
     });
 
     test('with worktrees off in the project settings, cards work in the project folder one at a time', () => {

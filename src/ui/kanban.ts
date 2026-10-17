@@ -7,8 +7,8 @@
 //   └────────────┘ └────────────┘ └────────────┘   + Add list
 //
 // This component only holds the board model and its display. Every change goes through
-// commit(), which replaces the model and calls onChange; the window writes
-// the result to the document buffer (the single source of truth is the Markdown text).
+// edit(), which applies the operation (markdown/noteedit.ts) to the model and reports it through onEdit; the
+// application applies it to the document's text (the single source of truth is the Markdown text).
 //
 // Dragging uses its own pointer handling (Gtk.GestureDrag: press → move → release on a card),
 // not GTK's built-in drag-and-drop, so the behavior is controlled and can be tested by
@@ -20,15 +20,13 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
-import {
-    addCard, addColumn, boardSchema, cardFields, cardMeta, setCardField, withFieldOption, DUE_FIELD, deleteCard, deleteColumn, dropIndex, dueStatus, moveCard, moveColumn,
-    newBoard, renameColumn, toggleDone, updateCard, type Board, type Card, type Position,
-} from '../markdown/kanban.js';
+import { boardSchema, cardFields, cardMeta, DUE_FIELD, dropIndex, dueStatus, newBoard, type Board, type Card, type Position } from '../markdown/kanban.js';
+import { applyNoteEdit, type CardRef, type NoteEdit } from '../markdown/noteedit.js';
 import { fieldInputText, readItem, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { FieldPopover } from './fieldpopover.js';
 import { cellMarkup, escapeMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
-import { confirmDialog, editCardDialog, promptDialog, type CardDraft } from './dialogs.js';
+import { confirmDialog, editCardDialog, promptDialog, type CardAnswer, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
 import { after, childrenOf, onChipClick, onClick, onKeyPress, pack, removeChildren, type Awaitable } from '../gtkutil.js';
 import { popupMenu, separator, type MenuEntry } from './menu.js';
@@ -51,18 +49,13 @@ const MONTHS = (): string[] => [
 
 // Dialogs can be replaced (for example in tests with immediate answers); the real dialog answers through a Promise.
 export interface BoardDialogs {
-    editCard(parent: Gtk.Window | null, card: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
+    editCard(parent: Gtk.Window | null, card: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardAnswer | null>;
     prompt(parent: Gtk.Window | null, options: { title: string; label: string; value?: string }): Awaitable<string | null>;
     confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
 }
 
-// Assigning cards to external harnesses (filled in by the window). A card is recognized by its text.
+// The state of a card's harness run, as the application sends it with the board (CardRun). A card is recognized by its text.
 export type CardRunStatus = 'queued' | 'working' | 'waiting' | 'done' | 'failed' | 'stopped';
-export interface BoardHarness {
-    status(card: Card): CardRunStatus | null;
-    menu(card: Card, at: Position): HarnessMenuEntry[];
-    runMenu(token: number): void;
-}
 
 export interface ColumnView {
     box: Gtk.Box;
@@ -99,11 +92,16 @@ export class KanbanBoard {
     private readonly ghostLayer: Gtk.Fixed;   // where the ghost card lives while dragging
     private readonly popovers: FieldPopover;
     columns: ColumnView[] = [];
-    onChange: (board: Board) => void = () => {};
+    // A change the user made, as an operation (markdown/noteedit.ts): the owner applies it to the document's board.
+    onEdit: (edit: NoteEdit) => void = () => {};
     dialogs: BoardDialogs = { editCard: editCardDialog, prompt: promptDialog, confirm: confirmDialog };
     today: () => string = () => GLib.DateTime.new_now_local().format('%Y-%m-%d') ?? '';
     now: () => Date = () => new Date();
-    harness: BoardHarness | null = null;
+    // The harness runs of the cards, by card text (setRuns); a card's harness menu is asked for when it is opened, and an
+    // entry chosen there is reported by its token.
+    private runs = new Map<string, CardRunStatus>();
+    onCardMenu: (card: Card, at: Position) => Awaitable<HarnessMenuEntry[]> = () => [];
+    onRunMenu: (token: number) => void = () => {};
     // False while the board is grouped by a field: its positions are not the file's, so a card cannot be given to an agent.
     agentsEnabled = true;
     // The name of the field the columns are the values of (`group:`), for the title of the column without a value.
@@ -141,14 +139,14 @@ export class KanbanBoard {
         return this.board;
     }
 
-    // Replace the board (for example a document opened or undo) without calling onChange.
+    // Replace the board (for example a document opened or undo) without calling onEdit.
     setBoard(board: Board): void {
         this.board = board;
         this.render();
     }
 
     // Replace the board after the owner changed what it shows (a board grouped by a field, written back): drawn at idle,
-    // without calling onChange.
+    // without calling onEdit.
     replace(board: Board): void {
         this.board = board;
         this.queueRender();
@@ -158,12 +156,18 @@ export class KanbanBoard {
         return this.groupField ? fmt(_('No {field}'), { field: this.groupField }) : _('No list');
     }
 
-    // Apply a change from the user: replace the model, redraw, and notify the owner.
-    commit(next: Board): void {
-        if (next === this.board) return;
+    // Apply a change from the user: to this board at once (redrawn at idle), and reported to the owner.
+    edit(edit: NoteEdit): void {
+        const next = applyNoteEdit(this.board, edit);
+        if (!next || next === this.board) return;
         this.board = next;
         this.queueRender();
-        this.onChange(next);
+        this.onEdit(edit);
+    }
+
+    // A card as an edit names it.
+    private ref(at: Position): CardRef {
+        return { at, card: this.board.columns[at.column]?.cards[at.index]?.text ?? '' };
     }
 
     setPalette(palette: Palette): void {
@@ -271,7 +275,7 @@ export class KanbanBoard {
         if (card.done) widget.add_css_class('kanban-card-done');
 
         const check = new Gtk.CheckButton({ active: card.done === true, valign: Gtk.Align.START, tooltip_text: _('Mark done') });
-        check.connect('toggled', () => this.commit(toggleDone(this.board, { column: c, index: i })));
+        check.connect('toggled', () => this.edit({ kind: 'toggle', ...this.ref({ column: c, index: i }) }));
         const label = new Gtk.Label({ use_markup: true, xalign: 0, wrap: true, wrap_mode: Pango.WrapMode.WORD_CHAR, hexpand: true, width_chars: 10 });
         label.add_css_class('kanban-card-text');
         const markup = cellMarkup(meta.title, this.colors, true);
@@ -286,7 +290,7 @@ export class KanbanBoard {
         // Links in the card notes are not visible in the title, so they are shown as clickable chips.
         const inTitle = new Set(wikiLinksIn(card.text).map(l => l.target.toLowerCase()));
         const noteLinks = card.notes.length ? wikiLinksIn(card.notes.join('\n')).filter(l => !inTitle.has(l.target.toLowerCase())) : [];
-        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, (this.agentsEnabled ? this.harness : null)?.status(card) ?? null, fields, (key, anchor) => this.editField(c, i, key, anchor));
+        const badges = this.buildBadges(card.notes.length > 0, meta.tags, meta.due, meta.agent, (this.agentsEnabled && this.runs.get(card.text)) || null, fields, (key, anchor) => this.editField(c, i, key, anchor));
         if (badges) inner.append(badges);
         // One row per link so many links do not widen the card.
         const linkBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
@@ -314,7 +318,7 @@ export class KanbanBoard {
         drag.connect('drag-end', () => this.onCardRelease());
         widget.add_controller(drag);
         onClick(widget, (_n, x, y) => {
-            popupMenu(widget, this.cardMenu(c, i), x, y);
+            void after(this.cardMenu(c, i), entries => { if (widget.get_root()) popupMenu(widget, entries, x, y); });
             return true;
         }, 3);
         return widget;
@@ -364,9 +368,7 @@ export class KanbanBoard {
             current: fieldInputText(card.text, def),
             apply: (raw, newOption) => {
                 if (this.board.columns[column]?.cards[index]?.text !== card.text) return;
-                // A new option is written first, and the value is checked against the list that now includes it.
-                const board = newOption ? withFieldOption(this.board, key, newOption) : this.board;
-                this.commit(setCardField(board, { column, index }, boardSchema(board).find(f => f.key === key) ?? def, raw));
+                this.edit({ kind: 'field', at: { column, index }, card: card.text, key, raw, field: def, option: newOption ?? null });
             },
         });
     }
@@ -419,7 +421,7 @@ export class KanbanBoard {
         box.add_css_class('kanban-add-list');
         const button = new Gtk.Button({ label: _('+ Add list'), has_frame: false });
         button.connect('clicked', () => this.showAddList());
-        const { box: entryBox, entry } = this.entryRow('List name…', text => this.commit(addColumn(this.board, text)), () => this.hideAdd());
+        const { box: entryBox, entry } = this.entryRow('List name…', text => this.edit({ kind: 'addColumn', title: text }), () => this.hideAdd());
         entry.set_name('kanban-entry-list');
         const stack = new Gtk.Stack();
         stack.add_named(button, 'button');
@@ -432,10 +434,7 @@ export class KanbanBoard {
     // A new card is filled in through the same dialog as editing a card.
     showAddCard(column: number): void {
         void after(this.dialogs.editCard(this.parent, { text: '', notes: [] }, _('Add Card'), this.listNotes ?? undefined, this.schema()), draft => {
-            if (!draft?.text) return;
-            const index = this.board.columns[column]?.cards.length ?? 0;
-            const added = addCard(this.board, column, draft.text, Infinity, this.now());
-            this.commit(updateCard(added, { column, index }, { notes: draft.notes }));
+            if (draft?.text) this.edit({ kind: 'add', column, text: draft.text, notes: draft.notes, now: this.now().getTime() });
         });
     }
 
@@ -471,7 +470,7 @@ export class KanbanBoard {
         void after(this.dialogs.editCard(this.parent, { text: card.text, notes: card.notes }, undefined, this.listNotes ?? undefined, this.schema()), result => {
             // The board can change while the dialog is open; the same card is found again through its position.
             if (result?.text && this.board.columns[column]?.cards[index]?.text === card.text)
-                this.commit(updateCard(this.board, { column, index }, { text: result.text, notes: result.notes }));
+                this.edit({ kind: 'update', at: { column, index }, card: card.text, text: result.text, notes: result.notes });
         });
     }
 
@@ -479,7 +478,7 @@ export class KanbanBoard {
         const current = this.board.columns[column]?.title;
         if (current === undefined) return;
         void after(this.dialogs.prompt(this.parent, { title: _('Rename List'), label: _('List name'), value: current }), name => {
-            if (name && this.board.columns[column]?.title === current) this.commit(renameColumn(this.board, column, name));
+            if (name && this.board.columns[column]?.title === current) this.edit({ kind: 'renameColumn', column, title: current, to: name });
         });
     }
 
@@ -488,7 +487,7 @@ export class KanbanBoard {
         if (!card) return;
         const title = readItem(card.text, boardSchema(this.board)).title;
         void after(this.dialogs.confirm(this.parent, fmt(_('Delete the card “{title}”?'), { title }), undefined), yes => {
-            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.commit(deleteCard(this.board, at));
+            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.edit({ kind: 'delete', at, card: card.text });
         });
     }
 
@@ -497,32 +496,43 @@ export class KanbanBoard {
         if (!col) return;
         const detail = col.cards.length ? fmt(_('The {count} cards in it will also be deleted.'), { count: col.cards.length }) : undefined;
         void after(this.dialogs.confirm(this.parent, fmt(_('Delete the list “{title}”?'), { title: col.title || _('No list') }), detail), yes => {
-            if (yes && this.board.columns[column]?.title === col.title) this.commit(deleteColumn(this.board, column));
+            if (yes && this.board.columns[column]?.title === col.title) this.edit({ kind: 'deleteColumn', column, title: col.title, keepCards: false });
         });
     }
 
     // ---------- Menu ----------
 
-    // The harness's entries for a card, each running through its token.
-    private harnessEntries(harness: BoardHarness, card: Card, at: Position): MenuEntry[] {
-        return harness.menu(card, at).map(({ label, enabled, token }) => ({ label, enabled, run: () => harness.runMenu(token) }));
+    // The runs of the cards, for their badges: drawn at idle.
+    setRuns(runs: readonly { card: string; status: CardRunStatus }[]): void {
+        this.runs = new Map(runs.map(r => [r.card, r.status]));
+        this.queueRender();
     }
 
-    cardMenu(column: number, index: number): MenuEntry[] {
+    // The menu of a card. Its harness entries are the application's: asked for now, each running through its token.
+    cardMenu(column: number, index: number): Awaitable<MenuEntry[]> {
+        const card = this.board.columns[column]?.cards[index];
+        if (!card) return [];
+        const at = { column, index };
+        if (!this.agentsEnabled) return this.cardEntries(column, index, []);
+        return after(this.onCardMenu(card, at), entries => this.cardEntries(column, index,
+            entries.map(({ label, enabled, token }) => ({ label, enabled, run: () => this.onRunMenu(token) }))));
+    }
+
+    private cardEntries(column: number, index: number, harness: MenuEntry[]): MenuEntry[] {
         const col = this.board.columns[column];
         const card = col.cards[index];
         const at = { column, index };
         const move = this.board.columns
             .map((target, t): MenuEntry | null => t === column ? null
-                : { label: target.title || _('No list'), run: () => this.commit(moveCard(this.board, at, { column: t, index: Infinity })) })
+                : { label: target.title || _('No list'), run: () => this.edit({ kind: 'move', ...this.ref(at), to: { column: t, index: target.cards.length } }) })
             .filter((e): e is MenuEntry => e !== null);
         return [
             { label: _('Edit…'), run: () => this.editCard(column, index) },
-            { label: card.done ? _('Mark Not Done') : _('Mark Done'), run: () => this.commit(toggleDone(this.board, at)) },
+            { label: card.done ? _('Mark Not Done') : _('Mark Done'), run: () => this.edit({ kind: 'toggle', ...this.ref(at) }) },
             { label: _('Move to'), enabled: this.board.columns.length > 1, submenu: move },
-            { label: _('Move Up'), enabled: index > 0, run: () => this.commit(moveCard(this.board, at, { column, index: index - 1 })) },
-            { label: _('Move Down'), enabled: index < col.cards.length - 1, run: () => this.commit(moveCard(this.board, at, { column, index: index + 1 })) },
-            ...(this.harness && this.agentsEnabled ? [separator(), ...this.harnessEntries(this.harness, card, at)] : []),
+            { label: _('Move Up'), enabled: index > 0, run: () => this.edit({ kind: 'move', ...this.ref(at), to: { column, index: index - 1 } }) },
+            { label: _('Move Down'), enabled: index < col.cards.length - 1, run: () => this.edit({ kind: 'move', ...this.ref(at), to: { column, index: index + 1 } }) },
+            ...(harness.length ? [separator(), ...harness] : []),
             separator(),
             { label: _('Delete'), run: () => this.deleteCardConfirm(at) },
         ];
@@ -534,8 +544,8 @@ export class KanbanBoard {
         const movable = this.board.columns[column]?.title !== '';
         return [
             { label: _('Rename…'), run: () => this.renameColumnPrompt(column) },
-            { label: _('Move Left'), enabled: movable && column > first, run: () => this.commit(moveColumn(this.board, column, column - 1)) },
-            { label: _('Move Right'), enabled: movable && column < this.board.columns.length - 1, run: () => this.commit(moveColumn(this.board, column, column + 1)) },
+            { label: _('Move Left'), enabled: movable && column > first, run: () => this.edit({ kind: 'moveColumn', column, title: this.board.columns[column].title, to: column - 1 }) },
+            { label: _('Move Right'), enabled: movable && column < this.board.columns.length - 1, run: () => this.edit({ kind: 'moveColumn', column, title: this.board.columns[column].title, to: column + 1 }) },
             separator(),
             { label: _('Delete List…'), run: () => this.deleteColumnConfirm(column) },
         ];
@@ -648,7 +658,7 @@ export class KanbanBoard {
         this.endDrag();
         const { from, target } = drag;
         if (target.column < 0 || (target.column === from.column && target.index === from.index)) return;
-        this.commit(moveCard(this.board, from, target));
+        this.edit({ kind: 'move', ...this.ref(from), to: target });
     }
 
     private cancelDrag(): void {

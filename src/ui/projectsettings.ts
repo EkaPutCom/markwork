@@ -7,6 +7,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import type { PreferencesView } from '../app/preferences.js';
 import { AFTER_MERGE, type ProjectPage, type ProjectRow, type WorktreeList } from '../app/projects.js';
 import { _, fmt } from '../i18n.js';
+import { after as answered } from '../gtkutil.js';
 
 // A row whose title and subtitle are shown as they are: paths and branch names are not Pango markup. Markup is turned
 // off before the text is set, or the text is parsed once anyway.
@@ -81,8 +82,9 @@ export class ProjectSubpage {
         base.connect('apply', () => save({ base: base.text.trim() }));
         dir.connect('apply', () => {
             // The core refuses a folder that is not an absolute path.
-            const error = save({ dir: dir.text.trim() });
-            if (error) dir.add_css_class('error'); else dir.remove_css_class('error');
+            void answered(save({ dir: dir.text.trim() }), error => {
+                if (error) dir.add_css_class('error'); else dir.remove_css_class('error');
+            });
         });
         after.connect('notify::selected', () => save({ afterMerge: AFTER_MERGE[after.selected] ?? 'remove' }));
         sync();

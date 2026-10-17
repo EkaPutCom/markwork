@@ -15,7 +15,7 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {
-    barData, chartData, chartItems, dateFields, donutData, selectFields, withCharts, NO_VALUE,
+    barData, chartData, chartItems, dateFields, donutData, selectFields, NO_VALUE,
     type ChartData, type ChartItem, type Period, type Slice,
 } from '../markdown/chart.js';
 import { removeChildren } from '../gtkutil.js';
@@ -124,7 +124,7 @@ export class ChartView extends LayoutView {
     // ---------- Settings: the list of panels ----------
 
     private commitItems(items: ChartItem[] | null): void {
-        this.commit(withCharts(this.board, items));
+        this.edit({ kind: 'charts', items });
     }
 
     // A row for each panel with its fields to pick and buttons to move and remove it, then the ones that can be added.

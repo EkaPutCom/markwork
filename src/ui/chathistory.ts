@@ -2,21 +2,24 @@
 
 import Gtk from 'gi://Gtk?version=4.0';
 import type { ChatSummary } from '../agent/chatstore.js';
-import { childrenOf, pack } from '../gtkutil.js';
+import { after, childrenOf, pack, type Awaitable } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
 
 export class ChatHistoryList {
     // chats: the saved conversations (null = no work folder); remove: move one to the Trash (an error message, or null);
     // onOpen: reopen a saved conversation; onError: show a failure in the panel.
     constructor(private readonly button: Gtk.MenuButton, popover: Gtk.Popover, private readonly list: Gtk.Box,
-                private readonly chats: () => ChatSummary[] | null, private readonly remove: (path: string) => string | null,
+                private readonly chats: () => Awaitable<ChatSummary[] | null>, private readonly remove: (path: string) => Awaitable<string | null>,
                 private readonly onOpen: (path: string) => void, private readonly onError: (message: string) => void) {
         popover.connect('show', () => this.refresh());
     }
 
     refresh(): void {
+        void after(this.chats(), chats => this.show(chats));
+    }
+
+    private show(chats: ChatSummary[] | null): void {
         for (const child of childrenOf(this.list)) this.list.remove(child);
-        const chats = this.chats();
         if (!chats) return this.note('Open a work folder to save and open conversation history.');
         if (!chats.length) return this.note('There are no saved conversations in this folder yet.');
         for (const chat of chats) this.list.append(this.row(chat));
@@ -48,9 +51,10 @@ export class ChatHistoryList {
         remove.set_has_frame(false);
         remove.set_tooltip_text(_('Move to the Trash'));
         remove.connect('clicked', () => {
-            const error = this.remove(chat.path);
-            if (error) this.onError(error);
-            this.refresh();
+            void after(this.remove(chat.path), error => {
+                if (error) this.onError(error);
+                this.refresh();
+            });
         });
         pack(row, open, true);
         row.append(remove);

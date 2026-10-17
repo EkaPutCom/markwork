@@ -24,8 +24,6 @@ import GdkPixbuf from 'gi://GdkPixbuf';
 import { APP_ID, APP_NAME } from './config.js';
 import { addBundledIcons, after, type Awaitable } from './gtkutil.js';
 import { type AppSettings } from './settings.js';
-import { fileExists } from './files.js';
-import { WELCOME } from './welcome.js';
 import { MarkdownView, type Mode } from './editor/view.js';
 import { Outline } from './ui/outline.js';
 import { CollabPanel } from './ui/collab.js';
@@ -34,7 +32,6 @@ import { History } from './ui/history.js';
 import { HistoryViewers } from './ui/historyviewer.js';
 import { askDiscard } from './ui/discard.js';
 import { FileTree } from './ui/filetree.js';
-import { isImageFile } from './app/files.js';
 import { Sidebar } from './ui/sidebar.js';
 import { SearchPanel } from './ui/searchpanel.js';
 import { ChatPanel } from './ui/chat.js';
@@ -48,7 +45,7 @@ import type { Palette } from './colors.js';
 import { applyTheme, systemPrefersDark } from './ui/theme.js';
 import { askSaveChanges, chooseFile, closeAgentsDialog, confirmDialog, decideDialog, harnessAskDialog, harnessTextDialog, machineDialog, mergeDialog, promptDialog, showAbout, showError } from './ui/dialogs.js';
 import { registerActions } from './actions.js';
-import type { CommandHost, EditCommands, ViewOption } from './app/commands.js';
+import type { CommandHost, EditCommands, FrontendCommands, ViewOption } from './app/commands.js';
 import { wrapSelection, insertLink, insertBlock, togglePrefix, setHeading } from './editor/editing.js';
 import { PreferencesPresenter } from './ui/preferences.js';
 import { CommandPalette } from './ui/palette.js';
@@ -65,7 +62,7 @@ import type { StructuredView } from './ui/structured.js';
 import { HomeView } from './ui/home.js';
 import { _, fmt } from './i18n.js';
 import type { Doc } from './window/doc.js';
-import { mergeMethodName, type PullReviewController } from './app/pulls.js';
+import type { PullReviewController } from './app/pulls.js';
 import type { CollabController } from './app/collab.js';
 import type { ContributeController } from './app/contribute.js';
 import type { JournalController } from './app/journal.js';
@@ -78,12 +75,10 @@ import type { ViewScreen } from './app/views.js';
 import { editSchemaDialog } from './ui/schemadialog.js';
 import type { ToastButton } from './app/document.js';
 import { UNTITLED, type DocumentController } from './app/documents.js';
-import { AppSession, type AppDialogs, type AppFrontend, type FrontendHost } from './app/session.js';
+import { AppSession, type AppDialogs, type AppFrontend, type DocumentTitle, type FrontendHost } from './app/session.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
 import { sendChangesDialog } from './ui/sendchanges.js';
 import { tokenDialog } from './ui/serverdialog.js';
-
-const isFolder = (path: string): boolean => GLib.file_test(path, GLib.FileTest.IS_DIR);
 
 // The saved window size may be larger than the screen (for example after moving
 // to a smaller monitor); limit it to the monitor size. GTK 4 no longer gives the general
@@ -96,7 +91,7 @@ function fitToScreen(width: number, height: number): [number, number] {
 }
 const MODE_LABELS: Record<Mode, string> = { source: _('Source'), focus: _('Focus'), typewriter: _('Typewriter') };
 
-export class MainWindow implements CommandHost {
+export class MainWindow {
     readonly app: Adw.Application;
     readonly settings: AppSettings;
     readonly outline: Outline;
@@ -141,7 +136,9 @@ export class MainWindow implements CommandHost {
 
     readonly documents: DocumentController<MarkdownView>;
     readonly workspace: WorkspaceRepository;
-    // The edits the commands make to the active document's text (CommandHost).
+    // What the commands run on (actions.ts): the session's part, and this window's (FrontendCommands).
+    readonly commands: CommandHost;
+    // The edits the commands make to the active document's text (FrontendCommands).
     readonly edit: EditCommands = {
         undo: () => this.editor.buffer.undo(),
         redo: () => this.editor.buffer.redo(),
@@ -191,6 +188,7 @@ export class MainWindow implements CommandHost {
         ({ journal: this.journal, collab: this.collab, pulls: this.pulls, contribute: this.contribute, harness: this.harness,
             review: this.review, homePage: this.homePage, documents: this.documents, workspace: this.workspace } = session);
         session.start();
+        this.commands = session.commands(this.frontendCommands());
         // The log window follows the live agent log; the review and log windows are transient for the main window.
         this.chat.window = () => this.win;
         this.doc.editor.modes.focus = settings.focus;
@@ -206,7 +204,7 @@ export class MainWindow implements CommandHost {
             view.onOpenNote = link => this.openNote(link);
             view.listNotes = () => this.session.notes.namesFor(this.doc.id);
         }
-        this.gallery.baseDir = () => (this.doc.file ? GLib.path_get_dirname(this.doc.file) : null);
+        this.gallery.baseDir = () => this.session.folderOf(this.doc.id);
         this.home.onOpenFile = path => this.openInTab(path);
         this.home.onOpenTask = task => this.homePage.openWorkspaceFile(task.file);
         this.home.onToggleTask = (task, done) => this.homePage.toggleTask(task, done);
@@ -218,11 +216,6 @@ export class MainWindow implements CommandHost {
         this.home.onCaptureJournal = () => this.journal.capture();
         this.board.onOpenNote = link => this.openNote(link);
         this.board.listNotes = () => this.session.notes.namesFor(this.doc.id);
-        this.board.harness = {
-            status: card => this.harness.status(card),
-            menu: (card, at) => this.harness.menu(card, at),
-            runMenu: token => this.harness.runMenu(token),
-        };
         this.tabBar.onSelect = id => {
             const doc = this.docs.find(d => d.id === id);
             if (doc) this.activate(doc);
@@ -236,7 +229,7 @@ export class MainWindow implements CommandHost {
         this.historyViewers.onOpenSettings = () => this.openChatSettings();
         this.sidebar.onPageChanged = page => {
             this.settings.sidebarPage = page;
-            this.syncHistory();
+            this.reportSidebar();
         };
 
         // Layout
@@ -284,15 +277,9 @@ export class MainWindow implements CommandHost {
         // The window is destroyed (closed, or destroy() in tests). GTK 4 does not emit "destroy"
         // for widgets still held by JavaScript, so the components' timers are stopped here.
         this.win.connect('unrealize', () => this.dispose());
-        // New commits are usually made outside the app; when returning to the window, reload the history.
-        this.win.connect('notify::is-active', () => {
-            if (!this.win.is_active) return;
-            this.syncHistory(true);
-            this.refreshHome();   // files may change outside the app (git pull, agent, another editor)
-        });
+        this.win.connect('notify::is-active', () => this.session.windowFocused(this.win.is_active));
 
         registerActions(app, this);
-        this.refreshRecent();
         this.setDark(settings.dark);
         // The system theme changed (GNOME Dark Style) while its setting is "follow system".
         Adw.StyleManager.get_default().connect('notify::dark', () => {
@@ -305,7 +292,7 @@ export class MainWindow implements CommandHost {
         // Panel visibility follows GSettings in both directions; side effects are installed on widget changes.
         this.bindPanel('sidebar', this.sidebar.widget);
         this.bindPanel('chat', this.chatSplit);
-        this.sidebar.widget.connect('notify::show-sidebar', () => this.syncHistory());
+        this.sidebar.widget.connect('notify::show-sidebar', () => this.reportSidebar());
         this.chatSplit.connect('notify::show-sidebar', () => {
             if (!this.chatSplit.show_sidebar) return;
             this.chat.updateContextSummary();
@@ -313,30 +300,31 @@ export class MainWindow implements CommandHost {
         });
         this.tabBar.setActive(this.doc.id);
 
-        // Initial contents: the folder from the argument, or the last folder; then the file, or the last tabs
-        // if opened without an argument (a path on the command line means the user asked for specific contents).
+        // Initial contents (AppSession.open): a path on the command line means the user asked for specific contents.
         this.sidebar.setPage(settings.sidebarPage);
-        if (path && isFolder(path)) this.openFolder(path);
-        else if (settings.folder && isFolder(settings.folder)) this.openFolder(settings.folder, false);
-        if (path && !isFolder(path)) {
-            this.load(path);
-        } else if (!path && this.documents.restoreTabs()) {
-            // the last tabs are restored
-        } else if (!settings.welcomed) {
-            this.editor.setText(WELCOME);
-            settings.welcomed = true;
-        } else if (settings.home) {
-            this.openHome();
-        } else {
-            this.editor.setText('');
-        }
-        this.session.views.sync();
-        this.updateTitle();
+        this.reportSidebar();
+        session.open(path);
         this.win.present();
-        this.syncHistory();
         this.editor.view.grab_focus();
-        // Agents that kept working while Markwork was closed are found again once the window is up.
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => { this.harness.reconnect(); return GLib.SOURCE_REMOVE; });
+    }
+
+    // The side panel's page while it is open, for what the session reads only while it is shown (the history).
+    private reportSidebar(): void {
+        this.session.sidebarShown(this.sidebar.visible ? this.sidebar.page : null);
+    }
+
+    // The commands this window carries out alone: the editor's edits and its own windows.
+    private frontendCommands(): FrontendCommands {
+        return {
+            edit: this.edit,
+            openFind: replace => this.openFind(replace),
+            showSearch: replace => this.showSearch(replace),
+            setSource: on => { for (const doc of this.docs) doc.editor.setMode('source', on); },
+            showPalette: () => this.showPalette(),
+            showShortcuts: () => this.showShortcuts(),
+            showAbout: () => this.showAbout(),
+            quit: () => this.quit(),
+        };
     }
 
     // A short notification that disappears on its own (Adw.Toast).
@@ -371,19 +359,32 @@ export class MainWindow implements CommandHost {
             get searchView() { return w.searchPanel; },
             get outlineView() { return w.outline; },
             get preferencesView() { return w.preferences; },
-            openFile: path => this.openFile(path),
             toast: (message, action) => this.toast(message, action),
-            refreshTree: () => { if (this.root) this.session.files.refresh(this.root); },
-            filesMoved: () => { this.fileTree.reveal(this.file); this.syncHistory(true); },
-            projectName: path => this.projectName(path),
-            isActive: () => this.win.is_active,
+            showSidebar: page => {
+                this.sidebar.setPage(page);
+                this.settings.sidebar = true;
+            },
+            showImage: path => {
+                try {
+                    new ImageViewer(this.win, GdkPixbuf.Pixbuf.new_from_file(path), GLib.path_get_basename(path)).show();
+                } catch {
+                    void showError(this.win, fmt(_('Could not open image: {name}'), { name: GLib.path_get_basename(path) }));
+                }
+            },
+            setRecent: paths => this.header.setRecent(paths),
             notify: (id, title, body) => {
                 const notification = new Gio.Notification();
                 notification.set_title(title);
                 notification.set_body(body);
                 this.app.send_notification(id, notification);
             },
-            openUri: uri => Gio.AppInfo.launch_default_for_uri(uri, null),
+            openUri: uri => new Gtk.UriLauncher({ uri }).launch(this.win, null, (launcher, result) => {
+                try {
+                    launcher!.launch_finish(result);
+                } catch {
+                    this.toast(fmt(_('Cannot open {url}'), { url: uri }));
+                }
+            }),
             showPull: () => { this.content.visible_child_name = 'pull'; },
             showReview: () => { this.content.visible_child_name = 'review'; },
             openFolder: path => new Gtk.FileLauncher({ file: Gio.File.new_for_path(path) }).launch(this.win, null, null),
@@ -395,8 +396,7 @@ export class MainWindow implements CommandHost {
         return {
             preferences: {
                 machine: taken => machineDialog(this.win, taken),
-                removeWorktree: branch => decideDialog(this.win, fmt(_('Remove the worktree of {branch}?'), { branch }),
-                    _('Its folder and its branch are deleted, with every change in them that was not merged. The project folder is not touched.'), _('Remove'), true),
+                removeWorktree: q => decideDialog(this.win, q.message, q.detail, q.accept, q.destructive),
             },
             search: {
                 confirm: (message, detail, accept) => decideDialog(this.win, message, detail, accept),
@@ -411,7 +411,7 @@ export class MainWindow implements CommandHost {
                 discard: (kind, path, viewer) => askDiscard(viewer === null ? this.win : this.historyViewers.get(viewer)?.window ?? this.win, kind, path),
             },
             journal: {
-                capture: () => promptDialog(this.win, { title: _('Add to Journal'), label: _('Recorded in today\'s journal with the current time.'), accept: _('Add') }),
+                capture: prompt => promptDialog(this.win, prompt),
             },
             collab: {
                 token: (repo, hasToken, source) => tokenDialog(this.win, {
@@ -421,29 +421,21 @@ export class MainWindow implements CommandHost {
                 onTestToken: async () => '',
             },
             pulls: {
-                local: pull => decideDialog(this.win, fmt(_('Merge pull request #{number} in this folder?'), { number: pull.number }),
-                    fmt(_('Markwork will merge it into your {base}. Files that conflict get conflict markers; you edit them in their tabs and then finish, which pushes the result to the server. “Abort merge” undoes it.'), { base: pull.baseRef }), _('Merge Here')),
-                abort: pull => decideDialog(this.win, fmt(_('Undo the merge of pull request #{number}?'), { number: pull.number }),
-                    _('The folder goes back to what it was before. Your edits to the conflicting files are lost.'), _('Undo the Merge'), true),
-                merge: (pull, method) => mergeDialog(this.win, fmt(_('Merge pull request #{number}?'), { number: pull.number }),
-                    fmt(_('“{title}” will be merged into {base} on the server with “{method}”. Everybody who uses this repository sees it.'), { title: pull.title, base: pull.baseRef, method: mergeMethodName(method) })),
+                local: q => decideDialog(this.win, q.message, q.detail, q.accept, q.destructive),
+                abort: q => decideDialog(this.win, q.message, q.detail, q.accept, q.destructive),
+                merge: q => mergeDialog(this.win, q.message, q.detail),
             },
             contribute: { send: options => sendChangesDialog(this.win, options) },
             harness: {
                 chooseFolder: title => chooseFile(this.win, { title, selectFolder: true }),
                 answer: (ask, agent) => harnessAskDialog(this.win, ask, agent),
                 text: options => harnessTextDialog(this.win, options),
-                remoteFolder: (machine, project, current) => promptDialog(this.win, {
-                    title: project ? fmt(_('Project folder “{name}”'), { name: project }) : _('Choose a project folder'),
-                    label: fmt(_('The folder of the project on {machine} (an absolute path):'), { machine }), value: current, accept: _('Save'),
-                }),
+                remoteFolder: prompt => promptDialog(this.win, prompt),
                 closeAgents: activity => closeAgentsDialog(this.win, activity),
             },
             review: {
-                merge: (title, base, method, partial) => decideDialog(this.win, fmt(_('Merge “{title}” into {base}?'), { title, base }),
-                    [method === 'squash' || partial ? _('Everything becomes one commit on the base branch of the project folder.') : _('A merge commit joins the branch to the base branch of the project folder.'), partial, _('The worktree is removed afterwards.')].filter(Boolean).join(' '), _('Merge')),
-                discard: (title, branch) => decideDialog(this.win, fmt(_('Discard the Work on “{title}”?'), { title }),
-                    fmt(_('The worktree and the branch {branch} are deleted, with every change in them. The project folder is not touched.'), { branch }), _('Discard'), true),
+                merge: q => decideDialog(this.win, q.message, q.detail, q.accept, q.destructive),
+                discard: q => decideDialog(this.win, q.message, q.detail, q.accept, q.destructive),
             },
             views: { editSchema: options => editSchemaDialog(this.win, options) },
         };
@@ -456,7 +448,6 @@ export class MainWindow implements CommandHost {
             if (action instanceof Gio.SimpleAction) action.set_state(state);
         };
         return {
-            page: () => this.content.visible_child_name,
             showHome: data => {
                 this.content.visible_child_name = 'home';
                 this.home.render(data);
@@ -539,6 +530,7 @@ export class MainWindow implements CommandHost {
             detach: id => {
                 const editor = this.editors.get(id);
                 this.editors.delete(id);
+                this.titles.delete(id);
                 this.tabBar.remove(id);
                 if (!editor) return;
                 editor.destroy();
@@ -549,31 +541,14 @@ export class MainWindow implements CommandHost {
                 if (!doc) return;
                 this.findBar.setTarget(doc.editor.buffer, doc.editor.view);
                 this.tabBar.setActive(id);
-                this.session.outline.show(doc);
-                this.session.views.sync();
-                this.updateTitle();
-                this.fileTree.reveal(doc.file);
-                this.syncHistory();
                 if (this.chatSplit.show_sidebar) this.chat.updateContextSummary();
             },
-            contentChanged: id => {
-                const doc = this.docById(id);
-                if (!doc) return;
-                this.session.views.replaced(doc);
-                this.updateTitle();
-                this.fileTree.reveal(doc.file);
-                if (!doc.home) this.syncHistory();
+            setTitle: (id, title) => {
+                this.titles.set(id, title);
+                this.showTitle(id);
             },
-            refreshTitle: id => { const doc = this.docById(id); if (doc) this.refreshTitle(doc); },
             setIcon: (id, icon) => this.tabBar.setIcon(id, icon),
             tabOrder: () => this.tabBar.ids(),
-            openFolder: path => this.openFolder(path),
-            fileSaved: path => {
-                // Show the new file in the tree without waiting for the disk monitor.
-                this.session.files.refresh(GLib.path_get_dirname(path));
-                this.session.files.reveal(path);
-                this.syncHistory();
-            },
         };
     }
 
@@ -597,7 +572,7 @@ export class MainWindow implements CommandHost {
         editor.onHighlighted = ({ words, characters }) => {
             const doc = this.docById(id);
             if (!doc || doc !== this.doc) return;
-            this.session.outline.changed(doc);
+            this.session.headingsChanged(id);
             if (!this.session.views.structuredMode) this.statusBar.setDocumentCounts(words, characters);
         };
         editor.onCursorMoved = (line, column) => {
@@ -607,18 +582,12 @@ export class MainWindow implements CommandHost {
         };
         editor.onMessage = msg => this.toast(msg);
         editor.onViewImage = (pixbuf, title) => new ImageViewer(this.win, pixbuf, title).show();
-        editor.getBaseDir = () => { const file = this.docById(id)?.file; return file ? GLib.path_get_dirname(file) : GLib.get_home_dir(); };
+        editor.getBaseDir = () => this.session.folderOf(id) ?? GLib.get_home_dir();
         editor.onOpenNote = link => { const doc = this.docById(id); if (doc) this.openNote(link, doc); };
-        editor.onOpenDocument = path => this.openInTab(path);
+        editor.onOpenLink = url => this.session.openLink(id, url);
         editor.listNotes = () => this.session.notes.namesFor(id);
-        editor.buffer.connect('modified-changed', () => { const doc = this.docById(id); if (doc) this.refreshTitle(doc); });
-        // Text changed while the board is shown and not by the board itself (undo/redo): re-read.
-        editor.buffer.connect('changed', () => {
-            const doc = this.docById(id);
-            if (!doc) return;
-            this.session.views.queueReload(doc);
-            this.session.autosaver.edited(doc);
-        });
+        editor.buffer.connect('modified-changed', () => this.showTitle(id));
+        editor.buffer.connect('changed', () => this.session.edited(id));
 
         // A new document inherits the mode and theme of the currently active document.
         if (this.docs.length) {
@@ -698,14 +667,6 @@ export class MainWindow implements CommandHost {
         this.table.setPalette(palette);
         for (const view of Object.values(this.layouts)) view.setPalette(palette);
         this.chat.setPalette(palette);
-    }
-
-    // ---------- Assistant ----------
-
-    // File name relative to the project folder (the same as the name in workspace.ts); null if outside the folder or not saved.
-    private projectName(path: string | null): string | null {
-        const root = this.root;
-        return path && root && path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path ? GLib.path_get_basename(path) : null;
     }
 
     // ---------- [[note]] links ----------
@@ -788,29 +749,17 @@ export class MainWindow implements CommandHost {
         this.session.refreshHome();
     }
 
-    // ---------- Git history ----------
-
     private openChatSettings(): void {
         this.settings.chat = true;
         GLib.idle_add(GLib.PRIORITY_DEFAULT, () => { this.chat.openSettings(); return GLib.SOURCE_REMOVE; });
     }
 
-    // History is only loaded while its tab is visible, so git is not called needlessly (app/history.ts runs it).
-    // force = re-read even for the same file.
-    syncHistory(force = false): void {
-        if (!this.sidebar.visible || this.sidebar.page !== 'history') return;
-        this.session.history.show(this.file, this.root, force);
-    }
-
-    // Change a view option. All but source mode are GSettings keys: writing them is enough,
-    // because the sidebar and assistant are bound to their keys (Gio.Settings.bind) and the rest is applied by
-    // onSettingChanged. The toggle actions in the menu (Gio.Settings.create_action) use the same path.
+    // Change a view option. All but source mode are settings the session writes; the sidebar and assistant are bound to
+    // their keys (Gio.Settings.bind) and the rest is applied by onSettingChanged. The toggle actions in the menu
+    // (Gio.Settings.create_action) use the same path.
     setOption(key: ViewOption, value: boolean): void {
-        if (key === 'source') for (const doc of this.docs) doc.editor.setMode('source', value);
-        else if (key === 'dark') {
-            this.setDark(value);
-            this.settings.dark = value;
-        } else this.settings[key] = value;
+        if (key === 'source') this.commands.setSource(value);
+        else this.commands.setOption(key, value);
     }
 
     // GSettings changes (menu, preferences dialog, or another process) that need to be applied to the components.
@@ -821,8 +770,6 @@ export class MainWindow implements CommandHost {
             const dark = this.app.lookup_action('dark');
             if (dark instanceof Gio.SimpleAction) dark.set_state(GLib.Variant.new_boolean(this.dark));
         } else if (key === 'focus' || key === 'typewriter') for (const doc of this.docs) doc.editor.setMode(key, s[key]);
-        else if (key === 'autosave') { if (s.autosave) for (const doc of this.docs) this.session.autosaver.queue(doc); }
-        else if (key === 'recent-files') this.refreshRecent();
     }
 
     // ---------- Auto save ----------
@@ -848,29 +795,27 @@ export class MainWindow implements CommandHost {
     }
 
     updateTitle(): void {
-        this.refreshTitle(this.doc);
+        this.session.refreshTitle(this.doc.id);
     }
 
-    // The Recent list of the New menu and the document's menu: the last files that still exist.
-    private refreshRecent(): void {
-        this.header.setRecent(this.settings.recentFiles.filter(r => fileExists(r.path) && !isFolder(r.path)).slice(0, 5).map(r => r.path));
-    }
+    // The titles the session last sent, by document id; the mark for unsaved changes is added here, from the buffer.
+    private readonly titles = new Map<number, DocumentTitle>();
 
-    // Tab title for doc, and the window title if doc is active.
-    private refreshTitle(doc: Doc): void {
-        if (!this.docs.includes(doc)) return;
+    // Tab title for a document, and the window title if it is the active one.
+    private showTitle(id: number): void {
+        const title = this.titles.get(id), doc = this.docById(id);
+        if (!title || !doc) return;
         const mark = doc.editor.buffer.get_modified() ? '• ' : '';
-        const name = this.documents.nameOf(doc);
-        this.tabBar.setTitle(doc.id, `${mark}${name}`, doc.file);
+        this.tabBar.setTitle(id, `${mark}${title.name}`, title.file);
         if (doc !== this.doc) return;
-        if (doc.home) {
-            this.header.setTitle(name, this.root ? GLib.path_get_basename(this.root) : APP_NAME);
-            this.win.set_title(`${name} — ${APP_NAME}`);
+        if (title.home) {
+            this.header.setTitle(title.name, title.place ?? APP_NAME);
+            this.win.set_title(`${title.name} — ${APP_NAME}`);
             return;
         }
-        const where = doc.file ? GLib.path_get_dirname(doc.file).replace(GLib.get_home_dir(), '~') : APP_NAME;
-        this.header.setTitle(`${mark}${name}`, doc.file && !mark ? `${where} · ${_('Saved')}` : where, true);
-        this.win.set_title(`${mark}${name} — ${APP_NAME}`);
+        const where = title.place ?? APP_NAME;
+        this.header.setTitle(`${mark}${title.name}`, title.file && !mark ? `${where} · ${_('Saved')}` : where, true);
+        this.win.set_title(`${mark}${title.name} — ${APP_NAME}`);
     }
 
     // If there are changes, ask first. true = it is fine to go on and discard this document.
@@ -903,56 +848,20 @@ export class MainWindow implements CommandHost {
 
     // Open the file chosen in the file tree.
     openFile(path: string): void {
-        if (isImageFile(path)) {  // images are not editable: show them in the viewer
-            try {
-                new ImageViewer(this.win, GdkPixbuf.Pixbuf.new_from_file(path), GLib.path_get_basename(path)).show();
-            } catch {
-                void showError(this.win, fmt(_('Could not open image: {name}'), { name: GLib.path_get_basename(path) }));
-            }
-            return;
-        }
-        if (path === this.file) return;
-        if (!this.openInTab(path)) this.fileTree.reveal(this.file);  // restore the highlight to the file that is still open
+        this.session.host.openFile(path);
     }
 
-    async chooseFolder(): Promise<void> {
-        const path = await chooseFile(this.win, { title: _('Open Folder'), selectFolder: true, folder: this.root });
-        if (path) this.openFolder(path);
+    chooseFolder(): Promise<void> {
+        return this.commands.chooseFolder();
     }
 
-    // Show a folder in the Files tab and remember it to open again next time.
-    // show = false when restoring the last folder, so a sidebar that was deliberately
-    // closed does not suddenly appear.
+    // Show a folder in the Files tab (AppSession.openFolder).
     openFolder(path: string, show = true): void {
-        const absolute = Gio.File.new_for_path(path).get_path() ?? path;
-        // Switching to another folder: the files of the old folder do not belong here, close their tabs first.
-        if (this.root && this.root !== absolute) {
-            void after(this.documents.closeOutside(absolute), yes => {
-                if (yes) this.applyFolder(absolute, show);
-            });
-            return;
-        }
-        this.applyFolder(absolute, show);
+        void this.session.openFolder(path, show);
     }
 
-    private applyFolder(absolute: string, show: boolean): void {
-        this.session.files.setRoot(absolute);
-        this.workspace.warm(absolute);
-        this.fileTree.reveal(this.file);
-        this.syncHistory();
-        this.pulls.folderChanged();
-        void this.collab.setFolder(absolute);
-        this.settings.folder = absolute;
-        if (this.doc.home) this.updateTitle();
-        this.refreshHome();
-        if (!show) return;
-        this.sidebar.setPage('files');
-        this.settings.sidebar = true;
-    }
-
-    async open(): Promise<void> {
-        const path = await chooseFile(this.win, { title: _('Open Markdown'), filters: ['markdown', 'all'] });
-        if (path) this.openInTab(path);
+    open(): Promise<void> {
+        return this.commands.open();
     }
 
     // A file document is saved instantly (a boolean result); a new document waits for the Save As dialog.
@@ -974,14 +883,12 @@ export class MainWindow implements CommandHost {
 
     // true = the window may be closed. Every changed document is asked about one by one.
     onClose(): Awaitable<boolean> {
-        return after(this.documents.confirmDiscardAll(), yes => yes ? after(this.harness.confirmClose(), stay => stay && this.rememberWindow()) : false);
+        return after(this.session.closeRequest(), yes => yes && this.rememberWindow());
     }
 
     private rememberWindow(): true {
         // Closed while narrow: save the panel settings for the wide layout, not the collapsed state.
         for (const [key, value] of this.widePanels) this.settings.store.set(key, value);
-        // After confirmation: a new document saved through a dialog already has a file.
-        this.documents.rememberTabs();
         // In GTK 4 the default size follows the current window size.
         const [width, height] = this.win.get_default_size();
         Object.assign(this.settings, { width, height });

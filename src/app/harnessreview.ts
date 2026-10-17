@@ -14,6 +14,7 @@ import { readTextFile } from '../files.js';
 import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import { _, fmt, ngettext } from '../i18n.js';
+import type { Question } from './dialogs.js';
 import { docFor, type DocumentHost } from './document.js';
 import type { HarnessController } from './harness.js';
 
@@ -57,8 +58,8 @@ export interface ReviewView {
 
 // The confirmations before merging or discarding; tests replace them with immediate answers.
 export interface ReviewDialogs {
-    merge(title: string, base: string, method: MergeMethod, partial: string | null): Promise<boolean>;
-    discard(title: string, branch: string): Promise<boolean>;
+    merge(question: Question): Promise<boolean>;
+    discard(question: Question): Promise<boolean>;
 }
 
 export interface ReviewHost extends DocumentHost {
@@ -283,7 +284,12 @@ export class HarnessReviewController {
         if (action === 'keep') return this.keep(c);
         const files = c.included.every(Boolean) ? null : c.review.files.filter((_f, i) => c.included[i]);
         const partial = files ? fmt(_('Only {count} of {all} files are taken; the others stay out.'), { count: files.length, all: c.review.files.length }) : null;
-        if (!await this.dialogs.merge(c.title, c.wt.base, action, partial)) return;
+        if (!await this.dialogs.merge({
+            message: fmt(_('Merge “{title}” into {base}?'), { title: c.title, base: c.wt.base }),
+            detail: [action === 'squash' || partial ? _('Everything becomes one commit on the base branch of the project folder.') : _('A merge commit joins the branch to the base branch of the project folder.'),
+                partial, _('The worktree is removed afterwards.')].filter(Boolean).join(' '),
+            accept: _('Merge'),
+        })) return;
         const generation = this.generation;
         this.host.reviewView.setBusy(true, _('Merging…'));
         const keepBranch = this.host.harness.isolation(c.project).afterMerge === 'keep-branch';
@@ -309,7 +315,11 @@ export class HarnessReviewController {
     }
 
     private async discard(c: Open): Promise<void> {
-        if (!await this.dialogs.discard(c.title, c.wt.branch)) return;
+        if (!await this.dialogs.discard({
+            message: fmt(_('Discard the Work on “{title}”?'), { title: c.title }),
+            detail: fmt(_('The worktree and the branch {branch} are deleted, with every change in them. The project folder is not touched.'), { branch: c.wt.branch }),
+            accept: _('Discard'), destructive: true,
+        })) return;
         const removed = await removeWorktree(this.host.harness.git, c.wt);
         if (!removed.ok) { this.host.toast(removed.message); return; }
         this.closed(c, `↳ ${HARNESSES[c.agent]?.label ?? c.agent}'s work discarded ${this.host.harness.orchestrator.stamp()}`, false);

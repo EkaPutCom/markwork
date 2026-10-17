@@ -10,7 +10,8 @@
 //   └────────────────────────────────────────────────────────┘
 //
 // Like the kanban board, this component only holds the model and its display: every
-// change goes through commit(), which calls onChange so the window writes it to the buffer
+// change goes through edit(), which applies the operation (markdown/noteedit.ts) and reports it through onEdit, so the
+// application writes it to the buffer
 // (the Markdown text remains the single source of truth).
 
 import Adw from 'gi://Adw?version=1';
@@ -19,12 +20,13 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
-import { ageOf, captureItem, itemFields, itemMeta, newList, type Age } from '../markdown/inbox.js';
-import { addColumn, boardSchema, deleteCard, deleteColumn, deleteColumnKeepCards, dropSpot, moveCard, moveColumn, placeMove, renameColumn, setCardField, updateCard, withFieldOption, type Board, type DropRow, type DropSpot, type Position } from '../markdown/kanban.js';
+import { ageOf, itemFields, itemMeta, newList, type Age } from '../markdown/inbox.js';
+import { boardSchema, dropSpot, placeMove, type Board, type DropRow, type DropSpot, type Position } from '../markdown/kanban.js';
+import { applyNoteEdit, type CardRef, type NoteEdit } from '../markdown/noteedit.js';
 import { fieldInputText, readItem, type FieldChip, type FieldDef } from '../markdown/fields.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
-import { confirmDialog, deleteSectionDialog, editNoteDialog, promptDialog, type CardDraft } from './dialogs.js';
+import { confirmDialog, deleteSectionDialog, editNoteDialog, promptDialog, type CardAnswer, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
 import { after, onChipClick, onClick, removeChildren, type Awaitable } from '../gtkutil.js';
 import { popupMenu, separator, type MenuEntry } from './menu.js';
@@ -46,7 +48,7 @@ export function ageLabel(captured: Date, now: Date): string {
 }
 
 export interface InboxDialogs {
-    editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
+    editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardAnswer | null>;
     prompt(parent: Gtk.Window | null, options: { title: string; label: string; value?: string }): Awaitable<string | null>;
     deleteSection(parent: Gtk.Window | null, title: string, count: number): Awaitable<'keep' | 'delete' | null>;
     confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
@@ -57,7 +59,8 @@ type ListRow = { note: Position } | { section: number };
 
 export class InboxView {
     readonly widget: Gtk.ScrolledWindow;
-    onChange: (board: Board) => void = () => {};
+    // A change the user made, as an operation (markdown/noteedit.ts): the owner applies it to the document's board.
+    onEdit: (edit: NoteEdit) => void = () => {};
     dialogs: InboxDialogs = { editNote: editNoteDialog, prompt: promptDialog, deleteSection: deleteSectionDialog, confirm: confirmDialog };
     now: () => Date = () => new Date();
     onOpenNote: (link: WikiLink) => void = () => {};
@@ -136,17 +139,24 @@ export class InboxView {
         return this.schemaCache;
     }
 
-    // Replace the contents (document opened or undo) without calling onChange.
+    // Replace the contents (document opened or undo) without calling onEdit.
     setBoard(board: Board): void {
         this.board = board;
         this.render();
     }
 
-    commit(next: Board): void {
-        if (next === this.board) return;
+    // Apply a change from the user: to this list at once (redrawn at idle), and reported to the owner.
+    edit(edit: NoteEdit): void {
+        const next = applyNoteEdit(this.board, edit);
+        if (!next || next === this.board) return;
         this.board = next;
         this.queueRender();
-        this.onChange(next);
+        this.onEdit(edit);
+    }
+
+    // A note as an edit names it.
+    private ref(at: Position): CardRef {
+        return { at, card: this.cardAt(at)?.text ?? '' };
     }
 
     setPalette(palette: Palette): void {
@@ -344,9 +354,9 @@ export class InboxView {
     // The dragged note moves to the spot, in one undo step.
     dropNote(spot: DropSpot): boolean {
         if (!this.dragFrom) return false;
-        const next = placeMove(this.board, this.dragFrom, spot.point);
+        const from = this.dragFrom;
         this.dragFrom = null;
-        this.commit(next);
+        this.edit({ kind: 'place', ...this.ref(from), point: spot.point });
         return true;
     }
 
@@ -369,14 +379,14 @@ export class InboxView {
         const column = this.board.columns[at.column];
         const sections = this.board.columns
             .map((target, t): MenuEntry | null => t === at.column ? null
-                : { label: target.title || _('No section'), run: () => this.commit(moveCard(this.board, at, { column: t, index: Infinity })) })
+                : { label: target.title || _('No section'), run: () => this.edit({ kind: 'move', ...this.ref(at), to: { column: t, index: target.cards.length } }) })
             .filter((e): e is MenuEntry => e !== null);
         const submenu = [...sections, ...(sections.length ? [separator()] : []), { label: _('New section…'), run: () => this.newSectionFor(at) }];
         return [
             { label: _('Edit…'), run: () => this.editItem(at) },
             { label: _('Move to'), submenu },
-            { label: _('Move Up'), enabled: at.index > 0, run: () => this.commit(moveCard(this.board, at, { column: at.column, index: at.index - 1 })) },
-            { label: _('Move Down'), enabled: at.index < (column?.cards.length ?? 0) - 1, run: () => this.commit(moveCard(this.board, at, { column: at.column, index: at.index + 1 })) },
+            { label: _('Move Up'), enabled: at.index > 0, run: () => this.edit({ kind: 'move', ...this.ref(at), to: { column: at.column, index: at.index - 1 } }) },
+            { label: _('Move Down'), enabled: at.index < (column?.cards.length ?? 0) - 1, run: () => this.edit({ kind: 'move', ...this.ref(at), to: { column: at.column, index: at.index + 1 } }) },
             separator(),
             { label: _('Delete'), run: () => this.deleteNoteConfirm(at) },
         ];
@@ -389,11 +399,7 @@ export class InboxView {
         if (!card) return;
         void after(this.dialogs.prompt(this.parent, { title: _('New Section'), label: _('Section name') }), name => {
             const title = name?.trim();
-            if (!title || this.cardAt(at)?.text !== card.text) return;
-            const existing = this.board.columns.findIndex(c => c.title.toLowerCase() === title.toLowerCase());
-            const board = existing >= 0 ? this.board : addColumn(this.board, title);
-            const into = existing >= 0 ? existing : board.columns.length - 1;
-            this.commit(into === at.column ? board : moveCard(board, at, { column: into, index: Infinity }));
+            if (title && this.cardAt(at)?.text === card.text) this.edit({ kind: 'section', at, card: card.text, title });
         });
     }
 
@@ -402,8 +408,8 @@ export class InboxView {
         const first = this.board.columns[0]?.title === '' ? 1 : 0;   // the unnamed group stays first
         return [
             { label: _('Rename…'), run: () => this.renameSection(column) },
-            { label: _('Move Up'), enabled: column > first, run: () => this.commit(moveColumn(this.board, column, column - 1)) },
-            { label: _('Move Down'), enabled: column < this.board.columns.length - 1, run: () => this.commit(moveColumn(this.board, column, column + 1)) },
+            { label: _('Move Up'), enabled: column > first, run: () => this.edit({ kind: 'moveColumn', column, title: this.board.columns[column].title, to: column - 1 }) },
+            { label: _('Move Down'), enabled: column < this.board.columns.length - 1, run: () => this.edit({ kind: 'moveColumn', column, title: this.board.columns[column].title, to: column + 1 }) },
             separator(),
             { label: _('Delete Section…'), run: () => this.deleteSection(column) },
         ];
@@ -413,7 +419,7 @@ export class InboxView {
         const current = this.board.columns[column]?.title;
         if (!current) return;
         void after(this.dialogs.prompt(this.parent, { title: _('Rename Section'), label: _('Section name'), value: current }), name => {
-            if (name?.trim() && this.board.columns[column]?.title === current) this.commit(renameColumn(this.board, column, name));
+            if (name?.trim() && this.board.columns[column]?.title === current) this.edit({ kind: 'renameColumn', column, title: current, to: name });
         });
     }
 
@@ -422,12 +428,12 @@ export class InboxView {
         const section = this.board.columns[column];
         if (!section || section.title === '') return;
         if (!section.cards.length) {
-            this.commit(deleteColumn(this.board, column));
+            this.edit({ kind: 'deleteColumn', column, title: section.title, keepCards: false });
             return;
         }
         void after(this.dialogs.deleteSection(this.parent, section.title, section.cards.length), choice => {
             if (!choice || this.board.columns[column]?.title !== section.title) return;
-            this.commit(choice === 'keep' ? deleteColumnKeepCards(this.board, column) : deleteColumn(this.board, column));
+            this.edit({ kind: 'deleteColumn', column, title: section.title, keepCards: choice === 'keep' });
         });
     }
 
@@ -436,7 +442,7 @@ export class InboxView {
         if (!card) return;
         const title = readItem(card.text, this.schema()).title;
         void after(this.dialogs.confirm(this.parent, fmt(_('Delete the note “{title}”?'), { title }), undefined), yes => {
-            if (yes && this.cardAt(at)?.text === card.text) this.commit(deleteCard(this.board, at));
+            if (yes && this.cardAt(at)?.text === card.text) this.edit({ kind: 'delete', at, card: card.text });
         });
     }
 
@@ -462,8 +468,7 @@ export class InboxView {
             current: fieldInputText(item.text, def),
             apply: (raw, newOption) => {
                 if (this.cardAt(at)?.text !== item.text) return;
-                const board = newOption ? withFieldOption(this.board, key, newOption) : this.board;
-                this.commit(setCardField(board, at, boardSchema(board).find(f => f.key === key) ?? def, raw));
+                this.edit({ kind: 'field', at, card: item.text, key, raw, field: def, option: newOption ?? null });
             },
         });
     }
@@ -480,14 +485,14 @@ export class InboxView {
     capture(text: string): void {
         this.entry.set_text('');
         if (!text.trim()) return;
-        this.commit(captureItem(this.board, text, this.now()));
+        this.edit({ kind: 'capture', text, notes: [], now: this.now().getTime() });
         this.entry.grab_focus();
     }
 
     // A new note through the dialog, with tags and notes.
     showAddNote(): void {
         void after(this.dialogs.editNote(this.parent, { text: '', notes: [] }, _('New Note'), this.listNotes ?? undefined, this.schema()), draft => {
-            if (draft?.text) this.commit(captureItem(this.board, draft.text, this.now(), draft.notes));
+            if (draft?.text) this.edit({ kind: 'capture', text: draft.text, notes: draft.notes, now: this.now().getTime() });
         });
     }
 
@@ -497,7 +502,7 @@ export class InboxView {
         void after(this.dialogs.editNote(this.parent, { text: item.text, notes: item.notes }, undefined, this.listNotes ?? undefined, this.schema()), result => {
             // The list can change while the dialog is open; the same item is found again through its position.
             if (result?.text && this.cardAt(at)?.text === item.text)
-                this.commit(updateCard(this.board, at, { text: result.text, notes: result.notes }));
+                this.edit({ kind: 'update', at, card: item.text, text: result.text, notes: result.notes });
         });
     }
 

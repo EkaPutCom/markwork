@@ -7,7 +7,8 @@ import { isRemoteMachine, machineProjectKey } from '../agent/daemon/machines.js'
 import { BRANCH_PREFIX, listWorktrees, MAX_SLOTS, parseIsolation, removeWorktree, worktreeRoot, writeIsolation, type Isolation } from '../agent/worktree.js';
 import type { GitRunner } from '../forge/contribute.js';
 import type { AppSettings } from '../settings.js';
-import { _ } from '../i18n.js';
+import { _, fmt } from '../i18n.js';
+import type { Question } from './dialogs.js';
 import type { Awaitable } from '../awaitable.js';
 
 // What the Projects page needs from the harness controller.
@@ -59,7 +60,7 @@ export function machineProjects(settings: AppSettings, machine: string): Record<
 }
 
 export interface ProjectsDialogs {
-    removeWorktree(branch: string): Awaitable<boolean>;   // "Remove the worktree of {branch}?"
+    removeWorktree(question: Question): Awaitable<boolean>;   // "Remove the worktree of {branch}?"
 }
 
 export class ProjectsPages {
@@ -130,7 +131,11 @@ export class ProjectsPages {
         const folder = this.folderOf(name);
         const wt = this.listed.get(name)?.find(w => w.path === path);
         if (folder === undefined || !wt) return 'that worktree is not one of this project';
-        if (!await this.dialogs.removeWorktree(wt.branch)) return null;
+        if (!await this.dialogs.removeWorktree({
+            message: fmt(_('Remove the worktree of {branch}?'), { branch: wt.branch }),
+            detail: _('Its folder and its branch are deleted, with every change in them that was not merged. The project folder is not touched.'),
+            accept: _('Remove'), destructive: true,
+        })) return null;
         const done = await removeWorktree(this.access.git, { path: wt.path, cwd: wt.path, branch: wt.branch, base: '', baseCommit: '', repo: folder });
         if (!done.ok) {
             this.sendWorktrees({ project: name, loading: false, items: this.listed.get(name) ?? [], error: done.message });

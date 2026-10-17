@@ -21,6 +21,8 @@ import { _ } from '../i18n.js';
 
 const EXPAND_DELAY = 600;   // ms; a closed folder opens automatically if held over during a drag
 const NO_ACTION = 0 as Gdk.DragAction;
+// An answer that is not there yet counts as yes (see dropInto).
+const now = (answer: Awaitable<boolean>): boolean => answer instanceof Promise || answer;
 
 // One file or folder in the tree.
 class FileNode extends GObject.Object {
@@ -41,8 +43,8 @@ export class FileTree implements FileTreeView {
     onCreate: (kind: NewKind, dir: string) => Awaitable<string | null> = () => null;
     onRename: (path: string) => Awaitable<string | null> = () => null;
     onRemove: (path: string) => Awaitable<boolean> = () => false;
-    onMove: (source: string, dir: string) => boolean = () => false;
-    onCopy: (sources: string[], dir: string) => boolean = () => false;
+    onMove: (source: string, dir: string) => Awaitable<boolean> = () => false;
+    onCopy: (sources: string[], dir: string) => Awaitable<boolean> = () => false;
 
     private readonly rootStore = new Gio.ListStore({ item_type: FileNode.$gtype });
     private readonly dirStores = new Map<string, Gio.ListStore>();   // path of a folder that has been read → its contents
@@ -416,11 +418,13 @@ export class FileTree implements FileTreeView {
         return dir ? Gdk.DragAction.COPY : NO_ACTION;
     }
 
+    // The drop is answered at once; an answer the application gives later (over the app protocol) is taken as accepted,
+    // and the tree follows what the application then sends.
     private dropInto(value: unknown, dir: string | null): boolean {
         if (!dir) return false;
-        if (this.dragSource) return this.canMoveTo(dir) && this.moveTo(this.dragSource, dir);
+        if (this.dragSource) return this.canMoveTo(dir) && now(this.moveTo(this.dragSource, dir));
         const files = value instanceof Gdk.FileList ? value.get_files() : [];
-        return this.copyInto(files.map(f => f.get_path()).filter((p): p is string => !!p), dir);
+        return now(this.copyInto(files.map(f => f.get_path()).filter((p): p is string => !!p), dir));
     }
 
     // Highlight the target row with the selection; -1 = restore the highlight to the open file.
@@ -459,12 +463,12 @@ export class FileTree implements FileTreeView {
     }
 
     // Move source into dir (the controller updates the tree, and an open file moves along).
-    moveTo(source: string, dir: string): boolean {
+    moveTo(source: string, dir: string): Awaitable<boolean> {
         return this.onMove(source, dir);
     }
 
     // Copy files from outside (a file manager) into dir.
-    copyInto(sources: string[], dir: string): boolean {
+    copyInto(sources: string[], dir: string): Awaitable<boolean> {
         return this.onCopy(sources, dir);
     }
 
