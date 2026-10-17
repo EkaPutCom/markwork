@@ -5,6 +5,7 @@
 
 import { inlineTests } from './unit/inline.js';
 import { appSessionTests } from './unit/appsession.js';
+import { noteEditTests } from './unit/noteedit.js';
 import { assistantTests } from './unit/assistant.js';
 import { historyControllerTests } from './unit/history.js';
 import { wikiLinkTests } from './unit/wikilink.js';
@@ -105,6 +106,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await forgeTests();
     await platformTests();
     await appSessionTests();
+    await noteEditTests();
     await assistantTests();
     await historyControllerTests();
     noteDiffTests();

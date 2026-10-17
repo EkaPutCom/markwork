@@ -12,7 +12,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import { daysBetween } from '../markdown/dates.js';
-import { PIXELS_PER_DAY, ZOOMS, barSpan, resizeRow, shiftRow, timelineRange, timelineRows, timelineTicks, timelineZoom, type TimelineRow, type TimelineRange, type Zoom } from '../markdown/timeline.js';
+import { PIXELS_PER_DAY, ZOOMS, barSpan, timelineRange, timelineRows, timelineTicks, timelineZoom, type TimelineRow, type TimelineRange, type Zoom } from '../markdown/timeline.js';
 import type { Position } from '../markdown/kanban.js';
 import { onChipClick, removeChildren } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
@@ -192,7 +192,7 @@ export class TimelineView extends LayoutView {
         drag.connect('drag-begin', () => drag.set_state(Gtk.EventSequenceState.CLAIMED));
         drag.connect('drag-end', (_g, dx) => {
             const days = Math.round(dx / pxPerDay);
-            if (days) this.commit(resizeRow(this.board, at, edge, days, this.schema()));
+            if (days) this.edit({ kind: 'resize', ...this.ref(at), edge, days });
         });
         handle.add_controller(drag);
         return handle;
@@ -208,7 +208,7 @@ export class TimelineView extends LayoutView {
         drag.connect('drag-end', (_g, dx) => {
             const days = Math.round(dx / pxPerDay);
             if (Math.abs(dx) < CLICK_SLOP) this.editItem(at);
-            else if (days) this.commit(shiftRow(this.board, at, days, this.schema()));
+            else if (days) this.edit({ kind: 'shift', ...this.ref(at), days });
             else this.queueRender();
         });
         title.set_cursor_from_name('grab');

@@ -9,10 +9,11 @@ import { diffPreview, describeChange } from '../agent/changes.js';
 import { escapeMarkup } from '../markdown/pango.js';
 import { ProposalViewer } from './proposalviewer.js';
 import { _, fmt } from '../i18n.js';
+import { after, type Awaitable } from '../gtkutil.js';
 
 export interface ProposalEnv {
-    apply(ask: number, chosen: number[] | null): string | null;   // ask the core to write: an error message, or null
-    undo(target: UndoTarget): string | null;
+    apply(ask: number, chosen: number[] | null): Awaitable<string | null>;   // ask the core to write: an error message, or null
+    undo(target: UndoTarget): Awaitable<string | null>;
     busy(): boolean;
     window(): Gtk.Window | null;                  // parent of the review window
     dark(): boolean;
@@ -115,10 +116,13 @@ export class ProposalCards {
         const button = new Gtk.Button({ label: _('Undo'), halign: Gtk.Align.START, tooltip_text: _('Restore the files to their contents before this change') });
         button.connect('clicked', () => {
             if (this.env.busy()) { this.env.note('Wait for the agent to finish before undoing the change.', true); return; }
-            const error = this.env.undo(target);
-            if (error) { this.env.note(fmt(_('Cannot be undone: {error}'), { error }), true); return; }
-            button.hide();
-            status?.set_text(_('Undone.'));
+            button.set_sensitive(false);
+            void after(this.env.undo(target), error => {
+                button.set_sensitive(true);
+                if (error) { this.env.note(fmt(_('Cannot be undone: {error}'), { error }), true); return; }
+                button.hide();
+                status?.set_text(_('Undone.'));
+            });
         });
         return button;
     }

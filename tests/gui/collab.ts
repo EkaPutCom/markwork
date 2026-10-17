@@ -217,7 +217,8 @@ export function collabTests(c: GuiContext): void {
     const fileRows = () => { let n = 0; for (let r = view.files.get_row_at_index(n); r; r = view.files.get_row_at_index(++n)); return n; };
     let mergeAnswer = true;
     const asked: string[] = [];
-    w.pulls.dialogs.merge = async (pull, method) => { asked.push(`${pull.number}:${method}`); return mergeAnswer; };
+    // The question is the core's, with the number and the merge method in its sentences.
+    w.pulls.dialogs.merge = async q => { asked.push(`${q.message} ${q.detail}`); return mergeAnswer; };
 
     test('choosing a pull request in the tab opens it in the content area, with its files', () => {
         settle(w.collab.setFolder(folder));
@@ -308,7 +309,8 @@ export function collabTests(c: GuiContext): void {
         settle(w.pulls.open(w.collab.pulls[0]));
         mergeAnswer = false;
         settle(w.pulls.merge('squash'));
-        eq(asked, ['42:squash']);
+        eq(asked.length, 1);
+        ok(asked[0].includes('#42') && asked[0].includes('Squash and merge'), asked[0]);
         eq(posts.length, 0);
     });
 

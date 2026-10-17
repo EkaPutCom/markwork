@@ -11,6 +11,7 @@ import { localDate } from '../markdown/home.js';
 import { activityLines, addNote, boardEvents, clock, commitActivity, journalName, journalStats, mergeActivity, newJournal, type Activity, type ActivityKind } from '../markdown/journal.js';
 import type { Board } from '../markdown/kanban.js';
 import { _, fmt } from '../i18n.js';
+import type { Prompt } from './dialogs.js';
 import { docFor, errorMessage, type Doc, type DocumentHost } from './document.js';
 
 // What the journal needs from the Assistant: whether it is working, and a way to ask it something.
@@ -21,7 +22,7 @@ export interface JournalChat {
 
 // The quick capture question ("Add to Journal"); null = cancelled.
 export interface JournalDialogs {
-    capture(): Awaitable<string | null>;
+    capture(prompt: Prompt): Awaitable<string | null>;
 }
 
 export interface JournalHost extends DocumentHost {
@@ -101,7 +102,8 @@ export class JournalController {
             this.host.toast(_('Open a work folder first to write a journal'));
             return;
         }
-        void after(this.dialogs.capture(), note => { if (note) this.addNote(note); });
+        const prompt = { title: _('Add to Journal'), label: _('Recorded in today\'s journal with the current time.'), accept: _('Add') };
+        void after(this.dialogs.capture(prompt), note => { if (note) this.addNote(note); });
     }
 
     // An open journal is changed through its editor (one undo step); one that is not open is written directly to disk.

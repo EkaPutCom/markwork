@@ -10,6 +10,7 @@ import type { AppSettings } from '../settings.js';
 import type { Awaitable } from '../awaitable.js';
 import type { Isolation } from '../agent/worktree.js';
 import { _ } from '../i18n.js';
+import type { Question } from './dialogs.js';
 import { ProjectsPages, type ProjectPage, type ProjectRow, type ProjectsAccess, type WorktreeList } from './projects.js';
 
 export const COLOR_SCHEMES = ['system', 'light', 'dark'] as const;
@@ -56,7 +57,7 @@ export interface PreferencesView {
     onAddMachine: () => Awaitable<void>;
     onRemoveMachine: (name: string) => void;
     onOpenProject: (name: string) => void;       // a project's row was chosen: its page and worktrees follow
-    onSetProject: (name: string, patch: Partial<Isolation>) => string | null;   // an error message, or null once written
+    onSetProject: (name: string, patch: Partial<Isolation>) => Awaitable<string | null>;   // an error message, or null once written
     onRemoveWorktree: (name: string, path: string) => Awaitable<string | null>;
     open(data: PreferencesData): void;           // show the dialog
     showValues(data: PreferencesData): void;     // a setting changed while it is open
@@ -66,7 +67,7 @@ export interface PreferencesView {
 
 export interface PreferencesDialogs {
     machine(taken: string[]): Awaitable<MachineDraft | null>;
-    removeWorktree(branch: string): Awaitable<boolean>;
+    removeWorktree(question: Question): Awaitable<boolean>;
 }
 
 export interface PreferencesHost {

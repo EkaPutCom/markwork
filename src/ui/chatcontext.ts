@@ -3,7 +3,7 @@
 
 import Gtk from 'gi://Gtk?version=4.0';
 import type { BuiltContext, ContextOptions } from '../agent/context.js';
-import { childrenOf } from '../gtkutil.js';
+import { after, childrenOf, type Awaitable } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
 
 const KIND_LABEL = { map: _('Map'), active: _('Document'), selection: _('Selection'), mention: _('Attachment'), excerpt: _('Excerpt') };
@@ -38,7 +38,7 @@ export class ContextPreview {
     // options: what is sent now; changed: a switch was turned (the new options); preview: builds the context of the text
     // being typed; budget: in tokens.
     constructor(private readonly w: ContextWidgets, private readonly options: () => ContextOptions, changed: (options: ContextOptions) => void,
-                private readonly preview: () => BuiltContext, private readonly budget: () => number) {
+                private readonly preview: () => Awaitable<BuiltContext>, private readonly budget: () => number) {
         for (const [check, key] of w.checks) {
             check.active = options()[key];
             check.connect('toggled', () => {
@@ -62,9 +62,12 @@ export class ContextPreview {
 
     // The popover's list: one row per part with its tokens, the total against the budget, and unknown @mentions.
     update(): void {
+        void after(this.preview(), built => this.showParts(built));
+    }
+
+    private showParts(built: BuiltContext): void {
         const list = this.w.list;
         for (const child of childrenOf(list)) list.remove(child);
-        const built = this.preview();
         const add = (text: string, dim = false) => {
             const l = new Gtk.Label({ label: text, xalign: 0, wrap: true, max_width_chars: 40, ellipsize: 3 });
             if (dim) l.add_css_class('side-meta');

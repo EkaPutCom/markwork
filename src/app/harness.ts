@@ -9,7 +9,7 @@ import { findProgram, labelWorktree, Orchestrator, spawnHarness, type AdoptInfo 
 import { runGit } from '../git.js';
 import { parseIsolation, type Isolation } from '../agent/worktree.js';
 import type { GitRunner } from '../forge/contribute.js';
-import { cardProject, checkProjectFolder, HARNESSES, isActive, locateCard as findCard, PROJECT_NAME, type HarnessAsk, type HarnessReply, type LinkedNote, type Run } from '../agent/harness.js';
+import { cardProject, checkProjectFolder, HARNESSES, isActive, locateCard as findCard, PROJECT_NAME, type HarnessAsk, type HarnessReply, type LinkedNote, type Run, type RunStatus } from '../agent/harness.js';
 import { isRemoteMachine, LOCAL_MACHINE, machineProjectKey } from '../agent/daemon/machines.js';
 import type { ConnectionState } from '../agent/daemon/connection.js';
 import type { RunSummary } from '../agent/daemon/protocol.js';
@@ -23,11 +23,21 @@ import { assignCard, cardBranch, cardMeta, parseBoard, updateCard, type Board, t
 import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
 import type { WorkspaceRepository } from '../workspace.js';
 import { _, fmt } from '../i18n.js';
+import type { Prompt } from './dialogs.js';
 import { docFor, type DocumentHost } from './document.js';
 
-// The board on screen, as far as harness runs need it.
+// The run of a card on the board that is shown, for its badge: the card is named by its text.
+export interface CardRun {
+    card: string;
+    status: RunStatus;
+}
+
+// The board on screen, as far as harness runs need it. The runs come with the board as data; a card's menu is asked for
+// when the user opens it, and answered with entries whose action stays here (a token).
 export interface HarnessBoard {
-    queueRender(): void;             // a run changed state: redraw its card
+    setRuns(runs: readonly CardRun[]): void;   // the runs of the board's cards, when the board is shown and when one changes
+    onCardMenu: (card: Card, at: Position) => Awaitable<HarnessMenuEntry[]>;
+    onRunMenu: (token: number) => void;
 }
 
 // One entry of a card's menu as the board view gets it: the menu is the core's, the entry is chosen by its token (runMenu).
@@ -55,7 +65,7 @@ export interface HarnessDialogs {
     answer(ask: HarnessAsk, agent: string): Awaitable<HarnessReply | null>;
     text(options: { title: string; label: string; context?: string; text?: string }): Awaitable<string | null>;
     // The folder of a project on another machine, which cannot be browsed from here.
-    remoteFolder(machine: string, project: string | null, current: string): Awaitable<string | null>;
+    remoteFolder(prompt: Prompt): Awaitable<string | null>;   // the folder of a project on a remote machine (an absolute path)
     closeAgents(activity: { children: number; detachable: number; queued: number }): Awaitable<CloseAgentsChoice>;
 }
 
@@ -99,6 +109,8 @@ export class HarnessController {
     constructor(private readonly host: HarnessHost, public dialogs: HarnessDialogs) {
         host.logs.onClear = runId => this.orchestrator.queue.runs.find(r => r.id === runId)?.trace.clear();
         host.logs.onClosed = runId => this.stopLog(runId);
+        host.board.onCardMenu = (card, at) => this.menu(card, at);
+        host.board.onRunMenu = token => this.runMenu(token);
         this.orchestrator = new Orchestrator({
             workspace: () => host.root(),
             updateBoard: (file, edit) => host.updateBoardFile(file, edit),
@@ -108,7 +120,7 @@ export class HarnessController {
                     this.logged.add(run.result);
                     host.record('harness', harnessActivity(HARNESSES[run.agent]?.label ?? run.agent, run.title, run.project, run.status === 'done'));
                 }
-                if (host.boardShown(run.board)) host.board.queueRender();
+                if (host.boardShown(run.board)) host.board.setRuns(this.runsOf(run.board));
                 host.refreshHome();
                 if (message) host.toast(message, run.worktree && run.status === 'done' ? { label: _('Review'), run: () => this.review(run) } : undefined);
             },
@@ -251,6 +263,12 @@ export class HarnessController {
         return (file && this.orchestrator.queue.find(file, card.text)?.status) || null;
     }
 
+    // The runs of the cards of board `file`, one per card: its active run, or else its latest (as status() picks).
+    runsOf(file: string): CardRun[] {
+        const cards = new Set(this.orchestrator.queue.runs.filter(r => r.board === file).map(r => r.card));
+        return [...cards].map(card => ({ card, status: this.orchestrator.queue.find(file, card)!.status }));
+    }
+
     // Notes linked by the cards on the board `boardFile`, for the harness prompt context. Looked up with the same rules
     // as Ctrl+click; the document that is currently open is read from its editor so unsaved edits are included.
     private linkedNotes(boardFile: string, links: WikiLink[]): LinkedNote[] {
@@ -381,7 +399,12 @@ export class HarnessController {
     private chooseProjectFolder(name: string | null): Awaitable<{ name: string; path: string } | null> {
         const machine = this.machine;
         if (isRemoteMachine(machine)) {
-            return after(this.dialogs.remoteFolder(this.machineLabel(machine), name, name ? this.folderOf(name) ?? '' : ''), path => this.mapProjectFolder(name, path));
+            const prompt: Prompt = {
+                title: name ? fmt(_('Project folder “{name}”'), { name }) : _('Choose a project folder'),
+                label: fmt(_('The folder of the project on {machine} (an absolute path):'), { machine: this.machineLabel(machine) }),
+                value: name ? this.folderOf(name) ?? '' : '', accept: _('Save'),
+            };
+            return after(this.dialogs.remoteFolder(prompt), path => this.mapProjectFolder(name, path));
         }
         return after(this.dialogs.chooseFolder(name ? fmt(_('Project folder “{name}”'), { name }) : _('Choose a project folder')), path => this.mapProjectFolder(name, path));
     }

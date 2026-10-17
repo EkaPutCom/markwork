@@ -85,6 +85,12 @@ export function settle<T>(promise: Promise<T>, timeoutMs = 10000): T {
 // Waits a little, letting timers and I/O run.
 export const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
+// The answer of a call that may answer later (Awaitable), when this process answers it at once (the GTK app's own core).
+export function sync<T>(value: T | Promise<T>): T {
+    if (value instanceof Promise) throw new Error('expected an answer at once, got a Promise');
+    return value;
+}
+
 // Polls until cond() holds, letting timers and I/O run in between; fails after timeoutMs.
 export async function until(cond: () => boolean, timeoutMs = 5000): Promise<void> {
     const end = platform().monotonicMs() + timeoutMs;

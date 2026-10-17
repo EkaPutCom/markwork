@@ -20,13 +20,12 @@
 //   onViewImage(pixbuf, title)          an image is asked to be enlarged (double click / menu command)
 //   getBaseDir()                        folder for relative links
 //   onOpenNote(link)                    Ctrl+click [[note]]
-//   onOpenDocument(path)                Ctrl+click a link to a Markdown file; false = open with another app
+//   onOpenLink(url)                     Ctrl+click a link (the application opens it)
 //   listNotes()                         Markdown files in the project, for [[ suggestions
 
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GtkSource from 'gi://GtkSource?version=5';
-import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import type GdkPixbuf from 'gi://GdkPixbuf';
 import { onClick, onKeyPress } from '../gtkutil.js';
@@ -54,7 +53,7 @@ import type { LineSpan } from './tagsync.js';
 import type { HighlightResult, Heading, Marker } from './highlighter.js';
 import type { Palette } from '../colors.js';
 import { iterAtLine } from '../gtkutil.js';
-import { _, fmt } from '../i18n.js';
+import { _ } from '../i18n.js';
 import type { EditorMode, TextEditor } from '../app/document.js';
 
 const TEXT_WIDTH = 780;  // maximum text column width, in pixels
@@ -116,7 +115,7 @@ export class MarkdownView implements TextEditor {
     onViewImage: (pixbuf: GdkPixbuf.Pixbuf, title: string) => void = () => {};  // an image is asked to be enlarged
     getBaseDir: () => string = () => GLib.get_home_dir();
     onOpenNote: (link: WikiLink) => void = () => {};
-    onOpenDocument: (path: string) => boolean = () => false;
+    onOpenLink: (url: string) => void = () => {};
     listNotes: () => string[] = () => [];
     readonly completer: WikiCompleter;
 
@@ -671,22 +670,8 @@ export class MarkdownView implements TextEditor {
         this.view.grab_focus();
     }
 
+    // A link was followed; where it leads (a tab, or another app) is the application's to decide (AppSession.openLink).
     openUrl(url: string): void {
-        let uri = url;
-        if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) {
-            const bare = url.replace(/[#?].*$/, '');
-            const path = GLib.path_is_absolute(bare) ? bare : GLib.build_filenamev([this.getBaseDir(), decodeURI(bare)]);
-            // Links to other Markdown notes are opened in Markwork itself, like [[wikilink]].
-            if (/\.(md|markdown|mdown|mkd)$/i.test(path) && this.onOpenDocument(path)) return;
-            uri = Gio.File.new_for_path(path).get_uri();
-        }
-        const root = this.view.get_root();
-        new Gtk.UriLauncher({ uri }).launch(root instanceof Gtk.Window ? root : null, null, (launcher, result) => {
-            try {
-                launcher!.launch_finish(result);
-            } catch {
-                if (!this.destroyed) this.onMessage(fmt(_('Cannot open {url}'), { url }));
-            }
-        });
+        this.onOpenLink(url);
     }
 }

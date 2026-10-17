@@ -48,6 +48,8 @@ src/app/history.ts
 src/app/home.ts
 src/app/journal.ts
 src/app/pulls.ts
+src/app/projects.ts
+src/app/session.ts
 src/ui/chat.ui
 src/ui/findbar.ts
 src/ui/findbar.ui

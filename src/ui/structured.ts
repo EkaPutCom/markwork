@@ -1,35 +1,35 @@
 // What the calendar, timeline, gallery, and chart views have in common with the table: they show the same model as a
-// board or a list (markdown/kanban.ts), keep it, and write every change back through commit() → onChange, so the
-// Markdown text stays the single source of truth. A view only has to draw (render()) and call commit().
+// board or a list (markdown/kanban.ts), keep it, and report every change as an operation through edit() → onEdit (markdown/noteedit.ts),
+// so the Markdown text stays the single source of truth. A view only has to draw (render()) and call edit().
 
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk?version=4.0';
-import { boardSchema, deleteCard, updateCard, type Board, type Position } from '../markdown/kanban.js';
-import { captureItem } from '../markdown/inbox.js';
+import { boardSchema, type Board, type Position } from '../markdown/kanban.js';
+import { applyNoteEdit, type CardRef, type NoteEdit } from '../markdown/noteedit.js';
 import { readItem, type FieldDef } from '../markdown/fields.js';
 import type { WikiLink } from '../markdown/wikilink.js';
 import type { Palette } from '../colors.js';
 import type { MarkupColors } from '../markdown/pango.js';
-import { confirmDialog, editNoteDialog, type CardDraft } from './dialogs.js';
+import { confirmDialog, editNoteDialog, type CardAnswer, type CardDraft } from './dialogs.js';
 import { after, type Awaitable } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
 
 // What the window needs from a view of a document: the model in, the changes out.
 export interface StructuredView {
     readonly widget: Gtk.Widget;
-    onChange: (board: Board) => void;
+    onEdit: (edit: NoteEdit) => void;
     onOpenNote: (link: WikiLink) => void;
     listNotes: (() => string[]) | null;
     setBoard(board: Board): void;
     getBoard(): Board;
-    commit(board: Board): void;
+    edit(edit: NoteEdit): void;
     setPalette(palette: Palette): void;
 }
 
 export interface NoteDialogs {
-    editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
+    editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardAnswer | null>;
     confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
 }
 
@@ -41,7 +41,7 @@ export function formatDate(date: string, pattern: string): string {
 
 export abstract class LayoutView implements StructuredView {
     abstract readonly widget: Gtk.Widget;
-    onChange: (board: Board) => void = () => {};
+    onEdit: (edit: NoteEdit) => void = () => {};
     dialogs: NoteDialogs = { editNote: editNoteDialog, confirm: confirmDialog };
     now: () => Date = () => new Date();
     today: () => string = () => GLib.DateTime.new_now_local().format('%Y-%m-%d') ?? '';
@@ -68,7 +68,7 @@ export abstract class LayoutView implements StructuredView {
         return this.board;
     }
 
-    // Replace the contents (document opened or undo) without calling onChange.
+    // Replace the contents (document opened or undo) without calling onEdit.
     setBoard(board: Board): void {
         if (board.head.join('\n') !== this.board.head.join('\n')) this.headChanged();
         this.board = board;
@@ -82,19 +82,21 @@ export abstract class LayoutView implements StructuredView {
         if (!card) return;
         const title = readItem(card.text, this.schema()).title;
         void after(this.dialogs.confirm(this.parent, fmt(_('Delete the note “{title}”?'), { title }), undefined), yes => {
-            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.commit(deleteCard(this.board, at));
+            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.edit({ kind: 'delete', at, card: card.text });
         });
     }
 
     // The head (frontmatter and title) is different: forget what the view chose by itself (a zoom, a month).
     protected headChanged(): void {}
 
-    commit(next: Board): void {
-        if (next === this.board) return;
+    // Apply a change from the user: to this view's board at once (redrawn at idle), and reported to the owner.
+    edit(edit: NoteEdit): void {
+        const next = applyNoteEdit(this.board, edit);
+        if (!next || next === this.board) return;
         this.board = next;
         this.schemaKey = null;
         this.queueRender();
-        this.onChange(next);
+        this.onEdit(edit);
     }
 
     setPalette(palette: Palette): void {
@@ -170,15 +172,20 @@ export abstract class LayoutView implements StructuredView {
         return this.board.columns[at.column]?.cards[at.index];
     }
 
+    // A note as an edit names it.
+    protected ref(at: Position): CardRef {
+        return { at, card: this.cardAt(at)?.text ?? '' };
+    }
+
     protected titleOf(at: Position): string {
         const card = this.cardAt(at);
         return card ? readItem(card.text, this.schema()).title : '';
     }
 
-    // A new note through the dialog; `prepare` can put something in the text first (a date, for example).
-    showAddNote(prepare: (text: string) => string = text => text, text = ''): void {
-        void after(this.dialogs.editNote(this.parent, { text, notes: [] }, _('New Note'), this.listNotes ?? undefined, this.schema()), draft => {
-            if (draft?.text) this.commit(captureItem(this.board, prepare(draft.text), this.now(), draft.notes));
+    // A new note through the dialog; on a day of the calendar, `date` puts it on that day.
+    showAddNote(date?: string): void {
+        void after(this.dialogs.editNote(this.parent, { text: '', notes: [] }, _('New Note'), this.listNotes ?? undefined, this.schema()), draft => {
+            if (draft?.text) this.edit({ kind: 'capture', text: draft.text, notes: draft.notes, now: this.now().getTime(), ...(date && { date }) });
         });
     }
 
@@ -187,7 +194,7 @@ export abstract class LayoutView implements StructuredView {
         if (!item) return;
         void after(this.dialogs.editNote(this.parent, { text: item.text, notes: item.notes }, undefined, this.listNotes ?? undefined, this.schema()), result => {
             // The document can change while the dialog is open; the same note is found again through its position.
-            if (result?.text && this.cardAt(at)?.text === item.text) this.commit(updateCard(this.board, at, { text: result.text, notes: result.notes }));
+            if (result?.text && this.cardAt(at)?.text === item.text) this.edit({ kind: 'update', at, card: item.text, text: result.text, notes: result.notes });
         });
     }
 

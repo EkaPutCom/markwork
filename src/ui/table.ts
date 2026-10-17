@@ -7,33 +7,35 @@
 //
 // It shows the same model as a board or a list. Clicking a header sorts by that column (ascending, descending, back to the
 // order of the document; kept in the view, not written to the file, which has its own `sort:`), clicking a cell
-// changes that field in place from a popover, clicking a title edits the note. Every change goes through commit(), which
-// calls onChange so the window writes it to the buffer (the Markdown text remains the single source of truth).
+// changes that field in place from a popover, clicking a title edits the note. Every change goes through edit(), which
+// applies the operation (markdown/noteedit.ts) and reports it through onEdit, so the application writes it to the buffer
+// (the Markdown text remains the single source of truth).
 
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
-import { boardSchema, deleteCard, setCardField, toggleDone, updateCard, withFieldOption, type Board, type Position } from '../markdown/kanban.js';
-import { captureItem } from '../markdown/inbox.js';
+import { boardSchema, type Board, type Position } from '../markdown/kanban.js';
+import { applyNoteEdit, type NoteEdit } from '../markdown/noteedit.js';
 import { displayValue, fieldInputText, readItem, type FieldDef, type Parsed } from '../markdown/fields.js';
 import { newTable, nextSort, sortSpec, SECTION_COLUMN, TITLE_COLUMN, tableColumns, tableRows, type SortSpec, type TableRow } from '../markdown/tablelayout.js';
 import { cellMarkup, NOTE_URI, type MarkupColors } from '../markdown/pango.js';
 import { parseWikiLink, type WikiLink } from '../markdown/wikilink.js';
-import { confirmDialog, editNoteDialog, type CardDraft } from './dialogs.js';
+import { confirmDialog, editNoteDialog, type CardAnswer, type CardDraft } from './dialogs.js';
 import type { Palette } from '../colors.js';
 import { after, onChipClick, removeChildren, type Awaitable } from '../gtkutil.js';
 import { FieldPopover } from './fieldpopover.js';
 import { _, fmt } from '../i18n.js';
 
 export interface TableDialogs {
-    editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardDraft | null>;
+    editNote(parent: Gtk.Window | null, item: CardDraft, title?: string, listNotes?: () => string[], schema?: FieldDef[]): Awaitable<CardAnswer | null>;
     confirm(parent: Gtk.Window | null, message: string, detail?: string): Awaitable<boolean>;
 }
 
 export class TableView {
     readonly widget: Gtk.ScrolledWindow;
-    onChange: (board: Board) => void = () => {};
+    // A change the user made, as an operation (markdown/noteedit.ts): the owner applies it to the document's board.
+    onEdit: (edit: NoteEdit) => void = () => {};
     dialogs: TableDialogs = { editNote: editNoteDialog, confirm: confirmDialog };
     now: () => Date = () => new Date();
     today: () => string = () => GLib.DateTime.new_now_local().format('%Y-%m-%d') ?? '';
@@ -105,7 +107,7 @@ export class TableView {
         return this.schemaCache;
     }
 
-    // Replace the contents (document opened or undo) without calling onChange. A sort chosen by a click is forgotten when
+    // Replace the contents (document opened or undo) without calling onEdit. A sort chosen by a click is forgotten when
     // another document is shown.
     setBoard(board: Board): void {
         if (board.head.join('\n') !== this.board.head.join('\n')) this.sortOverride = undefined;
@@ -113,11 +115,13 @@ export class TableView {
         this.render();
     }
 
-    commit(next: Board): void {
-        if (next === this.board) return;
+    // Apply a change from the user: to this table at once (redrawn at idle), and reported to the owner.
+    edit(edit: NoteEdit): void {
+        const next = applyNoteEdit(this.board, edit);
+        if (!next || next === this.board) return;
         this.board = next;
         this.queueRender();
-        this.onChange(next);
+        this.onEdit(edit);
     }
 
     setPalette(palette: Palette): void {
@@ -234,7 +238,7 @@ export class TableView {
         const box = new Gtk.Box({ halign: Gtk.Align.CENTER, valign: Gtk.Align.FILL });
         if (row.card.done === null) return box;
         const check = new Gtk.CheckButton({ active: row.card.done, tooltip_text: _('Mark done') });
-        check.connect('toggled', () => this.commit(toggleDone(this.board, row.at)));
+        check.connect('toggled', () => this.edit({ kind: 'toggle', at: row.at, card: row.card.text }));
         box.append(check);
         return box;
     }
@@ -244,7 +248,7 @@ export class TableView {
         if (!card) return;
         const title = readItem(card.text, this.schema()).title;
         void after(this.dialogs.confirm(this.parent, fmt(_('Delete the note “{title}”?'), { title }), undefined), yes => {
-            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.commit(deleteCard(this.board, at));
+            if (yes && this.board.columns[at.column]?.cards[at.index]?.text === card.text) this.edit({ kind: 'delete', at, card: card.text });
         });
     }
 
@@ -336,14 +340,14 @@ export class TableView {
     capture(text: string): void {
         this.entry.set_text('');
         if (!text.trim()) return;
-        this.commit(captureItem(this.board, text, this.now()));
+        this.edit({ kind: 'capture', text, notes: [], now: this.now().getTime() });
         this.entry.grab_focus();
     }
 
     // A new row through the dialog, with fields and notes.
     showAddNote(): void {
         void after(this.dialogs.editNote(this.parent, { text: '', notes: [] }, _('New Row'), this.listNotes ?? undefined, this.schema()), draft => {
-            if (draft?.text) this.commit(captureItem(this.board, draft.text, this.now(), draft.notes));
+            if (draft?.text) this.edit({ kind: 'capture', text: draft.text, notes: draft.notes, now: this.now().getTime() });
         });
     }
 
@@ -353,7 +357,7 @@ export class TableView {
         void after(this.dialogs.editNote(this.parent, { text: item.text, notes: item.notes }, undefined, this.listNotes ?? undefined, this.schema()), result => {
             // The table can change while the dialog is open; the same row is found again through its position.
             if (result?.text && this.cardAt(at)?.text === item.text)
-                this.commit(updateCard(this.board, at, { text: result.text, notes: result.notes }));
+                this.edit({ kind: 'update', at, card: item.text, text: result.text, notes: result.notes });
         });
     }
 
@@ -372,8 +376,7 @@ export class TableView {
             current: fieldInputText(item.text, def),
             apply: (raw, newOption) => {
                 if (this.cardAt(at)?.text !== item.text) return;
-                const board = newOption ? withFieldOption(this.board, key, newOption) : this.board;
-                this.commit(setCardField(board, at, boardSchema(board).find(f => f.key === key) ?? def, raw));
+                this.edit({ kind: 'field', at, card: item.text, key, raw, field: def, option: newOption ?? null });
             },
         });
     }

@@ -5,7 +5,7 @@
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import { section, test, eq, ok, contains, tmp, optVal } from '../framework.js';
+import { section, test, eq, ok, contains, tmp, optVal, sync } from '../framework.js';
 import { PreferencesDialog } from '../../src/ui/preferences.js';
 import { findEntry } from '../../src/ui/menu.js';
 import { AppSettings } from '../../src/settings.js';
@@ -116,7 +116,7 @@ export function agentsHostTests(c: GuiContext): void {
         ok(waitFor(() => win.harness.hostStatus()?.state === 'ready'), 'connected');
         const pis = () => daemon.requestsOf('spawn').filter(r => r.program === 'pi');
         const before = pis().length;
-        findEntry(win.board.cardMenu(0, 0), 'Work on it with pi')!.run!();
+        findEntry(sync(win.board.cardMenu(0, 0)), 'Work on it with pi')!.run!();
         ok(waitFor(() => pis().length === before + 1), 'spawn was sent');
         ok(daemon.requestsOf('spawn').some(r => r.program === 'git' && r.cwd === '/srv/shop'), 'git on the machine was asked whether the folder is a repository');
         const req = pis()[before];
@@ -150,7 +150,7 @@ export function agentsHostTests(c: GuiContext): void {
         };
         const { win } = open('plan', { harnessMachine: 'vps', projectOptions: { 'vps:shop': '{"slots":3}' } });
         ok(waitFor(() => win.harness.hostStatus()?.state === 'ready'), 'connected');
-        findEntry(win.board.cardMenu(0, 0), 'Work on it with pi')!.run!();
+        findEntry(sync(win.board.cardMenu(0, 0)), 'Work on it with pi')!.run!();
         ok(waitFor(() => daemon.requestsOf('spawn').some(r => r.program === 'pi')), `pi was started; git: ${gitCalls.join(' | ')}`);
         ok(gitCalls.includes('/srv/shop: worktree add -b markwork/checkout /srv/.markwork-worktrees/shop/checkout abc123'), gitCalls.join(' | '));
         const req = daemon.requestsOf('spawn').find(r => r.program === 'pi')!;
@@ -167,16 +167,17 @@ export function agentsHostTests(c: GuiContext): void {
         ok(waitFor(() => win.harness.hostStatus()?.state === 'ready'), 'connected');
         const asked: string[] = [];
         let answer: string | null = 'relative/dir';
-        win.harness.dialogs = { ...win.harness.dialogs, remoteFolder: (machine, project) => { asked.push(`${machine}:${project}`); return answer; } };
+        win.harness.dialogs = { ...win.harness.dialogs, remoteFolder: prompt => { asked.push(`${prompt.title} ${prompt.label}`); return answer; } };
         const spawns = daemon.requestsOf('spawn').length;
-        findEntry(win.board.cardMenu(0, 0), 'Work on it with pi')!.run!();
+        findEntry(sync(win.board.cardMenu(0, 0)), 'Work on it with pi')!.run!();
         settle();
-        eq(asked, ['vps:shop']);
+        eq(asked.length, 1);
+        ok(asked[0].includes('“shop”') && asked[0].includes('vps'), asked[0]);
         contains(win.lastToast, 'absolute');
         eq(daemon.requestsOf('spawn').length, spawns, 'nothing started');
         eq(settings.machineProjects, {});
         answer = '/srv/shop';
-        findEntry(win.board.cardMenu(0, 0), 'Work on it with pi')!.run!();
+        findEntry(sync(win.board.cardMenu(0, 0)), 'Work on it with pi')!.run!();
         ok(waitFor(() => daemon.requestsOf('spawn').some((r, i) => i >= spawns && r.program === 'pi')), 'started');
         eq(settings.machineProjects, { 'vps:shop': '/srv/shop' });
         eq(settings.projects, {}, 'the local mapping is untouched');

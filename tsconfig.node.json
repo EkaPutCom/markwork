@@ -5,6 +5,6 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["src/platform/node", "tests/run-core-node.ts"],
+  "include": ["src/platform/node", "tests/run-core-node.ts", "tests/unit/nodeplatform.ts"],
   "exclude": []
 }

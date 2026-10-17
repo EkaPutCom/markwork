@@ -2,8 +2,8 @@
 
 import { AppSettings } from '../../src/settings.js';
 import type { SettingValue } from '../../src/platform/index.js';
-import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost, type EditCommands } from '../../src/app/commands.js';
-import { AppSession, type AppFrontend, type FrontendHost } from '../../src/app/session.js';
+import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost, type EditCommands, type FrontendCommands } from '../../src/app/commands.js';
+import { AppSession, type AppFrontend, type DocumentTitle, type FrontendHost } from '../../src/app/session.js';
 import type { TextEditor, ToastButton } from '../../src/app/document.js';
 import { addCard, parseBoard } from '../../src/markdown/kanban.js';
 import { applyChangeBatch } from '../../src/app/agentwrites.js';
@@ -91,7 +91,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
         settings,
         createEditor: makeEditor,
         host: quiet<FrontendHost<FakeEditor>>({
-            screen: quiet<FrontendHost<FakeEditor>['screen']>({ page: () => 'doc-1' }),
+            screen: quiet<FrontendHost<FakeEditor>['screen']>({}),
             chatPanel: quiet<FrontendHost<FakeEditor>['chatPanel']>({}),
             board: quiet({}), inbox: quiet({}), table: quiet({}), layouts: quiet({}),
             collabPanel: quiet({}), outlineView: quiet({}), preferencesView: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}), fileTree: quiet({}), searchView: quiet({}),
@@ -134,10 +134,28 @@ export async function appSessionTests(): Promise<void> {
             heading: level => { calls.push(`heading ${level}`); },
             table: op => { calls.push(`table ${op}`); },
         });
-        const host = quiet<CommandHost>({ edit, switchTab: step => { calls.push(`tab ${step}`); }, setOption: (key, on) => { calls.push(`${key} ${on}`); } });
+        const host = quiet<CommandHost>({ edit, switchTab: step => { calls.push(`tab ${step}`); }, setOption: (key, on) => { calls.push(`${key} ${on}`); }, setSource: on => { calls.push(`source ${on}`); } });
         const run = (id: string, arg?: boolean | string) => COMMANDS.find(c => c.id === id)!.run(host, arg);
         run('bold'); run('strike'); run('heading2'); run('table-align-center'); run('prev-tab'); run('dark', true); run('source', false);
         eq(calls, ['wrap **', 'wrap ~~', 'heading 2', 'table align-center', 'tab -1', 'dark true', 'source false']);
+    });
+
+    await test('a command says where it runs: the editor\'s edits and the frontend\'s own windows there, the rest in the core', () => {
+        const editor = COMMANDS.filter(c => c.runs === 'editor').map(c => c.id);
+        for (const id of ['bold', 'undo', 'find', 'search-files', 'heading2', 'table-format', 'source', 'command-palette', 'quit']) ok(editor.includes(id), id);
+        for (const id of ['save', 'open', 'open-folder', 'image', 'layout', 'dark', 'sidebar', 'kanban-view', 'preferences']) ok(!editor.includes(id), id);
+        const frontend: string[] = [];
+        const settings = memorySettings();
+        const session = new AppSession(fakeFrontend(settings, []));
+        session.start();
+        const host = session.commands(quiet<FrontendCommands>({ edit: quiet<EditCommands>({}), quit: () => { frontend.push('quit'); } }));
+        const run = (id: string, arg?: boolean | string) => COMMANDS.find(c => c.id === id)!.run(host, arg);
+        run('dark', true);
+        run('kanban-new');
+        run('quit');
+        eq([settings.dark, frontend], [true, ['quit']], 'a setting is written by the core; quitting is the frontend\'s');
+        ok(session.documents.active.editor.getText().includes('layout: board'), 'a new board, made by the core');
+        session.dispose();
     });
 
     section('Application session (no GTK)');
@@ -158,6 +176,125 @@ export async function appSessionTests(): Promise<void> {
         eq(session.host.docs().length, 1, 'the empty first tab was reused');
         ok(session.harness && session.journal && session.collab && session.pulls && session.contribute && session.review && session.homePage, 'controllers');
         session.dispose();
+    });
+
+    await test('the session decides what the window opens with: a folder and a file, the last tabs, the welcome text, or Home', () => {
+        const dir = disk.join(tmp, 'appsession-open');
+        disk.mkdirs(dir);
+        const file = disk.join(dir, 'plan.md');
+        disk.write(file, '# Plan\n');
+        const fresh = (settings: AppSettings, path: string | null) => {
+            const session = new AppSession(fakeFrontend(settings, []));
+            session.start();
+            session.open(path);
+            return session;
+        };
+        const settings = memorySettings();
+        let session = fresh(settings, null);
+        ok((session.documents.active.editor as FakeEditor).text.startsWith('# Welcome to Markwork'), 'the welcome text the first time');
+        ok(settings.welcomed, 'and only the first time');
+        session.dispose();
+        session = fresh(settings, dir);
+        eq([session.files.root, settings.folder], [dir, dir], 'a folder from the command line is the work folder, and remembered');
+        session.documents.openInTab(file);
+        session.documents.rememberTabs();
+        session.dispose();
+        session = fresh(settings, null);
+        eq([session.files.root, session.documents.active.file], [dir, file], 'the last folder and the last tabs');
+        session.dispose();
+        settings.tabs = [];
+        settings.store.set('home', true);
+        session = fresh(settings, null);
+        ok(session.documents.active.home, 'Home when nothing else is to be opened');
+        session.dispose();
+        session = fresh(settings, file);
+        eq(session.documents.active.file, file, 'a file from the command line wins over the last tabs and Home');
+        session.dispose();
+    });
+
+    await test('opening another folder closes the tabs outside it, shows the Files tab, and closing remembers the tabs', async () => {
+        const base = disk.join(tmp, 'appsession-folders');
+        const [one, two] = [disk.join(base, 'one'), disk.join(base, 'two')];
+        disk.mkdirs(one);
+        disk.mkdirs(two);
+        disk.write(disk.join(one, 'a.md'), 'a\n');
+        const settings = memorySettings();
+        const pages: string[] = [];
+        const session = new AppSession(fakeFrontend(settings, [], undefined, { showSidebar: page => { pages.push(page); } }));
+        session.start();
+        session.open(null);
+        eq(await session.openFolder(one), true);
+        session.documents.openInTab(disk.join(one, 'a.md'));
+        eq(await session.openFolder(two, false), true, 'a file without changes is closed without asking');
+        eq([session.files.root, settings.folder], [two, two]);
+        ok(session.documents.all.every(d => d.file === null), 'the tab of the other folder is closed');
+        eq(pages, ['files'], 'the Files tab is shown when asked for, not when the last folder is restored');
+        ok(settings.sidebar, 'and the side panel is opened');
+        session.documents.openInTab(disk.join(two, 'b.md'));
+        disk.write(disk.join(two, 'b.md'), 'b\n');
+        eq(await session.closeRequest(), true);
+        eq(settings.tabs.map(t => t.file), [disk.join(two, 'b.md')], 'the tabs are remembered for the next launch');
+        session.dispose();
+    });
+
+    await test('the history is read only while its tab is shown, and coming back to the window reads it again', () => {
+        const session = new AppSession(fakeFrontend(memorySettings(), []));
+        session.start();
+        const reads: boolean[] = [];
+        session.history.show = (_file, _folder, force = false) => { reads.push(force); };
+        session.open(null);
+        session.windowFocused(true);
+        eq(reads, [], 'not while the side panel is closed');
+        session.sidebarShown('files');
+        session.windowFocused(true);
+        eq(reads, [], 'not while another tab is shown');
+        session.sidebarShown('history');
+        session.windowFocused(false);
+        session.windowFocused(true);
+        eq(reads, [false, true], 'shown, then read again when the window gets the focus back');
+        ok(session.host.isActive(), 'the focus as the frontend reported it');
+        session.dispose();
+    });
+
+    await test('titles, links, the Recent list, and a file chosen in the tree are the session\'s', () => {
+        // The home folder is the test folder here, so the title can show `~` without touching the real one.
+        const real = platform();
+        setPlatform({ ...real, paths: new Proxy(real.paths, { get: (target, key) => key === 'homeDir' ? () => tmp : Reflect.get(target, key) }) });
+        const dir = disk.join(tmp, 'appsession-titles', 'notes');
+        const other = disk.join(tmp, 'appsession-titles', 'other');
+        disk.mkdirs(dir);
+        disk.mkdirs(other);
+        const note = disk.join(dir, 'note.md'), next = disk.join(dir, 'next.md'), image = disk.join(dir, 'cover.png');
+        for (const f of [note, next, image]) disk.write(f, 'x\n');
+        const titles = new Map<number, DocumentTitle>();
+        const uris: string[] = [], images: string[] = [], recent: string[][] = [];
+        const frontend = fakeFrontend(memorySettings(), [], undefined, {
+            openUri: uri => { uris.push(uri); }, showImage: path => { images.push(path); }, setRecent: paths => { recent.push(paths); },
+        });
+        const session = new AppSession({ ...frontend, documents: quiet<AppFrontend<FakeEditor>['documents']>({ ...frontend.documents, tabOrder: () => [1], setTitle: (id, title) => { titles.set(id, title); } }) });
+        try {
+            session.start();
+            session.open(note);
+            const id = session.documents.active.id;
+            eq(titles.get(id), { name: 'note.md', file: note, home: false, place: '~/appsession-titles/notes' }, 'the home folder is ~');
+            session.openFolder(dir, false);
+            eq(session.host.projectName(note), 'note.md');
+            eq(session.host.projectName(disk.join(other, 'x.md')), 'x.md');
+            session.openLink(id, 'next.md#part');
+            eq(session.documents.active.file, next, 'a Markdown link opens in a tab, read from the document\'s folder');
+            session.openLink(session.documents.active.id, 'https://example.org/a b');
+            session.openLink(session.documents.active.id, 'my file.pdf');
+            eq(uris, ['https://example.org/a b', `file://${disk.join(dir, 'my%20file.pdf')}`], 'anything else goes to the system');
+            session.host.openFile(image);
+            eq(images, [image], 'an image goes to the viewer');
+            ok(recent.at(-1)!.includes(note) && recent.at(-1)!.includes(next), JSON.stringify(recent.at(-1)));
+            disk.remove(note);
+            session.settings.recentFiles = [...session.settings.recentFiles];
+            ok(!recent.at(-1)!.includes(note), 'a file that is gone leaves the Recent list');
+        } finally {
+            session.dispose();
+            setPlatform(real);
+        }
     });
 
     await test('a toast button reaches the frontend as a token; the session runs its action once, and forgets old ones', () => {

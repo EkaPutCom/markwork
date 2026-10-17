@@ -8,6 +8,7 @@ import GLib from 'gi://GLib';
 import type { ToolStep } from '../agent/session.js';
 import { formatMs } from '../agent/tracetree.js';
 import { _, fmt, ngettext } from '../i18n.js';
+import { after, type Awaitable } from '../gtkutil.js';
 
 type Phase = 'thinking' | 'step' | 'writing' | 'done' | 'stopped' | 'failed';
 const RUNNING: ReadonlySet<Phase> = new Set(['thinking', 'step', 'writing']);
@@ -163,7 +164,7 @@ export class TurnStatus {
 
 export interface ActionHandlers {
     text(): string;                              // the answer, as Markdown
-    insert?(text: string): boolean;              // put the answer into the open note
+    insert?(text: string): Awaitable<boolean>;   // put the answer into the open note
     retry(): void;
     log(): void;
 }
@@ -187,7 +188,7 @@ export function actionBar(handlers: ActionHandlers): Gtk.Box {
     if (handlers.insert) {
         const insert = handlers.insert;
         bar.append(actionButton('insert-text-symbolic', _('Insert into note'), content => {
-            content.set_label(insert(handlers.text()) ? _('Inserted') : _('Open a note first'));
+            void after(insert(handlers.text()), done => content.set_label(done ? _('Inserted') : _('Open a note first')));
         }));
     }
     bar.append(actionButton('view-refresh-symbolic', _('Retry'), () => handlers.retry()));

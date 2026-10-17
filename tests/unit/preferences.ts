@@ -5,6 +5,7 @@
 import { AppSession } from '../../src/app/session.js';
 import type { MachineDraft, PreferencesData, PreferencesView } from '../../src/app/preferences.js';
 import type { ProjectPage, WorktreeList } from '../../src/app/projects.js';
+import type { Question } from '../../src/app/dialogs.js';
 import { runGit } from '../../src/git.js';
 import { section, test, eq, ok, within, until, tmp, disk } from '../framework.js';
 import { host as testHost } from '../host.js';
@@ -130,7 +131,8 @@ export async function preferencesTests(): Promise<void> {
         settings.projects = { shop: repo };
         const view = quiet<PreferencesView>({ showProject: p => { pages.push(p); }, showWorktrees: l => { lists.push(l); } });
         const session = new AppSession(fakeFrontend(settings, [], undefined, { preferencesView: view }));
-        Object.assign(session.preferences.dialogs, { removeWorktree: (branch: string) => { removals.push(branch); return answers.remove; } });
+        // The question is the core's: the branch is named in its sentence.
+        Object.assign(session.preferences.dialogs, { removeWorktree: (q: Question) => { removals.push(q.message.match(/of (\S+)\?$/)?.[1] ?? q.message); return answers.remove; } });
         session.start();
         return { session, settings, view, pages, lists, removals, answers, repo, wt };
     };

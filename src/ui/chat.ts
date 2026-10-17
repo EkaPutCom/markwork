@@ -35,7 +35,7 @@ import { actionBar, TurnStatus } from './chatturn.js';
 import { chatMarkup } from '../markdown/chatmarkup.js';
 import { escapeMarkup, type MarkupColors } from '../markdown/pango.js';
 import type { Palette } from '../colors.js';
-import { childrenOf, onKeyPress, uiTemplate } from '../gtkutil.js';
+import { after, childrenOf, onKeyPress, uiTemplate, type Awaitable } from '../gtkutil.js';
 import template from './chat.ui?raw';
 import { _, fmt, ngettext } from '../i18n.js';
 
@@ -114,15 +114,15 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
     onSend: (text: string) => Promise<void> = () => Promise.resolve();
     onStop: () => void = () => {};
     onReset: () => void = () => {};
-    onPreview: (draft: string) => BuiltContext = () => ({ system: '', note: '', items: [], tokens: 0, unknownMentions: [] });
+    onPreview: (draft: string) => Awaitable<BuiltContext> = () => ({ system: '', note: '', items: [], tokens: 0, unknownMentions: [] });
     onOptions: (options: ContextOptions) => void = () => {};
-    onChats: () => ChatSummary[] | null = () => null;
-    onOpenChat: (path: string) => SavedChat | null = () => null;
-    onDeleteChat: (path: string) => string | null = () => null;
-    onApply: (ask: number, chosen: number[] | null) => string | null = () => 'applying is not available';
-    onUndo: (target: UndoTarget) => string | null = () => 'applying is not available';
+    onChats: () => Awaitable<ChatSummary[] | null> = () => null;
+    onOpenChat: (path: string) => Awaitable<SavedChat | null> = () => null;
+    onDeleteChat: (path: string) => Awaitable<string | null> = () => null;
+    onApply: (ask: number, chosen: number[] | null) => Awaitable<string | null> = () => 'applying is not available';
+    onUndo: (target: UndoTarget) => Awaitable<string | null> = () => 'applying is not available';
     onClearLog: () => void = () => {};
-    onInsert: (text: string) => boolean = () => false;
+    onInsert: (text: string) => Awaitable<boolean> = () => false;
     onModel: (model: string) => void = () => {};
     onThinking: (thinking: boolean) => void = () => {};
     onSaveChats: (save: boolean) => void = () => {};
@@ -389,8 +389,11 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
     // ---------- History on disk ----------
 
     // Show a saved conversation and continue from there: the next turns are appended to the same file.
-    openChat(path: string): boolean {
-        const chat = this.onOpenChat(path);
+    openChat(path: string): Awaitable<boolean> {
+        return after(this.onOpenChat(path), chat => this.showChat(chat));
+    }
+
+    private showChat(chat: SavedChat | null): boolean {
         if (!chat) {
             this.addNote('The conversation file could not be read.', true);
             return false;
@@ -430,7 +433,7 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
     // ---------- Context ----------
 
     // Builds the context for the text being typed, without sending anything.
-    previewContext(): BuiltContext {
+    previewContext(): Awaitable<BuiltContext> {
         return this.onPreview(this.input.buffer.text);
     }
 
@@ -447,7 +450,7 @@ export class ChatPanel extends Gtk.Box implements ChatPanelView {
 
     updateContextSummary(): void {
         if (this.busy) return;
-        this.contextPart.setSummary(this.previewContext());
+        void after(this.previewContext(), built => { if (!this.busy) this.contextPart.setSummary(built); });
     }
 
     // ---------- Messages ----------

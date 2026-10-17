@@ -63,7 +63,8 @@ export function layoutsGuiTests(c: GuiContext): void {
         eq(numbers.slice(0, 3), ['11', '4', '1']);
         open('board-by-field');
         eq(w.board.getBoard().columns.map(col => col.title), ['', 'planned', 'doing', 'review', 'done']);
-        w.board.commit({ ...w.board.getBoard(), columns: w.board.getBoard().columns.map((col, i) => i === 1 ? { ...col, cards: col.cards.slice(1) } : i === 3 ? { ...col, cards: [...col.cards, w.board.getBoard().columns[1].cards[0]] } : col) });
+        const columns = w.board.getBoard().columns;
+        w.board.edit({ kind: 'move', at: { column: 1, index: 0 }, card: columns[1].cards[0].text, to: { column: 3, index: columns[3].cards.length } });
         settle();
         ok(text().includes('Release notes [status:: review]'), text());
     });

@@ -11,7 +11,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'src');
 
 const GTK = /^gi:\/\/(Gtk|Gdk|GdkPixbuf|GdkX11|Gsk|Adw|GtkSource|WebKit|Pango|Graphene)(\?|$)/;
-const BASE = ['settings.ts', 'files.ts', 'fileops.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'awaitable.ts', 'activity.ts'];
+const BASE = ['settings.ts', 'welcome.ts', 'files.ts', 'fileops.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'awaitable.ts', 'activity.ts'];
 
 // The core: everything below the interface. It reaches the runtime only through platform/index.ts, never through gi:// and
 // never through platform/gjs/, so it can run on another runtime. GI_ALLOWED listed the core modules that still imported

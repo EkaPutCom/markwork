@@ -10,6 +10,7 @@ import { newList } from '../markdown/inbox.js';
 import { newTable } from '../markdown/tablelayout.js';
 import { boardSchema, countCards, declaredFields, fieldUses, newBoard, parseBoard, reservedFields, serializeBoard, withSchema, type Board } from '../markdown/kanban.js';
 import type { FieldDef } from '../markdown/fields.js';
+import { applyNoteEdit, type NoteEdit } from '../markdown/noteedit.js';
 import { after, type Awaitable } from '../awaitable.js';
 import { _, fmt } from '../i18n.js';
 import { missingField, withField } from '../markdown/layouthint.js';
@@ -53,12 +54,11 @@ const PAGE_OF: Record<Layout, View> = { board: 'board', list: 'inbox', table: 't
 const STRUCTURED_PAGES: readonly View[] = Object.values(PAGE_OF);
 const isStructuredPage = (name: string | null): name is StructuredPage => STRUCTURED_PAGES.includes(name as View);
 
-// A view that shows a document's notes (board, list, table, calendar, …): it is given the board and reports changes.
+// A view that shows a document's notes (board, list, table, calendar, …): it is given the board and reports what the
+// user did as an operation (markdown/noteedit.ts), which it has already applied to what it shows.
 export interface NotesView {
-    onChange: (board: Board) => void;
+    onEdit: (edit: NoteEdit) => void;
     setBoard(board: Board): void;
-    getBoard(): Board;
-    commit(board: Board): void;      // a change made outside the view (the Fields… dialog): shown and reported
 }
 export interface KanbanView extends NotesView {
     agentsEnabled: boolean;          // agents can be assigned to cards (not while grouped by a field)
@@ -69,9 +69,9 @@ export interface CaptureView extends NotesView {
     focusCapture(): void;            // put the cursor where a new item is typed
 }
 
-// The content area and what is around it, as this controller drives them.
+// The content area and what is around it, as this controller drives them. Which page is shown is this controller's
+// record of what it last showed, not something it asks the screen.
 export interface ViewScreen<E extends TextEditor> {
-    page(): string | null;           // 'home', a structured page name, or another page (a document's text, a review)
     showHome(data: HomeData): void;
     showText(id: number): void;      // the document's own editor page, with the cursor shown and focused
     showPage(page: StructuredPage): void;
@@ -94,6 +94,7 @@ export interface ViewHost<E extends TextEditor> extends DocumentHost<E> {
     readonly homePage: { data(): HomeData };
     readonly journal: { recordBoard(file: string | null, before: Board, after: Board): void };
     newDocument(text: string): void;   // fill the active empty document, or a new tab, with text
+    showRuns(file: string | null): void;   // the board view gets the runs of the cards of board `file` (none for null)
 }
 
 // How one document is shown, kept here rather than on the document record.
@@ -109,6 +110,11 @@ export class ViewController<E extends TextEditor> {
     private grouped: { source: Board; view: Grouped; field: FieldDef } | null = null;
     // The document's board as the board view last got it or reported it: the core holds the board, it does not ask the view.
     private board: Board | null = null;
+    // The same for the list, table, calendar, timeline, gallery, or chart page that is shown.
+    private shown: Board | null = null;
+    // The page the content area shows, as this controller last showed it; 'text' also for a page that is not a view of
+    // the active document (a pull request, a review). null before the first.
+    private page: View | null = null;
 
     private state(doc: Doc<E>): ViewState {
         let state = this.states.get(doc);
@@ -118,23 +124,27 @@ export class ViewController<E extends TextEditor> {
 
     // dialogs: the frontend's Fields… dialog; tests replace it.
     constructor(private readonly host: ViewHost<E>, public dialogs: ViewDialogs) {
-        host.board.onChange = board => this.boardChanged(board);
-        host.inbox.onChange = inbox => this.writeInbox(inbox);
-        host.table.onChange = table => this.writeInbox(table);
-        for (const view of Object.values(host.layouts)) view.onChange = board => this.writeInbox(board);
+        host.board.onEdit = edit => this.boardEdited(edit);
+        host.inbox.onEdit = edit => this.notesEdited(edit);
+        host.table.onEdit = edit => this.notesEdited(edit);
+        for (const view of Object.values(host.layouts)) view.onEdit = edit => this.notesEdited(edit);
     }
 
-    get boardMode(): boolean { return this.host.screen.page() === 'board'; }
-    get inboxMode(): boolean { return this.host.screen.page() === 'inbox'; }
-    get tableMode(): boolean { return this.host.screen.page() === 'table'; }
-    get homeMode(): boolean { return this.host.screen.page() === 'home'; }
+    get boardMode(): boolean { return this.page === 'board'; }
+    get inboxMode(): boolean { return this.page === 'inbox'; }
+    get tableMode(): boolean { return this.page === 'table'; }
+    get homeMode(): boolean { return this.page === 'home'; }
     // A board, inbox, table, calendar, timeline, gallery, or chart is shown (a view of the text, not the text itself).
-    get structuredMode(): boolean { return isStructuredPage(this.host.screen.page()); }
+    get structuredMode(): boolean { return isStructuredPage(this.page); }
 
     // The name of the page that is shown.
     private currentView(): View | null {
-        const name = this.host.screen.page();
-        return name === 'home' || isStructuredPage(name) ? name : name ? 'text' : null;
+        return this.page;
+    }
+
+    // The content area shows a page that is not a view of the active document (a pull request, a review).
+    otherPage(): void {
+        this.page = 'text';
     }
 
     // New contents were put into doc (opened, emptied, made Home): it is shown as what it is again, not as the
@@ -159,6 +169,7 @@ export class ViewController<E extends TextEditor> {
     show(view: View): void {
         const { screen } = this.host;
         const doc = this.host.active();
+        this.page = view;
         screen.setStatusVisible(view !== 'home');
         if (view === 'home') {
             screen.closeFind();
@@ -214,12 +225,34 @@ export class ViewController<E extends TextEditor> {
         });
     }
 
-    // The view that shows a board, a list, a table, or one of the other layouts (they all read the same model); null for the others.
-    private viewOf(view: View | null): { setBoard(board: Board): void; getBoard(): Board; commit(board: Board): void } | null {
-        if (view === 'board') return { setBoard: b => this.setBoardView(b), getBoard: () => this.currentBoard(), commit: b => this.commitBoard(b) };
+    // The view that shows a board, a list, a table, or one of the other layouts (they all read the same model); null for the
+    // others. `current` is the board as this controller last sent it or applied an edit to it; `write` shows and writes one.
+    private viewOf(view: View | null): { setBoard(board: Board): void; current(): Board; write(board: Board): void } | null {
+        if (view === 'board') return { setBoard: b => this.setBoardView(b), current: () => this.currentBoard(), write: b => this.commitBoard(b) };
+        const notes = this.notesView(view);
+        if (!notes) return null;
+        const setBoard = (b: Board) => { this.shown = b; notes.setBoard(b); };
+        return { setBoard, current: () => this.shown ?? parseBoard(this.host.active().editor.getText()), write: b => { setBoard(b); this.writeInbox(b); } };
+    }
+
+    private notesView(view: View | null): NotesView | null {
         if (view === 'inbox') return this.host.inbox;
         if (view === 'table') return this.host.table;
         return view === 'calendar' || view === 'timeline' || view === 'gallery' || view === 'chart' ? this.host.layouts[view] : null;
+    }
+
+    // An edit from the list, table, or a layout, applied to the board this controller holds. One that names a note that is
+    // gone (the text changed in between) redraws the view from the board as it is.
+    private notesEdited(edit: NoteEdit): void {
+        const view = this.viewOf(this.currentView());
+        if (!view || this.currentView() === 'board') return;
+        const board = view.current();
+        const next = applyNoteEdit(board, edit);
+        if (!next) view.setBoard(board);
+        else if (next !== board) {
+            this.shown = next;
+            this.writeInbox(next);
+        }
     }
 
     // The board view gets the document's board, or the board made from the values of a field when the document says `group:`.
@@ -229,12 +262,18 @@ export class ViewController<E extends TextEditor> {
         this.grouped = field ? { source, view: groupBoard(source, field), field } : null;
         this.host.board.agentsEnabled = !field;
         this.host.board.groupField = field?.key ?? null;
+        this.host.showRuns(this.host.active().file);
         this.host.board.setBoard(this.grouped?.view.board ?? source);
     }
 
-    // A change from the board view; for a grouped board it is written back to the notes first.
-    private boardChanged(board: Board): void {
+    // An edit from the board view. A grouped board's edit is applied to the board the view shows, and written back to
+    // the notes; one that names a card that is gone redraws the board from the one this controller holds.
+    private boardEdited(edit: NoteEdit): void {
         const grouped = this.grouped;
+        const shown = grouped?.view.board ?? this.currentBoard();
+        const board = applyNoteEdit(shown, edit);
+        if (!board) { this.setBoardView(this.currentBoard()); return; }
+        if (board === shown) return;
         if (!grouped) { this.board = board; this.writeBoard(board); return; }
         const source = ungroupBoard(grouped.source, grouped.view, board, grouped.field);
         this.board = source;
@@ -255,8 +294,8 @@ export class ViewController<E extends TextEditor> {
     }
 
     private showCounts(view: Exclude<View, 'home' | 'text'>): void {
-        if (view === 'board') this.showBoardCounts(this.viewOf('board')!.getBoard());
-        else this.host.screen.setInboxCounts(countCards(this.viewOf(view)!.getBoard()));
+        if (view === 'board') this.showBoardCounts(this.currentBoard());
+        else this.host.screen.setInboxCounts(countCards(this.viewOf(view)!.current()));
     }
 
     // A new document containing an empty kanban board.
@@ -290,7 +329,7 @@ export class ViewController<E extends TextEditor> {
     editFields(): void {
         const view = this.viewOf(this.currentView());
         if (!view) return;
-        const board = view.getBoard();
+        const board = view.current();
         const fields = declaredFields(board);
         const uses = fields.flatMap((f): FieldUse[] => [
             { key: f.key, option: null, count: fieldUses(board, f.key) },
@@ -298,7 +337,7 @@ export class ViewController<E extends TextEditor> {
         ]);
         const options: SchemaDialogOptions = { fields, reserved: reservedFields(board), uses };
         void after(this.dialogs.editSchema(options), fields => {
-            if (fields) view.commit(withSchema(view.getBoard(), fields));
+            if (fields) view.write(withSchema(view.current(), fields));
         });
     }
 

@@ -8,7 +8,6 @@ import { section, test, eq, ok, tmp, optVal, settle as settlePromise } from '../
 import { readTextFile } from '../../src/files.js';
 import { localDate } from '../../src/markdown/home.js';
 import { clock } from '../../src/markdown/journal.js';
-import { moveCard } from '../../src/markdown/kanban.js';
 import { readActivity } from '../../src/activity.js';
 import { AppSettings } from '../../src/settings.js';
 import { MainWindow } from '../../src/window.js';
@@ -91,7 +90,7 @@ export function journalTests(c: GuiContext): void {
         const { win } = open();
         win.openFile(board); settle();
         ok(win.boardMode, 'the board is not shown as a board');
-        win.board.commit(moveCard(win.board.getBoard(), { column: 0, index: 0 }, { column: 1, index: 0 })); settle();
+        win.board.edit({ kind: 'move', at: { column: 0, index: 0 }, card: win.board.getBoard().columns[0].cards[0].text, to: { column: 1, index: 0 } }); settle();
         const error = win.session.assistant.chat.host.applyChange!({ kind: 'edit', file: 'plan.md', before: '# Plan\n\nRelease on 15 November.\n', after: '# Plan\n\nRelease on 22 November.\n', reason: 'test' });
         eq(error, null, 'agent change');
         const texts = readActivity(ws, today).map(a => a.text);

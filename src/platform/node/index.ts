@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import type { Platform, Scheduler, Secrets, Translations } from '../index.js';
+import type { Platform, Scheduler, Secrets } from '../index.js';
+import { catalogTranslations, userCatalog } from './i18n.js';
 import { nodeFiles } from './files.js';
 import { fetchStreamTransport, fetchTransport } from './http.js';
 import { nodeLinks } from './links.js';
@@ -53,12 +54,6 @@ const scheduler: Scheduler = {
     },
 };
 
-// No gettext on Node yet: the source text, with English plurals.
-const sourceText: Translations = {
-    text: text => text,
-    plural: (one, many, n) => n === 1 ? one : many,
-    context: (_context, text) => text,
-};
 
 // The full name from the passwd entry (the GECOS field up to the first comma), as GLib.get_real_name() reads it.
 function realName(): string | null {
@@ -94,7 +89,7 @@ export const nodePlatform: Platform = {
     processes: nodeProcesses,
     scheduler,
     links: nodeLinks,
-    translations: sourceText,
+    translations: catalogTranslations(userCatalog()),
     env: name => process.env[name] ?? null,
     realName,
     monotonicMs: () => performance.now(),

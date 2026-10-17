@@ -12,9 +12,10 @@ import Pango from 'gi://Pango';
 import { attachWikiCompleter } from '../editor/wikicomplete.js';
 import { childrenOf, modal, onKeyPress } from '../gtkutil.js';
 import { APP_ID, APP_NAME, APP_VERSION } from '../config.js';
-import { composeItem, itemMeta } from '../markdown/inbox.js';
-import { fieldInputText, parseValue, setField, type FieldDef, type FieldType } from '../markdown/fields.js';
-import { AGENT_NAME, CARD_SCHEMA, composeCard, DUE_INPUT, splitCard, withDueDate } from '../markdown/kanban.js';
+import { itemMeta } from '../markdown/inbox.js';
+import { fieldInputText, parseValue, type FieldDef, type FieldType } from '../markdown/fields.js';
+import { AGENT_NAME, CARD_SCHEMA, DUE_INPUT, splitCard, withDueDate } from '../markdown/kanban.js';
+import type { CardForm, CardText } from '../markdown/noteedit.js';
 import type { HarnessAsk, HarnessReply } from '../agent/harness.js';
 import { isValidMachineName, isValidSshTarget } from '../agent/daemon/machines.js';
 import { _, fmt, ngettext } from '../i18n.js';
@@ -184,6 +185,12 @@ export interface CardDraft {
     notes: string[];
 }
 
+// What a card or note dialog answers: the parts of the first line (composed where the edit is applied) and the notes.
+export interface CardAnswer {
+    text: CardText;
+    notes: string[];
+}
+
 // Due date field: text (can still be typed, e.g. with a time) and a calendar button next to it.
 // The calendar opens on the date in the field (or today); choosing a date fills the field and closes the calendar.
 export interface DueField {
@@ -265,7 +272,8 @@ function firstInvalid(controls: FieldControl[]): FieldControl | null {
     return bad;
 }
 
-const applyFields = (text: string, controls: FieldControl[]): string => controls.reduce((t, c) => setField(t, c.def, c.text()), text);
+// The fields as the dialog answers them; the card's text is composed from them where the edit is applied (CardForm).
+const answers = (controls: FieldControl[]): CardForm['fields'] => controls.map(c => ({ field: c.def, text: c.text() }));
 
 // One labelled control per field of `schema` (except the keys in `skip`) in `box`, filled from `text`.
 function addFieldRows(box: Gtk.Box, schema: FieldDef[], skip: readonly string[], text: string): FieldControl[] {
@@ -280,7 +288,7 @@ function addFieldRows(box: Gtk.Box, schema: FieldDef[], skip: readonly string[],
 // Edit card dialog: title (one line), the fields of the board's schema, and notes (multiple lines).
 // Returns the new contents, or null if cancelled.
 // listNotes: Markdown files in the work folder, for suggestions when typing [[ in the notes.
-export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft, heading = _('Edit Card'), listNotes?: () => string[], schema: FieldDef[] = []): Promise<CardDraft | null> {
+export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft, heading = _('Edit Card'), listNotes?: () => string[], schema: FieldDef[] = []): Promise<CardAnswer | null> {
     const parts = splitCard(card.text);
     const title = new Gtk.Entry({ text: parts.title, activates_default: true, hexpand: true });
     const tags = new Gtk.Entry({ text: parts.tags.join(' '), activates_default: true, hexpand: true, placeholder_text: _('tag1 tag2') });
@@ -333,13 +341,13 @@ export async function editCardDialog(parent: Gtk.Window | null, card: CardDraft,
     if (!accepted) return null;
     const [start, end] = notes.buffer.get_bounds();
     return {
-        text: applyFields(composeCard({ title: title.text, tags: tags.text.split(/[\s,]+/), due: due.text, agent: agent.text }, card.text), controls),
+        text: { kind: 'card', title: title.text, tags: tags.text.split(/[\s,]+/), due: due.text, agent: agent.text, fields: answers(controls) },
         notes: notes.buffer.get_text(start, end, true).replace(/\s+$/, '').split('\n').filter((l, i, all) => all.length > 1 || l !== ''),
     };
 }
 
 // Edit an inbox note: title, tags, and notes. `item.text` null = a new note.
-export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft, heading = _('Edit Note'), listNotes?: () => string[], schema: FieldDef[] = []): Promise<CardDraft | null> {
+export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft, heading = _('Edit Note'), listNotes?: () => string[], schema: FieldDef[] = []): Promise<CardAnswer | null> {
     const meta = itemMeta(item.text);
     const title = new Gtk.Entry({ text: meta.title, activates_default: true, hexpand: true, placeholder_text: _('Idea, link, or quick note') });
     const tags = new Gtk.Entry({ text: meta.tags.join(' '), activates_default: true, hexpand: true, placeholder_text: _('tag1 tag2') });
@@ -377,7 +385,7 @@ export async function editNoteDialog(parent: Gtk.Window | null, item: CardDraft,
     if (!accepted) return null;
     const [start, end] = notes.buffer.get_bounds();
     return {
-        text: applyFields(composeItem(title.text, tags.text.split(/[\s,]+/), item.text), controls),
+        text: { kind: 'note', title: title.text, tags: tags.text.split(/[\s,]+/), due: '', agent: '', fields: answers(controls) },
         notes: notes.buffer.get_text(start, end, true).replace(/\s+$/, '').split('\n').filter((l, i, all) => all.length > 1 || l !== ''),
     };
 }

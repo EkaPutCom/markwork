@@ -137,9 +137,6 @@ export function folderTests(c: GuiContext): void {
     Object.assign(w.session.files.dialogs, { name: () => prompts.shift() ?? null, confirm: () => confirms.shift() ?? false, error: (msg: string) => { errors.push(msg); } });
     const menuLabels = (m: MenuEntry[]) => m.map(i => i.label);
     const activate = (m: MenuEntry[], label: string) => m.find(i => i.label === label)!.run!();
-    const opened: string[] = [];
-    const openBefore = w.openFile;
-    w.openFile = p => { opened.push(p); openBefore.call(w, p); };
     w.session.files.setRoot(proj);
     w.file = null;
     buf.set_modified(false);
@@ -153,7 +150,6 @@ export function folderTests(c: GuiContext): void {
         pump();
         ok(waitFor(() => childNames().includes('blank-new.md')), 'the file did not appear in the tree');
         ok(GLib.file_test(GLib.build_filenamev([proj, 'blank-new.md']), GLib.FileTest.EXISTS), 'the file is not on disk');
-        eq(opened, [GLib.build_filenamev([proj, 'blank-new.md'])], 'the file was not opened');
         eq(w.file, GLib.build_filenamev([proj, 'blank-new.md']), 'editor file');
     });
     test('right-clicking a folder creates a file inside that folder', () => {
@@ -343,7 +339,6 @@ export function folderTests(c: GuiContext): void {
     });
     buf.set_modified(false);
     w.file = null;
-    w.openFile = openBefore;
 
     test('the Search panel finds a note, opens the hit with the match selected, and plans the replacement', () => {
         w.showSearch(); pump();

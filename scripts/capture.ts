@@ -560,8 +560,9 @@ class Capture {
             [[1, 0], [2, 0]],
         ];
         for (const [from, to] of moves) {
-            board = moveCard(board, { column: from[0], index: from[1] }, { column: to[0], index: to[1] });
-            this.w.board.commit(board);
+            const at = { column: from[0], index: from[1] };
+            this.w.board.edit({ kind: 'move', at, card: board.columns[at.column].cards[at.index].text, to: { column: to[0], index: to[1] } });
+            board = moveCard(board, at, { column: to[0], index: to[1] });
             this.settle(20);
             this.frame('kanban', 5);
         }
@@ -1131,7 +1132,9 @@ One file. Change the layout: line and the same notes become a list, a table, a c
 
     private cardMenu(text: string, label: string): void {
         const { column, index } = this.cardAt(text);
-        const entry = findEntry(this.w.board.cardMenu(column, index), label);
+        const menu = this.w.board.cardMenu(column, index);
+        if (menu instanceof Promise) throw new Error('the card menu is answered at once in one process');
+        const entry = findEntry(menu, label);
         if (!entry?.run) throw new Error(`menu "${label}" does not exist for "${text}"`);
         entry.run();
     }
@@ -1198,7 +1201,7 @@ One file. Change the layout: line and the same notes become a list, a table, a c
         const w = this.w;
         w.openFile(flowBoard);
         this.idle(500);
-        w.board.commit(moveCard(parseBoard(w.editor.getText()), { column: 0, index: 0 }, { column: 1, index: 0 }));
+        w.board.edit({ kind: 'move', at: { column: 0, index: 0 }, card: parseBoard(w.editor.getText()).columns[0].cards[0].text, to: { column: 1, index: 0 } });
         this.idle(300);
         const journal = w.journal.open();
         if (journal) this.waitPromise(journal);

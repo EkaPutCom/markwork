@@ -16,6 +16,9 @@ export function writeTextFile(path: string, text: string): void {
 
 export const fileExists = (path: string): boolean => platform().fs.exists(path);
 
+// An absolute path as a file:// URI, each part percent-encoded.
+export const fileUri = (path: string): string => `file://${path.split('/').map(encodeURIComponent).join('/')}`;
+
 // Move to the Trash (recoverable), not a permanent delete.
 export function trashFile(path: string): void {
     try {

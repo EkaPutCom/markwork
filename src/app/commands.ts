@@ -25,9 +25,21 @@ export interface EditCommands {
 // A view option the commands can change: the GSettings-like boolean settings and source mode.
 export type ViewOption = 'sidebar' | 'chat' | 'dark' | 'autosave' | 'focus' | 'typewriter' | 'source';
 
-// What a command may ask of the application. The window implements it; a test or another frontend can too.
-export interface CommandHost {
+// What a command may ask of the frontend: its editor's edits and its own windows. These commands are carried out by the
+// frontend without asking the core (`runs: 'editor'`), so they stay instant over the app protocol.
+export interface FrontendCommands {
     readonly edit: EditCommands;
+    openFind(withReplace?: boolean): void;
+    showSearch(withReplace?: boolean): void;   // the Search panel, with the selected text as the query
+    setSource(on: boolean): void;              // source mode, in every editor
+    showPalette(): void;
+    showShortcuts(): void;
+    showAbout(): void;
+    quit(): void;
+}
+
+// What a command may ask of the application (`runs: 'core'`). AppSession implements it (AppSession.commands).
+export interface CoreCommands {
     newDocument(): void;
     newBoardDocument(): void;
     newInboxDocument(): void;
@@ -47,15 +59,12 @@ export interface CommandHost {
     insertImage(): Promise<void>;
     toggleBoardView(on: boolean): void;
     setLayout(layout: string): void;
-    setOption(key: ViewOption, value: boolean): void;
-    openFind(withReplace?: boolean): void;
-    showSearch(withReplace?: boolean): void;
+    setOption(key: Exclude<ViewOption, 'source'>, value: boolean): void;
     showPreferences(): void;
-    showPalette(): void;
-    showShortcuts(): void;
-    showAbout(): void;
-    quit(): void;
 }
+
+// Everything a command may ask; a test can implement it whole.
+export type CommandHost = CoreCommands & FrontendCommands;
 
 // When a command applies. 'text' commands need the text editor (not a board or Home), 'document' commands need a
 // document (not Home), 'structured' commands need a board or a list.
@@ -65,12 +74,16 @@ export type CommandScope = 'always' | 'text' | 'document' | 'structured';
 // AppSettings (the frontend keeps its state), or a choice that carries a string.
 export type CommandKind = 'action' | 'toggle' | 'setting' | 'choice';
 
+// Where a command is carried out: in the core, or by the frontend alone (docs/design/protocol.md, section 8).
+export type CommandRunner = 'core' | 'editor';
+
 export interface Command {
     readonly id: string;
     readonly label?: string;                  // listed in the command palette; without one it is not
     readonly keys: readonly string[];         // default keys, "Ctrl+Shift+P" (Ctrl, Alt, Shift, then the key); the first is shown
     readonly kind: CommandKind;
     readonly scope: CommandScope;
+    readonly runs: CommandRunner;
     // A toggle whose state is kept by the application (the view), not by the toggle itself.
     readonly ownsState?: boolean;
     run(host: CommandHost, arg?: boolean | string): void;
@@ -80,7 +93,8 @@ interface Spec {
     label?: string;
     keys?: string[];
     scope?: CommandScope;
-    run?: Command['run'];
+    run?: (host: CoreCommands, arg?: boolean | string) => void;
+    editor?: (host: FrontendCommands, arg?: boolean | string) => void;   // a command the frontend carries out alone
     toggle?: ViewOption | 'kanban-view';
     ownsState?: boolean;
     setting?: boolean;
@@ -91,13 +105,14 @@ const command = (id: string, spec: Spec): Command => ({
     id, label: spec.label, keys: spec.keys ?? [], scope: spec.scope ?? 'always',
     kind: spec.setting ? 'setting' : spec.choice ? 'choice' : spec.toggle ? 'toggle' : 'action',
     ownsState: spec.ownsState,
-    run: spec.run ?? (() => {}),
+    runs: spec.editor ? 'editor' : 'core',
+    run: spec.editor ?? spec.run ?? (() => {}),
 });
 
 const wrap = (id: string, label: string, keys: string[], marker: string) =>
-    command(id, { label, keys, scope: 'text', run: h => h.edit.wrap(marker) });
+    command(id, { label, keys, scope: 'text', editor: h => h.edit.wrap(marker) });
 const table = (id: string, label: string, operation: TableOperation, keys: string[] = []) =>
-    command(id, { label, keys, scope: 'text', run: h => h.edit.table(operation) });
+    command(id, { label, keys, scope: 'text', editor: h => h.edit.table(operation) });
 const option = (id: Exclude<ViewOption, 'dark' | 'source'>, label: string, keys: string[]) => command(id, { label, keys, setting: true });
 const asBoolean = (arg: boolean | string | undefined): boolean => arg === true;
 
@@ -116,29 +131,29 @@ export const COMMANDS: readonly Command[] = [
     command('close-tab', { label: _('Close Tab'), keys: ['Ctrl+w'], run: h => void h.closeTab() }),
     command('next-tab', { label: _('Next Tab'), keys: ['Ctrl+PageDown', 'Ctrl+Tab'], run: h => h.switchTab(1) }),
     command('prev-tab', { label: _('Previous Tab'), keys: ['Ctrl+PageUp', 'Ctrl+Shift+Tab'], run: h => h.switchTab(-1) }),
-    command('find', { label: _('Find'), keys: ['Ctrl+f'], scope: 'text', run: h => h.openFind() }),
-    command('replace', { label: _('Find and Replace'), keys: ['Ctrl+h'], scope: 'text', run: h => h.openFind(true) }),
-    command('search-files', { label: _('Search in All Notes'), keys: ['Ctrl+Shift+f'], run: h => h.showSearch() }),
-    command('replace-files', { label: _('Replace in All Notes'), keys: ['Ctrl+Shift+h'], run: h => h.showSearch(true) }),
+    command('find', { label: _('Find'), keys: ['Ctrl+f'], scope: 'text', editor: h => h.openFind() }),
+    command('replace', { label: _('Find and Replace'), keys: ['Ctrl+h'], scope: 'text', editor: h => h.openFind(true) }),
+    command('search-files', { label: _('Search in All Notes'), keys: ['Ctrl+Shift+f'], editor: h => h.showSearch() }),
+    command('replace-files', { label: _('Replace in All Notes'), keys: ['Ctrl+Shift+h'], editor: h => h.showSearch(true) }),
     // Undo and redo are commands, not editor shortcuts, so they also work while a board is shown.
-    command('undo', { label: _('Undo'), keys: ['Ctrl+z'], scope: 'document', run: h => h.edit.undo() }),
-    command('redo', { label: _('Redo'), keys: ['Ctrl+Shift+z', 'Ctrl+y'], scope: 'document', run: h => h.edit.redo() }),
+    command('undo', { label: _('Undo'), keys: ['Ctrl+z'], scope: 'document', editor: h => h.edit.undo() }),
+    command('redo', { label: _('Redo'), keys: ['Ctrl+Shift+z', 'Ctrl+y'], scope: 'document', editor: h => h.edit.redo() }),
     wrap('bold', _('Bold'), ['Ctrl+b'], '**'),
     wrap('italic', _('Italic'), ['Ctrl+i'], '*'),
     wrap('strike', _('Strikethrough'), ['Alt+Shift+5', 'Ctrl+Shift+x'], '~~'),
     wrap('inline-code', _('Inline Code'), ['Ctrl+`'], '`'),
     wrap('highlight', _('Highlight'), ['Ctrl+Shift+h'], '=='),
-    command('link', { label: _('Insert Link'), keys: ['Ctrl+k'], scope: 'text', run: h => h.edit.link() }),
+    command('link', { label: _('Insert Link'), keys: ['Ctrl+k'], scope: 'text', editor: h => h.edit.link() }),
     command('image', { label: _('Insert Image…'), keys: ['Ctrl+Shift+i'], scope: 'text', run: h => void h.insertImage() }),
-    command('zoom-image', { label: _('Zoom Image'), scope: 'text', run: h => h.edit.zoomImage() }),
-    command('codeblock', { label: _('Insert Code Block'), keys: ['Ctrl+Shift+k'], scope: 'text', run: h => h.edit.block('```\n', '\n```') }),
+    command('zoom-image', { label: _('Zoom Image'), scope: 'text', editor: h => h.edit.zoomImage() }),
+    command('codeblock', { label: _('Insert Code Block'), keys: ['Ctrl+Shift+k'], scope: 'text', editor: h => h.edit.block('```\n', '\n```') }),
     command('table', {
         label: _('Insert Table'), keys: ['Ctrl+t'], scope: 'text',
-        run: h => h.edit.block('| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| ', ' |  |  |\n'),
+        editor: h => h.edit.block('| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| ', ' |  |  |\n'),
     }),
-    command('quote', { label: _('Quote'), keys: ['Ctrl+Shift+q'], scope: 'text', run: h => h.edit.prefix(/^>\s?/, '> ') }),
-    command('ulist', { label: _('Bulleted List'), keys: ['Ctrl+Shift+]'], scope: 'text', run: h => h.edit.prefix(/^[-*+]\s+/, '- ') }),
-    command('olist', { label: _('Numbered List'), keys: ['Ctrl+Shift+['], scope: 'text', run: h => h.edit.prefix(/^\d+[.)]\s+/, '1. ') }),
+    command('quote', { label: _('Quote'), keys: ['Ctrl+Shift+q'], scope: 'text', editor: h => h.edit.prefix(/^>\s?/, '> ') }),
+    command('ulist', { label: _('Bulleted List'), keys: ['Ctrl+Shift+]'], scope: 'text', editor: h => h.edit.prefix(/^[-*+]\s+/, '- ') }),
+    command('olist', { label: _('Numbered List'), keys: ['Ctrl+Shift+['], scope: 'text', editor: h => h.edit.prefix(/^\d+[.)]\s+/, '1. ') }),
     table('table-row-below', _('Table: Add Row Below'), 'row-below'),
     table('table-row-above', _('Table: Add Row Above'), 'row-above'),
     table('table-delete-row', _('Table: Delete Row'), 'delete-row'),
@@ -161,18 +176,18 @@ export const COMMANDS: readonly Command[] = [
     command('send-changes', { label: _('Send Changes as Pull Request…'), run: h => h.sendChanges() }),
     option('sidebar', _('Sidebar'), ['Ctrl+\\', 'Ctrl+Shift+1']),
     option('chat', _('Assistant'), ['Ctrl+Shift+a']),
-    command('source', { label: _('Source Mode'), keys: ['Ctrl+/'], toggle: 'source', run: (h, on) => h.setOption('source', asBoolean(on)) }),
+    command('source', { label: _('Source Mode'), keys: ['Ctrl+/'], toggle: 'source', editor: (h, on) => h.setSource(asBoolean(on)) }),
     option('focus', _('Focus Mode'), ['F8']),
     option('typewriter', _('Typewriter Mode'), ['F9']),
     command('dark', { label: _('Dark Mode'), keys: ['Ctrl+Shift+d'], toggle: 'dark', run: (h, on) => h.setOption('dark', asBoolean(on)) }),
     option('autosave', _('Autosave'), []),
     command('preferences', { label: _('Preferences'), keys: ['Ctrl+,'], run: h => h.showPreferences() }),
-    command('shortcuts', { label: _('Keyboard Shortcuts'), keys: ['Ctrl+?'], run: h => h.showShortcuts() }),
-    command('about', { label: _('About Markwork'), run: h => h.showAbout() }),
-    command('quit', { label: _('Quit'), keys: ['Ctrl+q'], run: h => h.quit() }),
-    command('command-palette', { label: _('Command Palette'), keys: ['Ctrl+Shift+p'], run: h => h.showPalette() }),
+    command('shortcuts', { label: _('Keyboard Shortcuts'), keys: ['Ctrl+?'], editor: h => h.showShortcuts() }),
+    command('about', { label: _('About Markwork'), editor: h => h.showAbout() }),
+    command('quit', { label: _('Quit'), keys: ['Ctrl+q'], editor: h => h.quit() }),
+    command('command-palette', { label: _('Command Palette'), keys: ['Ctrl+Shift+p'], editor: h => h.showPalette() }),
     // Without a label: not in the palette.
-    ...[0, 1, 2, 3, 4, 5, 6].map(level => command(`heading${level}`, { keys: [`Ctrl+${level}`], scope: 'text', run: h => h.edit.heading(level) })),
+    ...[0, 1, 2, 3, 4, 5, 6].map(level => command(`heading${level}`, { keys: [`Ctrl+${level}`], scope: 'text', editor: h => h.edit.heading(level) })),
     // The layout menu of the header bar: the argument is the layout, '' for the text view.
     command('layout', { choice: true, scope: 'document', run: (h, layout) => h.setLayout(String(layout ?? '')) }),
     // A file of the Recent list: the argument is its path.

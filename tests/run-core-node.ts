@@ -9,11 +9,15 @@ import '../src/platform/node/install.js';   // the core reaches the runtime thro
 import './host-node.js';                    // the tests reach the runtime through host(), installed before framework.ts
 import { GREEN, RED, RESET, errorMessage, opt, recordFailure, say, setRoot, summary } from './framework.js';
 import { runCoreTests } from './core-tests.js';
+import { nodePlatformTests } from './unit/nodeplatform.js';
 
 setRoot(import.meta.url);
 
 try {
-    await runCoreTests(opt('only-worktrees') ? 'worktrees' : opt('only-daemon') ? 'daemon' : 'all');
+    const focus = opt('only-worktrees') ? 'worktrees' : opt('only-daemon') ? 'daemon' : 'all';
+    await runCoreTests(focus);
+    // What only the Node runtime has (its settings store and translations).
+    if (focus === 'all') await nodePlatformTests();
 } catch (e) {
     recordFailure();
     say(`${RED}The core tests stopped: ${errorMessage(e)}${RESET}\n${e instanceof Error ? e.stack : ''}`);

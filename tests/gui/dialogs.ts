@@ -11,6 +11,7 @@ import { PreferencesDialog } from '../../src/ui/preferences.js';
 import { CommandPalette } from '../../src/ui/palette.js';
 import { confirmDialog, editCardDialog, editNoteDialog, findDialog, promptDialog } from '../../src/ui/dialogs.js';
 import { parseSchema } from '../../src/markdown/fields.js';
+import { cardText } from '../../src/markdown/noteedit.js';
 import { editSchemaDialog } from '../../src/ui/schemadialog.js';
 import type { GuiContext } from './context.js';
 
@@ -62,7 +63,8 @@ export function dialogTests(c: GuiContext): void {
             button(d, 'Save').emit('clicked');
         });
         eq(seen, { selected: 2, blocked: true }, 'the current option is selected, and the dialog stayed open on a bad value');
-        eq(result?.text, 'Task #x [prioritas:: tinggi] [owner:: Eka] [progres:: 3/5]', 'the other field is kept, the new values are written');
+        // The dialog answers the parts; the text is composed from the card as it is where the edit is applied.
+        eq(result && cardText(result.text, 'Task #x [prioritas:: sedang] [owner:: Eka]'), 'Task #x [prioritas:: tinggi] [owner:: Eka] [progres:: 3/5]', 'the other field is kept, the new values are written');
     });
 
     test('edit note with a schema: fields get controls, the capture time stays as it was', () => {
@@ -72,7 +74,7 @@ export function dialogTests(c: GuiContext): void {
             dropdown.selected = 2;
             button(d, 'Save').emit('clicked');
         });
-        eq(result?.text, 'Idea [created:: 2026-10-07 14:22] [tipe:: bacaan]');
+        eq(result && cardText(result.text, 'Idea [created:: 2026-10-07 14:22]'), 'Idea [created:: 2026-10-07 14:22] [tipe:: bacaan]');
     });
 
     test('fields dialog: a new field gets a name, a type, and options; a taken name blocks saving; existing fields are kept in order', () => {

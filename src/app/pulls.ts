@@ -12,6 +12,7 @@ import { abortLocalMerge, confirmMerged, finishLocalMerge, pendingMerge, preflig
 import { ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest, type RepoRef } from '../forge/types.js';
 import { diffNote, type NoteDiff } from '../markdown/notediff.js';
 import { _, fmt, ngettext } from '../i18n.js';
+import type { Question } from './dialogs.js';
 import { docFor, type DocumentHost } from './document.js';
 
 // One changed file of a pull request: as a note (null when it cannot be shown that way), and as a raw diff.
@@ -44,9 +45,9 @@ export interface PullReviewView {
 
 // The confirmations before merging; tests replace them with immediate answers.
 export interface PullDialogs {
-    merge(pull: PullRequest, method: MergeMethod): Promise<boolean>;
-    local(pull: PullRequest): Promise<boolean>;
-    abort(pull: PullRequest): Promise<boolean>;
+    merge(question: Question): Promise<boolean>;    // merging on the server
+    local(question: Question): Promise<boolean>;    // merging in the work folder
+    abort(question: Question): Promise<boolean>;    // undoing a merge in the work folder
 }
 
 export interface PullHost extends DocumentHost {
@@ -227,7 +228,11 @@ export class PullReviewController {
     async merge(method: MergeMethod): Promise<void> {
         const pull = this.pull, provider = this.access.provider();
         if (!pull || !provider || pull.state !== 'open') return;
-        if (!await this.dialogs.merge(pull, method)) return;
+        if (!await this.dialogs.merge({
+            message: fmt(_('Merge pull request #{number}?'), { number: pull.number }),
+            detail: fmt(_('“{title}” will be merged into {base} on the server with “{method}”. Everybody who uses this repository sees it.'), { title: pull.title, base: pull.baseRef, method: mergeMethodName(method) }),
+            accept: _('Merge'),
+        })) return;
         const { pullView } = this.host;
         pullView.setBusy(true);
         try {
@@ -333,7 +338,11 @@ export class PullReviewController {
         if (pending) return this.carryOn(pull, folder, pending);
         const problem = await preflight(this.git, folder, pull.baseRef);
         if (problem) return this.host.toast(problem);
-        if (!await this.dialogs.local(pull)) return;
+        if (!await this.dialogs.local({
+            message: fmt(_('Merge pull request #{number} in this folder?'), { number: pull.number }),
+            detail: fmt(_('Markwork will merge it into your {base}. Files that conflict get conflict markers; you edit them in their tabs and then finish, which pushes the result to the server. “Abort merge” undoes it.'), { base: pull.baseRef }),
+            accept: _('Merge Here'),
+        })) return;
         const merge = await this.mergeFor(pull, folder);
         if (typeof merge === 'string') return this.host.toast(merge);
         const started = await startLocalMerge(this.git, merge);
@@ -372,7 +381,11 @@ export class PullReviewController {
     async abort(): Promise<void> {
         const local = this.local, pull = this.pull, folder = this.host.root();
         if (!local || !pull || !folder || local.merge.pull !== pull.number) return;
-        if (!await this.dialogs.abort(pull)) return;
+        if (!await this.dialogs.abort({
+            message: fmt(_('Undo the merge of pull request #{number}?'), { number: pull.number }),
+            detail: _('The folder goes back to what it was before. Your edits to the conflicting files are lost.'),
+            accept: _('Undo the Merge'), destructive: true,
+        })) return;
         const result = await abortLocalMerge(this.git, folder, local.before);
         if (!result.ok) return this.host.toast(result.message);
         this.local = null;

@@ -12,7 +12,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango';
 import { addDays, addMonths, monthOf, monthWeeks, startOfWeek, weekDays } from '../markdown/dates.js';
-import { calendarData, moveToDate, textForDate, type CalendarData, type CalendarItem } from '../markdown/calendar.js';
+import { calendarData, type CalendarData, type CalendarItem } from '../markdown/calendar.js';
 import type { Position } from '../markdown/kanban.js';
 import { onChipClick, removeChildren } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
@@ -159,7 +159,7 @@ export class CalendarView extends LayoutView {
             cell.append(more);
         }
         if (data.key) {
-            onChipClickBackground(cell, () => this.showAddNote(text => textForDate(text, date, this.board, this.schema())));
+            onChipClickBackground(cell, () => this.showAddNote(date));
             this.acceptDrop(cell, at => this.schedule(at, date), over => this.mark(cell, over));
             cell.set_tooltip_text(_('Double-click to add a note on this day'));
         }
@@ -168,7 +168,7 @@ export class CalendarView extends LayoutView {
 
     // The dragged note is put on `date`, or taken off the calendar for an empty date.
     private schedule(at: Position, date: string): boolean {
-        this.commit(moveToDate(this.board, at, date, this.schema()));
+        this.edit({ kind: 'date', ...this.ref(at), date });
         return true;
     }
 
