@@ -5,7 +5,7 @@
 
 import type { AppSettings, SidebarPage } from '../settings.js';
 import { WorkspaceRepository } from '../workspace.js';
-import { fileExists, fileUri, insideName } from '../files.js';
+import { fileUri, insideName } from '../files.js';
 import { platform } from '../platform/index.js';
 import { after, type Awaitable } from '../awaitable.js';
 import { WELCOME } from '../welcome.js';
@@ -16,7 +16,7 @@ import { PullReviewController, type PullDialogs, type PullHost } from './pulls.j
 import { JournalController, type JournalDialogs, type JournalHost } from './journal.js';
 import { HarnessController, type HarnessDialogs, type HarnessHost } from './harness.js';
 import { HarnessReviewController, type ReviewDialogs, type ReviewHost } from './harnessreview.js';
-import { HomeController, type HomeHost } from './home.js';
+import { HomeController, existingRecent, type HomeHost } from './home.js';
 import { ViewController, type ViewDialogs, type ViewHost } from './views.js';
 import { NoteLinks, type NoteHost } from './notes.js';
 import { DocumentController, type DocumentsHost } from './documents.js';
@@ -355,13 +355,16 @@ export class AppSession<E extends TextEditor> {
     }
 
     private applyFolder(absolute: string, show: boolean): true {
+        this.settings.useWorkspace(absolute);
         this.files.setRoot(absolute);
+        this.refreshRecent();
         this.workspace.warm(absolute);
         this.files.reveal(this.shownFile());
         this.syncHistory();
         this.pulls.folderChanged();
         void this.collab.setFolder(absolute);
         this.settings.folder = absolute;
+        this.harness.folderChanged();
         const page = this.documents.page;
         if (page?.kind === 'home') this.refreshTitle(page.id);
         this.refreshHome();
@@ -536,8 +539,7 @@ export class AppSession<E extends TextEditor> {
 
     // The Recent list of the menus: the last files that still exist.
     private refreshRecent(): void {
-        const { fs } = platform();
-        this.frontend.host.setRecent(this.settings.recentFiles.filter(r => fileExists(r.path) && !fs.isDirectory(r.path)).slice(0, 5).map(r => r.path));
+        this.frontend.host.setRecent(existingRecent(this.settings.recentFiles, this.files.root).slice(0, 5).map(r => r.path));
     }
 
     // Redraw Home if it is shown; the data is recomputed from the files every time.
