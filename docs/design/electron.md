@@ -1,10 +1,12 @@
 # Arsitektur Markwork dan jalan menuju Electron
 
-17 Oktober 2026 · Eka Putra · salinan dari [doc Claude](https://claude.ai/code/artifact/86001ae8-365a-41e1-b0b5-cf4e07c2ef3b)
+17 Oktober 2026, diperbarui 18 Oktober 2026 · Eka Putra · salinan dari [doc Claude](https://claude.ai/code/artifact/86001ae8-365a-41e1-b0b5-cf4e07c2ef3b)
 
 ## Ringkasan
 
-Fondasi untuk frontend kedua sudah selesai, tetapi protokol yang dibutuhkan Electron belum ditulis satu baris pun. Core sudah berjalan di Node (632 tes core lulus di Node v24), dan `AppSession` sudah memegang semua keputusan aplikasi. Antarmuka ke frontend juga sudah hanya menerima data biasa.
+Fondasi untuk frontend kedua sudah selesai, tetapi protokol yang dibutuhkan Electron belum ditulis satu baris pun. Core sudah berjalan di Node (706 tes core lulus di Node v24), dan `AppSession` sudah memegang semua keputusan aplikasi. Antarmuka ke frontend juga sudah hanya menerima data biasa.
+
+Sejak versi pertama dokumen ini, tiga celah core sudah ditutup: perintah editor (`markdown/editcommands.ts`), parser highlight (`markdown/highlight.ts`), dan port Node untuk macOS dan Windows (folder pengguna, `PATHEXT`, Trash, keyring, terminal). Sisanya ada di bagian [Status celah](#status-celah-diperbarui-18-oktober-2026).
 
 Electron tidak memerlukan sidecar terpisah karena sudah membawa Node. Core cukup berjalan di *utility process* dan berbicara dengan renderer lewat `MessagePort`. Pekerjaan yang tersisa adalah lapisan `app/protocol/`, entry point untuk utility process, dan frontend web-nya sendiri, termasuk perintah editor untuk CodeMirror.
 
@@ -56,7 +58,7 @@ Urutannya: protokol diuji dulu tanpa UI, lalu satu irisan tipis dari ujung ke uj
 0. **Putuskan arah.**
    - `AGENT.md` mewajibkan GNOME HIG dan menolak tampilan bergaya web atau Electron. Aturan ini perlu ditulis ulang untuk frontend Electron, misalnya hanya berlaku bagi frontend GTK.
    - Pilih editor (CodeMirror 6 adalah kandidat yang disebut dokumen protokol) dan framework UI renderer.
-   - Platform target: Linux, macOS, dan Windows. Di Linux, `secret-tool` cukup untuk keyring; macOS dan Windows butuh implementasi `Secrets` lain di `platform/node`.
+   - Platform target: Linux, macOS, dan Windows. Di Linux, `secret-tool` cukup untuk keyring. Di macOS dan Windows port Node memberi jawaban "keyring tidak ada", sehingga kredensial memakai file konfigurasi; frontend Electron mengganti `Secrets` dengan `safeStorage`.
 1. **Inti protokol, tanpa UI** (`src/app/protocol/`).
    - `messages.ts`: tipe semua pesan (request, reply, notice) sesuai bagian 4.2.
    - `replica.ts`: teks dan versi dokumen di core, `ProtocolEditor` yang mengimplementasikan `TextEditor`, termasuk `doc.edit`, `doc.replace` dengan `base`, dan `conflict`.
@@ -70,13 +72,13 @@ Urutannya: protokol diuji dulu tanpa UI, lalu satu irisan tipis dari ujung ke uj
    - Memasang `platform/node`, membuat `AppSession`, dan menyambungkan `server.ts` ke `MessagePort` (satu objek per post, tanpa framing baris).
    - Membundel teks schema GSettings untuk `JsonSettingsStore` dan menyertakan katalog `.mo` untuk `platform/node/i18n.ts`.
    - Dibangun lewat konfigurasi Vite untuk Node, seperti `vite.node.config.ts`.
-   - Membuat `platform/node` jalan di macOS dan Windows, karena saat ini masih mengasumsikan Linux:
-     - `Secrets` memakai `secret-tool`; ganti dengan `safeStorage` milik Electron atau keychain OS (Keychain macOS, Credential Manager Windows).
-     - `configDir`, `runtimeDir`, dan folder data memakai jalur XDG (`~/.config`, `~/.cache`, `~/.local/share`); pakai jalur OS, misalnya dari `app.getPath` yang diteruskan ke core.
-     - Memindahkan ke Trash menulis Trash freedesktop (`platform/node/files.ts`); pakai `shell.trashItem` atau API OS.
-     - Pencarian executable (`platform/node/process.ts`) mengasumsikan pemisah `/` dan tanpa `PATHEXT`, jadi `git.exe` di Windows tidak ketemu.
-     - Audit path di core: pemisah `\` dan huruf drive Windows, serta perbandingan path yang tidak membedakan huruf besar-kecil di macOS dan Windows.
-     - Jalankan `npm run test:core:node` di CI untuk ketiga OS.
+   - Membuat `platform/node` jalan di macOS dan Windows. Sebagian besar sudah dikerjakan (`bf52388`, `Platform.os`); yang tersisa:
+     - `Secrets`: di luar Linux port Node tidak punya keyring (jawaban "tidak ada"). Ganti dengan `safeStorage` milik Electron, diteruskan dari main process, atau keychain OS.
+     - Jalur: `platform/node/dirs.ts` sudah memakai XDG di Linux, `~/Library` di macOS, dan `%APPDATA%`/`%LOCALAPPDATA%` di Windows. Electron boleh menimpanya dengan `app.getPath`.
+     - Trash: `~/.Trash` di macOS dan Recycle Bin lewat PowerShell di Windows sudah ada, tetapi belum dijalankan di sistem itu. Boleh diganti dengan `shell.trashItem`.
+     - Pencarian executable sudah memakai `PATHEXT` dan `%APPDATA%\npm` di Windows (`programNames`).
+     - Audit path di core: `fileUri` dan pengecekan path absolut sudah sadar Windows (`2598a59`, `3fccae9`). Masih diaudit: sisa `startsWith('/')` dan `split('/')` (lihat tabel celah); perbandingan path yang tidak membedakan huruf besar-kecil di macOS dan Windows.
+     - Jalankan `npm run test:core:node` di CI untuk ketiga OS. `tests/unit/crossos.ts` menguji bagian murni di sistem mana pun, tetapi Trash macOS, panggilan PowerShell, dan terminal belum dijalankan di sistem aslinya.
 4. **Kerangka Electron.**
    - Main process: membuat `BrowserWindow`, menjalankan core dengan `utilityProcess.fork`, membuat `MessageChannelMain`, dan mengirim satu port ke core dan satu ke renderer.
    - Preload: menyerahkan port ke renderer lewat `contextBridge`, dengan `contextIsolation` aktif, `sandbox` aktif, dan `nodeIntegration` mati.
@@ -86,10 +88,11 @@ Urutannya: protokol diuji dulu tanpa UI, lalu satu irisan tipis dari ujung ke uj
    - Di irisan ini juga diukur pertanyaan terbuka bagian 16: undo dari dua sisi di CodeMirror, interval penggabungan edit 100 ms, dan seberapa ketat rebase.
 6. **Editor di renderer.**
    - Konversi offset UTF-16 (CodeMirror) ke code point (protokol) di tepi editor.
-   - Tulis ulang perintah editor (`editor/editing.ts`, `editor/tableedit.ts`, indentasi list) untuk CodeMirror, sebaiknya setelah logika teksnya dipisahkan dari `Gtk.TextBuffer` supaya bisa dipakai bersama.
-   - Highlight Markdown, popover `[[` dari cache jawaban `ask.notes`, dan menu milik view.
+   - Adaptor CodeMirror untuk perintah editor. Logika teksnya sudah murni di `markdown/editcommands.ts` dan adaptor GTK-nya di `editor/textedit.ts`; yang tersisa hanya adaptor CodeMirror.
+   - Highlight Markdown: parser dan cache barisnya sudah di `markdown/highlight.ts` (generik terhadap gaya editor, diuji di GJS dan Node). CodeMirror cukup memberi gaya per nama sintaks (`Styles<T>`) dan menyambungkan baris editor lewat `TextLines`.
+   - Popover `[[` dari cache jawaban `ask.notes`, dan menu milik view.
 7. **Semua view dan ask, satu controller demi satu controller.**
-   - Board, list, table, calendar, timeline, gallery, chart, Assistant dan log agent, history, search, outline, preferences.
+   - Board, list, table, calendar, timeline, gallery, chart, tab CSV (`ui/csvpage.ts`, tabel yang bisa diedit), tab halaman HTML (`ui/htmlpage.ts`, kini di WebKitGTK dengan sandbox; di Electron pakai iframe `sandbox` atau `webview` dengan aturan yang sama: skrip tidak boleh membuka tautan atau memuat jaringan tanpa konfirmasi), Assistant dan log agent, history, search, outline, preferences.
    - Setiap view dicek perilakunya terhadap frontend GTK sebagai rujukan.
    - Setelah itu: packaging (electron-builder atau Forge), pembaruan otomatis, dan pengujian di Linux, macOS, dan Windows, termasuk tanda tangan kode di Windows serta notarisasi di macOS.
 
@@ -115,9 +118,9 @@ Apa pun pilihannya, langkah pertamanya sama: memisahkan logika teks dari `Gtk.Te
 
 ## Risiko dan pertanyaan terbuka
 
-- **Perintah editor ditulis dua kali.** Perintah editor masih terikat ke `Gtk.TextBuffer`. Tanpa pemisahan logika teks dulu, setiap perbaikan harus dilakukan di GTK dan CodeMirror. *Pembaruan 17 Oktober 2026: logika teks sudah dipisah ke `src/markdown/editcommands.ts`, dan adaptor GTK-nya ada di `src/editor/textedit.ts`. Adaptor CodeMirror menyusul.*
+- **Perintah editor dan highlighter ditulis dua kali.** Risiko ini sudah dikurangi: logika teks perintah ada di `src/markdown/editcommands.ts` dan parser highlight di `src/markdown/highlight.ts`, keduanya murni; GTK memakai adaptor tipis (`editor/textedit.ts`, `editor/highlighter.ts`, 32 baris). Yang masih berpotensi ditulis dua kali adalah perilaku di atas adaptor: menyembunyikan sintaks di baris yang tidak aktif, lapisan kode, tabel, gambar, dan konflik (`editor/*layer.ts`).
 - **Perilaku yang berbeda dari GTK.** Frontend GTK tetap menjadi rujukan. Tanpa skenario yang dijalankan di kedua sisi (bagian 12), perbedaan kecil seperti undo langkah kartu atau rebase yang ditolak akan lolos.
-- **Keyring dan jalur di macOS dan Windows.** `platform/node` memakai `secret-tool`. Karena macOS dan Windows juga target, implementasi `Secrets` itu gagal dan perlu diganti (misalnya dengan `safeStorage` milik Electron atau keychain OS). Jalur XDG, Trash freedesktop, dan pencarian executable juga masih mengasumsikan Linux (lihat tahap 3).
+- **Keyring di macOS dan Windows.** `secret-tool` hanya dipakai di Linux. Di sistem lain port Node tidak punya keyring, jadi kunci API disimpan di file konfigurasi sampai frontend memasang `safeStorage` atau keychain OS. Jalur, Trash, dan pencarian executable sudah mengenal ketiga sistem (lihat tahap 3), tetapi bagian macOS dan Windows belum dijalankan di sistem aslinya.
 - **Ukuran dokumen.** Seluruh teks dikirim saat `doc.open`. Untuk file beberapa MB ini masih wajar, tetapi perlu diukur di irisan pertama.
 - **Satu jendela per core.** Beberapa jendela Electron butuh satu utility process per jendela, atau kepemilikan dokumen per jendela. Untuk versi awal, cukup satu jendela.
 - **Kebijakan desain.** Selama `AGENT.md` mewajibkan GNOME HIG untuk semua antarmuka, frontend Electron bertentangan dengan aturan proyek sendiri. Ini harus diputuskan sebelum tahap 4.
@@ -128,20 +131,25 @@ Risiko pertama, perintah editor ditulis dua kali, terlihat seperti ini. Perintah
 
 Kalau logikanya dipisah menjadi fungsi murni (teks dan seleksi masuk, edit dan posisi kursor keluar), GTK dan CodeMirror cukup menyediakan adaptor tipis. Fungsi murni itu bisa diuji di Node seperti core lainnya.
 
-## Celah yang belum tercatat (audit 17 Oktober 2026)
+## Status celah (diperbarui 18 Oktober 2026)
 
-Audit seluruh codebase menemukan celah yang belum masuk tahapan di atas. Sebagian besar juga berguna untuk frontend GTK dan bisa diuji di Node, jadi bisa dikerjakan sebelum protokol.
+Audit 17 Oktober 2026 menemukan sembilan celah di luar tahapan di atas. Berikut keadaannya menurut kode saat ini.
 
-| Celah | Di mana | Yang dibutuhkan |
+| Celah | Status | Keterangan |
 | --- | --- | --- |
-| Peluncuran terminal khusus GNOME ada di core | `src/app/harnessreview.ts` (`kgx`, `ptyxis`, `gnome-terminal`, `xdg-terminal-exec`) | Layanan frontend atau platform, misalnya `openTerminal(folder, command?)`; di macOS dan Windows tidak ada satu pun yang ketemu |
-| `fileUri()` mengasumsikan path POSIX | `src/files.ts` | URI `file:///C:/…` untuk path Windows, lewat port atau fungsi yang sadar huruf drive |
-| Pengecekan path absolut memakai `startsWith('/')` | `src/agent/harness.ts`, `src/app/harness.ts`, `src/agent/worktree.ts` | `platform().paths.isAbsolute`; sisanya (±59 tempat `split('/')` atau `'/'` di core) diaudit, karena path relatif repo dan git memang benar memakai `/` |
-| Logika highlighter terikat GTK | `src/editor/highlighter.ts` (markers, spans, headings, gambar, blok kode, tabel, langsung lewat `Gtk.TextIter`) | Pisahkan parse menjadi fungsi murni (teks masuk, spans dan markers keluar), seperti `editcommands.ts`; tanpa itu CodeMirror menulis ulang highlight dan perilaku menyembunyikan sintaks |
-| Rendering inline hanya ke Pango markup | `src/markdown/pango.ts`, `src/markdown/chatmarkup.ts` (kartu kanban, inbox, tabel, chat) | Padanan HTML yang aman untuk renderer; `src/markdown/html.ts` saat ini hanya untuk ekspor |
-| Katalog `.mo` dan schema GSettings hanya dibangun meson | `po/`, `data/com.ekaput.Markwork.gschema.xml` | Langkah build sendiri untuk Electron (`po/LINGUAS` masih kosong, jadi belum mendesak) |
-| `markworkd` hanya untuk Linux | `markworkd/contrib/` (systemd, Docker); `runtimeDir` jatuh ke `~/.cache` tanpa XDG | Cara menjalankan daemon dan jalur socket di macOS dan Windows |
-| Belum ada CI | tidak ada `.github/` | `npm run test:core:node` di Linux, macOS, dan Windows (syarat tahap 3) |
-| Dependensi Electron belum ada | `package.json` | `electron`, CodeMirror 6, framework UI renderer, dan electron-builder atau Forge |
+| Peluncuran terminal khusus GNOME ada di core | selesai | Daftar terminal (GNOME di Linux, Terminal di macOS, Windows Terminal lalu cmd di Windows) ada di `platform/terminals.ts`, dipakai kedua port lewat `platform().processes.openTerminal(folder, command)`. `app/harnessreview.ts` hanya memanggilnya. Frontend yang punya terminal sendiri (Electron, TUI) cukup menggantinya |
+| `fileUri()` mengasumsikan path POSIX | selesai | `src/files.ts` menangani `C:\` dan `C:/` menjadi `file:///C:/…` (`2598a59`) |
+| Pengecekan path absolut memakai `startsWith('/')` | selesai | Core memakai `platform().paths.isAbsolute` (`3fccae9`). Sisa `startsWith('/')` sengaja: path POSIX di mesin remote (`app/harness.ts`, `agent/worktree.ts`), nama dalam repo (`agent/changes.ts`, `forge/contribute.ts`), dan URL (`markdown/htmlview.ts`, `lint.ts`). `ui/gallery.ts` memakai `GLib.path_is_absolute`. `split('/')` yang tersisa memecah nama relatif dalam folder kerja, yang memang memakai `/`. Dokumen yang sedang dibuka kini dicari lewat `platform().paths.same(a, b)` (tidak membedakan huruf besar-kecil di macOS dan Windows, dan tidak peduli `.`/`..`), bukan `===`. `paths.relative` mengikuti `node:path`: tidak membedakan huruf di Windows, membedakan di macOS |
+| Logika highlighter terikat GTK | selesai | Parser, re-parse inkremental, dan cache baris ada di `markdown/highlight.ts` (`04008b9`); `editor/highlighter.ts` tinggal adaptor `GtkTextBuffer`. Tes: `tests/unit/highlight.ts` di GJS dan Node |
+| Rendering inline hanya ke Pango markup | selesai | `markdown/inlineruns.ts` memotong satu baris inline menjadi run teks dengan gaya yang sudah digabung; `pango.ts` dan `inlinehtml.ts` (HTML aman untuk `innerHTML`, kelas tanpa warna) hanyalah dua penyaji dari run yang sama. Jawaban asisten: `chatblocks.ts` memecah per baris, `chatmarkup.ts` dan `chathtml.ts` menyajikannya. Penyaji ANSI untuk TUI tinggal satu fungsi lagi di atas `inlineRuns`. Tes: `tests/unit/inlinehtml.ts` |
+| Katalog `.mo` dan schema GSettings hanya dibangun meson | terbuka | `JsonSettingsStore` membaca schema (`data/com.ekaput.Markwork.gschema.xml`) lewat `platform/node/settings.ts`; yang belum ada hanyalah langkah build untuk membundelnya di Electron. `po/LINGUAS` masih kosong, jadi belum mendesak |
+| `markworkd` hanya untuk Linux | terbuka | Di Go: `internal/server/peer.go` memakai `SO_PEERCRED` dan `syscall.Ucred` (Linux saja, build macOS gagal), `internal/runner` memakai `Setpgid`/`Kill(-pgid)`, `internal/daemonize` memakai `Setsid`/`Flock`, dan `config/paths.go` memakai XDG. macOS butuh file `peer_darwin.go` (`LOCAL_PEERCRED`) dan jalur sendiri; Windows butuh Job Object, pipe atau socket, dan kunci file lain, atau dijalankan tanpa daemon lokal (run berhenti saat aplikasi ditutup) dengan daemon di VPS atau WSL lewat SSH |
+| Belum ada CI | terbuka | Tidak ada `.github/`. Syarat tahap 3: `npm run test:core:node` di Linux, macOS, dan Windows, ditambah `go vet`/`go build` dengan `GOOS=darwin` untuk daemon |
+| Dependensi Electron belum ada | terbuka | `electron`, CodeMirror 6, framework UI renderer, dan electron-builder atau Forge |
 
-Urutan yang disarankan: pisahkan parse highlighter dan rapikan path di core lebih dulu, lalu protokol tahap 1 (`messages.ts`, `replica.ts`, tes fuzz), lalu irisan board dari ujung ke ujung.
+Yang baru sejak audit dan relevan bagi Electron:
+
+- **Tab CSV dan tab halaman HTML** (`ui/csvpage.ts`, `ui/htmlpage.ts`) menambah dua view yang perlu padanan di renderer (tahap 7). Model datanya sudah murni di `markdown/csv.ts`, `markdown/htmlview.ts`, dan `markdown/html.ts`.
+- **Isolasi data per folder kerja** (`88dc3b5`): data aplikasi tiap folder kerja terpisah. Utility process yang melayani satu jendela dan satu folder cocok dengan model ini.
+
+Urutan yang disarankan: CI tiga OS, lalu protokol tahap 1 (`messages.ts`, `replica.ts`, tes fuzz), lalu irisan board dari ujung ke ujung. Pekerjaan Electron tetap kontingensi sampai ada permintaan dari macOS atau Windows (lihat `AGENT.md`).
