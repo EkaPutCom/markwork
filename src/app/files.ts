@@ -11,6 +11,7 @@ import { newList } from '../markdown/inbox.js';
 import { newTable } from '../markdown/tablelayout.js';
 import { newBoard, serializeBoard } from '../markdown/kanban.js';
 import { after, type Awaitable } from '../awaitable.js';
+import { isHtmlFile } from '../markdown/htmlview.js';
 import { _, fmt } from '../i18n.js';
 import { errorMessage, type DocumentHost } from './document.js';
 
@@ -20,6 +21,7 @@ const SKIPPED_FOLDERS = new Set(['node_modules']);
 const REFRESH_DELAY = 150;  // ms; consecutive changes on disk are merged into one refresh
 
 export const isMarkdownFile = (name: string): boolean => MARKDOWN_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
+export { isHtmlFile };
 export const isImageFile = (name: string): boolean => IMAGE_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
 
 // One file or folder as the tree shows it.
@@ -46,7 +48,7 @@ function entryKind(path: string, kind: string): 'dir' | 'file' | null {
     return platform().fs.isDirectory(path) ? 'dir' : platform().fs.exists(path) ? 'file' : null;
 }
 
-// The contents of one folder displayed in the tree, already sorted: folders, Markdown files, and images; no dot files
+// The contents of one folder displayed in the tree, already sorted: folders, Markdown files, HTML files, and images; no dot files
 // and no node_modules. Empty when the folder is gone or cannot be read.
 export function listFolder(path: string): FolderEntry[] {
     const { fs, paths } = platform();
@@ -57,7 +59,7 @@ export function listFolder(path: string): FolderEntry[] {
         if (info.name.startsWith('.') || SKIPPED_FOLDERS.has(info.name)) continue;
         const full = paths.join(path, info.name);
         const kind = entryKind(full, info.kind);
-        if (!kind || (kind === 'file' && !isMarkdownFile(info.name) && !isImageFile(info.name))) continue;
+        if (!kind || (kind === 'file' && !isMarkdownFile(info.name) && !isImageFile(info.name) && !isHtmlFile(info.name))) continue;
         entries.push({ name: info.name, path: full, isDir: kind === 'dir' });
     }
     return entries.sort(compareEntries);
@@ -167,11 +169,11 @@ export class FilesController {
         return true;
     }
 
-    // Copy files from outside (a file manager) into dir. Only folders, Markdown files, and images are copied, since
+    // Copy files from outside (a file manager) into dir. Only folders, Markdown files, HTML files, and images are copied, since
     // other files would not show in the tree.
     copyInto(sources: string[], dir: string): boolean {
         const { fs, paths } = platform();
-        const accepted = sources.filter(p => fs.isDirectory(p) || isMarkdownFile(p) || isImageFile(p));
+        const accepted = sources.filter(p => fs.isDirectory(p) || isMarkdownFile(p) || isImageFile(p) || isHtmlFile(p));
         let last: string | null = null;
         for (const source of accepted) {
             const copied = this.attempt(() => copyEntry(source, dir));
@@ -180,7 +182,7 @@ export class FilesController {
         }
         if (accepted.length < sources.length) {
             const skipped = sources.filter(p => !accepted.includes(p)).map(p => paths.basename(p)).join(', ');
-            this.dialogs.error(fmt(_('Only folders, Markdown files, and images can be added. Skipped: {names}'), { names: skipped }));
+            this.dialogs.error(fmt(_('Only folders, Markdown files, HTML files, and images can be added. Skipped: {names}'), { names: skipped }));
         }
         if (!last) return false;
         this.refresh(dir);

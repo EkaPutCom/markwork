@@ -424,6 +424,12 @@ export async function confirmDialog(parent: Gtk.Window | null, message: string, 
     return await alert(parent, message, detail ?? null, [_('Cancel'), _('Delete')], 0, 1, 1) === 1;
 }
 
+// A page in the HTML viewer asked to open a link: show the whole address and let the user decide, since a page can build
+// an address that carries what it knows.
+export async function confirmOpenLink(parent: Gtk.Window | null, uri: string): Promise<boolean> {
+    return await alert(parent, _('Open this link in your browser?'), uri, [_('Cancel'), _('Open')], 0, 1) === 1;
+}
+
 // ---------- Dialogs for the external harness ----------
 
 // Long text (a question or the harness's last answer) that can be selected and scrolled.

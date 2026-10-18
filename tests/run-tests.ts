@@ -5,6 +5,7 @@
 //   gjs -m dist/run-tests.js --no-gui                only the Markdown → HTML conversion tests
 //   gjs -m dist/run-tests.js --only-agents          only the GUI tests of agents on another machine (needs a display)
 //   gjs -m dist/run-tests.js --only-harness         only the GUI tests of kanban cards worked on by a fake pi (needs a display)
+//   gjs -m dist/run-tests.js --only-html           only the GUI tests of an HTML page in its tab (needs a display)
 //   gjs -m dist/run-tests.js --only-history         only the GUI tests of the History tab and the history viewer (needs a display)
 //   gjs -m dist/run-tests.js --only-worktrees        only the harness queue and the worktree per card (real git, no display)
 //   gjs -m dist/run-tests.js --only-daemon           only the markworkd client tests (the live part needs Go to build the daemon)
@@ -57,6 +58,7 @@ import { imageTests } from './gui/image.js';
 import { imageZoomTests } from './gui/imagezoom.js';
 import { codeColorTests } from './gui/codecolor.js';
 import { mermaidTests } from './gui/mermaid.js';
+import { htmlPageTests } from './gui/htmlpage.js';
 import { tableGridTests } from './gui/table.js';
 import { codeBlockTests } from './gui/codeblock.js';
 import { conflictLayerTests } from './gui/conflicts.js';
@@ -159,6 +161,11 @@ function runGuiTests(app: Adw.Application): void {
         closeMain(c);
         return;
     }
+    if (opt('only-html')) {
+        htmlPageTests(c);
+        closeMain(c);
+        return;
+    }
     if (opt('only-folder-mouse')) {
         folderMouseTests(c);
         closeMain(c);
@@ -179,6 +186,7 @@ function runGuiTests(app: Adw.Application): void {
     codeBlockTests(c);
     conflictLayerTests(c);
     mermaidTests(c);
+    htmlPageTests(c);
     kanbanBoardTests(c);
     inboxTests(c);
     tableLayoutGuiTests(c);

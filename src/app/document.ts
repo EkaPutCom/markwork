@@ -35,19 +35,30 @@ export interface ToastAction { label: string; run: () => void }
 // The same button as the frontend gets it: a token it reports back through AppSession.toastActivated.
 export interface ToastButton { label: string; token: number }
 
-// One open document (one tab). The file and Home flag change only through the document controller; the view and
-// autosave state of a document is kept by the controllers that own it.
+// One open document (one tab). The file changes only through the document controller; the view and autosave state of a
+// document is kept by the controllers that own it. A tab that is not a document (Home, an HTML page) is a Page.
 export interface Doc<E extends TextEditor = TextEditor> {
     readonly id: number;
     readonly editor: E;
     readonly file: string | null;          // document path, null = never saved
-    readonly home: boolean;                // Home tab: its editor is unused, the tab contents are the Home view
+}
+
+// A tab whose contents are a view, not a text: Home, or an HTML file shown in its sandbox. It has an id from the same
+// numbering as the documents, so the tab row can name either. It has no editor, nothing to save, and is closed without asking.
+export type PageKind = 'home' | 'html';
+
+export interface Page {
+    readonly id: number;
+    readonly kind: PageKind;
+    readonly file: string | null;          // html: the file shown; home: null
+    readonly root: string | null;          // html: the folder the page may read (the work folder, or its own folder)
 }
 
 // The part of the window every controller needs: the open documents and the work folder.
 export interface DocumentHost<E extends TextEditor = TextEditor> {
     root(): string | null;                      // the work folder shown in the Files tab
     active(): Doc<E>;
+    page(): Page | null;                        // the page (Home, an HTML file) shown instead of the active document
     docs(): readonly Doc<E>[];
     openInTab(path: string): boolean;
     toast(message: string, action?: ToastAction): void;

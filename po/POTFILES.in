@@ -19,6 +19,7 @@ src/ui/history.ts
 src/ui/historyviewer.ts
 src/ui/home.ts
 src/ui/imageviewer.ts
+src/ui/htmlpage.ts
 src/ui/inbox.ts
 src/ui/kanban.ts
 src/ui/logdetail.ts

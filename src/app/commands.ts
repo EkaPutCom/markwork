@@ -201,16 +201,16 @@ export const commandIds = (scope: CommandScope): string[] => COMMANDS.filter(c =
 
 // What the application is showing, as far as the commands care.
 export interface CommandState {
-    readonly home: boolean;         // the Home tab: no text, nothing to save
+    readonly page: boolean;         // a tab that is not a document (Home, an HTML file): no text, nothing to save
     readonly structured: boolean;   // a board, list, table, or another structured page
 }
 
 // Whether a command applies to the current view (the enabled hook the frontends map onto their menu items).
 export function commandEnabled(command: Pick<Command, 'scope'>, state: CommandState): boolean {
     switch (command.scope) {
-        case 'text': return !(state.structured || state.home);
-        case 'document': return !state.home;
-        case 'structured': return state.structured && !state.home;
+        case 'text': return !(state.structured || state.page);
+        case 'document': return !state.page;
+        case 'structured': return state.structured && !state.page;
         default: return true;
     }
 }

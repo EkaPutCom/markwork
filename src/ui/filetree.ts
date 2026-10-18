@@ -16,7 +16,7 @@ import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import { onClick, pack, type Awaitable } from '../gtkutil.js';
 import { popupMenu, separator, type MenuEntry } from './menu.js';
-import { isImageFile, type FileTreeView, type FolderEntry, type NewKind } from '../app/files.js';
+import { isHtmlFile, isImageFile, type FileTreeView, type FolderEntry, type NewKind } from '../app/files.js';
 import { _ } from '../i18n.js';
 
 const EXPAND_DELAY = 600;   // ms; a closed folder opens automatically if held over during a drag
@@ -112,7 +112,7 @@ export class FileTree implements FileTreeView {
             const expander = listItem.child as Gtk.TreeExpander;
             expander.set_list_row(row);
             const box = expander.get_child() as Gtk.Box;
-            (box.get_first_child() as Gtk.Image).icon_name = node.isDir ? 'folder-symbolic' : isImageFile(node.name) ? 'image-x-generic-symbolic' : 'text-x-generic-symbolic';
+            (box.get_first_child() as Gtk.Image).icon_name = node.isDir ? 'folder-symbolic' : isImageFile(node.name) ? 'image-x-generic-symbolic' : isHtmlFile(node.name) ? 'web-browser-symbolic' : 'text-x-generic-symbolic';
             (box.get_last_child() as Gtk.Label).label = node.name;
         });
         return factory;

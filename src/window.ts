@@ -43,13 +43,14 @@ import { TabBar } from './ui/tabbar.js';
 import { HeaderBar, LAYOUT_CHOICES } from './ui/headerbar.js';
 import type { Palette } from './colors.js';
 import { applyTheme, systemPrefersDark } from './ui/theme.js';
-import { askSaveChanges, chooseFile, closeAgentsDialog, confirmDialog, decideDialog, harnessAskDialog, harnessTextDialog, machineDialog, mergeDialog, promptDialog, showAbout, showError } from './ui/dialogs.js';
+import { askSaveChanges, chooseFile, closeAgentsDialog, confirmDialog, confirmOpenLink, decideDialog, harnessAskDialog, harnessTextDialog, machineDialog, mergeDialog, promptDialog, showAbout, showError } from './ui/dialogs.js';
 import { registerActions } from './actions.js';
 import type { CommandHost, EditCommands, FrontendCommands, ViewOption } from './app/commands.js';
 import { wrapSelection, insertLink, insertBlock, togglePrefix, setHeading } from './editor/editing.js';
 import { PreferencesPresenter } from './ui/preferences.js';
 import { CommandPalette } from './ui/palette.js';
 import { showShortcuts } from './ui/shortcuts.js';
+import { HtmlPage } from './ui/htmlpage.js';
 import { ImageViewer } from './ui/imageviewer.js';
 import { KanbanBoard } from './ui/kanban.js';
 import { InboxView } from './ui/inbox.js';
@@ -73,8 +74,8 @@ import { HarnessReviewView } from './ui/harnessreview.js';
 import type { HomeController } from './app/home.js';
 import type { ViewScreen } from './app/views.js';
 import { editSchemaDialog } from './ui/schemadialog.js';
-import type { ToastButton } from './app/document.js';
-import { UNTITLED, type DocumentController } from './app/documents.js';
+import type { Page, ToastButton } from './app/document.js';
+import { HOME, UNTITLED, type DocumentController } from './app/documents.js';
 import { AppSession, type AppDialogs, type AppFrontend, type DocumentTitle, type FrontendHost } from './app/session.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
 import { sendChangesDialog } from './ui/sendchanges.js';
@@ -216,14 +217,8 @@ export class MainWindow {
         this.home.onCaptureJournal = () => this.journal.capture();
         this.board.onOpenNote = link => this.openNote(link);
         this.board.listNotes = () => this.session.notes.namesFor(this.doc.id);
-        this.tabBar.onSelect = id => {
-            const doc = this.docs.find(d => d.id === id);
-            if (doc) this.activate(doc);
-        };
-        this.tabBar.onClose = id => {
-            const doc = this.docs.find(d => d.id === id);
-            if (doc) this.closeTab(doc);
-        };
+        this.tabBar.onSelect = id => this.documents.select(id);
+        this.tabBar.onClose = id => { void this.documents.closeById(id); };
         // The "no API key" link of a commit form opens the Assistant's settings.
         this.history.writer.onOpenSettings = () => this.openChatSettings();
         this.historyViewers.onOpenSettings = () => this.openChatSettings();
@@ -378,17 +373,22 @@ export class MainWindow {
                 notification.set_body(body);
                 this.app.send_notification(id, notification);
             },
-            openUri: uri => new Gtk.UriLauncher({ uri }).launch(this.win, null, (launcher, result) => {
-                try {
-                    launcher!.launch_finish(result);
-                } catch {
-                    this.toast(fmt(_('Cannot open {url}'), { url: uri }));
-                }
-            }),
+            openUri: uri => this.launchUri(uri),
             showPull: () => { this.content.visible_child_name = 'pull'; },
             showReview: () => { this.content.visible_child_name = 'review'; },
             openFolder: path => new Gtk.FileLauncher({ file: Gio.File.new_for_path(path) }).launch(this.win, null, null),
         };
+    }
+
+    // Hand a link to the system (its default browser or mail app); a toast says so when it cannot.
+    private launchUri(uri: string): void {
+        new Gtk.UriLauncher({ uri }).launch(this.win, null, (launcher, result) => {
+            try {
+                launcher!.launch_finish(result);
+            } catch {
+                this.toast(fmt(_('Cannot open {url}'), { url: uri }));
+            }
+        });
     }
 
     // The questions the application layer asks, as GTK dialogs (AppFrontend.dialogs).
@@ -452,6 +452,7 @@ export class MainWindow {
                 this.content.visible_child_name = 'home';
                 this.home.render(data);
             },
+            showPageTab: id => { this.content.visible_child_name = `page-${id}`; },
             showText: id => {
                 const editor = this.editors.get(id);
                 if (!editor) return;
@@ -500,9 +501,9 @@ export class MainWindow {
         this.documents.setFile(this.doc, path);
     }
 
-    // The number of open documents (tabs).
+    // The number of open tabs: documents and pages (the empty document that waits behind Home has none).
     get documentCount(): number {
-        return this.docs.length;
+        return this.tabBar.count;
     }
 
     // The active document and all open documents (kept by the document controller).
@@ -512,10 +513,6 @@ export class MainWindow {
 
     private get docs(): readonly Doc[] {
         return this.documents.all;
-    }
-
-    private activate(doc: Doc): void {
-        this.documents.activate(doc);
     }
 
     // What follows the documents on screen.
@@ -536,6 +533,14 @@ export class MainWindow {
                 editor.destroy();
                 this.content.remove(editor.widget);
             },
+            listTab: (id, listed) => {
+                if (!listed) {
+                    this.tabBar.remove(id);
+                    return;
+                }
+                this.tabBar.add(id, UNTITLED);
+                this.showTitle(id);
+            },
             activated: id => {
                 const doc = this.docById(id);
                 if (!doc) return;
@@ -543,13 +548,44 @@ export class MainWindow {
                 this.tabBar.setActive(id);
                 if (this.chatSplit.show_sidebar) this.chat.updateContextSummary();
             },
+            attachPage: page => this.attachPage(page),
+            detachPage: id => {
+                this.titles.delete(id);
+                this.tabBar.remove(id);
+                const html = this.htmlPages.get(id);
+                if (!html) return;
+                this.htmlPages.delete(id);
+                this.content.remove(html.widget);
+                html.dispose();
+            },
+            pageActivated: id => {
+                // What a page leaves behind is the last document: search and the Assistant keep pointing at it.
+                this.findBar.setTarget(this.doc.editor.buffer, this.doc.editor.view);
+                this.tabBar.setActive(id);
+                if (this.chatSplit.show_sidebar) this.chat.updateContextSummary();
+            },
             setTitle: (id, title) => {
                 this.titles.set(id, title);
                 this.showTitle(id);
             },
-            setIcon: (id, icon) => this.tabBar.setIcon(id, icon),
             tabOrder: () => this.tabBar.ids(),
         };
+    }
+
+    // The HTML pages that are open, by tab id; Home is one widget in the content area, shown by name.
+    private readonly htmlPages = new Map<number, HtmlPage>();
+
+    // A page: its tab, and its contents in the content area. The tab gets its title from the session.
+    private attachPage(page: Page): void {
+        if (page.kind === 'html') {
+            const html = new HtmlPage(page.file!, page.root!, uri => {
+                void confirmOpenLink(this.win, uri).then(yes => { if (yes) this.launchUri(uri); });
+            });
+            this.htmlPages.set(page.id, html);
+            this.content.add_named(html.widget, `page-${page.id}`);
+        }
+        this.tabBar.add(page.id, page.kind === 'home' ? HOME : GLib.path_get_basename(page.file ?? ''));
+        this.tabBar.setIcon(page.id, page.kind === 'home' ? 'user-home-symbolic' : 'web-browser-symbolic');
     }
 
     // The editors of the open documents by id: the application layer names a document by its id, and the widgets are found here.
@@ -604,7 +640,7 @@ export class MainWindow {
     }
 
     // Close a tab (asks if there are changes). Closing the only tab empties its document.
-    closeTab(doc: Doc = this.doc): Awaitable<boolean> {
+    closeTab(doc?: Doc): Awaitable<boolean> {
         return this.documents.closeTab(doc);
     }
 
@@ -786,7 +822,14 @@ export class MainWindow {
     // ---------- Documents ----------
 
     get documentName(): string {
-        return this.documents.nameOf(this.doc);
+        const page = this.documents.page;
+        return page ? this.documents.nameOfPage(page) : this.documents.nameOf(this.doc);
+    }
+
+    // The HTML page that is shown, if one is (for tests).
+    get shownHtml(): HtmlPage | null {
+        const page = this.documents.page;
+        return page ? this.htmlPages.get(page.id) ?? null : null;
     }
 
     // Suggested file name from the first heading.
@@ -804,15 +847,19 @@ export class MainWindow {
     // Tab title for a document, and the window title if it is the active one.
     private showTitle(id: number): void {
         const title = this.titles.get(id), doc = this.docById(id);
-        if (!title || !doc) return;
-        const mark = doc.editor.buffer.get_modified() ? '• ' : '';
-        this.tabBar.setTitle(id, `${mark}${title.name}`, title.file);
-        if (doc !== this.doc) return;
-        if (title.home) {
+        if (!title) return;
+        const page = this.documents.page;
+        if (title.page) {
+            this.tabBar.setTitle(id, title.name, title.file);
+            if (page?.id !== id) return;
             this.header.setTitle(title.name, title.place ?? APP_NAME);
             this.win.set_title(`${title.name} — ${APP_NAME}`);
             return;
         }
+        if (!doc) return;
+        const mark = doc.editor.buffer.get_modified() ? '• ' : '';
+        this.tabBar.setTitle(id, `${mark}${title.name}`, title.file);
+        if (doc !== this.doc || page) return;
         const where = title.place ?? APP_NAME;
         this.header.setTitle(`${mark}${title.name}`, title.file && !mark ? `${where} · ${_('Saved')}` : where, true);
         this.win.set_title(`${mark}${title.name} — ${APP_NAME}`);
@@ -924,6 +971,8 @@ export class MainWindow {
     // Stop the timers and idles of all components after the window is destroyed.
     private dispose(): void {
         for (const doc of this.docs) doc.editor.destroy();
+        for (const html of this.htmlPages.values()) html.dispose();
+        this.htmlPages.clear();
         this.session.dispose();
         this.chat.destroy();
         this.history.destroy();

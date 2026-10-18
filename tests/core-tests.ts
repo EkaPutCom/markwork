@@ -22,6 +22,8 @@ import { layoutsModelTests } from './unit/layouts.js';
 import { homeModelTests } from './unit/home.js';
 import { journalModelTests } from './unit/journal.js';
 import { htmlTests } from './unit/html.js';
+import { htmlViewTests } from './unit/htmlview.js';
+import { pageTabTests } from './unit/pagetabs.js';
 import { dbmlTests } from './unit/dbml.js';
 import { gitLogTests } from './unit/gitlog.js';
 import { fileWriteTests } from './unit/files.js';
@@ -86,6 +88,8 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     homeModelTests();
     journalModelTests();
     htmlTests();
+    htmlViewTests();
+    pageTabTests();
     dbmlTests();
     gitLogTests();
     await fileWriteTests();
