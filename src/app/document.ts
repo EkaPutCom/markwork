@@ -1,3 +1,5 @@
+import { platform } from '../platform/index.js';
+
 // The open documents as the application layer sees them: an id, a file, and a text editor it can read and change,
 // never a widget. Every frontend gives its editor this shape (MarkdownView under GTK), and each feature controller in
 // app/ gets a narrow host that hands out these records.
@@ -67,4 +69,4 @@ export interface DocumentHost<E extends TextEditor = TextEditor> {
 export const errorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e);
 
 // The open document for an absolute path, if any.
-export const docFor = <E extends TextEditor>(host: DocumentHost<E>, path: string): Doc<E> | undefined => host.docs().find(d => d.file === path);
+export const docFor = <E extends TextEditor>(host: DocumentHost<E>, path: string): Doc<E> | undefined => host.docs().find(d => d.file !== null && platform().paths.same(d.file, path));

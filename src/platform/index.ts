@@ -82,6 +82,9 @@ export interface Paths {
     relative(dir: string, path: string): string | null;  // path relative to dir; null when it is not inside dir
     basename(path: string): string;
     isAbsolute(path: string): boolean;
+    // Whether two paths name the same place: separators and . / .. parts do not count, and on macOS and Windows neither does
+    // letter case (their file systems are case-insensitive by default). Use it, not ===, to find an open file by its path.
+    same(a: string, b: string): boolean;
     configDir(): string;              // the per-user configuration folder (~/.config on Linux)
     homeDir(): string;
     runtimeDir(): string;             // the per-user folder for sockets and other runtime files ($XDG_RUNTIME_DIR on Linux)
@@ -123,7 +126,9 @@ export interface Processes {
     spawn(argv: string[], cwd: string, handlers: ChildHandlers): ChildProcess;
     // The program's path, also in the user's own bin folders that a desktop launch may leave out of PATH; null = not found.
     findProgram(name: string): string | null;
-    launch(argv: string[]): boolean;                  // starts a program and lets it run on its own (a terminal); argv[0] on PATH
+    launch(argv: string[]): boolean;                  // starts a program and lets it run on its own; argv[0] on PATH
+    // Opens a terminal of the system in `folder`, or running `command` (null = a shell in the folder); false = none was found.
+    openTerminal(folder: string, command: string[] | null): boolean;
     hostName(): string;
 }
 

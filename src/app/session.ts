@@ -504,7 +504,7 @@ export class AppSession<E extends TextEditor> {
             return;
         }
         const active = this.documents.active;
-        if (path === active.file) return;
+        if (active.file !== null && platform().paths.same(path, active.file)) return;
         if (!this.documents.openInTab(path)) this.files.reveal(active.file);   // the highlight goes back to the file that is still open
     }
 

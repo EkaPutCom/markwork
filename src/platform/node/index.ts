@@ -8,7 +8,7 @@ import { homedir, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import type { OS, Platform, Scheduler, Secrets } from '../index.js';
-import { userDirs } from './dirs.js';
+import { samePath, userDirs } from './dirs.js';
 import { catalogTranslations, userCatalog } from './i18n.js';
 import { nodeFiles } from './files.js';
 import { fetchStreamTransport, fetchTransport } from './http.js';
@@ -96,6 +96,7 @@ export const nodePlatform: Platform = {
         },
         basename: path => basename(path),
         isAbsolute: path => isAbsolute(path),
+        same: (a, b) => samePath(os, a, b, resolve),
         configDir: () => dirs().config,
         homeDir: () => homedir(),
         runtimeDir: () => dirs().runtime,

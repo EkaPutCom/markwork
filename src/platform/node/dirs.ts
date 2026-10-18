@@ -22,6 +22,12 @@ export function userDirs(os: OS, env: Record<string, string | undefined>, home: 
     };
 }
 
+// Whether two paths name the same place (Paths.same): resolved, then compared ignoring case where the system does.
+export function samePath(os: OS, a: string, b: string, resolve: (path: string) => string): boolean {
+    const x = resolve(a), y = resolve(b);
+    return os === 'linux' ? x === y : x.toLowerCase() === y.toLowerCase();
+}
+
 // The file names to try for `name`: on Windows a bare name gets each extension of PATHEXT (git → git.exe, git.cmd), and a
 // name that already has one of them is tried as it is.
 export function programNames(os: OS, name: string, pathExt: string | undefined): string[] {

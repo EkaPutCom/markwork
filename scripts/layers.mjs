@@ -39,9 +39,10 @@ const rules = [
         'app/ is the application layer every frontend shares: it imports only the core and app/, never GI, widgets, or the window'],
     [isCore, t => !t.startsWith('gi://') && !t.startsWith('gjs:') && !isCore(t), 'the core imports only the core, so it is free of GI all the way down, not only in its own imports'],
     [f => f === 'platform/index.ts', () => true, 'platform/index.ts is the contract and imports nothing'],
+    [f => f === 'platform/terminals.ts', t => t !== 'platform/index.ts', 'platform/terminals.ts is shared by both ports and imports only the contract'],
     [f => f.startsWith('platform/gjs/'), t => /^(ui|editor|window|agent|forge|markdown)\//.test(t) || t === 'window.ts', 'platform/gjs/ implements the port with GI and base modules; it knows nothing about the layers that use it'],
-    [f => f.startsWith('platform/node/'), t => t.startsWith('gi://') || t.startsWith('gjs:') || !(t.startsWith('node:') || t.startsWith('platform/node/') || t === 'platform/index.ts'),
-        'platform/node/ implements the port with Node built-ins only: the contract and its own files, nothing above it'],
+    [f => f.startsWith('platform/node/'), t => t.startsWith('gi://') || t.startsWith('gjs:') || !(t.startsWith('node:') || t.startsWith('platform/node/') || t === 'platform/index.ts' || t === 'platform/terminals.ts'),
+        'platform/node/ implements the port with Node built-ins only: the contract, the shared terminal list, and its own files, nothing above it'],
     [f => !f.startsWith('platform/node/'), t => t.startsWith('node:') || t.startsWith('platform/node/'), 'only platform/node/ uses Node built-ins; the rest reaches them through platform(), and only an entry point installs it'],
 ];
 
@@ -70,6 +71,17 @@ for (const file of files) {
             if (applies(file) && forbidden(target)) errors.push(`src/${file}: imports ${spec} (${why})`);
         }
     }
+}
+
+// ---------- System specifics stay in the port ----------
+//
+// What differs between Linux, macOS, and Windows (the system's name, the GNOME terminals, the keyring program) is written
+// once in platform/ (platform/node/dirs.ts, platform/terminals.ts, the GJS and Node ports), where tests/unit/crossos.ts
+// runs it for all three systems. The core and app/ ask the port; they never test `process.platform` or name such a program.
+const SYSTEM_SPECIFIC = /process\.platform|\b(kgx|ptyxis|gnome-terminal|xdg-terminal-exec|secret-tool|osascript)\b/;
+for (const file of files.filter(f => (isCore(f) || f.startsWith('app/')) && !f.startsWith('platform/'))) {
+    const hit = SYSTEM_SPECIFIC.exec(readFileSync(join(src, file), 'utf8'));
+    if (hit) errors.push(`src/${file}: mentions "${hit[0]}" (what differs per system belongs in platform/, behind platform(); see "The foundation for other frontends" in AGENT.md)`);
 }
 
 // ---------- Views do not act ----------

@@ -77,6 +77,7 @@ export const gjsPlatform: Platform = {
         relative: (dir, path) => Gio.File.new_for_path(dir).get_relative_path(Gio.File.new_for_path(path)),
         basename: path => GLib.path_get_basename(path),
         isAbsolute: path => GLib.path_is_absolute(path),
+        same: (a, b) => GLib.canonicalize_filename(a, null) === GLib.canonicalize_filename(b, null),
         configDir: () => GLib.get_user_config_dir(),
         homeDir: () => GLib.get_home_dir(),
         runtimeDir: () => GLib.get_user_runtime_dir(),
