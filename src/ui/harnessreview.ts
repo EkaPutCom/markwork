@@ -11,7 +11,7 @@ import type { DiffLine } from '../gitlog.js';
 import { pack, removeChildren } from '../gtkutil.js';
 import { _, fmt, ngettext } from '../i18n.js';
 import type { ChangedFile, Commit } from '../agent/worktreereview.js';
-import type { FinishAction, ReviewTab, ReviewView, SummaryView } from '../app/harnessreview.js';
+import type { FinishAction, PullOffer, ReviewTab, ReviewView, SummaryView } from '../app/harnessreview.js';
 import { createDiffView, fillDiff, setupDiffTags } from './historyviewer.js';
 
 const MARK = { added: 'A', modified: 'M', deleted: 'D', renamed: 'R' } as const;
@@ -51,6 +51,7 @@ export class HarnessReviewView implements ReviewView {
     onSelect: (index: number) => void = () => {};
     onInclude: (index: number, included: boolean) => void = () => {};
     onFinish: (action: FinishAction) => void = () => {};
+    onPullRequest: () => void = () => {};
     onReply: () => void = () => {};
     onFolder: () => void = () => {};
     onTerminal: () => void = () => {};
@@ -173,35 +174,46 @@ export class HarnessReviewView implements ReviewView {
         return label;
     }
 
-    // "Merge" merges with a merge commit; the arrow offers squashing, keeping only the branch, and discarding.
+    // "Merge" merges with a merge commit; the arrow offers squashing, sending the branch as a pull request, keeping only the branch, and discarding.
     private createMergeButton(): Adw.SplitButton {
         const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 4, margin_bottom: 4, margin_start: 4, margin_end: 4 });
         const popover = new Gtk.Popover({ child: box });
-        const item = (action: FinishAction, label: string, detail: string, destructive = false) => {
+        const item = (run: () => void, label: string, detail: string, destructive = false) => {
             const column = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 4, margin_bottom: 4, margin_start: 8, margin_end: 8 });
             const title = new Gtk.Label({ label, xalign: 0 });
             if (destructive) title.add_css_class('error');
             column.append(title);
-            const sub = new Gtk.Label({ label: detail, xalign: 0 });
+            const sub = new Gtk.Label({ label: detail, xalign: 0, wrap: true, max_width_chars: 36 });
             sub.add_css_class('dim-label');
             column.append(sub);
             const button = new Gtk.Button({ child: column });
             button.set_has_frame(false);
-            button.connect('clicked', () => { popover.popdown(); this.onFinish(action); });
+            button.connect('clicked', () => { popover.popdown(); run(); });
             box.append(button);
-            return title;
+            return { title, sub, button };
         };
-        this.mergeTitle = item('merge', '', _('A merge commit; the agent’s commits are kept'));
-        this.squashTitle = item('squash', '', _('One commit with everything'));
+        const finish = (action: FinishAction) => () => this.onFinish(action);
+        this.mergeTitle = item(finish('merge'), '', _('A merge commit; the agent’s commits are kept')).title;
+        this.squashTitle = item(finish('squash'), '', _('One commit with everything')).title;
         box.append(new Gtk.Separator({ margin_top: 4, margin_bottom: 4 }));
-        item('keep', _('Keep the Branch, Remove the Worktree'), _('Merge it yourself later'));
-        item('discard', _('Discard…'), _('Delete the worktree and its branch'), true);
+        this.pullItem = item(() => this.onPullRequest(), _('Create Pull Request…'), _('Push the branch and ask for it to be merged'));
+        item(finish('keep'), _('Keep the Branch, Remove the Worktree'), _('Merge it yourself later'));
+        item(finish('discard'), _('Discard…'), _('Delete the worktree and its branch'), true);
         const split = new Adw.SplitButton({ label: _('Merge'), popover });
         split.add_css_class('suggested-action');
         split.connect('clicked', () => this.onFinish('merge'));
         return split;
     }
 
+    // The menu item of the pull request: its label and what it does, or why it is off.
+    setPullRequest(offer: PullOffer): void {
+        this.pullItem.title.set_label(offer.label);
+        this.pullItem.sub.set_label(offer.detail);
+        this.pullItem.button.set_sensitive(offer.enabled);
+        this.pullItem.button.set_tooltip_text(offer.detail);
+    }
+
+    pullItem!: { title: Gtk.Label; sub: Gtk.Label; button: Gtk.Button };
     private mergeTitle!: Gtk.Label;
     private squashTitle!: Gtk.Label;
 
@@ -280,7 +292,7 @@ export class HarnessReviewView implements ReviewView {
             this.commits.append(box);
         };
         for (const c of commits) line(c.subject, c.hash);
-        if (uncommitted) line(_('Uncommitted changes'), _('Merging commits them first'));
+        if (uncommitted) line(_('Uncommitted changes'), _('Merging or sending it commits them first'));
         if (!commits.length && !uncommitted) line(_('None'), '');
     }
 

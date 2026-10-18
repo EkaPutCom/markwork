@@ -235,6 +235,7 @@ export function harnessActivity(agent: string, title: string, project: string, o
 }
 
 // The user finished reviewing a card's worktree: its work was merged into the base branch, or thrown away.
-export function worktreeActivity(title: string, project: string, outcome: { merged: string } | { discarded: true }): string {
+export function worktreeActivity(title: string, project: string, outcome: { merged: string } | { discarded: true } | { pull: string }): string {
+    if ('pull' in outcome) return `Opened a pull request for ${quote(title)} in project ${project}: ${outcome.pull}`;
     return 'merged' in outcome ? `Merged ${quote(title)} into ${outcome.merged} in project ${project}` : `Discarded the work on ${quote(title)} in project ${project}`;
 }

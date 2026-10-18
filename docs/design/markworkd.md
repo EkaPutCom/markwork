@@ -439,7 +439,7 @@ Decisions:
 - `Spawner` gets an optional fourth argument, `SpawnMeta` (`lane` = the project, `labels` = agent, project, board file, card text, title), so a run can be recognised after a restart.
 - The run is forgotten on the daemon once its result was delivered (`forgetWhenDone`); a run whose owner never saw it end stays until the retention period.
 - `SpawnMeta.slots` becomes `lane_slots`: the project's "cards at the same time" for cards with their own worktree, 1 for a card that works in the project folder. The labels also carry the worktree (`worktree`, `branch`, `base`, `basecommit`, `repo`) and the window's own lane, so a run found again is tied to its worktree.
-- `daemonGit(conn)` is a `GitRunner` for the worktrees on the daemon's machine: each call spawns `git` (no lane, no environment), collects its `out` records and the stderr tail, and the run is forgotten when it ended. A daemon that does not allow `git` or the folder answers as a git failure with the daemon's message.
+- `daemonGit(conn)` is a `GitRunner` for the worktrees on the daemon's machine: each call spawns `git` (no lane; no environment unless the call passes one, which only the push of *Create Pull Request…* does, with the access token as `GIT_CONFIG_*`: the daemon must allow those in `env_allow`, and keeps them in the run's record until the run is forgotten), collects its `out` records and the stderr tail, and the run is forgotten when it ended. A daemon that does not allow `git` or the folder answers as a git failure with the daemon's message.
 
 The app wiring, as built:
 

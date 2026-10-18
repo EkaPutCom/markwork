@@ -13,6 +13,9 @@ const TRANSIENT = new Set(['connection_closed', 'timeout']);
 export interface DaemonSpawnerOptions {
     newRunId?: () => string;
     forgetWhenDone?: boolean;                // delete the run from the daemon once its result was delivered (default true)
+    // Variables for every process it starts. The daemon must allow each name (its env_allow), and keeps them in the run's
+    // record on its disk until the run is forgotten.
+    env?: Record<string, string>;
     problem?: (run: string, message: string) => void;   // a request that could not be delivered (see DaemonProcess.write)
 }
 
@@ -174,6 +177,7 @@ export function daemonSpawner(conn: DaemonConnection, opts: DaemonSpawnerOptions
         proc.create({
             run, program: argv[0].split(/[\\/]/).pop() ?? argv[0], args: argv.slice(1), cwd,
             ...(meta ? { lane: meta.lane, lane_slots: meta.slots, labels: meta.labels } : {}),
+            ...(opts.env ? { env: opts.env } : {}),
         });
         return proc;
     };
@@ -189,11 +193,12 @@ export function adoptRun(conn: DaemonConnection, run: string, fromSeq: number, h
 
 // Git on the daemon's machine, for the worktrees of the cards there: every call is a short run of `git` in no lane (it
 // never waits behind a harness), whose output is collected and which is forgotten once it ended. The daemon must allow
-// `git` and the folder; a refusal reads as git failing with the daemon's message. Environment variables are not passed:
-// the daemon allows none by default.
+// `git` and the folder; a refusal reads as git failing with the daemon's message. Environment variables are passed only
+// when a call asks for them (pushing with an access token); the daemon allows none by default, and keeps them in the run's
+// record on its disk until the run is forgotten, which happens as soon as git has ended.
 export function daemonGit(conn: DaemonConnection, opts: DaemonSpawnerOptions = {}): GitRunner {
-    const spawn = daemonSpawner(conn, opts);
-    return (cwd, args) => new Promise<GitRun | null>(resolve => {
+    return (cwd, args, env) => new Promise<GitRun | null>(resolve => {
+        const spawn = daemonSpawner(conn, env && Object.keys(env).length ? { ...opts, env } : opts);
         const out: string[] = [];
         try {
             const proc = spawn(['git', '-c', 'core.quotePath=false', ...args], cwd, {

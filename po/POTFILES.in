@@ -30,6 +30,7 @@ src/ui/outline.ts
 src/ui/proposalviewer.ts
 src/ui/harnessreview.ts
 src/ui/projectsettings.ts
+src/ui/pullrequestdialog.ts
 src/ui/pullview.ts
 src/ui/sendchanges.ts
 src/ui/serverdialog.ts

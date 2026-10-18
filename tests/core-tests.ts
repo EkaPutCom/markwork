@@ -49,6 +49,7 @@ import { forgeTests } from './unit/forge.js';
 import { platformTests } from './unit/platform.js';
 import { noteDiffTests } from './unit/notediff.js';
 import { contributeTests } from './unit/contribute.js';
+import { publishTests } from './unit/publish.js';
 import { resolveTests } from './unit/resolve.js';
 import { conflictTests } from './unit/conflicts.js';
 import { commitMessageTests } from './unit/commitmessage.js';
@@ -123,6 +124,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await historyControllerTests();
     noteDiffTests();
     await contributeTests();
+    await publishTests();
     await resolveTests();
     conflictTests();
     await commitMessageTests();

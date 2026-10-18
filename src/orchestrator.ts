@@ -231,6 +231,12 @@ export class Orchestrator {
         });
     }
 
+    // A note under the card and nothing else changed, so the card is still found by its text (a pull request was opened for
+    // its branch). Returns an error message or null.
+    noteCard(boardFile: string, cardText: string, note: string): string | null {
+        return this.editCard(boardFile, cardText, (b, pos) => updateCard(b, pos, { notes: [...b.columns[pos.column].cards[pos.index].notes, note] }));
+    }
+
     // Answer what the harness is waiting for. Returns an error message or null.
     answer(run: Run, reply: HarnessReply): string | null {
         const live = this.live.get(run.id);

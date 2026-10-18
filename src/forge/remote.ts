@@ -24,3 +24,13 @@ export function parseRemote(url: string): RepoRef | null {
     if (scp) return build('https', scp[1], scp[2]);
     return null;
 }
+
+// The hosted services whose pull requests Markwork does not speak to yet; any other host may be a Forgejo or Gitea server.
+export type ForgeKind = 'github' | 'gitlab' | 'gitea';
+
+export function forgeKind(host: string): ForgeKind {
+    const name = host.toLowerCase().replace(/:\d+$/, '');
+    if (name === 'github.com' || name.endsWith('.github.com')) return 'github';
+    if (name === 'gitlab.com' || name.endsWith('.gitlab.com')) return 'gitlab';
+    return 'gitea';
+}

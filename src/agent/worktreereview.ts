@@ -138,15 +138,21 @@ export async function mergeWorktree(git: GitRunner, wt: Worktree, options: Merge
     return { ok: true, value: head };
 }
 
-// What the harness left uncommitted becomes a commit on its branch, so the merge takes it too.
-async function commitLeftovers(git: GitRunner, wt: Worktree, message: string): Promise<Outcome<null>> {
+// What the harness left uncommitted becomes a commit on its branch, so the merge takes it too. The value says whether a
+// commit was made, so a step that fails afterwards can take it back (uncommitLeftovers).
+export async function commitLeftovers(git: GitRunner, wt: Worktree, message: string): Promise<Outcome<boolean>> {
     const status = await out(git, wt.path, ['status', '--porcelain']);
     if (status === null) return fail('cannot read the worktree');
-    if (!status.trim()) return { ok: true, value: null };
+    if (!status.trim()) return { ok: true, value: false };
     const added = await git(wt.path, ['add', '--all']);
     if (added?.status !== 0) return fail(`cannot add the changes: ${reason(added)}`);
     const commit = await git(wt.path, ['commit', '--quiet', '--no-verify', '-m', `${message} (uncommitted work)`]);
-    return commit?.status === 0 ? { ok: true, value: null } : fail(`cannot commit the changes in the worktree: ${reason(commit)}`);
+    return commit?.status === 0 ? { ok: true, value: true } : fail(`cannot commit the changes in the worktree: ${reason(commit)}`);
+}
+
+// Takes the commit commitLeftovers made back: the files stay as they are, uncommitted again.
+export async function uncommitLeftovers(git: GitRunner, wt: Worktree): Promise<void> {
+    await git(wt.path, ['reset', '--quiet', 'HEAD~1']);
 }
 
 // The project folder must be on the base branch, with no change of its own to tracked files and no merge going on.
@@ -217,4 +223,24 @@ export function commandsRun(events: readonly { kind: string; title: string; args
         try { command = String((JSON.parse(e.args ?? '{}') as { command?: unknown }).command ?? ''); } catch { /* not JSON */ }
         return { command: command.trim(), ok: e.status === 'ok' ? true : e.status === 'failed' ? false : null };
     }).filter(c => c.command);
+}
+
+// ---------- Pull requests ----------
+
+// The description a pull request starts with: what the harness said it did, and the commits of the branch.
+export function pullRequestBody(summary: string, commits: readonly Commit[], uncommitted: boolean): string {
+    const said = summary.trim();
+    const list = [...commits.map(c => `- ${c.subject}`), ...(uncommitted ? ['- Changes the agent did not commit'] : [])];
+    return [said.length > 4000 ? `${said.slice(0, 3999)}…` : said, list.length ? `Commits:\n${list.join('\n')}` : ''].filter(Boolean).join('\n\n');
+}
+
+// A card's note that says its pull request was opened; the card keeps no other record of it.
+export const pullNote = (number: number, url: string, stamp: string): string => `↳ pull request #${number} opened ${stamp}: ${url}`;
+
+export function pullFromNotes(notes: readonly string[]): { number: number; url: string } | null {
+    for (const note of [...notes].reverse()) {
+        const m = /^↳ pull request #(\d+) opened .*?: (https?:\/\/\S+)$/.exec(note.trim());
+        if (m) return { number: Number(m[1]), url: m[2] };
+    }
+    return null;
 }

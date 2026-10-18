@@ -8,7 +8,7 @@ import type { SendChangesAnswer, SendChangesOptions } from '../app/contribute.js
 import { _, fmt } from '../i18n.js';
 import { formDialog } from './dialogs.js';
 
-const VIA: [SendVia, string, string][] = [
+export const VIA: [SendVia, string, string][] = [
     ['fork', _('Through my fork'), _('Your own copy of the repository is created if you do not have one')],
     ['direct', _('A branch in the repository'), _('You are allowed to push here; no fork needed')],
     ['agit', _('AGit (no fork, no branch)'), _('The server opens the pull request from the push. It has to be enabled on the server')],

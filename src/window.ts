@@ -79,6 +79,7 @@ import type { Page, ToastButton } from './app/document.js';
 import { HOME, UNTITLED, type DocumentController } from './app/documents.js';
 import { AppSession, type AppDialogs, type AppFrontend, type DocumentTitle, type FrontendHost } from './app/session.js';
 import { gsettingsOf } from './platform/gjs/settings.js';
+import { pullRequestDialog } from './ui/pullrequestdialog.js';
 import { sendChangesDialog } from './ui/sendchanges.js';
 import { tokenDialog } from './ui/serverdialog.js';
 
@@ -442,6 +443,7 @@ export class MainWindow {
             review: {
                 merge: q => decideDialog(this.win, q.message, q.detail, q.accept, q.destructive),
                 discard: q => decideDialog(this.win, q.message, q.detail, q.accept, q.destructive),
+                pullRequest: options => pullRequestDialog(this.win, options),
             },
             views: { editSchema: options => editSchemaDialog(this.win, options) },
         };

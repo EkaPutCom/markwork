@@ -84,7 +84,7 @@ async function commitOnBranch(ctx: SendContext, request: SendRequest): Promise<s
 }
 
 // The user's own copy of the repository: the one that exists, or a new fork.
-async function ownCopy(ctx: SendContext, login: string): Promise<RepoInfo | string> {
+export async function ownCopy(ctx: SendContext, login: string): Promise<RepoInfo | string> {
     const existing = await ctx.provider.repoInfo(login, ctx.repo.repo);
     if (!existing) return ctx.provider.fork();
     return existing.isFork ? existing : `${login}/${ctx.repo.repo} exists and is not a fork of this repository`;
@@ -95,10 +95,16 @@ async function push(ctx: SendContext, request: SendRequest, login: string, args:
     return run?.status === 0 ? null : `Could not push: ${reason(run)}`;
 }
 
+// The push options with which the server opens the pull request itself. A line break would end an option, so the
+// description goes in as one line.
+export function agitOptions(topic: string, title: string, body: string): string[] {
+    const options = ['-o', `topic=${topic}`, '-o', `title=${title}`];
+    if (body.trim()) options.push('-o', `description=${body.trim().replace(/\s*\n\s*/g, ' ')}`);
+    return options;
+}
+
 async function viaAgit(ctx: SendContext, request: SendRequest, login: string, target: RepoInfo): Promise<SendResult> {
-    const options = ['-o', `topic=${request.branch}`, '-o', `title=${request.title}`];
-    // A line break would end the option; the description goes in as one line.
-    if (request.body.trim()) options.push('-o', `description=${request.body.trim().replace(/\s*\n\s*/g, ' ')}`);
+    const options = agitOptions(request.branch, request.title, request.body);
     const error = await push(ctx, request, login, [target.cloneUrl, `HEAD:refs/for/${target.defaultBranch}`, ...options]);
     if (error) return fail(error);
     return { ok: true, pull: null, branch: request.branch, message: 'Sent. The pull request appears in the list shortly.' };
