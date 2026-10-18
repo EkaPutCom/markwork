@@ -11,7 +11,7 @@ import { parseDiff, type DiffLine } from '../gitlog.js';
 import { worktreeActivity, type ActivityKind } from '../markdown/journal.js';
 import { cardBranch, cardMeta, parseBoard, type Board, type Card } from '../markdown/kanban.js';
 import { readTextFile } from '../files.js';
-import { platform, type OS } from '../platform/index.js';
+import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import { _, fmt, ngettext } from '../i18n.js';
 import type { Question } from './dialogs.js';
@@ -93,8 +93,6 @@ interface Open {
 export class HarnessReviewController {
     private current: Open | null = null;
     private generation = 0;    // answers for a review that is no longer shown are dropped
-    // Runs a terminal; tests replace it.
-    launch: (argv: string[]) => boolean = argv => platform().processes.launch(argv);
 
     // dialogs: the frontend's confirmations; tests replace them with immediate answers.
     constructor(private readonly host: ReviewHost, public dialogs: ReviewDialogs) {
@@ -347,9 +345,7 @@ export class HarnessReviewController {
         const machine = this.host.harness.machine;
         const target = isRemoteMachine(machine) ? this.host.settings.machines[machine] : null;
         const inside = target ? ['ssh', '-t', '--', target, `cd '${c.wt.cwd.replace(/'/g, `'\\''`)}' && exec "$SHELL" -l`] : null;
-        for (const [program, ...args] of terminals(platform().os, c.wt.cwd, inside)) {
-            if (platform().processes.findProgram(program) && this.launch([program, ...args])) return;
-        }
+        if (platform().processes.openTerminal(c.wt.cwd, inside)) return;
         this.host.toast(target ? fmt(_('No terminal found; run: ssh -t {target} and cd {path}'), { target, path: c.wt.cwd }) : fmt(_('No terminal found; the worktree is {path}'), { path: c.wt.cwd }));
     }
 
@@ -358,23 +354,4 @@ export class HarnessReviewController {
         this.current = null;
         this.host.showDocument();
     }
-}
-
-// The terminals to try, in order, each with a folder to start in, or a command to run (ssh to the agents' machine). Linux
-// has the GNOME ones; macOS has Terminal; Windows has Windows Terminal, then a console window of cmd.
-export function terminals(os: OS, folder: string, command: string[] | null): string[][] {
-    if (os === 'darwin') {
-        const quote = (word: string) => `'${word.replace(/'/g, `'\\''`)}'`;
-        const script = command ? command.map(quote).join(' ') : `cd ${quote(folder)}`;
-        const apple = script.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-        return [['osascript', '-e', `tell application "Terminal" to do script "${apple}"`, '-e', 'tell application "Terminal" to activate']];
-    }
-    if (os === 'win32') {
-        return command
-            ? [['wt.exe', ...command], ['cmd.exe', '/c', 'start', '', ...command]]
-            : [['wt.exe', '-d', folder], ['cmd.exe', '/c', 'start', '', '/D', folder, 'cmd.exe']];
-    }
-    return command
-        ? [['kgx', '--', ...command], ['ptyxis', '--', ...command], ['gnome-terminal', '--', ...command], ['xdg-terminal-exec', ...command]]
-        : [['kgx', `--working-directory=${folder}`], ['ptyxis', `--working-directory=${folder}`], ['gnome-terminal', `--working-directory=${folder}`], ['xdg-terminal-exec', `--dir=${folder}`]];
 }

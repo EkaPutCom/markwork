@@ -446,7 +446,7 @@ export class ViewController<E extends TextEditor> {
     // disk. The error, if any; an open document whose editor applies the change later (over the app protocol) reports
     // its error as a toast instead.
     updateBoardFile(file: string, edit: (board: Board) => Board): string | null {
-        const doc = this.host.docs().find(d => d.file === file);
+        const doc = this.host.docs().find(d => d.file !== null && platform().paths.same(d.file, file));
         if (!doc) return this.updateBoardOnDisk(file, edit);
         let returned = false, error: string | null = null;
         doc.editor.update(text => {

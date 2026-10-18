@@ -131,7 +131,7 @@ export class GalleryView extends LayoutView {
         block.add_css_class('gallery-cover');
         block.add_css_class(card.cover.kind === 'color' ? `gallery-cover-${card.cover.index}` : card.cover.kind === 'image' ? 'gallery-cover-missing' : 'gallery-cover-none');
         if (card.cover.kind !== 'image') return block;
-        const path = card.cover.path.startsWith('/') ? card.cover.path : GLib.build_filenamev([this.baseDir() ?? '', card.cover.path]);
+        const path = GLib.path_is_absolute(card.cover.path) ? card.cover.path : GLib.build_filenamev([this.baseDir() ?? '', card.cover.path]);
         if (!GLib.file_test(path, GLib.FileTest.EXISTS)) return block;
         // The picture lies over the block, which gives the size: a picture's own size must not widen the card.
         const picture = Gtk.Picture.new_for_filename(path);

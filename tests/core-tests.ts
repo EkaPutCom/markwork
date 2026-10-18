@@ -4,6 +4,7 @@
 // run-tests.ts instead.
 
 import { inlineTests } from './unit/inline.js';
+import { inlineHtmlTests } from './unit/inlinehtml.js';
 import { highlightTests } from './unit/highlight.js';
 import { appSessionTests } from './unit/appsession.js';
 import { noteEditTests } from './unit/noteedit.js';
@@ -74,6 +75,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
         return;
     }
     inlineTests();
+    inlineHtmlTests();
     highlightTests();
     wikiLinkTests();
     searchTests();

@@ -3,6 +3,7 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import { openFirstTerminal } from '../terminals.js';
 import type { ChildHandlers, ChildProcess, Processes, RunRequest, RunResult } from '../index.js';
 
 // GJS 1.80 can block an async callback that arrives while it is garbage collecting ("Attempting to run a JS
@@ -166,4 +167,8 @@ function launch(argv: string[]): boolean {
     try { return GLib.spawn_async(null, argv, null, GLib.SpawnFlags.SEARCH_PATH, null)[0]; } catch { return false; }
 }
 
-export const gjsProcesses: Processes = { run, spawn, findProgram, launch, hostName: () => GLib.get_host_name() };
+function openTerminal(folder: string, command: string[] | null): boolean {
+    return openFirstTerminal('linux', { findProgram, launch }, folder, command);
+}
+
+export const gjsProcesses: Processes = { run, spawn, findProgram, launch, openTerminal, hostName: () => GLib.get_host_name() };

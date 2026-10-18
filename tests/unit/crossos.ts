@@ -2,9 +2,9 @@
 // file names a program may have, and which terminals are tried.
 
 import { posix, win32 } from 'node:path';
-import { programNames, userDirs } from '../../src/platform/node/dirs.js';
-import { terminals } from '../../src/app/harnessreview.js';
-import { section, test, eq } from '../framework.js';
+import { programNames, samePath, userDirs } from '../../src/platform/node/dirs.js';
+import { openFirstTerminal, terminals } from '../../src/platform/terminals.js';
+import { section, test, eq, ok } from '../framework.js';
 
 export async function crossOsTests(): Promise<void> {
     section('Per system: folders, programs, terminals');
@@ -33,5 +33,24 @@ export async function crossOsTests(): Promise<void> {
         const mac = terminals('darwin', "/Users/eka/it's", null)[0];
         eq(mac[0], 'osascript');
         eq(mac[2], `tell application "Terminal" to do script "cd '/Users/eka/it'\\\\''s'"`, 'quotes for the shell, then for AppleScript');
+    });
+
+    await test('openFirstTerminal starts the first installed candidate and says false when none is', () => {
+        const started: string[][] = [];
+        const installed = (names: string[]) => ({ findProgram: (n: string) => names.includes(n) ? `/bin/${n}` : null, launch: (argv: string[]) => { started.push(argv); return true; } });
+        ok(openFirstTerminal('linux', installed(['gnome-terminal', 'xdg-terminal-exec']), '/w', null), 'one is installed');
+        eq(started, [['gnome-terminal', '--working-directory=/w']], 'the first installed one, not the later');
+        started.length = 0;
+        ok(!openFirstTerminal('linux', installed([]), '/w', ['ssh', 'h']), 'none installed');
+        eq(started, [], 'nothing was started');
+        ok(!openFirstTerminal('linux', { findProgram: () => '/bin/kgx', launch: () => false }, '/w', null), 'it was found but would not start');
+    });
+
+    await test('same path: case counts on Linux only, and . and .. parts never do', () => {
+        eq(samePath('linux', '/home/eka/Notes/a.md', '/home/eka/notes/a.md', posix.resolve), false, 'Linux is case-sensitive');
+        eq(samePath('linux', '/home/eka/x/../Notes/a.md', '/home/eka/Notes/./a.md', posix.resolve), true, 'dot parts');
+        eq(samePath('darwin', '/Users/eka/Notes/a.md', '/Users/eka/notes/A.MD', posix.resolve), true, 'macOS ignores case');
+        eq(samePath('win32', 'C:\\Users\\eka\\Notes\\a.md', 'c:/users/eka/notes/A.md', win32.resolve), true, 'Windows ignores case and separators');
+        eq(samePath('win32', 'C:\\a.md', 'D:\\a.md', win32.resolve), false, 'another drive');
     });
 }

@@ -6,6 +6,7 @@ import { accessSync, constants, statSync } from 'node:fs';
 import { homedir, hostname } from 'node:os';
 import { basename, delimiter, join } from 'node:path';
 import { programNames } from './dirs.js';
+import { openFirstTerminal } from '../terminals.js';
 import type { ChildHandlers, ChildProcess, Processes, RunRequest, RunResult } from '../index.js';
 
 const STDERR_TAIL = 8000;
@@ -165,4 +166,8 @@ function launch(argv: string[]): boolean {
     }
 }
 
-export const nodeProcesses: Processes = { run, spawn, findProgram, launch, hostName: () => hostname() };
+function openTerminal(folder: string, command: string[] | null): boolean {
+    return openFirstTerminal(process.platform === 'win32' ? 'win32' : process.platform === 'darwin' ? 'darwin' : 'linux', { findProgram, launch }, folder, command);
+}
+
+export const nodeProcesses: Processes = { run, spawn, findProgram, launch, openTerminal, hostName: () => hostname() };

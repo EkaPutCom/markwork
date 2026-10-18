@@ -293,7 +293,7 @@ export class DocumentController<E extends TextEditor> {
             this.host.openFolder(absolute);
             return true;
         }
-        const open = this.docs.find(d => d.file === absolute);
+        const open = this.docs.find(d => d.file !== null && platform().paths.same(d.file, absolute));
         if (open) {
             this.activate(open);
             return true;
@@ -326,7 +326,7 @@ export class DocumentController<E extends TextEditor> {
     // Show an HTML file in its own tab, or switch to the tab it already has. root = the folder the page may read.
     openHtml(path: string, root: string | null): void {
         const absolute = platform().paths.resolve(path);
-        const open = this.pages.find(p => p.file === absolute);
+        const open = this.pages.find(p => p.file !== null && platform().paths.same(p.file, absolute));
         if (open) {
             this.activatePage(open);
             return;
