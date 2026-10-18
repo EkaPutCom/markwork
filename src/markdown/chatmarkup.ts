@@ -1,45 +1,27 @@
 // Turns the assistant's Markdown answers into Pango markup for Gtk.Label: headings, lists, quotes,
 // code blocks, and inline formatting (through cellMarkup). Pure TypeScript without GTK.
-// Called repeatedly while an answer streams in, so it tolerates text cut off in the middle
-// (an unclosed code block is still treated as code until the end of the text).
+// The structure comes from chatblocks.ts, which tolerates text cut off in the middle while an answer streams in.
 
+import { chatBlocks, type ChatBlock } from './chatblocks.js';
 import { cellMarkup, escapeMarkup, type MarkupColors } from './pango.js';
 
-const FENCE = /^\s*(```|~~~)/;
+function blockMarkup(block: ChatBlock, colors: MarkupColors): string {
+    switch (block.kind) {
+        case 'code':
+            return `<span font_family="monospace" foreground="${colors.code}" background="${colors.codeBg}">${escapeMarkup(block.text) || ' '}</span>`;
+        case 'heading':
+            return `<span font_weight="bold" size="${block.level <= 2 ? 'larger' : 'medium'}">${cellMarkup(block.text, colors)}</span>`;
+        case 'bullet':
+            return `${'    '.repeat(block.depth)}•  ${cellMarkup(block.text, colors)}`;
+        case 'quote':
+            return `<span foreground="${colors.link}">▎</span> <span font_style="italic">${cellMarkup(block.text, colors)}</span>`;
+        case 'rule':
+            return '──────';
+        case 'text':
+            return cellMarkup(block.text, colors);
+    }
+}
 
 export function chatMarkup(text: string, colors: MarkupColors): string {
-    const out: string[] = [];
-    let fenced = false;
-    for (const line of text.replace(/\r/g, '').split('\n')) {
-        if (FENCE.test(line)) {
-            fenced = !fenced;
-            continue;
-        }
-        if (fenced) {
-            out.push(`<span font_family="monospace" foreground="${colors.code}" background="${colors.codeBg}">${escapeMarkup(line) || ' '}</span>`);
-            continue;
-        }
-        const heading = /^(#{1,6})\s+(.*)$/.exec(line);
-        if (heading) {
-            const size = heading[1].length <= 2 ? 'larger' : 'medium';
-            out.push(`<span font_weight="bold" size="${size}">${cellMarkup(heading[2], colors)}</span>`);
-            continue;
-        }
-        const bullet = /^(\s*)[-*+]\s+(.*)$/.exec(line);
-        if (bullet) {
-            out.push(`${'    '.repeat(Math.floor(bullet[1].length / 2))}•  ${cellMarkup(bullet[2], colors)}`);
-            continue;
-        }
-        const quote = /^\s*>\s?(.*)$/.exec(line);
-        if (quote) {
-            out.push(`<span foreground="${colors.link}">▎</span> <span font_style="italic">${cellMarkup(quote[1], colors)}</span>`);
-            continue;
-        }
-        if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) {
-            out.push('──────');
-            continue;
-        }
-        out.push(cellMarkup(line, colors));
-    }
-    return out.join('\n');
+    return chatBlocks(text).map(block => blockMarkup(block, colors)).join('\n');
 }

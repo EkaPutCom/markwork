@@ -504,8 +504,12 @@ src/
 │   ├── fields.ts         typed fields on an item (`[key:: value]`) and the `fields:` schema in the frontmatter: parsing, formatting, writing one field in place
 │   ├── home.ts           Home data: deadlines from boards, unprocessed inbox, recent files, greeting
 │   ├── journal.ts        daily journal: template, quick capture, merging Activity, board events, the JSONL activity log
+│   ├── inlineruns.ts     one line of inline Markdown → runs of visible text with merged styles (the base of pango.ts and inlinehtml.ts)
 │   ├── pango.ts          table cell contents (inline Markdown) → Pango markup for Gtk.Label
-│   ├── chatmarkup.ts     assistant answers (headings, lists, quotes, code blocks, inline) → Pango markup
+│   ├── inlinehtml.ts     the same runs → safe HTML for a web renderer
+│   ├── chatblocks.ts     assistant answers → line blocks (headings, bullets, quotes, rules, code, text)
+│   ├── chatmarkup.ts     the blocks → Pango markup
+│   ├── chathtml.ts       the blocks → HTML for a web renderer
 │   ├── dbml.ts           DBML (dbdiagram.io) translator → Mermaid ER diagram
 │   ├── csv.ts            a CSV file as rows of cells: reading, writing (an untouched row is kept as it was), and the row and column operations
 │   ├── htmlview.ts       the HTML page's rules: its address scheme, the Content-Security-Policy, and the check that keeps a page inside its folder
