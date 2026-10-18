@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Files, tabs, and the sidebar · Markwork Documentation</title>
-<meta name="description" content="Manage the work folder in Markwork: a file tree with right-click and drag-and-drop, many documents as tabs that are restored, and the document outline.">
+<meta name="description" content="Manage the work folder in Markwork: a file tree with right-click and drag-and-drop, search and replace in all notes, CSV tables, HTML pages, many documents as tabs that are restored, and the document outline.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="docs.css">
 </head>
@@ -31,12 +31,13 @@
 <p class="lead">Open a folder as a workspace, manage its files from the tree, and work on several documents at once as tabs.</p>
 
 <h2 id="sidebar">The sidebar</h2>
-<p><kbd>Ctrl</kbd>+<kbd>\</kbd> shows or hides the sidebar. It has four tabs:</p>
+<p><kbd>Ctrl</kbd>+<kbd>\</kbd> shows or hides the sidebar. It has five tabs:</p>
 <ul>
   <li><strong>Files</strong>: the tree of the work folder with its subfolders, Markdown files, CSV tables, HTML pages, and images</li>
+  <li><strong>Search</strong>: search and replace in all the Markdown files of the work folder (<a href="#search">Search in all notes</a>)</li>
   <li><strong>Outline</strong>: the list of headings of the document; click to jump</li>
   <li><strong>History</strong>: the Git commits of the open file (<a href="git.html">Git history</a>)</li>
-  <li><strong>Pull requests</strong> (the last tab, shown as an icon): the open pull requests of the folder's repository (<a href="collaboration.html">Collaboration</a>)</li>
+  <li><strong>Pull requests</strong> (the last tab): the open pull requests of the folder's repository (<a href="collaboration.html">Collaboration</a>)</li>
 </ul>
 <figure><img src="../assets/files.png" width="1332" height="867" loading="lazy" alt="The Files tab showing the tree of the work folder: notes, plans, and research"><figcaption>The file tree with folders and Markdown files</figcaption></figure>
 
@@ -49,8 +50,20 @@
   <li>Hidden files and folders and <code>node_modules</code> are not shown.</li>
 </ul>
 
+<h2 id="search">Search in all notes</h2>
+<p><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> (or <em>Search in All Notes</em> in the command palette) opens the Search tab and puts the selected text in the field. Results appear as you type, grouped per file, with the matches marked; a click opens the file in a tab with the match selected.</p>
+<figure><img src="../assets/search.png" width="1280" height="780" loading="lazy" alt="The Search tab with the results for "release" grouped in three files, the replace field, and the include and exclude fields"><figcaption>Search in all notes: the hits are grouped per file</figcaption></figure>
+<ul>
+  <li>The three buttons inside the field are <em>Match Case</em>, <em>Whole Words</em>, and <em>Regular Expression</em>. A regular expression that does not compile marks the field red and the summary line says why.</li>
+  <li>The summary line counts the results and the files. A search lists at most 1000 matches and says so when it stops. An unsaved tab is searched from its editor, not from the file on disk.</li>
+  <li>The <strong>···</strong> button shows <em>Files to include</em> and <em>Files to exclude</em>, comma-separated patterns such as <code>agenda/**, *.md</code> and <code>drafts/**</code> (<code>*</code> stays inside a folder, <code>**</code> crosses folders, a plain name matches that folder or file anywhere). The button stays highlighted while a filter is set.</li>
+  <li>The arrow to the left of the field opens the <em>Replace</em> field. <em>All</em> (or <kbd>Enter</kbd> in that field) asks first, then replaces every match in every listed file as one change. Files that are open can be undone with <kbd>Ctrl</kbd>+<kbd>Z</kbd>; the other files are written right away, so use Git (or turn off the files you do not want with a filter) if you need a way back.</li>
+  <li>The refresh button searches again, for example after files changed on disk.</li>
+</ul>
+
 <h2 id="csv">CSV tables</h2>
 <p>A <code>.csv</code> file opens as a table you edit in place. <em>New CSV Table…</em> (in the tree's right-click menu, or in the <kbd>☰</kbd> menu) asks for a name and makes <code>name.csv</code> with a header row and one empty row; rename the columns by editing the header.</p>
+<figure><img src="../assets/csv.png" width="1280" height="780" loading="lazy" alt="A CSV file open as an editable table with a header row, numbered rows, and Add Row and Add Column buttons"><figcaption>A CSV file as a table; the file stays plain CSV</figcaption></figure>
 <ul>
   <li>Click a cell and type. The cell is written to the file when you leave it or press <kbd>Enter</kbd>, so one edit is one undo step, and <kbd>Ctrl</kbd>+<kbd>Z</kbd> works as in any document.</li>
   <li><kbd>Enter</kbd> moves down (and adds a row at the end), <kbd>Shift</kbd>+<kbd>Enter</kbd> moves up, <kbd>Tab</kbd> moves right (and adds a row after the last cell), <kbd>Esc</kbd> puts the old value back, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> inserts a row below.</li>
@@ -59,6 +72,17 @@
   <li>Drag a row by its number, or a column by the grip in its header, and drop it between two others; a line shows where it will land, and the table scrolls when the pointer is near its edge. A drop is one undo step.</li>
   <li>The file stays plain CSV: its delimiter, line endings, and final line break are kept, and a row you did not change is written exactly as it was, so a Git diff shows only your edits.</li>
   <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> switches between the table and the text of the file. A file of more than a million cells opens as text.</li>
+</ul>
+
+<h2 id="html">HTML pages</h2>
+<p>An <code>.html</code>, <code>.htm</code>, or <code>.xhtml</code> file in the tree opens in a tab of its own, marked with a page icon. The page runs its JavaScript, so a report, a chart, or a small tool you saved in the work folder is interactive.</p>
+<figure><img src="../assets/html-page.png" width="1280" height="780" loading="lazy" alt="An HTML page open in a tab: a bar chart of sales per city and a button, with Back and Reload above the page"><figcaption>An HTML page in its tab, with Back and Reload above it</figcaption></figure>
+<ul>
+  <li>A page tab is not a document: there is no text to edit, nothing to save, and it closes without asking. It is not remembered for the next launch (the file tabs and Home are).</li>
+  <li><em>Back</em> and <em>Reload</em> (<kbd>Ctrl</kbd>+<kbd>R</kbd> or <kbd>F5</kbd>) are in the strip above the page. The page is shown again when its file changes on disk.</li>
+  <li>The page can read the work folder it is in (its own folder when it is outside the work folder) and nothing else, and it can reach no network.</li>
+  <li>A link in the page that points to the web is not loaded. Markwork shows the whole address and opens it in your browser only if you agree.</li>
+  <li>Without WebKitGTK (<code>gir1.2-webkit-6.0</code>) the tab shows a message instead of the page.</li>
 </ul>
 
 <h2 id="tabs">Many documents as tabs</h2>
