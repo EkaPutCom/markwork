@@ -24,6 +24,7 @@ import { editCardDialog, findDialog, harnessAskDialog } from '../src/ui/dialogs.
 import { findEntry } from '../src/ui/menu.js';
 import { localDate } from '../src/markdown/home.js';
 import { sendChangesDialog } from '../src/ui/sendchanges.js';
+import { CommandPalette } from '../src/ui/palette.js';
 import type { HttpRequest, HttpResponse } from '../src/forge/types.js';
 import { inMemorySettings } from '../src/platform/gjs/settings.js';
 
@@ -237,7 +238,7 @@ const tool = (id: string, name: string, args: object): Call => ({ id, name, argu
 const SCENES: (keyof Capture & string)[] = [
     'screenshots', 'syntaxGif', 'typingGif', 'diagramGif', 'kanbanGif', 'layouts', 'themeGif', 'assistant', 'proposals', 'files',
     'gitHistory', 'imageZoom', 'tabs', 'chatHistory', 'contextPopover', 'workPlan', 'agentLog', 'agentGit', 'cardDialog',
-    'orchestrator', 'dailyFlow', 'collab',
+    'orchestrator', 'dailyFlow', 'collab', 'searchPanel', 'csvTable', 'htmlPage', 'commandPalette', 'preferences',
 ];
 
 function main(app: Adw.Application): void {
@@ -1140,6 +1141,128 @@ One file. Change the layout: line and the same notes become a list, a table, a c
     }
 
     // The daily flow: Home, Inbox, Journal (one work folder, relative dates so Home always has due dates).
+    // Search and replace across all the notes: the Search tab of the sidebar with the results grouped per file.
+    searchPanel(): void {
+        const w = this.w;
+        this.openWork();
+        w.setDark(false);
+        w.setOption('chat', false);
+        w.setOption('sidebar', true);
+        w.showSearch(true);
+        const panel = w.searchPanel;
+        panel.entry.text = 'release';
+        panel.filterButton.active = true;
+        panel.run();
+        this.idle(800);
+        this.shot('search');
+        panel.filterButton.active = false;
+        panel.expand.active = false;
+        panel.entry.text = '';
+        w.sidebar.setPage('files');
+    }
+
+    // A .csv file as a table you edit in place.
+    csvTable(): void {
+        const w = this.w;
+        const rows = [
+            'date,customer,city,amount,status',
+            '2026-10-02,PT Maju Jaya,Jakarta,12400000,paid',
+            '2026-10-03,CV Sinar Baru,Bandung,8750000,paid',
+            '2026-10-04,Toko Makmur,Surabaya,6200000,pending',
+            '2026-10-05,UD Berkah,Medan,2300000,refunded',
+            '2026-10-06,PT Nusa Kita,Semarang,9100000,paid',
+            '2026-10-07,CV Harapan,Makassar,4800000,pending',
+        ];
+        const path = this.put('data/sales.csv', rows.join('\n') + '\n');
+        w.setOption('chat', false);
+        w.setOption('sidebar', true);
+        w.sidebar.setPage('files');
+        w.openFile(path);
+        this.idle(800);
+        w.fileTree.reveal(path);
+        this.idle(300);
+        this.shot('csv');
+        w.closeTab();
+        this.idle(200);
+    }
+
+    // An HTML file in a tab of its own: the page runs its script, inside a sandbox.
+    htmlPage(): void {
+        const w = this.w;
+        const page = `<!doctype html><html><head><meta charset="utf-8"><title>Sales report</title><style>
+body{font:15px/1.5 system-ui,sans-serif;margin:0;padding:32px 40px;color:#2e3436;background:#fff}
+h1{font-size:22px;margin:0 0 4px}p{color:#5e6a6e;margin:0 0 20px}
+.row{display:flex;align-items:center;gap:12px;margin:8px 0}.name{width:110px}
+.bar{height:22px;border-radius:5px;background:#3584e4}.value{color:#5e6a6e}
+button{margin-top:18px;font:inherit;padding:6px 14px;border-radius:6px;border:1px solid #c0bfbc;background:#f6f5f4}
+</style></head><body><h1>Sales per city</h1><p>A page in the work folder. It runs its own script, but it cannot reach the network.</p>
+<div id="bars"></div><button id="b">Show in millions</button>
+<script>
+const data = [['Jakarta', 12.4], ['Surabaya', 6.2], ['Bandung', 8.75], ['Semarang', 9.1], ['Medan', 2.3]];
+const box = document.getElementById('bars');
+let millions = false;
+function draw() {
+  box.innerHTML = '';
+  for (const [city, v] of data) {
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<span class="name">' + city + '</span><div class="bar" style="width:' + v * 28 + 'px"></div><span class="value">' + (millions ? v + ' M' : (v * 1000000).toLocaleString('en-US')) + '</span>';
+    box.append(r);
+  }
+}
+document.getElementById('b').onclick = () => { millions = !millions; draw(); };
+draw();
+</script></body></html>
+`;
+        const path = this.put('reports/sales.html', page);
+        w.setOption('chat', false);
+        w.setOption('sidebar', true);
+        w.sidebar.setPage('files');
+        w.openFile(path);
+        this.waitFor(() => w.shownHtml !== null, 8000);
+        this.idle(1500);
+        w.fileTree.reveal(path);
+        this.idle(400);
+        this.shot('html-page');
+        w.closeTab();
+        this.idle(200);
+    }
+
+    // The command palette with a search typed in.
+    commandPalette(): void {
+        const w = this.w;
+        w.setOption('chat', false);
+        w.setOption('sidebar', false);
+        this.load(DOC, false, 0, false);
+        const palette = new CommandPalette(w.app);
+        palette.present(w.win);
+        this.idle(500);
+        palette._search.text = 'table';
+        this.idle(500);
+        this.shot('palette');
+        palette.force_close();
+        this.idle(300);
+    }
+
+    // The Preferences dialog on its first page.
+    preferences(): void {
+        const w = this.w;
+        w.setOption('chat', false);
+        w.setOption('sidebar', false);
+        w.settings.home = true;   // the default, so the switch shows what a new install has
+        w.showPreferences();
+        this.idle(800);
+        this.shot('preferences');
+        const dialog = (w.win as unknown as Adw.ApplicationWindow).get_visible_dialog() as unknown as { _agentsPage: Adw.PreferencesPage; set_visible_page(page: Adw.PreferencesPage): void; force_close(): void } | null;
+        if (dialog) {
+            dialog.set_visible_page(dialog._agentsPage);
+            this.idle(500);
+            this.shot('preferences-agents');
+        }
+        dialog?.force_close();
+        w.settings.home = false;
+        this.idle(300);
+    }
+
     dailyFlow(): void {
         const w = this.w;
         const day = (offset: number) => { const d = new Date(); d.setDate(d.getDate() + offset); return localDate(d); };

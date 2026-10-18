@@ -18,6 +18,7 @@ const PAGES = [
     ['editor.html', 'The Markdown editor'],
     ['diagram.html', 'Mermaid and DBML diagrams'],
     ['kanban.html', 'The kanban board'],
+    ['layouts.html', 'Views of the same notes'],
     ['inbox.html', 'Inbox'],
     ['home.html', 'Home'],
     ['journal.html', 'The daily journal'],

@@ -482,7 +482,8 @@ export function harnessTests(c: GuiContext): void {
         rv.onTab('changes');
         const shot = optVal('shot-harness');
         if (shot) {
-            for (let i = 0; i < 30; i++) { pump(); GLib.usleep(10000); }
+            w.setOption('sidebar', false);   // the screenshots are for the docs: no empty Files tab beside the review
+            for (let i = 0; i < 400; i++) { pump(); GLib.usleep(10000); }   // the toast goes away on its own
             widgetPixbuf(w.win)?.savev(`${shot}-review.png`, 'png', [], []);
             w.setOption('dark', true);
             for (let i = 0; i < 30; i++) { pump(); GLib.usleep(10000); }
