@@ -5,6 +5,7 @@
 //   gjs -m dist/run-tests.js --no-gui                only the Markdown → HTML conversion tests
 //   gjs -m dist/run-tests.js --only-agents          only the GUI tests of agents on another machine (needs a display)
 //   gjs -m dist/run-tests.js --only-harness         only the GUI tests of kanban cards worked on by a fake pi (needs a display)
+//   gjs -m dist/run-tests.js --only-csv            only the GUI tests of the CSV tab (needs a display)
 //   gjs -m dist/run-tests.js --only-html           only the GUI tests of an HTML page in its tab (needs a display)
 //   gjs -m dist/run-tests.js --only-history         only the GUI tests of the History tab and the history viewer (needs a display)
 //   gjs -m dist/run-tests.js --only-worktrees        only the harness queue and the worktree per card (real git, no display)
@@ -12,6 +13,7 @@
 //   gjs -m dist/run-tests.js --mouse                 add real mouse clicks (the pointer will move)
 //   gjs -m dist/run-tests.js --screenshot=a.png      save a screenshot of the editor window
 //   gjs -m dist/run-tests.js --shot-proposal=/tmp/p  save screenshots of the agent proposal review window (/tmp/p-<n>-review.png and -main.png)
+//   gjs -m dist/run-tests.js --shot-csv=/tmp/c       save screenshots of the CSV tab light/dark and a file of 20,000 rows (/tmp/c-light.png, /tmp/c-dark.png, /tmp/c-big.png)
 //   gjs -m dist/run-tests.js --shot-inbox=/tmp/i     save screenshots of the inbox light/dark (/tmp/i-light.png, /tmp/i-dark.png)
 //   gjs -m dist/run-tests.js --shot-agents=/tmp/a    save screenshots of agents on another machine: Home with the connection, the Preferences page, the close question (/tmp/a-home-connected.png, -preferences.png, -close.png, and -dark)
 //   gjs -m dist/run-tests.js --shot-harness=/tmp/h   save screenshots of the board with pi cards working/queued and the pi log (/tmp/h-board.png, -log.png)
@@ -59,6 +61,8 @@ import { imageZoomTests } from './gui/imagezoom.js';
 import { codeColorTests } from './gui/codecolor.js';
 import { mermaidTests } from './gui/mermaid.js';
 import { htmlPageTests } from './gui/htmlpage.js';
+import { csvTests as csvGuiTests } from './gui/csv.js';
+import { csvMouseTests } from './gui/csv-mouse.js';
 import { tableGridTests } from './gui/table.js';
 import { codeBlockTests } from './gui/codeblock.js';
 import { conflictLayerTests } from './gui/conflicts.js';
@@ -166,6 +170,12 @@ function runGuiTests(app: Adw.Application): void {
         closeMain(c);
         return;
     }
+    if (opt('only-csv')) {
+        csvGuiTests(c);
+        if (opt('with-kanban-mouse')) csvMouseTests(c);
+        closeMain(c);
+        return;
+    }
     if (opt('only-folder-mouse')) {
         folderMouseTests(c);
         closeMain(c);
@@ -190,6 +200,7 @@ function runGuiTests(app: Adw.Application): void {
     kanbanBoardTests(c);
     inboxTests(c);
     tableLayoutGuiTests(c);
+    csvGuiTests(c);
     layoutsGuiTests(c);
     harnessTests(c);
     agentsHostTests(c);
@@ -197,6 +208,7 @@ function runGuiTests(app: Adw.Application): void {
     // The folder tests create another window and replace the app actions. Check undo/redo
     // with the mouse while the actions are still connected to this context's window.
     if (opt('with-kanban-mouse')) kanbanMouseTests(c);
+    if (opt('with-kanban-mouse')) csvMouseTests(c);
     folderTests(c);
     if (opt('with-kanban-mouse')) folderMouseTests(c);
     wikiLinkGuiTests(c);

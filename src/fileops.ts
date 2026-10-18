@@ -5,6 +5,8 @@ import { platform } from './platform/index.js';
 import { flushWrites, notifyDiskChange, trashFile } from './files.js';
 
 const MARKDOWN_EXTENSION = /\.(md|markdown|mdown|mkd)$/i;
+// Every kind of file the tree shows; a rename keeps these, so the file does not disappear from the tree.
+const SHOWN_EXTENSION = /\.(md|markdown|mdown|mkd|csv|html?|xhtml)$/i;
 
 const join = (dir: string, name: string): string => platform().paths.join(dir, name);
 const exists = (path: string): boolean => platform().fs.kind(path) !== 'missing';
@@ -21,10 +23,11 @@ function cleanName(raw: string): string {
     return name;
 }
 
-// Create a file (empty, or containing `content`); .md is appended if the extension is not a Markdown one, so it shows in the tree.
-export function createFile(dir: string, rawName: string, content = ''): string {
+// Create a file (empty, or containing `content`); `extension` (.md by default) is appended if the name does not end in
+// one that `keep` accepts (a Markdown one by default), so the file shows in the tree.
+export function createFile(dir: string, rawName: string, content = '', extension = '.md', keep = MARKDOWN_EXTENSION): string {
     let name = cleanName(rawName);
-    if (!MARKDOWN_EXTENSION.test(name)) name += '.md';
+    if (!keep.test(name)) name += extension;
     const path = join(dir, name);
     if (exists(path)) throw new Error(`“${name}” already exists in this folder.`);
     try {
@@ -100,11 +103,11 @@ export function copyEntry(source: string, destDir: string): string {
 }
 
 // Rename a file/folder in place. Returns the new path, or null if the name did not change.
-// Files keep a Markdown extension so they do not disappear from the tree.
+// Files keep an extension the tree shows (Markdown, CSV, HTML), and get .md otherwise, so they do not disappear from it.
 export function renameEntry(path: string, rawName: string): string | null {
     const { fs, paths } = platform();
     let name = cleanName(rawName);
-    if (!fs.isDirectory(path) && !MARKDOWN_EXTENSION.test(name)) name += '.md';
+    if (!fs.isDirectory(path) && !SHOWN_EXTENSION.test(name)) name += '.md';
     if (name === paths.basename(path)) return null;
     const target = join(paths.dirname(path), name);
     if (exists(target)) throw new Error(`“${name}” already exists in this folder.`);

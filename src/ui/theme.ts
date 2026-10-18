@@ -117,6 +117,28 @@ const buildCss = (p: Palette): string => `
     .table-head { border-bottom: 2px solid alpha(currentColor, 0.2); padding-top: 4px; padding-bottom: 4px; }
     .table-head-button { font-size: 11px; font-weight: bold; letter-spacing: 0.5px; padding: 2px 0; min-height: 0; }
     .table-late { color: @error_color; font-weight: bold; }
+    .csv-view { background-color: transparent; }
+    .csv-head { background-color: alpha(currentColor, 0.06); border-right: 1px solid alpha(currentColor, 0.12); border-bottom: 2px solid alpha(currentColor, 0.2); }
+    .csv-corner { border-right: 1px solid alpha(currentColor, 0.12); border-bottom: 2px solid alpha(currentColor, 0.2); background-color: alpha(currentColor, 0.06); }
+    .csv-body, .csv-head-entry { min-height: 32px; padding: 0 8px; border-radius: 0; background: transparent; box-shadow: none; outline: none; }
+    .csv-body { border-right: 1px solid alpha(currentColor, 0.12); border-bottom: 1px solid alpha(currentColor, 0.12); }
+    .csv-body:focus, .csv-head-entry:focus { box-shadow: inset 0 0 0 2px @accent_color; background-color: alpha(@accent_bg_color, 0.1); }
+    .csv-head-entry { font-weight: bold; }
+    .csv-number { min-width: 36px; padding: 0 6px; min-height: 32px; border-radius: 0; font-size: 12px; font-feature-settings: "tnum"; color: alpha(currentColor, 0.55); border-right: 1px solid alpha(currentColor, 0.12); border-bottom: 1px solid alpha(currentColor, 0.12); }
+    .csv-number:hover { background-color: alpha(currentColor, 0.08); color: currentColor; }
+    listview.csv-list, listview.csv-list > row { background: none; }
+    listview.csv-list > row { padding: 0; min-height: 0; }
+    listview.csv-list > row:hover { background: none; }
+    .csv-match { background-color: alpha(@warning_bg_color, 0.5); }
+    .csv-match-current { background-color: alpha(@accent_bg_color, 0.45); box-shadow: inset 0 0 0 2px @accent_color; }
+    .csv-grip { opacity: 0.35; margin-left: 6px; }
+    .csv-head:hover .csv-grip { opacity: 0.8; }
+    .csv-drop-above { box-shadow: inset 0 3px 0 0 @accent_color; }
+    .csv-drop-below { box-shadow: inset 0 -3px 0 0 @accent_color; }
+    .csv-drop-left { box-shadow: inset 3px 0 0 0 @accent_color; }
+    .csv-drop-right { box-shadow: inset -3px 0 0 0 @accent_color; }
+    .csv-more { min-width: 24px; min-height: 24px; padding: 0; margin-right: 4px; opacity: 0.6; }
+    .csv-more:hover { opacity: 1; }
     .table-grid progressbar trough, .table-grid progressbar progress { min-height: 6px; }
     .calendar-view, .timeline-chart, .gallery-view, .chart-view { background-color: transparent; }
     .calendar-grid { border: 1px solid alpha(currentColor, 0.15); border-radius: 8px; }

@@ -21,6 +21,16 @@ export function fileOpsTests(): void {
         eq(createFile(base, ' idea.markdown '), at('idea.markdown'), 'markdown extension is kept');
         ok(exists(at('notes.md')), 'file was not created');
     });
+    test('createFile can append another extension, and keeps one that fits', () => {
+        eq(createFile(base, 'sales', 'a,b\n', '.csv', /\.csv$/i), at('sales.csv'), 'appended');
+        eq(createFile(base, 'q3.CSV', 'a,b\n', '.csv', /\.csv$/i), at('q3.CSV'), 'kept');
+        eq(disk.read(at('sales.csv')), 'a,b\n', 'content');
+    });
+    test('renameEntry keeps a CSV or HTML extension instead of adding .md', () => {
+        eq(renameEntry(at('sales.csv'), 'sales-q3.csv'), at('sales-q3.csv'));
+        eq(createFile(base, 'page.html', '<p>x</p>', '.html', /\.html?$/i), at('page.html'));
+        eq(renameEntry(at('page.html'), 'home.htm'), at('home.htm'));
+    });
     test('createFile rejects empty names, names with slashes or dots, and existing ones', () => {
         throws(() => createFile(base, '  '), 'empty');
         throws(() => createFile(base, 'a/b'), '/');

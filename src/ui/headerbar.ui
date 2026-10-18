@@ -154,6 +154,10 @@
         <attribute name="label" translatable="yes">New Table</attribute>
         <attribute name="action">app.table-new</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">New CSV Table</attribute>
+        <attribute name="action">app.csv-new</attribute>
+      </item>
     </section>
     <section>
       <item>

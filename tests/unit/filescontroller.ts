@@ -42,9 +42,9 @@ export async function filesControllerTests(): Promise<void> {
         return { dir, session, files: session.files, opened, errors, answers, ...rec };
     };
 
-    await test('a listing shows folders first, then Markdown files, HTML pages, and images, in natural order; dot files and node_modules are not shown', () => {
+    await test('a listing shows folders first, then Markdown files, CSV tables, HTML pages, and images, in natural order; dot files and node_modules are not shown', () => {
         const dir = disk.join(tmp, 'files-listing');
-        for (const name of ['chapter 10.md', 'chapter 2.md', 'photo.png', 'report.html', 'old.htm', 'notes.txt', '.hidden.md']) {
+        for (const name of ['chapter 10.md', 'chapter 2.md', 'photo.png', 'report.html', 'old.htm', 'sales.csv', 'notes.txt', '.hidden.md']) {
             disk.mkdirs(dir);
             disk.write(disk.join(dir, name), '');
         }
@@ -52,7 +52,7 @@ export async function filesControllerTests(): Promise<void> {
         disk.mkdirs(disk.join(dir, 'node_modules'));
         disk.mkdirs(disk.join(dir, '.git'));
         host().symlink(disk.join(dir, 'z-folder'), disk.join(dir, 'linked'));
-        eq(listFolder(dir).map(e => [e.name, e.isDir]), [['linked', true], ['z-folder', true], ['chapter 2.md', false], ['chapter 10.md', false], ['old.htm', false], ['photo.png', false], ['report.html', false]]);
+        eq(listFolder(dir).map(e => [e.name, e.isDir]), [['linked', true], ['z-folder', true], ['chapter 2.md', false], ['chapter 10.md', false], ['old.htm', false], ['photo.png', false], ['report.html', false], ['sales.csv', false]]);
         eq(listFolder(disk.join(dir, 'gone')), [], 'a missing folder lists as empty');
     });
 
@@ -95,6 +95,24 @@ export async function filesControllerTests(): Promise<void> {
         eq(await session.host.fileTree.onCreate('file', dir), null);
         eq(errors, ['Name cannot start with a dot (it would be hidden from the tree).']);
         eq(await session.host.fileTree.onCreate('file', dir), null, 'cancelled');
+        session.dispose();
+    });
+
+    await test('a new CSV table is a .csv file with a header and an empty row, and opens in a tab; a CSV file keeps its extension when renamed', async () => {
+        const { dir, session, files, folders, opened, answers } = setup();
+        files.setRoot(dir);
+        answers.push('sales');
+        const path = disk.join(dir, 'sales.csv');
+        eq(await session.host.fileTree.onCreate('csv', dir), path);
+        eq(disk.read(path), 'Column 1,Column 2,Column 3\n,,\n');
+        eq(opened().at(-1), path);
+        ok(folders.get(dir)?.includes('sales.csv'), 'the tree lists it');
+        answers.push('sales.csv');
+        eq(await session.host.fileTree.onCreate('csv', dir), null, 'a taken name is refused');
+        answers.push('q3');
+        eq(await session.host.fileTree.onRename(path), disk.join(dir, 'q3.md'), 'a name with no known extension becomes a Markdown file');
+        answers.push('q3.csv');
+        eq(await session.host.fileTree.onRename(disk.join(dir, 'q3.md')), disk.join(dir, 'q3.csv'), 'a CSV name is kept');
         session.dispose();
     });
 

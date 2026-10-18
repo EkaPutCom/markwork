@@ -18,7 +18,7 @@ const EXPECTED: Record<string, string[]> = {
     'heading0': ['<Control>0'], 'heading6': ['<Control>6'], 'sidebar': ['<Control>backslash', '<Control><Shift>1'], 'chat': ['<Control><Shift>a'],
     'focus': ['F8'], 'typewriter': ['F9'], 'source': ['<Control>slash'], 'dark': ['<Control><Shift>d'],
 };
-const NONE = ['journal-summary', 'zoom-image', 'kanban-new', 'inbox-new', 'table-new', 'fields-edit', 'send-changes', 'autosave', 'about', 'layout', 'open-recent', 'table-row-below'];
+const NONE = ['journal-summary', 'zoom-image', 'kanban-new', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'send-changes', 'autosave', 'about', 'layout', 'open-recent', 'table-row-below'];
 
 export function actionTests(): void {
     section('Commands as GTK accelerators');
