@@ -34,6 +34,11 @@ export class OutlineController<E extends TextEditor = TextEditor> {
         this.send(doc.editor.headings);
     }
 
+    // A page is shown: there are no headings.
+    clear(): void {
+        this.send([]);
+    }
+
     // A document's headings changed; only the active document's are shown.
     changed(doc: Doc<E>): void {
         if (doc === this.host.active()) this.show(doc);

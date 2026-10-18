@@ -25,10 +25,10 @@ import { AssistantController, type AssistantHost } from './assistant.js';
 import { HistoryController, type HistoryDialogs, type HistoryHost } from './history.js';
 import { PreferencesController, type PreferencesDialogs, type PreferencesHost } from './preferences.js';
 import { OutlineController, type OutlineHost } from './outline.js';
-import { FilesController, isImageFile, type FilesDialogs, type FilesHost } from './files.js';
+import { FilesController, isHtmlFile, isImageFile, type FilesDialogs, type FilesHost } from './files.js';
 import { SearchController, type SearchDialogs, type SearchHost } from './search.js';
 import type { Board } from '../markdown/kanban.js';
-import type { Doc, TextEditor, ToastAction, ToastButton } from './document.js';
+import type { Doc, Page, TextEditor, ToastAction, ToastButton } from './document.js';
 import type { CommandHost, CoreCommands, FrontendCommands } from './commands.js';
 import { _ } from '../i18n.js';
 
@@ -37,7 +37,7 @@ export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & 
     & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost & SearchHost<E> & OutlineHost<E> & PreferencesHost;
 
 // What the session answers itself, from the controllers it owns.
-type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
+type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'page' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
     | 'fileBack' | 'newDocument' | 'showDocument' | 'saveAll' | 'showChat' | 'boardShown' | 'updateBoardFile' | 'record' | 'agentHost' | 'runs'
     | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted' | 'settings' | 'toast' | 'boardNow' | 'commitBoard'
     | 'openFile' | 'projectName' | 'isActive' | 'refreshTree' | 'filesMoved' | 'showPull' | 'showReview' | 'showRuns';
@@ -47,8 +47,8 @@ type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'activ
 export interface DocumentTitle {
     name: string;
     file: string | null;
-    home: boolean;
-    place: string | null;    // Home: the work folder's name; a file: its folder, `~` for the home folder; null: the app's name
+    page: boolean;           // the tab is a page (Home, an HTML file), not a document: it has nothing to save
+    place: string | null;    // Home: the work folder's name; a file or an HTML page: its folder, `~` for the home folder; null: the app's name
 }
 
 // The views, notices, and system services of the frontend: the host members that are not another controller. A toast
@@ -145,7 +145,7 @@ export class AppSession<E extends TextEditor> {
         this.notes = new NoteLinks(host);
         this.assistant = new AssistantController(host, {
             nameOf: doc => this.documents.nameOf(doc),
-            canInsert: () => !this.views.structuredMode && !this.views.homeMode,
+            canInsert: () => !this.views.structuredMode && !this.views.pageMode,
         });
         // The commit message writer uses the Assistant's key and model, read each time it starts.
         this.history = new HistoryController(host, dialogs.history, () => {
@@ -163,6 +163,7 @@ export class AppSession<E extends TextEditor> {
             createEditor: { value: (id: number) => frontend.createEditor(id) },
             toast: { value: (message: string, action?: ToastAction) => this.toast(message, action) },
             activated: { value: (id: number) => this.activated(id) },
+            pageActivated: { value: (id: number) => this.pageActivated(id) },
             contentChanged: { value: (id: number) => this.contentChanged(id) },
             refreshTitle: { value: (id: number) => this.refreshTitle(id) },
             openFolder: { value: (path: string) => void this.openFolder(path) },
@@ -185,6 +186,7 @@ export class AppSession<E extends TextEditor> {
             homePage: get(() => this.homePage),
             workspace: get(() => this.workspace),
             active: value((): Doc<E> => this.documents.active),
+            page: value((): Page | null => this.documents.page),
             docs: value((): readonly Doc<E>[] => this.documents.all),
             openInTab: value((path: string) => this.documents.openInTab(path)),
             write: value((path: string, text: string) => this.documents.write(path, text)),
@@ -212,7 +214,7 @@ export class AppSession<E extends TextEditor> {
             entryMoved: value((from: string, to: string) => { this.documents.filesMoved(from, to); this.host.filesMoved(); }),
             entryDeleted: value((path: string) => { this.documents.fileDeleted(path); this.host.filesMoved(); }),
             // After a delete or move: highlight the active file again and re-read its history.
-            filesMoved: value(() => { this.files.reveal(this.documents.active.file); this.syncHistory(true); }),
+            filesMoved: value(() => { this.files.reveal(this.shownFile()); this.syncHistory(true); }),
             refreshTree: value(() => { if (this.files.root) this.files.refresh(this.files.root); }),
             openFile: value((path: string) => this.openFile(path)),
             projectName: value((path: string | null) => this.projectName(path)),
@@ -321,7 +323,7 @@ export class AppSession<E extends TextEditor> {
             editor.setText('');
         }
         this.views.sync();
-        this.refreshTitle(this.documents.active.id);
+        this.refreshTitle((this.documents.page ?? this.documents.active).id);
         this.refreshRecent();
         this.syncHistory();
         // Agents that kept working while Markwork was closed are found again once the window is up.
@@ -350,12 +352,13 @@ export class AppSession<E extends TextEditor> {
     private applyFolder(absolute: string, show: boolean): true {
         this.files.setRoot(absolute);
         this.workspace.warm(absolute);
-        this.files.reveal(this.documents.active.file);
+        this.files.reveal(this.shownFile());
         this.syncHistory();
         this.pulls.folderChanged();
         void this.collab.setFolder(absolute);
         this.settings.folder = absolute;
-        if (this.documents.active.home) this.refreshTitle(this.documents.active.id);
+        const page = this.documents.page;
+        if (page?.kind === 'home') this.refreshTitle(page.id);
         this.refreshHome();
         if (show) {
             this.settings.sidebar = true;
@@ -416,7 +419,12 @@ export class AppSession<E extends TextEditor> {
     // Send the title of document `id` to the frontend.
     refreshTitle(id: number): void {
         const doc = this.docById(id);
-        if (doc) this.frontend.documents.setTitle(id, this.titleOf(doc));
+        if (doc) {
+            this.frontend.documents.setTitle(id, this.titleOf(doc));
+            return;
+        }
+        const page = this.documents.allPages.find(p => p.id === id);
+        if (page) this.frontend.documents.setTitle(id, this.titleOfPage(page));
     }
 
     // ---------- What follows the documents ----------
@@ -427,7 +435,25 @@ export class AppSession<E extends TextEditor> {
 
     // The history is read only while its tab is shown, so git is not run needlessly. force = read again for the same file.
     private syncHistory(force = false): void {
-        if (this.sidebarPage === 'history') this.history.show(this.documents.active.file, this.files.root, force);
+        if (this.sidebarPage === 'history') this.history.show(this.shownFile(), this.files.root, force);
+    }
+
+    // The file the active tab is about: the document's, an HTML page's, none for Home. The tree and the history follow it.
+    private shownFile(): string | null {
+        const page = this.documents.page;
+        return page ? page.file : this.documents.active.file;
+    }
+
+    // A page became the shown tab: the frontend's tabs and content follow, and what follows a document is cleared.
+    private pageActivated(id: number): void {
+        const page = this.documents.allPages.find(p => p.id === id);
+        if (!page) return;
+        this.frontend.documents.pageActivated(id);
+        this.outline.clear();
+        this.views.sync();
+        this.refreshTitle(id);
+        this.files.reveal(page.file);
+        this.syncHistory();
     }
 
     // A document became the active one: the frontend's tabs follow first, then everything that shows the active document.
@@ -449,7 +475,7 @@ export class AppSession<E extends TextEditor> {
         this.views.replaced(doc);
         this.refreshTitle(id);
         this.files.reveal(doc.file);
-        if (!doc.home) this.syncHistory();
+        this.syncHistory();
     }
 
     // A new file was written through Save As: the tree shows it without waiting for the folder's monitor.
@@ -459,10 +485,14 @@ export class AppSession<E extends TextEditor> {
         this.syncHistory();
     }
 
-    // A file chosen in the Files tab: an image goes to the viewer, anything else to a tab.
+    // A file chosen in the Files tab: an image or an HTML page goes to its viewer, anything else to a tab.
     private openFile(path: string): void {
         if (isImageFile(path)) {
             this.frontend.host.showImage(path);
+            return;
+        }
+        if (isHtmlFile(path)) {
+            this.documents.openHtml(path, this.files.root);
             return;
         }
         const active = this.documents.active;
@@ -471,15 +501,26 @@ export class AppSession<E extends TextEditor> {
     }
 
     private titleOf(doc: Doc<E>): DocumentTitle {
-        const { paths } = platform();
         const name = this.documents.nameOf(doc);
-        const root = this.files.root;
-        if (doc.home) return { name, file: null, home: true, place: root ? paths.basename(root) : null };
-        if (!doc.file) return { name, file: null, home: false, place: null };
-        const dir = paths.dirname(doc.file), home = paths.homeDir();
+        if (!doc.file) return { name, file: null, page: false, place: null };
+        return { name, file: doc.file, page: false, place: this.placeOf(doc.file) };
+    }
+
+    private titleOfPage(page: Page): DocumentTitle {
+        const name = this.documents.nameOfPage(page);
+        if (!page.file) {
+            const root = this.files.root;
+            return { name, file: null, page: true, place: root ? platform().paths.basename(root) : null };
+        }
+        return { name, file: page.file, page: true, place: this.placeOf(page.file) };
+    }
+
+    // Where a file is, for a title: its folder, `~` for the home folder.
+    private placeOf(file: string): string {
+        const { paths } = platform();
+        const dir = paths.dirname(file), home = paths.homeDir();
         const below = insideName(home, dir);
-        const place = dir === home ? '~' : below !== null ? `~/${below}` : dir;
-        return { name, file: doc.file, home: false, place };
+        return dir === home ? '~' : below !== null ? `~/${below}` : dir;
     }
 
     // A file's name in the work folder (the same as the name in workspace.ts), or its base name outside it; null if not saved.
@@ -496,7 +537,7 @@ export class AppSession<E extends TextEditor> {
 
     // Redraw Home if it is shown; the data is recomputed from the files every time.
     refreshHome(): void {
-        if (this.documents.active.home && this.views.homeMode) this.frontend.host.screen.showHome(this.homePage.data());
+        if (this.documents.page?.kind === 'home' && this.views.homeMode) this.frontend.host.screen.showHome(this.homePage.data());
     }
 
     // Stop the timers and background work of the controllers (the frontend destroys its editors and widgets).

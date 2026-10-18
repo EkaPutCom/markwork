@@ -42,9 +42,9 @@ export async function filesControllerTests(): Promise<void> {
         return { dir, session, files: session.files, opened, errors, answers, ...rec };
     };
 
-    await test('a listing shows folders first, then Markdown files and images, in natural order; dot files and node_modules are not shown', () => {
+    await test('a listing shows folders first, then Markdown files, HTML pages, and images, in natural order; dot files and node_modules are not shown', () => {
         const dir = disk.join(tmp, 'files-listing');
-        for (const name of ['chapter 10.md', 'chapter 2.md', 'photo.png', 'notes.txt', '.hidden.md']) {
+        for (const name of ['chapter 10.md', 'chapter 2.md', 'photo.png', 'report.html', 'old.htm', 'notes.txt', '.hidden.md']) {
             disk.mkdirs(dir);
             disk.write(disk.join(dir, name), '');
         }
@@ -52,7 +52,7 @@ export async function filesControllerTests(): Promise<void> {
         disk.mkdirs(disk.join(dir, 'node_modules'));
         disk.mkdirs(disk.join(dir, '.git'));
         host().symlink(disk.join(dir, 'z-folder'), disk.join(dir, 'linked'));
-        eq(listFolder(dir).map(e => [e.name, e.isDir]), [['linked', true], ['z-folder', true], ['chapter 2.md', false], ['chapter 10.md', false], ['photo.png', false]]);
+        eq(listFolder(dir).map(e => [e.name, e.isDir]), [['linked', true], ['z-folder', true], ['chapter 2.md', false], ['chapter 10.md', false], ['old.htm', false], ['photo.png', false], ['report.html', false]]);
         eq(listFolder(disk.join(dir, 'gone')), [], 'a missing folder lists as empty');
     });
 

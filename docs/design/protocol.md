@@ -42,7 +42,7 @@ What follows for Markwork:
 | --- | --- |
 | core | The process that runs `AppSession`, the core modules, and a platform port (`platform/node/` or `platform/gjs/`). |
 | frontend | The process that shows the window: widgets, the editor, dialogs, menus, keyboard. |
-| document | One open tab, identified by `doc`, a number the core chooses (`Doc.id` today). The Home tab is a document with `home: true`. |
+| document | One open tab, identified by `doc`, a number the core chooses (`Doc.id` today). Home and an HTML file are not documents but pages (`Page` in `app/document.ts`): a tab with an id from the same numbering, no text, and nothing to save. |
 | version | A per-document counter of the text. The frontend bumps it with every edit it sends; the core's own writes carry the version they were made against. |
 | replica | The core's copy of a document's text, kept current by the frontend's edits. Every read of the text in the core (saving, the agent's context, boards, autosave) reads the replica. |
 | view | Something the core asks the frontend to draw: a page (Home, a board, a review), a panel (collaboration, history), or a status (counts, busy). Described by snapshots of plain data. |

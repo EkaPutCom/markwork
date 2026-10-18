@@ -46,8 +46,8 @@ export interface ViewDialogs {
 }
 
 export type LayoutPage = 'calendar' | 'timeline' | 'gallery' | 'chart';
-export type View = 'board' | 'inbox' | 'table' | LayoutPage | 'home' | 'text';
-export type StructuredPage = Exclude<View, 'home' | 'text'>;
+export type View = 'board' | 'inbox' | 'table' | LayoutPage | 'home' | 'html' | 'text';
+export type StructuredPage = Exclude<View, 'home' | 'html' | 'text'>;
 
 // The page that shows each layout.
 const PAGE_OF: Record<Layout, View> = { board: 'board', list: 'inbox', table: 'table', calendar: 'calendar', timeline: 'timeline', gallery: 'gallery', chart: 'chart' };
@@ -73,6 +73,7 @@ export interface CaptureView extends NotesView {
 // record of what it last showed, not something it asks the screen.
 export interface ViewScreen<E extends TextEditor> {
     showHome(data: HomeData): void;
+    showPageTab(id: number): void;   // the content of an HTML page tab
     showText(id: number): void;      // the document's own editor page, with the cursor shown and focused
     showPage(page: StructuredPage): void;
     closeFind(): void;
@@ -80,7 +81,7 @@ export interface ViewScreen<E extends TextEditor> {
     setCounts(text: string): void;
     setBoardCounts(lists: number, cards: number): void;
     setInboxCounts(items: number): void;
-    showLayout(layout: Layout | '' | null): void;   // the layout button and menu: '' = the text view, null = hidden (Home)
+    showLayout(layout: Layout | '' | null): void;   // the layout button and menu: '' = the text view, null = hidden (a page)
     setStructuredState(on: boolean): void;          // the Board View toggle
     enableActions(names: readonly string[], enabled: boolean): void;
 }
@@ -134,6 +135,8 @@ export class ViewController<E extends TextEditor> {
     get inboxMode(): boolean { return this.page === 'inbox'; }
     get tableMode(): boolean { return this.page === 'table'; }
     get homeMode(): boolean { return this.page === 'home'; }
+    // A page that is not a view of a document is shown (Home, an HTML file): no text, nothing to save.
+    get pageMode(): boolean { return this.page === 'home' || this.page === 'html'; }
     // A board, inbox, table, calendar, timeline, gallery, or chart is shown (a view of the text, not the text itself).
     get structuredMode(): boolean { return isStructuredPage(this.page); }
 
@@ -156,11 +159,12 @@ export class ViewController<E extends TextEditor> {
 
     // A kanban document is shown as a board and an inbox document as an inbox, unless the user chose the text view.
     sync(): void {
-        const doc = this.host.active();
-        if (doc.home) {
-            this.show('home');
+        const page = this.host.page();
+        if (page) {
+            this.show(page.kind);
             return;
         }
+        const doc = this.host.active();
         const text = doc.editor.getText();
         const layout = layoutOf(text);
         this.show(!this.state(doc).textOverride && layout ? PAGE_OF[layout] : 'text');
@@ -170,10 +174,13 @@ export class ViewController<E extends TextEditor> {
         const { screen } = this.host;
         const doc = this.host.active();
         this.page = view;
-        screen.setStatusVisible(view !== 'home');
+        screen.setStatusVisible(view !== 'home' && view !== 'html');
         if (view === 'home') {
             screen.closeFind();
             screen.showHome(this.host.homePage.data());
+        } else if (view === 'html') {
+            screen.closeFind();
+            screen.showPageTab(this.host.page()!.id);
         } else if (view === 'text') {
             screen.showText(doc.id);
             screen.setCounts(doc.editor.getText());
@@ -188,7 +195,7 @@ export class ViewController<E extends TextEditor> {
         }
         screen.setStructuredState(isStructuredPage(view));
         // The layout button and menu show the layout the document is in (Text for the text view, hidden for Home).
-        screen.showLayout(view === 'home' ? null : view === 'text' ? '' : layoutOf(doc.editor.getText()) ?? '');
+        screen.showLayout(view === 'home' || view === 'html' ? null : view === 'text' ? '' : layoutOf(doc.editor.getText()) ?? '');
         this.syncActionsEnabled();
     }
 
@@ -293,7 +300,7 @@ export class ViewController<E extends TextEditor> {
         this.writeBoard(board);
     }
 
-    private showCounts(view: Exclude<View, 'home' | 'text'>): void {
+    private showCounts(view: StructuredPage): void {
         if (view === 'board') this.showBoardCounts(this.currentBoard());
         else this.host.screen.setInboxCounts(countCards(this.viewOf(view)!.current()));
     }
@@ -315,13 +322,13 @@ export class ViewController<E extends TextEditor> {
         this.host.inbox.focusCapture();
     }
 
-    // Text editor actions are disabled while a board, inbox, or Home is shown (its text is hidden).
+    // Text editor actions are disabled while a board, inbox, or a page (Home, an HTML file) is shown (its text is hidden).
     syncActionsEnabled(): void {
-        const home = this.homeMode;
-        const structured = this.structuredMode || home;
+        const page = this.pageMode;
+        const structured = this.structuredMode || page;
         const { screen } = this.host;
         screen.enableActions(TEXT_ACTIONS, !structured);
-        screen.enableActions(DOCUMENT_ACTIONS, !home);
+        screen.enableActions(DOCUMENT_ACTIONS, !page);
         screen.enableActions(STRUCTURED_ACTIONS, this.structuredMode);
     }
 

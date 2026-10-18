@@ -81,6 +81,20 @@ export class LaggingEditor extends FakeEditor {
     }
 }
 
+// The tab row as the frontend keeps it: what the document controller asks it to add and remove, in order.
+export function tabRow(): Pick<AppFrontend<FakeEditor>['documents'], 'tabOrder' | 'attach' | 'detach' | 'listTab' | 'attachPage' | 'detachPage'> {
+    const row: number[] = [];
+    const drop = (id: number) => { const at = row.indexOf(id); if (at >= 0) row.splice(at, 1); };
+    return {
+        tabOrder: () => [...row],
+        attach: id => { row.push(id); },
+        detach: drop,
+        listTab: (id, listed) => { if (listed && !row.includes(id)) row.push(id); else if (!listed) drop(id); },
+        attachPage: page => { row.push(page.id); },
+        detachPage: drop,
+    };
+}
+
 // Any member the test does not care about does nothing.
 export const quiet = <T extends object>(members: Partial<T>): T => new Proxy(members, { get: (target, key) => key in target ? (target as never)[key] : () => undefined }) as T;
 
@@ -98,10 +112,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
             toast: message => { toasts.push(message); },
             ...extra,
         }),
-        documents: quiet<AppFrontend<FakeEditor>['documents']>({
-            dialogs: quiet({}),
-            tabOrder: () => [1],
-        }),
+        documents: quiet<AppFrontend<FakeEditor>['documents']>({ dialogs: quiet({}), ...tabRow() }),
         // The file dialogs are a plain object a test can fill in; they answer "cancelled" until it does.
         dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({ files: { name: () => null, confirm: () => false, error: () => {} }, search: { confirm: () => false }, preferences: { machine: () => null, removeWorktree: () => false } }),
     };
@@ -121,9 +132,9 @@ export async function appSessionTests(): Promise<void> {
         const bold = COMMANDS.find(c => c.id === 'bold')!;
         const save = COMMANDS.find(c => c.id === 'save')!;
         const fields = COMMANDS.find(c => c.id === 'fields-edit')!;
-        eq([bold, save, fields].map(c => commandEnabled(c, { home: false, structured: false })), [true, true, false], 'text');
-        eq([bold, save, fields].map(c => commandEnabled(c, { home: false, structured: true })), [false, true, true], 'board');
-        eq([bold, save, fields].map(c => commandEnabled(c, { home: true, structured: false })), [false, false, false], 'home');
+        eq([bold, save, fields].map(c => commandEnabled(c, { page: false, structured: false })), [true, true, false], 'text');
+        eq([bold, save, fields].map(c => commandEnabled(c, { page: false, structured: true })), [false, true, true], 'board');
+        eq([bold, save, fields].map(c => commandEnabled(c, { page: true, structured: false })), [false, false, false], 'home');
         ok(commandIds('text').includes('heading3') && commandIds('document').includes('layout'), 'scopes');
     });
 
@@ -205,7 +216,7 @@ export async function appSessionTests(): Promise<void> {
         settings.tabs = [];
         settings.store.set('home', true);
         session = fresh(settings, null);
-        ok(session.documents.active.home, 'Home when nothing else is to be opened');
+        eq(session.documents.page?.kind, 'home', 'Home when nothing else is to be opened');
         session.dispose();
         session = fresh(settings, file);
         eq(session.documents.active.file, file, 'a file from the command line wins over the last tabs and Home');
@@ -264,19 +275,19 @@ export async function appSessionTests(): Promise<void> {
         const other = disk.join(tmp, 'appsession-titles', 'other');
         disk.mkdirs(dir);
         disk.mkdirs(other);
-        const note = disk.join(dir, 'note.md'), next = disk.join(dir, 'next.md'), image = disk.join(dir, 'cover.png');
-        for (const f of [note, next, image]) disk.write(f, 'x\n');
+        const note = disk.join(dir, 'note.md'), next = disk.join(dir, 'next.md'), image = disk.join(dir, 'cover.png'), page = disk.join(dir, 'report.html');
+        for (const f of [note, next, image, page]) disk.write(f, 'x\n');
         const titles = new Map<number, DocumentTitle>();
         const uris: string[] = [], images: string[] = [], recent: string[][] = [];
         const frontend = fakeFrontend(memorySettings(), [], undefined, {
             openUri: uri => { uris.push(uri); }, showImage: path => { images.push(path); }, setRecent: paths => { recent.push(paths); },
         });
-        const session = new AppSession({ ...frontend, documents: quiet<AppFrontend<FakeEditor>['documents']>({ ...frontend.documents, tabOrder: () => [1], setTitle: (id, title) => { titles.set(id, title); } }) });
+        const session = new AppSession({ ...frontend, documents: quiet<AppFrontend<FakeEditor>['documents']>({ ...frontend.documents, setTitle: (id, title) => { titles.set(id, title); } }) });
         try {
             session.start();
             session.open(note);
             const id = session.documents.active.id;
-            eq(titles.get(id), { name: 'note.md', file: note, home: false, place: '~/appsession-titles/notes' }, 'the home folder is ~');
+            eq(titles.get(id), { name: 'note.md', file: note, page: false, place: '~/appsession-titles/notes' }, 'the home folder is ~');
             session.openFolder(dir, false);
             eq(session.host.projectName(note), 'note.md');
             eq(session.host.projectName(disk.join(other, 'x.md')), 'x.md');
@@ -287,6 +298,9 @@ export async function appSessionTests(): Promise<void> {
             eq(uris, ['https://example.org/a b', `file://${disk.join(dir, 'my%20file.pdf')}`], 'anything else goes to the system');
             session.host.openFile(image);
             eq(images, [image], 'an image goes to the viewer');
+            session.host.openFile(page);
+            eq(session.documents.page?.file, page, 'an HTML page opens as a page tab, not as a document');
+            eq(session.documents.active.file, next, 'and no document was opened for it');
             ok(recent.at(-1)!.includes(note) && recent.at(-1)!.includes(next), JSON.stringify(recent.at(-1)));
             disk.remove(note);
             session.settings.recentFiles = [...session.settings.recentFiles];

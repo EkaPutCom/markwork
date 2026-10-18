@@ -1,5 +1,5 @@
-// The open documents (tabs): which one is active, opening files into them, saving, asking before discarding
-// changes, the Home tab, and restoring the tabs of the last session. The window composes the widgets; it gives this
+// The open tabs: the documents (which one is active, opening files into them, saving, asking before discarding
+// changes) and the pages (Home, an HTML file in its sandbox), and restoring the tabs of the last session. The window composes the widgets; it gives this
 // controller hooks for what must follow a document on screen (DocumentsHost), and keeps thin public methods that
 // pass through for the actions and tests.
 
@@ -10,7 +10,7 @@ import { platform } from '../platform/index.js';
 import { moveRecent, rememberRecent } from '../markdown/home.js';
 import { markdownToHtml } from '../markdown/html.js';
 import { _, fmt, ngettext } from '../i18n.js';
-import { errorMessage, type Doc, type TextEditor, type ToastAction } from './document.js';
+import { errorMessage, type Doc, type Page, type TextEditor, type ToastAction } from './document.js';
 import type { ChooseFileOptions } from './dialogs.js';
 import type { Autosaver } from './autosave.js';
 
@@ -44,13 +44,19 @@ export interface DocumentsHost<E extends TextEditor> {
     attach(id: number): void;
     // A closed document: remove its tab and page and destroy its editor (it is no longer in the list).
     detach(id: number): void;
+    // The document's tab appears or goes. The one empty document kept while only pages are open has no tab.
+    listTab(id: number, listed: boolean): void;
     // doc became the active document: the outline, search, tab row, and side panels follow it.
     activated(id: number): void;
-    // The active document's contents or file changed: pick the view (text/board/inbox/Home), the title, the tree highlight, history.
+    // A page: its tab and contents are added, and removed again when it is closed.
+    attachPage(page: Page): void;
+    detachPage(id: number): void;
+    // A page became the shown tab: the tab row and the content area follow it; no document is active then.
+    pageActivated(id: number): void;
+    // The active document's contents or file changed: pick the view (text/board/inbox), the title, the tree highlight, history.
     contentChanged(id: number): void;
     refreshTitle(id: number): void;
-    setIcon(id: number, icon: string | null): void;
-    tabOrder(): number[];                       // document ids in the order of the tab row
+    tabOrder(): number[];                       // tab ids (documents and pages) in the order of the tab row
     refreshHome(): void;
     openFolder(path: string): void;
     fileSaved(path: string): void;              // a new file was written through Save As: show it in the tree
@@ -60,7 +66,12 @@ type MutableDoc = { -readonly [K in keyof Doc]: Doc[K] };
 
 export class DocumentController<E extends TextEditor> {
     private docs: Doc<E>[] = [];
-    private current!: Doc<E>;
+    private current!: Doc<E>;   // the active document; while a page is shown, the last one that was (what the page leaves behind)
+    private pages: Page[] = [];
+    private shown: Page | null = null;     // the page that is shown instead of the active document
+    // While only pages are open there is still one empty document, because the application always has an active one. It
+    // has no tab, and it comes back when a file is opened or a new document made.
+    private parked: Doc<E> | null = null;
     private nextId = 1;
     private restoring = false;   // a tab from the last session is being reopened: do not record it as newly opened
 
@@ -80,10 +91,19 @@ export class DocumentController<E extends TextEditor> {
         return this.docs;
     }
 
+    // The page that is shown, or null when a document is.
+    get page(): Page | null {
+        return this.shown;
+    }
+
+    get allPages(): readonly Page[] {
+        return this.pages;
+    }
+
     // Create an empty document together with its editor, without activating it.
     add(): Doc<E> {
         const id = this.nextId++;
-        const doc: Doc<E> = { id, editor: this.host.createEditor(id), file: null, home: false };
+        const doc: Doc<E> = { id, editor: this.host.createEditor(id), file: null };
         this.host.attach(id);
         this.docs.push(doc);
         return doc;
@@ -91,9 +111,11 @@ export class DocumentController<E extends TextEditor> {
 
     // Make doc the active document: all components follow it.
     activate(doc: Doc<E>): void {
-        if (doc === this.current) return;
+        if (doc === this.current && !this.shown && this.parked !== doc) return;
         const previous = this.current;
         this.current = doc;
+        this.shown = null;
+        if (this.parked === doc) this.unpark(doc);
         this.host.autosaver.now(previous);   // leaving a tab = a safe point to save
         if (doc.file) this.rememberRecent(doc.file);
         this.host.activated(doc.id);
@@ -101,53 +123,90 @@ export class DocumentController<E extends TextEditor> {
 
     // Tab name/title for a document.
     nameOf(doc: Doc): string {
-        if (doc.home) return HOME;
         return doc.file ? platform().paths.basename(doc.file) : UNTITLED;
+    }
+
+    // Tab name/title for a page.
+    nameOfPage(page: Page): string {
+        return page.file ? platform().paths.basename(page.file) : HOME;
     }
 
     // A document without a file and without changes has no contents that need to be kept,
     // so it may be reused for the next file that is opened.
     isPristine(doc: Doc): boolean {
-        return !doc.home && !doc.file && !doc.editor.isModified();
+        return !doc.file && !doc.editor.isModified();
     }
 
-    // The tab after/before the active one (wraps around).
+    // The tab after/before the one shown (wraps around).
     switchTab(step: number): void {
         const ids = this.host.tabOrder();
-        const at = ids.indexOf(this.current.id);
-        const doc = this.docs.find(d => d.id === ids[(at + step + ids.length) % ids.length]);
-        if (doc) this.activate(doc);
+        const at = ids.indexOf((this.shown ?? this.current).id);
+        this.select(ids[(at + step + ids.length) % ids.length]);
     }
 
-    // Close a tab (asks if there are changes). Closing the only tab empties its document.
-    closeTab(doc: Doc<E> = this.current): Awaitable<boolean> {
-        return after(this.confirmDiscard(doc), yes => yes && this.docs.includes(doc) && this.remove(doc));
+    // The tab with this id (a document or a page) becomes the shown one.
+    select(id: number): void {
+        const doc = this.docs.find(d => d.id === id);
+        if (doc) {
+            this.activate(doc);
+            return;
+        }
+        const page = this.pages.find(p => p.id === id);
+        if (page) this.activatePage(page);
+    }
+
+    // The close button of a tab: a document asks about its changes, a page closes at once.
+    closeById(id: number): Awaitable<boolean> {
+        const doc = this.docs.find(d => d.id === id);
+        if (doc) return this.closeTab(doc);
+        const page = this.pages.find(p => p.id === id);
+        return page ? this.closePage(page) : false;
+    }
+
+    // Close a tab (asks if there are changes); the shown tab if no document is named. Closing the only tab empties its document.
+    closeTab(doc?: Doc<E>): Awaitable<boolean> {
+        if (!doc && this.shown) return this.closePage(this.shown);
+        const target = doc ?? this.current;
+        return after(this.confirmDiscard(target), yes => yes && this.docs.includes(target) && this.remove(target));
     }
 
     // Close the tabs whose file lies outside folder (asks about unsaved changes first).
     // false = the user cancelled, so the folder should not be switched.
     closeOutside(folder: string): Awaitable<boolean> {
         const stale = this.docs.filter(d => d.file && insideName(folder, d.file) === null);
-        if (stale.length === 0) return true;
+        const stalePages = this.pages.filter(p => p.file && insideName(folder, p.file) === null);
+        if (stale.length === 0 && stalePages.length === 0) return true;
         return after(this.confirmDiscardAll(stale), yes => {
             if (!yes) return false;
             for (const doc of stale) if (this.docs.includes(doc)) this.remove(doc);
+            for (const page of stalePages) if (this.pages.includes(page)) this.closePage(page);
             return true;
         });
     }
 
     private remove(doc: Doc<E>): boolean {
         if (this.docs.length === 1) {
-            if (doc.home && this.host.settings.home) return true;
+            // The last document is emptied, not closed. What is shown next: a page that is open, else Home if it is
+            // switched on, else the empty document itself.
+            const was = this.shown;
             this.reset(doc);
-            if (this.host.settings.home) this.makeHome(doc);
+            if (this.pages.length) {
+                this.park(doc);
+                this.activatePage(was ?? this.pages[this.pages.length - 1]);
+            } else if (this.host.settings.home) this.openHome();
             return true;
         }
         const index = this.docs.indexOf(doc);
         this.host.autosaver.cancel(doc);
         this.docs.splice(index, 1);
         // Move first, then destroy: the search and other components still point at this editor.
-        if (doc === this.current) this.activate(this.docs[Math.min(index, this.docs.length - 1)]);
+        if (doc === this.current) {
+            const next = this.docs[Math.min(index, this.docs.length - 1)];
+            if (this.shown) {
+                this.current = next;   // a page stays shown; what it leaves behind is now the neighbor
+                this.host.pageActivated(this.shown.id);
+            } else this.activate(next);
+        }
         this.host.detach(doc.id);
         return true;
     }
@@ -188,8 +247,7 @@ export class DocumentController<E extends TextEditor> {
     // Empty doc (or fill it with text) as a new document without a file.
     reset(doc: Doc<E>, text = ''): void {
         this.activate(doc);
-        this.set(doc, { file: null, home: false });
-        this.host.setIcon(doc.id, null);
+        this.set(doc, { file: null });
         doc.editor.setText(text);
         this.host.contentChanged(doc.id);
     }
@@ -252,24 +310,93 @@ export class DocumentController<E extends TextEditor> {
         this.host.settings.recentFiles = rememberRecent(this.host.settings.recentFiles, path, Math.floor(Date.now() / 1000));
     }
 
-    // ---------- Home ----------
+    // ---------- Pages: Home and HTML files ----------
 
-    // Switch to the Home tab, or open it if there is none (using the active empty tab if there is one).
+    // Switch to the Home tab, or open it if there is none.
     openHome(): void {
-        const open = this.docs.find(d => d.home);
+        const open = this.pages.find(p => p.kind === 'home');
         if (open) {
-            if (open === this.current) this.host.refreshHome();
-            else this.activate(open);
+            if (open === this.shown) this.host.refreshHome();
+            else this.activatePage(open);
             return;
         }
-        this.makeHome(this.isPristine(this.current) ? this.current : this.add());
+        this.openPage({ kind: 'home', file: null, root: null });
     }
 
-    private makeHome(doc: Doc<E>): void {
-        this.set(doc, { file: null, home: true });
-        this.host.setIcon(doc.id, 'user-home-symbolic');
-        this.activate(doc);
-        this.host.contentChanged(doc.id);
+    // Show an HTML file in its own tab, or switch to the tab it already has. root = the folder the page may read.
+    openHtml(path: string, root: string | null): void {
+        const absolute = platform().paths.resolve(path);
+        const open = this.pages.find(p => p.file === absolute);
+        if (open) {
+            this.activatePage(open);
+            return;
+        }
+        const folder = platform().paths.dirname(absolute);
+        this.openPage({ kind: 'html', file: absolute, root: root && insideName(root, absolute) !== null ? root : folder });
+    }
+
+    private openPage(spec: Omit<Page, 'id'>): void {
+        const page: Page = { id: this.nextId++, ...spec };
+        this.pages.push(page);
+        this.host.attachPage(page);
+        this.retirePristine();
+        this.activatePage(page);
+    }
+
+    // The tab of an empty document does not stay next to a page: it goes, or is parked if it is the only document.
+    private retirePristine(): void {
+        const doc = this.current;
+        if (this.parked || !this.isPristine(doc)) return;
+        if (this.docs.length === 1) {
+            this.park(doc);
+            return;
+        }
+        const index = this.docs.indexOf(doc);
+        this.host.autosaver.cancel(doc);
+        this.docs.splice(index, 1);
+        this.current = this.docs[Math.min(index, this.docs.length - 1)];
+        this.host.detach(doc.id);
+    }
+
+    private park(doc: Doc<E>): void {
+        this.parked = doc;
+        this.host.listTab(doc.id, false);
+    }
+
+    private unpark(doc: Doc<E>): void {
+        this.parked = null;
+        this.host.listTab(doc.id, true);
+    }
+
+    private activatePage(page: Page): void {
+        if (page === this.shown) return;
+        this.host.autosaver.now(this.current);   // leaving a document = a safe point to save
+        this.shown = page;
+        this.host.pageActivated(page.id);
+    }
+
+    // Close a page's tab. The last tab of all stays when it is Home and Home is switched on.
+    closePage(page: Page): boolean {
+        const ids = this.host.tabOrder();
+        const at = ids.indexOf(page.id);
+        const neighbor = ids[at + 1] ?? ids[at - 1];
+        if (neighbor === undefined) {
+            // The only tab: Home stays; an HTML page gives way to Home, or to the empty document.
+            if (page.kind === 'home' && this.host.settings.home) return true;
+            this.dropPage(page);
+            if (this.host.settings.home) this.openHome();
+            else if (this.parked) this.activate(this.parked);
+            return true;
+        }
+        if (page === this.shown) this.select(neighbor);
+        this.dropPage(page);
+        return true;
+    }
+
+    private dropPage(page: Page): void {
+        this.pages.splice(this.pages.indexOf(page), 1);
+        if (this.shown === page) this.shown = null;
+        this.host.detachPage(page.id);
     }
 
     // ---------- Saving ----------
@@ -287,7 +414,7 @@ export class DocumentController<E extends TextEditor> {
     // A file document is saved instantly (a boolean result); a new document waits for the Save As dialog.
     save(): Awaitable<boolean> {
         const doc = this.current;
-        if (doc.home) return true;
+        if (this.shown) return true;
         if (!doc.file) return this.saveAs();
         if (!this.write(doc.file, doc.editor.getText())) return false;
         doc.editor.setModified(false);
@@ -298,7 +425,7 @@ export class DocumentController<E extends TextEditor> {
 
     async saveAs(): Promise<boolean> {
         const doc = this.current;
-        if (doc.home) return false;
+        if (this.shown) return false;
         let path = await this.host.dialogs.chooseFile({
             title: _('Save Markdown'), save: true, filters: ['markdown', 'all'],
             name: doc.file ? this.nameOf(doc) : `${this.suggestName()}.md`,
@@ -334,8 +461,8 @@ export class DocumentController<E extends TextEditor> {
 
     // ---------- The file of an open document ----------
 
-    // The only place the file and Home flag of a document change.
-    private set(doc: Doc<E>, change: Partial<Pick<Doc, 'file' | 'home'>>): void {
+    // The only place the file of a document changes.
+    private set(doc: Doc<E>, change: Partial<Pick<Doc, 'file'>>): void {
         Object.assign(doc as MutableDoc, change);
     }
 
@@ -386,7 +513,7 @@ export class DocumentController<E extends TextEditor> {
 
     async exportHtml(): Promise<void> {
         const doc = this.current;
-        if (doc.home) return;
+        if (this.shown) return;
         const base = doc.file ? this.nameOf(doc).replace(/\.[^.]+$/, '') : this.suggestName();
         const text = doc.editor.getText(), title = doc.editor.headings[0]?.text || base;
         const path = await this.host.dialogs.chooseFile({
@@ -411,14 +538,20 @@ export class DocumentController<E extends TextEditor> {
 
     // ---------- Tab restoration ----------
 
-    // Record file tabs (ordered like the tab row) together with their cursors for the next launch.
-    // Documents without a file are not recorded: their contents are not on disk to be read again.
+    // Record file tabs and Home (ordered like the tab row) together with their cursors for the next launch.
+    // Documents without a file are not recorded: their contents are not on disk to be read again. An HTML page is not
+    // recorded either.
     rememberTabs(): void {
-        const docs = this.host.tabOrder()
-            .map(id => this.docs.find(d => d.id === id))
-            .filter((d): d is Doc<E> => !!d && (!!d.file || d.home));
-        this.host.settings.tabs = docs.map(d => ({ file: d.home ? HOME_TAB : d.file!, cursor: d.home ? 0 : d.editor.cursorOffset }));
-        this.host.settings.activeTab = docs.indexOf(this.current);
+        const kept: { tab: { file: string; cursor: number }; at: Doc<E> | Page }[] = [];
+        for (const id of this.host.tabOrder()) {
+            const doc = this.docs.find(d => d.id === id);
+            if (doc?.file) kept.push({ tab: { file: doc.file, cursor: doc.editor.cursorOffset }, at: doc });
+            const page = this.pages.find(p => p.id === id);
+            if (page?.kind === 'home') kept.push({ tab: { file: HOME_TAB, cursor: 0 }, at: page });
+        }
+        this.host.settings.tabs = kept.map(k => k.tab);
+        const shown = this.shown ?? this.current;
+        this.host.settings.activeTab = kept.findIndex(k => k.at === shown);
     }
 
     // Reopen tabs from the settings. Files that have gone missing are skipped (not recreated).
@@ -427,28 +560,30 @@ export class DocumentController<E extends TextEditor> {
         const settings = this.host.settings;
         const saved = Array.isArray(settings.tabs) ? settings.tabs : [];
         const opened: [Doc<E>, number][] = [];
-        let active: Doc<E> | null = null;
+        let restored = false;
+        let active: Doc<E> | Page | null = null, last: Doc<E> | Page | null = null;
         let missing = 0;
         this.restoring = true;
         for (const [i, tab] of saved.entries()) {
             if (tab?.file === HOME_TAB) {
                 this.openHome();
-                opened.push([this.current, 0]);
-                if (i === settings.activeTab) active = this.current;
-                continue;
-            }
-            if (typeof tab?.file !== 'string' || !fileExists(tab.file) || platform().fs.isDirectory(tab.file)) {
+                last = this.pages.find(p => p.kind === 'home')!;
+            } else if (typeof tab?.file !== 'string' || !fileExists(tab.file) || platform().fs.isDirectory(tab.file)) {
                 missing++;
                 continue;
-            }
-            if (!this.openInTab(tab.file)) continue;
-            opened.push([this.current, Number(tab.cursor) || 0]);
-            if (i === settings.activeTab) active = this.current;
+            } else if (this.openInTab(tab.file)) {
+                opened.push([this.current, Number(tab.cursor) || 0]);
+                last = this.current;
+            } else continue;
+            restored = true;
+            if (i === settings.activeTab) active = last;
         }
         this.restoring = false;
-        if (!opened.length) return false;
+        if (!restored) return false;
         for (const [doc, cursor] of opened) doc.editor.restoreCursor(cursor);
-        this.activate(active ?? opened[opened.length - 1][0]);
+        const target = active ?? last!;
+        if ('editor' in target) this.activate(target);
+        else this.activatePage(target);
         if (missing) this.host.toast(fmt(ngettext('{missing} file from the last session was not found', '{missing} files from the last session were not found', missing), { missing }));
         return true;
     }
