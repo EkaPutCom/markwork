@@ -1,0 +1,21 @@
+date,customer,city,amount,qty,status
+2026-07-02,PT Maju Jaya,Jakarta,12400000,40,paid
+2026-07-03,CV Sinar Baru,Bandung,8750000,25,paid
+2026-07-04,Toko Makmur,Surabaya,6200000,18,pending
+2026-07-05,UD Berkah,Medan,2300000,8,refunded
+2026-07-06,PT Maju Jaya,Jakarta,5900000,20,paid
+2026-07-08,"Warung Sehat, Cabang 2",Yogyakarta,1850000,12,paid
+2026-07-09,CV Sinar Baru,Bandung,9400000,30,paid
+2026-07-11,Toko Makmur,Surabaya,3100000,10,pending
+2026-07-12,PT Nusantara Teknik,Semarang,15800000,52,paid
+2026-07-14,UD Berkah,Medan,4700000,16,paid
+2026-07-15,"Kedai ""Kopi Tuku""",Jakarta,2250000,15,paid
+2026-07-17,PT Maju Jaya,Jakarta,7300000,24,pending
+2026-07-18,CV Sinar Baru,Bandung,6600000,22,paid
+2026-07-21,Toko Makmur,Surabaya,5400000,19,paid
+2026-07-22,PT Nusantara Teknik,Semarang,11200000,36,paid
+2026-07-24,UD Berkah,Medan,1900000,6,refunded
+2026-07-25,"Warung Sehat, Cabang 2",Yogyakarta,2800000,14,paid
+2026-07-28,PT Maju Jaya,Jakarta,8900000,29,paid
+2026-07-30,CV Sinar Baru,Bandung,4300000,13,pending
+2026-07-31,PT Nusantara Teknik,Semarang,13600000,44,paid

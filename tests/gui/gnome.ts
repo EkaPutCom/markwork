@@ -71,7 +71,7 @@ export function gnomeTests(c: GuiContext): void {
         const items = (model: Gio.MenuModel) => Array.from({ length: model.get_n_items() }, (_x, i) => model.get_item_link(i, 'section')!)
             .flatMap(s => Array.from({ length: s.get_n_items() }, (_x, i) => s.get_item_attribute_value(i, 'action', null)?.get_string()[0]))
             .filter(a => a !== 'app.open-recent');
-        eq(items(split.menu_model!), ['app.new', 'app.kanban-new', 'app.inbox-new', 'app.table-new', 'app.open', 'app.open-folder']);
+        eq(items(split.menu_model!), ['app.new', 'app.kanban-new', 'app.inbox-new', 'app.table-new', 'app.csv-new', 'app.open', 'app.open-folder']);
         ok(!all.some(x => x instanceof Gtk.Button && x.get_action_name() === 'app.save'), 'no Save button');
         ok(!tips(Gtk.Button).includes('Open Folder (Ctrl+Shift+O)'), 'Open Folder moved into the New menu');
         const title = (w.header as unknown as { _titleButton: Gtk.MenuButton })._titleButton;

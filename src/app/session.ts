@@ -264,6 +264,11 @@ export class AppSession<E extends TextEditor> {
             newBoardDocument: () => views.newBoard(),
             newInboxDocument: () => views.newInbox(),
             newTableDocument: () => views.newTable(),
+            newCsvTable: () => {
+                const root = this.files.root;
+                if (root) void this.files.create('csv', root);
+                else this.toast(_('Open a folder first: a CSV table is a file in the work folder'));
+            },
             editFields: () => views.editFields(),
             sendChanges: () => void this.contribute.start(),
             closeTab: () => docs.closeTab(),

@@ -55,6 +55,7 @@ import { ImageViewer } from './ui/imageviewer.js';
 import { KanbanBoard } from './ui/kanban.js';
 import { InboxView } from './ui/inbox.js';
 import { TableView } from './ui/table.js';
+import { CsvView } from './ui/csvpage.js';
 import { CalendarView } from './ui/calendar.js';
 import { TimelineView } from './ui/timeline.js';
 import { GalleryView } from './ui/gallery.js';
@@ -112,6 +113,7 @@ export class MainWindow {
     readonly board: KanbanBoard;
     readonly inbox: InboxView;
     readonly table: TableView;
+    readonly csv: CsvView;
     readonly gallery: GalleryView;
     readonly layouts: Record<'calendar' | 'timeline' | 'gallery' | 'chart', StructuredView>;
     readonly home: HomeView;
@@ -177,6 +179,7 @@ export class MainWindow {
         this.board = new KanbanBoard();
         this.inbox = new InboxView();
         this.table = new TableView();
+        this.csv = new CsvView();
         this.gallery = new GalleryView();
         this.layouts = { calendar: new CalendarView(), timeline: new TimelineView(), gallery: this.gallery, chart: new ChartView() };
         this.home = new HomeView();
@@ -231,6 +234,7 @@ export class MainWindow {
         const [width, height] = fitToScreen(settings.width, settings.height);
         this.win = new Adw.ApplicationWindow({ application: app, default_width: width, default_height: height });
         addBundledIcons(this.win.get_display());
+        this.csv.trackFocus(this.win);
         this.win.set_icon_name(APP_ID);
         const column = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, hexpand: true });
         column.append(this.tabBar.widget);
@@ -238,6 +242,7 @@ export class MainWindow {
         this.content.add_named(this.board.widget, 'board');
         this.content.add_named(this.inbox.widget, 'inbox');
         this.content.add_named(this.table.widget, 'table');
+        this.content.add_named(this.csv.widget, 'csv');
         for (const [name, view] of Object.entries(this.layouts)) this.content.add_named(view.widget, name);
         this.content.add_named(this.home.widget, 'home');
         this.content.add_named(this.pullView.widget, 'pull');
@@ -349,6 +354,7 @@ export class MainWindow {
             get reviewView() { return w.reviewView; },
             get inbox() { return w.inbox; },
             get table() { return w.table; },
+            get csv() { return w.csv; },
             get layouts() { return w.layouts; },
             get fileTree() { return w.fileTree; },
             get searchView() { return w.searchPanel; },
@@ -466,6 +472,7 @@ export class MainWindow {
             setCounts: text => this.statusBar.setCounts(text),
             setBoardCounts: (lists, cards) => this.statusBar.setBoardCounts(lists, cards),
             setInboxCounts: items => this.statusBar.setInboxCounts(items),
+            setCsvCounts: (rows, columns) => this.statusBar.setCsvCounts(rows, columns),
             showLayout: layout => {
                 setState('layout', GLib.Variant.new_string(layout ?? ''));
                 const choice = LAYOUT_CHOICES.find(c => c.target === (layout ?? ''))!;
@@ -609,11 +616,11 @@ export class MainWindow {
             const doc = this.docById(id);
             if (!doc || doc !== this.doc) return;
             this.session.headingsChanged(id);
-            if (!this.session.views.structuredMode) this.statusBar.setDocumentCounts(words, characters);
+            if (!this.session.views.structuredMode && !this.session.views.csvMode) this.statusBar.setDocumentCounts(words, characters);
         };
         editor.onCursorMoved = (line, column) => {
             if (id !== this.doc.id) return;
-            this.statusBar.setCursor(line, column);
+            if (!this.session.views.csvMode) this.statusBar.setCursor(line, column);   // the table shows no text cursor
             this.statusBar.setModes((Object.keys(MODE_LABELS) as Mode[]).filter(m => editor.modes[m]).map(m => MODE_LABELS[m]));
         };
         editor.onMessage = msg => this.toast(msg);
@@ -724,6 +731,10 @@ export class MainWindow {
 
     get tableMode(): boolean {
         return this.session.views.tableMode;
+    }
+
+    get csvMode(): boolean {
+        return this.session.views.csvMode;
     }
 
     get homeMode(): boolean {
@@ -945,7 +956,8 @@ export class MainWindow {
     // ---------- Commands (CommandHost) ----------
 
     openFind(withReplace = false): void {
-        this.findBar.open(withReplace);
+        if (this.session.views.csvMode) this.csv.openFind(withReplace);   // the table finds and replaces in its cells
+        else this.findBar.open(withReplace);
     }
 
     showPreferences(): void {

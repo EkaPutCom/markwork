@@ -107,7 +107,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
         host: quiet<FrontendHost<FakeEditor>>({
             screen: quiet<FrontendHost<FakeEditor>['screen']>({}),
             chatPanel: quiet<FrontendHost<FakeEditor>['chatPanel']>({}),
-            board: quiet({}), inbox: quiet({}), table: quiet({}), layouts: quiet({}),
+            board: quiet({}), inbox: quiet({}), table: quiet({}), csv: quiet({}), layouts: quiet({}),
             collabPanel: quiet({}), outlineView: quiet({}), preferencesView: quiet({}), pullView: quiet({}), reviewView: quiet({}), logs: quiet({}), fileTree: quiet({}), searchView: quiet({}),
             toast: message => { toasts.push(message); },
             ...extra,

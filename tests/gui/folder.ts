@@ -141,8 +141,8 @@ export function folderTests(c: GuiContext): void {
     w.file = null;
     buf.set_modified(false);
 
-    test('the right-click menu contains New File, New Folder, New Kanban Board, and New Inbox', () => {
-        eq(menuLabels(ft.contextMenu(null)), ['New File…', 'New Folder…', 'New Kanban Board…', 'New Inbox…', 'New Table…']);
+    test('the right-click menu contains New File, New Folder, New Kanban Board, New Inbox, New Table, and New CSV Table', () => {
+        eq(menuLabels(ft.contextMenu(null)), ['New File…', 'New Folder…', 'New Kanban Board…', 'New Inbox…', 'New Table…', 'New CSV Table…']);
     });
     test('right-clicking an empty area creates a file at the root and opens it', () => {
         prompts.push('blank-new');
@@ -236,8 +236,8 @@ export function folderTests(c: GuiContext): void {
 
     const abs = (...p: string[]) => GLib.build_filenamev([proj, ...p]);
     test('a row menu adds Rename and Delete; an empty area does not', () => {
-        eq(menuLabels(ft.contextMenu(abs0('a.md'))).filter(l => l), ['New File…', 'New Folder…', 'New Kanban Board…', 'New Inbox…', 'New Table…', 'Rename…', 'Delete']);
-        eq(menuLabels(ft.contextMenu(null)), ['New File…', 'New Folder…', 'New Kanban Board…', 'New Inbox…', 'New Table…']);
+        eq(menuLabels(ft.contextMenu(abs0('a.md'))).filter(l => l), ['New File…', 'New Folder…', 'New Kanban Board…', 'New Inbox…', 'New Table…', 'New CSV Table…', 'Rename…', 'Delete']);
+        eq(menuLabels(ft.contextMenu(null)), ['New File…', 'New Folder…', 'New Kanban Board…', 'New Inbox…', 'New Table…', 'New CSV Table…']);
     });
     test('renaming a file and a folder updates the tree and disk', () => {
         write('old.md');

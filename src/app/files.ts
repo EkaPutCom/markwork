@@ -12,6 +12,7 @@ import { newTable } from '../markdown/tablelayout.js';
 import { newBoard, serializeBoard } from '../markdown/kanban.js';
 import { after, type Awaitable } from '../awaitable.js';
 import { isHtmlFile } from '../markdown/htmlview.js';
+import { isCsvFile, newCsvText } from '../markdown/csv.js';
 import { _, fmt } from '../i18n.js';
 import { errorMessage, type DocumentHost } from './document.js';
 
@@ -21,7 +22,7 @@ const SKIPPED_FOLDERS = new Set(['node_modules']);
 const REFRESH_DELAY = 150;  // ms; consecutive changes on disk are merged into one refresh
 
 export const isMarkdownFile = (name: string): boolean => MARKDOWN_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
-export { isHtmlFile };
+export { isCsvFile, isHtmlFile };
 export const isImageFile = (name: string): boolean => IMAGE_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
 
 // One file or folder as the tree shows it.
@@ -31,7 +32,7 @@ export interface FolderEntry {
     isDir: boolean;
 }
 
-export type NewKind = 'file' | 'folder' | 'board' | 'inbox' | 'table';
+export type NewKind = 'file' | 'folder' | 'board' | 'inbox' | 'table' | 'csv';
 
 // Subfolders first, then files; each alphabetical and case-insensitive,
 // with numbers sorted naturally ("chapter 2" before "chapter 10").
@@ -48,7 +49,7 @@ function entryKind(path: string, kind: string): 'dir' | 'file' | null {
     return platform().fs.isDirectory(path) ? 'dir' : platform().fs.exists(path) ? 'file' : null;
 }
 
-// The contents of one folder displayed in the tree, already sorted: folders, Markdown files, HTML files, and images; no dot files
+// The contents of one folder displayed in the tree, already sorted: folders, Markdown files, CSV files, HTML files, and images; no dot files
 // and no node_modules. Empty when the folder is gone or cannot be read.
 export function listFolder(path: string): FolderEntry[] {
     const { fs, paths } = platform();
@@ -59,7 +60,7 @@ export function listFolder(path: string): FolderEntry[] {
         if (info.name.startsWith('.') || SKIPPED_FOLDERS.has(info.name)) continue;
         const full = paths.join(path, info.name);
         const kind = entryKind(full, info.kind);
-        if (!kind || (kind === 'file' && !isMarkdownFile(info.name) && !isImageFile(info.name) && !isHtmlFile(info.name))) continue;
+        if (!kind || (kind === 'file' && !isMarkdownFile(info.name) && !isImageFile(info.name) && !isHtmlFile(info.name) && !isCsvFile(info.name))) continue;
         entries.push({ name: info.name, path: full, isDir: kind === 'dir' });
     }
     return entries.sort(compareEntries);
@@ -141,7 +142,7 @@ export class FilesController {
     // ---------- What the user does ----------
 
     create(kind: NewKind, dir: string): Awaitable<string | null> {
-        const title = kind === 'file' ? _('New File') : kind === 'board' ? _('New Kanban Board') : kind === 'inbox' ? _('New Inbox') : kind === 'table' ? _('New Table') : _('New Folder');
+        const title = kind === 'file' ? _('New File') : kind === 'board' ? _('New Kanban Board') : kind === 'inbox' ? _('New Inbox') : kind === 'table' ? _('New Table') : kind === 'csv' ? _('New CSV Table') : _('New Folder');
         return after(this.dialogs.name(title, kind === 'folder' ? _('Folder name') : _('File name')), name => this.createNamed(kind, dir, name));
     }
 
@@ -169,11 +170,11 @@ export class FilesController {
         return true;
     }
 
-    // Copy files from outside (a file manager) into dir. Only folders, Markdown files, HTML files, and images are copied, since
+    // Copy files from outside (a file manager) into dir. Only folders, Markdown files, CSV files, HTML files, and images are copied, since
     // other files would not show in the tree.
     copyInto(sources: string[], dir: string): boolean {
         const { fs, paths } = platform();
-        const accepted = sources.filter(p => fs.isDirectory(p) || isMarkdownFile(p) || isImageFile(p) || isHtmlFile(p));
+        const accepted = sources.filter(p => fs.isDirectory(p) || isMarkdownFile(p) || isImageFile(p) || isHtmlFile(p) || isCsvFile(p));
         let last: string | null = null;
         for (const source of accepted) {
             const copied = this.attempt(() => copyEntry(source, dir));
@@ -182,7 +183,7 @@ export class FilesController {
         }
         if (accepted.length < sources.length) {
             const skipped = sources.filter(p => !accepted.includes(p)).map(p => paths.basename(p)).join(', ');
-            this.dialogs.error(fmt(_('Only folders, Markdown files, HTML files, and images can be added. Skipped: {names}'), { names: skipped }));
+            this.dialogs.error(fmt(_('Only folders, Markdown files, CSV files, HTML files, and images can be added. Skipped: {names}'), { names: skipped }));
         }
         if (!last) return false;
         this.refresh(dir);
@@ -195,7 +196,9 @@ export class FilesController {
     private createNamed(kind: NewKind, dir: string, name: string | null): string | null {
         if (name === null) return null;
         const content = kind === 'board' ? serializeBoard(newBoard()) : kind === 'inbox' ? serializeBoard(newList()) : kind === 'table' ? serializeBoard(newTable()) : '';
-        const path = this.attempt(() => kind === 'folder' ? createFolder(dir, name) : createFile(dir, name, content));
+        const path = this.attempt(() => kind === 'folder' ? createFolder(dir, name)
+            : kind === 'csv' ? createFile(dir, name, newCsvText([_('Column 1'), _('Column 2'), _('Column 3')]), '.csv', /\.csv$/i)
+            : createFile(dir, name, content));
         if (!path) return null;
         this.refresh(dir);
         this.reveal(path);

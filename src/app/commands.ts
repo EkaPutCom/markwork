@@ -44,6 +44,7 @@ export interface CoreCommands {
     newBoardDocument(): void;
     newInboxDocument(): void;
     newTableDocument(): void;
+    newCsvTable(): void;
     editFields(): void;
     sendChanges(): void;
     closeTab(): Awaitable<boolean>;
@@ -167,6 +168,7 @@ export const COMMANDS: readonly Command[] = [
     command('kanban-new', { label: _('New Kanban Board'), run: h => h.newBoardDocument() }),
     command('inbox-new', { label: _('New Inbox'), run: h => h.newInboxDocument() }),
     command('table-new', { label: _('New Table'), run: h => h.newTableDocument() }),
+    command('csv-new', { label: _('New CSV Table'), run: h => h.newCsvTable() }),
     // The view decides whether the document can be shown as a board, and reports its state back.
     command('kanban-view', {
         label: _('Board/List/Table View'), keys: ['Ctrl+Shift+b'], scope: 'document', toggle: 'kanban-view', ownsState: true,

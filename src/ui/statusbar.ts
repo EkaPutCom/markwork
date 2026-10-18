@@ -53,6 +53,13 @@ export class StatusBar extends Gtk.Box {
         this.render();
     }
 
+    // CSV table summary while the CSV tab is shown (the header is not counted as a row).
+    setCsvCounts(rows: number, columns: number): void {
+        this.counts = fmt(ngettext('{n} row', '{n} rows', rows), { n: rows }) + ' · ' + fmt(ngettext('{n} column', '{n} columns', columns), { n: columns });
+        this.cursorText = '';
+        this.render();
+    }
+
     setCursor(line: number, column: number): void {
         this.cursorText = fmt(_('Line {line}, Column {column}'), { line: line + 1, column: column + 1 });
         this.render();
