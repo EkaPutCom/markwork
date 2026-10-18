@@ -10,6 +10,8 @@ import { findDialog, harnessAskDialog } from '../../src/ui/dialogs.js';
 import { descendants, whenDialogReady, widgetPixbuf } from '../widgets.js';
 import { section, test, eq, ok, contains, tmp, optVal, settle, sync } from '../framework.js';
 import type { HarnessAsk, HarnessReply } from '../../src/agent/harness.js';
+import type { PullRequestAnswer, PullRequestOptions } from '../../src/app/harnessreview.js';
+import { pullRequestDialog } from '../../src/ui/pullrequestdialog.js';
 import type { GuiContext } from './context.js';
 
 const BOARD = `---
@@ -423,6 +425,11 @@ export function harnessTests(c: GuiContext): void {
     GLib.file_set_contents(`${repo}/checkout.ts`, 'export {};\n');
     git('add', '-A');
     git('commit', '-q', '-m', 'First');
+    // The project's origin: a forge the fake transport below answers for, whose repository is a bare one on disk.
+    const bare = GLib.build_filenamev([repoParent, 'origin.git']);
+    git('init', '-q', '--bare', '-b', 'main', bare);
+    git('remote', 'add', 'origin', 'https://forge.test/team/shop.git');
+    git('push', '-q', bare, 'main:refs/heads/main');
 
     test('in a Git project each card gets its own worktree, and two cards work at the same time', () => {
         w.settings.projects = { shop: repo };
@@ -491,6 +498,185 @@ export function harnessTests(c: GuiContext): void {
             w.setOption('dark', false);
         }
         w.harness.dialogs = { ...w.harness.dialogs, text: () => texts.shift() ?? null };
+    });
+
+
+    // Create Pull Request: the branch is pushed to the project's origin (a Forgejo/Gitea, faked here) and a pull request is opened.
+    const gitIn = (cwd: string, ...args: string[]) => {
+        const [, out, err, status] = GLib.spawn_sync(cwd, ['git', ...args], ['GIT_AUTHOR_NAME=T', 'GIT_AUTHOR_EMAIL=t@example.com', 'GIT_COMMITTER_NAME=T', 'GIT_COMMITTER_EMAIL=t@example.com', `PATH=${GLib.getenv('PATH')}`, `HOME=${GLib.get_home_dir()}`], GLib.SpawnFlags.SEARCH_PATH, null);
+        if (status !== 0) throw new Error(`git ${args.join(' ')}: ${new TextDecoder().decode(err ?? undefined)}`);
+        return new TextDecoder().decode(out ?? undefined).trim();
+    };
+    const sentPulls: { title: string; body: string; head: string; base: string }[] = [];
+    const api = { server: true, canPush: true, token: 'sekret' as string | null, openPulls: [] as unknown[] };
+    const services = w.collab.services;
+    const realServices = { tokens: services.tokens, transport: services.transport };   // put back after the tests below
+    services.tokens = { get: async () => api.token ? { token: api.token, source: 'file' as const } : null, set: async () => 'file' as const, clear: async () => {} };
+    services.transport = async request => {
+        const path = request.url.replace('https://forge.test', '');
+        if (path === '/api/v1/version') return api.server ? { status: 200, body: '{"version":"11.0.0"}' } : { status: 404, body: '<html>' };
+        if (path === '/api/v1/user') return { status: 200, body: '{"login":"eka"}' };
+        if (path === '/api/v1/repos/team/shop') return { status: 200, body: JSON.stringify({ name: 'shop', owner: { login: 'team' }, clone_url: bare, default_branch: 'main', permissions: { push: api.canPush } }) };
+        if (path.startsWith('/api/v1/repos/team/shop/pulls?')) return { status: 200, body: JSON.stringify(api.openPulls) };
+        if (path === '/api/v1/repos/team/shop/pulls' && request.method === 'POST') {
+            const made = JSON.parse(request.body ?? '{}') as { title: string; body: string; head: string; base: string };
+            sentPulls.push(made);
+            return { status: 201, body: JSON.stringify({ number: 7, title: made.title, state: 'open', html_url: 'https://forge.test/team/shop/pulls/7', head: { ref: made.head }, base: { ref: made.base } }) };
+        }
+        return { status: 404, body: '{"message":"not in the fake"}' };
+    };
+    const branch = 'markwork/checkout-with-qris';
+    const offered: PullRequestOptions[] = [];
+    const answer = (extra: Partial<PullRequestAnswer> = {}): void => {
+        review.dialogs = { ...review.dialogs, pullRequest: async options => { offered.push(options); return { title: 'Add QRIS checkout', body: 'Pays by QRIS.', via: 'direct', ...extra }; } };
+    };
+    const send = () => { const before = w.lastToast; rv.onPullRequest(); return waitFor(() => w.lastToast !== before && w.lastToast !== ''); };
+    const opened: string[] = [];
+    (review as unknown as { host: { openUri(uri: string): void } }).host.openUri = uri => { opened.push(uri); };
+
+    test('Create Pull Request is offered when the origin is a hosted repository, with the reason when it is not', () => {
+        const label = (widget: Gtk.Widget) => descendants(widget).filter((x): x is Gtk.Label => x instanceof Gtk.Label).map(x => x.label);
+        eq(label(rv.pullItem.button).slice(0, 2), ['Create Pull Request…', `Push ${branch} to forge.test and ask for it to be merged`]);
+        ok(rv.pullItem.button.get_sensitive(), 'off although the origin is a hosted repository');
+        review.close();
+        git('remote', 'set-url', 'origin', 'git@github.com:team/shop.git');
+        reviewOpen('Checkout');
+        ok(!rv.pullItem.button.get_sensitive(), 'on for GitHub');
+        contains(rv.pullItem.sub.label, 'GitHub are not supported yet');
+        review.close();
+        git('remote', 'remove', 'origin');
+        reviewOpen('Checkout');
+        ok(!rv.pullItem.button.get_sensitive(), 'on without an origin');
+        contains(rv.pullItem.sub.label, 'no origin remote');
+        review.close();
+        git('remote', 'add', 'origin', 'https://forge.test/team/shop.git');
+        reviewOpen('Checkout');
+        ok(rv.pullItem.button.get_sensitive(), 'off again after the origin came back');
+    });
+
+    test('nothing is sent when the token is missing, the server is not a Forgejo or Gitea, or the user cancels', () => {
+        const wt = review.showing!.wt;
+        const head = gitIn(wt.path, 'rev-parse', 'HEAD');
+        api.token = null;
+        ok(send(), 'no answer without a token');
+        contains(w.lastToast, 'Add an access token for forge.test');
+        api.token = 'sekret';
+        api.server = false;
+        ok(send(), 'no answer from a server that is not a forge');
+        contains(w.lastToast, 'does not look like a Forgejo or Gitea server');
+        api.server = true;
+        answer();
+        review.dialogs = { ...review.dialogs, pullRequest: async options => { offered.push(options); return null; } };
+        const toast = w.lastToast;
+        rv.onPullRequest();
+        ok(waitFor(() => offered.length > 0), 'the dialog did not open');
+        pump();
+        eq(w.lastToast, toast, 'cancelling says nothing');
+        eq(gitIn(wt.path, 'rev-parse', 'HEAD'), head, 'cancelling commits nothing');
+        eq(git('--git-dir', bare, 'for-each-ref', '--format=%(refname)', 'refs/heads/markwork'), '', 'and pushes nothing');
+        eq(sentPulls, []);
+        eq(offered[0].base, 'main');
+        eq([offered[0].repository, offered[0].branch, offered[0].title, offered[0].canPush, offered[0].uncommitted], ['team/shop', branch, 'Checkout with QRIS', true, true]);
+        contains(offered[0].body, 'Commits:\n- Add QRIS');
+    });
+
+    const pullShot = optVal('shot-harness');
+    if (pullShot) test('the Create Pull Request menu item and dialog look right (screenshots)', () => {
+        w.setOption('sidebar', false);
+        const was = review.showing!.pull;
+        review.showing!.pull = null;
+        review.dialogs = { ...review.dialogs };
+        (review as unknown as { render(): void }).render();
+        rv.merge.popover!.popup();
+        for (let i = 0; i < 40; i++) { pump(); GLib.usleep(10000); }
+        widgetPixbuf(rv.merge.popover!)?.savev(`${pullShot}-pr-menu.png`, 'png', [], []);
+        w.setOption('dark', true);
+        for (let i = 0; i < 40; i++) { pump(); GLib.usleep(10000); }
+        widgetPixbuf(rv.merge.popover!)?.savev(`${pullShot}-pr-menu-dark.png`, 'png', [], []);
+        rv.merge.popover!.popdown();
+        w.setOption('dark', false);
+        const options: PullRequestOptions = { ...offered[0], body: 'Pays by QRIS.\n\nCommits:\n- Add QRIS\n- Changes the agent did not commit' };
+        for (const dark of [false, true]) {
+            w.setOption('dark', dark);
+            const shown = pullRequestDialog(w.win, options);
+            whenDialogReady(() => findDialog('Create Pull Request'), dialog => {
+                // The dialog fades in; wait until it has settled.
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 700, () => {
+                    widgetPixbuf(w.win)?.savev(`${pullShot}-pr-dialog${dark ? '-dark' : ''}.png`, 'png', [], []);
+                    dialog.force_close();
+                    return GLib.SOURCE_REMOVE;
+                });
+            });
+            settle(shown);
+        }
+        w.setOption('dark', false);
+        review.showing!.pull = was;
+    });
+
+    test('a branch that exists on the server with other commits is not pushed over, and the worktree is left as it was', () => {
+        const wt = review.showing!.wt;
+        const tree = git('--git-dir', bare, 'rev-parse', 'main^{tree}');
+        const other = gitIn(repo, '--git-dir', bare, 'commit-tree', tree, '-m', 'Somebody else');
+        git('--git-dir', bare, 'update-ref', `refs/heads/${branch}`, other);
+        const head = gitIn(wt.path, 'rev-parse', 'HEAD');
+        answer();
+        ok(send(), 'no answer');
+        contains(w.lastToast, 'Not sent: Could not push: the branch markwork/checkout-with-qris already exists on the server');
+        eq(gitIn(wt.path, 'rev-parse', 'HEAD'), head, 'the commit made for the push was taken back');
+        contains(gitIn(wt.path, 'status', '--porcelain'), 'qris.ts');
+        eq(git('--git-dir', bare, 'rev-parse', `refs/heads/${branch}`), other, 'the branch on the server is untouched');
+        eq(sentPulls, []);
+        ok(!parseBoard(w.editor.getText()).columns[2].cards.some(c => c.notes.some(n => n.includes('pull request'))), 'the card was not touched');
+        git('--git-dir', bare, 'update-ref', '-d', `refs/heads/${branch}`);
+    });
+
+    test('a pull request that is already open for the branch is reported and nothing is pushed', () => {
+        api.openPulls = [{ number: 3, title: 'Earlier', state: 'open', html_url: 'https://forge.test/team/shop/pulls/3', head: { ref: branch }, base: { ref: 'main' } }];
+        answer();
+        ok(send(), 'no answer');
+        contains(w.lastToast, 'Pull request #3 is already open for markwork/checkout-with-qris');
+        eq(git('--git-dir', bare, 'for-each-ref', '--format=%(refname)', 'refs/heads/markwork'), '');
+        api.openPulls = [];
+    });
+
+    test('confirming commits what the agent left, pushes the branch, opens the pull request, and keeps the worktree in Review', () => {
+        const open = review.showing!;
+        answer();
+        ok(send(), 'no answer');
+        contains(w.lastToast, 'Opened pull request #7');
+        eq(w.lastToastAction?.label, 'Open');
+        eq(sentPulls, [{ title: 'Add QRIS checkout', body: 'Pays by QRIS.', head: branch, base: 'main' }]);
+        eq(git('--git-dir', bare, 'log', '--format=%s', '-3', `refs/heads/${branch}`).split('\n'), ['Add QRIS checkout (uncommitted work)', 'Add QRIS', 'First']);
+        eq(gitIn(open.wt.path, 'status', '--porcelain'), '', 'the leftovers are committed');
+        ok(GLib.file_test(open.wt.path, GLib.FileTest.EXISTS), 'the worktree stays');
+        ok(review.showing !== null, 'the review stays open');
+        // The board widget is not redrawn while the review is shown, so the card is read from the document.
+        const cardNow = () => parseBoard(w.editor.getText()).columns[2].cards.find(c => c.text.startsWith('Checkout'))!;
+        const card = cardNow();
+        ok(card.text.includes('[branch::'), 'the card keeps its branch');
+        contains(card.notes.at(-1) ?? '', '↳ pull request #7 opened');
+        contains(card.notes.at(-1) ?? '', 'https://forge.test/team/shop/pulls/7');
+        eq(rv.pullItem.title.label, 'Open Pull Request #7');
+        ok(!readTextFile(`${repo}/.git/config`).includes('sekret'), 'the token is not in the repository config');
+        ok(!readTextFile(`${bare}/config`).includes('sekret'), 'nor in the server\'s');
+        w.session.toastActivated(w.lastToastAction!.token);
+        eq(opened, ['https://forge.test/team/shop/pulls/7'], 'the toast opens the pull request');
+        const dialogs = offered.length;
+        rv.onPullRequest();
+        eq(opened.length, 2, 'once it is opened the item opens it in the browser');
+        eq(offered.length, dialogs, 'and asks nothing more');
+    });
+
+    test('the pull request is remembered when the review is opened again', () => {
+        review.close();
+        reviewOpen('Checkout');
+        eq(rv.pullItem.title.label, 'Open Pull Request #7');
+        eq(review.showing!.pull?.url, 'https://forge.test/team/shop/pulls/7');
+    });
+
+    test('the collaboration services are the real ones again', () => {
+        Object.assign(services, realServices);
+        ok(services.transport === realServices.transport, 'restored');
     });
 
     test('merging takes the work into the project, removes the worktree, and moves the card to Done', () => {

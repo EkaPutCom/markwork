@@ -135,7 +135,7 @@ export class AppSession<E extends TextEditor> {
         this.contribute = new ContributeController(host, { session: () => this.collab.session(), refresh: () => void this.collab.refresh() }, dialogs.contribute);
         this.collab.onSend = () => void this.contribute.start();
         this.harness = new HarnessController(host, dialogs.harness);
-        this.review = new HarnessReviewController(host, dialogs.review);
+        this.review = new HarnessReviewController(host, dialogs.review, this.collab.services);
         this.harness.onReview = (file, card, board) => {
             const error = this.review.open(file, card, board);
             if (error) host.toast(error);

@@ -17,6 +17,7 @@ import System from 'system';
 import { CONTRIBUTOR_TOKEN, OWNER_TOKEN, REPO, SERVER_URL as URL, api, check, clone, contributor, git, owner, read, repo, stamp, waitFor, write } from './forgejo-support.js';
 import { sendChanges, type SendContext } from '../src/forge/contribute.js';
 import { fileDiff } from '../src/forge/diff.js';
+import { publishBranch } from '../src/forge/publish.js';
 import { GiteaProvider } from '../src/forge/gitea.js';
 import { soupTransport } from '../src/platform/gjs/http.js';
 import { confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../src/forge/resolve.js';
@@ -177,6 +178,50 @@ async function writeChecks(): Promise<void> {
     });
 }
 
+// What "Create Pull Request" on a card's review does: a branch that already holds the commits is pushed as it is and the pull
+// request opened, through the owner's own repository and through the contributor's fork.
+async function publishChecks(): Promise<void> {
+    print('\nPublishing a reviewed branch: push as it is, open the pull request');
+    const branchIn = async (who: { folder: string }, name: string, file: string) => {
+        await git(who.folder, ['checkout', '-q', '-b', name]);
+        write(GLib.build_filenamev([who.folder, file]), `# ${name}\n`);
+        await git(who.folder, ['add', '-A']);
+        await git(who.folder, ['commit', '-q', '-m', `Work on ${name}`]);
+    };
+    const mine = await clone(OWNER_TOKEN, `publish-owner-${stamp}`);
+    const branch = `markwork/live-${stamp}`;
+    await branchIn(mine, branch, 'publish.md');
+    const context = (provider: GiteaProvider, token: string): SendContext => ({ provider, repo, token, git: runGit });
+    const request = { cwd: mine.folder, branch, base: 'main', title: `Publish ${stamp}`, body: 'From tests/live-forge.ts', via: 'direct' as const };
+    const opened = await step('publishBranch (direct): the branch is pushed over HTTP with the token as a Basic header, and the pull request opened', async () => {
+        const result = await publishBranch(context(owner, OWNER_TOKEN), request);
+        check(result.ok && result.pull, `not published: ${!result.ok && result.message}`);
+        const pull = await owner.getPull(result.pull.number);
+        check(pull.state === 'open' && pull.headRef === branch && pull.baseRef === 'main', JSON.stringify(pull));
+        check(!read(GLib.build_filenamev([mine.folder, '.git', 'config'])).includes(OWNER_TOKEN), 'the token was written to .git/config');
+        return pull;
+    });
+    await step('publishing again says a pull request is already open, and pushes nothing', async () => {
+        const result = await publishBranch(context(owner, OWNER_TOKEN), request);
+        check(!result.ok && result.message.includes(`#${opened?.number} is already open`), `got ${JSON.stringify(result)}`);
+    });
+    if (opened) await api(OWNER_TOKEN, 'PATCH', `/repos/${REPO}/pulls/${opened.number}`, { state: 'closed' });
+    await step('a branch that exists on the server with other commits is not overwritten, and the refusal is readable', async () => {
+        const again = await clone(OWNER_TOKEN, `publish-again-${stamp}`);
+        await branchIn(again, branch, 'other.md');
+        const result = await publishBranch(context(owner, OWNER_TOKEN), { ...request, cwd: again.folder });
+        check(!result.ok && result.message.includes('already exists on the server'), `got ${JSON.stringify(result)}`);
+    });
+    const contrib = await clone(CONTRIBUTOR_TOKEN, `publish-contrib-${stamp}`);
+    await branchIn(contrib, `markwork/fork-${stamp}`, 'fork.md');
+    const forked = await step('publishBranch (fork): the branch goes to the contributor\'s fork and the pull request names it', async () => {
+        const result = await publishBranch(context(contributor, CONTRIBUTOR_TOKEN), { ...request, cwd: contrib.folder, branch: `markwork/fork-${stamp}`, title: `Fork publish ${stamp}`, via: 'fork' });
+        check(result.ok && result.pull, `not published: ${!result.ok && result.message}`);
+        return result.pull;
+    });
+    if (forked) await api(OWNER_TOKEN, 'PATCH', `/repos/${REPO}/pulls/${forked.number}`, { state: 'closed' });
+}
+
 async function main(): Promise<boolean> {
     if (!OWNER_TOKEN) { print(`${RED}FORGEJO_TOKEN is not set${RESET}`); return false; }
     print(`${DIM}${URL} ${REPO}${RESET}`);
@@ -185,6 +230,7 @@ async function main(): Promise<boolean> {
         if (!CONTRIBUTOR_TOKEN) { print(`${RED}--write needs FORGEJO_CONTRIBUTOR_TOKEN${RESET}`); return false; }
         for (const [name, value] of Object.entries({ GIT_TERMINAL_PROMPT: '0' })) GLib.setenv(name, value, true);
         await writeChecks();
+        await publishChecks();
     }
     print(`\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET}`);
     return failed === 0;

@@ -200,3 +200,17 @@ function httpError(status: number, body: string, host: string): ForgeError {
     if (status === 405 || status === 409) return new ForgeError('not-mergeable', `Cannot merge${suffix || ` (HTTP ${status})`}`, status);
     return new ForgeError('server', `${host} answered HTTP ${status}${suffix}`, status);
 }
+
+// Whether the server at `repo` speaks the Forgejo/Gitea API: its version endpoint answers with a version. A server that
+// asks for a sign-in even there answers 401 or 403 with a JSON message, which is taken as one too (the token is judged
+// later, with a clearer message). Anything else, a hosted service or a plain web page, is not.
+export async function isGiteaServer(repo: RepoRef, token: string, transport: Transport): Promise<boolean> {
+    try {
+        const response = await transport({ method: 'GET', url: `${repo.baseUrl}/api/v1/version`, headers: { Accept: 'application/json', ...(token ? { Authorization: `token ${token}` } : {}) } });
+        const body = JSON.parse(response.body) as { version?: unknown; message?: unknown };
+        if (response.status === 200) return typeof body.version === 'string';
+        return (response.status === 401 || response.status === 403) && typeof body.message === 'string';
+    } catch (e) {
+        return false;
+    }
+}

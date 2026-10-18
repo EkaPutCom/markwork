@@ -5,7 +5,7 @@
 import { DaemonClient } from '../../src/agent/daemon/client.js';
 import { DaemonConnection, type ConnectionState } from '../../src/agent/daemon/connection.js';
 import { DaemonError, encodeRequest, exitStatus, parseExit, parseFrame, type DaemonRecord, type RunSummary, type StateEvent } from '../../src/agent/daemon/protocol.js';
-import { adoptRun, daemonSpawner, newRunId } from '../../src/orchestratordaemon.js';
+import { adoptRun, daemonGit, daemonSpawner, newRunId } from '../../src/orchestratordaemon.js';
 import { Orchestrator, type HarnessProcess, type SpawnHandlers, type SpawnMeta, type Spawner } from '../../src/orchestrator.js';
 import { parseBoard, type Board } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok, contains, within } from '../framework.js';
@@ -541,6 +541,25 @@ export async function daemonClientTests(): Promise<void> {
         eq([seen?.labels.agent, seen?.labels.project, seen?.labels.board, seen?.labels.title], ['pi', 'shop', '/b.md', 'Checkout']);
         contains(seen!.labels.card, 'Checkout');
         orch.dispose();
+    });
+
+    await test('git through the daemon passes environment variables only to the call that asks for them', async () => {
+        const { daemon, conn } = setup();
+        daemon.git = args => args[0] === 'push' ? { status: 1, err: 'fatal: nope' } : { status: 0 };
+        let n = 0;
+        const git = daemonGit(conn, { newRunId: () => `g${++n}` });
+        const status = git('/work/shop', ['status']);
+        const push = git('/work/shop', ['push', 'https://h/r.git', 'HEAD'], { GIT_CONFIG_COUNT: '1', GIT_CONFIG_VALUE_0: 'Authorization: Basic eDp5' });
+        await flush();
+        const [first, second] = daemon.requestsOf('spawn');
+        eq([first.program, first.env], ['git', undefined], 'a plain call carries no environment');
+        eq(second.env, { GIT_CONFIG_COUNT: '1', GIT_CONFIG_VALUE_0: 'Authorization: Basic eDp5' });
+        ok(!second.args.some((a: string) => a.includes('Basic')), 'and the token is not in the arguments');
+        await flush();
+        eq((await status)?.status, 0);
+        eq(await push, { status: 1, out: '', err: 'fatal: nope' });
+        eq(daemon.requestsOf('forget').length, 2, 'both runs are forgotten, so the daemon keeps no record of the token');
+        conn.dispose();
     });
 
     await test('detaching from a daemon run stops the callbacks and leaves the run on the daemon', async () => {

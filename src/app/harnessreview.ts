@@ -6,7 +6,13 @@
 import { HARNESSES, cardProject, isActive, locateCard, type Run } from '../agent/harness.js';
 import { isRemoteMachine } from '../agent/daemon/machines.js';
 import { findWorktree, removeWorktree, type Worktree } from '../agent/worktree.js';
-import { commandsRun, commentsReply, mergeWorktree, newLineNumbers, readReview, type ChangedFile, type Commit, type LineComment, type MergeMethod, type RanCommand, type Review } from '../agent/worktreereview.js';
+import { commandsRun, commentsReply, commitLeftovers, mergeWorktree, newLineNumbers, pullFromNotes, pullNote, pullRequestBody, readReview, uncommitLeftovers, type ChangedFile, type Commit, type LineComment, type MergeMethod, type RanCommand, type Review } from '../agent/worktreereview.js';
+import type { SendVia } from '../forge/contribute.js';
+import { GiteaProvider, isGiteaServer } from '../forge/gitea.js';
+import { publishBranch, type PublishResult } from '../forge/publish.js';
+import { forgeKind, parseRemote } from '../forge/remote.js';
+import type { TokenStore } from '../forge/token.js';
+import { ForgeError, type RepoRef, type Transport } from '../forge/types.js';
 import { parseDiff, type DiffLine } from '../gitlog.js';
 import { worktreeActivity, type ActivityKind } from '../markdown/journal.js';
 import { cardBranch, cardMeta, parseBoard, type Board, type Card } from '../markdown/kanban.js';
@@ -35,6 +41,7 @@ export interface ReviewView {
     onSelect: (index: number) => void;
     onInclude: (index: number, included: boolean) => void;
     onFinish: (action: FinishAction) => void;
+    onPullRequest: () => void;
     onReply: () => void;
     onFolder: () => void;
     onTerminal: () => void;
@@ -53,13 +60,42 @@ export interface ReviewView {
     showTab(tab: ReviewTab): void;
     setSummary(view: SummaryView): void;
     setReplyCount(comments: number): void;
+    setPullRequest(offer: PullOffer): void;
     setBanner(title: string | null, button?: string | null): void;
 }
 
-// The confirmations before merging or discarding; tests replace them with immediate answers.
+// The menu item that sends the branch to the forge as a pull request: whether it can be used, and why not.
+export interface PullOffer {
+    enabled: boolean;
+    label: string;
+    detail: string;      // what it does, or the reason it is off
+}
+
+// What the pull request dialog is shown, and what it answers.
+export interface PullRequestOptions {
+    repository: string;      // owner/repo on the server
+    host: string;
+    base: string;            // the branch the pull request asks to merge into
+    branch: string;          // the branch that is pushed
+    title: string;
+    body: string;
+    canPush: boolean;        // the token may push a branch to the repository itself
+    uncommitted: boolean;    // the agent left changes that will be committed on the branch first
+}
+
+export interface PullRequestAnswer { title: string; body: string; via: SendVia }
+
+// The confirmations before merging, discarding, or sending; tests replace them with immediate answers.
 export interface ReviewDialogs {
     merge(question: Question): Promise<boolean>;
     discard(question: Question): Promise<boolean>;
+    pullRequest(options: PullRequestOptions): Promise<PullRequestAnswer | null>;   // null = cancelled
+}
+
+// What the pull request reaches outside the process through (the collaboration controller's services).
+export interface ReviewServices {
+    tokens: TokenStore;
+    transport: Transport;
 }
 
 export interface ReviewHost extends DocumentHost {
@@ -69,6 +105,7 @@ export interface ReviewHost extends DocumentHost {
     readonly settings: AppSettings;
     readonly harness: Pick<HarnessController, 'orchestrator' | 'git' | 'machine' | 'machineLabel' | 'folderOf' | 'isolation' | 'showLog' | 'dialogs'>;
     showDocument(): void;
+    openUri(uri: string): void;        // in the browser
     record(kind: ActivityKind, text: string): void;
 }
 
@@ -88,14 +125,19 @@ interface Open {
     comments: Comment[];
     selected: number;
     lines: DiffLine[];
+    forge: ForgeOrigin;
+    pull: { number: number; url: string } | null;   // the pull request the card's notes say was opened
 }
+
+// Where the project's origin remote points, as far as a pull request goes: the repository, or why there is none.
+interface ForgeOrigin { repo: RepoRef | null; why: string }
 
 export class HarnessReviewController {
     private current: Open | null = null;
     private generation = 0;    // answers for a review that is no longer shown are dropped
 
     // dialogs: the frontend's confirmations; tests replace them with immediate answers.
-    constructor(private readonly host: ReviewHost, public dialogs: ReviewDialogs) {
+    constructor(private readonly host: ReviewHost, public dialogs: ReviewDialogs, private readonly services: ReviewServices) {
         const view = host.reviewView;
         view.onClose = () => this.close();
         view.onSelect = index => this.select(index);
@@ -103,6 +145,7 @@ export class HarnessReviewController {
         view.onTab = tab => this.tab(tab);
         view.onComment = (line, text) => this.comment(line, text);
         view.onReply = () => this.reply();
+        view.onPullRequest = () => void this.pullRequest();
         view.onFinish = action => void this.finish(action);
         view.onFolder = () => this.openFolder();
         view.onTerminal = () => this.openTerminal();
@@ -131,11 +174,11 @@ export class HarnessReviewController {
         view.setMessage(isRemoteMachine(this.host.harness.machine) ? fmt(_('Reading the changes from {machine}…'), { machine: this.host.harness.machine }) : _('Reading the changes…'));
         view.showTab('changes');
         this.host.showReview();
-        void this.load(generation, { board: boardFile, card: card.text, title: meta.title, agent: meta.agent ?? 'pi', project, folder, branch });
+        void this.load(generation, { board: boardFile, card: card.text, title: meta.title, agent: meta.agent ?? 'pi', project, folder, branch }, pullFromNotes(card.notes));
         return null;
     }
 
-    private async load(generation: number, card: { board: string; card: string; title: string; agent: string; project: string; folder: string; branch: string }): Promise<void> {
+    private async load(generation: number, card: { board: string; card: string; title: string; agent: string; project: string; folder: string; branch: string }, pull: Open['pull']): Promise<void> {
         const git = this.host.harness.git;
         const found = await findWorktree(git, card.folder, card.branch);
         if (generation !== this.generation) return;
@@ -144,8 +187,32 @@ export class HarnessReviewController {
         if (generation !== this.generation) return;
         if (!read.ok) { this.host.reviewView.setMessage(read.message); return; }
         const review = read.value;
-        this.current = { ...card, wt: found.value, review, included: review.files.map(() => true), comments: [], selected: 0, lines: [] };
+        const forge = await this.originOf(found.value);
+        if (generation !== this.generation) return;
+        this.current = { ...card, wt: found.value, review, included: review.files.map(() => true), comments: [], selected: 0, lines: [], forge, pull };
         this.render();
+    }
+
+    // The project's origin remote, read where the repository is, and whether a pull request can go there.
+    private async originOf(wt: Worktree): Promise<ForgeOrigin> {
+        const run = await this.host.harness.git(wt.repo, ['remote', 'get-url', 'origin']);
+        const url = run?.status === 0 ? run.out.trim() : '';
+        if (!url) return { repo: null, why: _('The project has no origin remote to send the branch to') };
+        const repo = parseRemote(url);
+        if (!repo) return { repo: null, why: _('The origin remote does not look like a hosted repository') };
+        const kind = forgeKind(repo.host);
+        if (kind === 'github') return { repo: null, why: _('Pull requests on GitHub are not supported yet; Forgejo and Gitea are') };
+        if (kind === 'gitlab') return { repo: null, why: _('Pull requests on GitLab are not supported yet; Forgejo and Gitea are') };
+        return { repo, why: '' };
+    }
+
+    private offer(): PullOffer {
+        const c = this.current!;
+        if (c.pull) return { enabled: true, label: fmt(_('Open Pull Request #{number}'), { number: c.pull.number }), detail: c.pull.url };
+        const label = _('Create Pull Request…');
+        if (!c.forge.repo) return { enabled: false, label, detail: c.forge.why };
+        if (!c.review.files.length) return { enabled: false, label, detail: _('The agent changed nothing, so there is nothing to send') };
+        return { enabled: true, label, detail: fmt(_('Push {branch} to {host} and ask for it to be merged'), { branch: c.wt.branch, host: c.forge.repo.host }) };
     }
 
     // The run of the card in this window, if there is one (none after a restart without the daemon).
@@ -164,6 +231,7 @@ export class HarnessReviewController {
         this.renderFiles();
         this.renderBanner();
         view.setReplyCount(c.comments.length);
+        view.setPullRequest(this.offer());
         const run = this.run();
         view.setSummary({ answer: run?.result?.summary ?? '', commands: run ? commandsRun(run.trace.events) : [], hasLog: !!run });
         const total = c.review.files.reduce((n, f) => n + f.additions, 0), removed = c.review.files.reduce((n, f) => n + f.deletions, 0);
@@ -303,6 +371,77 @@ export class HarnessReviewController {
         this.closed(c, `↳ merged into ${c.wt.base} ${this.host.harness.orchestrator.stamp()} (${how}, ${merged.value.slice(0, 7)})`, true);
         this.host.record('harness', worktreeActivity(c.title, c.project, { merged: c.wt.base }));
         this.host.toast(fmt(_('Merged “{title}” into {base}'), { title: c.title, base: c.wt.base }));
+    }
+
+    // Sends the branch to the forge and opens a pull request. Nothing leaves this computer before the user has confirmed the
+    // dialog; the questions before it only read from the server. The worktree stays, and so does the card in Review, so the
+    // user can reply to the comments the pull request gets. A step that fails leaves both as they were.
+    private async pullRequest(): Promise<void> {
+        const c = this.current;
+        if (!c) return;
+        if (c.pull) { this.host.openUri(c.pull.url); return; }
+        const repo = c.forge.repo, offer = this.offer();
+        if (!repo || !offer.enabled) { this.host.toast(offer.detail); return; }
+        const run = this.run();
+        if (run && isActive(run.status)) { this.host.toast(_('Wait until the agent has finished, or stop it first')); return; }
+        const generation = this.generation;
+        const view = this.host.reviewView;
+        view.setBusy(true, fmt(_('Asking {host}…'), { host: repo.host }));
+        const ready = await this.askServer(repo);
+        if (generation !== this.generation) return;
+        view.setBusy(false);
+        if (typeof ready === 'string') { this.host.toast(ready); return; }
+        const answer = await this.dialogs.pullRequest({
+            repository: `${repo.owner}/${repo.repo}`, host: repo.host, base: c.wt.base, branch: c.wt.branch, title: c.title,
+            body: pullRequestBody(run?.result?.summary ?? '', c.review.commits, c.review.uncommitted), canPush: ready.canPush, uncommitted: c.review.uncommitted,
+        });
+        if (!answer || generation !== this.generation) return;
+        view.setBusy(true, _('Sending…'));
+        const sent = await this.publish(c, repo, ready, answer);
+        if (generation !== this.generation) return;
+        view.setBusy(false);
+        if (!sent.ok) this.host.toast(fmt(_('Not sent: {error}'), { error: sent.message }));
+        else this.sent(c, sent.pull);
+    }
+
+    // The leftovers are committed, the branch is pushed, the pull request is opened; when the push fails the commit is taken back.
+    private async publish(c: Open, repo: RepoRef, ready: { provider: GiteaProvider; token: string }, answer: PullRequestAnswer): Promise<PublishResult> {
+        const git = this.host.harness.git;
+        const committed = await commitLeftovers(git, c.wt, answer.title);
+        if (!committed.ok) return { ok: false, message: committed.message, pushed: false };
+        const sent = await publishBranch({ provider: ready.provider, repo, token: ready.token, git }, {
+            cwd: c.wt.path, branch: c.wt.branch, base: c.wt.base, title: answer.title, body: answer.body, via: answer.via,
+        });
+        if (!sent.ok && !sent.pushed && committed.value) await uncommitLeftovers(git, c.wt);
+        return sent;
+    }
+
+    // The checks that only read from the server: the server is a Forgejo or Gitea, the user has a token for it, the token
+    // sees the repository. Returns what sending needs, or a sentence for the user.
+    private async askServer(repo: RepoRef): Promise<{ provider: GiteaProvider; token: string; canPush: boolean } | string> {
+        const saved = await this.services.tokens.get(repo.host);
+        if (!saved) return fmt(_('Add an access token for {host} first: open the project folder and use “Connect to a server…” in the Pull Requests tab.'), { host: repo.host });
+        if (!await isGiteaServer(repo, saved.token, this.services.transport)) return fmt(_('{host} does not look like a Forgejo or Gitea server.'), { host: repo.host });
+        const provider = new GiteaProvider(repo, saved.token, this.services.transport);
+        try {
+            const info = await provider.repoInfo();
+            if (!info) return _('The server does not know this repository, or the token cannot see it.');
+            return { provider, token: saved.token, canPush: info.canPush };
+        } catch (e) {
+            return e instanceof ForgeError || e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private sent(c: Open, pull: { number: number; url: string } | null): void {
+        const orchestrator = this.host.harness.orchestrator;
+        const note = pull ? pullNote(pull.number, pull.url, orchestrator.stamp()) : `↳ branch ${c.wt.branch} sent for review ${orchestrator.stamp()}`;
+        const error = orchestrator.noteCard(c.board, c.card, note);
+        if (error) this.host.toast(fmt(_('The card was not updated: {error}'), { error }));
+        this.host.record('harness', worktreeActivity(c.title, c.project, { pull: pull?.url ?? c.wt.branch }));
+        if (!pull) { this.host.toast(fmt(_('Sent {branch}; the pull request appears in the list on the server shortly'), { branch: c.wt.branch })); return; }
+        c.pull = pull;
+        this.host.reviewView.setPullRequest(this.offer());
+        this.host.toast(fmt(_('Opened pull request #{number}'), { number: pull.number }), { label: _('Open'), run: () => this.host.openUri(pull.url) });
     }
 
     private async keep(c: Open): Promise<void> {
