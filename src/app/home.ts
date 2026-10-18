@@ -16,6 +16,12 @@ import type { DocumentHost } from './document.js';
 // The Continue cards fill a full row in a wide window; in a narrow window the frontend folds them.
 export const RESUME_CARDS = 3;
 
+// The recent files that still exist. With a work folder, only its files: another workspace's files do not belong in its
+// Home or its Recent menu.
+export function existingRecent(files: readonly RecentFile[], root: string | null): RecentFile[] {
+    return files.filter(r => (!root || insideName(root, r.path) !== null) && fileExists(r.path) && !platform().fs.isDirectory(r.path));
+}
+
 // One file in a Continue card or in the Recent files list.
 export interface HomeEntry {
     path: string;
@@ -73,7 +79,7 @@ export class HomeController {
 
     data(now = new Date()): HomeData {
         const root = this.host.root();
-        const recent = this.host.settings.recentFiles.filter(r => fileExists(r.path) && !platform().fs.isDirectory(r.path));
+        const recent = existingRecent(this.host.settings.recentFiles, root);
         const { resume, others } = splitRecent(recent, RESUME_CARDS);
         // Boards and inboxes come from the workspace (cached by modification time; unsaved tabs from their editor).
         const files = root ? this.host.workspace.files(root, { keep: isStructured }) : [];
@@ -86,7 +92,7 @@ export class HomeController {
             recent: others.map(r => this.entry(r, false)),
             tasks: dueTasks(files, localDate(now), cardProject),
             agentHost: this.host.agentHost(),
-            runs: this.host.runs().filter(r => isActive(r.status)).map(r => ({ id: r.id, agent: r.agent, title: r.title, status: r.status })),
+            runs: this.host.runs().filter(r => isActive(r.status) && (!root || insideName(root, r.board) !== null)).map(r => ({ id: r.id, agent: r.agent, title: r.title, status: r.status })),
             inboxes: openInboxes(files),
             journal: root ? this.host.journalSummary(root, localDate(now)) : null,
         };

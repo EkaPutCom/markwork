@@ -212,6 +212,13 @@ export class HarnessController {
         }
     }
 
+    // The work folder changed: runs left going for the boards of the new folder are followed too (the other folder's wait
+    // on the daemon until it is shown again).
+    folderChanged(): void {
+        this.following = null;
+        this.reconnect();
+    }
+
     private adoptAll(machine: string, runs: RunSummary[]): void {
         this.adoptMachine = machine;
         for (const summary of runs) {
@@ -223,11 +230,17 @@ export class HarnessController {
         this.host.refreshHome();
     }
 
-    // A run on the daemon that is for a card of ours: it carries the board, the card, and the computer that started it.
+    // Started from this computer, for a board of the work folder (not one of another folder or computer).
+    private startedHere(labels: Record<string, string>): boolean {
+        if (labels.host && labels.host !== platform().processes.hostName()) return false;
+        const root = this.host.root();
+        return !root || insideName(root, labels.board) !== null;
+    }
+
+    // A run on the daemon that is for a card of ours, on a board of the work folder: it carries the board, the card, and the computer that started it.
     private adoptInfo(machine: string, run: RunSummary): AdoptInfo | null {
         const l = run.labels ?? {};
-        if (!l.agent || !l.board || !l.card || !HARNESSES[l.agent]) return null;
-        if (l.host && l.host !== platform().processes.hostName()) return null;   // started from another computer
+        if (!l.agent || !l.board || !l.card || !HARNESSES[l.agent] || !this.startedHere(l)) return null;
         const card = this.cardText(l.board, l.card);
         if (!card || this.orchestrator.queue.active(l.board, card)) return null;
         const slots = Number(l.slots);

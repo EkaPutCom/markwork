@@ -67,6 +67,24 @@ export function settingsTests(): void {
         s.machines = {};
         eq(heard, ['machines']);
     });
+    test('projects belong to the work folder; a folder seen for the first time starts with the earlier ones', () => {
+        const values = new Map<string, SettingValue>([['projects', { shop: '/srv/shop' }], ['project-options', { shop: 'w1' }], ['machine-projects', {}]]);
+        const store: SettingsStore = { get: key => values.get(key)!, set: (key, value) => { values.set(key, value); }, onChanged: () => () => {} };
+        const s = new AppSettings(store);
+        eq(s.projects, { shop: '/srv/shop' }, 'no folder: the earlier projects');
+        s.useWorkspace('/w/a');
+        eq([s.projects, s.projectOptions], [{ shop: '/srv/shop' }, { shop: 'w1' }], 'first time: a copy of the earlier ones');
+        s.projects = { ...s.projects, api: '/srv/api' };
+        s.useWorkspace('/w/b');
+        eq(s.projects, { shop: '/srv/shop' }, 'another folder does not see the first one\'s project');
+        s.projects = {};
+        s.useWorkspace('/w/a');
+        eq(s.projects, { shop: '/srv/shop', api: '/srv/api' }, 'back in the first folder, its projects are kept');
+        s.useWorkspace('/w/b');
+        eq(s.projects, {}, 'an emptied list stays empty, it is not seeded again');
+        s.useWorkspace(null);
+        eq(s.projects, { shop: '/srv/shop' }, 'without a folder the earlier projects are untouched');
+    });
     test('GSettings refuses a key that is not in the schema', () => {
         let threw = false;
         try { inMemorySettings().store.set('no-such-key', true); } catch (e) { threw = true; }

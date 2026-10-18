@@ -15,6 +15,10 @@ export interface SavedTab {
 
 export type SidebarPage = 'files' | 'search' | 'outline' | 'history' | 'collab';
 
+// Between a folder and a project name in the keys of the project maps (a character no folder or project name has).
+const SCOPE_SEPARATOR = '\u001f';
+const SCOPED_KEYS = ['projects', 'project-options', 'machine-projects'] as const;
+
 export class AppSettings {
     constructor(readonly store: SettingsStore) {}
 
@@ -85,8 +89,45 @@ export class AppSettings {
     }
     set recentFiles(value: RecentFile[]) { this.set('recent-files', value.map(r => [r.path, r.time] as [string, number])); }
 
-    get projects(): Record<string, string> { return this.map('projects'); }
-    set projects(value: Record<string, string>) { this.set('projects', value); }
+    // Projects belong to the work folder: each folder is a world of its own. The three maps below keep every folder's entries in
+    // one GSettings map, under keys that start with the folder and SCOPE_SEPARATOR. Entries without a separator are the
+    // ones from before projects were per folder (and what a window without a folder sees).
+    workspace: string | null = null;
+    get projects(): Record<string, string> { return this.scoped('projects'); }
+    set projects(value: Record<string, string>) { this.setScoped('projects', value); }
+    get projectOptions(): Record<string, string> { return this.scoped('project-options'); }
+    set projectOptions(value: Record<string, string>) { this.setScoped('project-options', value); }
+    get machineProjects(): Record<string, string> { return this.scoped('machine-projects'); }
+    set machineProjects(value: Record<string, string>) { this.setScoped('machine-projects', value); }
+
+    // The work folder changed. A folder seen for the first time starts with a copy of the projects there were before, so
+    // nothing stops working; from then on its projects are its own.
+    useWorkspace(root: string | null): void {
+        this.workspace = root;
+        if (!root) return;
+        const marker = root + SCOPE_SEPARATOR;
+        const seen = this.map('projects');
+        if (marker in seen) return;
+        for (const key of SCOPED_KEYS) {
+            const all = this.map(key);
+            const legacy = Object.entries(all).filter(([k]) => !k.includes(SCOPE_SEPARATOR));
+            this.set(key, { ...all, ...Object.fromEntries(legacy.map(([k, v]) => [marker + k, v])), ...(key === 'projects' ? { [marker]: '' } : {}) });
+        }
+    }
+
+    private scope(): string { return this.workspace ? this.workspace + SCOPE_SEPARATOR : ''; }
+
+    private scoped(key: string): Record<string, string> {
+        const prefix = this.scope();
+        return Object.fromEntries(Object.entries(this.map(key)).flatMap(([k, v]) =>
+            (prefix ? k.startsWith(prefix) : !k.includes(SCOPE_SEPARATOR)) && k !== prefix ? [[k.slice(prefix.length), v]] : []));
+    }
+
+    private setScoped(key: string, value: Record<string, string>): void {
+        const prefix = this.scope();
+        const others = Object.entries(this.map(key)).filter(([k]) => (prefix ? !k.startsWith(prefix) : k.includes(SCOPE_SEPARATOR)) || k === prefix);
+        this.set(key, { ...Object.fromEntries(others), ...Object.fromEntries(Object.entries(value).map(([k, v]) => [prefix + k, v])) });
+    }
 
     // Where harnesses run: '' = children of this window, 'local' = the markworkd daemon on this computer, otherwise
     // the name of an SSH machine in `machines`.
@@ -94,10 +135,6 @@ export class AppSettings {
     set harnessMachine(value: string) { this.set('harness-machine', value); }
     get machines(): Record<string, string> { return this.map('machines'); }
     set machines(value: Record<string, string>) { this.set('machines', value); }
-    get projectOptions(): Record<string, string> { return this.map('project-options'); }
-    set projectOptions(value: Record<string, string>) { this.set('project-options', value); }
-    get machineProjects(): Record<string, string> { return this.map('machine-projects'); }
-    set machineProjects(value: Record<string, string>) { this.set('machine-projects', value); }
     get daemonCommand(): string { return this.str('daemon-command'); }
     set daemonCommand(value: string) { this.set('daemon-command', value); }
 }

@@ -86,6 +86,15 @@ export function homeTests(c: GuiContext): void {
         ok(labels(win).includes('Continue') && labels(win).includes('Recent files'), 'section titles');
         close(win);
     });
+    test('recent files from another work folder are not shown', () => {
+        const elsewhere = GLib.build_filenamev([tmp, 'home-elsewhere.md']);
+        GLib.file_set_contents(elsewhere, '# Elsewhere\n');
+        const now = Math.floor(Date.now() / 1000);
+        const { win } = open({ recentFiles: [{ path: elsewhere, time: now }, { path: architecture, time: now - 5 }] });
+        const data = win.homePage.data();
+        eq([...data.resume, ...data.recent].map(r => r.path), [architecture], 'only files inside the work folder');
+        close(win);
+    });
     test('checking a task writes [x] to the board, unchecking restores it', () => {
         const { win } = open();
         const checks = () => descendants(win.home.widget).filter((x): x is Gtk.CheckButton => x instanceof Gtk.CheckButton);
