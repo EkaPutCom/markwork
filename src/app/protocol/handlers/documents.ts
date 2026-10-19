@@ -18,12 +18,12 @@ export function documentHandlers({ wire, session, frontend, notice, sendFiles }:
         await session.openFolder(str(p.path, 'path'));
         sendFiles();
     });
-    // A file of the list the core sent (view.files).
+    // A file of the list the core sent (view.files): the core decides where it goes, a tab or the frontend's viewer.
     wire.on('open.file', p => {
         const root = session.files.root;
         const path = root && platform().paths.join(root, str(p.name, 'name'));
         if (!root || !path || insideName(root, path) === null) throw new RequestError('bad_request', 'that file is not in the work folder');
-        session.documents.openInTab(path);
+        session.host.openFile(path);
     });
     wire.on('tab.select', p => { session.documents.select(num(p.doc, 'doc')); });
     wire.on('tab.close', async p => ({ closed: await session.documents.closeById(num(p.doc, 'doc')) }));

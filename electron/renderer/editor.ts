@@ -7,16 +7,32 @@ import { Annotation, EditorSelection, EditorState, StateEffect, StateField, type
 import { Decoration, EditorView, drawSelection, keymap, type DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, redo, undo } from '@codemirror/commands';
 import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
-import { HighlightCache, textLines, type Styles } from '../../src/markdown/highlight.js';
+import { HighlightCache, textLines, type HangingIndent, type Styles } from '../../src/markdown/highlight.js';
 import { block, continueBlock, enterInTable, heading, indentListItem, link, runTableCommand, tabInTable, togglePrefix, wrap,
     type TableCommand, type TextEdit, type TextState } from '../../src/markdown/editcommands.js';
-import { makeU16Map } from '../../src/markdown/offsets.js';
+import { autocompletion, type CompletionContext } from '@codemirror/autocomplete';
+import { linkAt, taskToggleAt, wikiLinkAt } from '../../src/markdown/clicks.js';
+import { suggestNotes, wikiQuery, wikiTargetFor } from '../../src/markdown/wikilink.js';
+import { conflictDecorations } from './conflicts.js';
+import { DiagramWidget } from './diagrams.js';
+import { diagramKind } from '../../src/markdown/diagram.js';
+import { TableWidget, tableOf } from './tables.js';
+import { codeColors } from './codecolor.js';
+import { PicturesWidget, pictures, type PictureItem, type ZoomedImage } from './images.js';
+import { cpToU16, makeU16Map } from '../../src/markdown/offsets.js';
 import type { EditCommands, TableOperation } from '../../src/app/commands.js';
 import type { Change } from '../../src/app/protocol/messages.js';
 
 // A change that comes from the core (or opens a text), not from the user: it is not reported back as an edit.
 const External = Annotation.define<boolean>();
 const setSource = StateEffect.define<boolean>();
+const setFocus = StateEffect.define<boolean>();
+const focusMode = StateField.define<boolean>({
+    create: () => false,
+    update: (on, tr) => tr.effects.reduce((v, e) => e.is(setFocus) ? e.value : v, on),
+});
+const dim = Decoration.mark({ class: 'cm-md-dim' });
+const refresh = StateEffect.define<null>();   // the document got a file: its pictures can be found now
 
 const sourceMode = StateField.define<boolean>({
     create: () => false,
@@ -42,14 +58,51 @@ const lineDeco = (name: string) => {
 };
 const hidden = Decoration.replace({});
 
+// Hanging indent: a wrapped list item lines up with its text, not under the marker. The style the parser hands back
+// carries the width of the prefix in pixels; the line gets a left padding of that width and an equal negative indent.
+const INDENT_PREFIX = 'cm-li:';
+const indentDecos = new Map<number, Decoration>();
+const indentDeco = (width: number) => {
+    let d = indentDecos.get(width);
+    if (!d) indentDecos.set(width, d = Decoration.line({ attributes: { style: `padding-left:${width}px;text-indent:-${width}px` } }));
+    return d;
+};
+const TAB_WIDTH = 4;
+let canvas: CanvasRenderingContext2D | null = null;
+const prefixWidths = new Map<string, number>();
+
+// The drawn width of a list prefix (indent, bold marker, gap, bold monospace task box, tail) in the editor's font.
+function measurePrefix(indent: string, marker: string, gap: string, task: string, tail: string): number {
+    const key = `${indent}\n${marker}\n${gap}\n${task}\n${tail}`;
+    let width = prefixWidths.get(key);
+    if (width !== undefined) return width;
+    const style = getComputedStyle(document.documentElement);
+    const text = style.getPropertyValue('--font-text') || 'sans-serif', mono = style.getPropertyValue('--font-mono') || 'monospace';
+    const ctx = canvas ??= document.createElement('canvas').getContext('2d')!;
+    const size = 16;
+    const measure = (s: string, font: string) => { ctx.font = font; return ctx.measureText(s.replace(/\t/g, ' '.repeat(TAB_WIDTH))).width; };
+    width = measure(indent + gap, `${size}px ${text}`) + measure(marker, `700 ${size}px ${text}`);
+    if (task) width += measure(task, `700 ${size}px ${mono}`) + measure(tail, `${size}px ${text}`);
+    width = Math.round(width);
+    prefixWidths.set(key, width);
+    return width;
+}
+
+const hanging: HangingIndent<string> = {
+    tag: (indent, marker, gap, task, tail) => INDENT_PREFIX + measurePrefix(indent, marker, gap, task, tail),
+};
+
 function linesOf(doc: Text) {
     return textLines(doc.toString());
 }
 
 // The styled and concealed text. The parse is kept per document (the cache reuses lines that did not change); the
 // decorations are rebuilt when the text, the cursor line, or source mode changes.
-function syntaxField(): Extension {
-    const cache = new HighlightCache<string>(styles);
+// The pictures of each parsed text by line (from 0), for the Zoom Image command.
+const pictureLines = new WeakMap<Text, Map<number, PictureItem[]>>();
+
+function syntaxField(events: EditorEvents, languageLoaded: () => void): Extension {
+    const cache = new HighlightCache<string>(styles, hanging);
     let parsed: { doc: Text; result: ReturnType<HighlightCache<string>['update']> } | null = null;
 
     const build = (state: EditorState): DecorationSet => {
@@ -59,19 +112,63 @@ function syntaxField(): Extension {
         const text = doc.toString();
         const u16 = makeU16Map(text);
         const ranges: ReturnType<Decoration['range']>[] = [];
+        // A table is a grid unless the cursor is in it (or the editor shows the source).
+        const sel = state.selection.main;
+        const selFirst = doc.lineAt(Math.min(sel.anchor, sel.head)).number - 1, selLast = doc.lineAt(Math.max(sel.anchor, sel.head)).number - 1;
+        const conflicts = conflictDecorations(doc);
+        ranges.push(...conflicts.ranges);
+        const grids = new Set<number>(conflicts.covered);
+        // Focus mode: all text outside the paragraph of the cursor (lines up to blank ones) is dimmed.
+        if (state.field(focusMode)) {
+            const blank = (n: number) => !doc.line(n + 1).text.trim();
+            let b0 = Math.min(selFirst, doc.lines - 1), b1 = Math.min(selLast, doc.lines - 1);
+            while (b0 > 0 && !blank(b0 - 1)) b0--;
+            while (b1 < doc.lines - 1 && !blank(b1 + 1)) b1++;
+            const from = doc.line(b0 + 1).from, to = doc.line(b1 + 1).to;
+            if (from > 0) ranges.push(dim.range(0, from));
+            if (to < doc.length) ranges.push(dim.range(to, doc.length));
+        }
+        if (!state.field(sourceMode)) {
+            for (const t of result.tables) {
+                if (t.end >= doc.lines || (selLast >= t.start && selFirst <= t.end)) continue;
+                const lines = Array.from({ length: t.end - t.start + 1 }, (_, k) => doc.line(t.start + k + 1).text);
+                ranges.push(Decoration.replace({ widget: new TableWidget(lines, tableOf(lines)), block: true }).range(doc.line(t.start + 1).from, doc.line(t.end + 1).to));
+                for (let k = t.start; k <= t.end; k++) grids.add(k);
+            }
+            // The same for a Mermaid or DBML block: a picture unless the cursor is in the block (fences included).
+            for (const block of result.codeBlocks) {
+                const kind = diagramKind(block);
+                if (!kind || block.endLine >= doc.lines || (selLast >= block.startLine && selFirst <= block.endLine)) continue;
+                const open = (view: EditorView, element: HTMLElement) => view.dispatch({ selection: { anchor: view.state.doc.lineAt(view.posAtDOM(element)).to + 1 }, scrollIntoView: true });
+                ranges.push(Decoration.replace({ widget: new DiagramWidget(kind, block.text, open), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
+                for (let k = block.startLine; k <= block.endLine; k++) grids.add(k);
+            }
+        }
         result.spans.forEach((spans, i) => {
-            if (i >= doc.lines) return;
+            if (i >= doc.lines || grids.has(i)) return;
             const line = doc.line(i + 1);
             for (const [name, a, b] of spans) {
+                if (name.startsWith(INDENT_PREFIX)) { ranges.push(indentDeco(Number(name.slice(INDENT_PREFIX.length))).range(line.from)); continue; }
                 const from = u16(result.starts[i] + a), to = Math.min(u16(result.starts[i] + b), line.to);
                 if (LINE_STYLES.has(name.replace('cm-md-', ''))) ranges.push(lineDeco(`${name}-line`).range(line.from));
                 if (to > from) ranges.push(mark(name).range(from, to));
             }
         });
+        ranges.push(...codeColors(result.codeBlocks, (block, i) => u16(block.start) + i, languageLoaded));
+        const found = pictures(result.images, events.baseDir());
+        pictureLines.set(doc, found);
+        const widgetEvents = {
+            activate: (view: EditorView, element: HTMLElement) => view.dispatch({ selection: { anchor: view.state.doc.lineAt(view.posAtDOM(element)).to }, scrollIntoView: true }),
+            zoom: events.zoomImage,
+        };
+        for (const [i, items] of found) {
+            if (i < doc.lines) ranges.push(Decoration.widget({ widget: new PicturesWidget(items, widgetEvents), block: true, side: 1 }).range(doc.line(i + 1).to));
+        }
         if (!state.field(sourceMode)) {
             const { main } = state.selection;
             const first = doc.lineAt(Math.min(main.anchor, main.head)).number - 1, last = doc.lineAt(Math.max(main.anchor, main.head)).number - 1;
             for (const [a, b, r0, r1] of result.markers) {
+                if (grids.has(r0)) continue;
                 if (r1 < first || r0 > last) {
                     const from = u16(a), to = u16(b);
                     if (to > from) ranges.push(hidden.range(from, to));
@@ -83,7 +180,7 @@ function syntaxField(): Extension {
 
     return StateField.define<DecorationSet>({
         create: build,
-        update: (value, tr) => tr.docChanged || tr.selection || tr.effects.some(e => e.is(setSource)) ? build(tr.state) : value,
+        update: (value, tr) => tr.docChanged || tr.selection || tr.effects.some(e => e.is(setSource) || e.is(setFocus) || e.is(refresh)) ? build(tr.state) : value,
         provide: f => EditorView.decorations.from(f),
     });
 }
@@ -123,10 +220,80 @@ const TABLE_MESSAGES = {
     'delete-last-column': 'The last column cannot be deleted',
 };
 
+// Where a click landed: the line's text and the column in code points (what markdown/clicks.ts counts in).
+function clickPlace(view: EditorView, event: MouseEvent) {
+    const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+    if (pos === null) return null;
+    const line = view.state.doc.lineAt(pos);
+    return { line, text: line.text, column: Array.from(line.text.slice(0, pos - line.from)).length };
+}
+
+// Note names after [[ (markdown/wikilink.ts decides what matches). Choosing one closes the link with ]] unless it is there.
+function wikiSuggestions(events: EditorEvents): Extension {
+    const source = async (context: CompletionContext) => {
+        const line = context.state.doc.lineAt(context.pos);
+        const query = wikiQuery(line.text.slice(0, context.pos - line.from));
+        if (query === null || (!context.explicit && context.state.selection.main.from !== context.state.selection.main.to)) return null;
+        const names = await events.noteNames();
+        if (context.aborted) return null;
+        const options = suggestNotes(query, names).map((file, i) => {
+            const slash = file.lastIndexOf('/');
+            const target = wikiTargetFor(file, names);
+            return {
+                label: target, detail: slash > 0 ? file.slice(0, slash) : undefined, boost: -i,
+                apply: (view: EditorView, _c: unknown, from: number, to: number) => {
+                    const closed = view.state.doc.sliceString(to, to + 2) === ']]';
+                    view.dispatch({
+                        changes: { from, to, insert: closed ? target : `${target}]]` },
+                        selection: { anchor: from + target.length + 2 },
+                        userEvent: 'input.complete',
+                    });
+                },
+            };
+        });
+        return options.length ? { from: context.pos - query.length, options, filter: false } : null;
+    };
+    return autocompletion({ override: [source], icons: false, defaultKeymap: true });
+}
+
+// A click on a task box flips it; Ctrl (or Cmd) + click on a link opens it.
+function clicks(events: EditorEvents): Extension {
+    return EditorView.domEventHandlers({
+        mousedown(event, view) {
+            if (event.button !== 0 || event.shiftKey || event.altKey) return false;
+            const place = clickPlace(view, event);
+            if (!place) return false;
+            if (event.ctrlKey || event.metaKey) {
+                const note = wikiLinkAt(place.text, place.column);
+                if (note) {
+                    events.openNote(note.target + (note.heading ? `#${note.heading}` : '') + (note.alias ? `|${note.alias}` : ''));
+                    return true;
+                }
+                const uri = linkAt(place.text, place.column);
+                if (!uri) return false;
+                events.openLink(uri);
+                return true;
+            }
+            const target = event.target as HTMLElement | null;
+            if (!target?.closest('.cm-md-task, .cm-md-taskdone')) return false;
+            const toggle = taskToggleAt(place.text, place.column);
+            if (!toggle) return false;
+            const at = place.line.from + cpToU16(place.text, toggle.column);
+            view.dispatch({ changes: { from: at, to: at + 1, insert: toggle.text }, userEvent: 'input' });
+            return true;
+        },
+    });
+}
+
 export interface EditorEvents {
     changed(text: string): void;     // the user changed the text
     moved(line: number, column: number): void;   // the cursor or selection moved (from 1)
     message(text: string): void;
+    openLink(uri: string): void;     // a link was Ctrl+clicked
+    openNote(link: string): void;    // a [[wikilink]] was Ctrl+clicked: what is between the brackets
+    zoomImage(image: ZoomedImage): void;     // a picture was double-clicked, or the Zoom Image command ran
+    baseDir(): string | null;        // the folder of the document: where its relative picture paths start
+    noteNames(): Promise<string[]>;  // the notes a [[ may link to, relative to the folder
 }
 
 export class MarkdownEditor {
@@ -142,7 +309,8 @@ export class MarkdownEditor {
         return EditorState.create({
             doc: text,
             extensions: [
-                history(), drawSelection(), EditorView.lineWrapping, sourceMode, syntaxField(), search({ top: true }), highlightSelectionMatches(),
+                history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, syntaxField(this.events, () => this.rebuild()), search({ top: true }), highlightSelectionMatches(),
+                clicks(this.events), wikiSuggestions(this.events),
                 EditorView.contentAttributes.of({ 'aria-label': 'Editor', spellcheck: 'false' }),
                 keymap.of([
                     { key: 'Enter', run: v => run(v, s => enterInTable(s) ?? continueBlock(s)) },
@@ -155,6 +323,7 @@ export class MarkdownEditor {
                 ]),
                 EditorView.updateListener.of(update => {
                     if (update.docChanged && !update.transactions.some(t => t.annotation(External))) this.events.changed(update.state.doc.toString());
+                    if (this.typewriter && (update.selectionSet || update.docChanged)) this.centerCursor();
                     if (update.selectionSet || update.docChanged) {
                         const head = update.state.selection.main.head, line = update.state.doc.lineAt(head);
                         this.events.moved(line.number, head - line.from + 1);
@@ -173,6 +342,7 @@ export class MarkdownEditor {
         this.states.set(this.current, this.view.state);
         this.current = id;
         this.view.setState(saved && saved.doc.toString() === text ? saved : this.fresh(text));
+        this.setFocusMode(this.focusOn);
     }
     private current = 0;
 
@@ -181,6 +351,7 @@ export class MarkdownEditor {
     // The core replaced the whole text (opening or reloading a file): a new state, outside the undo history.
     reset(text: string): void {
         this.view.setState(this.fresh(text));
+        this.setFocusMode(this.focusOn);
         this.states.delete(this.current);
     }
 
@@ -210,6 +381,21 @@ export class MarkdownEditor {
 
     closeFind(): void { closeSearchPanel(this.view); }
 
+    // Draw the decorations again: the document was saved or named (its relative picture paths mean something now), or a grammar arrived.
+    rebuild(): void { this.view.dispatch({ effects: refresh.of(null) }); }
+
+    // Focus mode dims all but the cursor's paragraph; typewriter mode keeps the cursor line in the middle of the view.
+    private typewriter = false;
+    private focusOn = false;
+    setFocusMode(on: boolean): void {
+        this.focusOn = on;
+        if (this.view.state.field(focusMode) !== on) this.view.dispatch({ effects: setFocus.of(on) });
+    }
+    setTypewriterMode(on: boolean): void { this.typewriter = on; if (on) this.centerCursor(); }
+    private centerCursor(): void {
+        requestAnimationFrame(() => this.view.dispatch({ effects: EditorView.scrollIntoView(this.view.state.selection.main.head, { y: 'center' }) }));
+    }
+
     setSourceMode(on: boolean): void { this.view.dispatch({ effects: setSource.of(on) }); }
 
     // The commands the toolbar, the menu, and the keys run (markdown/editcommands.ts), on this editor.
@@ -226,6 +412,11 @@ export class MarkdownEditor {
             if (result.ok) applyEdit(this.view, result.edit);
             else this.events.message(TABLE_MESSAGES[result.reason]);
         },
-        zoomImage: () => {},
+        zoomImage: () => {
+            const head = this.view.state.selection.main.head;
+            const first = pictureLines.get(this.view.state.doc)?.get(this.view.state.doc.lineAt(head).number - 1)?.[0];
+            if (first) this.events.zoomImage({ src: first.src, title: first.alt || decodeURIComponent(first.src.split('/').pop() ?? '') });
+            else this.events.message('There is no image on this line');
+        },
     };
 }

@@ -21,6 +21,9 @@ export function sessionHandlers({ wire, session, settingKeys, notice, onDispose 
         };
     });
 
+    // The window is closing: the core asks about every changed document (ask.saveChanges), then says whether it may.
+    wire.on('app.close', async () => ({ allowed: await session.closeRequest() }));
+
     // A setting the frontend changed (a toggle in its menu, the sidebar it closed). A key the core does not have is
     // reported, not written.
     notice('setting', p => {

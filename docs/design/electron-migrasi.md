@@ -32,19 +32,19 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | --- | --- | --- | --- | --- |
 | Dokumen | Tab, buka, tutup, simpan, autosave | `DocumentController`, `FrontendDocuments` | ✅ | — |
 | Dokumen | Simpan Sebagai, Buka File, Export HTML, Recent | `DocumentDialogs.chooseFile`, `setRecent` | 🟡 tanpa Recent | 0 |
-| Dokumen | Tutup aplikasi dengan perubahan belum disimpan | `ask.saveChanges` saat quit | 🟡 dialog ada, saat quit belum | 1 |
+| Dokumen | Tutup aplikasi dengan perubahan belum disimpan | `ask.saveChanges` saat quit | ✅ | — |
 | Editor | Highlight, sembunyi sintaks, perintah format | `markdown/highlight.ts`, `editcommands.ts` | ✅ | — |
 | Editor | Find/replace dalam dokumen | panel CodeMirror | ✅ | — |
 | Editor | Enter/Tab di list, quote, tabel (`lists.ts`, `tableedit.ts`) | `editcommands.ts` | 🟡 cek paritas | 1 |
-| Editor | Klik checkbox, Ctrl+klik link dan wikilink (`clicks.ts`) | `NoteLinks`, `markdown/clicks.ts` (murni) | ⬜ | 1 |
-| Editor | Saran `[[` (`wikicomplete.ts`) | `ask.notes` | ⬜ | 1 |
-| Editor | Gambar inline, zoom gambar (`images.ts`, `imageviewer.ts`) | `showImage`, `markdown/imagesource.ts` (murni) | ⬜ | 1 |
-| Editor | Blok kode berwarna (`codehighlight.ts`, `codelayer.ts`) | — (renderer) | ⬜ | 1 |
-| Editor | Tabel sebagai grid (`tablelayer.ts`) | `markdown/table.ts` (termasuk `fitColumns`) | ⬜ | 1 |
-| Editor | Mermaid dan DBML (`mermaid.ts`, `mermaidrender.ts`) | `markdown/dbml.ts`, `markdown/diagram.ts` | ⬜ | 1 |
-| Editor | Penanda konflik git (`conflictlayer.ts`) | `markdown/conflicts.ts` (murni) | ⬜ | 1 |
-| Editor | Hanging indent list (`listindent.ts`) | — | ⬜ | 1 |
-| Editor | Mode source, focus, typewriter | `ViewOption`, setting | 🟡 source saja | 1 |
+| Editor | Klik checkbox, Ctrl+klik link dan wikilink (`clicks.ts`) | `NoteLinks`, `markdown/clicks.ts` (murni) | ✅ | — |
+| Editor | Saran `[[` (`wikicomplete.ts`) | `ask.notes` | ✅ | — |
+| Editor | Gambar inline, zoom gambar (`images.ts`, `imageviewer.ts`) | `showImage`, `markdown/imagesource.ts` (murni) | ✅ | — |
+| Editor | Blok kode berwarna (`codehighlight.ts`, `codelayer.ts`) | — (renderer) | 🟡 warna ada (`codecolor.ts`); box gulir menyamping belum | 1 |
+| Editor | Tabel sebagai grid (`tablelayer.ts`) | `markdown/table.ts` (termasuk `fitColumns`) | ✅ | — |
+| Editor | Mermaid dan DBML (`mermaid.ts`, `mermaidrender.ts`) | `markdown/dbml.ts`, `markdown/diagram.ts` | ✅ | — |
+| Editor | Penanda konflik git (`conflictlayer.ts`) | `markdown/conflicts.ts` (murni) | ✅ | — |
+| Editor | Hanging indent list (`listindent.ts`) | — | ✅ | — |
+| Editor | Mode source, focus, typewriter | `ViewOption`, setting | ✅ | — |
 | Jendela | Header bar, menu utama, tombol layout | `ViewScreen.showLayout`, `enableActions` | 🟡 tombol layout dan status perintah ada; menu layout belum | 2 |
 | Jendela | Command palette | `COMMANDS` | ✅ | — |
 | Jendela | Status: kata, board, inbox, CSV (`statusbar.ts`) | `ViewScreen.setCounts…` | ✅ | — |
@@ -116,6 +116,8 @@ Bagian ini dibutuhkan oleh hampir semua fitur. Mengerjakannya sekali di awal men
 Selesai bila: semua ask dan notice di atas punya tes protokol, dan tes asap Electron jalan di CI.
 
 ### Fase 1 — Paritas editor (L)
+
+**Status (19 Oktober 2026):** dimulai. Selesai: hanging indent, klik checkbox, Ctrl+klik link, wikilink (`ask.notes`, `open.note` di `handlers/notes.ts`, saran `[[` dengan `@codemirror/autocomplete`), gambar inline (`electron/renderer/images.ts`, skema `app://` di `main.ts`) dan zoom (`view.image`, `ImageViewer.tsx`), warna blok kode (`codecolor.ts`, `@codemirror/language-data` dimuat per bahasa), tabel sebagai grid (`tables.ts`; klik sel membuka teks mentah di sel itu, seperti GTK), Mermaid dan DBML (`diagrams.ts`; `mermaid.min.js` disalin saat build dan dimuat saat diagram pertama tampil), konflik git (`conflicts.ts`, tombol Accept Current/Incoming/Both), focus dan typewriter (setting inti, digambar editor), dan quit (`app.close` → `closeRequest()`, main menahan `close` sampai halaman melepas); dicakup `tests/electron-smoke.mjs` dan `tests/unit/protocol.ts`. Berikutnya: box blok kode yang bisa digulir menyamping, paritas Enter/Tab list-tabel terhadap `tests/gui`, dan mengukur pertanyaan terbuka undo.
 
 Editor adalah alasan utama aplikasi ini ada, jadi editor didahulukan. Hampir semua pekerjaan di fase ini ada di renderer (`electron/renderer/editor.ts`), karena logikanya sudah murni.
 

@@ -12,10 +12,11 @@ import type { CancelSignal } from '../../src/platform/index.js';
 import type { Board } from '../../src/markdown/kanban.js';
 import { applyNoteEdit, type NoteEdit } from '../../src/markdown/noteedit.js';
 import type { MarkdownEditor } from './editor.js';
+import { appUrl } from './images.js';
 
 declare global {
     interface Window {
-        markwork: { chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
+        markwork: { closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
     }
 }
 
@@ -61,13 +62,14 @@ export interface State {
     dialog: Dialog | null;        // the dialog shown; others wait behind it
     disabled: string[];           // the commands the core says do not apply now (commands.state)
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
+    image: { src: string; title: string } | null;   // the picture shown large (view.image, or a double click)
     layout: { layout: string | null; structured: boolean };   // the layout button (view.layout): '' = text, null = hidden
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+const CORE_COMMANDS = new Set(['focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'sidebar', 'dark', 'autosave']);
-const EDITOR_COMMANDS_UNAVAILABLE = new Set(['search-files', 'replace-files', 'zoom-image', 'shortcuts', 'about']);
+const EDITOR_COMMANDS_UNAVAILABLE = new Set(['search-files', 'replace-files', 'shortcuts', 'about']);
 
 export const isAvailable = (command: Command): boolean =>
     command.runs === 'core' ? CORE_COMMANDS.has(command.id) : !EDITOR_COMMANDS_UNAVAILABLE.has(command.id);
@@ -75,7 +77,7 @@ export const isAvailable = (command: Command): boolean =>
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, disabled: [],
+        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
     };
     private readonly waitingDialogs: Dialog[] = [];
@@ -104,10 +106,18 @@ export class Client {
 
     // ---------- The editor ----------
 
+    // Focus and typewriter mode are settings the core keeps; the editor draws them.
+    private applyModes(): void {
+        const { settings } = this.snapshot;
+        this.editor?.setFocusMode(settings.focus === true);
+        this.editor?.setTypewriterMode(settings.typewriter === true);
+    }
+
     attachEditor(editor: MarkdownEditor | null): void {
         this.editor = editor;
         const tab = this.tab();
         if (editor && tab) editor.show(tab.id, tab.mirror.text);
+        this.applyModes();
     }
 
     // The user typed: the editor reports its whole text, the mirror turns it into a small edit and the core gets it at once.
@@ -157,6 +167,24 @@ export class Client {
         void this.conn?.request('act.notes.edit', { doc: this.snapshot.active, edit });
     }
 
+    zoomImage(image: { src: string; title: string }): void { this.set({ image }); }
+    closeImage(): void { this.set({ image: null }); this.editor?.focus(); }
+
+    // The folder of the active document, which its relative picture paths start from.
+    baseDir(): string | null {
+        const file = this.tab()?.file ?? null;
+        return file && file.includes('/') ? file.slice(0, file.lastIndexOf('/')) || '/' : null;
+    }
+
+    // [[link]] Ctrl+clicked in the active document: the core finds or makes the note and opens its tab.
+    openNote(link: string): void { void this.ask('open.note', { doc: this.snapshot.active, link }); }
+
+    // The notes a [[ suggestion offers for the active document.
+    async noteNames(): Promise<string[]> {
+        const reply = await this.conn?.request('ask.notes', { doc: this.snapshot.active });
+        return reply?.ok ? (reply.names as string[]) : [];
+    }
+
     focusEditor(): void { this.editor?.focus(); }
     openPalette(open = true): void { this.set({ palette: open }); }
     toggleSidebar(): void { this.setSetting('sidebar', !this.snapshot.sidebar); }
@@ -173,6 +201,7 @@ export class Client {
         const settings = { ...this.snapshot.settings, ...changed };
         this.set({ settings, sidebar: settings.sidebar !== false });
         // 'system' follows the system theme (the media query of theme.css); 'light' and 'dark' win over it.
+        this.applyModes();
         const scheme = settings['color-scheme'];
         if (scheme === 'light' || scheme === 'dark') document.documentElement.dataset.theme = scheme;
         else delete document.documentElement.dataset.theme;
@@ -326,6 +355,12 @@ export class Client {
         })();
     }
 
+    // The window was asked to close: the core asks about unsaved documents, then the window goes (or stays).
+    async closeRequested(): Promise<void> {
+        const reply = await this.conn?.request('app.close', {});
+        if (!this.conn || (reply?.ok && reply.allowed === true)) await window.markwork.closeWindow();
+    }
+
     coreExited(code: number | null, stderr: string): void {
         this.conn = null;
         this.set({ coreError: stderr || `The core exited with code ${code}` });
@@ -355,6 +390,7 @@ export class Client {
             case 'doc.title': {
                 const title = p.title as { name: string; file: string | null };
                 this.changeTab(id, { name: title.name, file: title.file });
+                if (id === this.snapshot.active) this.editor?.rebuild();
                 break;
             }
             case 'doc.saved': tab?.mirror.savedAt(p.version as number); this.changeTab(id, {}); break;
@@ -363,6 +399,7 @@ export class Client {
             case 'view.files': this.set({ root: p.root as string, files: p.files as string[] }); break;
             case 'toast': this.say(p.text as string, (p.action as Toast['action']) ?? null); break;
             case 'error': this.say(p.message as string); break;
+            case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split('/').pop() ?? '' } }); break;
             case 'open.uri': window.open(p.uri as string); break;
             case 'setting': this.applySettings({ [p.key as string]: p.value }); break;
             case 'commands.state': this.set({ disabled: p.disabled as string[] }); break;

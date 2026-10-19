@@ -35,6 +35,14 @@ export class NoteLinks {
         return doc ? this.names(doc) : [];
     }
 
+    // Ctrl+click on a link in the document named by its id, as a frontend in another process reports it; false for an
+    // id that is not open.
+    openFor(id: number, link: WikiLink): boolean {
+        const doc = this.host.docs().find(d => d.id === id);
+        if (doc) this.open(link, doc);
+        return !!doc;
+    }
+
     // Ctrl+click [[note]]: open its file in a tab. A note that does not exist yet is opened as an empty document
     // next to the source document and only written to disk when saved, so a mistaken click leaves no file behind.
     open(link: WikiLink, doc: Doc): void {

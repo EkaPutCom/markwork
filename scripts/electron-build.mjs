@@ -27,3 +27,4 @@ await build({
     },
 });
 await cp('electron/renderer/index.html', 'dist-electron/renderer/index.html');
+await cp('node_modules/mermaid/dist/mermaid.min.js', 'dist-electron/renderer/mermaid.min.js');
