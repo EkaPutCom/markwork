@@ -20,6 +20,7 @@ import { outlineHandlers } from './handlers/outline.js';
 import { searchHandlers } from './handlers/search.js';
 import { treeHandlers } from './handlers/tree.js';
 import { sessionHandlers } from './handlers/session.js';
+import { chatHandlers } from './handlers/chat.js';
 
 export { PROTOCOL_VERSION } from './handlers/session.js';
 
@@ -52,7 +53,7 @@ export class ProtocolServer {
             sendFiles: () => this.sendFiles(),
             onDispose: stop => { this.stops.push(stop); },
         };
-        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, searchHandlers, treeHandlers, homeHandlers, preferencesHandlers, commandHandlers]) handlers(context);
+        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, searchHandlers, treeHandlers, homeHandlers, preferencesHandlers, chatHandlers, commandHandlers]) handlers(context);
         this.wire.onNotice((ev, payload) => this.notices.get(ev)?.(payload));
         this.stops.push(onDiskChange(() => this.queueFiles()));
     }

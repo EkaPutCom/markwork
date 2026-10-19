@@ -322,7 +322,7 @@ A token is valid until the core replaces the view it belongs to. A token that ar
 | `HistoryTabView`, `HistoryViewersView` (app/history.ts) | `view.history` `{commits, more, note}`, `view.historyChanges` `{file, state, changed}`, `history.messageText`; `view.historyViewer.open` `{viewer, file, commit}`, `.diff`, `.content`, `.messageText`, `.close` | `act.history.refresh`, `.more`, `.open` `{hash}`, `.openChanges` `{path}`, `.commit` `{files, message}`, `.discard` `{path}`, `.write` `{files}`, `.stopWriting`; `act.historyViewer.commit`, `.discard`, `.write`, `.stopWriting`, `.closed` `{viewer}` |
 | `ChatPanelView` (app/assistant.ts) | `chat.settings`, `chat.busy`, `chat.turn` `{turn, question}`, `chat.context`, `chat.text` / `chat.reasoning` `{turn, delta}`, `chat.tool`, `chat.work`, `chat.end` `{turn, outcome}`, `chat.noKey`, `chat.saveFailed` | `act.chat.send`, `.stop`, `.reset`, `.preview`, `.options`, `.chats`, `.open`, `.delete`, `.undo`, `.insert`, `.model`, `.thinking`, `.save`, `.key` |
 
-A streamed answer is many small `chat.text` notices; the frontend appends. They are the only high-rate notices the core sends.
+A streamed answer is many small `chat.text` notices; the frontend appends. They are the only high-rate notices the core sends. `chat.settings` carries the models the setting can take, `chat.log` a `TraceUpdate`, and a frontend that connects asks `act.chat.sync` for the settings and the log as they are now. A saved conversation opened with `act.chat.open` (a path the core listed) is answered as a `SavedChatView`: the turns and plan as they were and the agent's past actions as diff lines. The API key goes to the core in `act.chat.key {action: "save"}` and only its source comes back.
 
 ## 7. Asks (dialogs)
 
@@ -356,7 +356,7 @@ Whatever the answer, the code that continues after it checks again that what it 
 | `ReviewDialogs.merge / discard` | `ask.review.merge`, `ask.review.discard` | `true` / `false` |
 | `HistoryDialogs.discard` (app/history.ts) | `ask.discard {kind, path, viewer}`; `viewer` names the window it was asked from, `null` the History tab | `true` / `false` |
 | `ViewDialogs.editSchema` | `ask.schema {fields, reserved, uses}`: `uses()` is a callback today, so the core sends the counts it would answer (`{"due": 4, "status:Done": 9}`) | `FieldDef[]` or `null` |
-| `ChatPanelView.review` (app/assistant.ts) | `ask.proposal {changes, batch}`; while it is open the viewer may apply part of it with `act.proposal.apply {ask, chosen}` (`onApply`), answered with an error or `null`; `cancelReview` is the `ask.cancel` | `{note}`; the `ProposalResult` the agent gets is built by the core from what it wrote |
+| `ChatPanelView.review` (app/assistant.ts) | `ask.proposal {ask, batch, changes}`: `ask` is the number the panel names the proposal by, and each change is how it looks (`description`, `reason`, `added`, `removed`, `diff` lines), never the file contents; while it is open the viewer may apply part of it with `act.proposal.apply {ask, chosen}` (`onApply`), answered with an error or `null`; `cancelReview` is the `ask.cancel` | `{note}`; the `ProposalResult` the agent gets is built by the core from what it wrote |
 
 The last row keeps the agent's rule intact: a change is written only by the core, only after the user's decision in the frontend, and the core checks the text again before writing (`applyChange()`), whatever the frontend sent.
 

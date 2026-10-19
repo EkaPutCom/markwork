@@ -19,6 +19,7 @@ import type { HomeData } from '../../src/app/protocol/screen.js';
 import type { PreferencesData } from '../../src/app/protocol/preferences.js';
 import type { SchemaDialogOptions } from '../../src/app/protocol/schema.js';
 import type { FieldDef } from '../../src/markdown/fields.js';
+import { ChatModel } from './chatmodel.js';
 
 declare global {
     interface Window {
@@ -96,7 +97,7 @@ export interface State {
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
 const CORE_COMMANDS = new Set(['preferences', 'open-recent', 'home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
-    'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave']);
+    'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave', 'chat', 'journal', 'journal-capture', 'journal-summary']);
 const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
 export const isAvailable = (command: Command): boolean =>
@@ -109,6 +110,8 @@ export class Client {
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
         schema: null, csvFind: { n: 0, replace: false },
     };
+    // The Assistant panel's state: a store of its own, because an answer streams in many small notices.
+    readonly chat = new ChatModel(() => this.conn);
     private readonly waitingDialogs: Dialog[] = [];
     private schemaAnswer: ((fields: FieldDef[] | null) => void) | null = null;
     private schemaCount = 0;
@@ -462,6 +465,7 @@ export class Client {
         // A setting command is the setting of the same name (app/commands.ts): the frontend writes it, as GTK binds it.
         if (command.kind === 'setting') {
             this.setSetting(id, argument === true);
+            if (id === 'chat' && argument === true) this.chat.focusInput();
             return;
         }
         if (runs === 'core') {
@@ -512,6 +516,8 @@ export class Client {
             this.set({ schema: { id, options: p as unknown as SchemaDialogOptions } });
             cancel?.onCancel(() => this.answerSchema(id, null));
         }));
+        // A change the agent proposes: the review is the user's, and the answer is their note.
+        c.on('ask.proposal', (p, cancel) => this.chat.ask(p, listener => { cancel.onCancel(listener); }));
         c.on('ask.file', async p => ({ path: await window.markwork.chooseFile(p as unknown as ChooseFileOptions) }));
         c.onOther(this.genericAsk);
 
@@ -522,6 +528,7 @@ export class Client {
                 this.applySettings((hello.settings as Record<string, unknown> | undefined) ?? {});
             }
             await c.request('start', { path: await window.markwork.initialFolder() });
+            await this.chat.sync();
             c.notify('window.active', { active: true });
             this.set({ ready: true });
         })();
@@ -541,6 +548,7 @@ export class Client {
     windowActive(active: boolean): void { this.conn?.notify('window.active', { active }); }
 
     private notice(ev: string, p: Record<string, unknown>): void {
+        if (ev.startsWith('chat.') && this.chat.notice(ev, p)) return;
         const id = p.doc as number;
         const tab = this.tab(id);
         switch (ev) {

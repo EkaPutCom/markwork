@@ -4,6 +4,7 @@ import { TraceFeed, TraceReplica, type TraceUpdate } from '../../src/agent/trace
 import { ChatSession } from '../../src/agent/session.js';
 import type { ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
 import { traceTree, descendants, traceStats, turnEvents, formatMs, formatSize } from '../../src/agent/tracetree.js';
+import { settledNewest, visibleSteps } from '../../src/agent/logrows.js';
 import { section, test, eq, ok, contains, within, pause } from '../framework.js';
 
 const files = [{ name: 'a.md', text: '# A\nRelease November 15\n' }];
@@ -98,6 +99,31 @@ export async function traceTests(): Promise<void> {
         eq(turnEvents(nodes, nodes[4].event.seq).length, 7);
         const stats = traceStats(turnEvents(nodes, nodes[4].event.seq));
         eq([stats.rounds, stats.tools, stats.failed, stats.prompt, stats.completion], [2, 1, 1, 10, 2]);
+    });
+    await test('a log viewer shows the steps the filter lets through, none under a folded step, and follows the newest settled one', async () => {
+        const t = new AgentTrace(() => 0, () => '2026-10-05T10:00:00');
+        t.add('turn', 'New turn: q');
+        t.begin('round', '1', 'Calling', '', 1);
+        t.append('reasoning', 1, 'think');
+        t.begin('tool', '1:x', 'Tool: read', '', 1, { args: '{}' });
+        t.finish('tool', '1:x', 'ok', undefined, undefined, { result: 'r' });
+        t.finish('round', '1', 'ok');
+        t.begin('round', '2', 'Calling', '', 2);
+        t.append('text', 2, 'answer');
+        t.finish('round', '2', 'ok');
+        t.add('note', 'Turn finished');
+        const nodes = traceTree(t.events);
+        const seqs = (set: Set<number>) => nodes.filter(n => set.has(n.event.seq)).map(n => n.event.kind);
+        eq(seqs(visibleSteps(nodes, [], new Set())), ['turn', 'round', 'reasoning', 'tool', 'round', 'text', 'note'], 'all');
+        eq(seqs(visibleSteps(nodes, ['tool'], new Set())), ['turn', 'round', 'tool'], 'tools: the turn, the round that holds one, the tool');
+        eq(seqs(visibleSteps(nodes, ['round', 'text'], new Set())), ['turn', 'round', 'text'], 'a round shows only when something in it matches');
+        eq(seqs(visibleSteps(nodes, [], new Set([nodes[1].event.seq]))), ['turn', 'round', 'round', 'text', 'note'], 'a folded round hides what it holds');
+        eq(seqs(visibleSteps(nodes, [], new Set([nodes[0].event.seq]))), ['turn'], 'a folded turn hides everything');
+        // A finished turn ends with a note; the turn is the step to follow then.
+        const shown = visibleSteps(nodes, [], new Set());
+        eq(settledNewest(nodes, shown), nodes[0].event.seq);
+        eq(settledNewest(nodes, visibleSteps(nodes, ['tool'], new Set())), nodes[3].event.seq, 'the newest shown step');
+        eq(settledNewest([], new Set()), null);
     });
     await test('durations and sizes are shown short', async () => {
         eq([formatMs(7), formatMs(1800), formatMs(75000)], ['7 ms', '1.8 s', '1 min 15 s']);

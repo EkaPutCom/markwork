@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { dayPart } from '../../src/markdown/home.js';
 import type { HomeData } from '../../src/app/protocol/screen.js';
+import { Icon } from './Icons.js';
 import { useClient } from './useClient.js';
 
 const SHOWN_TASKS = 7;
@@ -27,13 +28,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     return <section className="home-section"><h2>{title}</h2><div className="home-list">{children}</div></section>;
 }
 
-function Row({ title, subtitle, suffix, onClick, prefix }: { title: string; subtitle?: string; suffix?: string; onClick?: () => void; prefix?: React.ReactNode }) {
+function Row({ title, subtitle, suffix, onClick, prefix, action }: { title: string; subtitle?: string; suffix?: string; onClick?: () => void; prefix?: React.ReactNode; action?: React.ReactNode }) {
+    // A row with a button of its own is not a button itself (a button holds no button): its text is the one that opens it.
+    const press = onClick ? { role: 'button', tabIndex: 0, onClick, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } } : {};
     return (
-        <div className="home-row" role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onClick={onClick}
-            onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); } }}>
+        <div className="home-row" {...action ? {} : press}>
             {prefix}
-            <span className="text"><span className="title">{title}</span>{subtitle && <span className="subtitle">{subtitle}</span>}</span>
+            <span className="text" {...action ? press : {}}><span className="title">{title}</span>{subtitle && <span className="subtitle">{subtitle}</span>}</span>
             {suffix && <span className="suffix">{suffix}</span>}
+            {action}
         </div>
     );
 }
@@ -89,7 +92,8 @@ export function Home({ data }: { data: HomeData | null }) {
                     </div>
                 </Section>
             )}
-            {journal && <Section title="Journal"><Row title="Today's journal" subtitle={journalLine ?? ''} onClick={() => client.openJournal()} /></Section>}
+            {journal && <Section title="Journal"><Row title="Today's journal" subtitle={journalLine ?? ''} onClick={() => client.openJournal()}
+                action={<button className="button flat circular" title="Add to Journal…" aria-label="Add to Journal…" onClick={e => { e.stopPropagation(); client.run('journal-capture'); }}><Icon name="list-add" /></button>} /></Section>}
             {(data.runs.length > 0 || data.agentHost) && (
                 <Section title="Agent">
                     {data.agentHost && <Row title={`Agents run on ${data.agentHost.label}`} subtitle={data.agentHost.state === 'ready' ? '' : data.agentHost.detail}

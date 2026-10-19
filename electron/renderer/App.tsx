@@ -13,6 +13,8 @@ import { DialogLayer } from './Dialog.js';
 import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './Modals.js';
 import { FieldsDialog } from './FieldsDialog.js';
 import { ImageViewer } from './ImageViewer.js';
+import { Chat, ChatReview } from './Chat.js';
+import { LogViewer } from './LogViewer.js';
 import { Tabs } from './Tabs.js';
 import { Icon } from './Icons.js';
 import { label, matches } from './keys.js';
@@ -89,7 +91,7 @@ function HeaderBar() {
     ];
     const mainItems: MenuItem[] = [
         ...named('command-palette'), ...named('find'), ...named('export-html'),
-        { id: '-' }, ...named('home'), ...named('journal'), ...named('journal-capture'),
+        { id: '-' }, ...named('home'), ...named('journal'), ...named('journal-capture'), ...named('journal-summary'),
         { id: '-' }, ...named('dark'), ...named('preferences'), ...named('shortcuts'), ...named('about'), ...named('quit'),
     ];
     return (
@@ -116,6 +118,8 @@ function HeaderBar() {
                         {layoutMenu && <Menu items={layoutItems} onClose={() => setLayoutMenu(false)} align="right" />}
                     </div>
                 )}
+                <button className={`button flat${s.settings.chat === true ? ' checked' : ''}`} title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={s.settings.chat === true}
+                    onClick={() => client.run('chat')}><Icon name="chat-message-new" /></button>
                 <div className="split">
                     <button className="button flat" title="Main Menu" aria-label="Main Menu" aria-haspopup="menu" aria-expanded={main} onClick={() => setMain(v => !v)}><Icon name="open-menu" /></button>
                     {main && <Menu items={mainItems} onClose={() => setMain(false)} align="right" />}
@@ -198,6 +202,7 @@ export function App() {
     const client = useClient();
     const { sidebar, settings } = useStore();
     const page = settings['sidebar-page'];
+    const chat = settings.chat === true;
 
     // Every key of the command table, for the commands this window carries out. Captured before the editor sees it.
     useEffect(() => {
@@ -228,6 +233,7 @@ export function App() {
                     <EditorArea />
                     <StatusBar />
                 </div>
+                {chat && <Chat />}
             </div>
             <Notification />
             <Palette />
@@ -236,6 +242,8 @@ export function App() {
             <ShortcutsDialog />
             <AboutDialog />
             <FieldsDialog />
+            <ChatReview />
+            <LogViewer />
             <DialogLayer />
         </div>
     );

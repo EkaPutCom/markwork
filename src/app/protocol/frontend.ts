@@ -8,7 +8,7 @@ import type { NoteEdit } from '../../markdown/noteedit.js';
 import type { CaptureView, CsvPage, KanbanView, LayoutPage, NotesView, SchemaDialogOptions, ViewDialogs, ViewScreen } from '../views.js';
 import type { FieldDef } from '../../markdown/fields.js';
 import type { DocumentDialogs } from '../documents.js';
-import type { ChooseFileOptions } from '../dialogs.js';
+import type { ChooseFileOptions, Prompt } from '../dialogs.js';
 import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session.js';
 import type { Page, ToastButton } from '../document.js';
 import { ProtocolEditor } from './replica.js';
@@ -20,6 +20,7 @@ import { ProtocolSearch } from './search.js';
 import { ProtocolTree } from './tree.js';
 import { ProtocolPreferences } from './preferences.js';
 import { ProtocolScreen } from './screen.js';
+import { ProtocolChatPanel } from './chat.js';
 
 // A page that shows the notes of the document (board, list, table, calendar, …): it sends the board as it is, and the
 // frontend answers with the operations the user makes (`act.notes.edit`). Only the board has groups and agents.
@@ -70,6 +71,8 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly tree: ProtocolTree;
     // The Preferences dialog's end of the wire.
     readonly preferences: ProtocolPreferences;
+    // The Assistant panel's end of the wire: `chat.*` notices out, the controller's `on*` actions in (handlers/chat.ts).
+    readonly chat: ProtocolChatPanel;
     // The CSV tab's end of the wire: `act.csv.*` call its `onChange` and `onShape`.
     readonly csv: ProtocolCsv;
     readonly documents: FrontendDocuments<ProtocolEditor>;
@@ -91,6 +94,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         this.search = new ProtocolSearch(wire);
         this.tree = new ProtocolTree(wire);
         this.preferences = new ProtocolPreferences(wire);
+        this.chat = new ProtocolChatPanel(wire, this.asks);
         this.host = unwired<FrontendHost<ProtocolEditor>>({
             screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
             board: unwired<KanbanView>(board, 'host.board'),
@@ -102,6 +106,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             searchView: this.search,
             fileTree: this.tree,
             preferencesView: this.preferences,
+            chatPanel: this.chat,
             // The Recent list of the menus: the frontend draws it.
             setRecent: (paths: string[]) => wire.notify('recent', { paths }),
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
@@ -142,6 +147,8 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
                 error: (message: string) => { wire.notify('toast', { text: message, action: null }); },
             },
             views: this.viewDialogs(),
+            // "Add to Journal": one line of text, recorded with the time.
+            journal: { capture: (prompt: Prompt) => this.asks.text('ask.capture', prompt) },
             search: { confirm: (message: string, detail: string, accept: string) => this.asks.question('ask.search.confirm', { message, detail, accept, destructive: true }) },
         }, 'dialogs');
     }
