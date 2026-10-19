@@ -164,3 +164,5 @@ Irisan tipis tahap 1–5 sudah ada: protokol di `src/app/protocol/` (lihat bagia
 - Jalankan: `npm run electron` (atau `npm run electron -- <folder>`). Diuji di Linux saja.
 - Find dan replace memakai panel pencarian CodeMirror (`Ctrl+F`, `Ctrl+H`, `F3`); `doc.replace` di-rebase di `DocMirror` bila ketikan tidak menyentuh bagian yang diubah core.
 - Belum: pencarian di semua catatan, undo yang melintasi tulisan core, view dan dialog selain dokumen dan board, packaging, macOS dan Windows.
+
+Rencana memindahkan semua fitur GTK ke Electron, fase demi fase: [`electron-migrasi.md`](electron-migrasi.md).
