@@ -415,6 +415,29 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('Home and an HTML file are tabs of their own: page.open, view.home, view.page, page.close', async () => {
+        const { server, ui } = await start();
+        ok((await ui.client.request('command', { name: 'home' })).ok, 'home');
+        await until(() => ui.last('view.home') !== undefined);
+        const opened = ui.last('page.open')!;
+        eq(opened.kind, 'home');
+        const data = ui.last('view.home')!.data as { workspace: string | null; recent: unknown[] };
+        eq(data.workspace, dir);
+        eq(ui.last('page.active'), { page: opened.page });
+        // An HTML file of the folder opens in its own tab.
+        disk.write(disk.join(dir, 'page.html'), '<h1>hi</h1>');
+        ok((await ui.client.request('open.file', { name: 'page.html' })).ok, 'open.file');
+        await until(() => ui.log.filter(l => l.ev === 'page.open').length === 2);
+        const html = ui.last('page.open')!;
+        eq([html.kind, html.file, html.root], ['html', disk.join(dir, 'page.html'), dir]);
+        await until(() => ui.last('view.page')?.page === 'html');
+        // Closing a page tab closes it.
+        const closed = await ui.client.request('tab.close', { doc: html.page });
+        ok(closed.ok && closed.closed === true, 'tab.close');
+        await until(() => ui.last('page.close')?.page === html.page);
+        server.dispose();
+    });
+
     await test('app.close lets a window with nothing unsaved go', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });

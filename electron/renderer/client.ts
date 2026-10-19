@@ -15,10 +15,11 @@ import type { MarkdownEditor } from './editor.js';
 import { appUrl } from './images.js';
 import type { SearchQuery, SearchResults } from '../../src/app/protocol/search.js';
 import type { FolderEntry, NewKind } from '../../src/app/protocol/tree.js';
+import type { HomeData } from '../../src/app/protocol/screen.js';
 
 declare global {
     interface Window {
-        markwork: { pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
+        markwork: { registerHtml(id: number, root: string): Promise<void>; unregisterHtml(id: number): Promise<void>; pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
     }
 }
 
@@ -27,8 +28,10 @@ export interface Tab {
     mirror: DocMirror;
     name: string;
     file: string | null;
-    page: string;                 // 'text' or the structured page the core shows ('board', …)
+    page: string;                 // 'text' or the structured page the core shows ('board', …); 'home' and 'html' for the pages that are tabs
     board: Board | null;
+    home: HomeData | null;        // a Home tab: what the page shows (view.home)
+    html: { file: string; root: string } | null;   // an HTML tab: the file, and the folder it may read
 }
 
 // A dialog in the window: a question with buttons, and an entry when it asks for text. The first button is the default.
@@ -79,7 +82,7 @@ export interface State {
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+const CORE_COMMANDS = new Set(['home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'sidebar', 'dark', 'autosave']);
 const EDITOR_COMMANDS_UNAVAILABLE = new Set(['shortcuts', 'about']);
 
@@ -219,6 +222,18 @@ export class Client {
         if (sidebar && settings['sidebar-page'] === page) { this.setSetting('sidebar', false); return; }
         this.setSetting('sidebar-page', page);
         if (!sidebar) this.setSetting('sidebar', true);
+    }
+
+    // ---------- Home ----------
+
+    openRecent(path: string): void { void this.ask('act.home.openFile', { path }); }
+    openWorkspaceFile(name: string): void { void this.ask('act.home.openWorkspaceFile', { name }); }
+    openRun(id: number): void { void this.ask('act.home.openRun', { id }); }
+    openJournal(): void { void this.ask('act.home.openJournal'); }
+    // A task checked on Home: true = the core wrote it to its board, false = put the box back.
+    async toggleTask(task: unknown, done: boolean): Promise<boolean> {
+        const reply = await this.conn?.request('act.home.toggleTask', { task, done });
+        return reply?.ok === true && reply.written === true;
     }
 
     // ---------- The Files tree ----------
@@ -462,8 +477,23 @@ export class Client {
         const tab = this.tab(id);
         switch (ev) {
             case 'doc.open':
-                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null }] });
+                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null, home: null, html: null }] });
                 break;
+            case 'page.open': {
+                const page = p.page as number, kind = p.kind as string, file = p.file as string | null;
+                this.set({ tabs: [...this.snapshot.tabs, {
+                    id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, page: kind, board: null,
+                    home: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null,
+                }] });
+                break;
+            }
+            case 'page.close': this.set({ tabs: this.snapshot.tabs.filter(t => t.id !== p.page) }); break;
+            case 'page.active': this.set({ active: p.page as number }); break;
+            case 'view.home': {
+                const home = this.snapshot.tabs.find(t => t.page === 'home');
+                if (home) this.changeTab(home.id, { home: p.data as HomeData });
+                break;
+            }
             case 'doc.reset':
                 if (!tab) break;
                 tab.mirror.reset(p.text as string, p.version as number);

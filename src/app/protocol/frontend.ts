@@ -9,7 +9,7 @@ import type { KanbanView, ViewScreen } from '../views.js';
 import type { DocumentDialogs } from '../documents.js';
 import type { ChooseFileOptions } from '../dialogs.js';
 import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session.js';
-import type { ToastButton } from '../document.js';
+import type { Page, ToastButton } from '../document.js';
 import { ProtocolEditor } from './replica.js';
 import { Asks } from './asks.js';
 import type { Wire } from './messages.js';
@@ -85,6 +85,12 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
                 // The first document is active without the activation hooks (DocumentController.start).
                 if (this.active === 0) { this.active = id; wire.notify('doc.active', { doc: id }); }
             },
+            attachPage: (page: Page) => {
+                this.row.push(page.id);
+                wire.notify('page.open', { page: page.id, kind: page.kind, file: page.file, root: page.root });
+            },
+            detachPage: (id: number) => { this.drop(id); wire.notify('page.close', { page: id }); },
+            pageActivated: (id: number) => { wire.notify('page.active', { page: id }); },
             detach: (id: number) => this.detach(id),
             listTab: (id: number, listed: boolean) => { if (!listed) this.drop(id); else if (!this.row.includes(id)) this.row.push(id); },
             activated: (id: number) => { this.active = id; wire.notify('doc.active', { doc: id }); },

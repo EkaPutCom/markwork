@@ -2,10 +2,11 @@
 // application logic; the file dialogs are the one thing only it can show.
 
 import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, protocol, shell, utilityProcess } from 'electron';
-import { statSync } from 'node:fs';
+import { readlinkSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { HTML_CSP, HTML_SCHEME, htmlContentType, parseHtmlUrl, resolveHtmlRequest } from '../src/markdown/htmlview.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -16,7 +17,19 @@ const IMAGE_TYPES: Record<string, string> = {
     png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
     bmp: 'image/bmp', avif: 'image/avif', ico: 'image/x-icon',
 };
-protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+protocol.registerSchemesAsPrivileged([
+    { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+    { scheme: HTML_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
+]);
+
+// The folder each open HTML tab may read, by the id the page was served under (html-register).
+const htmlRoots = new Map<number, string>();
+ipcMain.handle('html-register', (_event, id: unknown, root: unknown) => {
+    if (typeof id === 'number' && typeof root === 'string' && isAbsolute(root)) htmlRoots.set(id, root);
+});
+ipcMain.handle('html-unregister', (_event, id: unknown) => { if (typeof id === 'number') htmlRoots.delete(id); });
+
+const linkOf = (path: string): string | null => { try { return readlinkSync(path); } catch { return null; } };
 
 // Windows the page has let go (the core agreed to the close).
 const mayClose = new WeakSet<BrowserWindow>();
@@ -46,6 +59,13 @@ function createWindow(): void {
         return { action: 'deny' };
     });
     win.webContents.on('will-navigate', event => event.preventDefault());
+    // A page in an HTML tab stays on its own scheme; a link that clicks out to the web opens in the browser.
+    win.webContents.on('will-frame-navigate', event => {
+        const target = parseHtmlUrl(event.url);
+        if (target && htmlRoots.has(target.id)) return;
+        event.preventDefault();
+        if (!event.isMainFrame && /^(https?|mailto):/i.test(event.url)) void shell.openExternal(event.url);
+    });
 
     const core = utilityProcess.fork(join(here, 'core.js'), [], { stdio: 'pipe' });
     let stderr = '';
@@ -110,6 +130,18 @@ ipcMain.handle('open-folder', async (_event, path: unknown) => {
 ipcMain.handle('initial-folder', () => process.argv.slice(app.isPackaged ? 1 : 2).find(a => !a.startsWith('-')) ?? null);
 
 void app.whenReady().then(() => {
+    // An HTML page: every request is answered from the page's folder (a link out of it is refused) with the page policy.
+    protocol.handle(HTML_SCHEME, async request => {
+        const target = parseHtmlUrl(request.url);
+        const root = target && htmlRoots.get(target.id);
+        const file = root ? resolveHtmlRequest(root, target.path, linkOf) : null;
+        if (!file) return new Response('not found', { status: 404 });
+        try {
+            return new Response(await readFile(file), { headers: { 'content-type': htmlContentType(file), 'content-security-policy': HTML_CSP } });
+        } catch {
+            return new Response('not found', { status: 404 });
+        }
+    });
     protocol.handle('app', async request => {
         try {
             const path = decodeURIComponent(new URL(request.url).pathname);

@@ -53,8 +53,8 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Sidebar | Files: pohon, buat, ganti nama, hapus, pindah, drop dari luar (`filetree.ts`) | `FileTreeView`, `FilesDialogs` | ✅ | — |
 | Sidebar | Search di semua catatan, replace all (`searchpanel.ts`) | `SearchView`, `SearchDialogs` | ✅ | — |
 | Sidebar | Outline (`outline.ts`) | `OutlineView` | ✅ | — |
-| Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | ⬜ | 2 |
-| Halaman | Tab HTML dengan sandbox (`htmlpage.ts`) | `showPageTab`, `markdown/htmlview.ts` | ⬜ | 2 |
+| Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | 🟡 semua kecuali Add to Journal (Fase 4) | 4 |
+| Halaman | Tab HTML dengan sandbox (`htmlpage.ts`) | `showPageTab`, `markdown/htmlview.ts` | ✅ | — |
 | Dialog | Preferences umum (`preferences.ts`) | `PreferencesView` | ⬜ | 2 |
 | Struktur | Board penuh: kolom, grup per field, popover field (`kanban.ts`, `fieldpopover.ts`) | `KanbanView`, `NoteEdit` | 🟡 pindah, centang, tambah | 3 |
 | Struktur | List/inbox dengan capture (`inbox.ts`) | `CaptureView` | ⬜ | 3 |
@@ -143,7 +143,7 @@ Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval 
 
 ### Fase 2 — Kerangka jendela dan sidebar (L)
 
-**Status (19 Oktober 2026):** dimulai. Selesai: pohon Files penuh (`view.tree.root/folder/expand/reveal`, `act.tree.openFolder/activate/create/rename/remove/move/copy`, `ask.files.name`, `ask.files.confirm`; folder dibuka malas, menu konteks, F2/Delete, seret ke folder; drop dari file manager lewat `webUtils.getPathForFile` belum diuji otomatis), panel Search (`view.search`, `act.search.run/openHit/replaceAll`, `ask.search.confirm`; `doc.select` menandai hit; Ctrl+Shift+F/H) dan rail tiga halaman (Files, Search, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Berikutnya: Home, tab HTML, menu utama, Preferences, Shortcuts/About.
+**Status (19 Oktober 2026):** dimulai. Selesai: tab halaman (`page.open/close/active`, `view.home`, `act.home.*`; Home dan tab HTML lewat skema `mwhtml://` di `main.ts` dengan CSP dan `will-frame-navigate`; tombol Add to Journal menunggu Fase 4, HTML belum memuat ulang otomatis saat file berubah), pohon Files penuh (`view.tree.root/folder/expand/reveal`, `act.tree.openFolder/activate/create/rename/remove/move/copy`, `ask.files.name`, `ask.files.confirm`; folder dibuka malas, menu konteks, F2/Delete, seret ke folder; drop dari file manager lewat `webUtils.getPathForFile` belum diuji otomatis), panel Search (`view.search`, `act.search.run/openHit/replaceAll`, `ask.search.confirm`; `doc.select` menandai hit; Ctrl+Shift+F/H) dan rail tiga halaman (Files, Search, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Berikutnya: menu utama, Preferences, Shortcuts/About.
 
 | Fitur | Pesan | Komponen |
 | --- | --- | --- |

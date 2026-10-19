@@ -14,6 +14,7 @@ import type { HandlerContext } from './handlers/context.js';
 import { commandHandlers } from './handlers/commands.js';
 import { documentHandlers } from './handlers/documents.js';
 import { notesHandlers } from './handlers/notes.js';
+import { homeHandlers } from './handlers/home.js';
 import { outlineHandlers } from './handlers/outline.js';
 import { searchHandlers } from './handlers/search.js';
 import { treeHandlers } from './handlers/tree.js';
@@ -50,7 +51,7 @@ export class ProtocolServer {
             sendFiles: () => this.sendFiles(),
             onDispose: stop => { this.stops.push(stop); },
         };
-        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, searchHandlers, treeHandlers, commandHandlers]) handlers(context);
+        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, searchHandlers, treeHandlers, homeHandlers, commandHandlers]) handlers(context);
         this.wire.onNotice((ev, payload) => this.notices.get(ev)?.(payload));
         this.stops.push(onDiskChange(() => this.queueFiles()));
     }

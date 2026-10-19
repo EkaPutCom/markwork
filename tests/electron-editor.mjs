@@ -38,6 +38,7 @@ writeFileSync(join(notes, 'images', 'large.png'), png(3000, 1500));
 writeFileSync(join(notes, 'Source.md'), 'source\n');
 writeFileSync(join(notes, 'Idea.md'), '# Idea\n\ntext\n\n## Section Two\n\nmore\n');
 writeFileSync(join(notes, 'Plan.md'), '# Plan\n');
+writeFileSync(join(notes, 'page.html'), '<!doctype html><h1 id="h">hello html</h1><script>document.getElementById("h").textContent += " (js)"</script><img src="images/small.png"><a href="https://example.com">out</a>');
 writeFileSync(join(notes, 'Journal', 'Daily Notes.md'), '# Daily\n');
 writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
 
@@ -253,6 +254,32 @@ try {
         await dialog.getByRole('textbox').fill('projects');
         await dialog.getByRole('button', { name: 'OK' }).click();
         await page.locator('.notification .message').waitFor();
+        await open(/Source\.md/);
+    });
+
+    // ---------- home.ts, htmlpage.ts (pages that are tabs) ----------
+    await step('home: Alt+Home opens the Home tab with the recent files; a click on one opens it', async () => {
+        await page.keyboard.press('Alt+Home');
+        await page.getByRole('heading', { name: /^Good (morning|afternoon|evening)/ }).waitFor();
+        await page.getByRole('heading', { name: 'Recent files' }).waitFor();
+        await page.locator('.home-row', { hasText: 'Idea.md' }).click();
+        await title.getByText('Idea.md').waitFor();
+        await page.keyboard.press('Alt+Home');
+        await page.getByRole('heading', { name: 'Recent files' }).waitFor();
+        await page.getByRole('tab', { name: /Home/ }).waitFor();
+    });
+
+    await step('htmlpage: an HTML file opens in its own tab, runs its script, reads only its folder, and closes', async () => {
+        await open(/page\.html/);
+        const frame = page.frameLocator('iframe');
+        await frame.getByRole('heading', { name: 'hello html (js)' }).waitFor();
+        await page.waitForFunction(() => true);
+        const loaded = await frame.locator('img').evaluate(img => img.complete && img.naturalWidth > 0);
+        assert.ok(loaded, 'a file in its folder loads');
+        await page.getByRole('tab', { name: /page\.html/ }).getByRole('button', { name: /Close/ }).click();
+        await page.locator('iframe').waitFor({ state: 'detached' });
+        await page.getByRole('heading', { name: 'Recent files' }).waitFor();
+        await page.getByRole('tab', { name: /Home/ }).getByRole('button', { name: /Close/ }).click().catch(() => {});
         await open(/Source\.md/);
     });
 
