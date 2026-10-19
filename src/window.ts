@@ -69,6 +69,7 @@ import type { CollabController } from './app/collab.js';
 import type { ContributeController } from './app/contribute.js';
 import type { JournalController } from './app/journal.js';
 import type { HarnessController } from './app/harness.js';
+import type { Openers } from './daemonhub.js';
 import { HarnessLogWindows } from './window/harnesslogs.js';
 import type { HarnessReviewController } from './app/harnessreview.js';
 import { HarnessReviewView } from './ui/harnessreview.js';
@@ -158,8 +159,9 @@ export class MainWindow {
     dark: boolean;
     private colorScheme: boolean | null = null;   // the last choice applied by setDark (null = follow the system)
 
-    // path: the file or folder to open when the window appears.
-    constructor(app: Adw.Application, settings: AppSettings, path: string | null = null) {
+    // path: the file or folder to open when the window appears. openers: how links to the agents' daemons are made
+    // (tests give a stand-in daemon).
+    constructor(app: Adw.Application, settings: AppSettings, path: string | null = null, openers?: Openers) {
         this.app = app;
         this.settings = settings;
         this.dark = settings.dark ?? systemPrefersDark();
@@ -188,7 +190,7 @@ export class MainWindow {
         this.header = new HeaderBar();
 
         // The application layer: its controllers are created before the first document, whose buffer already queues autosaves.
-        this.session = new AppSession<MarkdownView>({ settings, createEditor: id => this.createEditor(id), host: this.frontendHost(), documents: this.documentsHost(), dialogs: this.appDialogs() });
+        this.session = new AppSession<MarkdownView>({ settings, createEditor: id => this.createEditor(id), host: this.frontendHost(), documents: this.documentsHost(), dialogs: this.appDialogs(), openers });
         const session = this.session;
         ({ journal: this.journal, collab: this.collab, pulls: this.pulls, contribute: this.contribute, harness: this.harness,
             review: this.review, homePage: this.homePage, documents: this.documents, workspace: this.workspace } = session);
