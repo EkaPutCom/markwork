@@ -35,7 +35,7 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Dokumen | Tutup aplikasi dengan perubahan belum disimpan | `ask.saveChanges` saat quit | ✅ | — |
 | Editor | Highlight, sembunyi sintaks, perintah format | `markdown/highlight.ts`, `editcommands.ts` | ✅ | — |
 | Editor | Find/replace dalam dokumen | panel CodeMirror | ✅ | — |
-| Editor | Enter/Tab di list, quote, tabel (`lists.ts`, `tableedit.ts`) | `editcommands.ts` | 🟡 cek paritas | 1 |
+| Editor | Enter/Tab di list, quote, tabel (`lists.ts`, `tableedit.ts`) | `editcommands.ts` | ✅ | — |
 | Editor | Klik checkbox, Ctrl+klik link dan wikilink (`clicks.ts`) | `NoteLinks`, `markdown/clicks.ts` (murni) | ✅ | — |
 | Editor | Saran `[[` (`wikicomplete.ts`) | `ask.notes` | ✅ | — |
 | Editor | Gambar inline, zoom gambar (`images.ts`, `imageviewer.ts`) | `showImage`, `markdown/imagesource.ts` (murni) | ✅ | — |
@@ -117,7 +117,7 @@ Selesai bila: semua ask dan notice di atas punya tes protokol, dan tes asap Elec
 
 ### Fase 1 — Paritas editor (L)
 
-**Status (19 Oktober 2026):** dimulai. Selesai: hanging indent, klik checkbox, Ctrl+klik link, wikilink (`ask.notes`, `open.note` di `handlers/notes.ts`, saran `[[` dengan `@codemirror/autocomplete`), gambar inline (`electron/renderer/images.ts`, skema `app://` di `main.ts`) dan zoom (`view.image`, `ImageViewer.tsx`), warna blok kode (`codecolor.ts`, `@codemirror/language-data` dimuat per bahasa), tabel sebagai grid (`tables.ts`; klik sel membuka teks mentah di sel itu, seperti GTK), Mermaid dan DBML (`diagrams.ts`; `mermaid.min.js` disalin saat build dan dimuat saat diagram pertama tampil), konflik git (`conflicts.ts`, tombol Accept Current/Incoming/Both), focus dan typewriter (setting inti, digambar editor), dan quit (`app.close` → `closeRequest()`, main menahan `close` sampai halaman melepas); dicakup `tests/electron-smoke.mjs` dan `tests/unit/protocol.ts`. Blok kode juga box yang digulir menyamping (`CodeBoxWidget`). Berikutnya: paritas Enter/Tab list-tabel terhadap `tests/gui`, dan mengukur pertanyaan terbuka undo.
+**Status (19 Oktober 2026):** dimulai. Selesai: hanging indent, klik checkbox, Ctrl+klik link, wikilink (`ask.notes`, `open.note` di `handlers/notes.ts`, saran `[[` dengan `@codemirror/autocomplete`), gambar inline (`electron/renderer/images.ts`, skema `app://` di `main.ts`) dan zoom (`view.image`, `ImageViewer.tsx`), warna blok kode (`codecolor.ts`, `@codemirror/language-data` dimuat per bahasa), tabel sebagai grid (`tables.ts`; klik sel membuka teks mentah di sel itu, seperti GTK), Mermaid dan DBML (`diagrams.ts`; `mermaid.min.js` disalin saat build dan dimuat saat diagram pertama tampil), konflik git (`conflicts.ts`, tombol Accept Current/Incoming/Both), focus dan typewriter (setting inti, digambar editor), dan quit (`app.close` → `closeRequest()`, main menahan `close` sampai halaman melepas); dicakup `tests/electron-smoke.mjs` dan `tests/unit/protocol.ts`. Blok kode juga box yang digulir menyamping (`CodeBoxWidget`). Paritas Enter/Tab diuji (menemukan dan memperbaiki Enter di blok kode, seleksi, Shift+Enter) dan pertanyaan terbuka undo ditutup (`protocol.md` 16). Sisa Fase 1: padanan Playwright untuk skenario `tests/gui` yang belum ada (`format`, `syntax`, `imagezoom` dst.), dan tes asap wikilink yang kadang flaky.
 
 Editor adalah alasan utama aplikasi ini ada, jadi editor didahulukan. Hampir semua pekerjaan di fase ini ada di renderer (`electron/renderer/editor.ts`), karena logikanya sudah murni.
 

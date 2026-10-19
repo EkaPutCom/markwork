@@ -54,6 +54,14 @@ try {
     const page = await app.firstWindow();
     const editor = page.locator('.cm-content');
     const title = page.locator('.headerbar .title');
+    // The text of the editor, and a way to put a text and a cursor in it (the keys under test need a known place to start).
+    const docText = () => page.evaluate(() => document.querySelector('.cm-content').cmTile.view.state.doc.toString());
+    const setDoc = (text, cursor = text.length) => page.evaluate(([t, c]) => {
+        const view = document.querySelector('.cm-content').cmTile.view;
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: t }, selection: { anchor: c } });
+        view.focus();
+    }, [text, cursor]);
+    
 
     await step('the window starts and lists the folder', async () => {
         await page.getByRole('treeitem', { name: /note\.md/ }).waitFor({ timeout: 15000 });
@@ -178,6 +186,45 @@ try {
         await editor.locator('.cm-md-dim').first().waitFor({ state: 'detached' });
     });
 
+    await step('Enter and Tab in lists and tables do what the GTK editor does', async () => {
+        await page.keyboard.press('Control+n');
+        await editor.click();
+        const enter = async (from, expected, why) => {
+            await setDoc(from);
+            await page.keyboard.press('Enter');
+            assert.equal(await docText(), expected, why);
+        };
+        await enter('- one', '- one\n- ', 'Enter continues a list');
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), '- one\n', 'Enter on an empty item ends the list');
+        await enter('9. a', '9. a\n10. ', 'the number goes up');
+        await enter('- [x] a', '- [x] a\n- [ ] ', 'a task list gets an empty box');
+        await enter('> a', '> a\n> ', 'a quote continues');
+        await setDoc('```\n- a\n```', 7);
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), '```\n- a\n\n```', 'no bullet in a code block');
+        await setDoc('- a');
+        await page.keyboard.press('Tab');
+        assert.equal(await docText(), '    - a', 'Tab indents');
+        await page.keyboard.press('Shift+Tab');
+        assert.equal(await docText(), '- a', 'Shift+Tab outdents');
+        const table = '| a | b |\n| - | - |\n| 1 | 2 |\n| 3 | 4 |';
+        await setDoc(table, table.indexOf('1'));
+        await page.keyboard.press('Tab');
+        await page.keyboard.type('X');
+        assert.equal(await docText(), table.replace('2', 'X2'), 'Tab goes to the next cell');
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('Y');
+        assert.equal(await docText(), table.replace('2', 'X2').replace('4', 'Y4'), 'Enter goes to the same cell in the next row');
+        await setDoc('plain', 5);
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), 'plain\n', 'Enter outside a table is a plain line break');
+        await page.keyboard.press('Control+w');
+        const dialog = page.getByRole('alertdialog');
+        await dialog.getByRole('button', { name: 'Discard' }).click();
+        await dialog.waitFor({ state: 'detached' });
+    });
+
     await step('a board shows its counts and the layout button, and text commands no longer apply', async () => {
         await page.getByRole('treeitem', { name: /board\.md/ }).click();
         await page.locator('.statusbar').getByText('2 lists · 3 cards').waitFor();
@@ -227,7 +274,9 @@ try {
 } catch {
     failed = true;
 } finally {
-    await app.close().catch(() => {});
+    // A window that waits for an answer about unsaved documents does not close by itself: give it a moment, then end it.
+    await Promise.race([app.close().catch(() => {}), new Promise(r => setTimeout(r, 5000))]);
+    try { app.process().kill(); } catch { /* already gone */ }
     rmSync(scratch, { recursive: true, force: true });
 }
 

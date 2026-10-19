@@ -8,7 +8,7 @@ import { Decoration, EditorView, drawSelection, keymap, type DecorationSet } fro
 import { defaultKeymap, history, redo, undo } from '@codemirror/commands';
 import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
 import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type Styles } from '../../src/markdown/highlight.js';
-import { block, continueBlock, enterInTable, heading, indentListItem, link, runTableCommand, tabInTable, togglePrefix, wrap,
+import { block, continueBlock, enterInTable, heading, indentListItem, isInCodeBlock, link, runTableCommand, tabInTable, togglePrefix, wrap,
     type TableCommand, type TextEdit, type TextState } from '../../src/markdown/editcommands.js';
 import { autocompletion, type CompletionContext } from '@codemirror/autocomplete';
 import { linkAt, taskToggleAt, wikiLinkAt } from '../../src/markdown/clicks.js';
@@ -215,6 +215,13 @@ const run = (view: EditorView, command: (state: TextState) => TextEdit | null): 
     return true;
 };
 
+// The cursor's line is inside a fenced code block: Enter there is a plain line break, not a list or quote continuing.
+const inCode = (view: EditorView): boolean => {
+    const { doc, selection } = view.state;
+    const line = doc.lineAt(selection.main.head).number - 1;
+    return isInCodeBlock(Array.from({ length: Math.min(line, doc.lines) }, (_, i) => doc.line(i + 1).text), line);
+};
+
 const TABLE_OPERATIONS: Record<TableOperation, TableCommand> = {
     'row-below': 'row-below', 'row-above': 'row-above', 'col-right': 'col-right', 'col-left': 'col-left',
     'delete-row': 'delete-row', 'delete-col': 'delete-col', 'align-left': 'align-left', 'align-center': 'align-center',
@@ -321,12 +328,12 @@ export class MarkdownEditor {
                 clicks(this.events), wikiSuggestions(this.events),
                 EditorView.contentAttributes.of({ 'aria-label': 'Editor', spellcheck: 'false' }),
                 keymap.of([
-                    { key: 'Enter', run: v => run(v, s => enterInTable(s) ?? continueBlock(s)) },
-                    { key: 'Tab', run: v => run(v, s => tabInTable(s, false) ?? indentListItem(s, false)) },
+                    { key: 'Enter', run: v => !v.state.selection.main.empty ? false : run(v, s => enterInTable(s) ?? (inCode(v) ? null : continueBlock(s))) },
+                    { key: 'Tab', run: v => !v.state.selection.main.empty ? false : run(v, s => tabInTable(s, false) ?? indentListItem(s, false)) },
                     { key: 'F3', run: findNext, preventDefault: true },
                     { key: 'Shift-F3', run: findPrevious, preventDefault: true },
                     { key: 'Escape', run: closeSearchPanel },
-                    { key: 'Shift-Tab', run: v => run(v, s => tabInTable(s, true) ?? indentListItem(s, true)) },
+                    { key: 'Shift-Tab', run: v => !v.state.selection.main.empty ? false : run(v, s => tabInTable(s, true) ?? indentListItem(s, true)) },
                     ...defaultKeymap.filter(k => k.key !== 'Mod-Enter'),
                 ]),
                 EditorView.updateListener.of(update => {
