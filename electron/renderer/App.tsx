@@ -11,6 +11,7 @@ import { Search } from './Search.js';
 import { Palette } from './Palette.js';
 import { DialogLayer } from './Dialog.js';
 import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './Modals.js';
+import { FieldsDialog } from './FieldsDialog.js';
 import { ImageViewer } from './ImageViewer.js';
 import { Tabs } from './Tabs.js';
 import { Icon } from './Icons.js';
@@ -63,6 +64,7 @@ function HeaderBar() {
     const s = useStore();
     const [menu, setMenu] = useState(false);
     const [main, setMain] = useState(false);
+    const [layoutMenu, setLayoutMenu] = useState(false);
     const tab = s.tabs.find(t => t.id === s.active);
     const keyOf = (id: string) => COMMANDS.find(c => c.id === id)?.keys[0];
     // A command of the table as a menu line, left out when this window cannot carry it out.
@@ -76,8 +78,14 @@ function HeaderBar() {
         ? [{ id: '-' }, { id: 'recent', label: 'Recent', heading: true }, ...s.recent.map(path => ({ id: 'open-recent', label: path.split(/[\\/]/).pop(), arg: path }))]
         : [];
     const items: MenuItem[] = [
-        ...['new', 'kanban-new', 'table-new', 'inbox-new'].flatMap(id => entry(id)),
+        ...['new', 'kanban-new', 'table-new', 'inbox-new', 'csv-new'].flatMap(id => entry(id)),
         { id: '-' }, ...named('open'), ...named('open-folder'), ...recent,
+    ];
+    // The layout menu: the text view and each layout the document can be shown as; the one shown is marked.
+    const LAYOUT_MENU: [string, string][] = [['', 'Text'], ['board', 'Board'], ['list', 'List'], ['table', 'Table'], ['calendar', 'Calendar'], ['timeline', 'Timeline'], ['gallery', 'Gallery'], ['chart', 'Chart']];
+    const layoutItems: MenuItem[] = [
+        ...LAYOUT_MENU.map(([arg, name]) => ({ id: 'layout', arg, label: `${s.layout.layout === arg ? '✓ ' : ''}${name}` })),
+        ...(s.layout.structured ? [{ id: '-' }, ...entry('fields-edit', 'Fields…')] : []),
     ];
     const mainItems: MenuItem[] = [
         ...named('command-palette'), ...named('find'), ...named('export-html'),
@@ -99,10 +107,14 @@ function HeaderBar() {
             <Title />
             <div className="end">
                 {tab && s.layout.layout !== null && (
-                    <button className={`button flat${s.layout.structured ? ' checked' : ''}`} title="Board/List/Table View" aria-pressed={s.layout.structured}
-                        disabled={!client.enabled(COMMANDS.find(c => c.id === 'kanban-view')!)} onClick={() => client.run('kanban-view')}>
-                        <Icon name="text-x-generic" /><span>{layoutName(s.layout.layout, tab.page)}</span>
-                    </button>
+                    <div className="split">
+                        <button className={`button flat${s.layout.structured ? ' checked' : ''}`} title="Board/List/Table View" aria-pressed={s.layout.structured}
+                            disabled={!client.enabled(COMMANDS.find(c => c.id === 'kanban-view')!)} onClick={() => client.run('kanban-view')}>
+                            <Icon name="text-x-generic" /><span>{layoutName(s.layout.layout, tab.page)}</span>
+                        </button>
+                        <button className="button flat narrow" aria-label="Layout" title="Layout" aria-haspopup="menu" aria-expanded={layoutMenu} onClick={() => setLayoutMenu(v => !v)}><Icon name="pan-down" /></button>
+                        {layoutMenu && <Menu items={layoutItems} onClose={() => setLayoutMenu(false)} align="right" />}
+                    </div>
                 )}
                 <div className="split">
                     <button className="button flat" title="Main Menu" aria-label="Main Menu" aria-haspopup="menu" aria-expanded={main} onClick={() => setMain(v => !v)}><Icon name="open-menu" /></button>
@@ -223,6 +235,7 @@ export function App() {
             <PreferencesDialog />
             <ShortcutsDialog />
             <AboutDialog />
+            <FieldsDialog />
             <DialogLayer />
         </div>
     );

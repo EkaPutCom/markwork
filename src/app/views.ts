@@ -116,6 +116,7 @@ type Again = ((current: Board) => Board | null) | null;
 interface ViewState {
     textOverride: boolean;   // the user chose the text view for this board or inbox
     boardText: string;       // the text the board/inbox last wrote or read; to recognize outside changes (undo)
+    csvWritten: string[];    // the last texts the CSV table wrote: over the app protocol the text of an earlier write lands after a later one was made
     reloadQueued: boolean;
 }
 
@@ -133,7 +134,7 @@ export class ViewController<E extends TextEditor> {
 
     private state(doc: Doc<E>): ViewState {
         let state = this.states.get(doc);
-        if (!state) this.states.set(doc, state = { textOverride: false, boardText: '', reloadQueued: false });
+        if (!state) this.states.set(doc, state = { textOverride: false, boardText: '', csvWritten: [], reloadQueued: false });
         return state;
     }
 
@@ -216,6 +217,7 @@ export class ViewController<E extends TextEditor> {
             const text = doc.editor.getText();
             this.host.csv.setText(text);
             this.state(doc).boardText = text;
+            this.state(doc).csvWritten = [];
             screen.closeFind();
             screen.showPage('csv');
             const table = parseCsv(text);
@@ -429,7 +431,9 @@ export class ViewController<E extends TextEditor> {
     // Changes from the CSV table → document text (one undo step).
     private csvEdited(text: string): void {
         const doc = this.host.active();
-        this.state(doc).boardText = text;   // recognize this change as the table's own
+        const state = this.state(doc);
+        state.boardText = text;   // recognize this change as the table's own
+        state.csvWritten = [...state.csvWritten.slice(-7), text];
         doc.editor.replaceText(text);
     }
 
@@ -544,7 +548,7 @@ export class ViewController<E extends TextEditor> {
         const text = doc.editor.getText();
         const view = this.currentView();
         if (view === 'csv') {
-            if (text === state.boardText) return;
+            if (text === state.boardText || state.csvWritten.includes(text)) return;
             state.boardText = text;
             this.host.csv.setText(text);
             const table = parseCsv(text);

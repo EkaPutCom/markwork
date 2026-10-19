@@ -6,12 +6,16 @@ import { parseWikiLink } from '../../../markdown/wikilink.js';
 import { RequestError } from '../messages.js';
 import { num, str, type HandlerContext } from './context.js';
 
-export function notesHandlers({ wire, session }: HandlerContext): void {
+export function notesHandlers({ wire, session, frontend }: HandlerContext): void {
     wire.on('act.notes.edit', p => {
         const edit = p.edit as NoteEdit | undefined;
         if (!edit || typeof edit.kind !== 'string') throw new RequestError('bad_request', 'edit is missing');
-        session.host.board.onEdit(edit);
+        frontend.editNotes(edit);
     });
+
+    // The CSV tab: the frontend sends the text after each change, and the size of the table it shows.
+    wire.on('act.csv.change', p => { frontend.csv.onChange(str(p.text, 'text')); });
+    wire.on('act.csv.shape', p => { frontend.csv.onShape(num(p.rows, 'rows'), num(p.columns, 'columns')); });
 
     // The note names a [[ suggestion offers for a document: its files, relative to the folder the links are looked up in.
     wire.on('ask.notes', p => ({ names: session.notes.namesFor(num(p.doc, 'doc')) }));

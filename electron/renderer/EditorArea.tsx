@@ -2,6 +2,15 @@ import { useEffect, useRef } from 'react';
 import { Home } from './Home.js';
 import { HtmlPage } from './HtmlPage.js';
 import { Board } from './Board.js';
+import { Calendar } from './Calendar.js';
+import { Chart } from './Chart.js';
+import { Csv } from './Csv.js';
+import { Gallery } from './Gallery.js';
+import { Inbox } from './Inbox.js';
+import { TableView } from './TableView.js';
+import { Timeline } from './Timeline.js';
+import type { Board as BoardData } from '../../src/markdown/kanban.js';
+import type { Tab } from './client.js';
 import { MarkdownEditor } from './editor.js';
 import { label } from './keys.js';
 import { useClient, useStore } from './useClient.js';
@@ -24,9 +33,22 @@ function Welcome() {
     );
 }
 
+// The page of a document's notes that the core shows: the same board, drawn as a board, a list, a table, or one of the layouts.
+function StructuredPage({ tab, board }: { tab: Tab; board: BoardData }) {
+    switch (tab.page) {
+        case 'inbox': return <Inbox board={board} focus={tab.capture} tab={tab.id} />;
+        case 'table': return <TableView board={board} focus={tab.capture} tab={tab.id} />;
+        case 'calendar': return <Calendar board={board} />;
+        case 'timeline': return <Timeline board={board} />;
+        case 'gallery': return <Gallery board={board} />;
+        case 'chart': return <Chart board={board} />;
+        default: return <Board board={board} groupField={tab.groupField} agents={tab.agents} />;
+    }
+}
+
 export function EditorArea() {
     const client = useClient();
-    const { tabs, active } = useStore();
+    const { tabs, active, csvFind } = useStore();
     const host = useRef<HTMLDivElement>(null);
     const tab = tabs.find(t => t.id === active);
 
@@ -46,12 +68,15 @@ export function EditorArea() {
         return () => { client.attachEditor(null); editor.view.destroy(); };
     }, [client]);
 
-    const board = tab?.page === 'board' && tab.board;
+    const board = tab?.board ?? null;
+    const structured = !!tab && !!board && ['board', 'inbox', 'table', 'calendar', 'timeline', 'gallery', 'chart'].includes(tab.page);
+    const csv = tab?.page === 'csv' && tab.csv !== null;
     const isPage = tab?.page === 'home' || tab?.page === 'html';
     return (
         <div className="editor-area">
-            <div ref={host} className="text-editor" hidden={!tab || !!board || isPage} />
-            {board && tab && <Board board={board} />}
+            <div ref={host} className="text-editor" hidden={!tab || structured || csv || isPage} />
+            {structured && tab && board && <StructuredPage key={`${tab.id}:${tab.page}`} tab={tab} board={board} />}
+            {csv && tab && <Csv key={tab.id} text={tab.csv!} rev={tab.csvRev} find={csvFind} />}
             {tab?.page === 'home' && <Home data={tab.home} />}
             {tab?.page === 'html' && tab.html && <HtmlPage key={tab.id} id={tab.id} file={tab.html.file} root={tab.html.root} />}
             {!tab && <Welcome />}

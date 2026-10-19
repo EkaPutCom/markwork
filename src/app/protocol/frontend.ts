@@ -5,7 +5,8 @@
 import type { AppSettings } from '../../settings.js';
 import type { Board } from '../../markdown/kanban.js';
 import type { NoteEdit } from '../../markdown/noteedit.js';
-import type { KanbanView, ViewScreen } from '../views.js';
+import type { CaptureView, CsvPage, KanbanView, LayoutPage, NotesView, SchemaDialogOptions, ViewDialogs, ViewScreen } from '../views.js';
+import type { FieldDef } from '../../markdown/fields.js';
 import type { DocumentDialogs } from '../documents.js';
 import type { ChooseFileOptions } from '../dialogs.js';
 import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session.js';
@@ -20,15 +21,30 @@ import { ProtocolTree } from './tree.js';
 import { ProtocolPreferences } from './preferences.js';
 import { ProtocolScreen } from './screen.js';
 
-class ProtocolBoard {
+// A page that shows the notes of the document (board, list, table, calendar, …): it sends the board as it is, and the
+// frontend answers with the operations the user makes (`act.notes.edit`). Only the board has groups and agents.
+class ProtocolNotes implements KanbanView, CaptureView {
     onEdit: (edit: NoteEdit) => void = () => {};
     agentsEnabled = true;
     groupField: string | null = null;
 
-    constructor(private readonly show: (board: Board, groupField: string | null, agents: boolean) => void) {}
+    constructor(private readonly page: string, private readonly show: (page: string, board: Board, groupField: string | null, agents: boolean) => void,
+        private readonly focus: (page: string) => void) {}
 
-    setBoard(board: Board): void { this.show(board, this.groupField, this.agentsEnabled); }
-    replace(board: Board): void { this.show(board, this.groupField, this.agentsEnabled); }
+    setBoard(board: Board): void { this.show(this.page, board, this.groupField, this.agentsEnabled); }
+    replace(board: Board): void { this.show(this.page, board, this.groupField, this.agentsEnabled); }
+    focusCapture(): void { this.focus(this.page); }
+}
+
+// The CSV tab: the frontend holds the table it draws and sends the whole text after each change (`act.csv.change`); the
+// core sends the text when the tab is shown or the text changed outside the table (`view.csv`).
+class ProtocolCsv implements CsvPage {
+    onChange: (text: string) => void = () => {};
+    onShape: (rows: number, columns: number) => void = () => {};
+
+    constructor(private readonly wire: Wire, private readonly active: () => number) {}
+
+    setText(text: string): void { this.wire.notify('view.csv', { doc: this.active(), text }); }
 }
 
 export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
@@ -40,6 +56,9 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     // The server sets it: a folder was opened (by a command or by restoring the last one), so the file list changed.
     folderOpened: () => void = () => {};
     private active = 0;
+    // The pages of the document's notes, by name, and the one the core last gave its notes to: it is the one the user edits.
+    private readonly notesViews = new Map<string, ProtocolNotes>();
+    private notesPage = 'board';
     private readonly row: number[] = [];
 
     readonly host: FrontendHost<ProtocolEditor>;
@@ -51,6 +70,8 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly tree: ProtocolTree;
     // The Preferences dialog's end of the wire.
     readonly preferences: ProtocolPreferences;
+    // The CSV tab's end of the wire: `act.csv.*` call its `onChange` and `onShape`.
+    readonly csv: ProtocolCsv;
     readonly documents: FrontendDocuments<ProtocolEditor>;
     readonly dialogs: AppDialogs;
     // The questions the dialogs ask over the wire.
@@ -58,7 +79,14 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
 
     constructor(readonly settings: AppSettings, private readonly wire: Wire) {
         this.asks = new Asks(wire);
-        const board = new ProtocolBoard((b, groupField, agents) => this.showNotes(b, groupField, agents));
+        const show = (page: string, b: Board, groupField: string | null, agents: boolean) => this.showNotes(page, b, groupField, agents);
+        const notes = (page: string) => { const view = new ProtocolNotes(page, show, focus); this.notesViews.set(page, view); return view; };
+        const focus = (page: string) => wire.notify('view.focusCapture', { doc: this.active, page });
+        const board = notes('board');
+        const layouts: Record<LayoutPage, NotesView> = {
+            calendar: notes('calendar'), timeline: notes('timeline'), gallery: notes('gallery'), chart: notes('chart'),
+        };
+        this.csv = new ProtocolCsv(wire, () => this.active);
         this.outline = new ProtocolOutline(wire);
         this.search = new ProtocolSearch(wire);
         this.tree = new ProtocolTree(wire);
@@ -66,6 +94,10 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         this.host = unwired<FrontendHost<ProtocolEditor>>({
             screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
             board: unwired<KanbanView>(board, 'host.board'),
+            inbox: notes('inbox'),
+            table: notes('table'),
+            layouts,
+            csv: this.csv,
             outlineView: this.outline,
             searchView: this.search,
             fileTree: this.tree,
@@ -109,8 +141,14 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
                 confirm: (message: string, detail: string) => this.asks.question('ask.files.confirm', { message, detail, accept: 'Move to Trash', destructive: true }),
                 error: (message: string) => { wire.notify('toast', { text: message, action: null }); },
             },
+            views: this.viewDialogs(),
             search: { confirm: (message: string, detail: string, accept: string) => this.asks.question('ask.search.confirm', { message, detail, accept, destructive: true }) },
         }, 'dialogs');
+    }
+
+    // An edit the user made on the page that shows the notes (`act.notes.edit`).
+    editNotes(edit: NoteEdit): void {
+        this.notesViews.get(this.notesPage)?.onEdit(edit);
     }
 
     createEditor(id: number): ProtocolEditor {
@@ -122,9 +160,10 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         return editor;
     }
 
-    private showNotes(board: Board, groupField: string | null, agents: boolean): void {
+    private showNotes(page: string, board: Board, groupField: string | null, agents: boolean): void {
         const doc = this.active;
-        this.wire.notify('view.notes', { doc, version: this.editors.get(doc)?.version ?? 0, page: 'board', board, groupField, agents });
+        this.notesPage = page;
+        this.wire.notify('view.notes', { doc, version: this.editors.get(doc)?.version ?? 0, page, board, groupField, agents });
     }
 
     private drop(id: number): void {
@@ -139,6 +178,14 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         this.drop(id);
         this.editors.delete(id);
         void this.wire.request('doc.close', { doc: id, version });
+    }
+
+    // The Fields… dialog: the fields as the document declares them, answered with the fields as they should be, or nothing.
+    private viewDialogs(): ViewDialogs {
+        return {
+            editSchema: (options: SchemaDialogOptions) => this.asks.ask<FieldDef[] | null>('ask.schema', { ...options },
+                r => Array.isArray(r.fields) ? r.fields as FieldDef[] : undefined, null),
+        };
     }
 
     private documentDialogs(): DocumentDialogs {

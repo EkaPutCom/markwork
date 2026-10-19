@@ -45,7 +45,7 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Editor | Penanda konflik git (`conflictlayer.ts`) | `markdown/conflicts.ts` (murni) | ✅ | — |
 | Editor | Hanging indent list (`listindent.ts`) | — | ✅ | — |
 | Editor | Mode source, focus, typewriter | `ViewOption`, setting | ✅ | — |
-| Jendela | Header bar, menu utama, tombol layout | `ViewScreen.showLayout`, `enableActions` | 🟡 tombol layout dan status perintah ada; menu layout belum | 2 |
+| Jendela | Header bar, menu utama, tombol layout | `ViewScreen.showLayout`, `enableActions` | ✅ | — |
 | Jendela | Command palette | `COMMANDS` | ✅ | — |
 | Jendela | Status: kata, board, inbox, CSV (`statusbar.ts`) | `ViewScreen.setCounts…` | ✅ | — |
 | Jendela | Keyboard Shortcuts, About | `FrontendCommands` | ✅ | — |
@@ -56,13 +56,13 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | 🟡 semua kecuali Add to Journal (Fase 4) | 4 |
 | Halaman | Tab HTML dengan sandbox (`htmlpage.ts`) | `showPageTab`, `markdown/htmlview.ts` | ✅ | — |
 | Dialog | Preferences umum (`preferences.ts`) | `PreferencesView` | ✅ umum dan Assistant; halaman Agents di Fase 6 | 6 |
-| Struktur | Board penuh: kolom, grup per field, popover field (`kanban.ts`, `fieldpopover.ts`) | `KanbanView`, `NoteEdit` | 🟡 pindah, centang, tambah | 3 |
-| Struktur | List/inbox dengan capture (`inbox.ts`) | `CaptureView` | ⬜ | 3 |
-| Struktur | Table (`table.ts`) | `CaptureView` | ⬜ | 3 |
-| Struktur | Calendar, timeline, gallery, chart | `layouts: NotesView` | ⬜ | 3 |
-| Struktur | Dialog Fields… (`schemadialog.ts`) | `ViewDialogs.editSchema` | ⬜ | 3 |
-| Struktur | Tab CSV dengan find bar (`csvpage.ts`, `csvfindbar.ts`) | `CsvPage` | ⬜ | 3 |
-| Struktur | Dokumen baru: board, inbox, table, CSV | `COMMANDS` `*-new` | 🟡 board saja | 3 |
+| Struktur | Board penuh: kolom, grup per field, popover field (`kanban.ts`, `fieldpopover.ts`) | `KanbanView`, `NoteEdit` | ✅ | — |
+| Struktur | List/inbox dengan capture (`inbox.ts`) | `CaptureView` | ✅ | — |
+| Struktur | Table (`table.ts`) | `CaptureView` | ✅ | — |
+| Struktur | Calendar, timeline, gallery, chart | `layouts: NotesView` | ✅ | — |
+| Struktur | Dialog Fields… (`schemadialog.ts`) | `ViewDialogs.editSchema` | ✅ | — |
+| Struktur | Tab CSV dengan find bar (`csvpage.ts`, `csvfindbar.ts`) | `CsvPage` | ✅ | — |
+| Struktur | Dokumen baru: board, inbox, table, CSV | `COMMANDS` `*-new` | ✅ | — |
 | Journal | Jurnal hari ini, Add to Journal, ringkasan | `JournalController`, `JournalDialogs.capture` | ⬜ | 4 |
 | Assistant | Panel chat streaming (`chat.ts`, `chatturn.ts`, `worklist.ts`) | `ChatPanelView` | ⬜ | 4 |
 | Assistant | Popover konteks, riwayat, pengaturan + API key | `onPreview`, `onChats`, `onSaveKey` | ⬜ | 4 |
@@ -160,6 +160,8 @@ Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval 
 Selesai bila: `tests/gui/folder*.ts`, `file.ts`, `tabs.ts`, `home.ts`, `htmlpage.ts`, `window.ts`, `dialogs.ts` punya padanan.
 
 ### Fase 3 — View terstruktur (L)
+
+**Status (19 Oktober 2026):** selesai. `view.notes` kini membawa nama halaman (`board`, `inbox`, `table`, `calendar`, `timeline`, `gallery`, `chart`) dan `act.notes.edit` diteruskan ke halaman yang terakhir menerima catatan (`ProtocolFrontend.editNotes`). Tab CSV: `view.csv`, `act.csv.change`, `act.csv.shape`; renderer memegang tabelnya (virtual, hanya baris yang tampak) dan mengirim seluruh teks setelah tiap perubahan; core mengabaikan gema tulisan CSV-nya sendiri (`csvWritten`). `view.focusCapture` untuk dokumen List/Table baru, `ask.schema` untuk Fields…, menu layout di header bar. Komponen: `Board`, `Inbox`, `TableView`, `Calendar`, `Timeline`, `Gallery`, `Chart`, `Csv`, `FieldsDialog`, dan bagian bersama di `notes.tsx` (dialog kartu, popover field, menu konteks). Tes: `tests/electron-structured.mjs` (padanan `kanban*`, `inbox`, `layouts`, `tablelayout`, `csv*`) dan sembilan skenario baru di `tests/unit/protocol.ts`; `unwired` menyusut dari 29 ke 17. Belum: status run agent di kartu board (Fase 6).
 
 Semua view memakai `view.notes` + `act.notes.edit` yang sudah ada. Pekerjaannya kebanyakan di renderer.
 
