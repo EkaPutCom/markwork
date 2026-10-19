@@ -9,16 +9,16 @@ import { cellStart, parseTable, type Table } from '../../src/markdown/table.js';
 export class TableWidget extends WidgetType {
     private readonly key: string;
 
-    constructor(readonly lines: readonly string[], private readonly table: Table) {
+    constructor(readonly lines: readonly string[], private readonly table: Table, private readonly dim = false) {
         super();
-        this.key = lines.join('\n');
+        this.key = lines.join('\n') + (dim ? '\0dim' : '');
     }
 
     override eq(other: TableWidget): boolean { return other.key === this.key; }
 
     override toDOM(view: EditorView): HTMLElement {
         const wrap = document.createElement('div');
-        wrap.className = 'cm-md-table-grid';
+        wrap.className = 'cm-md-table-grid' + (this.dim ? ' cm-md-dim' : '');
         const grid = document.createElement('table');
         const cell = (tag: 'th' | 'td', text: string, col: number, row: number) => {
             const el = document.createElement(tag);

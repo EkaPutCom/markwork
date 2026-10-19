@@ -34,7 +34,7 @@ export function EditorArea() {
             changed: text => client.typed(text),
             moved: (line, column) => client.moved(line, column),
             message: text => client.say(text),
-            openLink: uri => { window.open(uri); },
+            openLink: uri => client.openLink(uri),
             zoomImage: image => client.zoomImage(image),
             baseDir: () => client.baseDir(),
             openNote: link => client.openNote(link),

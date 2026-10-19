@@ -19,4 +19,11 @@ export function notesHandlers({ wire, session }: HandlerContext): void {
     wire.on('open.note', p => {
         if (!session.notes.openFor(num(p.doc, 'doc'), parseWikiLink(str(p.link, 'link')))) throw new RequestError('stale', 'that document is closed');
     });
+    // Ctrl+click on a link that is not a [[note]]: a Markdown file opens in a tab, a URL in the browser, other files in the
+    // app the system picks (AppSession.openLink). A relative link is read from the document's folder.
+    wire.on('open.link', p => {
+        const doc = num(p.doc, 'doc');
+        if (!session.documents.all.some(d => d.id === doc)) throw new RequestError('stale', 'that document is closed');
+        session.openLink(doc, str(p.url, 'url'));
+    });
 }

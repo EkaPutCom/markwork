@@ -55,13 +55,13 @@ function render(kind: Kind, source: string, dark: boolean): Promise<Result> {
 }
 
 export class DiagramWidget extends WidgetType {
-    constructor(private readonly kind: Kind, private readonly source: string, private readonly onOpen: (view: EditorView, element: HTMLElement) => void) { super(); }
+    constructor(private readonly kind: Kind, private readonly source: string, private readonly onOpen: (view: EditorView, element: HTMLElement) => void, private readonly dim = false) { super(); }
 
-    override eq(other: DiagramWidget): boolean { return other.kind === this.kind && other.source === this.source; }
+    override eq(other: DiagramWidget): boolean { return other.kind === this.kind && other.source === this.source && other.dim === this.dim; }
 
     override toDOM(view: EditorView): HTMLElement {
         const box = document.createElement('div');
-        box.className = 'cm-md-diagram';
+        box.className = 'cm-md-diagram' + (this.dim ? ' cm-md-dim' : '');
         box.textContent = 'Drawing the diagram…';
         void render(this.kind, this.source, isDark()).then(result => {
             if (result.ok) {

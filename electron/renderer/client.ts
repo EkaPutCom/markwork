@@ -106,6 +106,14 @@ export class Client {
 
     // ---------- The editor ----------
 
+    // The core asked to show a line of a document (a [[note#section]] link): now if its tab is the one shown, else when it is.
+    private reveal: { doc: number; line: number } | null = null;
+    private applyReveal(): void {
+        if (!this.reveal || this.reveal.doc !== this.snapshot.active || !this.editor) return;
+        this.editor.reveal(this.reveal.line);
+        this.reveal = null;
+    }
+
     // Focus and typewriter mode are settings the core keeps; the editor draws them.
     private applyModes(): void {
         const { settings } = this.snapshot;
@@ -175,6 +183,9 @@ export class Client {
         const file = this.tab()?.file ?? null;
         return file && file.includes('/') ? file.slice(0, file.lastIndexOf('/')) || '/' : null;
     }
+
+    // A link Ctrl+clicked in the active document: the core decides (a note in a tab, a URL in the browser).
+    openLink(url: string): void { void this.ask('open.link', { doc: this.snapshot.active, url }); }
 
     // [[link]] Ctrl+clicked in the active document: the core finds or makes the note and opens its tab.
     openNote(link: string): void { void this.ask('open.note', { doc: this.snapshot.active, link }); }
@@ -385,8 +396,10 @@ export class Client {
                 this.set({ active: id });
                 const shown = this.tab(id);
                 if (shown) this.editor?.show(id, shown.mirror.text);
+                this.applyReveal();
                 break;
             }
+            case 'doc.reveal': this.reveal = { doc: id, line: p.line as number }; this.applyReveal(); break;
             case 'doc.title': {
                 const title = p.title as { name: string; file: string | null };
                 this.changeTab(id, { name: title.name, file: title.file });

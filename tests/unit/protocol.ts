@@ -342,6 +342,18 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('open.link opens a relative Markdown link in a tab, and a closed document is stale', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.active?.text.startsWith('# Note') === true);
+        const doc = ui.active.id;
+        ok((await ui.client.request('open.link', { doc, url: 'board.md' })).ok, 'open.link');
+        await until(() => ui.active?.text.includes('layout: board') === true);
+        const gone = await ui.client.request('open.link', { doc: 9999, url: 'board.md' });
+        ok(!gone.ok && gone.error.code === 'stale', 'stale');
+        server.dispose();
+    });
+
     await test('app.close lets a window with nothing unsaved go', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });

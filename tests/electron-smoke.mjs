@@ -100,6 +100,8 @@ try {
         await editor.click();
         await page.keyboard.press('Control+End');
         await page.keyboard.type('[[boa');
+        // The list narrows as the answers arrive; Enter takes what is selected, so wait for the last one.
+        await page.waitForFunction(() => document.querySelectorAll('.cm-tooltip-autocomplete li').length === 1);
         await page.locator('.cm-tooltip-autocomplete').getByText('board').waitFor();
         await page.keyboard.press('Enter');
         await editor.getByText('[[board]]').waitFor();

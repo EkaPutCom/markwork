@@ -207,8 +207,9 @@ kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 .cm-md-pictures { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; }
 .cm-md-pictures img { border-radius: 6px; cursor: zoom-in; object-fit: contain; }
 .cm-md-picture-missing { color: var(--fg-dim); font-style: italic; }
-.image-viewer { position: fixed; inset: 0; z-index: 35; background: #000000cc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; cursor: zoom-out; }
-.image-viewer img { max-width: 100%; max-height: calc(100% - 40px); object-fit: contain; }
+.image-viewer { position: fixed; inset: 0; z-index: 35; background: #000000cc; display: flex; flex-direction: column; align-items: center; padding: 24px; gap: 10px; }
+.image-viewer .area { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.image-viewer img { max-width: none; transform-origin: center; cursor: grab; user-select: none; }
 .image-viewer .caption { color: #fff; font-size: 13px; }
 
 /* Colors inside code blocks (markdown/ fences with a language). */

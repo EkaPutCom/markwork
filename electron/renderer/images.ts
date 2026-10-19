@@ -47,15 +47,15 @@ export interface PictureEvents {
 
 // The pictures of one line.
 export class PicturesWidget extends WidgetType {
-    constructor(readonly items: readonly PictureItem[], private readonly events: PictureEvents) { super(); }
+    constructor(readonly items: readonly PictureItem[], private readonly events: PictureEvents, private readonly dim = false) { super(); }
 
     override eq(other: PicturesWidget): boolean {
-        return other.items.length === this.items.length && other.items.every((it, i) => it.src === this.items[i].src && it.alt === this.items[i].alt);
+        return other.dim === this.dim && other.items.length === this.items.length && other.items.every((it, i) => it.src === this.items[i].src && it.alt === this.items[i].alt);
     }
 
     override toDOM(view: EditorView): HTMLElement {
         const box = document.createElement('div');
-        box.className = 'cm-md-pictures';
+        box.className = 'cm-md-pictures' + (this.dim ? ' cm-md-dim' : '');
         for (const item of this.items) {
             const img = document.createElement('img');
             img.src = item.src;

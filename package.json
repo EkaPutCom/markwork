@@ -28,7 +28,7 @@
     "pot": "sh scripts/pot.sh",
     "electron:build": "tsc --noEmit -p tsconfig.electron.json && node scripts/electron-build.mjs",
     "electron": "npm run electron:build && electron .",
-    "test:electron": "npm run electron:build && xvfb-run -a -s '-screen 0 1280x800x24' node tests/electron-smoke.mjs"
+    "test:electron": "npm run electron:build && xvfb-run -a -s '-screen 0 1280x800x24' sh -c 'node tests/electron-smoke.mjs && node tests/electron-editor.mjs'"
   },
   "devDependencies": {
     "@codemirror/commands": "^6.11.1",

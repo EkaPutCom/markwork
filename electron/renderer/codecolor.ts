@@ -64,16 +64,16 @@ export function codeColors(blocks: readonly CodeBlock[], offset: (block: CodeBlo
 export class CodeBoxWidget extends WidgetType {
     private readonly key: string;
 
-    constructor(private readonly text: string, private readonly spans: readonly Span[]) {
+    constructor(private readonly text: string, private readonly spans: readonly Span[], private readonly dim = false) {
         super();
-        this.key = `${text}\0${spans.map(s => s.join(':')).join(',')}`;
+        this.key = `${text}\0${spans.map(s => s.join(':')).join(',')}${dim ? '\0dim' : ''}`;
     }
 
     override eq(other: CodeBoxWidget): boolean { return other.key === this.key; }
 
     override toDOM(view: EditorView): HTMLElement {
         const box = document.createElement('div');
-        box.className = 'cm-md-codebox';
+        box.className = 'cm-md-codebox' + (this.dim ? ' cm-md-dim' : '');
         const pre = document.createElement('pre');
         const text = this.text.replace(/\n$/, '');
         let at = 0;

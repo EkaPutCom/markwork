@@ -10,7 +10,7 @@ import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, op
 import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type Styles } from '../../src/markdown/highlight.js';
 import { block, continueBlock, enterInTable, heading, indentListItem, isInCodeBlock, link, runTableCommand, tabInTable, togglePrefix, wrap,
     type TableCommand, type TextEdit, type TextState } from '../../src/markdown/editcommands.js';
-import { autocompletion, type CompletionContext } from '@codemirror/autocomplete';
+import { acceptCompletion, autocompletion, type CompletionContext } from '@codemirror/autocomplete';
 import { linkAt, taskToggleAt, wikiLinkAt } from '../../src/markdown/clicks.js';
 import { suggestNotes, wikiQuery, wikiTargetFor } from '../../src/markdown/wikilink.js';
 import { conflictDecorations } from './conflicts.js';
@@ -120,26 +120,30 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
         const grids = new Set<number>(conflicts.covered);
         const boxed = new Set<CodeBlock>();
         // Focus mode: all text outside the paragraph of the cursor (lines up to blank ones) is dimmed.
+        let paragraph: [number, number] | null = null;   // lines (from 0) of the cursor's paragraph, in focus mode
         if (state.field(focusMode)) {
             const blank = (n: number) => !doc.line(n + 1).text.trim();
             let b0 = Math.min(selFirst, doc.lines - 1), b1 = Math.min(selLast, doc.lines - 1);
             while (b0 > 0 && !blank(b0 - 1)) b0--;
             while (b1 < doc.lines - 1 && !blank(b1 + 1)) b1++;
+            paragraph = [b0, b1];
             const from = doc.line(b0 + 1).from, to = doc.line(b1 + 1).to;
             if (from > 0) ranges.push(dim.range(0, from));
             if (to < doc.length) ranges.push(dim.range(to, doc.length));
         }
+        // A block widget outside the cursor's paragraph is dimmed too (the marks above cannot reach inside a widget).
+        const dimmed = (first: number, last: number) => paragraph !== null && (last < paragraph[0] || first > paragraph[1]);
         if (!state.field(sourceMode)) {
             for (const t of result.tables) {
                 if (t.end >= doc.lines || (selLast >= t.start && selFirst <= t.end)) continue;
                 const lines = Array.from({ length: t.end - t.start + 1 }, (_, k) => doc.line(t.start + k + 1).text);
-                ranges.push(Decoration.replace({ widget: new TableWidget(lines, tableOf(lines)), block: true }).range(doc.line(t.start + 1).from, doc.line(t.end + 1).to));
+                ranges.push(Decoration.replace({ widget: new TableWidget(lines, tableOf(lines), dimmed(t.start, t.end)), block: true }).range(doc.line(t.start + 1).from, doc.line(t.end + 1).to));
                 for (let k = t.start; k <= t.end; k++) grids.add(k);
             }
             // A code block is a box that scrolls sideways, with its colors inside.
             for (const block of result.codeBlocks) {
                 if (!block.closed || !block.text.trim() || diagramKind(block) || block.endLine >= doc.lines || (selLast >= block.startLine && selFirst <= block.endLine)) continue;
-                ranges.push(Decoration.replace({ widget: new CodeBoxWidget(block.text, spansOf(block, languageLoaded).spans), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
+                ranges.push(Decoration.replace({ widget: new CodeBoxWidget(block.text, spansOf(block, languageLoaded).spans, dimmed(block.startLine, block.endLine)), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
                 for (let k = block.startLine; k <= block.endLine; k++) grids.add(k);
                 boxed.add(block);
             }
@@ -148,7 +152,7 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
                 const kind = diagramKind(block);
                 if (!kind || block.endLine >= doc.lines || (selLast >= block.startLine && selFirst <= block.endLine)) continue;
                 const open = (view: EditorView, element: HTMLElement) => view.dispatch({ selection: { anchor: view.state.doc.lineAt(view.posAtDOM(element)).to + 1 }, scrollIntoView: true });
-                ranges.push(Decoration.replace({ widget: new DiagramWidget(kind, block.text, open), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
+                ranges.push(Decoration.replace({ widget: new DiagramWidget(kind, block.text, open, dimmed(block.startLine, block.endLine)), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
                 for (let k = block.startLine; k <= block.endLine; k++) grids.add(k);
             }
         }
@@ -163,14 +167,14 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
             }
         });
         ranges.push(...codeColors(result.codeBlocks.filter(b => !boxed.has(b)), (block, i) => u16(block.start) + i, languageLoaded));
-        const found = pictures(result.images, events.baseDir());
+        const found = state.field(sourceMode) ? new Map<number, PictureItem[]>() : pictures(result.images, events.baseDir());
         pictureLines.set(doc, found);
         const widgetEvents = {
             activate: (view: EditorView, element: HTMLElement) => view.dispatch({ selection: { anchor: view.state.doc.lineAt(view.posAtDOM(element)).to }, scrollIntoView: true }),
             zoom: events.zoomImage,
         };
         for (const [i, items] of found) {
-            if (i < doc.lines) ranges.push(Decoration.widget({ widget: new PicturesWidget(items, widgetEvents), block: true, side: 1 }).range(doc.line(i + 1).to));
+            if (i < doc.lines) ranges.push(Decoration.widget({ widget: new PicturesWidget(items, widgetEvents, dimmed(i, i)), block: true, side: 1 }).range(doc.line(i + 1).to));
         }
         if (!state.field(sourceMode)) {
             const { main } = state.selection;
@@ -268,7 +272,7 @@ function wikiSuggestions(events: EditorEvents): Extension {
         });
         return options.length ? { from: context.pos - query.length, options, filter: false } : null;
     };
-    return autocompletion({ override: [source], icons: false, defaultKeymap: true });
+    return autocompletion({ override: [source], icons: false, defaultKeymap: true, interactionDelay: 0 });
 }
 
 // A click on a task box flips it; Ctrl (or Cmd) + click on a link opens it.
@@ -328,6 +332,7 @@ export class MarkdownEditor {
                 clicks(this.events), wikiSuggestions(this.events),
                 EditorView.contentAttributes.of({ 'aria-label': 'Editor', spellcheck: 'false' }),
                 keymap.of([
+                    { key: 'Tab', run: acceptCompletion },
                     { key: 'Enter', run: v => !v.state.selection.main.empty ? false : run(v, s => enterInTable(s) ?? (inCode(v) ? null : continueBlock(s))) },
                     { key: 'Tab', run: v => !v.state.selection.main.empty ? false : run(v, s => tabInTable(s, false) ?? indentListItem(s, false)) },
                     { key: 'F3', run: findNext, preventDefault: true },
@@ -376,6 +381,13 @@ export class MarkdownEditor {
             const u16 = makeU16Map(this.text);
             this.view.dispatch({ changes: { from: u16(from), to: u16(to), insert }, annotations: External.of(true) });
         }
+    }
+
+    // Put the cursor at the start of a line (from 0) and bring it into view.
+    reveal(line: number): void {
+        const { doc } = this.view.state;
+        const at = doc.line(Math.min(Math.max(line, 0) + 1, doc.lines));
+        this.view.dispatch({ selection: { anchor: at.from }, effects: EditorView.scrollIntoView(at.from, { y: 'start', yMargin: 40 }) });
     }
 
     // The cursor and the selection, in code points.
