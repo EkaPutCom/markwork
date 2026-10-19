@@ -56,7 +56,7 @@ Core berjalan di *utility process* Electron, bukan di sidecar terpisah dan bukan
 Urutannya: protokol diuji dulu tanpa UI, lalu satu irisan tipis dari ujung ke ujung, baru kemudian semua view. Tahap 1–3 mengikuti langkah 2–4 di [`docs/design/protocol.md`](protocol.md) bagian 15. Tahap 0 dan 4–7 khusus untuk Electron.
 
 0. **Putuskan arah.**
-   - `AGENT.md` mewajibkan GNOME HIG dan menolak tampilan bergaya web atau Electron. Aturan ini perlu ditulis ulang untuk frontend Electron, misalnya hanya berlaku bagi frontend GTK.
+   - Diputuskan 19 Oktober 2026: `AGENT.md` membatasi aturan GNOME HIG pada frontend GTK; frontend Electron memakai VS Code sebagai rujukan desain dan React.
    - Pilih editor (CodeMirror 6 adalah kandidat yang disebut dokumen protokol) dan framework UI renderer.
    - Platform target: Linux, macOS, dan Windows. Di Linux, `secret-tool` cukup untuk keyring. Di macOS dan Windows port Node memberi jawaban "keyring tidak ada", sehingga kredensial memakai file konfigurasi; frontend Electron mengganti `Secrets` dengan `safeStorage`.
 1. **Inti protokol, tanpa UI** (`src/app/protocol/`).
@@ -145,7 +145,7 @@ Audit 17 Oktober 2026 menemukan sembilan celah di luar tahapan di atas. Berikut 
 | Katalog `.mo` dan schema GSettings hanya dibangun meson | terbuka | `JsonSettingsStore` membaca schema (`data/com.ekaput.Markwork.gschema.xml`) lewat `platform/node/settings.ts`; yang belum ada hanyalah langkah build untuk membundelnya di Electron. `po/LINGUAS` masih kosong, jadi belum mendesak |
 | `markworkd` hanya untuk Linux | terbuka | Di Go: `internal/server/peer.go` memakai `SO_PEERCRED` dan `syscall.Ucred` (Linux saja, build macOS gagal), `internal/runner` memakai `Setpgid`/`Kill(-pgid)`, `internal/daemonize` memakai `Setsid`/`Flock`, dan `config/paths.go` memakai XDG. macOS butuh file `peer_darwin.go` (`LOCAL_PEERCRED`) dan jalur sendiri; Windows butuh Job Object, pipe atau socket, dan kunci file lain, atau dijalankan tanpa daemon lokal (run berhenti saat aplikasi ditutup) dengan daemon di VPS atau WSL lewat SSH |
 | Belum ada CI | terbuka | Tidak ada `.github/`. Syarat tahap 3: `npm run test:core:node` di Linux, macOS, dan Windows, ditambah `go vet`/`go build` dengan `GOOS=darwin` untuk daemon |
-| Dependensi Electron belum ada | terbuka | `electron`, CodeMirror 6, framework UI renderer, dan electron-builder atau Forge |
+| Dependensi Electron | sebagian | `electron` sudah ada (MVP di `electron/`, lihat bawah). Belum ada: CodeMirror 6, framework UI renderer, dan electron-builder atau Forge |
 
 Yang baru sejak audit dan relevan bagi Electron:
 
@@ -153,3 +153,14 @@ Yang baru sejak audit dan relevan bagi Electron:
 - **Isolasi data per folder kerja** (`88dc3b5`): data aplikasi tiap folder kerja terpisah. Utility process yang melayani satu jendela dan satu folder cocok dengan model ini.
 
 Urutan yang disarankan: CI tiga OS, lalu protokol tahap 1 (`messages.ts`, `replica.ts`, tes fuzz), lalu irisan board dari ujung ke ujung. Pekerjaan Electron tetap kontingensi sampai ada permintaan dari macOS atau Windows (lihat `AGENT.md`).
+
+## MVP Electron (19 Oktober 2026)
+
+Irisan tipis tahap 1–5 sudah ada: protokol di `src/app/protocol/` (lihat bagian *What is built* di [`protocol.md`](protocol.md)) dan kerangka di `electron/`.
+
+- `main.ts` membuat jendela (`contextIsolation`, `sandbox`, tanpa `nodeIntegration`), menjalankan `core.ts` di utility process, dan menyambungkan keduanya dengan `MessageChannelMain`.
+- `core.ts` memasang `platform/node`, `JsonSettingsStore` (schema GSettings dibundel dengan `?raw`), dan `ProtocolServer`, yang menjalankan `AppSession` asli.
+- Renderer: React, dengan VS Code sebagai rujukan desain (activity bar, Explorer berpohon, tab dengan breadcrumbs, status bar, command palette, tema Dark+/Light+ mengikuti sistem, ikon codicons). `client.ts` adalah store protokol (satu `DocMirror` per dokumen); komponen hanya menggambar. Editor adalah CodeMirror 6 (`editor.ts`): gaya dan penyembunyian sintaks dari parser bersama `markdown/highlight.ts`, perintah dari `markdown/editcommands.ts`, tombol dari tabel `COMMANDS`. Board (pindah, centang, tambah kartu) memakai `applyNoteEdit` yang sama dengan core.
+- Jalankan: `npm run electron` (atau `npm run electron -- <folder>`). Diuji di Linux saja.
+- Find dan replace memakai panel pencarian CodeMirror (`Ctrl+F`, `Ctrl+H`, `F3`); `doc.replace` di-rebase di `DocMirror` bila ketikan tidak menyentuh bagian yang diubah core.
+- Belum: pencarian di semua catatan, undo yang melintasi tulisan core, view dan dialog selain dokumen dan board, packaging, macOS dan Windows.

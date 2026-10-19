@@ -25,9 +25,15 @@
     "test:live:forge": "npm run build && set -a && { [ ! -f ./.env ] || . ./.env; } && set +a && gjs -m dist/live-forge.js",
     "test:live": "npm run build && set -a && . ./.env && set +a && gjs -m dist/live-test.js",
     "docs": "npm run build && XDG_CONFIG_HOME=$(mktemp -d) gjs -m dist/capture.js",
-    "pot": "sh scripts/pot.sh"
+    "pot": "sh scripts/pot.sh",
+    "electron:build": "tsc --noEmit -p tsconfig.electron.json && node scripts/electron-build.mjs",
+    "electron": "npm run electron:build && electron ."
   },
   "devDependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
     "@girs/adw-1": "^5.5.0",
     "@girs/gdk-4.0": "^5.5.0",
     "@girs/gdkpixbuf-2.0": "^5.5.0",
@@ -45,9 +51,17 @@
     "@girs/soup-3.0": "^5.5.0",
     "@girs/webkit-6.0": "^5.5.0",
     "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@vscode/codicons": "^0.0.46-24",
+    "electron": "^44.9.0",
     "gifenc": "^1.0.3",
     "mermaid": "^12.1.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.2"
-  }
+  },
+  "main": "dist-electron/main.js"
 }
