@@ -7,6 +7,7 @@ import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './EditorArea.js';
 import { Explorer } from './Explorer.js';
 import { Outline } from './Outline.js';
+import { Search } from './Search.js';
 import { Palette } from './Palette.js';
 import { DialogLayer } from './Dialog.js';
 import { ImageViewer } from './ImageViewer.js';
@@ -90,8 +91,9 @@ function HeaderBar() {
 }
 
 // The rail of icons that picks the panel beside it. Files and Outline are carried over so far.
-const PAGES: { page: string; label: string; icon: 'folder' | 'outline' }[] = [
+const PAGES: { page: string; label: string; icon: 'folder' | 'outline' | 'search' }[] = [
     { page: 'files', label: 'Files', icon: 'folder' },
+    { page: 'search', label: 'Search', icon: 'search' },
     { page: 'outline', label: 'Outline', icon: 'outline' },
 ];
 
@@ -185,7 +187,7 @@ export function App() {
             <HeaderBar />
             <div className="main">
                 <Rail />
-                {sidebar && (page === 'outline' ? <Outline /> : <Explorer />)}
+                {sidebar && (page === 'outline' ? <Outline /> : page === 'search' ? <Search /> : <Explorer />)}
                 <div className="editor-group">
                     <Tabs />
                     <EditorArea />

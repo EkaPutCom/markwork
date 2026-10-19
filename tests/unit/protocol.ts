@@ -64,10 +64,13 @@ function attach(server: ProtocolServer, post: { toClient: (m: Message) => void }
         return result;
     });
     client.on('ask.file', () => ({ path: chosen.path }));
+    // The answers a test gives to other questions of the core, by op.
+    const answers: Record<string, Record<string, unknown>> = {};
+    client.onOther(op => answers[op] ? () => answers[op] : null);
     client.on('doc.close', p => { mirrors.delete(p.doc as number); void p; });
     client.on('doc.resync', p => mirrors.get(p.doc as number)!.snapshot(0));
     return {
-        client, mirrors, log,
+        client, mirrors, log, answers,
         get active() { return mirrors.get(active)!; },
         type(mirror: DocMirror, text: string) {
             const edit = mirror.typed(text);
@@ -365,6 +368,26 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('a search sends the results, a hit opens with its match selected, and Replace All asks first', async () => {
+        const { server, ui } = await start();
+        const query = { text: 'Note', include: '', exclude: '', caseSensitive: true, wholeWord: false, regex: false };
+        ok((await ui.client.request('act.search.run', { query })).ok, 'act.search.run');
+        await until(() => ui.last('view.search') !== undefined);
+        const results = ui.last('view.search')!.results as { total: number; files: { file: string; hits: { line: number }[] }[] };
+        eq(results.files.map(f => f.file), ['note.md']);
+        eq(results.total, 1);
+        ok((await ui.client.request('act.search.openHit', { file: 'note.md', index: 0 })).ok, 'act.search.openHit');
+        await until(() => ui.active?.text.startsWith('# Note') === true);
+        // Replace All is asked about; "no" leaves the files alone.
+        ui.answers['ask.search.confirm'] = { answer: false };
+        ok((await ui.client.request('act.search.replaceAll', { replacement: 'Page' })).ok, 'act.search.replaceAll');
+        ok(ui.active.text.startsWith('# Note'), 'refused: unchanged');
+        ui.answers['ask.search.confirm'] = { answer: true };
+        await ui.client.request('act.search.replaceAll', { replacement: 'Page' });
+        await until(() => ui.active.text.startsWith('# Page'));
+        server.dispose();
+    });
+
     await test('app.close lets a window with nothing unsaved go', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
@@ -497,10 +520,10 @@ export async function protocolTests(): Promise<void> {
     // without being carried over, which is a feature the Electron window silently lacks (docs/design/electron-migrasi.md).
     const STILL_UNWIRED: string[] = [
         'dialogs.collab', 'dialogs.contribute', 'dialogs.files', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
-        'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.search', 'dialogs.views',
+        'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.views',
         'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv', 'host.fileTree',
         'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs',
-        'host.preferencesView', 'host.pullView', 'host.reviewView', 'host.searchView', 'host.setRecent', 'host.table',
+        'host.preferencesView', 'host.pullView', 'host.reviewView', 'host.setRecent', 'host.table',
     ];
     await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {
         eq(unwiredTouched(), STILL_UNWIRED);

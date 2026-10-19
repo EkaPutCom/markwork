@@ -51,7 +51,7 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Jendela | Keyboard Shortcuts, About | `FrontendCommands` | ⬜ | 2 |
 | Jendela | Tema terang/gelap, setting `dark` | setting `color-scheme` | ✅ | — |
 | Sidebar | Files: pohon, buat, ganti nama, hapus, pindah, drop dari luar (`filetree.ts`) | `FileTreeView`, `FilesDialogs` | 🟡 pohon baca saja dari `view.files` | 2 |
-| Sidebar | Search di semua catatan, replace all (`searchpanel.ts`) | `SearchView`, `SearchDialogs` | ⬜ | 2 |
+| Sidebar | Search di semua catatan, replace all (`searchpanel.ts`) | `SearchView`, `SearchDialogs` | ✅ | — |
 | Sidebar | Outline (`outline.ts`) | `OutlineView` | ✅ | — |
 | Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | ⬜ | 2 |
 | Halaman | Tab HTML dengan sandbox (`htmlpage.ts`) | `showPageTab`, `markdown/htmlview.ts` | ⬜ | 2 |
@@ -143,7 +143,7 @@ Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval 
 
 ### Fase 2 — Kerangka jendela dan sidebar (L)
 
-**Status (19 Oktober 2026):** dimulai. Selesai: rail dua halaman (Files, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Berikutnya: Search, pohon Files penuh, Home, tab HTML, menu utama, Preferences, Shortcuts/About.
+**Status (19 Oktober 2026):** dimulai. Selesai: panel Search (`view.search`, `act.search.run/openHit/replaceAll`, `ask.search.confirm`; `doc.select` menandai hit; Ctrl+Shift+F/H) dan rail tiga halaman (Files, Search, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Berikutnya: pohon Files penuh, Home, tab HTML, menu utama, Preferences, Shortcuts/About.
 
 | Fitur | Pesan | Komponen |
 | --- | --- | --- |

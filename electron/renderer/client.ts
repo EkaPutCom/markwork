@@ -13,6 +13,7 @@ import type { Board } from '../../src/markdown/kanban.js';
 import { applyNoteEdit, type NoteEdit } from '../../src/markdown/noteedit.js';
 import type { MarkdownEditor } from './editor.js';
 import { appUrl } from './images.js';
+import type { SearchQuery, SearchResults } from '../../src/app/search.js';
 
 declare global {
     interface Window {
@@ -42,6 +43,10 @@ export interface Dialog {
 // A command as the core's table lists it in the `hello` reply.
 export interface CommandEntry { id: string; label: string | null; keys: string[]; kind: string; scope: string; runs: 'core' | 'editor' }
 
+// The Search panel: what its fields hold, whether the Replace row is open, and the last results. `focus` counts the times a
+// command asked for the query field, so the panel can take the focus again.
+export interface SearchPanel { form: SearchQuery; replacement: string; replace: boolean; results: SearchResults | null; focus: number }
+
 export interface Toast { text: string; action: { label: string; token: number } | null; at: number }
 
 export interface State {
@@ -63,6 +68,7 @@ export interface State {
     disabled: string[];           // the commands the core says do not apply now (commands.state)
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
     image: { src: string; title: string } | null;   // the picture shown large (view.image, or a double click)
+    search: SearchPanel;             // the Search panel's fields and the core's results (view.search)
     outline: { level: number; text: string; line: number }[];   // the headings of the active document (view.outline)
     layout: { layout: string | null; structured: boolean };   // the layout button (view.layout): '' = text, null = hidden
 }
@@ -70,7 +76,7 @@ export interface State {
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
 const CORE_COMMANDS = new Set(['focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'sidebar', 'dark', 'autosave']);
-const EDITOR_COMMANDS_UNAVAILABLE = new Set(['search-files', 'replace-files', 'shortcuts', 'about']);
+const EDITOR_COMMANDS_UNAVAILABLE = new Set(['shortcuts', 'about']);
 
 export const isAvailable = (command: Command): boolean =>
     command.runs === 'core' ? CORE_COMMANDS.has(command.id) : !EDITOR_COMMANDS_UNAVAILABLE.has(command.id);
@@ -78,7 +84,7 @@ export const isAvailable = (command: Command): boolean =>
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, outline: [], disabled: [],
+        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
     };
     private readonly waitingDialogs: Dialog[] = [];
@@ -108,10 +114,11 @@ export class Client {
     // ---------- The editor ----------
 
     // The core asked to show a line of a document (a [[note#section]] link): now if its tab is the one shown, else when it is.
-    private reveal: { doc: number; line: number } | null = null;
+    private reveal: { doc: number; line: number; select?: [column: number, length: number] } | null = null;
     private applyReveal(): void {
         if (!this.reveal || this.reveal.doc !== this.snapshot.active || !this.editor) return;
-        this.editor.reveal(this.reveal.line);
+        const { line, select } = this.reveal;
+        if (select) this.editor.select(line, select[0], select[1]); else this.editor.reveal(line);
         this.reveal = null;
     }
 
@@ -209,6 +216,28 @@ export class Client {
         if (!sidebar) this.setSetting('sidebar', true);
     }
 
+    // ---------- Search in all notes ----------
+
+    // Show the Search page with the selected text as the query (Ctrl+Shift+F), and the Replace row too (Ctrl+Shift+H).
+    showSearch(replace = false): void {
+        const selected = this.editor?.selectedText ?? '';
+        const { search } = this.snapshot;
+        const form = selected && !selected.includes('\n') ? { ...search.form, text: selected } : search.form;
+        if (this.snapshot.settings['sidebar-page'] !== 'search' || !this.snapshot.sidebar) { this.setSetting('sidebar-page', 'search'); this.setSetting('sidebar', true); }
+        this.set({ search: { ...search, form, replace: replace || search.replace, focus: search.focus + 1 } });
+        if (form.text) this.runSearch(form);
+    }
+
+    setSearchForm(patch: Partial<SearchPanel>): void {
+        const search = { ...this.snapshot.search, ...patch };
+        this.set({ search });
+        if (patch.form) this.runSearch(search.form);
+    }
+
+    private runSearch(query: SearchQuery): void { void this.ask('act.search.run', { query }); }
+    openHit(file: string, index: number): void { void this.ask('act.search.openHit', { file, index }); }
+    replaceAll(): void { void this.ask('act.search.replaceAll', { replacement: this.snapshot.search.replacement }); }
+
     jumpToHeading(index: number): void { void this.ask('act.outline.jump', { index }); }
 
     // ---------- Settings ----------
@@ -301,7 +330,7 @@ export class Client {
         return {
             edit: editor?.edit ?? ({ undo: none, redo: none, wrap: none, link: none, block: none, prefix: none, heading: none, table: none, zoomImage: none }),
             openFind: replace => { if (editor) editor.openFind(replace === true); else none(); },
-            showSearch: none,
+            showSearch: replace => this.showSearch(replace === true),
             setSource: on => { editor?.setSourceMode(on); this.set({ source: on }); },
             showPalette: () => this.openPalette(),
             showShortcuts: none, showAbout: none,
@@ -410,6 +439,7 @@ export class Client {
                 this.applyReveal();
                 break;
             }
+            case 'doc.select': this.reveal = { doc: id, line: p.line as number, select: [p.column as number, p.length as number] }; this.applyReveal(); break;
             case 'doc.reveal': this.reveal = { doc: id, line: p.line as number }; this.applyReveal(); break;
             case 'doc.title': {
                 const title = p.title as { name: string; file: string | null };
@@ -423,6 +453,7 @@ export class Client {
             case 'view.files': this.set({ root: p.root as string, files: p.files as string[] }); break;
             case 'toast': this.say(p.text as string, (p.action as Toast['action']) ?? null); break;
             case 'error': this.say(p.message as string); break;
+            case 'view.search': this.set({ search: { ...this.snapshot.search, results: p.results as SearchResults } }); break;
             case 'view.outline': this.set({ outline: p.headings as State['outline'] }); break;
             case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split('/').pop() ?? '' } }); break;
             case 'open.uri': window.open(p.uri as string); break;

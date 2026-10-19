@@ -201,8 +201,36 @@ try {
         await rows.nth(1).click();
         await page.waitForFunction(() => document.querySelector('.cm-content').cmTile.view.state.selection.main.head > 10);
         assert.equal(await cursorLine(), 5);
-        await page.getByRole('button', { name: 'Files' }).click();
+        await page.getByRole('button', { name: 'Files', exact: true }).click();
         await page.getByRole('tree').waitFor();
+        await open(/Source\.md/);
+    });
+
+    // ---------- search.ts (the side panel) ----------
+    await step('search: Ctrl+Shift+F finds in all notes, a hit opens with the match selected, Replace All asks first', async () => {
+        await open(/Source\.md/);
+        await editor.click();
+        await page.keyboard.press('Control+Shift+f');
+        const box = page.getByRole('searchbox', { name: 'Search' });
+        await box.fill('Section Two');
+        const hit = page.locator('.results .hit');
+        await hit.first().waitFor();
+        assert.equal(await page.locator('.result-file .file-name .label').first().textContent(), 'Idea.md');
+        await page.getByText(/1 result in 1 file/).waitFor();
+        await hit.first().click();
+        await title.getByText('Idea.md').waitFor();
+        await page.waitForFunction(() => { const v = document.querySelector('.cm-content').cmTile.view; const s = v.state.selection.main; return v.state.sliceDoc(s.from, s.to) === 'Section Two'; });
+        await page.keyboard.press('Control+Shift+h');
+        await page.getByRole('textbox', { name: 'Replace', exact: true }).fill('Part Two');
+        await page.getByRole('button', { name: 'Replace All' }).click();
+        const dialog = page.getByRole('alertdialog');
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        await dialog.waitFor({ state: 'detached' });
+        assert.match(await docText(), /## Section Two/, 'Cancel leaves the note alone');
+        await page.getByRole('button', { name: 'Replace All' }).click();
+        await dialog.getByRole('button', { name: 'Replace All' }).click();
+        await page.waitForFunction(() => document.querySelector('.cm-content').cmTile.view.state.doc.toString().includes('## Part Two'));
+        await page.getByRole('button', { name: 'Files', exact: true }).click();
         await open(/Source\.md/);
     });
 

@@ -15,6 +15,7 @@ import { Asks } from './asks.js';
 import type { Wire } from './messages.js';
 import { unwired } from './unwired.js';
 import { ProtocolOutline } from './outline.js';
+import { ProtocolSearch } from './search.js';
 import { ProtocolScreen } from './screen.js';
 
 class ProtocolBoard {
@@ -42,6 +43,8 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly host: FrontendHost<ProtocolEditor>;
     // The Outline panel's end of the wire: the handler for `act.outline.jump` calls its `onJump`.
     readonly outline: ProtocolOutline;
+    // The Search panel's end of the wire.
+    readonly search: ProtocolSearch;
     readonly documents: FrontendDocuments<ProtocolEditor>;
     readonly dialogs: AppDialogs;
     // The questions the dialogs ask over the wire.
@@ -51,10 +54,12 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         this.asks = new Asks(wire);
         const board = new ProtocolBoard((b, groupField, agents) => this.showNotes(b, groupField, agents));
         this.outline = new ProtocolOutline(wire);
+        this.search = new ProtocolSearch(wire);
         this.host = unwired<FrontendHost<ProtocolEditor>>({
             screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
             board: unwired<KanbanView>(board, 'host.board'),
             outlineView: this.outline,
+            searchView: this.search,
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
             openUri: (uri: string) => wire.notify('open.uri', { uri }),
             // The frontend decides whether a desktop notification is right (protocol.md 9.1): it knows its window.
@@ -80,7 +85,9 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             activated: (id: number) => { this.active = id; wire.notify('doc.active', { doc: id }); },
             setTitle: (id: number, title: DocumentTitle) => wire.notify('doc.title', { doc: id, title }),
         }, 'documents');
-        this.dialogs = unwired<AppDialogs>({}, 'dialogs');
+        this.dialogs = unwired<AppDialogs>({
+            search: { confirm: (message: string, detail: string, accept: string) => this.asks.question('ask.search.confirm', { message, detail, accept, destructive: true }) },
+        }, 'dialogs');
     }
 
     createEditor(id: number): ProtocolEditor {
