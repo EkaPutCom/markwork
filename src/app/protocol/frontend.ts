@@ -11,6 +11,7 @@ import type { ChooseFileOptions } from '../dialogs.js';
 import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session.js';
 import type { ToastButton } from '../document.js';
 import { ProtocolEditor } from './replica.js';
+import { Asks } from './asks.js';
 import type { Wire } from './messages.js';
 import { unwired } from './unwired.js';
 
@@ -37,8 +38,11 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly host: FrontendHost<ProtocolEditor>;
     readonly documents: FrontendDocuments<ProtocolEditor>;
     readonly dialogs: AppDialogs;
+    // The questions the dialogs ask over the wire.
+    readonly asks: Asks;
 
     constructor(readonly settings: AppSettings, private readonly wire: Wire) {
+        this.asks = new Asks(wire);
         const board = new ProtocolBoard((b, groupField, agents) => this.showNotes(b, groupField, agents));
         const screen: Partial<ViewScreen<ProtocolEditor>> = {
             showText: doc => wire.notify('view.page', { page: 'text', doc }),
@@ -97,17 +101,11 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     }
 
     private documentDialogs(): DocumentDialogs {
-        const { wire } = this;
+        const { asks, wire } = this;
         return {
-            askSaveChanges: async documentName => {
-                const reply = await wire.request('ask.saveChanges', { document: documentName });
-                return reply.ok && (reply.answer === 'save' || reply.answer === 'discard') ? reply.answer : 'cancel';
-            },
+            askSaveChanges: documentName => asks.choice('ask.saveChanges', { document: documentName }, ['save', 'discard', 'cancel'], 'cancel'),
             showError: message => wire.notify('error', { message }),
-            chooseFile: async (options: ChooseFileOptions) => {
-                const reply = await wire.request('ask.file', { ...options });
-                return reply.ok && typeof reply.path === 'string' ? reply.path : null;
-            },
+            chooseFile: (options: ChooseFileOptions) => asks.file(options),
         };
     }
 }

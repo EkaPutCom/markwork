@@ -7,6 +7,7 @@ import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './EditorArea.js';
 import { Explorer } from './Explorer.js';
 import { Palette } from './Palette.js';
+import { DialogLayer } from './Dialog.js';
 import { Tabs } from './Tabs.js';
 import { Icon } from './Icons.js';
 import { label, matches } from './keys.js';
@@ -141,6 +142,8 @@ export function App() {
     // Every key of the command table, for the commands this window carries out. Captured before the editor sees it.
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
+            // A dialog has the keys to itself.
+            if (client.getState().dialog) return;
             for (const command of COMMANDS) {
                 if (command.keys.some(k => matches(event, k)) && client.enabled(command)) {
                     event.preventDefault();
@@ -168,6 +171,7 @@ export function App() {
             </div>
             <Notification />
             <Palette />
+            <DialogLayer />
         </div>
     );
 }

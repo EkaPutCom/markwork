@@ -31,8 +31,8 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Area | Fitur GTK (modul) | Controller / interface | Electron | Fase |
 | --- | --- | --- | --- | --- |
 | Dokumen | Tab, buka, tutup, simpan, autosave | `DocumentController`, `FrontendDocuments` | ✅ | — |
-| Dokumen | Simpan Sebagai, Buka File, Export HTML, Recent | `DocumentDialogs.chooseFile`, `setRecent` | 🟡 hanya pilih folder | 0 |
-| Dokumen | Tutup aplikasi dengan perubahan belum disimpan | `ask.saveChanges` saat quit | 🟡 | 1 |
+| Dokumen | Simpan Sebagai, Buka File, Export HTML, Recent | `DocumentDialogs.chooseFile`, `setRecent` | 🟡 tanpa Recent | 0 |
+| Dokumen | Tutup aplikasi dengan perubahan belum disimpan | `ask.saveChanges` saat quit | 🟡 dialog ada, saat quit belum | 1 |
 | Editor | Highlight, sembunyi sintaks, perintah format | `markdown/highlight.ts`, `editcommands.ts` | ✅ | — |
 | Editor | Find/replace dalam dokumen | panel CodeMirror | ✅ | — |
 | Editor | Enter/Tab di list, quote, tabel (`lists.ts`, `tableedit.ts`) | `editcommands.ts` | 🟡 cek paritas | 1 |
@@ -49,7 +49,7 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Jendela | Command palette | `COMMANDS` | ✅ | — |
 | Jendela | Status: kata, board, inbox, CSV (`statusbar.ts`) | `ViewScreen.setCounts…` | 🟡 dihitung di renderer | 0 |
 | Jendela | Keyboard Shortcuts, About | `FrontendCommands` | ⬜ | 2 |
-| Jendela | Tema terang/gelap, setting `dark` | setting `color-scheme` | 🟡 ikut sistem saja | 0 |
+| Jendela | Tema terang/gelap, setting `dark` | setting `color-scheme` | ✅ | — |
 | Sidebar | Files: pohon, buat, ganti nama, hapus, pindah, drop dari luar (`filetree.ts`) | `FileTreeView`, `FilesDialogs` | 🟡 pohon baca saja dari `view.files` | 2 |
 | Sidebar | Search di semua catatan, replace all (`searchpanel.ts`) | `SearchView`, `SearchDialogs` | ⬜ | 2 |
 | Sidebar | Outline (`outline.ts`) | `OutlineView` | ⬜ | 2 |
@@ -87,6 +87,8 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 Perkiraan ukuran: **S** ≤ 1 hari, **M** 2–4 hari, **L** 1–2 minggu, untuk satu orang dengan bantuan agent.
 
 ### Fase 0 — Infrastruktur protokol bersama (M)
+
+**Status (19 Oktober 2026):** sebagian selesai. Sudah ada: handler per controller (`src/app/protocol/handlers/`), `Asks` dan `ask.cancel`, dialog generik di renderer (`electron/renderer/Dialog.tsx`, menjawab setiap `Question`/`Prompt` lewat `Connection.onOther`), `ask.file` lengkap (Open, Save As, Export HTML, Insert Image), `hello` dengan tabel perintah dan setting, notice `setting` dua arah, dan tema yang mengikuti setting `color-scheme`. Belum: `commands.state`, `view.status`/`view.layout`, `notify`/`openFolder`, board lewat `update()`, guard hitungan `unwired`, dan tes asap Playwright.
 
 Bagian ini dibutuhkan oleh hampir semua fitur. Mengerjakannya sekali di awal mencegah setiap PR fitur membuat jalan pintas sendiri.
 

@@ -5,6 +5,8 @@
 //   reply    { re, ok, ...result }        or { re, ok: false, error: { code, message }, ...extra }
 //   notice   { ev, ...payload }           no reply
 
+import type { CancelSignal } from '../../platform/index.js';
+
 export interface Change {
     from: number;      // code points from the start of the text, before the change
     to: number;
@@ -33,8 +35,12 @@ export class RequestError extends Error {
     }
 }
 
-// What the replica and the server need from the connection: send a notice, or send a request and wait for its reply.
+// What the replica and the server need from the connection: send a notice, or send a request and wait for its reply. A
+// request given a `cancel` signal is withdrawn when it fires (`ask.cancel`, section 7): it is answered `cancelled` at once,
+// and an answer that arrives later is dropped.
 export interface Wire {
     notify(ev: string, payload?: Record<string, unknown>): void;
-    request(op: string, payload?: Record<string, unknown>): Promise<Reply>;
+    request(op: string, payload?: Record<string, unknown>, cancel?: CancelSignal): Promise<Reply>;
 }
+
+export const CANCELLED: Reply = { ok: false, error: { code: 'cancelled', message: 'the question was withdrawn' } };

@@ -1,5 +1,5 @@
 // The Electron main process: a window, the core in a utility process, and the channel between them. It holds no
-// application logic; the folder dialog is the one thing only it can show.
+// application logic; the file dialogs are the one thing only it can show.
 
 import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, shell, utilityProcess } from 'electron';
 import { dirname, join } from 'node:path';
@@ -41,12 +41,33 @@ function createWindow(): void {
     void win.loadFile(join(here, 'renderer', 'index.html'));
 }
 
-ipcMain.handle('pick-folder', async event => {
+// The core's file chooser (ask.file, app/dialogs.ts ChooseFileOptions): open, save, or a folder.
+const FILTERS: Record<string, { name: string; extensions: string[] }> = {
+    markdown: { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'txt'] },
+    image: { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif'] },
+    html: { name: 'HTML', extensions: ['html', 'htm'] },
+    all: { name: 'All Files', extensions: ['*'] },
+};
+
+interface ChooseFile { title?: string; save?: boolean; selectFolder?: boolean; filters?: string[]; name?: string | null; folder?: string | null }
+
+ipcMain.handle('choose-file', async (event, options: ChooseFile) => {
     // For tests that cannot drive a native dialog.
-    if (process.env.MARKWORK_PICK_FOLDER) return process.env.MARKWORK_PICK_FOLDER;
+    const preset = options.selectFolder ? process.env.MARKWORK_PICK_FOLDER : process.env.MARKWORK_CHOOSE_FILE;
+    if (preset !== undefined) return preset || null;
     const win = BrowserWindow.fromWebContents(event.sender);
-    const options = { properties: ['openDirectory' as const] };
-    const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+    const filters = (options.filters ?? []).map(f => FILTERS[f]).filter(f => f !== undefined);
+    const defaultPath = options.folder && options.name ? join(options.folder, options.name) : options.name ?? options.folder ?? undefined;
+    if (options.save) {
+        const save = { title: options.title, defaultPath, filters, properties: ['createDirectory' as const, 'showOverwriteConfirmation' as const] };
+        const result = win ? await dialog.showSaveDialog(win, save) : await dialog.showSaveDialog(save);
+        return result.canceled ? null : result.filePath ?? null;
+    }
+    const open = {
+        title: options.title, defaultPath, filters,
+        properties: options.selectFolder ? ['openDirectory' as const, 'createDirectory' as const] : ['openFile' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, open) : await dialog.showOpenDialog(open);
     return result.canceled ? null : result.filePaths[0] ?? null;
 });
 

@@ -11,10 +11,11 @@ import { ProtocolServer } from '../src/app/protocol/server.js';
 import type { Message } from '../src/app/protocol/messages.js';
 
 const { paths } = platform();
-const settings = new AppSettings(new JsonSettingsStore(paths.join(paths.configDir(), 'markwork-electron', 'settings.json'), parseSchema(schema)));
+const specs = parseSchema(schema);
+const settings = new AppSettings(new JsonSettingsStore(paths.join(paths.configDir(), 'markwork-electron', 'settings.json'), specs));
 
 process.parentPort.on('message', ({ ports: [port] }) => {
-    const server = new ProtocolServer(settings, message => port.postMessage(message));
+    const server = new ProtocolServer(settings, message => port.postMessage(message), { settingKeys: Object.keys(specs) });
     port.on('message', ({ data }: { data: Message }) => server.receive(data));
     port.on('close', () => server.dispose());
     port.start();

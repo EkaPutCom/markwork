@@ -5,13 +5,15 @@
 import { COMMANDS, commandEnabled, type Command, type FrontendCommands } from '../../src/app/commands.js';
 import { DocMirror } from '../../src/app/protocol/mirror.js';
 import { RequestError, type Change, type Message } from '../../src/app/protocol/messages.js';
-import { Connection } from '../../src/app/protocol/wire.js';
+import { Connection, type Handler } from '../../src/app/protocol/wire.js';
+import type { ChooseFileOptions, Prompt, Question } from '../../src/app/dialogs.js';
+import type { CancelSignal } from '../../src/platform/index.js';
 import type { Board } from '../../src/markdown/kanban.js';
 import { applyNoteEdit, type NoteEdit } from '../../src/markdown/noteedit.js';
 import type { MarkdownEditor } from './editor.js';
 
 declare global {
-    interface Window { markwork: { pickFolder(): Promise<string | null>; initialFolder(): Promise<string | null> } }
+    interface Window { markwork: { chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null> } }
 }
 
 export interface Tab {
@@ -22,6 +24,19 @@ export interface Tab {
     page: string;                 // 'text' or the structured page the core shows ('board', …)
     board: Board | null;
 }
+
+// A dialog in the window: a question with buttons, and an entry when it asks for text. The first button is the default.
+export interface DialogButton { label: string; value: string; style?: 'suggested' | 'destructive' }
+export interface Dialog {
+    title: string;
+    detail: string;
+    buttons: DialogButton[];
+    entry: { label: string; value: string } | null;
+    close(value: string | null, text: string): void;   // null = dismissed (Escape, or the core withdrew the question)
+}
+
+// A command as the core's table lists it in the `hello` reply.
+export interface CommandEntry { id: string; label: string | null; keys: string[]; kind: string; scope: string; runs: 'core' | 'editor' }
 
 export interface Toast { text: string; action: { label: string; token: number } | null; at: number }
 
@@ -37,12 +52,16 @@ export interface State {
     column: number;
     source: boolean;              // source mode: no syntax is hidden
     palette: boolean;
-    sidebar: boolean;
+    sidebar: boolean;             // the `sidebar` setting
+    settings: Record<string, unknown>;   // the core's settings, as `hello` and `setting` notices give them
+    commands: CommandEntry[];     // the core's command table
+    dialog: Dialog | null;        // the dialog shown; others wait behind it
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['new', 'open-folder', 'save', 'close-tab', 'next-tab', 'prev-tab', 'kanban-new', 'kanban-view', 'inbox-new', 'table-new']);
-const EDITOR_COMMANDS_UNAVAILABLE = new Set(['search-files', 'replace-files', 'image', 'zoom-image', 'shortcuts', 'about']);
+const CORE_COMMANDS = new Set(['new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+    'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'sidebar', 'dark', 'autosave']);
+const EDITOR_COMMANDS_UNAVAILABLE = new Set(['search-files', 'replace-files', 'zoom-image', 'shortcuts', 'about']);
 
 export const isAvailable = (command: Command): boolean =>
     command.runs === 'core' ? CORE_COMMANDS.has(command.id) : !EDITOR_COMMANDS_UNAVAILABLE.has(command.id);
@@ -50,8 +69,9 @@ export const isAvailable = (command: Command): boolean =>
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true,
+        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null,
     };
+    private readonly waitingDialogs: Dialog[] = [];
     private readonly listeners = new Set<() => void>();
     private conn: Connection | null = null;
     private editor: MarkdownEditor | null = null;
@@ -115,7 +135,7 @@ export class Client {
     }
 
     async openFolder(): Promise<void> {
-        const path = await window.markwork.pickFolder();
+        const path = await window.markwork.chooseFile({ title: 'Open Folder', selectFolder: true });
         if (path) await this.ask('open.folder', { path });
     }
     openFile = (name: string): void => { void this.ask('open.file', { name }); };
@@ -132,7 +152,82 @@ export class Client {
 
     focusEditor(): void { this.editor?.focus(); }
     openPalette(open = true): void { this.set({ palette: open }); }
-    toggleSidebar(): void { this.set({ sidebar: !this.snapshot.sidebar }); }
+    toggleSidebar(): void { this.setSetting('sidebar', !this.snapshot.sidebar); }
+
+    // ---------- Settings ----------
+
+    // Shown at once, then written by the core, which sends the value back.
+    setSetting(key: string, value: unknown): void {
+        this.applySettings({ [key]: value });
+        this.conn?.notify('setting', { key, value });
+    }
+
+    private applySettings(changed: Record<string, unknown>): void {
+        const settings = { ...this.snapshot.settings, ...changed };
+        this.set({ settings, sidebar: settings.sidebar !== false });
+        // 'system' follows the system theme (the media query of theme.css); 'light' and 'dark' win over it.
+        const scheme = settings['color-scheme'];
+        if (scheme === 'light' || scheme === 'dark') document.documentElement.dataset.theme = scheme;
+        else delete document.documentElement.dataset.theme;
+    }
+
+    // The argument of an on/off command run from a key or the palette: the opposite of what is shown now.
+    private toggled(command: Command): boolean | undefined {
+        const { settings } = this.snapshot;
+        if (command.id === 'kanban-view') return this.tab()?.page !== 'board';
+        if (command.id === 'source') return !this.snapshot.source;
+        if (command.id === 'dark') return settings['color-scheme'] !== 'dark';
+        if (command.kind === 'setting') return settings[command.id] !== true;
+        return undefined;
+    }
+
+    // ---------- Dialogs ----------
+
+    // Show a dialog, or queue it behind the one shown. cancel = the core withdrew the question: it closes unanswered.
+    showDialog(spec: Omit<Dialog, 'close'>, cancel?: CancelSignal): Promise<{ value: string | null; text: string }> {
+        return new Promise(resolve => {
+            let stop: (() => void) | undefined;
+            const dialog: Dialog = {
+                ...spec,
+                close: (value, text) => {
+                    stop?.();
+                    const at = this.waitingDialogs.indexOf(dialog);
+                    if (at < 0) return;
+                    this.waitingDialogs.splice(at, 1);
+                    this.set({ dialog: this.waitingDialogs[0] ?? null });
+                    resolve({ value, text });
+                },
+            };
+            this.waitingDialogs.push(dialog);
+            this.set({ dialog: this.waitingDialogs[0] });
+            stop = cancel?.onCancel(() => dialog.close(null, ''));
+        });
+    }
+
+    // Any question of the core this window has no dialog of its own for: a `Question` (yes or no) or a `Prompt` (a line
+    // of text), drawn with the generic dialog (app/protocol/asks.ts).
+    private genericAsk = (op: string): Handler | null => {
+        if (!op.startsWith('ask.')) return null;
+        return async (p, cancel) => {
+            if (p.question && typeof p.question === 'object') {
+                const q = p.question as Question;
+                const { value } = await this.showDialog({
+                    title: q.message, detail: q.detail, entry: null,
+                    buttons: [{ label: q.accept, value: 'yes', style: q.destructive ? 'destructive' : 'suggested' }, { label: 'Cancel', value: 'no' }],
+                }, cancel);
+                return { answer: value === 'yes' };
+            }
+            if (p.prompt && typeof p.prompt === 'object') {
+                const q = p.prompt as Prompt;
+                const { value, text } = await this.showDialog({
+                    title: q.title, detail: '', entry: { label: q.label, value: q.value ?? '' },
+                    buttons: [{ label: q.accept ?? 'OK', value: 'ok', style: 'suggested' }, { label: 'Cancel', value: 'cancel' }],
+                }, cancel);
+                return value === 'ok' ? { text } : {};
+            }
+            throw new RequestError('unknown_op', `no dialog for ${op}`);
+        };
+    };
 
     // The state commands are enabled by.
     commandState = () => {
@@ -163,12 +258,18 @@ export class Client {
     run(id: string, arg?: boolean | string): void {
         const command = COMMANDS.find(c => c.id === id);
         if (!command || !this.enabled(command)) return;
-        if (command.runs === 'core') {
-            const argument = id === 'kanban-view' ? this.tab()?.page !== 'board' : arg;
+        const argument = arg ?? this.toggled(command);
+        // The core's table says where a command runs; the window's own copy is the fallback before `hello` arrives.
+        const runs = this.snapshot.commands.find(c => c.id === id)?.runs ?? command.runs;
+        // A setting command is the setting of the same name (app/commands.ts): the frontend writes it, as GTK binds it.
+        if (command.kind === 'setting') {
+            this.setSetting(id, argument === true);
+            return;
+        }
+        if (runs === 'core') {
             void this.ask('command', { name: id, arg: argument });
             return;
         }
-        const argument = id === 'source' ? !this.snapshot.source : arg;
         // The editor commands only use the part of the host that is theirs.
         command.run(this.frontendCommands() as never, argument);
     }
@@ -199,14 +300,23 @@ export class Client {
             if (!tab) throw new RequestError('stale', 'that document is closed');
             return tab.mirror.snapshot(0);
         });
-        c.on('ask.saveChanges', p => ({
-            answer: confirm(`Do you want to save the changes you made to ${String(p.document)}?`) ? 'save'
-                : confirm(`Don't save the changes to ${String(p.document)}?`) ? 'discard' : 'cancel',
-        }));
-        c.on('ask.file', async p => ({ path: p.selectFolder ? await window.markwork.pickFolder() : null }));
+        c.on('ask.saveChanges', async (p, cancel) => {
+            const { value } = await this.showDialog({
+                title: 'Save Changes?', detail: `${String(p.document)} contains unsaved changes. Changes which are not saved will be permanently lost.`,
+                entry: null,
+                buttons: [{ label: 'Save', value: 'save', style: 'suggested' }, { label: 'Discard', value: 'discard', style: 'destructive' }, { label: 'Cancel', value: 'cancel' }],
+            }, cancel);
+            return { answer: value ?? 'cancel' };
+        });
+        c.on('ask.file', async p => ({ path: await window.markwork.chooseFile(p as unknown as ChooseFileOptions) }));
+        c.onOther(this.genericAsk);
 
         void (async () => {
-            await c.request('hello', { proto: 1, frontend: 'electron' });
+            const hello = await c.request('hello', { proto: 1, frontend: 'electron' });
+            if (hello.ok) {
+                this.set({ commands: (hello.commands as CommandEntry[] | undefined) ?? [] });
+                this.applySettings((hello.settings as Record<string, unknown> | undefined) ?? {});
+            }
             await c.request('start', { path: await window.markwork.initialFolder() });
             c.notify('window.active', { active: true });
             this.set({ ready: true });
@@ -251,6 +361,7 @@ export class Client {
             case 'toast': this.say(p.text as string, (p.action as Toast['action']) ?? null); break;
             case 'error': this.say(p.message as string); break;
             case 'open.uri': window.open(p.uri as string); break;
+            case 'setting': this.applySettings({ [p.key as string]: p.value }); break;
         }
     }
 }
