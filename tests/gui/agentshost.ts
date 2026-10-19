@@ -59,8 +59,8 @@ export function agentsHostTests(c: GuiContext): void {
     const open = (column: 'plan' | 'doing', extra: Partial<AppSettings> = {}) => {
         GLib.file_set_contents(board, BOARD(column));
         const settings = inMemorySettings({ welcomed: true, home: false, dark: false, autosave: false, folder: dir, sidebar: false, machines: { vps: 'eka@vps.example.com' }, machineProjects: { 'vps:shop': '/srv/shop' }, ...extra });
-        const win = new MainWindow(c.app, settings, null);
-        win.harness.openers = openers;   // before the first idle, which is when the daemon is first looked for
+        // Given to the constructor: the work folder is followed while the window is being built.
+        const win = new MainWindow(c.app, settings, null, openers);
         settle();
         win.load(board);
         settle();

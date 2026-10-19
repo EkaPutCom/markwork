@@ -15,6 +15,7 @@ import { ContributeController, type ContributeDialogs, type ContributeHost } fro
 import { PullReviewController, type PullDialogs, type PullHost } from './pulls.js';
 import { JournalController, type JournalDialogs, type JournalHost } from './journal.js';
 import { HarnessController, type HarnessDialogs, type HarnessHost } from './harness.js';
+import type { Openers } from '../daemonhub.js';
 import { HarnessReviewController, type ReviewDialogs, type ReviewHost } from './harnessreview.js';
 import { HomeController, existingRecent, type HomeHost } from './home.js';
 import { ViewController, type ViewDialogs, type ViewHost } from './views.js';
@@ -91,6 +92,8 @@ export interface AppFrontend<E extends TextEditor> {
     // The editor of a new document. Over the protocol the core makes it itself (a replica of the text); under GTK it is the widget.
     createEditor(id: number): E;
     readonly dialogs: AppDialogs;
+    // How links to the agents' daemons are made; tests give a stand-in so no ssh is ever started.
+    readonly openers?: Openers;
 }
 
 export class AppSession<E extends TextEditor> {
@@ -134,7 +137,7 @@ export class AppSession<E extends TextEditor> {
         this.collab.onOpenPull = pull => void this.pulls.open(pull);
         this.contribute = new ContributeController(host, { session: () => this.collab.session(), refresh: () => void this.collab.refresh() }, dialogs.contribute);
         this.collab.onSend = () => void this.contribute.start();
-        this.harness = new HarnessController(host, dialogs.harness);
+        this.harness = new HarnessController(host, dialogs.harness, frontend.openers);
         this.review = new HarnessReviewController(host, dialogs.review, this.collab.services);
         this.harness.onReview = (file, card, board) => {
             const error = this.review.open(file, card, board);
