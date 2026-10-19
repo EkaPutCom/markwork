@@ -225,13 +225,13 @@ kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 .tok-invalid { text-decoration: underline wavy; }
 
 /* A table drawn as a grid. */
-.cm-md-table-grid { padding: 8px 0; overflow-x: auto; cursor: text; }
+.cm-md-table-grid { contain: inline-size; min-width: 0; max-width: 100%; padding: 8px 0; overflow-x: auto; cursor: text; }
 .cm-md-table-grid table { border-collapse: collapse; max-width: 100%; }
 .cm-md-table-grid th, .cm-md-table-grid td { border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent); padding: 4px 10px; vertical-align: top; overflow-wrap: anywhere; }
 .cm-md-table-grid th { font-weight: 700; background: color-mix(in srgb, var(--fg) 7%, transparent); }
 
 /* Mermaid and DBML drawn as pictures. */
-.cm-md-diagram { padding: 12px 0; display: flex; justify-content: center; overflow-x: auto; cursor: text; color: var(--fg-dim); }
+.cm-md-diagram { contain: inline-size; min-width: 0; max-width: 100%; padding: 12px 0; display: flex; justify-content: center; overflow-x: auto; cursor: text; color: var(--fg-dim); }
 .cm-md-diagram svg { max-width: 100%; height: auto; }
 .cm-md-diagram.error { justify-content: flex-start; color: #c01c28; font-family: var(--font-mono); font-size: 13px; white-space: pre-wrap; }
 
@@ -249,3 +249,7 @@ kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 .cm-md-conflict-bar button { font-size: 12px; padding: 2px 8px; border-radius: 6px; color: var(--accent); }
 .cm-md-conflict-bar button:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
 .cm-md-dim { opacity: .35; }
+
+/* A code block as a box that scrolls sideways. */
+.cm-md-codebox { contain: inline-size; min-width: 0; max-width: 100%; box-sizing: border-box; margin: 8px 0; padding: 8px 12px; background: var(--code-bg); border-radius: 8px; overflow-x: auto; cursor: text; }
+.cm-md-codebox pre { margin: 0; font-family: var(--font-mono); font-size: 14px; line-height: 1.5; white-space: pre; }

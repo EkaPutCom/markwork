@@ -7,7 +7,7 @@ import { Annotation, EditorSelection, EditorState, StateEffect, StateField, type
 import { Decoration, EditorView, drawSelection, keymap, type DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, redo, undo } from '@codemirror/commands';
 import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
-import { HighlightCache, textLines, type HangingIndent, type Styles } from '../../src/markdown/highlight.js';
+import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type Styles } from '../../src/markdown/highlight.js';
 import { block, continueBlock, enterInTable, heading, indentListItem, link, runTableCommand, tabInTable, togglePrefix, wrap,
     type TableCommand, type TextEdit, type TextState } from '../../src/markdown/editcommands.js';
 import { autocompletion, type CompletionContext } from '@codemirror/autocomplete';
@@ -17,7 +17,7 @@ import { conflictDecorations } from './conflicts.js';
 import { DiagramWidget } from './diagrams.js';
 import { diagramKind } from '../../src/markdown/diagram.js';
 import { TableWidget, tableOf } from './tables.js';
-import { codeColors } from './codecolor.js';
+import { CodeBoxWidget, codeColors, spansOf } from './codecolor.js';
 import { PicturesWidget, pictures, type PictureItem, type ZoomedImage } from './images.js';
 import { cpToU16, makeU16Map } from '../../src/markdown/offsets.js';
 import type { EditCommands, TableOperation } from '../../src/app/commands.js';
@@ -118,6 +118,7 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
         const conflicts = conflictDecorations(doc);
         ranges.push(...conflicts.ranges);
         const grids = new Set<number>(conflicts.covered);
+        const boxed = new Set<CodeBlock>();
         // Focus mode: all text outside the paragraph of the cursor (lines up to blank ones) is dimmed.
         if (state.field(focusMode)) {
             const blank = (n: number) => !doc.line(n + 1).text.trim();
@@ -134,6 +135,13 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
                 const lines = Array.from({ length: t.end - t.start + 1 }, (_, k) => doc.line(t.start + k + 1).text);
                 ranges.push(Decoration.replace({ widget: new TableWidget(lines, tableOf(lines)), block: true }).range(doc.line(t.start + 1).from, doc.line(t.end + 1).to));
                 for (let k = t.start; k <= t.end; k++) grids.add(k);
+            }
+            // A code block is a box that scrolls sideways, with its colors inside.
+            for (const block of result.codeBlocks) {
+                if (!block.closed || !block.text.trim() || diagramKind(block) || block.endLine >= doc.lines || (selLast >= block.startLine && selFirst <= block.endLine)) continue;
+                ranges.push(Decoration.replace({ widget: new CodeBoxWidget(block.text, spansOf(block, languageLoaded).spans), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
+                for (let k = block.startLine; k <= block.endLine; k++) grids.add(k);
+                boxed.add(block);
             }
             // The same for a Mermaid or DBML block: a picture unless the cursor is in the block (fences included).
             for (const block of result.codeBlocks) {
@@ -154,7 +162,7 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
                 if (to > from) ranges.push(mark(name).range(from, to));
             }
         });
-        ranges.push(...codeColors(result.codeBlocks, (block, i) => u16(block.start) + i, languageLoaded));
+        ranges.push(...codeColors(result.codeBlocks.filter(b => !boxed.has(b)), (block, i) => u16(block.start) + i, languageLoaded));
         const found = pictures(result.images, events.baseDir());
         pictureLines.set(doc, found);
         const widgetEvents = {

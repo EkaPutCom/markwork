@@ -21,7 +21,7 @@ writeFileSync(join(notes, 'tasks.md'), '- [ ] ' + 'a long task that wraps onto t
 writeFileSync(join(notes, 'dot.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64'));
 writeFileSync(join(notes, 'pics.md'), '# Pics\n\n![a dot](dot.png)\n\n![gone](nothing.png)\n');
 
-writeFileSync(join(notes, 'code.md'), '# Code\n\n```js\nconst answer = "forty-two"; // note\n```\n');
+writeFileSync(join(notes, 'code.md'), '# Code\n\n```js\nconst answer = "forty-two"; // note ' + 'and a very long tail '.repeat(40) + '\n```\n');
 
 writeFileSync(join(notes, 'grid.md'), '# Grid\n\n| Name | Qty |\n| :--- | ---: |\n| apple | **3** |\n| pear | 5 |\n\nafter\n');
 
@@ -118,9 +118,15 @@ try {
         const keyword = editor.locator('.tok-keyword', { hasText: 'const' });
         await keyword.waitFor();
         const color = (loc) => loc.evaluate(el => getComputedStyle(el).color);
-        const plain = await color(editor.locator('.cm-md-codeblock-line').first());
+        const plain = await color(editor.locator('.cm-md-codebox pre'));
         assert.notEqual(await color(keyword), plain);
         assert.notEqual(await color(editor.locator('.tok-string').first()), await color(keyword));
+        const box = editor.locator('.cm-md-codebox');
+        assert.ok(await box.evaluate(el => el.scrollWidth > el.clientWidth), 'a long line scrolls sideways');
+        await box.click();
+        await box.waitFor({ state: 'detached' });
+        await page.keyboard.press('Control+Home');
+        await box.waitFor();
     });
 
     await step('a table is a grid until the cursor goes in, and a click on a cell opens it there', async () => {
