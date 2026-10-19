@@ -279,3 +279,9 @@ kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 .hit .line { color: var(--fg-dim); min-width: 24px; text-align: right; }
 .hit .snippet { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hit mark { background: var(--mark-bg); color: inherit; border-radius: 2px; }
+
+/* The Files tree: a folder a row is dragged over, and the menu of a right click. */
+.sidebar .row.drop { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.sidebar .row .label.dim { color: var(--fg-dim); font-style: italic; }
+.context-menu { position: fixed; z-index: 50; min-width: 200px; }
+.context-menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }

@@ -388,6 +388,33 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('the Files tab: the root and a folder come as view.tree.*, and create, rename, and move change the disk', async () => {
+        const { server, ui } = await start();
+        await until(() => ui.last('view.tree.root') !== undefined);
+        const root = ui.last('view.tree.root')!.root as string;
+        eq((ui.last('view.tree.root')!.entries as { name: string }[]).map(e => e.name).sort(), ['board.md', 'note.md', 'pic.png'], 'images show in the tree too');
+        // A new folder, asked for by name.
+        ui.answers['ask.files.name'] = { text: 'sub' };
+        const made = await ui.client.request('act.tree.create', { kind: 'folder', dir: root });
+        ok(made.ok && made.path === disk.join(root, 'sub'), 'folder made');
+        ok(disk.exists(disk.join(root, 'sub')), 'on disk');
+        ok((await ui.client.request('act.tree.openFolder', { dir: disk.join(root, 'sub') })).ok, 'openFolder');
+        await until(() => ui.last('view.tree.folder')?.dir === disk.join(root, 'sub'));
+        // A new file in it, then renamed, then moved up to the root.
+        ui.answers['ask.files.name'] = { text: 'idea' };
+        const file = await ui.client.request('act.tree.create', { kind: 'file', dir: disk.join(root, 'sub') });
+        ok(file.ok && disk.exists(disk.join(root, 'sub', 'idea.md')), 'file made');
+        ui.answers['ask.files.name'] = { text: 'plan' };
+        const renamed = await ui.client.request('act.tree.rename', { path: disk.join(root, 'sub', 'idea.md') });
+        ok(renamed.ok && disk.exists(disk.join(root, 'sub', 'plan.md')), 'renamed');
+        const moved = await ui.client.request('act.tree.move', { source: disk.join(root, 'sub', 'plan.md'), dir: root });
+        ok(moved.ok && moved.moved === true && disk.exists(disk.join(root, 'plan.md')), 'moved');
+        // A path outside the folder is refused.
+        const outside = await ui.client.request('act.tree.rename', { path: disk.join(tmp, 'elsewhere.md') });
+        ok(!outside.ok && outside.error.code === 'bad_request', 'refused');
+        server.dispose();
+    });
+
     await test('app.close lets a window with nothing unsaved go', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
@@ -519,9 +546,9 @@ export async function protocolTests(): Promise<void> {
     // nothing, a question counts as "no". Carrying one over removes it here; a member that appears here was reached
     // without being carried over, which is a feature the Electron window silently lacks (docs/design/electron-migrasi.md).
     const STILL_UNWIRED: string[] = [
-        'dialogs.collab', 'dialogs.contribute', 'dialogs.files', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
+        'dialogs.collab', 'dialogs.contribute', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
         'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.views',
-        'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv', 'host.fileTree',
+        'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv',
         'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs',
         'host.preferencesView', 'host.pullView', 'host.reviewView', 'host.setRecent', 'host.table',
     ];

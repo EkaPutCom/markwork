@@ -118,12 +118,12 @@ for (const pair of UI_ACTS_ALLOWED) {
 //
 // electron/renderer/ draws in a browser page and talks to the core in the main process over the protocol. From src/ it
 // takes only what runs anywhere: the pure Markdown modules, the protocol's messages, wire, document mirror, and change
-// math, and the command list; dialogs, the screen, and the platform contract only for their types. Never node:, gi://,
+// math, and the command list; dialogs, the screen, the search and tree views, and the platform contract only for their types. Never node:, gi://,
 // or a port, and nothing that reaches the runtime for its values (see "Views do not act" above).
 const renderer = join(root, 'electron', 'renderer');
 const RENDERER_VALUES = t => t.startsWith('markdown/')
     || ['app/protocol/messages.ts', 'app/protocol/wire.ts', 'app/protocol/mirror.ts', 'app/protocol/changes.ts', 'app/commands.ts'].includes(t);
-const RENDERER_TYPES = t => RENDERER_VALUES(t) || ['app/protocol/screen.ts', 'app/dialogs.ts', 'platform/index.ts'].includes(t);
+const RENDERER_TYPES = t => RENDERER_VALUES(t) || ['app/protocol/screen.ts', 'app/protocol/search.ts', 'app/protocol/tree.ts', 'app/dialogs.ts', 'platform/index.ts'].includes(t);
 const rendererFiles = readdirSync(renderer, { recursive: true }).filter(f => /\.tsx?$/.test(f) && !f.endsWith('.d.ts')).map(f => f.split('\\').join('/'));
 for (const file of rendererFiles) {
     const text = readFileSync(join(renderer, file), 'utf8');

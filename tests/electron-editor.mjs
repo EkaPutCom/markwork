@@ -41,6 +41,11 @@ writeFileSync(join(notes, 'Plan.md'), '# Plan\n');
 writeFileSync(join(notes, 'Journal', 'Daily Notes.md'), '# Daily\n');
 writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
 
+async function waitFor(condition, ms = 5000) {
+    for (const end = Date.now() + ms; Date.now() < end;) { if (condition()) return; await new Promise(r => setTimeout(r, 50)); }
+    assert.fail('timed out');
+}
+
 const steps = [];
 async function step(name, run) {
     try {
@@ -54,7 +59,7 @@ async function step(name, run) {
 
 const app = await electron.launch({
     args: [repo, notes], cwd: repo,
-    env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config') },
+    env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), XDG_DATA_HOME: join(scratch, 'data') },   // the Trash of this run only
 });
 let failed = false;
 try {
@@ -203,6 +208,51 @@ try {
         assert.equal(await cursorLine(), 5);
         await page.getByRole('button', { name: 'Files', exact: true }).click();
         await page.getByRole('tree').waitFor();
+        await open(/Source\.md/);
+    });
+
+    // ---------- folder.ts, file.ts (the Files tab) ----------
+    await step('files: folders open when first shown, New File / Rename / Move work through the menu, keys and drag', async () => {
+        await page.getByRole('button', { name: 'Files', exact: true }).waitFor();
+        const row = name => page.getByRole('treeitem', { name });
+        await row(/^projects$/).click();
+        await row(/Meeting Notes\.md/).waitFor();
+        // New File from the menu of the tree.
+        await page.locator('.tree').click({ button: 'right', position: { x: 100, y: 400 } });
+        await page.getByRole('menuitem', { name: 'New File…' }).click();
+        const dialog = page.getByRole('alertdialog');
+        await dialog.getByRole('textbox').fill('fresh');
+        await dialog.getByRole('button', { name: 'OK' }).click();
+        await title.getByText('fresh.md').waitFor();
+        await row(/fresh\.md/).waitFor();
+        assert.ok(existsSync(join(notes, 'fresh.md')), 'created on disk');
+        // Rename with F2.
+        await row(/fresh\.md/).focus();
+        await page.keyboard.press('F2');
+        await dialog.getByRole('textbox').fill('renamed.md');
+        await dialog.getByRole('button', { name: 'OK' }).click();
+        await row(/renamed\.md/).waitFor();
+        assert.ok(existsSync(join(notes, 'renamed.md')) && !existsSync(join(notes, 'fresh.md')));
+        // Drag it onto the folder.
+        await row(/renamed\.md/).dragTo(row(/^projects$/));
+        await waitFor(() => existsSync(join(notes, 'projects', 'renamed.md')));
+        await row(/renamed\.md/).waitFor();
+        // Delete goes to the Trash after the question.
+        await row(/renamed\.md/).click({ button: 'right' });
+        await page.getByRole('menuitem', { name: 'Move to Trash' }).click();
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        assert.ok(existsSync(join(notes, 'projects', 'renamed.md')), 'Cancel keeps the file');
+        await row(/renamed\.md/).focus();
+        await page.keyboard.press('Delete');
+        await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+        await waitFor(() => !existsSync(join(notes, 'projects', 'renamed.md')));
+        await row(/renamed\.md/).waitFor({ state: 'detached' });
+        // A refusal is told, not swallowed.
+        await page.locator('.tree').click({ button: 'right', position: { x: 100, y: 400 } });
+        await page.getByRole('menuitem', { name: 'New Folder…' }).click();
+        await dialog.getByRole('textbox').fill('projects');
+        await dialog.getByRole('button', { name: 'OK' }).click();
+        await page.locator('.notification .message').waitFor();
         await open(/Source\.md/);
     });
 

@@ -13,11 +13,12 @@ import type { Board } from '../../src/markdown/kanban.js';
 import { applyNoteEdit, type NoteEdit } from '../../src/markdown/noteedit.js';
 import type { MarkdownEditor } from './editor.js';
 import { appUrl } from './images.js';
-import type { SearchQuery, SearchResults } from '../../src/app/search.js';
+import type { SearchQuery, SearchResults } from '../../src/app/protocol/search.js';
+import type { FolderEntry, NewKind } from '../../src/app/protocol/tree.js';
 
 declare global {
     interface Window {
-        markwork: { closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
+        markwork: { pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
     }
 }
 
@@ -47,6 +48,9 @@ export interface CommandEntry { id: string; label: string | null; keys: string[]
 // command asked for the query field, so the panel can take the focus again.
 export interface SearchPanel { form: SearchQuery; replacement: string; replace: boolean; results: SearchResults | null; focus: number }
 
+// The Files tree: the entries of every folder the core has sent (by folder path), the folders shown open, and the file to highlight.
+export interface FileTree { root: string | null; folders: Record<string, FolderEntry[]>; expanded: string[]; revealed: string | null }
+
 export interface Toast { text: string; action: { label: string; token: number } | null; at: number }
 
 export interface State {
@@ -68,6 +72,7 @@ export interface State {
     disabled: string[];           // the commands the core says do not apply now (commands.state)
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
     image: { src: string; title: string } | null;   // the picture shown large (view.image, or a double click)
+    tree: FileTree;
     search: SearchPanel;             // the Search panel's fields and the core's results (view.search)
     outline: { level: number; text: string; line: number }[];   // the headings of the active document (view.outline)
     layout: { layout: string | null; structured: boolean };   // the layout button (view.layout): '' = text, null = hidden
@@ -84,7 +89,7 @@ export const isAvailable = (command: Command): boolean =>
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
+        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
     };
     private readonly waitingDialogs: Dialog[] = [];
@@ -215,6 +220,39 @@ export class Client {
         this.setSetting('sidebar-page', page);
         if (!sidebar) this.setSetting('sidebar', true);
     }
+
+    // ---------- The Files tree ----------
+
+    private expandFolder(dir: string): void {
+        const { tree } = this.snapshot;
+        if (tree.expanded.includes(dir)) return;
+        if (!tree.folders[dir]) void this.conn?.request('act.tree.openFolder', { dir });
+        this.set({ tree: { ...tree, expanded: [...tree.expanded, dir] } });
+    }
+
+    // Highlight a file, with the folders above it open.
+    private revealPath(path: string | null): void {
+        const { tree } = this.snapshot;
+        this.set({ tree: { ...tree, revealed: path } });
+        if (!path || !tree.root || !path.startsWith(tree.root)) return;
+        const sep = path.includes('\\') && !path.includes('/') ? '\\' : '/';
+        const parts = path.slice(tree.root.length + 1).split(sep).slice(0, -1);
+        let dir = tree.root;
+        for (const part of parts) { dir = `${dir}${sep}${part}`; this.expandFolder(dir); }
+    }
+
+    toggleFolder(dir: string): void {
+        const { tree } = this.snapshot;
+        if (tree.expanded.includes(dir)) this.set({ tree: { ...tree, expanded: tree.expanded.filter(d => d !== dir) } });
+        else this.expandFolder(dir);
+    }
+
+    activateEntry = (path: string): void => { void this.ask('act.tree.activate', { path }); };
+    createEntry(kind: NewKind, dir: string): void { void this.ask('act.tree.create', { kind, dir }); }
+    renameEntry(path: string): void { void this.ask('act.tree.rename', { path }); }
+    removeEntry(path: string): void { void this.ask('act.tree.remove', { path }); }
+    moveEntry(source: string, dir: string): void { void this.ask('act.tree.move', { source, dir }); }
+    copyInto(sources: string[], dir: string): void { if (sources.length) void this.ask('act.tree.copy', { sources, dir }); }
 
     // ---------- Search in all notes ----------
 
@@ -453,6 +491,14 @@ export class Client {
             case 'view.files': this.set({ root: p.root as string, files: p.files as string[] }); break;
             case 'toast': this.say(p.text as string, (p.action as Toast['action']) ?? null); break;
             case 'error': this.say(p.message as string); break;
+            case 'view.tree.root': {
+                const root = p.root as string | null;
+                this.set({ tree: { root, folders: root ? { [root]: p.entries as FolderEntry[] } : {}, expanded: [], revealed: null } });
+                break;
+            }
+            case 'view.tree.folder': this.set({ tree: { ...this.snapshot.tree, folders: { ...this.snapshot.tree.folders, [p.dir as string]: p.entries as FolderEntry[] } } }); break;
+            case 'view.tree.expand': this.expandFolder(p.dir as string); break;
+            case 'view.tree.reveal': this.revealPath(p.path as string | null); break;
             case 'view.search': this.set({ search: { ...this.snapshot.search, results: p.results as SearchResults } }); break;
             case 'view.outline': this.set({ outline: p.headings as State['outline'] }); break;
             case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split('/').pop() ?? '' } }); break;

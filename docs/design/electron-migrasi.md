@@ -50,7 +50,7 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Jendela | Status: kata, board, inbox, CSV (`statusbar.ts`) | `ViewScreen.setCounts…` | ✅ | — |
 | Jendela | Keyboard Shortcuts, About | `FrontendCommands` | ⬜ | 2 |
 | Jendela | Tema terang/gelap, setting `dark` | setting `color-scheme` | ✅ | — |
-| Sidebar | Files: pohon, buat, ganti nama, hapus, pindah, drop dari luar (`filetree.ts`) | `FileTreeView`, `FilesDialogs` | 🟡 pohon baca saja dari `view.files` | 2 |
+| Sidebar | Files: pohon, buat, ganti nama, hapus, pindah, drop dari luar (`filetree.ts`) | `FileTreeView`, `FilesDialogs` | ✅ | — |
 | Sidebar | Search di semua catatan, replace all (`searchpanel.ts`) | `SearchView`, `SearchDialogs` | ✅ | — |
 | Sidebar | Outline (`outline.ts`) | `OutlineView` | ✅ | — |
 | Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | ⬜ | 2 |
@@ -143,7 +143,7 @@ Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval 
 
 ### Fase 2 — Kerangka jendela dan sidebar (L)
 
-**Status (19 Oktober 2026):** dimulai. Selesai: panel Search (`view.search`, `act.search.run/openHit/replaceAll`, `ask.search.confirm`; `doc.select` menandai hit; Ctrl+Shift+F/H) dan rail tiga halaman (Files, Search, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Berikutnya: pohon Files penuh, Home, tab HTML, menu utama, Preferences, Shortcuts/About.
+**Status (19 Oktober 2026):** dimulai. Selesai: pohon Files penuh (`view.tree.root/folder/expand/reveal`, `act.tree.openFolder/activate/create/rename/remove/move/copy`, `ask.files.name`, `ask.files.confirm`; folder dibuka malas, menu konteks, F2/Delete, seret ke folder; drop dari file manager lewat `webUtils.getPathForFile` belum diuji otomatis), panel Search (`view.search`, `act.search.run/openHit/replaceAll`, `ask.search.confirm`; `doc.select` menandai hit; Ctrl+Shift+F/H) dan rail tiga halaman (Files, Search, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Berikutnya: Home, tab HTML, menu utama, Preferences, Shortcuts/About.
 
 | Fitur | Pesan | Komponen |
 | --- | --- | --- |

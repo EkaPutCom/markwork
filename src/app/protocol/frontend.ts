@@ -16,6 +16,7 @@ import type { Wire } from './messages.js';
 import { unwired } from './unwired.js';
 import { ProtocolOutline } from './outline.js';
 import { ProtocolSearch } from './search.js';
+import { ProtocolTree } from './tree.js';
 import { ProtocolScreen } from './screen.js';
 
 class ProtocolBoard {
@@ -45,6 +46,8 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly outline: ProtocolOutline;
     // The Search panel's end of the wire.
     readonly search: ProtocolSearch;
+    // The Files tab's end of the wire.
+    readonly tree: ProtocolTree;
     readonly documents: FrontendDocuments<ProtocolEditor>;
     readonly dialogs: AppDialogs;
     // The questions the dialogs ask over the wire.
@@ -55,11 +58,13 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         const board = new ProtocolBoard((b, groupField, agents) => this.showNotes(b, groupField, agents));
         this.outline = new ProtocolOutline(wire);
         this.search = new ProtocolSearch(wire);
+        this.tree = new ProtocolTree(wire);
         this.host = unwired<FrontendHost<ProtocolEditor>>({
             screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
             board: unwired<KanbanView>(board, 'host.board'),
             outlineView: this.outline,
             searchView: this.search,
+            fileTree: this.tree,
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
             openUri: (uri: string) => wire.notify('open.uri', { uri }),
             // The frontend decides whether a desktop notification is right (protocol.md 9.1): it knows its window.
@@ -86,6 +91,11 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             setTitle: (id: number, title: DocumentTitle) => wire.notify('doc.title', { doc: id, title }),
         }, 'documents');
         this.dialogs = unwired<AppDialogs>({
+            files: {
+                name: (title: string, label: string, value?: string) => this.asks.text('ask.files.name', { title, label, value }),
+                confirm: (message: string, detail: string) => this.asks.question('ask.files.confirm', { message, detail, accept: 'Move to Trash', destructive: true }),
+                error: (message: string) => { wire.notify('toast', { text: message, action: null }); },
+            },
             search: { confirm: (message: string, detail: string, accept: string) => this.asks.question('ask.search.confirm', { message, detail, accept, destructive: true }) },
         }, 'dialogs');
     }
