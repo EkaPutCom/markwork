@@ -49,6 +49,8 @@ A card of a Git project gets its own worktree (`src/agent/worktree.ts`, branch `
 
 ## The UI must follow the GNOME standards
 
+**Scope: the GTK frontend (`src/ui/`, `src/window*`, `src/editor/`).** The Electron frontend (`electron/`) is a separate design decided by the owner (19 October 2026): it takes VS Code as its reference (activity bar, side bar, tabs, status bar, command palette, Dark+/Light+ colors, codicons) and is written in React. The rules below do not apply to it; the rules for sharing logic with the core do (see "The foundation for other frontends").
+
 - **Every Markwork interface (widget, panel, dialog, window, icon, color, text) must follow the [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/) and the libadwaita idioms.** Markwork is a GNOME app (`com.ekaput.Markwork`, the GNOME 50 Flatpak runtime); an appearance that imitates a web/Electron app or another platform is not accepted even if it resembles a mockup that was given. Take the intent of the mockup, and then realize it with GNOME components.
 - The order of choice: an `Adw.*` widget → a GTK 4 widget → a default Adwaita style class (`card`, `dim-label`, `heading`, `caption`, `navigation-sidebar`, `boxed-list`, ...) → your own CSS in `ui/theme.ts` only if it is not covered yet.
 - Colors use the named Adwaita colors according to their role: `@success_color`/`@warning_color`/`@error_color` for text/icons, the pair `@*_bg_color` + `@*_fg_color` for a background that holds text or an icon. Icons use the standard symbolic icons (`*-symbolic`). The appearance must be right in both the light and dark themes and follow the system accent.
@@ -141,7 +143,7 @@ The layering above is finished work, not a plan. The core runs on Node (`npm run
 
 Before finishing a change, ask: could Electron or a TUI reuse this without GTK? If the logic is a decision, put it in `app/`; if it is text in, data out, put it in `markdown/`; if it touches the system, add it to the port with both implementations and a test that runs on Node; only the drawing stays in `ui/`, `editor/`, or `window/`. Run `npm run test:core:node` (it also runs `scripts/layers.mjs`, which fails on a core or `app/` file that mentions `process.platform` or a system's program such as `kgx` or `secret-tool`) and keep it green. Never fix a failing layer check by adding an exception, importing `gi://` into the core, or moving the check; move the code instead. The exception lists may only shrink.
 
-What is deliberately **not** built yet, and not to be started unless the user asks: the frontend protocol (`src/app/protocol/`), an Electron shell or any second frontend, CI for macOS and Windows, and `markworkd` on macOS and Windows. The state of each gap is in `docs/design/electron.md`; update it when a change closes or opens one.
+What is deliberately **not** built yet, and not to be started unless the user asks: a full Electron frontend (only an MVP exists: `electron/` and the protocol slice in `src/app/protocol/`, with documents, tabs, and the board; every other view is `unwired`) or any other second frontend, CI for macOS and Windows, and `markworkd` on macOS and Windows. The state of each gap is in `docs/design/electron.md`; update it when a change closes or opens one.
 
 ## Code conventions
 

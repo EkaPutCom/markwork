@@ -1,6 +1,6 @@
 # The app protocol: design
 
-Status: draft. The protocol itself is not implemented yet; what it needs first (section 13) is done. It describes how a frontend in another process or language (Tauri, Electron, GPUI) drives the Markwork application. The GTK frontend keeps calling `AppSession` in its own process (section 3.3) and is the reference every other frontend is checked against.
+Status: draft. A first slice is implemented in `src/app/protocol/` (see *What is built*, at the end); what it needs first (section 13) is done. It describes how a frontend in another process or language (Tauri, Electron, GPUI) drives the Markwork application. The GTK frontend keeps calling `AppSession` in its own process (section 3.3) and is the reference every other frontend is checked against.
 
 What it builds on: the core runs on Node as well as GJS (`src/platform/node/`, `npm run test:core:node`), and `AppSession` (`src/app/session.ts`) owns the feature controllers given one `AppFrontend`: the views, the dialogs, and the document hooks a frontend implements. This protocol is `AppFrontend` and the command table (`src/app/commands.ts`) carried over a wire.
 
@@ -549,3 +549,23 @@ The steps below start only when a second frontend is actually started (1.1):
 - Coalescing interval. 100 ms is a guess; the agent's context and autosave tolerate much more, but the word count in the status bar may want less. Measure in the first slice.
 - How strict rebasing should be. Step 3 of 5.4 treats an adjacent edit as touching, so an agent line inserted right where the user is typing is refused rather than guessed. That is safe; whether it refuses too often (typing at the end of a list a run is also appending to) is for the first slice to measure.
 - One window per core. Several windows would need document ownership per window, or one core serving several frontends; not needed yet.
+
+## What is built (19 October 2026)
+
+`src/app/protocol/` carries the slice the first Electron window needs, tested on GJS and Node (`tests/unit/protocol.ts`):
+
+- `messages.ts`, `wire.ts`: the request, reply, and notice shapes and one end of the connection (ids, replies, order). Objects, not lines; `framing.ts` waits for a sidecar frontend.
+- `changes.ts`, `replica.ts`: changes in code points, and `ProtocolEditor`, the replica that implements `TextEditor`. One `doc.replace` in flight, `update()` computed again after a conflict (three tries), a whole-text write that conflicts is reported (`onFailed`) instead of undoing the user's typing, `doc.resync` on a version gap.
+- `mirror.ts`: the frontend's side of a document (versions, `doc.edit`, `doc.replace`, `doc.saved`), shared by the Electron renderer and the tests.
+- `frontend.ts`, `unwired.ts`: `ProtocolFrontend` implements `AppFrontend` for documents and tabs, the text/board screen, the board, toasts, and the questions about documents. Every other member is `unwired`: a call does nothing, a question counts as "no". That list shrinks as views get messages.
+- `server.ts`: `ProtocolServer` builds the `AppSession` and answers `hello`, `start`, `open.folder`, `open.file`, `tab.select`, `tab.close`, `act.notes.edit`, `act.token`, `command` (`save`, `new`, `new-board`, `board-view`), and the notices `doc.edit`, `doc.cursor`, `window.active`; it sends `view.files` after the folder opens and files change.
+
+Where it differs from the draft above:
+
+- `doc.reset` continues the version numbering instead of restarting at 0, so an edit sent before the frontend saw the reset (a version at or below the replica's) is dropped, not mistaken for a gap.
+- `doc.close` is sent as a request but its reply is not acted on yet (no conflict handling).
+- The frontend rebases a `doc.replace` over the edits made after its `base` (5.4, step 3; `DocMirror.replace`, last 256 edits kept): a change that touches none of them (overlap or adjacent counts) moves by what they added or removed, and the reply carries it as `applied`. It answers `conflict` when the change touches them, when those edits are not all known, or for a batch of several changes (the core's writes are one change, a diff). An `update()` is then computed again; a board write (`ViewController.writeBoard` writes a whole text) is reported as failed and the typing stays.
+- `act.notes.edit` carries the edit in `edit` (the draft's inner `op` clashes with the request's `op`). The renderer applies the same `applyNoteEdit` to its own board at once; the core's answer is a `doc.replace`, and a `view.notes` only when the card is gone.
+- No `hello` commands or settings yet, no `ask.*` except `saveChanges` and `file`, no `tabs.order`.
+
+Next: a board write that survives typing (`writeBoard` through `update()`); the other views and asks, one controller at a time; `framing.ts` for a sidecar.

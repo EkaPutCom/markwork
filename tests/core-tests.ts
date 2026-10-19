@@ -7,6 +7,7 @@ import { inlineTests } from './unit/inline.js';
 import { inlineHtmlTests } from './unit/inlinehtml.js';
 import { highlightTests } from './unit/highlight.js';
 import { appSessionTests } from './unit/appsession.js';
+import { protocolTests } from './unit/protocol.js';
 import { noteEditTests } from './unit/noteedit.js';
 import { assistantTests } from './unit/assistant.js';
 import { historyControllerTests } from './unit/history.js';
@@ -119,6 +120,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await forgeTests();
     await platformTests();
     await appSessionTests();
+    await protocolTests();
     await noteEditTests();
     await assistantTests();
     await historyControllerTests();
