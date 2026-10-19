@@ -27,7 +27,8 @@
     "docs": "npm run build && XDG_CONFIG_HOME=$(mktemp -d) gjs -m dist/capture.js",
     "pot": "sh scripts/pot.sh",
     "electron:build": "tsc --noEmit -p tsconfig.electron.json && node scripts/electron-build.mjs",
-    "electron": "npm run electron:build && electron ."
+    "electron": "npm run electron:build && electron .",
+    "test:electron": "npm run electron:build && xvfb-run -a -s '-screen 0 1280x800x24' node tests/electron-smoke.mjs"
   },
   "devDependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -57,6 +58,7 @@
     "electron": "^44.9.0",
     "gifenc": "^1.0.3",
     "mermaid": "^12.1.0",
+    "playwright-core": "^1.64.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "typescript": "^7.0.2",

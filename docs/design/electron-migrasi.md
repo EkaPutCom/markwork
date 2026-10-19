@@ -45,9 +45,9 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Editor | Penanda konflik git (`conflictlayer.ts`) | `editor/conflicts.ts` (murni) | ⬜ | 1 |
 | Editor | Hanging indent list (`listindent.ts`) | — | ⬜ | 1 |
 | Editor | Mode source, focus, typewriter | `ViewOption`, setting | 🟡 source saja | 1 |
-| Jendela | Header bar, menu utama, tombol layout | `ViewScreen.showLayout`, `enableActions` | 🟡 | 2 |
+| Jendela | Header bar, menu utama, tombol layout | `ViewScreen.showLayout`, `enableActions` | 🟡 tombol layout dan status perintah ada; menu layout belum | 2 |
 | Jendela | Command palette | `COMMANDS` | ✅ | — |
-| Jendela | Status: kata, board, inbox, CSV (`statusbar.ts`) | `ViewScreen.setCounts…` | 🟡 dihitung di renderer | 0 |
+| Jendela | Status: kata, board, inbox, CSV (`statusbar.ts`) | `ViewScreen.setCounts…` | ✅ | — |
 | Jendela | Keyboard Shortcuts, About | `FrontendCommands` | ⬜ | 2 |
 | Jendela | Tema terang/gelap, setting `dark` | setting `color-scheme` | ✅ | — |
 | Sidebar | Files: pohon, buat, ganti nama, hapus, pindah, drop dari luar (`filetree.ts`) | `FileTreeView`, `FilesDialogs` | 🟡 pohon baca saja dari `view.files` | 2 |
@@ -88,7 +88,16 @@ Perkiraan ukuran: **S** ≤ 1 hari, **M** 2–4 hari, **L** 1–2 minggu, untuk 
 
 ### Fase 0 — Infrastruktur protokol bersama (M)
 
-**Status (19 Oktober 2026):** sebagian selesai. Sudah ada: handler per controller (`src/app/protocol/handlers/`), `Asks` dan `ask.cancel`, dialog generik di renderer (`electron/renderer/Dialog.tsx`, menjawab setiap `Question`/`Prompt` lewat `Connection.onOther`), `ask.file` lengkap (Open, Save As, Export HTML, Insert Image), `hello` dengan tabel perintah dan setting, notice `setting` dua arah, dan tema yang mengikuti setting `color-scheme`. Belum: `commands.state`, `view.status`/`view.layout`, `notify`/`openFolder`, board lewat `update()`, guard hitungan `unwired`, dan tes asap Playwright.
+**Status (19 Oktober 2026):** selesai, kecuali CI (belum ada CI sama sekali).
+
+- Handler per controller (`src/app/protocol/handlers/`), `Asks` dan `ask.cancel`.
+- Dialog generik di renderer (`electron/renderer/Dialog.tsx`), yang menjawab setiap `Question`/`Prompt` lewat `Connection.onOther`.
+- `ask.file` lengkap (Open, Save As, Export HTML, Insert Image).
+- `hello` dengan tabel perintah dan setting, notice `setting` dua arah, dan tema yang mengikuti `color-scheme`.
+- `ProtocolScreen` (`view.status`, `view.layout`, `commands.state`, `find.close`) serta layanan `notify` dan `reveal.folder`.
+- Tulisan board/list lewat `update()`.
+- Guard `STILL_UNWIRED` di `tests/unit/protocol.ts`, saat ini 29 anggota.
+- Tes asap Playwright: `npm run test:electron` (`tests/electron-smoke.mjs`).
 
 Bagian ini dibutuhkan oleh hampir semua fitur. Mengerjakannya sekali di awal mencegah setiap PR fitur membuat jalan pintas sendiri.
 

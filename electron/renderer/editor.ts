@@ -208,6 +208,8 @@ export class MarkdownEditor {
         field?.select();
     }
 
+    closeFind(): void { closeSearchPanel(this.view); }
+
     setSourceMode(on: boolean): void { this.view.dispatch({ effects: setSource.of(on) }); }
 
     // The commands the toolbar, the menu, and the keys run (markdown/editcommands.ts), on this editor.

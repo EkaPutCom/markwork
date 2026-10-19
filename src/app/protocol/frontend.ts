@@ -14,6 +14,7 @@ import { ProtocolEditor } from './replica.js';
 import { Asks } from './asks.js';
 import type { Wire } from './messages.js';
 import { unwired } from './unwired.js';
+import { ProtocolScreen } from './screen.js';
 
 class ProtocolBoard {
     onEdit: (edit: NoteEdit) => void = () => {};
@@ -44,17 +45,17 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     constructor(readonly settings: AppSettings, private readonly wire: Wire) {
         this.asks = new Asks(wire);
         const board = new ProtocolBoard((b, groupField, agents) => this.showNotes(b, groupField, agents));
-        const screen: Partial<ViewScreen<ProtocolEditor>> = {
-            showText: doc => wire.notify('view.page', { page: 'text', doc }),
-            showPage: page => wire.notify('view.page', { page, doc: this.active }),
-        };
         this.host = unwired<FrontendHost<ProtocolEditor>>({
-            screen: unwired(screen),
-            board: unwired<KanbanView>(board),
+            screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
+            board: unwired<KanbanView>(board, 'host.board'),
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
             openUri: (uri: string) => wire.notify('open.uri', { uri }),
+            // The frontend decides whether a desktop notification is right (protocol.md 9.1): it knows its window.
+            notify: (id: string, title: string, body: string) => wire.notify('notify', { id, title, body }),
+            // A folder in the file manager (a card's worktree); the frontend opens it with the system's handler.
+            openFolder: (path: string) => wire.notify('reveal.folder', { path }),
             showSidebar: () => this.folderOpened(),
-        });
+        }, 'host');
         this.documents = unwired<FrontendDocuments<ProtocolEditor>>({
             dialogs: this.documentDialogs(),
             tabOrder: () => [...this.row],
@@ -69,8 +70,8 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             listTab: (id: number, listed: boolean) => { if (!listed) this.drop(id); else if (!this.row.includes(id)) this.row.push(id); },
             activated: (id: number) => { this.active = id; wire.notify('doc.active', { doc: id }); },
             setTitle: (id: number, title: DocumentTitle) => wire.notify('doc.title', { doc: id, title }),
-        });
-        this.dialogs = unwired<AppDialogs>({});
+        }, 'documents');
+        this.dialogs = unwired<AppDialogs>({}, 'dialogs');
     }
 
     createEditor(id: number): ProtocolEditor {

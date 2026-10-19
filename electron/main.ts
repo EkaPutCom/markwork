@@ -2,7 +2,8 @@
 // application logic; the file dialogs are the one thing only it can show.
 
 import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, shell, utilityProcess } from 'electron';
-import { dirname, join } from 'node:path';
+import { statSync } from 'node:fs';
+import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -69,6 +70,12 @@ ipcMain.handle('choose-file', async (event, options: ChooseFile) => {
     };
     const result = win ? await dialog.showOpenDialog(win, open) : await dialog.showOpenDialog(open);
     return result.canceled ? null : result.filePaths[0] ?? null;
+});
+
+// A folder in the file manager (reveal.folder): only an existing folder, never a file the system would run.
+ipcMain.handle('open-folder', async (_event, path: unknown) => {
+    if (typeof path !== 'string' || !isAbsolute(path) || !statSync(path, { throwIfNoEntry: false })?.isDirectory()) return;
+    await shell.openPath(path);
 });
 
 // `electron . <folder>` opens that folder at start.

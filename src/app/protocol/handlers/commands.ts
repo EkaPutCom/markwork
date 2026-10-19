@@ -7,7 +7,7 @@ import { unwired } from '../unwired.js';
 import { num, type HandlerContext } from './context.js';
 
 // The editor's own commands never reach the core; session.commands() wants the frontend's half, which has nothing to do here.
-const NO_FRONTEND_COMMANDS = unwired<FrontendCommands>({});
+const NO_FRONTEND_COMMANDS = unwired<FrontendCommands>({}, 'frontendCommands');
 
 // The table as the frontend gets it in the `hello` reply: everything but the code that runs a command.
 export const commandTable = () => COMMANDS.map(({ id, label, keys, kind, scope, runs, ownsState }) =>

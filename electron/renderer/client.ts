@@ -2,7 +2,8 @@
 // DocMirror per document), keeps what the core shows (tabs, files, boards, toasts), and offers the actions the UI calls.
 // It holds no widgets: the editor registers itself, and the views read the snapshot.
 
-import { COMMANDS, commandEnabled, type Command, type FrontendCommands } from '../../src/app/commands.js';
+import { COMMANDS, type Command, type FrontendCommands } from '../../src/app/commands.js';
+import type { StatusCounts } from '../../src/app/protocol/screen.js';
 import { DocMirror } from '../../src/app/protocol/mirror.js';
 import { RequestError, type Change, type Message } from '../../src/app/protocol/messages.js';
 import { Connection, type Handler } from '../../src/app/protocol/wire.js';
@@ -13,7 +14,9 @@ import { applyNoteEdit, type NoteEdit } from '../../src/markdown/noteedit.js';
 import type { MarkdownEditor } from './editor.js';
 
 declare global {
-    interface Window { markwork: { chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null> } }
+    interface Window {
+        markwork: { chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
+    }
 }
 
 export interface Tab {
@@ -56,6 +59,9 @@ export interface State {
     settings: Record<string, unknown>;   // the core's settings, as `hello` and `setting` notices give them
     commands: CommandEntry[];     // the core's command table
     dialog: Dialog | null;        // the dialog shown; others wait behind it
+    disabled: string[];           // the commands the core says do not apply now (commands.state)
+    status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
+    layout: { layout: string | null; structured: boolean };   // the layout button (view.layout): '' = text, null = hidden
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
@@ -69,7 +75,8 @@ export const isAvailable = (command: Command): boolean =>
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null,
+        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, disabled: [],
+        status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
     };
     private readonly waitingDialogs: Dialog[] = [];
     private readonly listeners = new Set<() => void>();
@@ -229,15 +236,11 @@ export class Client {
         };
     };
 
-    // The state commands are enabled by.
-    commandState = () => {
-        const board = this.tab()?.page === 'board' && !!this.tab()?.board;
-        return { page: false, structured: board };
-    };
-
+    // Whether a command applies now: this window carries it out, and the core has not said it does not apply to what is
+    // shown (commands.state, from the same rules as the GTK window's actions).
     enabled(command: Command): boolean {
-        if (!isAvailable(command)) return false;
-        return command.scope === 'always' || this.snapshot.tabs.length > 0 && commandEnabled(command, this.commandState());
+        if (!isAvailable(command) || this.snapshot.disabled.includes(command.id)) return false;
+        return command.scope === 'always' || this.snapshot.tabs.length > 0;
     }
 
     // The half of FrontendCommands that is this window's: its editor and its own panels.
@@ -362,6 +365,15 @@ export class Client {
             case 'error': this.say(p.message as string); break;
             case 'open.uri': window.open(p.uri as string); break;
             case 'setting': this.applySettings({ [p.key as string]: p.value }); break;
+            case 'commands.state': this.set({ disabled: p.disabled as string[] }); break;
+            case 'view.status': this.set({ status: { visible: p.visible !== false, counts: p.counts as StatusCounts } }); break;
+            case 'view.layout': this.set({ layout: { layout: p.layout as string | null, structured: p.structured === true } }); break;
+            case 'find.close': this.editor?.closeFind(); break;
+            // A desktop notification only when the window does not have the focus; otherwise the toast says it.
+            case 'notify':
+                if (!document.hasFocus()) new Notification(p.title as string, { body: p.body as string, tag: p.id as string });
+                break;
+            case 'reveal.folder': void window.markwork.openFolder(p.path as string); break;
         }
     }
 }
