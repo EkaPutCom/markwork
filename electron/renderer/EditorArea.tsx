@@ -8,6 +8,7 @@ import { Csv } from './Csv.js';
 import { Gallery } from './Gallery.js';
 import { Inbox } from './Inbox.js';
 import { PullPage } from './Pull.js';
+import { ReviewPage } from './Review.js';
 import { TableView } from './TableView.js';
 import { Timeline } from './Timeline.js';
 import type { Board as BoardData } from '../../src/markdown/kanban.js';
@@ -43,13 +44,14 @@ function StructuredPage({ tab, board }: { tab: Tab; board: BoardData }) {
         case 'timeline': return <Timeline board={board} />;
         case 'gallery': return <Gallery board={board} />;
         case 'chart': return <Chart board={board} />;
-        default: return <Board board={board} groupField={tab.groupField} agents={tab.agents} />;
+        default: return <Board board={board} groupField={tab.groupField} agents={tab.agents} runs={tab.runs} />;
     }
 }
 
 export function EditorArea() {
     const client = useClient();
-    const { tabs, active, csvFind, pullShown } = useStore();
+    const { tabs, active, csvFind, pullShown: pull, reviewShown } = useStore();
+    const pullShown = pull || reviewShown;
     const host = useRef<HTMLDivElement>(null);
     const tab = tabs.find(t => t.id === active);
 
@@ -76,7 +78,8 @@ export function EditorArea() {
     return (
         <div className="editor-area">
             <div ref={host} className="text-editor" hidden={!tab || structured || csv || isPage || pullShown} />
-            {pullShown && <PullPage />}
+            {pull && <PullPage />}
+            {reviewShown && <ReviewPage />}
             {!pullShown && structured && tab && board && <StructuredPage key={`${tab.id}:${tab.page}`} tab={tab} board={board} />}
             {!pullShown && csv && tab && <Csv key={tab.id} text={tab.csv!} rev={tab.csvRev} find={csvFind} />}
             {!pullShown && tab?.page === 'home' && <Home data={tab.home} />}

@@ -302,10 +302,12 @@ The frontend sends what the user did, not the board that resulted. A whole board
 core → frontend   {"ev":"toast","text":"Moved to Done","action":{"label":"Undo","token":"t17"}}
 frontend → core   {"id":"f31","op":"act.token","token":"t17"}
 
-core → frontend   {"id":"c50","op":"ask.menu","at":{"view":"board","card":[1,4]},"entries":[
-                     {"label":"Run with pi","token":"m1"},{"label":""},{"label":"Delete","token":"m2"}]}
-frontend → core   {"re":"c50","ok":true,"token":"m2"}                          or "token":null when dismissed
+frontend → core   {"id":"f40","op":"act.card.menu","column":1,"index":4,"text":"Write the notes"}
+core → frontend   {"re":"f40","ok":true,"entries":[{"label":"Work on it with pi","token":7},{"label":"Stop pi","enabled":false,"token":8}]}
+frontend → core   {"id":"f41","op":"act.card.run","token":7}
 ```
+
+A menu the user opens is the frontend's request, not a question of the core, so a card's harness menu is `act.card.menu` and its entry runs by `act.card.run` (the first plan had `ask.menu`; there is nothing the core would wait for). The card is named by its place and its text and must be the one the core holds, or the answer is `stale`; a board grouped by a field has no agent menu (`entries` is empty).
 
 A token is valid until the core replaces the view it belongs to. A token that arrives after that (the user clicked a toast's Undo just as the board changed) is answered with `stale` and does nothing; the frontend may say so in a toast. Today a toast's `run` closure would run against whatever is there by then; each such closure checks its target still exists, and the token makes that check one rule instead of many.
 
@@ -315,10 +317,10 @@ A token is valid until the core replaces the view it belongs to. A token that ar
 | --- | --- | --- |
 | `ViewScreen` (app/views.ts) | `view.page`, `view.home`, `view.status`, `view.layout`, `commands.state`, `find.close` | none |
 | `NotesView`, `KanbanView`, `CaptureView` (app/views.ts) | `view.notes`, `view.focusCapture` | `act.notes.edit` (6.3) |
-| `HarnessBoard`, `HarnessLogs` (app/harness.ts) | `view.notes` (a run's state is part of the card), `view.runlog` | `act.card.run`, `act.card.stop`, `act.runlog.open` |
+| `HarnessBoard`, `HarnessLogs` (app/harness.ts) | `view.runs` `{doc, runs}` (a run's status per card text), `view.runlog.open` `{run, title}`, `view.runlog.update` `{run, update}` | `act.card.menu`, `act.card.run`, `act.runlog.clear`, `act.runlog.closed` |
 | `CollabView` (app/collab.ts) | `view.collab` `{note, server, pulls}` | `act.collab.open`, `.refresh`, `.server`, `.send` |
 | `PullReviewView` (app/pulls.ts) | `view.pull` with `pull`, `files`, `fileView`, `discussion`, `busy`, `resolving`, `message`, `commenting` | `act.pull.close`, `.select`, `.merge`, `.browser`, `.comment`, `.resolve`, `.finish`, `.abort` |
-| `ReviewView` (app/harnessreview.ts) | `view.review` with `header`, `files`, `included`, `busy`, `commits`, `status`, `diff` (commented lines as an array), `tab`, `summary`, `replies`, `banner` | `act.review.close`, `.select`, `.include`, `.finish`, `.reply`, `.folder`, `.terminal`, `.tab`, `.log`, `.banner`, `.comment` |
+| `ReviewView` (app/harnessreview.ts) | `view.review` with `header`, `files`, `included`, `busy`, `commits`, `status`, `diff` (commented lines as an array), `tab`, `summary`, `replies`, `banner` | `act.review.close`, `.select`, `.include`, `.finish` `{action: merge, squash, keep, discard}`, `.pullRequest`, `.reply`, `.folder`, `.terminal`, `.tab`, `.log`, `.banner`, `.comment` (a file or a line must be one the page was sent) |
 | `HistoryTabView`, `HistoryViewersView` (app/history.ts) | `view.history` `{commits, more, note}`, `view.historyChanges` `{file, state, changed}`, `history.messageText`; `view.historyViewer.open` `{viewer, file, commit}`, `.diff`, `.content`, `.messageText`, `.close` | `act.history.refresh`, `.more`, `.open` `{hash}`, `.openChanges` `{path}`, `.commit` `{files, message}`, `.discard` `{path}`, `.write` `{files}`, `.stopWriting`; `act.historyViewer.commit`, `.discard`, `.write`, `.stopWriting`, `.closed` `{viewer}` |
 | `ChatPanelView` (app/assistant.ts) | `chat.settings`, `chat.busy`, `chat.turn` `{turn, question}`, `chat.context`, `chat.text` / `chat.reasoning` `{turn, delta}`, `chat.tool`, `chat.work`, `chat.end` `{turn, outcome}`, `chat.noKey`, `chat.saveFailed` | `act.chat.send`, `.stop`, `.reset`, `.preview`, `.options`, `.chats`, `.open`, `.delete`, `.undo`, `.insert`, `.model`, `.thinking`, `.save`, `.key` |
 
@@ -352,7 +354,7 @@ Whatever the answer, the code that continues after it checks again that what it 
 | `CollabDialogs.token` | `ask.token {repo, hasToken, source}`; the dialog's Test button sends `act.collab.testToken {ask, token}`, answered with the sentence or an error | token, `""` (forget), or `null` |
 | `PullDialogs.merge / local / abort` | `ask.pull.merge {pull, method}`, … | `true` / `false` |
 | `ContributeDialogs.send` | `ask.sendChanges {SendChangesOptions}` | `SendChangesAnswer` or `null` |
-| `HarnessDialogs.*` | `ask.folder`, `ask.harness.answer {ask, agent}`, `ask.text`, `ask.remoteFolder`, `ask.closeAgents` | as today |
+| `HarnessDialogs.*` | `ask.folder {title}` → `{path}`, `ask.harness.answer {ask, agent}` → `{reply}` (read against the question), `ask.text {options}` → `{text}`, `ask.remoteFolder {prompt}` → `{text}`, `ask.closeAgents {activity}` → `{answer: cancel, stop, keep}` | as today |
 | `ReviewDialogs.merge / discard` | `ask.review.merge`, `ask.review.discard` | `true` / `false` |
 | `HistoryDialogs.discard` (app/history.ts) | `ask.discard {kind, path, viewer}`; `viewer` names the window it was asked from, `null` the History tab | `true` / `false` |
 | `ViewDialogs.editSchema` | `ask.schema {fields, reserved, uses}`: `uses()` is a callback today, so the core sends the counts it would answer (`{"due": 4, "status:Done": 9}`) | `FieldDef[]` or `null` |

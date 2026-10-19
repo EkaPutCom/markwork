@@ -11,6 +11,9 @@ import type { DocumentDialogs } from '../documents.js';
 import type { ChooseFileOptions, Prompt } from '../dialogs.js';
 import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session.js';
 import type { Page, ToastButton } from '../document.js';
+import type { Card, Position } from '../../markdown/kanban.js';
+import type { Awaitable } from '../../awaitable.js';
+import type { CardRun, HarnessBoard, HarnessMenuEntry } from '../harness.js';
 import { ProtocolEditor } from './replica.js';
 import { Asks } from './asks.js';
 import type { Wire } from './messages.js';
@@ -18,10 +21,11 @@ import { unwired } from './unwired.js';
 import { ProtocolOutline } from './outline.js';
 import { ProtocolSearch } from './search.js';
 import { ProtocolTree } from './tree.js';
-import { ProtocolPreferences } from './preferences.js';
+import { ProtocolPreferences, ProtocolPreferencesDialogs } from './preferences.js';
 import { ProtocolScreen } from './screen.js';
 import { ProtocolChatPanel } from './chat.js';
 import { ProtocolHistoryDialogs, ProtocolHistoryTab, ProtocolHistoryViewers } from './history.js';
+import { ProtocolHarnessDialogs, ProtocolHarnessLogs, ProtocolReviewDialogs, ProtocolReviewView, ProtocolRuns } from './harness.js';
 import { ProtocolCollabDialogs, ProtocolCollabPanel, ProtocolContributeDialogs, ProtocolPullDialogs, ProtocolPullView } from './collab.js';
 
 // A page that shows the notes of the document (board, list, table, calendar, …): it sends the board as it is, and the
@@ -37,6 +41,18 @@ class ProtocolNotes implements KanbanView, CaptureView {
     setBoard(board: Board): void { this.show(this.page, board, this.groupField, this.agentsEnabled); }
     replace(board: Board): void { this.show(this.page, board, this.groupField, this.agentsEnabled); }
     focusCapture(): void { this.focus(this.page); }
+}
+
+// The board also carries the agents: the runs of its cards come as data, and a card's menu is asked for when it opens (the
+// frontend asks with `act.card.menu`, the harness controller answers with entries that name their action by a token).
+class ProtocolBoard extends ProtocolNotes implements HarnessBoard {
+    onCardMenu: (card: Card, at: Position) => Awaitable<HarnessMenuEntry[]> = () => [];
+    onRunMenu: (token: number) => void = () => {};
+
+    constructor(page: string, show: ConstructorParameters<typeof ProtocolNotes>[1], focus: ConstructorParameters<typeof ProtocolNotes>[2],
+        private readonly runs: ProtocolRuns) { super(page, show, focus); }
+
+    setRuns(runs: readonly CardRun[]): void { this.runs.setRuns(runs); }
 }
 
 // The CSV tab: the frontend holds the table it draws and sends the whole text after each change (`act.csv.change`); the
@@ -84,6 +100,10 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly collabPanel: ProtocolCollabPanel;
     readonly pullView: ProtocolPullView;
     readonly collabDialogs: ProtocolCollabDialogs;
+    // The board with its agents, the run log windows, and the review of a card's worktree (`act.card.*`, `act.runlog.*`, `act.review.*`).
+    readonly agentBoard: ProtocolBoard;
+    readonly runLogs: ProtocolHarnessLogs;
+    readonly reviewView: ProtocolReviewView;
     readonly documents: FrontendDocuments<ProtocolEditor>;
     readonly dialogs: AppDialogs;
     // The questions the dialogs ask over the wire.
@@ -94,7 +114,9 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         const show = (page: string, b: Board, groupField: string | null, agents: boolean) => this.showNotes(page, b, groupField, agents);
         const notes = (page: string) => { const view = new ProtocolNotes(page, show, focus); this.notesViews.set(page, view); return view; };
         const focus = (page: string) => wire.notify('view.focusCapture', { doc: this.active, page });
-        const board = notes('board');
+        this.agentBoard = new ProtocolBoard('board', show, focus, new ProtocolRuns(wire, () => this.active));
+        this.notesViews.set('board', this.agentBoard);
+        const board = this.agentBoard;
         const layouts: Record<LayoutPage, NotesView> = {
             calendar: notes('calendar'), timeline: notes('timeline'), gallery: notes('gallery'), chart: notes('chart'),
         };
@@ -109,9 +131,11 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         this.collabPanel = new ProtocolCollabPanel(wire);
         this.pullView = new ProtocolPullView(wire);
         this.collabDialogs = new ProtocolCollabDialogs(this.asks);
+        this.runLogs = new ProtocolHarnessLogs(wire);
+        this.reviewView = new ProtocolReviewView(wire);
         this.host = unwired<FrontendHost<ProtocolEditor>>({
             screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
-            board: unwired<KanbanView>(board, 'host.board'),
+            board,
             inbox: notes('inbox'),
             table: notes('table'),
             layouts,
@@ -125,8 +149,11 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             historyViewers: this.historyViewers,
             collabPanel: this.collabPanel,
             pullView: this.pullView,
+            logs: this.runLogs,
+            reviewView: this.reviewView,
             // The content area shows the review page until the next page the core shows (`view.page`, `doc.active`).
             showPull: () => wire.notify('view.pull.show'),
+            showReview: () => wire.notify('view.review.show'),
             // The Recent list of the menus: the frontend draws it.
             setRecent: (paths: string[]) => wire.notify('recent', { paths }),
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
@@ -160,7 +187,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             activated: (id: number) => { this.active = id; wire.notify('doc.active', { doc: id }); },
             setTitle: (id: number, title: DocumentTitle) => wire.notify('doc.title', { doc: id, title }),
         }, 'documents');
-        this.dialogs = unwired<AppDialogs>({
+        this.dialogs = {
             files: {
                 name: (title: string, label: string, value?: string) => this.asks.text('ask.files.name', { title, label, value }),
                 confirm: (message: string, detail: string) => this.asks.question('ask.files.confirm', { message, detail, accept: 'Move to Trash', destructive: true }),
@@ -174,7 +201,10 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             pulls: new ProtocolPullDialogs(this.asks),
             contribute: new ProtocolContributeDialogs(this.asks),
             search: { confirm: (message: string, detail: string, accept: string) => this.asks.question('ask.search.confirm', { message, detail, accept, destructive: true }) },
-        }, 'dialogs');
+            harness: new ProtocolHarnessDialogs(this.asks),
+            review: new ProtocolReviewDialogs(this.asks),
+            preferences: new ProtocolPreferencesDialogs(this.asks),
+        };
     }
 
     // An edit the user made on the page that shows the notes (`act.notes.edit`).
