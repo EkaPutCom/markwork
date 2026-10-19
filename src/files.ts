@@ -119,6 +119,8 @@ export function writeTextFileAsync(path: string, text: string, done: Done): void
     ensurePump();
 }
 
+const FLUSH_LIMIT_MS = 20000;
+
 // Finish the background writes to `path` (or to files inside the folder `path`), including any
 // waiting ones. Called before writing, moving, or deleting a file, so the result of an older
 // background write does not overwrite later changes. Only write completions run while it waits;
@@ -126,6 +128,11 @@ export function writeTextFileAsync(path: string, text: string, done: Done): void
 // only a few milliseconds.
 export function flushWrites(path: string): void {
     const busy = () => [...queues.keys()].some(p => atOrBelow(path, p));
-    while (busy()) platform().fs.pumpWrites(true);
+    // A write that never reports back must not stall the caller for good.
+    const deadline = platform().monotonicMs() + FLUSH_LIMIT_MS;
+    while (busy()) {
+        if (platform().monotonicMs() > deadline) throw new Error(`background writes to ${path} did not finish: ${[...queues.keys()].filter(p => atOrBelow(path, p)).join(', ')}`);
+        platform().fs.pumpWrites(true);
+    }
 }
 
