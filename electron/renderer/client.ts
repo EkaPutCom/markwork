@@ -16,6 +16,7 @@ import { appUrl } from './images.js';
 import type { SearchQuery, SearchResults } from '../../src/app/protocol/search.js';
 import type { FolderEntry, NewKind } from '../../src/app/protocol/tree.js';
 import type { HomeData } from '../../src/app/protocol/screen.js';
+import type { PreferencesData } from '../../src/app/protocol/preferences.js';
 
 declare global {
     interface Window {
@@ -75,6 +76,9 @@ export interface State {
     disabled: string[];           // the commands the core says do not apply now (commands.state)
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
     image: { src: string; title: string } | null;   // the picture shown large (view.image, or a double click)
+    recent: string[];                // the Recent files of the menus (recent), latest first
+    prefs: PreferencesData | null;   // the Preferences dialog while it is open (view.prefs.open)
+    info: 'shortcuts' | 'about' | null;   // the Keyboard Shortcuts or About dialog
     tree: FileTree;
     search: SearchPanel;             // the Search panel's fields and the core's results (view.search)
     outline: { level: number; text: string; line: number }[];   // the headings of the active document (view.outline)
@@ -82,9 +86,9 @@ export interface State {
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+const CORE_COMMANDS = new Set(['preferences', 'open-recent', 'home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'sidebar', 'dark', 'autosave']);
-const EDITOR_COMMANDS_UNAVAILABLE = new Set(['shortcuts', 'about']);
+const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
 export const isAvailable = (command: Command): boolean =>
     command.runs === 'core' ? CORE_COMMANDS.has(command.id) : !EDITOR_COMMANDS_UNAVAILABLE.has(command.id);
@@ -92,7 +96,7 @@ export const isAvailable = (command: Command): boolean =>
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
+        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, recent: [], prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
     };
     private readonly waitingDialogs: Dialog[] = [];
@@ -223,6 +227,17 @@ export class Client {
         this.setSetting('sidebar-page', page);
         if (!sidebar) this.setSetting('sidebar', true);
     }
+
+    // ---------- Preferences, Keyboard Shortcuts, About ----------
+
+    // A change in the dialog: shown at once, written by the core, which sends the values again (a refused one comes back as they were).
+    setPreference(key: string, value: string | number | boolean): void {
+        const { prefs } = this.snapshot;
+        if (prefs) this.set({ prefs: { ...prefs, [key]: value } });
+        void this.ask('act.prefs.set', { key, value });
+    }
+    closePreferences(): void { this.set({ prefs: null }); void this.conn?.request('act.prefs.closed', {}); this.editor?.focus(); }
+    showInfo(info: State['info']): void { this.set({ info }); }
 
     // ---------- Home ----------
 
@@ -386,7 +401,7 @@ export class Client {
             showSearch: replace => this.showSearch(replace === true),
             setSource: on => { editor?.setSourceMode(on); this.set({ source: on }); },
             showPalette: () => this.openPalette(),
-            showShortcuts: none, showAbout: none,
+            showShortcuts: () => this.showInfo('shortcuts'), showAbout: () => this.showInfo('about'),
             quit: () => window.close(),
         };
     }
@@ -529,6 +544,9 @@ export class Client {
             case 'view.tree.folder': this.set({ tree: { ...this.snapshot.tree, folders: { ...this.snapshot.tree.folders, [p.dir as string]: p.entries as FolderEntry[] } } }); break;
             case 'view.tree.expand': this.expandFolder(p.dir as string); break;
             case 'view.tree.reveal': this.revealPath(p.path as string | null); break;
+            case 'recent': this.set({ recent: p.paths as string[] }); break;
+            case 'view.prefs.open': this.set({ prefs: p.data as PreferencesData }); break;
+            case 'view.prefs.values': if (this.snapshot.prefs) this.set({ prefs: p.data as PreferencesData }); break;
             case 'view.search': this.set({ search: { ...this.snapshot.search, results: p.results as SearchResults } }); break;
             case 'view.outline': this.set({ outline: p.headings as State['outline'] }); break;
             case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split('/').pop() ?? '' } }); break;

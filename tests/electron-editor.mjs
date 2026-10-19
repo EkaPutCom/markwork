@@ -283,6 +283,44 @@ try {
         await open(/Source\.md/);
     });
 
+    // ---------- window.ts, dialogs.ts (menus and dialogs) ----------
+    await step('menus: Recent in the New menu, Preferences, Keyboard Shortcuts, and About from the main menu', async () => {
+        await open(/Idea\.md/);
+        await open(/Source\.md/);
+        // The Recent list lives in the New menu; a line of it opens the file in a tab.
+        await page.getByRole('button', { name: 'More ways to create' }).click();
+        await page.getByRole('menuitem', { name: 'Plan.md' }).waitFor();
+        await page.getByRole('menuitem', { name: 'Idea.md' }).click();
+        await title.getByText('Idea.md').waitFor();
+        // Preferences: a switch is written by the core, and the dialog follows the setting.
+        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menuitem', { name: 'Preferences' }).click();
+        const prefs = page.getByRole('dialog', { name: 'Preferences' });
+        await prefs.waitFor();
+        await prefs.getByLabel('Color scheme').selectOption('dark');
+        await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+        await prefs.getByLabel('Color scheme').selectOption('light');
+        await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+        const focus = prefs.getByRole('switch', { name: /Focus mode/ });
+        await focus.check();
+        await editor.locator('.cm-md-dim').first().waitFor({ state: 'attached' }).catch(() => {});
+        await focus.uncheck();
+        await prefs.getByRole('tab', { name: 'Assistant' }).click();
+        await prefs.getByLabel('Model').waitFor();
+        await page.keyboard.press('Escape');
+        await prefs.waitFor({ state: 'detached' });
+        await page.keyboard.press('Control+?');
+        const shortcuts = page.getByRole('dialog', { name: 'Keyboard Shortcuts' });
+        await shortcuts.getByText('Save As').waitFor();
+        await page.keyboard.press('Escape');
+        await shortcuts.waitFor({ state: 'detached' });
+        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menuitem', { name: 'About Markwork' }).click();
+        await page.getByRole('dialog', { name: 'About Markwork' }).getByText(/Version \d/).waitFor();
+        await page.keyboard.press('Escape');
+        await open(/Source\.md/);
+    });
+
     // ---------- search.ts (the side panel) ----------
     await step('search: Ctrl+Shift+F finds in all notes, a hit opens with the match selected, Replace All asks first', async () => {
         await open(/Source\.md/);

@@ -17,6 +17,7 @@ import { unwired } from './unwired.js';
 import { ProtocolOutline } from './outline.js';
 import { ProtocolSearch } from './search.js';
 import { ProtocolTree } from './tree.js';
+import { ProtocolPreferences } from './preferences.js';
 import { ProtocolScreen } from './screen.js';
 
 class ProtocolBoard {
@@ -48,6 +49,8 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly search: ProtocolSearch;
     // The Files tab's end of the wire.
     readonly tree: ProtocolTree;
+    // The Preferences dialog's end of the wire.
+    readonly preferences: ProtocolPreferences;
     readonly documents: FrontendDocuments<ProtocolEditor>;
     readonly dialogs: AppDialogs;
     // The questions the dialogs ask over the wire.
@@ -59,12 +62,16 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         this.outline = new ProtocolOutline(wire);
         this.search = new ProtocolSearch(wire);
         this.tree = new ProtocolTree(wire);
+        this.preferences = new ProtocolPreferences(wire);
         this.host = unwired<FrontendHost<ProtocolEditor>>({
             screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
             board: unwired<KanbanView>(board, 'host.board'),
             outlineView: this.outline,
             searchView: this.search,
             fileTree: this.tree,
+            preferencesView: this.preferences,
+            // The Recent list of the menus: the frontend draws it.
+            setRecent: (paths: string[]) => wire.notify('recent', { paths }),
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
             openUri: (uri: string) => wire.notify('open.uri', { uri }),
             // The frontend decides whether a desktop notification is right (protocol.md 9.1): it knows its window.

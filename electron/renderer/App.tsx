@@ -10,6 +10,7 @@ import { Outline } from './Outline.js';
 import { Search } from './Search.js';
 import { Palette } from './Palette.js';
 import { DialogLayer } from './Dialog.js';
+import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './Modals.js';
 import { ImageViewer } from './ImageViewer.js';
 import { Tabs } from './Tabs.js';
 import { Icon } from './Icons.js';
@@ -30,7 +31,10 @@ function Title() {
     );
 }
 
-function Menu({ items, onClose }: { items: { id: string; label: string; keys?: string }[]; onClose: () => void }) {
+// One line of a menu: a command (with the argument it runs with), a heading over what follows, or a separator.
+interface MenuItem { id: string; label?: string; keys?: string; arg?: string; heading?: boolean }
+
+function Menu({ items, onClose, align }: { items: MenuItem[]; onClose: () => void; align?: 'right' }) {
     const client = useClient();
     useEffect(() => {
         const close = (e: Event) => { if (!(e.target as Element).closest('.popover')) onClose(); };
@@ -40,9 +44,9 @@ function Menu({ items, onClose }: { items: { id: string; label: string; keys?: s
         return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key); };
     }, [onClose]);
     return (
-        <div className="popover" role="menu">
-            {items.map(item => (
-                <button key={item.id} role="menuitem" onClick={() => { onClose(); if (item.id === 'open-folder') void client.openFolder(); else client.run(item.id); }}>
+        <div className={`popover${align === 'right' ? ' right' : ''}`} role="menu">
+            {items.map((item, i) => item.id === '-' ? <hr key={i} /> : item.heading ? <div key={item.label} className="menu-heading">{item.label}</div> : (
+                <button key={`${item.id}:${item.arg ?? ''}`} role="menuitem" title={item.arg} onClick={() => { onClose(); if (item.id === 'open-folder') void client.openFolder(); else client.run(item.id, item.arg); }}>
                     <span>{item.label}</span>{item.keys && <kbd>{label(item.keys)}</kbd>}
                 </button>
             ))}
@@ -58,12 +62,28 @@ function HeaderBar() {
     const client = useClient();
     const s = useStore();
     const [menu, setMenu] = useState(false);
+    const [main, setMain] = useState(false);
     const tab = s.tabs.find(t => t.id === s.active);
     const keyOf = (id: string) => COMMANDS.find(c => c.id === id)?.keys[0];
-    const items = ['new', 'open-folder', 'kanban-new', 'table-new', 'inbox-new']
-        .map(id => ({ id, command: COMMANDS.find(c => c.id === id) }))
-        .filter(x => x.command?.label && (x.id === 'open-folder' || client.enabled(x.command)))
-        .map(x => ({ id: x.id, label: x.command!.label!.replace(/…$/, ''), keys: keyOf(x.id) }));
+    // A command of the table as a menu line, left out when this window cannot carry it out.
+    const entry = (id: string, text?: string): MenuItem[] => {
+        const command = COMMANDS.find(c => c.id === id);
+        if (!command?.label || (id !== 'open-folder' && !client.enabled(command))) return [];
+        return [{ id, label: text ?? command.label.replace(/…$/, ''), keys: keyOf(id) }];
+    };
+    const named = (id: string): MenuItem[] => entry(id, COMMANDS.find(c => c.id === id)?.label ?? undefined);
+    const recent: MenuItem[] = s.recent.length
+        ? [{ id: '-' }, { id: 'recent', label: 'Recent', heading: true }, ...s.recent.map(path => ({ id: 'open-recent', label: path.split(/[\\/]/).pop(), arg: path }))]
+        : [];
+    const items: MenuItem[] = [
+        ...['new', 'kanban-new', 'table-new', 'inbox-new'].flatMap(id => entry(id)),
+        { id: '-' }, ...named('open'), ...named('open-folder'), ...recent,
+    ];
+    const mainItems: MenuItem[] = [
+        ...named('command-palette'), ...named('find'), ...named('export-html'),
+        { id: '-' }, ...named('home'), ...named('journal'), ...named('journal-capture'),
+        { id: '-' }, ...named('dark'), ...named('preferences'), ...named('shortcuts'), ...named('about'), ...named('quit'),
+    ];
     return (
         <header className="headerbar">
             <div className="start">
@@ -84,7 +104,10 @@ function HeaderBar() {
                         <Icon name="text-x-generic" /><span>{layoutName(s.layout.layout, tab.page)}</span>
                     </button>
                 )}
-                <button className="button flat" title="Commands (Ctrl+Shift+P)" aria-label="Main Menu" onClick={() => client.openPalette()}><Icon name="open-menu" /></button>
+                <div className="split">
+                    <button className="button flat" title="Main Menu" aria-label="Main Menu" aria-haspopup="menu" aria-expanded={main} onClick={() => setMain(v => !v)}><Icon name="open-menu" /></button>
+                    {main && <Menu items={mainItems} onClose={() => setMain(false)} align="right" />}
+                </div>
             </div>
         </header>
     );
@@ -197,6 +220,9 @@ export function App() {
             <Notification />
             <Palette />
             <ImageViewer />
+            <PreferencesDialog />
+            <ShortcutsDialog />
+            <AboutDialog />
             <DialogLayer />
         </div>
     );

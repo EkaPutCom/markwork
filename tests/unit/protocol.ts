@@ -438,6 +438,29 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('Preferences: the command opens the dialog with the values, a change is written and sent again, a wrong one is refused', async () => {
+        const { server, ui } = await start();
+        ok((await ui.client.request('command', { name: 'preferences' })).ok, 'preferences');
+        await until(() => ui.last('view.prefs.open') !== undefined);
+        const first = ui.last('view.prefs.open')!.data as { autosave: boolean; colorScheme: string };
+        ok((await ui.client.request('act.prefs.set', { key: 'autosave', value: !first.autosave })).ok, 'act.prefs.set');
+        await until(() => (ui.last('view.prefs.values')?.data as { autosave: boolean } | undefined)?.autosave === !first.autosave);
+        ok((await ui.client.request('act.prefs.set', { key: 'colorScheme', value: 'dark' })).ok, 'colorScheme');
+        await until(() => (ui.last('view.prefs.values')?.data as { colorScheme: string }).colorScheme === 'dark');
+        const bad = await ui.client.request('act.prefs.set', { key: 'chatModel', value: 'no-such-model' });
+        ok(!bad.ok && bad.error.code === 'bad_request', 'a value the key does not take');
+        ok((await ui.client.request('act.prefs.closed', {})).ok, 'closed');
+        server.dispose();
+    });
+
+    await test('the Recent list of the menus is sent when files are opened', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.last('recent') !== undefined);
+        ok((ui.last('recent')!.paths as string[]).some(p => p.endsWith('note.md')), 'note.md is recent');
+        server.dispose();
+    });
+
     await test('app.close lets a window with nothing unsaved go', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
@@ -573,7 +596,7 @@ export async function protocolTests(): Promise<void> {
         'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.views',
         'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv',
         'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs',
-        'host.preferencesView', 'host.pullView', 'host.reviewView', 'host.setRecent', 'host.table',
+        'host.pullView', 'host.reviewView', 'host.table',
     ];
     await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {
         eq(unwiredTouched(), STILL_UNWIRED);

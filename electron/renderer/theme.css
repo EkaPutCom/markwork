@@ -309,3 +309,25 @@ kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 .html-bar { display: flex; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid var(--border); }
 .html-bar .where { color: var(--fg-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
 .html-page iframe { flex: 1; border: 0; background: #fff; }
+
+/* Preferences, Keyboard Shortcuts, About. */
+.dialog.modal { text-align: left; width: 440px; max-height: calc(100% - 64px); overflow: auto; padding: 16px 20px 20px; }
+.dialog.modal.wide { width: 560px; }
+.dialog.modal header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.dialog.modal header h2 { margin: 0; }
+.pref-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.pref-tabs button { padding: 6px 12px; border-radius: 8px; font-weight: 700; color: var(--fg-dim); }
+.pref-tabs button.active { background: var(--row-active); color: var(--fg); }
+.pref-page h3, .shortcuts h3 { margin: 16px 0 4px; font-size: 12px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: .5px; }
+.pref-row { display: flex; align-items: center; gap: 16px; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--fg) 8%, transparent); }
+.pref-row .text { display: flex; flex-direction: column; }
+.pref-row .subtitle { font-size: 12px; color: var(--fg-dim); }
+.pref-row select, .pref-row input[type=number] { background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg); border: 0; border-radius: 8px; padding: 6px 8px; font: inherit; }
+.shortcut { display: flex; justify-content: space-between; padding: 4px 0; }
+.about { text-align: center; padding: 8px 0; }
+.about h1 { margin: 0; }
+.about .version, .about .dim { color: var(--fg-dim); font-size: 13px; }
+
+.popover.right { left: auto; right: 0; }
+.popover hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; width: 100%; }
+.popover .menu-heading { padding: 6px 10px 2px; font-size: 11px; font-weight: 700; color: var(--fg-dim); text-transform: uppercase; letter-spacing: .5px; }
