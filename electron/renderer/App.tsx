@@ -14,9 +14,11 @@ import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './Modals.js';
 import { FieldsDialog } from './FieldsDialog.js';
 import { ImageViewer } from './ImageViewer.js';
 import { Chat, ChatReview } from './Chat.js';
+import { Collab, SendChangesDialog, TokenDialog } from './Collab.js';
+import { History, HistoryViewers } from './History.js';
 import { LogViewer } from './LogViewer.js';
 import { Tabs } from './Tabs.js';
-import { Icon } from './Icons.js';
+import { Icon, type IconName } from './Icons.js';
 import { label, matches } from './keys.js';
 import { useClient, useStore } from './useClient.js';
 
@@ -129,11 +131,13 @@ function HeaderBar() {
     );
 }
 
-// The rail of icons that picks the panel beside it. Files and Outline are carried over so far.
-const PAGES: { page: string; label: string; icon: 'folder' | 'outline' | 'search' }[] = [
+// The rail of icons that picks the panel beside it, in the order of the GTK window.
+const PAGES: { page: string; label: string; icon: IconName }[] = [
     { page: 'files', label: 'Files', icon: 'folder' },
     { page: 'search', label: 'Search', icon: 'search' },
     { page: 'outline', label: 'Outline', icon: 'outline' },
+    { page: 'history', label: 'History', icon: 'document-open-recent' },
+    { page: 'collab', label: 'Pull requests', icon: 'pull-request' },
 ];
 
 function Rail() {
@@ -227,7 +231,7 @@ export function App() {
             <HeaderBar />
             <div className="main">
                 <Rail />
-                {sidebar && (page === 'outline' ? <Outline /> : page === 'search' ? <Search /> : <Explorer />)}
+                {sidebar && (page === 'outline' ? <Outline /> : page === 'search' ? <Search /> : page === 'history' ? <History /> : page === 'collab' ? <Collab /> : <Explorer />)}
                 <div className="editor-group">
                     <Tabs />
                     <EditorArea />
@@ -244,6 +248,9 @@ export function App() {
             <FieldsDialog />
             <ChatReview />
             <LogViewer />
+            <HistoryViewers />
+            <TokenDialog />
+            <SendChangesDialog />
             <DialogLayer />
         </div>
     );

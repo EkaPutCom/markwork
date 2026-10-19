@@ -19,6 +19,8 @@ import type { HomeData } from '../../src/app/protocol/screen.js';
 import type { PreferencesData } from '../../src/app/protocol/preferences.js';
 import type { SchemaDialogOptions } from '../../src/app/protocol/schema.js';
 import type { FieldDef } from '../../src/markdown/fields.js';
+import type { ChangeKind, Commit, DiscardOutcome, HistoryChanges, HistoryText, WriteResult } from '../../src/app/protocol/history.js';
+import type { CollabSnapshot, MergeMethod, PullSnapshot, RepoRef, SendChangesAnswer, SendChangesOptions, TokenSource } from '../../src/app/protocol/collab.js';
 import { ChatModel } from './chatmodel.js';
 
 declare global {
@@ -63,6 +65,33 @@ export interface SearchPanel { form: SearchQuery; replacement: string; replace: 
 // The Files tree: the entries of every folder the core has sent (by folder path), the folders shown open, and the file to highlight.
 export interface FileTree { root: string | null; folders: Record<string, FolderEntry[]>; expanded: string[]; revealed: string | null }
 
+// The History tab: the commits of the active file, its uncommitted files, and the message of the commit form as the core wrote it so far
+// (`messageRev` counts the times, so the form takes the text again when it arrives).
+export interface HistoryPanel {
+    commits: Commit[]; more: boolean; note: string;
+    changes: HistoryChanges | null;
+    message: string; messageRev: number;
+}
+
+// A history viewer: one commit (changes and contents), or one file's uncommitted changes with a commit form (commit = null).
+export interface Viewer {
+    id: number; file: string; commit: Commit | null;
+    diff: HistoryText | null; content: string | null;
+    message: string; messageRev: number;
+}
+
+// The token dialog the core asked for, and the form that sends changes.
+export interface TokenAsk { id: number; repo: RepoRef; hasToken: boolean; source: TokenSource | null }
+export interface SendAsk { id: number; options: SendChangesOptions }
+
+// What the discard question says: a new file goes to the Trash, a deleted one comes back, changes to a tracked file are lost.
+export function discardPrompt(kind: ChangeKind, path: string): { heading: string; detail: string; accept: string } {
+    const name = path.split(/[\\/]/).pop() ?? path;
+    if (kind === 'untracked' || kind === 'added') return { heading: `Delete the new file “${name}”?`, detail: 'The file is not in the last commit. It will be moved to the Trash.', accept: 'Move to Trash' };
+    if (kind === 'deleted') return { heading: `Restore “${name}”?`, detail: 'The file comes back as it is in the last commit.', accept: 'Restore' };
+    return { heading: `Discard the changes to “${name}”?`, detail: 'The file goes back to the last commit. This cannot be undone.', accept: 'Discard Changes' };
+}
+
 export interface Toast { text: string; action: { label: string; token: number } | null; at: number }
 
 export interface State {
@@ -93,10 +122,17 @@ export interface State {
     layout: { layout: string | null; structured: boolean };   // the layout button (view.layout): '' = text, null = hidden
     schema: { id: number; options: SchemaDialogOptions } | null;   // the Fields… dialog while the core asks for it (ask.schema)
     csvFind: { n: number; replace: boolean };   // how many times the CSV tab's search bar was asked for
+    history: HistoryPanel;
+    viewers: Viewer[];               // the history viewers that are open, the latest last
+    collab: CollabSnapshot;          // the pull requests tab (view.collab)
+    pull: PullSnapshot | null;       // the pull request the core opened for review (view.pull)
+    pullShown: boolean;              // the content area shows it, not the document (view.pull.show, until the next page)
+    tokenAsk: TokenAsk | null;       // the token dialog while the core asks for it (ask.token)
+    sendAsk: SendAsk | null;         // the form that sends changes while the core asks for it (ask.sendChanges)
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['preferences', 'open-recent', 'home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+const CORE_COMMANDS = new Set(['send-changes', 'preferences', 'open-recent', 'home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave', 'chat', 'journal', 'journal-capture', 'journal-summary']);
 const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
@@ -109,12 +145,17 @@ export class Client {
         source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, recent: [], prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
         schema: null, csvFind: { n: 0, replace: false },
+        history: { commits: [], more: false, note: '', changes: null, message: '', messageRev: 0 }, viewers: [],
+        collab: { note: null, server: null, pulls: [] }, pull: null, pullShown: false, tokenAsk: null, sendAsk: null,
     };
     // The Assistant panel's state: a store of its own, because an answer streams in many small notices.
     readonly chat = new ChatModel(() => this.conn);
     private readonly waitingDialogs: Dialog[] = [];
     private schemaAnswer: ((fields: FieldDef[] | null) => void) | null = null;
     private schemaCount = 0;
+    private tokenAnswer: ((token: string | null) => void) | null = null;
+    private sendAnswer: ((answer: SendChangesAnswer | null) => void) | null = null;
+    private askCount = 0;
     private readonly listeners = new Set<() => void>();
     private conn: Connection | null = null;
     private editor: MarkdownEditor | null = null;
@@ -199,7 +240,11 @@ export class Client {
         if (path) await this.ask('open.folder', { path });
     }
     openFile = (name: string): void => { void this.ask('open.file', { name }); };
-    selectTab = (doc: number): void => { void this.ask('tab.select', { doc }); };
+    selectTab = (doc: number): void => {
+        // A tab pressed while the review is shown brings the document back, even the one that is already the active tab.
+        if (this.snapshot.pullShown) { this.set({ pullShown: false }); void this.ask('act.pull.close'); }
+        void this.ask('tab.select', { doc });
+    };
     closeTab = (doc: number): void => { void this.ask('tab.close', { doc }); };
 
     // A change the user made on the board: shown at once with the function the core applies, then sent.
@@ -354,6 +399,100 @@ export class Client {
     replaceAll(): void { void this.ask('act.search.replaceAll', { replacement: this.snapshot.search.replacement }); }
 
     jumpToHeading(index: number): void { void this.ask('act.outline.jump', { index }); }
+
+    // ---------- History ----------
+
+    refreshHistory = (): void => { void this.ask('act.history.refresh'); };
+    moreHistory = (): void => { void this.ask('act.history.more'); };
+    openCommit = (hash: string): void => { void this.ask('act.history.open', { hash }); };
+    openChanges = (path: string): void => { void this.ask('act.history.openChanges', { path }); };
+
+    // An error to show, or null once the commit is made.
+    async commitFiles(files: string[], message: string): Promise<string | null> {
+        const reply = await this.conn?.request('act.history.commit', { files, message });
+        if (!reply) return 'The core is not running';
+        return reply.ok ? (reply.error as string | null) : reply.error.message;
+    }
+
+    // 'done' (the core asked and threw the changes away), 'declined', or an error to show.
+    async discardFile(path: string): Promise<DiscardOutcome> {
+        const reply = await this.conn?.request('act.history.discard', { path });
+        return reply?.ok ? reply.outcome as DiscardOutcome : { error: reply && !reply.ok ? reply.error.message : 'The core is not running' };
+    }
+
+    // The assistant writes the commit message from these files; it streams into the form as history.messageText.
+    async writeMessage(files: string[]): Promise<WriteResult> {
+        const reply = await this.conn?.request('act.history.write', { files });
+        return reply?.ok ? reply.result as WriteResult : { ok: false, reason: 'failed', message: reply && !reply.ok ? reply.error.message : 'The core is not running' };
+    }
+    stopWriting = (): void => { void this.ask('act.history.stopWriting'); };
+
+    private changeViewer(id: number, patch: Partial<Viewer>): void {
+        this.set({ viewers: this.snapshot.viewers.map(v => v.id === id ? { ...v, ...patch } : v) });
+    }
+
+    async viewerCommit(viewer: number, message: string): Promise<string | null> {
+        const reply = await this.conn?.request('act.historyViewer.commit', { viewer, message });
+        if (!reply) return 'The core is not running';
+        return reply.ok ? (reply.error as string | null) : reply.error.message;
+    }
+    async viewerDiscard(viewer: number): Promise<DiscardOutcome> {
+        const reply = await this.conn?.request('act.historyViewer.discard', { viewer });
+        return reply?.ok ? reply.outcome as DiscardOutcome : { error: reply && !reply.ok ? reply.error.message : 'The core is not running' };
+    }
+    async viewerWrite(viewer: number): Promise<WriteResult> {
+        const reply = await this.conn?.request('act.historyViewer.write', { viewer });
+        return reply?.ok ? reply.result as WriteResult : { ok: false, reason: 'failed', message: reply && !reply.ok ? reply.error.message : 'The core is not running' };
+    }
+    viewerStopWriting = (viewer: number): void => { void this.ask('act.historyViewer.stopWriting', { viewer }); };
+    closeViewer(viewer: number): void {
+        this.set({ viewers: this.snapshot.viewers.filter(v => v.id !== viewer) });
+        void this.ask('act.historyViewer.closed', { viewer });
+        this.editor?.focus();
+    }
+
+    // ---------- Pull requests ----------
+
+    openPull = (number: number): void => { void this.ask('act.collab.open', { number }); };
+    refreshPulls = (): void => { void this.ask('act.collab.refresh'); };
+    editServer = (): void => { void this.ask('act.collab.server'); };
+    sendChanges = (): void => { void this.ask('act.collab.send'); };
+
+    closePull(): void { this.set({ pullShown: false }); void this.ask('act.pull.close'); this.editor?.focus(); }
+    selectPullFile = (path: string): void => {
+        if (this.snapshot.pull) this.set({ pull: { ...this.snapshot.pull, selected: path } });
+        void this.ask('act.pull.select', { path });
+    };
+    mergePull = (method: MergeMethod): void => { void this.ask('act.pull.merge', { method }); };
+    pullInBrowser = (): void => { void this.ask('act.pull.browser'); };
+    commentOnPull = (text: string): void => { void this.ask('act.pull.comment', { text }); };
+    resolvePull = (): void => { void this.ask('act.pull.resolve'); };
+    finishPull = (): void => { void this.ask('act.pull.finish'); };
+    abortPull = (): void => { void this.ask('act.pull.abort'); };
+
+    // The token dialog: the token to save, '' to forget the saved one, null for Cancel. Test tries a token without saving it.
+    answerToken(id: number, token: string | null): void {
+        if (this.snapshot.tokenAsk?.id !== id) return;
+        this.set({ tokenAsk: null });
+        this.tokenAnswer?.(token);
+        this.tokenAnswer = null;
+        this.editor?.focus();
+    }
+    async testToken(id: number, token: string): Promise<string> {
+        const reply = await this.conn?.request('act.collab.testToken', { ask: id, token });
+        if (!reply) throw new Error('The core is not running');
+        if (!reply.ok) throw new Error(reply.error.message);
+        return reply.message as string;
+    }
+
+    // The form that sends changes: the answer, or null for Cancel.
+    answerSend(id: number, answer: SendChangesAnswer | null): void {
+        if (this.snapshot.sendAsk?.id !== id) return;
+        this.set({ sendAsk: null });
+        this.sendAnswer?.(answer);
+        this.sendAnswer = null;
+        this.editor?.focus();
+    }
 
     // ---------- Settings ----------
 
@@ -518,6 +657,23 @@ export class Client {
         }));
         // A change the agent proposes: the review is the user's, and the answer is their note.
         c.on('ask.proposal', (p, cancel) => this.chat.ask(p, listener => { cancel.onCancel(listener); }));
+        c.on('ask.discard', async (p, cancel) => {
+            const { heading, detail, accept } = discardPrompt(p.kind as ChangeKind, String(p.path));
+            const { value } = await this.showDialog({ title: heading, detail, entry: null, buttons: [{ label: accept, value: 'yes', style: 'destructive' }, { label: 'Cancel', value: 'no' }] }, cancel);
+            return { answer: value === 'yes' };
+        });
+        c.on('ask.token', (p, cancel) => new Promise(resolve => {
+            const id = ++this.askCount;
+            this.tokenAnswer = token => resolve(token === null ? {} : { token });
+            this.set({ tokenAsk: { id, repo: p.repo as RepoRef, hasToken: p.hasToken === true, source: (p.source as TokenSource | null) ?? null } });
+            cancel.onCancel(() => this.answerToken(id, null));
+        }));
+        c.on('ask.sendChanges', (p, cancel) => new Promise(resolve => {
+            const id = ++this.askCount;
+            this.sendAnswer = answer => resolve(answer ? { answer } : {});
+            this.set({ sendAsk: { id, options: p.options as SendChangesOptions } });
+            cancel.onCancel(() => this.answerSend(id, null));
+        }));
         c.on('ask.file', async p => ({ path: await window.markwork.chooseFile(p as unknown as ChooseFileOptions) }));
         c.onOther(this.genericAsk);
 
@@ -547,6 +703,9 @@ export class Client {
 
     windowActive(active: boolean): void { this.conn?.notify('window.active', { active }); }
 
+    // The review is a page of the content area; the next page the core shows (a document, Home) takes its place.
+    private leaveReview(): void { if (this.snapshot.pullShown) this.set({ pullShown: false }); }
+
     private notice(ev: string, p: Record<string, unknown>): void {
         if (ev.startsWith('chat.') && this.chat.notice(ev, p)) return;
         const id = p.doc as number;
@@ -564,8 +723,9 @@ export class Client {
                 break;
             }
             case 'page.close': this.set({ tabs: this.snapshot.tabs.filter(t => t.id !== p.page) }); break;
-            case 'page.active': this.set({ active: p.page as number }); break;
+            case 'page.active': this.leaveReview(); this.set({ active: p.page as number }); break;
             case 'view.home': {
+                this.leaveReview();
                 const home = this.snapshot.tabs.find(t => t.page === 'home');
                 if (home) this.changeTab(home.id, { home: p.data as HomeData });
                 break;
@@ -577,6 +737,7 @@ export class Client {
                 if (id === this.snapshot.active) this.editor?.reset(p.text as string);
                 break;
             case 'doc.active': {
+                this.leaveReview();
                 this.set({ active: id });
                 const shown = this.tab(id);
                 if (shown) this.editor?.show(id, shown.mirror.text);
@@ -592,7 +753,7 @@ export class Client {
                 break;
             }
             case 'doc.saved': tab?.mirror.savedAt(p.version as number); this.changeTab(id, {}); break;
-            case 'view.page': this.changeTab(id, { page: p.page as string }); break;
+            case 'view.page': this.leaveReview(); this.changeTab(id, { page: p.page as string }); break;
             case 'view.notes': this.changeTab(id, { board: p.board as Board, page: p.page as string, groupField: (p.groupField as string | null) ?? null, agents: p.agents !== false }); break;
             case 'view.csv': this.changeTab(id, { csv: p.text as string, csvRev: (tab?.csvRev ?? 0) + 1 }); break;
             case 'view.focusCapture': this.changeTab(id, { capture: (tab?.capture ?? 0) + 1 }); break;
@@ -613,6 +774,23 @@ export class Client {
             case 'view.search': this.set({ search: { ...this.snapshot.search, results: p.results as SearchResults } }); break;
             case 'view.outline': this.set({ outline: p.headings as State['outline'] }); break;
             case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split('/').pop() ?? '' } }); break;
+            case 'view.history': this.set({ history: { ...this.snapshot.history, commits: p.commits as Commit[], more: p.more === true, note: String(p.note ?? '') } }); break;
+            case 'view.historyChanges': this.set({ history: { ...this.snapshot.history, changes: p as unknown as HistoryChanges } }); break;
+            case 'history.messageText': this.set({ history: { ...this.snapshot.history, message: p.text as string, messageRev: this.snapshot.history.messageRev + 1 } }); break;
+            case 'view.historyViewer.open':
+                this.set({ viewers: [...this.snapshot.viewers, { id: p.viewer as number, file: p.file as string, commit: (p.commit as Commit | null) ?? null, diff: null, content: null, message: '', messageRev: 0 }] });
+                break;
+            case 'view.historyViewer.diff': this.changeViewer(p.viewer as number, { diff: p.diff as HistoryText }); break;
+            case 'view.historyViewer.content': this.changeViewer(p.viewer as number, { content: p.text as string }); break;
+            case 'view.historyViewer.messageText': {
+                const viewer = this.snapshot.viewers.find(v => v.id === p.viewer);
+                if (viewer) this.changeViewer(viewer.id, { message: p.text as string, messageRev: viewer.messageRev + 1 });
+                break;
+            }
+            case 'view.historyViewer.close': this.set({ viewers: this.snapshot.viewers.filter(v => v.id !== p.viewer) }); break;
+            case 'view.collab': this.set({ collab: { note: (p.note as string | null) ?? null, server: (p.server as string | null) ?? null, pulls: p.pulls as CollabSnapshot['pulls'] } }); break;
+            case 'view.pull': this.set({ pull: p as unknown as PullSnapshot }); break;
+            case 'view.pull.show': this.set({ pullShown: true }); break;
             case 'open.uri': window.open(p.uri as string); break;
             case 'setting': this.applySettings({ [p.key as string]: p.value }); break;
             case 'commands.state': this.set({ disabled: p.disabled as string[] }); break;

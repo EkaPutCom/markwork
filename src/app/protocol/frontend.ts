@@ -21,6 +21,8 @@ import { ProtocolTree } from './tree.js';
 import { ProtocolPreferences } from './preferences.js';
 import { ProtocolScreen } from './screen.js';
 import { ProtocolChatPanel } from './chat.js';
+import { ProtocolHistoryDialogs, ProtocolHistoryTab, ProtocolHistoryViewers } from './history.js';
+import { ProtocolCollabDialogs, ProtocolCollabPanel, ProtocolContributeDialogs, ProtocolPullDialogs, ProtocolPullView } from './collab.js';
 
 // A page that shows the notes of the document (board, list, table, calendar, …): it sends the board as it is, and the
 // frontend answers with the operations the user makes (`act.notes.edit`). Only the board has groups and agents.
@@ -75,6 +77,13 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly chat: ProtocolChatPanel;
     // The CSV tab's end of the wire: `act.csv.*` call its `onChange` and `onShape`.
     readonly csv: ProtocolCsv;
+    // The History tab and the viewer windows' end of the wire (`act.history.*`, `act.historyViewer.*`).
+    readonly historyTab: ProtocolHistoryTab;
+    readonly historyViewers: ProtocolHistoryViewers;
+    // The pull request tab, the review page, and the token dialog (`act.collab.*`, `act.pull.*`).
+    readonly collabPanel: ProtocolCollabPanel;
+    readonly pullView: ProtocolPullView;
+    readonly collabDialogs: ProtocolCollabDialogs;
     readonly documents: FrontendDocuments<ProtocolEditor>;
     readonly dialogs: AppDialogs;
     // The questions the dialogs ask over the wire.
@@ -95,6 +104,11 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         this.tree = new ProtocolTree(wire);
         this.preferences = new ProtocolPreferences(wire);
         this.chat = new ProtocolChatPanel(wire, this.asks);
+        this.historyTab = new ProtocolHistoryTab(wire);
+        this.historyViewers = new ProtocolHistoryViewers(wire);
+        this.collabPanel = new ProtocolCollabPanel(wire);
+        this.pullView = new ProtocolPullView(wire);
+        this.collabDialogs = new ProtocolCollabDialogs(this.asks);
         this.host = unwired<FrontendHost<ProtocolEditor>>({
             screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
             board: unwired<KanbanView>(board, 'host.board'),
@@ -107,6 +121,12 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             fileTree: this.tree,
             preferencesView: this.preferences,
             chatPanel: this.chat,
+            historyTab: this.historyTab,
+            historyViewers: this.historyViewers,
+            collabPanel: this.collabPanel,
+            pullView: this.pullView,
+            // The content area shows the review page until the next page the core shows (`view.page`, `doc.active`).
+            showPull: () => wire.notify('view.pull.show'),
             // The Recent list of the menus: the frontend draws it.
             setRecent: (paths: string[]) => wire.notify('recent', { paths }),
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
@@ -149,6 +169,10 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             views: this.viewDialogs(),
             // "Add to Journal": one line of text, recorded with the time.
             journal: { capture: (prompt: Prompt) => this.asks.text('ask.capture', prompt) },
+            history: new ProtocolHistoryDialogs(this.asks),
+            collab: this.collabDialogs,
+            pulls: new ProtocolPullDialogs(this.asks),
+            contribute: new ProtocolContributeDialogs(this.asks),
             search: { confirm: (message: string, detail: string, accept: string) => this.asks.question('ask.search.confirm', { message, detail, accept, destructive: true }) },
         }, 'dialogs');
     }

@@ -5,8 +5,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { chatHtml } from '../../src/markdown/chathtml.js';
 import { formatMs } from '../../src/agent/tracetree.js';
-import type { ContextOptions, DiffLine, WorkState } from '../../src/app/protocol/chat.js';
+import type { ContextOptions, WorkState } from '../../src/app/protocol/chat.js';
 import { fmtTokens, statusLine, usageLine, type AnswerView, type PastAction, type ProposalView } from './chatmodel.js';
+import { DiffLines } from './Diff.js';
 import { Icon, type IconName } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useChat, useClient } from './useClient.js';
@@ -140,10 +141,6 @@ function Answer({ answer }: { answer: AnswerView }) {
 }
 
 // ---------- Change proposals ----------
-
-export function DiffLines({ lines }: { lines: DiffLine[] }) {
-    return <pre className="diff">{lines.map((l, i) => <div key={i} className={`line ${l.kind}`}>{l.text || ' '}</div>)}</pre>;
-}
 
 const totals = (changes: ProposalView['changes']) => changes.reduce((a, c) => ({ added: a.added + c.added, removed: a.removed + c.removed }), { added: 0, removed: 0 });
 

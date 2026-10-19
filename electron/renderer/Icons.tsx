@@ -25,6 +25,7 @@ const PATHS = {
     'insert-text': ['m 2 2 h 12 v 2 h -12 z', 'm 2 6 h 7 v 2 h -7 z', 'm 2 10 h 12 v 2 h -12 z', 'm 11 6 l 4 2 l -4 2 z'],
     'dialog-warning': ['m 8 0.5 l 8 14 h -16 z m -1 5 v 4 h 2 v -4 z m 0 5 v 2 h 2 v -2 z'],
     'chat-message-new': ['m 3 1 h 10 c 1.1 0 2 0.9 2 2 v 7 c 0 1.1 -0.9 2 -2 2 h -5 l -3.5 3 v -3 h -1.5 c -1.1 0 -2 -0.9 -2 -2 v -7 c 0 -1.1 0.9 -2 2 -2 z m 0 2 v 7 h 3 v 1.4 l 1.7 -1.4 h 5.3 v -7 z'],
+    'pull-request': ['m 4 1 a 2 2 0 1 1 0 4 a 2 2 0 1 1 0 -4 z', 'm 3 5 h 2 v 6 h -2 z', 'm 4 11 a 2 2 0 1 1 0 4 a 2 2 0 1 1 0 -4 z', 'm 12 11 a 2 2 0 1 1 0 4 a 2 2 0 1 1 0 -4 z', 'm 11 6 h 2 v 5 h -2 z', 'm 12 1 l 3.5 4.5 h -7 z'],
     'list-add': ['m 7 2 h 2 v 5 h 5 v 2 h -5 v 5 h -2 v -5 h -5 v -2 h 5 z'],
     'dialog-error': ['m 8 0 c -4.4 0 -8 3.6 -8 8 s 3.6 8 8 8 s 8 -3.6 8 -8 s -3.6 -8 -8 -8 z m -1 3 h 2 v 6 h -2 z m 0 7 h 2 v 2 h -2 z'],
     'dialog-information': ['m 8 0 c -4.4 0 -8 3.6 -8 8 s 3.6 8 8 8 s 8 -3.6 8 -8 s -3.6 -8 -8 -8 z m -1 3 h 2 v 2 h -2 z m 0 4 h 2 v 6 h -2 z'],
