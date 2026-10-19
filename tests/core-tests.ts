@@ -53,6 +53,8 @@ import { contributeTests } from './unit/contribute.js';
 import { publishTests } from './unit/publish.js';
 import { resolveTests } from './unit/resolve.js';
 import { conflictTests } from './unit/conflicts.js';
+import { clickTests } from './unit/clicks.js';
+import { tableTests } from './unit/table.js';
 import { commitMessageTests } from './unit/commitmessage.js';
 import { harnessTests } from './unit/harness.js';
 import { worktreeTests } from './unit/worktree.js';
@@ -86,7 +88,9 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     inboxModelTests();
     fieldsModelTests();
     layoutTests();
+    tableTests();
     tableLayoutTests();
+    clickTests();
     editCommandTests();
     layoutsModelTests();
     sampleDocumentTests();

@@ -16,7 +16,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import { TABLE_CELL_PAD_X, TABLE_CELL_PAD_Y } from '../config.js';
-import { parseTable, type TableRange } from '../markdown/table.js';
+import { fitColumns, parseTable, type TableRange } from '../markdown/table.js';
 import { cellMarkup, type MarkupColors } from '../markdown/pango.js';
 import type { Palette } from '../colors.js';
 import { setTagGroup, setTagRanges, type Range } from './tagsync.js';
@@ -26,29 +26,6 @@ import { OverlaySlots } from './overlays.js';
 const BORDER = 1;       // thickness of the cell border (same as the CSS in ui/theme.ts)
 const GAP = 12;         // distance above and below the grid
 const HIDDEN_LINE = 2;  // height of one hidden table row (tag tablehide, ~1 px + rounding)
-const MIN_COLUMN = 56;  // smallest column width when the table has to be narrowed
-
-// Column widths so that they fit in `available`. Columns that are already narrow are left alone,
-// the remaining space is divided evenly among the wide columns (their text wraps onto the next line).
-export function fitColumns(natural: number[], available: number): number[] {
-    const widths = [...natural];
-    if (natural.reduce((a, b) => a + b, 0) <= available) return widths;
-
-    let remaining = available;
-    let open = natural.map((_, i) => i);
-    for (let changed = true; changed && open.length;) {
-        changed = false;
-        const share = remaining / open.length;
-        for (const i of [...open]) {
-            if (natural[i] > share) continue;
-            remaining -= natural[i];
-            open = open.filter(j => j !== i);
-            changed = true;
-        }
-    }
-    for (const i of open) widths[i] = Math.max(MIN_COLUMN, Math.floor(remaining / open.length));
-    return widths;
-}
 
 interface Block {
     start: number;           // header row

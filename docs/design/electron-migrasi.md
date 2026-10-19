@@ -36,13 +36,13 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Editor | Highlight, sembunyi sintaks, perintah format | `markdown/highlight.ts`, `editcommands.ts` | ✅ | — |
 | Editor | Find/replace dalam dokumen | panel CodeMirror | ✅ | — |
 | Editor | Enter/Tab di list, quote, tabel (`lists.ts`, `tableedit.ts`) | `editcommands.ts` | 🟡 cek paritas | 1 |
-| Editor | Klik checkbox, Ctrl+klik link dan wikilink (`clicks.ts`) | `NoteLinks` | ⬜ | 1 |
+| Editor | Klik checkbox, Ctrl+klik link dan wikilink (`clicks.ts`) | `NoteLinks`, `markdown/clicks.ts` (murni) | ⬜ | 1 |
 | Editor | Saran `[[` (`wikicomplete.ts`) | `ask.notes` | ⬜ | 1 |
-| Editor | Gambar inline, zoom gambar (`images.ts`, `imageviewer.ts`) | `showImage` | ⬜ | 1 |
+| Editor | Gambar inline, zoom gambar (`images.ts`, `imageviewer.ts`) | `showImage`, `markdown/imagesource.ts` (murni) | ⬜ | 1 |
 | Editor | Blok kode berwarna (`codehighlight.ts`, `codelayer.ts`) | — (renderer) | ⬜ | 1 |
-| Editor | Tabel sebagai grid (`tablelayer.ts`) | `markdown/table.ts` | ⬜ | 1 |
-| Editor | Mermaid dan DBML (`mermaid.ts`, `mermaidrender.ts`) | `markdown/dbml.ts` | ⬜ | 1 |
-| Editor | Penanda konflik git (`conflictlayer.ts`) | `editor/conflicts.ts` (murni) | ⬜ | 1 |
+| Editor | Tabel sebagai grid (`tablelayer.ts`) | `markdown/table.ts` (termasuk `fitColumns`) | ⬜ | 1 |
+| Editor | Mermaid dan DBML (`mermaid.ts`, `mermaidrender.ts`) | `markdown/dbml.ts`, `markdown/diagram.ts` | ⬜ | 1 |
+| Editor | Penanda konflik git (`conflictlayer.ts`) | `markdown/conflicts.ts` (murni) | ⬜ | 1 |
 | Editor | Hanging indent list (`listindent.ts`) | — | ⬜ | 1 |
 | Editor | Mode source, focus, typewriter | `ViewOption`, setting | 🟡 source saja | 1 |
 | Jendela | Header bar, menu utama, tombol layout | `ViewScreen.showLayout`, `enableActions` | 🟡 tombol layout dan status perintah ada; menu layout belum | 2 |
@@ -228,5 +228,5 @@ Fase 1, 2, 3, dan 4 bisa berjalan paralel setelah Fase 0, asalkan tiap PR hanya 
 - **Perilaku editor yang halus.** Hal seperti penyembunyian sintaks, hanging indent, dan undo dari tulisan core mudah berbeda sedikit dari GTK. Mitigasinya adalah skenario Playwright yang meniru `tests/gui/` satu per satu, bukan pemeriksaan manual.
 - **Widget blok di CodeMirror** (tabel, gambar, mermaid) memengaruhi pengukuran tinggi baris dan scroll. Mulai dari tabel, yang paling sering dipakai, lalu ukur di dokumen besar (`bench/tables-500.json`).
 - **Server protokol membengkak.** Tanpa pemecahan per controller, `server.ts` dan `frontend.ts` akan menjadi file ribuan baris. Pecah di Fase 0.
-- **Logika bocor ke renderer.** Godaan terbesar ada di board dan Assistant. Aturannya: kalau GTK dan Electron butuh perhitungan yang sama, perhitungan itu tempatnya di `src/markdown/` atau `src/app/`. `scripts/layers.mjs` sebaiknya diperluas untuk `electron/renderer` (hanya boleh mengimpor modul murni dari `src/`).
+- **Logika bocor ke renderer.** Godaan terbesar ada di board dan Assistant. Aturannya: kalau GTK dan Electron butuh perhitungan yang sama, perhitungan itu tempatnya di `src/markdown/` atau `src/app/`. `scripts/layers.mjs` sudah memeriksa `electron/renderer` (dari `src/` hanya `markdown/`, `app/protocol/` messages, wire, mirror, changes, `app/commands.ts`, dan tipe dari `screen.ts`, `dialogs.ts`, `platform/index.ts`).
 - **Strategi produk.** Memori proyek mencatat "GNOME dulu; Electron kontingensi". Rencana ini menganggap keputusan 19 Oktober 2026 (Electron dibangun aktif) berlaku. Kalau prioritas kembali ke GTK, Fase 0 tetap berguna dan fase lain bisa berhenti di batas fase mana pun tanpa meninggalkan fitur setengah jadi.

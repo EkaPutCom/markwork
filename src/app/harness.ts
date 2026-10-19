@@ -94,8 +94,8 @@ const LABEL_CARD_CHARS = 4000;   // see spawnMeta() in orchestrator.ts: a longer
 export class HarnessController {
     readonly orchestrator: Orchestrator;
     readonly hub: DaemonHub;
-    // How links to the daemons are made; tests replace them.
-    openers: Openers = { socket: openSocketLink, command: openCommandLink };
+    // How links to the daemons are made; tests give their own to the constructor, or replace them later.
+    openers: Openers;
     // Opens the review of a card's worktree; the window connects it.
     onReview: (file: string, card: Card, board: Board) => void = () => {};
     private following: string | null = null;        // the machine whose runs are watched
@@ -106,7 +106,9 @@ export class HarnessController {
     private readonly logged = new WeakSet<object>();   // results already recorded in the activity log
 
     // dialogs: the frontend's questions; tests replace them with immediate answers.
-    constructor(private readonly host: HarnessHost, public dialogs: HarnessDialogs) {
+    // openers: given before anything connects, since the window's folder is followed while it is being built.
+    constructor(private readonly host: HarnessHost, public dialogs: HarnessDialogs, openers: Openers = { socket: openSocketLink, command: openCommandLink }) {
+        this.openers = openers;
         host.logs.onClear = runId => this.orchestrator.queue.runs.find(r => r.id === runId)?.trace.clear();
         host.logs.onClosed = runId => this.stopLog(runId);
         host.board.onCardMenu = (card, at) => this.menu(card, at);
