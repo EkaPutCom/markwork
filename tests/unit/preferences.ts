@@ -120,7 +120,9 @@ export async function preferencesTests(): Promise<void> {
         disk.write(disk.join(repo, 'a.txt'), 'a\n');
         await gitIn(repo, 'add', '-A');
         await gitIn(repo, 'commit', '-q', '-m', 'First');
-        const wt = disk.join(parent, '.markwork-worktrees', 'shop', 'fix-login');
+        // Git lists a worktree by its real path (macOS keeps /var/folders behind the symlink /private/var).
+        const realParent = disk.dirname(await gitIn(repo, 'rev-parse', '--show-toplevel'));
+        const wt = disk.join(realParent, '.markwork-worktrees', 'shop', 'fix-login');
         await gitIn(repo, 'worktree', 'add', '-q', '-b', 'markwork/fix-login', wt);
         const pages: ProjectPage[] = [];
         const lists: WorktreeList[] = [];
