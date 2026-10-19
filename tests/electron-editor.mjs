@@ -38,8 +38,14 @@ writeFileSync(join(notes, 'images', 'large.png'), png(3000, 1500));
 writeFileSync(join(notes, 'Source.md'), 'source\n');
 writeFileSync(join(notes, 'Idea.md'), '# Idea\n\ntext\n\n## Section Two\n\nmore\n');
 writeFileSync(join(notes, 'Plan.md'), '# Plan\n');
+writeFileSync(join(notes, 'page.html'), '<!doctype html><h1 id="h">hello html</h1><script>document.getElementById("h").textContent += " (js)"</script><img src="images/small.png"><a href="https://example.com">out</a>');
 writeFileSync(join(notes, 'Journal', 'Daily Notes.md'), '# Daily\n');
 writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
+
+async function waitFor(condition, ms = 5000) {
+    for (const end = Date.now() + ms; Date.now() < end;) { if (condition()) return; await new Promise(r => setTimeout(r, 50)); }
+    assert.fail('timed out');
+}
 
 const steps = [];
 async function step(name, run) {
@@ -54,7 +60,7 @@ async function step(name, run) {
 
 const app = await electron.launch({
     args: [repo, notes], cwd: repo,
-    env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config') },
+    env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), XDG_DATA_HOME: join(scratch, 'data') },   // the Trash of this run only
 });
 let failed = false;
 try {
@@ -189,6 +195,158 @@ try {
         await page.keyboard.press('Control+Home');
         await page.waitForTimeout(300);
         assert.equal(await popup.count(), 0, 'moving the cursor to an old [[ shows nothing');
+    });
+
+    // ---------- outline.ts (the side panel) ----------
+    await step('outline: the rail opens the panel with the headings, and a click jumps to one', async () => {
+        await open(/Idea\.md/);
+        await page.getByRole('button', { name: 'Outline' }).click();
+        const rows = page.locator('.outline .row');
+        await rows.first().waitFor();
+        assert.deepEqual(await rows.allTextContents(), ['Idea', 'Section Two']);
+        await rows.nth(1).click();
+        await page.waitForFunction(() => document.querySelector('.cm-content').cmTile.view.state.selection.main.head > 10);
+        assert.equal(await cursorLine(), 5);
+        await page.getByRole('button', { name: 'Files', exact: true }).click();
+        await page.getByRole('tree').waitFor();
+        await open(/Source\.md/);
+    });
+
+    // ---------- folder.ts, file.ts (the Files tab) ----------
+    await step('files: folders open when first shown, New File / Rename / Move work through the menu, keys and drag', async () => {
+        await page.getByRole('button', { name: 'Files', exact: true }).waitFor();
+        const row = name => page.getByRole('treeitem', { name });
+        await row(/^projects$/).click();
+        await row(/Meeting Notes\.md/).waitFor();
+        // New File from the menu of the tree.
+        await page.locator('.tree').click({ button: 'right', position: { x: 100, y: 400 } });
+        await page.getByRole('menuitem', { name: 'New File…' }).click();
+        const dialog = page.getByRole('alertdialog');
+        await dialog.getByRole('textbox').fill('fresh');
+        await dialog.getByRole('button', { name: 'OK' }).click();
+        await title.getByText('fresh.md').waitFor();
+        await row(/fresh\.md/).waitFor();
+        assert.ok(existsSync(join(notes, 'fresh.md')), 'created on disk');
+        // Rename with F2.
+        await row(/fresh\.md/).focus();
+        await page.keyboard.press('F2');
+        await dialog.getByRole('textbox').fill('renamed.md');
+        await dialog.getByRole('button', { name: 'OK' }).click();
+        await row(/renamed\.md/).waitFor();
+        assert.ok(existsSync(join(notes, 'renamed.md')) && !existsSync(join(notes, 'fresh.md')));
+        // Drag it onto the folder.
+        await row(/renamed\.md/).dragTo(row(/^projects$/));
+        await waitFor(() => existsSync(join(notes, 'projects', 'renamed.md')));
+        await row(/renamed\.md/).waitFor();
+        // Delete goes to the Trash after the question.
+        await row(/renamed\.md/).click({ button: 'right' });
+        await page.getByRole('menuitem', { name: 'Move to Trash' }).click();
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        assert.ok(existsSync(join(notes, 'projects', 'renamed.md')), 'Cancel keeps the file');
+        await row(/renamed\.md/).focus();
+        await page.keyboard.press('Delete');
+        await dialog.getByRole('button', { name: 'Move to Trash' }).click();
+        await waitFor(() => !existsSync(join(notes, 'projects', 'renamed.md')));
+        await row(/renamed\.md/).waitFor({ state: 'detached' });
+        // A refusal is told, not swallowed.
+        await page.locator('.tree').click({ button: 'right', position: { x: 100, y: 400 } });
+        await page.getByRole('menuitem', { name: 'New Folder…' }).click();
+        await dialog.getByRole('textbox').fill('projects');
+        await dialog.getByRole('button', { name: 'OK' }).click();
+        await page.locator('.notification .message').waitFor();
+        await open(/Source\.md/);
+    });
+
+    // ---------- home.ts, htmlpage.ts (pages that are tabs) ----------
+    await step('home: Alt+Home opens the Home tab with the recent files; a click on one opens it', async () => {
+        await page.keyboard.press('Alt+Home');
+        await page.getByRole('heading', { name: /^Good (morning|afternoon|evening)/ }).waitFor();
+        await page.getByRole('heading', { name: 'Recent files' }).waitFor();
+        await page.locator('.home-row', { hasText: 'Idea.md' }).click();
+        await title.getByText('Idea.md').waitFor();
+        await page.keyboard.press('Alt+Home');
+        await page.getByRole('heading', { name: 'Recent files' }).waitFor();
+        await page.getByRole('tab', { name: /Home/ }).waitFor();
+    });
+
+    await step('htmlpage: an HTML file opens in its own tab, runs its script, reads only its folder, and closes', async () => {
+        await open(/page\.html/);
+        const frame = page.frameLocator('iframe');
+        await frame.getByRole('heading', { name: 'hello html (js)' }).waitFor();
+        await page.waitForFunction(() => true);
+        const loaded = await frame.locator('img').evaluate(img => img.complete && img.naturalWidth > 0);
+        assert.ok(loaded, 'a file in its folder loads');
+        await page.getByRole('tab', { name: /page\.html/ }).getByRole('button', { name: /Close/ }).click();
+        await page.locator('iframe').waitFor({ state: 'detached' });
+        await page.getByRole('heading', { name: 'Recent files' }).waitFor();
+        await page.getByRole('tab', { name: /Home/ }).getByRole('button', { name: /Close/ }).click().catch(() => {});
+        await open(/Source\.md/);
+    });
+
+    // ---------- window.ts, dialogs.ts (menus and dialogs) ----------
+    await step('menus: Recent in the New menu, Preferences, Keyboard Shortcuts, and About from the main menu', async () => {
+        await open(/Idea\.md/);
+        await open(/Source\.md/);
+        // The Recent list lives in the New menu; a line of it opens the file in a tab.
+        await page.getByRole('button', { name: 'More ways to create' }).click();
+        await page.getByRole('menuitem', { name: 'Plan.md' }).waitFor();
+        await page.getByRole('menuitem', { name: 'Idea.md' }).click();
+        await title.getByText('Idea.md').waitFor();
+        // Preferences: a switch is written by the core, and the dialog follows the setting.
+        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menuitem', { name: 'Preferences' }).click();
+        const prefs = page.getByRole('dialog', { name: 'Preferences' });
+        await prefs.waitFor();
+        await prefs.getByLabel('Color scheme').selectOption('dark');
+        await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+        await prefs.getByLabel('Color scheme').selectOption('light');
+        await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+        const focus = prefs.getByRole('switch', { name: /Focus mode/ });
+        await focus.check();
+        await editor.locator('.cm-md-dim').first().waitFor({ state: 'attached' }).catch(() => {});
+        await focus.uncheck();
+        await prefs.getByRole('tab', { name: 'Assistant' }).click();
+        await prefs.getByLabel('Model').waitFor();
+        await page.keyboard.press('Escape');
+        await prefs.waitFor({ state: 'detached' });
+        await page.keyboard.press('Control+?');
+        const shortcuts = page.getByRole('dialog', { name: 'Keyboard Shortcuts' });
+        await shortcuts.getByText('Save As').waitFor();
+        await page.keyboard.press('Escape');
+        await shortcuts.waitFor({ state: 'detached' });
+        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menuitem', { name: 'About Markwork' }).click();
+        await page.getByRole('dialog', { name: 'About Markwork' }).getByText(/Version \d/).waitFor();
+        await page.keyboard.press('Escape');
+        await open(/Source\.md/);
+    });
+
+    // ---------- search.ts (the side panel) ----------
+    await step('search: Ctrl+Shift+F finds in all notes, a hit opens with the match selected, Replace All asks first', async () => {
+        await open(/Source\.md/);
+        await editor.click();
+        await page.keyboard.press('Control+Shift+f');
+        const box = page.getByRole('searchbox', { name: 'Search' });
+        await box.fill('Section Two');
+        const hit = page.locator('.results .hit');
+        await hit.first().waitFor();
+        assert.equal(await page.locator('.result-file .file-name .label').first().textContent(), 'Idea.md');
+        await page.getByText(/1 result in 1 file/).waitFor();
+        await hit.first().click();
+        await title.getByText('Idea.md').waitFor();
+        await page.waitForFunction(() => { const v = document.querySelector('.cm-content').cmTile.view; const s = v.state.selection.main; return v.state.sliceDoc(s.from, s.to) === 'Section Two'; });
+        await page.keyboard.press('Control+Shift+h');
+        await page.getByRole('textbox', { name: 'Replace', exact: true }).fill('Part Two');
+        await page.getByRole('button', { name: 'Replace All' }).click();
+        const dialog = page.getByRole('alertdialog');
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        await dialog.waitFor({ state: 'detached' });
+        assert.match(await docText(), /## Section Two/, 'Cancel leaves the note alone');
+        await page.getByRole('button', { name: 'Replace All' }).click();
+        await dialog.getByRole('button', { name: 'Replace All' }).click();
+        await page.waitForFunction(() => document.querySelector('.cm-content').cmTile.view.state.doc.toString().includes('## Part Two'));
+        await page.getByRole('button', { name: 'Files', exact: true }).click();
+        await open(/Source\.md/);
     });
 
     // ---------- image.ts ----------

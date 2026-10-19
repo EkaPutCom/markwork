@@ -64,10 +64,13 @@ function attach(server: ProtocolServer, post: { toClient: (m: Message) => void }
         return result;
     });
     client.on('ask.file', () => ({ path: chosen.path }));
+    // The answers a test gives to other questions of the core, by op.
+    const answers: Record<string, Record<string, unknown>> = {};
+    client.onOther(op => answers[op] ? () => answers[op] : null);
     client.on('doc.close', p => { mirrors.delete(p.doc as number); void p; });
     client.on('doc.resync', p => mirrors.get(p.doc as number)!.snapshot(0));
     return {
-        client, mirrors, log,
+        client, mirrors, log, answers,
         get active() { return mirrors.get(active)!; },
         type(mirror: DocMirror, text: string) {
             const edit = mirror.typed(text);
@@ -354,6 +357,110 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('the outline lists the headings of the active document, and a jump reveals the line', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.last('view.outline') !== undefined);
+        eq(ui.last('view.outline'), { headings: [{ level: 1, text: 'Note', line: 0 }] });
+        ok((await ui.client.request('act.outline.jump', { index: 0 })).ok, 'act.outline.jump');
+        await until(() => ui.last('doc.reveal') !== undefined);
+        eq(ui.last('doc.reveal')!.line, 0);
+        server.dispose();
+    });
+
+    await test('a search sends the results, a hit opens with its match selected, and Replace All asks first', async () => {
+        const { server, ui } = await start();
+        const query = { text: 'Note', include: '', exclude: '', caseSensitive: true, wholeWord: false, regex: false };
+        ok((await ui.client.request('act.search.run', { query })).ok, 'act.search.run');
+        await until(() => ui.last('view.search') !== undefined);
+        const results = ui.last('view.search')!.results as { total: number; files: { file: string; hits: { line: number }[] }[] };
+        eq(results.files.map(f => f.file), ['note.md']);
+        eq(results.total, 1);
+        ok((await ui.client.request('act.search.openHit', { file: 'note.md', index: 0 })).ok, 'act.search.openHit');
+        await until(() => ui.active?.text.startsWith('# Note') === true);
+        // Replace All is asked about; "no" leaves the files alone.
+        ui.answers['ask.search.confirm'] = { answer: false };
+        ok((await ui.client.request('act.search.replaceAll', { replacement: 'Page' })).ok, 'act.search.replaceAll');
+        ok(ui.active.text.startsWith('# Note'), 'refused: unchanged');
+        ui.answers['ask.search.confirm'] = { answer: true };
+        await ui.client.request('act.search.replaceAll', { replacement: 'Page' });
+        await until(() => ui.active.text.startsWith('# Page'));
+        server.dispose();
+    });
+
+    await test('the Files tab: the root and a folder come as view.tree.*, and create, rename, and move change the disk', async () => {
+        const { server, ui } = await start();
+        await until(() => ui.last('view.tree.root') !== undefined);
+        const root = ui.last('view.tree.root')!.root as string;
+        eq((ui.last('view.tree.root')!.entries as { name: string }[]).map(e => e.name).sort(), ['board.md', 'note.md', 'pic.png'], 'images show in the tree too');
+        // A new folder, asked for by name.
+        ui.answers['ask.files.name'] = { text: 'sub' };
+        const made = await ui.client.request('act.tree.create', { kind: 'folder', dir: root });
+        ok(made.ok && made.path === disk.join(root, 'sub'), 'folder made');
+        ok(disk.exists(disk.join(root, 'sub')), 'on disk');
+        ok((await ui.client.request('act.tree.openFolder', { dir: disk.join(root, 'sub') })).ok, 'openFolder');
+        await until(() => ui.last('view.tree.folder')?.dir === disk.join(root, 'sub'));
+        // A new file in it, then renamed, then moved up to the root.
+        ui.answers['ask.files.name'] = { text: 'idea' };
+        const file = await ui.client.request('act.tree.create', { kind: 'file', dir: disk.join(root, 'sub') });
+        ok(file.ok && disk.exists(disk.join(root, 'sub', 'idea.md')), 'file made');
+        ui.answers['ask.files.name'] = { text: 'plan' };
+        const renamed = await ui.client.request('act.tree.rename', { path: disk.join(root, 'sub', 'idea.md') });
+        ok(renamed.ok && disk.exists(disk.join(root, 'sub', 'plan.md')), 'renamed');
+        const moved = await ui.client.request('act.tree.move', { source: disk.join(root, 'sub', 'plan.md'), dir: root });
+        ok(moved.ok && moved.moved === true && disk.exists(disk.join(root, 'plan.md')), 'moved');
+        // A path outside the folder is refused.
+        const outside = await ui.client.request('act.tree.rename', { path: disk.join(tmp, 'elsewhere.md') });
+        ok(!outside.ok && outside.error.code === 'bad_request', 'refused');
+        server.dispose();
+    });
+
+    await test('Home and an HTML file are tabs of their own: page.open, view.home, view.page, page.close', async () => {
+        const { server, ui } = await start();
+        ok((await ui.client.request('command', { name: 'home' })).ok, 'home');
+        await until(() => ui.last('view.home') !== undefined);
+        const opened = ui.last('page.open')!;
+        eq(opened.kind, 'home');
+        const data = ui.last('view.home')!.data as { workspace: string | null; recent: unknown[] };
+        eq(data.workspace, dir);
+        eq(ui.last('page.active'), { page: opened.page });
+        // An HTML file of the folder opens in its own tab.
+        disk.write(disk.join(dir, 'page.html'), '<h1>hi</h1>');
+        ok((await ui.client.request('open.file', { name: 'page.html' })).ok, 'open.file');
+        await until(() => ui.log.filter(l => l.ev === 'page.open').length === 2);
+        const html = ui.last('page.open')!;
+        eq([html.kind, html.file, html.root], ['html', disk.join(dir, 'page.html'), dir]);
+        await until(() => ui.last('view.page')?.page === 'html');
+        // Closing a page tab closes it.
+        const closed = await ui.client.request('tab.close', { doc: html.page });
+        ok(closed.ok && closed.closed === true, 'tab.close');
+        await until(() => ui.last('page.close')?.page === html.page);
+        server.dispose();
+    });
+
+    await test('Preferences: the command opens the dialog with the values, a change is written and sent again, a wrong one is refused', async () => {
+        const { server, ui } = await start();
+        ok((await ui.client.request('command', { name: 'preferences' })).ok, 'preferences');
+        await until(() => ui.last('view.prefs.open') !== undefined);
+        const first = ui.last('view.prefs.open')!.data as { autosave: boolean; colorScheme: string };
+        ok((await ui.client.request('act.prefs.set', { key: 'autosave', value: !first.autosave })).ok, 'act.prefs.set');
+        await until(() => (ui.last('view.prefs.values')?.data as { autosave: boolean } | undefined)?.autosave === !first.autosave);
+        ok((await ui.client.request('act.prefs.set', { key: 'colorScheme', value: 'dark' })).ok, 'colorScheme');
+        await until(() => (ui.last('view.prefs.values')?.data as { colorScheme: string }).colorScheme === 'dark');
+        const bad = await ui.client.request('act.prefs.set', { key: 'chatModel', value: 'no-such-model' });
+        ok(!bad.ok && bad.error.code === 'bad_request', 'a value the key does not take');
+        ok((await ui.client.request('act.prefs.closed', {})).ok, 'closed');
+        server.dispose();
+    });
+
+    await test('the Recent list of the menus is sent when files are opened', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.last('recent') !== undefined);
+        ok((ui.last('recent')!.paths as string[]).some(p => p.endsWith('note.md')), 'note.md is recent');
+        server.dispose();
+    });
+
     await test('app.close lets a window with nothing unsaved go', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
@@ -485,11 +592,11 @@ export async function protocolTests(): Promise<void> {
     // nothing, a question counts as "no". Carrying one over removes it here; a member that appears here was reached
     // without being carried over, which is a feature the Electron window silently lacks (docs/design/electron-migrasi.md).
     const STILL_UNWIRED: string[] = [
-        'dialogs.collab', 'dialogs.contribute', 'dialogs.files', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
-        'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.search', 'dialogs.views',
-        'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv', 'host.fileTree',
-        'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs', 'host.outlineView',
-        'host.preferencesView', 'host.pullView', 'host.reviewView', 'host.searchView', 'host.setRecent', 'host.table',
+        'dialogs.collab', 'dialogs.contribute', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
+        'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.views',
+        'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv',
+        'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs',
+        'host.pullView', 'host.reviewView', 'host.table',
     ];
     await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {
         eq(unwiredTouched(), STILL_UNWIRED);

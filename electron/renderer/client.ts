@@ -13,10 +13,14 @@ import type { Board } from '../../src/markdown/kanban.js';
 import { applyNoteEdit, type NoteEdit } from '../../src/markdown/noteedit.js';
 import type { MarkdownEditor } from './editor.js';
 import { appUrl } from './images.js';
+import type { SearchQuery, SearchResults } from '../../src/app/protocol/search.js';
+import type { FolderEntry, NewKind } from '../../src/app/protocol/tree.js';
+import type { HomeData } from '../../src/app/protocol/screen.js';
+import type { PreferencesData } from '../../src/app/protocol/preferences.js';
 
 declare global {
     interface Window {
-        markwork: { closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
+        markwork: { registerHtml(id: number, root: string): Promise<void>; unregisterHtml(id: number): Promise<void>; pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
     }
 }
 
@@ -25,8 +29,10 @@ export interface Tab {
     mirror: DocMirror;
     name: string;
     file: string | null;
-    page: string;                 // 'text' or the structured page the core shows ('board', …)
+    page: string;                 // 'text' or the structured page the core shows ('board', …); 'home' and 'html' for the pages that are tabs
     board: Board | null;
+    home: HomeData | null;        // a Home tab: what the page shows (view.home)
+    html: { file: string; root: string } | null;   // an HTML tab: the file, and the folder it may read
 }
 
 // A dialog in the window: a question with buttons, and an entry when it asks for text. The first button is the default.
@@ -41,6 +47,13 @@ export interface Dialog {
 
 // A command as the core's table lists it in the `hello` reply.
 export interface CommandEntry { id: string; label: string | null; keys: string[]; kind: string; scope: string; runs: 'core' | 'editor' }
+
+// The Search panel: what its fields hold, whether the Replace row is open, and the last results. `focus` counts the times a
+// command asked for the query field, so the panel can take the focus again.
+export interface SearchPanel { form: SearchQuery; replacement: string; replace: boolean; results: SearchResults | null; focus: number }
+
+// The Files tree: the entries of every folder the core has sent (by folder path), the folders shown open, and the file to highlight.
+export interface FileTree { root: string | null; folders: Record<string, FolderEntry[]>; expanded: string[]; revealed: string | null }
 
 export interface Toast { text: string; action: { label: string; token: number } | null; at: number }
 
@@ -63,13 +76,19 @@ export interface State {
     disabled: string[];           // the commands the core says do not apply now (commands.state)
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
     image: { src: string; title: string } | null;   // the picture shown large (view.image, or a double click)
+    recent: string[];                // the Recent files of the menus (recent), latest first
+    prefs: PreferencesData | null;   // the Preferences dialog while it is open (view.prefs.open)
+    info: 'shortcuts' | 'about' | null;   // the Keyboard Shortcuts or About dialog
+    tree: FileTree;
+    search: SearchPanel;             // the Search panel's fields and the core's results (view.search)
+    outline: { level: number; text: string; line: number }[];   // the headings of the active document (view.outline)
     layout: { layout: string | null; structured: boolean };   // the layout button (view.layout): '' = text, null = hidden
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+const CORE_COMMANDS = new Set(['preferences', 'open-recent', 'home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'sidebar', 'dark', 'autosave']);
-const EDITOR_COMMANDS_UNAVAILABLE = new Set(['search-files', 'replace-files', 'shortcuts', 'about']);
+const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
 export const isAvailable = (command: Command): boolean =>
     command.runs === 'core' ? CORE_COMMANDS.has(command.id) : !EDITOR_COMMANDS_UNAVAILABLE.has(command.id);
@@ -77,7 +96,7 @@ export const isAvailable = (command: Command): boolean =>
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, disabled: [],
+        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, recent: [], prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
     };
     private readonly waitingDialogs: Dialog[] = [];
@@ -107,10 +126,11 @@ export class Client {
     // ---------- The editor ----------
 
     // The core asked to show a line of a document (a [[note#section]] link): now if its tab is the one shown, else when it is.
-    private reveal: { doc: number; line: number } | null = null;
+    private reveal: { doc: number; line: number; select?: [column: number, length: number] } | null = null;
     private applyReveal(): void {
         if (!this.reveal || this.reveal.doc !== this.snapshot.active || !this.editor) return;
-        this.editor.reveal(this.reveal.line);
+        const { line, select } = this.reveal;
+        if (select) this.editor.select(line, select[0], select[1]); else this.editor.reveal(line);
         this.reveal = null;
     }
 
@@ -199,6 +219,94 @@ export class Client {
     focusEditor(): void { this.editor?.focus(); }
     openPalette(open = true): void { this.set({ palette: open }); }
     toggleSidebar(): void { this.setSetting('sidebar', !this.snapshot.sidebar); }
+
+    // A rail button: its page opens; the button of the page that is open closes the side panel.
+    showSidebarPage(page: string): void {
+        const { sidebar, settings } = this.snapshot;
+        if (sidebar && settings['sidebar-page'] === page) { this.setSetting('sidebar', false); return; }
+        this.setSetting('sidebar-page', page);
+        if (!sidebar) this.setSetting('sidebar', true);
+    }
+
+    // ---------- Preferences, Keyboard Shortcuts, About ----------
+
+    // A change in the dialog: shown at once, written by the core, which sends the values again (a refused one comes back as they were).
+    setPreference(key: string, value: string | number | boolean): void {
+        const { prefs } = this.snapshot;
+        if (prefs) this.set({ prefs: { ...prefs, [key]: value } });
+        void this.ask('act.prefs.set', { key, value });
+    }
+    closePreferences(): void { this.set({ prefs: null }); void this.conn?.request('act.prefs.closed', {}); this.editor?.focus(); }
+    showInfo(info: State['info']): void { this.set({ info }); }
+
+    // ---------- Home ----------
+
+    openRecent(path: string): void { void this.ask('act.home.openFile', { path }); }
+    openWorkspaceFile(name: string): void { void this.ask('act.home.openWorkspaceFile', { name }); }
+    openRun(id: number): void { void this.ask('act.home.openRun', { id }); }
+    openJournal(): void { void this.ask('act.home.openJournal'); }
+    // A task checked on Home: true = the core wrote it to its board, false = put the box back.
+    async toggleTask(task: unknown, done: boolean): Promise<boolean> {
+        const reply = await this.conn?.request('act.home.toggleTask', { task, done });
+        return reply?.ok === true && reply.written === true;
+    }
+
+    // ---------- The Files tree ----------
+
+    private expandFolder(dir: string): void {
+        const { tree } = this.snapshot;
+        if (tree.expanded.includes(dir)) return;
+        if (!tree.folders[dir]) void this.conn?.request('act.tree.openFolder', { dir });
+        this.set({ tree: { ...tree, expanded: [...tree.expanded, dir] } });
+    }
+
+    // Highlight a file, with the folders above it open.
+    private revealPath(path: string | null): void {
+        const { tree } = this.snapshot;
+        this.set({ tree: { ...tree, revealed: path } });
+        if (!path || !tree.root || !path.startsWith(tree.root)) return;
+        const sep = path.includes('\\') && !path.includes('/') ? '\\' : '/';
+        const parts = path.slice(tree.root.length + 1).split(sep).slice(0, -1);
+        let dir = tree.root;
+        for (const part of parts) { dir = `${dir}${sep}${part}`; this.expandFolder(dir); }
+    }
+
+    toggleFolder(dir: string): void {
+        const { tree } = this.snapshot;
+        if (tree.expanded.includes(dir)) this.set({ tree: { ...tree, expanded: tree.expanded.filter(d => d !== dir) } });
+        else this.expandFolder(dir);
+    }
+
+    activateEntry = (path: string): void => { void this.ask('act.tree.activate', { path }); };
+    createEntry(kind: NewKind, dir: string): void { void this.ask('act.tree.create', { kind, dir }); }
+    renameEntry(path: string): void { void this.ask('act.tree.rename', { path }); }
+    removeEntry(path: string): void { void this.ask('act.tree.remove', { path }); }
+    moveEntry(source: string, dir: string): void { void this.ask('act.tree.move', { source, dir }); }
+    copyInto(sources: string[], dir: string): void { if (sources.length) void this.ask('act.tree.copy', { sources, dir }); }
+
+    // ---------- Search in all notes ----------
+
+    // Show the Search page with the selected text as the query (Ctrl+Shift+F), and the Replace row too (Ctrl+Shift+H).
+    showSearch(replace = false): void {
+        const selected = this.editor?.selectedText ?? '';
+        const { search } = this.snapshot;
+        const form = selected && !selected.includes('\n') ? { ...search.form, text: selected } : search.form;
+        if (this.snapshot.settings['sidebar-page'] !== 'search' || !this.snapshot.sidebar) { this.setSetting('sidebar-page', 'search'); this.setSetting('sidebar', true); }
+        this.set({ search: { ...search, form, replace: replace || search.replace, focus: search.focus + 1 } });
+        if (form.text) this.runSearch(form);
+    }
+
+    setSearchForm(patch: Partial<SearchPanel>): void {
+        const search = { ...this.snapshot.search, ...patch };
+        this.set({ search });
+        if (patch.form) this.runSearch(search.form);
+    }
+
+    private runSearch(query: SearchQuery): void { void this.ask('act.search.run', { query }); }
+    openHit(file: string, index: number): void { void this.ask('act.search.openHit', { file, index }); }
+    replaceAll(): void { void this.ask('act.search.replaceAll', { replacement: this.snapshot.search.replacement }); }
+
+    jumpToHeading(index: number): void { void this.ask('act.outline.jump', { index }); }
 
     // ---------- Settings ----------
 
@@ -290,10 +398,10 @@ export class Client {
         return {
             edit: editor?.edit ?? ({ undo: none, redo: none, wrap: none, link: none, block: none, prefix: none, heading: none, table: none, zoomImage: none }),
             openFind: replace => { if (editor) editor.openFind(replace === true); else none(); },
-            showSearch: none,
+            showSearch: replace => this.showSearch(replace === true),
             setSource: on => { editor?.setSourceMode(on); this.set({ source: on }); },
             showPalette: () => this.openPalette(),
-            showShortcuts: none, showAbout: none,
+            showShortcuts: () => this.showInfo('shortcuts'), showAbout: () => this.showInfo('about'),
             quit: () => window.close(),
         };
     }
@@ -384,8 +492,23 @@ export class Client {
         const tab = this.tab(id);
         switch (ev) {
             case 'doc.open':
-                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null }] });
+                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null, home: null, html: null }] });
                 break;
+            case 'page.open': {
+                const page = p.page as number, kind = p.kind as string, file = p.file as string | null;
+                this.set({ tabs: [...this.snapshot.tabs, {
+                    id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, page: kind, board: null,
+                    home: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null,
+                }] });
+                break;
+            }
+            case 'page.close': this.set({ tabs: this.snapshot.tabs.filter(t => t.id !== p.page) }); break;
+            case 'page.active': this.set({ active: p.page as number }); break;
+            case 'view.home': {
+                const home = this.snapshot.tabs.find(t => t.page === 'home');
+                if (home) this.changeTab(home.id, { home: p.data as HomeData });
+                break;
+            }
             case 'doc.reset':
                 if (!tab) break;
                 tab.mirror.reset(p.text as string, p.version as number);
@@ -399,6 +522,7 @@ export class Client {
                 this.applyReveal();
                 break;
             }
+            case 'doc.select': this.reveal = { doc: id, line: p.line as number, select: [p.column as number, p.length as number] }; this.applyReveal(); break;
             case 'doc.reveal': this.reveal = { doc: id, line: p.line as number }; this.applyReveal(); break;
             case 'doc.title': {
                 const title = p.title as { name: string; file: string | null };
@@ -412,6 +536,19 @@ export class Client {
             case 'view.files': this.set({ root: p.root as string, files: p.files as string[] }); break;
             case 'toast': this.say(p.text as string, (p.action as Toast['action']) ?? null); break;
             case 'error': this.say(p.message as string); break;
+            case 'view.tree.root': {
+                const root = p.root as string | null;
+                this.set({ tree: { root, folders: root ? { [root]: p.entries as FolderEntry[] } : {}, expanded: [], revealed: null } });
+                break;
+            }
+            case 'view.tree.folder': this.set({ tree: { ...this.snapshot.tree, folders: { ...this.snapshot.tree.folders, [p.dir as string]: p.entries as FolderEntry[] } } }); break;
+            case 'view.tree.expand': this.expandFolder(p.dir as string); break;
+            case 'view.tree.reveal': this.revealPath(p.path as string | null); break;
+            case 'recent': this.set({ recent: p.paths as string[] }); break;
+            case 'view.prefs.open': this.set({ prefs: p.data as PreferencesData }); break;
+            case 'view.prefs.values': if (this.snapshot.prefs) this.set({ prefs: p.data as PreferencesData }); break;
+            case 'view.search': this.set({ search: { ...this.snapshot.search, results: p.results as SearchResults } }); break;
+            case 'view.outline': this.set({ outline: p.headings as State['outline'] }); break;
             case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split('/').pop() ?? '' } }); break;
             case 'open.uri': window.open(p.uri as string); break;
             case 'setting': this.applySettings({ [p.key as string]: p.value }); break;

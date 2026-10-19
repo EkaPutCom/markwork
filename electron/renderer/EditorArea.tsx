@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { Home } from './Home.js';
+import { HtmlPage } from './HtmlPage.js';
 import { Board } from './Board.js';
 import { MarkdownEditor } from './editor.js';
 import { label } from './keys.js';
@@ -45,10 +47,13 @@ export function EditorArea() {
     }, [client]);
 
     const board = tab?.page === 'board' && tab.board;
+    const isPage = tab?.page === 'home' || tab?.page === 'html';
     return (
         <div className="editor-area">
-            <div ref={host} className="text-editor" hidden={!tab || !!board} />
+            <div ref={host} className="text-editor" hidden={!tab || !!board || isPage} />
             {board && tab && <Board board={board} />}
+            {tab?.page === 'home' && <Home data={tab.home} />}
+            {tab?.page === 'html' && tab.html && <HtmlPage key={tab.id} id={tab.id} file={tab.html.file} root={tab.html.root} />}
             {!tab && <Welcome />}
         </div>
     );

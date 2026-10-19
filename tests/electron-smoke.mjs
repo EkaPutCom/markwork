@@ -29,6 +29,11 @@ writeFileSync(join(notes, 'diagram.md'), '# Diagram\n\n```mermaid\nflowchart LR\
 
 writeFileSync(join(notes, 'conflict.md'), '# Conflict\n\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\n\nend\n');
 
+async function waitFor(condition, ms = 5000) {
+    for (const end = Date.now() + ms; Date.now() < end;) { if (condition()) return; await new Promise(r => setTimeout(r, 50)); }
+    assert.fail('timed out');
+}
+
 const steps = [];
 async function step(name, run) {
     try {
@@ -250,7 +255,7 @@ try {
         await page.keyboard.type('# Saved as\n');
         await page.keyboard.press('Control+Shift+S');
         await title.getByText('saved-as.md').waitFor();
-        assert.ok(existsSync(join(notes, 'saved-as.md')));
+        await waitFor(() => existsSync(join(notes, 'saved-as.md')));   // the title changes a moment before the file is written
         assert.equal(readFileSync(join(notes, 'saved-as.md'), 'utf8'), '# Saved as\n');
     });
 

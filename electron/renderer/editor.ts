@@ -390,6 +390,22 @@ export class MarkdownEditor {
         this.view.dispatch({ selection: { anchor: at.from }, effects: EditorView.scrollIntoView(at.from, { y: 'start', yMargin: 40 }) });
     }
 
+    // Select `length` code points from `column` on `line` (from 0) and bring them into view (a search hit).
+    select(line: number, column: number, length: number): void {
+        const { doc } = this.view.state;
+        const at = doc.line(Math.min(Math.max(line, 0) + 1, doc.lines));
+        const u16 = (n: number) => at.from + Array.from(at.text).slice(0, n).join('').length;
+        const from = u16(column), to = u16(column + length);
+        this.view.dispatch({ selection: { anchor: from, head: to }, effects: EditorView.scrollIntoView(from, { y: 'center' }) });
+        this.view.focus();
+    }
+
+    // The text the selection covers.
+    get selectedText(): string {
+        const { main } = this.view.state.selection;
+        return this.view.state.sliceDoc(main.from, main.to);
+    }
+
     // The cursor and the selection, in code points.
     cursor(): { offset: number; selection: [number, number] | null } {
         const { main } = this.view.state.selection;

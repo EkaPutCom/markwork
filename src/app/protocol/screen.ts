@@ -6,6 +6,7 @@
 // The text's own counts are not sent: the frontend has the text and counts it as it types, so `setCounts` only says
 // that the counts are the text's.
 
+import type { HomeData } from '../home.js';
 import type { Layout } from '../../markdown/layout.js';
 import type { StructuredPage, ViewScreen } from '../views.js';
 import type { Wire } from './messages.js';
@@ -17,7 +18,7 @@ export type StatusCounts =
     | { kind: 'inbox'; items: number }
     | { kind: 'csv'; rows: number; columns: number };
 
-type Screen = Pick<ViewScreen<ProtocolEditor>, 'showText' | 'showPage' | 'closeFind' | 'setStatusVisible' | 'setCounts' | 'setBoardCounts'
+type Screen = Pick<ViewScreen<ProtocolEditor>, 'showHome' | 'showPageTab' | 'showText' | 'showPage' | 'closeFind' | 'setStatusVisible' | 'setCounts' | 'setBoardCounts'
     | 'setInboxCounts' | 'setCsvCounts' | 'showLayout' | 'setStructuredState' | 'enableActions'>;
 
 export class ProtocolScreen implements Screen {
@@ -32,6 +33,9 @@ export class ProtocolScreen implements Screen {
     // active: the document the page belongs to (the frontend's active tab).
     constructor(private readonly wire: Wire, private readonly active: () => number) {}
 
+    // Home and an HTML file are tabs of their own (page.open); what a tab shows is told by its id.
+    showHome(data: HomeData): void { this.wire.notify('view.home', { data }); }
+    showPageTab(id: number): void { this.wire.notify('view.page', { page: 'html', doc: id }); }
     showText(doc: number): void { this.wire.notify('view.page', { page: 'text', doc }); }
     showPage(page: StructuredPage | 'csv'): void { this.wire.notify('view.page', { page, doc: this.active() }); }
     closeFind(): void { this.wire.notify('find.close'); }
@@ -79,3 +83,6 @@ export class ProtocolScreen implements Screen {
         this.wire.notify(ev, payload);
     }
 }
+
+// What Home shows, as it crosses the wire (the renderer takes the type from here).
+export type { HomeData };
