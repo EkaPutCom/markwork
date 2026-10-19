@@ -43,7 +43,6 @@ import { widgetPixbuf } from './widgets.js';
 import { incrementalTests } from './unit/incremental.js';
 import { settingsTests } from './unit/settings.js';
 import { actionTests } from './unit/actions.js';
-import { tableTests } from './unit/table.js';
 import { codeLanguageTests } from './unit/codelang.js';
 import { discardTests } from './unit/discard.js';
 import { gjsPortTests } from './unit/gjsport.js';
@@ -95,7 +94,6 @@ function runUnitTests(): void {
     incrementalTests();
     settingsTests();
     actionTests();
-    tableTests();
     codeLanguageTests();
     discardTests();
     settle(gjsPortTests(), 60 * 1000);

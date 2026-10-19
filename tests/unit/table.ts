@@ -1,8 +1,7 @@
-// Markdown table model tests.
+// Markdown table model tests (markdown/table.ts).
 
-import { fitColumns } from '../../src/editor/tablelayer.js';
 import { cellMarkup } from '../../src/markdown/pango.js';
-import { cellIndexAt, cellStart, deleteColumn, deleteRow, displayWidth, findTables, insertColumn, insertRow, parseTable, renderTable, setAlign, splitRow, tableEnd } from '../../src/markdown/table.js';
+import { cellIndexAt, cellStart, deleteColumn, deleteRow, displayWidth, findTables, fitColumns, insertColumn, insertRow, parseTable, renderTable, setAlign, splitRow, tableEnd } from '../../src/markdown/table.js';
 import { section, test, eq, ok } from '../framework.js';
 
 export function tableTests(): void {

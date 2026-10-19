@@ -114,6 +114,39 @@ for (const pair of UI_ACTS_ALLOWED) {
     if (!uiActs.has(pair)) errors.push(`scripts/layers.mjs: ${pair} is no longer an import that acts; remove it from UI_ACTS_ALLOWED`);
 }
 
+// ---------- The Electron renderer is a view ----------
+//
+// electron/renderer/ draws in a browser page and talks to the core in the main process over the protocol. From src/ it
+// takes only what runs anywhere: the pure Markdown modules, the protocol's messages, wire, document mirror, and change
+// math, and the command list; dialogs, the screen, and the platform contract only for their types. Never node:, gi://,
+// or a port, and nothing that reaches the runtime for its values (see "Views do not act" above).
+const renderer = join(root, 'electron', 'renderer');
+const RENDERER_VALUES = t => t.startsWith('markdown/')
+    || ['app/protocol/messages.ts', 'app/protocol/wire.ts', 'app/protocol/mirror.ts', 'app/protocol/changes.ts', 'app/commands.ts'].includes(t);
+const RENDERER_TYPES = t => RENDERER_VALUES(t) || ['app/protocol/screen.ts', 'app/dialogs.ts', 'platform/index.ts'].includes(t);
+const rendererFiles = readdirSync(renderer, { recursive: true }).filter(f => /\.tsx?$/.test(f) && !f.endsWith('.d.ts')).map(f => f.split('\\').join('/'));
+for (const file of rendererFiles) {
+    const text = readFileSync(join(renderer, file), 'utf8');
+    for (const m of text.matchAll(IMPORT)) {
+        const spec = m[2] ?? m[3] ?? m[4];
+        const where = `electron/renderer/${file}: imports ${spec}`;
+        if (spec.startsWith('node:') || spec.startsWith('gi://') || GJS_BUILTINS.has(spec)) {
+            errors.push(`${where} (the renderer is a browser page: no Node, GI, or GJS built-ins)`);
+            continue;
+        }
+        if (!spec.startsWith('.')) continue;   // npm packages
+        const path = normalize(join(renderer, dirname(file), spec.split('?')[0]));
+        if (!relative(renderer, path).startsWith('..')) continue;   // the renderer's own files
+        const target = relative(src, path).split('\\').join('/').replace(/\.js$/, '.ts');
+        if (target.startsWith('..')) errors.push(`${where} (the renderer imports only its own files and the shared parts of src/)`);
+        else if (m[1] ? !RENDERER_TYPES(target) : !RENDERER_VALUES(target)) {
+            errors.push(`${where} (from src/ the renderer takes ${m[1] ? 'types only from markdown/, app/protocol/, app/commands.ts, app/dialogs.ts, and platform/index.ts' : 'values only from markdown/, app/protocol/ messages, wire, mirror, and changes, and app/commands.ts; import other types with `import type`'})`);
+        } else if (!m[1] && acts(target)) {
+            errors.push(`${where} (it reaches the runtime; the renderer gets that work from the main process over the protocol)`);
+        }
+    }
+}
+
 for (const file of GI_ALLOWED) {
     if (!files.includes(file)) errors.push(`scripts/layers.mjs: GI_ALLOWED lists ${file}, which no longer exists; remove the entry`);
     else if (!giImporters.has(file)) errors.push(`scripts/layers.mjs: src/${file} no longer imports gi://; remove it from GI_ALLOWED`);
@@ -210,4 +243,4 @@ if (errors.length) {
     console.error(`Layer and complexity violations:\n  ${errors.join('\n  ')}`);
     process.exit(1);
 }
-console.log(`Layer rules: ${files.length} modules checked, ${GI_ALLOWED.size} core modules still on gi://, ${UI_ACTS_ALLOWED.size} views still acting; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`);
+console.log(`Layer rules: ${files.length} modules and ${rendererFiles.length} renderer files checked, ${GI_ALLOWED.size} core modules still on gi://, ${UI_ACTS_ALLOWED.size} views still acting; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`);
