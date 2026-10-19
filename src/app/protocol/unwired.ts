@@ -12,8 +12,19 @@ function nothing(): never {
     }) as never;
 }
 
-export function unwired<T extends object>(members: object): T {
+// The members that were reached and are not wired, as "host.screen.showHome": tests/unit/protocol.ts compares them with
+// the list of what is still to carry over, so the list can only shrink.
+const touched = new Set<string>();
+export const unwiredTouched = (): string[] => [...touched].sort();
+
+// name: where the object sits in AppFrontend ("host.screen"), for the record of what was reached.
+export function unwired<T extends object>(members: object, name = ''): T {
     return new Proxy(members, {
-        get: (target, key) => key in target ? (target as never)[key] : typeof key === 'symbol' || key === 'then' ? undefined : nothing(),
+        get: (target, key) => {
+            if (key in target) return (target as never)[key];
+            if (typeof key === 'symbol' || key === 'then') return undefined;
+            touched.add(name ? `${name}.${key}` : key);
+            return nothing();
+        },
     }) as T;
 }

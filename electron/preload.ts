@@ -7,5 +7,6 @@ ipcRenderer.on('core-exit', (_event, code: number | null, stderr: string) => win
 
 contextBridge.exposeInMainWorld('markwork', {
     initialFolder: (): Promise<string | null> => ipcRenderer.invoke('initial-folder'),
-    pickFolder: (): Promise<string | null> => ipcRenderer.invoke('pick-folder'),
+    openFolder: (path: string): Promise<void> => ipcRenderer.invoke('open-folder', path),
+    chooseFile: (options: Record<string, unknown>): Promise<string | null> => ipcRenderer.invoke('choose-file', options),
 });

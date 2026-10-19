@@ -6,7 +6,10 @@ import { DocMirror } from '../../src/app/protocol/mirror.js';
 import { ProtocolEditor, headingsOf } from '../../src/app/protocol/replica.js';
 import { ProtocolServer } from '../../src/app/protocol/server.js';
 import { Connection } from '../../src/app/protocol/wire.js';
-import type { Message, Reply, Wire } from '../../src/app/protocol/messages.js';
+import { unwiredTouched } from '../../src/app/protocol/unwired.js';
+import { Asks } from '../../src/app/protocol/asks.js';
+import { Cancellable } from '../../src/cancel.js';
+import { RequestError, type Message, type Reply, type Wire } from '../../src/app/protocol/messages.js';
 import { parseBoard } from '../../src/markdown/kanban.js';
 import { memorySettings } from './appsession.js';
 import { section, test, eq, ok, tmp, disk, until, pause } from '../framework.js';
@@ -39,7 +42,7 @@ function scriptedWire(): Wire & { sent: { op: string; payload: Record<string, un
 const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two\n\n## Done\n\n- [x] Old\n';
 
 // A frontend that behaves as docs/design/protocol.md says, over two Connections that deliver in order but never at once.
-function attach(server: ProtocolServer, post: { toClient: (m: Message) => void }, chosen: { path: string | null } = { path: null }) {
+function attach(server: ProtocolServer, post: { toClient: (m: Message) => void }, chosen: { path: string | null } = { path: null }, refuse = { replaces: 0 }) {
     const mirrors = new Map<number, DocMirror>();
     const log: { ev: string; payload: Record<string, unknown> }[] = [];
     let active = 0;
@@ -54,8 +57,10 @@ function attach(server: ProtocolServer, post: { toClient: (m: Message) => void }
     });
     client.on('doc.replace', p => {
         const mirror = mirrors.get(p.doc as number)!;
+        // A conflict the test asks for, as if the text had changed where the write goes.
+        if (refuse.replaces > 0) { refuse.replaces--; throw new RequestError('conflict', 'text changed', { version: mirror.version }); }
         const result = mirror.replace(p.base as number, p.changes as never);
-        if (!result.ok) throw Object.assign(new Error('text changed'), { code: 'conflict' });
+        if (!result.ok) throw new RequestError('conflict', 'text changed', { version: result.version });
         return result;
     });
     client.on('ask.file', () => ({ path: chosen.path }));
@@ -168,6 +173,70 @@ export async function protocolTests(): Promise<void> {
         const emoji = new DocMirror(4, 'a🎉b c', 0);
         emoji.typed('a🎉🎉b c');
         eq(emoji.replace(0, [{ from: 4, to: 5, insert: 'C' }]), { ok: true, version: 2, applied: [{ from: 5, to: 6, insert: 'C' }] }, 'in code points');
+    });
+
+
+    // Two Connections that deliver in order but never at once, as the MessagePort does.
+    const pair = () => {
+        let core: Connection | null = null, front: Connection | null = null;
+        const posted: Message[] = [];
+        core = new Connection(m => { posted.push(m); void Promise.resolve().then(() => front!.receive(m)); }, 'c');
+        front = new Connection(m => { void Promise.resolve().then(() => core!.receive(m)); }, 'f');
+        return { core, front, posted };
+    };
+
+    await test('a withdrawn ask is answered "cancelled" at once, the dialog is told to close, and its late answer is dropped', async () => {
+        const { core, front, posted } = pair();
+        let closed = false, answer: (v: Record<string, unknown>) => void = () => {};
+        front.on('ask.question', (_p, cancel) => {
+            cancel.onCancel(() => { closed = true; });
+            return new Promise(resolve => { answer = resolve; });
+        });
+        const cancel = new Cancellable();
+        const asked = new Asks(core).question('ask.question', { message: 'Merge?', detail: '', accept: 'Merge' }, cancel);
+        await pause(5);
+        cancel.cancel();
+        eq(await asked, false, 'a withdrawn question counts as no');
+        await until(() => closed);
+        answer({ answer: true });
+        await pause(5);
+        eq(posted.filter(m => 'ev' in m && m.ev === 'ask.cancel').length, 1, 'one ask.cancel');
+        ok(!posted.some(m => 're' in m), 'the frontend sent no answer after the cancel');
+    });
+
+    await test('a question the frontend does not know is a "no"; its generic dialog answers any Question or Prompt', async () => {
+        const { core, front } = pair();
+        const asks = new Asks(core);
+        eq(await asks.question('ask.review.merge', { message: 'Merge?', detail: '', accept: 'Merge' }), false, 'unknown_op is no');
+        eq(await asks.text('ask.capture', { title: 'Add', label: 'Text' }), null, 'unknown_op is dismissed');
+        front.onOther(op => op.startsWith('ask.') ? p => (p.question ? { answer: true } : { text: `typed for ${op}` }) : null);
+        eq(await asks.question('ask.review.merge', { message: 'Merge?', detail: '', accept: 'Merge' }), true);
+        eq(await asks.text('ask.capture', { title: 'Add', label: 'Text' }), 'typed for ask.capture');
+        eq(await asks.choice('ask.saveChanges', {}, ['save', 'discard', 'cancel'], 'cancel'), 'cancel', 'an answer of the wrong shape is the dismissal');
+    });
+
+    await test('hello carries the command table and the settings; a setting changes from either side', async () => {
+        const post = { toClient: (_m: Message) => {} };
+        const settings = memorySettings();
+        settings.sidebar = true;
+        const server = new ProtocolServer(settings, m => post.toClient(m), { settingKeys: ['sidebar', 'color-scheme'] });
+        const ui = attach(server, post);
+        const hello = await ui.client.request('hello', { proto: 1 });
+        ok(hello.ok, 'hello');
+        const commands = hello.commands as { id: string; runs: string; keys: string[] }[];
+        eq(commands.find(c => c.id === 'save')?.runs, 'core');
+        eq(commands.find(c => c.id === 'bold')?.runs, 'editor');
+        eq(commands.find(c => c.id === 'save')?.keys, ['Ctrl+s']);
+        eq((hello.settings as Record<string, unknown>).sidebar, true);
+        ui.client.notify('setting', { key: 'sidebar', value: false });
+        await until(() => settings.sidebar === false);
+        settings.dark = true;
+        await until(() => ui.last('setting')?.key === 'color-scheme');
+        eq(ui.last('setting'), { key: 'color-scheme', value: 'dark' });
+        ui.client.notify('setting', { key: 'chat', value: true });
+        await until(() => ui.last('error') !== undefined);
+        ok(settings.chat !== true, 'a key outside the schema is refused');
+        server.dispose();
     });
 
     const dir = disk.join(tmp, 'protocol');
@@ -305,5 +374,77 @@ export async function protocolTests(): Promise<void> {
         ok(!ui.active.text.includes('- [x] Two'), 'the card was not toggled over the typing');
         eq(server.frontend.editors.get(mirror.id)!.getText(), mirror.text, 'replica and editor agree');
         server.dispose();
+    });
+    await test('a board write refused by the frontend is made again on the text as it is then: the typing and the card both stay', async () => {
+        const post = { toClient: (_m: Message) => {} };
+        const server = new ProtocolServer(memorySettings(), m => post.toClient(m));
+        const refuse = { replaces: 0 };
+        const ui = attach(server, post, { path: null }, refuse);
+        await ui.client.request('hello', { proto: 1 });
+        await ui.client.request('start', { path: dir });
+        await ui.client.request('open.file', { name: 'board.md' });
+        await until(() => ui.last('view.notes') !== undefined);
+        const mirror = ui.active;
+        // A card typed above the one being toggled moves it; the first write is refused, so the core makes it again.
+        refuse.replaces = 1;
+        ui.type(mirror, mirror.text.replace('- [ ] One\n', '- [ ] One\n- [ ] Typed\n'));
+        await ui.client.request('act.notes.edit', { edit: { kind: 'toggle', at: { column: 0, index: 1 }, card: 'Two' } });
+        await until(() => ui.active.text.includes('- [x] Two'));
+        ok(ui.active.text.includes('- [ ] Typed\n- [x] Two'), 'the typed card is kept and the right card is toggled');
+        eq(ui.log.filter(l => l.ev === 'toast').length, 0, 'nothing was refused');
+        await until(() => server.frontend.editors.get(mirror.id)!.getText() === mirror.text);
+        server.dispose();
+    });
+
+    await test('the screen follows the page: counts, the layout button, and which commands apply, each sent when it changes', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.last('view.layout') !== undefined);
+        eq(ui.last('view.status'), { visible: true, counts: { kind: 'text' } });
+        eq(ui.last('view.layout'), { layout: '', structured: false });
+        await until(() => ui.last('commands.state') !== undefined);
+        ok(!(ui.last('commands.state')!.disabled as string[]).includes('bold'), 'text commands apply to text');
+        await ui.client.request('open.file', { name: 'board.md' });
+        await until(() => (ui.last('view.layout')?.structured) === true);
+        eq(ui.last('view.layout'), { layout: 'board', structured: true });
+        eq(ui.last('view.status'), { visible: true, counts: { kind: 'board', lists: 2, cards: 3 } });
+        await until(() => (ui.last('commands.state')!.disabled as string[]).includes('bold'));
+        ok(!(ui.last('commands.state')!.disabled as string[]).includes('fields-edit'), 'board commands apply to a board');
+        const sent = ui.log.filter(l => l.ev === 'view.layout').length;
+        await ui.client.request('command', { name: 'save' });
+        await pause(10);
+        eq(ui.log.filter(l => l.ev === 'view.layout').length, sent, 'nothing is sent again when nothing changed');
+        server.dispose();
+    });
+
+    await test('Save As asks the frontend for a path and writes the new document there', async () => {
+        const post = { toClient: (_m: Message) => {} };
+        const server = new ProtocolServer(memorySettings(), m => post.toClient(m));
+        const target = disk.join(dir, 'saved-as');
+        const chosen = { path: target as string | null };
+        const ui = attach(server, post, chosen);
+        await ui.client.request('hello', { proto: 1 });
+        await ui.client.request('start', { path: dir });
+        await ui.client.request('command', { name: 'new' });
+        await until(() => ui.active !== undefined);
+        ui.type(ui.active, '# Saved as\n');
+        ok((await ui.client.request('command', { name: 'save-as' })).ok, 'save-as');
+        await until(() => disk.exists(`${target}.md`));
+        eq(disk.read(`${target}.md`), '# Saved as\n', 'the extension is added and the text written');
+        eq((ui.last('doc.title')!.title as { name: string }).name, 'saved-as.md');
+        server.dispose();
+    });
+    // The members of AppFrontend these scenarios reach that are still `unwired` (src/app/protocol/unwired.ts): a call does
+    // nothing, a question counts as "no". Carrying one over removes it here; a member that appears here was reached
+    // without being carried over, which is a feature the Electron window silently lacks (docs/design/electron-migrasi.md).
+    const STILL_UNWIRED: string[] = [
+        'dialogs.collab', 'dialogs.contribute', 'dialogs.files', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
+        'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.search', 'dialogs.views',
+        'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv', 'host.fileTree',
+        'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs', 'host.outlineView',
+        'host.preferencesView', 'host.pullView', 'host.reviewView', 'host.searchView', 'host.setRecent', 'host.table',
+    ];
+    await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {
+        eq(unwiredTouched(), STILL_UNWIRED);
     });
 }

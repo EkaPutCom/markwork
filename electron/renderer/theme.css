@@ -1,5 +1,5 @@
 /* The look of the GTK window: Adwaita colors and shapes, Noto Sans for the text, the same layout (header bar, icon rail
-   with its panel, tabs, the counts at the foot). The theme follows the system. */
+   with its panel, tabs, the counts at the foot). The theme follows the `color-scheme` setting. */
 :root {
     color-scheme: light;
     --bg: #ffffff; --fg: #333333; --fg-dim: #7a7a7a; --heading: #1f2328; --faint: #b4b9bf; --accent: #1c71d8; --accent-bg: #3584e4;
@@ -10,15 +10,24 @@
     --font-text: 'Noto Sans', 'DejaVu Sans', system-ui, sans-serif;
     --font-mono: 'DejaVu Sans Mono', ui-monospace, Menlo, Consolas, monospace;
 }
+/* The `color-scheme` setting: 'system' follows the system, 'light' and 'dark' (data-theme) win over it. */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
         color-scheme: dark;
         --bg: #1e1e1e; --fg: #d4d4d4; --fg-dim: #9a9a9a; --heading: #f0f0f0; --faint: #5f6368; --accent: #78aeed; --accent-bg: #3584e4;
         --window-bg: #242424; --header-bg: #242424; --sidebar-bg: #303030; --rail-bg: #2a2a2a; --border: #4f4f4f;
         --btn-hover: #ffffff14; --btn-checked: #ffffff1f; --btn-bg: #393939; --row-active: #ffffff1c; --row-hover: #ffffff10; --tab-active: #393939;
         --code-bg: #2b2d31; --code-fg: #f78c6c; --quote-fg: #9aa0a6; --quote-bg: #26282c; --mark-bg: #6b5a12; --sel: #264f78;
-        --card-bg: #383838; --column-bg: #ffffff0f; --popover-bg: #383838; --shadow: #00000080; --toast-bg: #484848; --toast-fg: #ffffff;
+        --card-bg: #383838; --column-bg: #ffffff0f; --popover-bg: #383838; --shadow: #00000080; --toast-bg: #484848; --toast-fg: #ffffff; --destructive: #ff7b63;
     }
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #1e1e1e; --fg: #d4d4d4; --fg-dim: #9a9a9a; --heading: #f0f0f0; --faint: #5f6368; --accent: #78aeed; --accent-bg: #3584e4;
+    --window-bg: #242424; --header-bg: #242424; --sidebar-bg: #303030; --rail-bg: #2a2a2a; --border: #4f4f4f;
+    --btn-hover: #ffffff14; --btn-checked: #ffffff1f; --btn-bg: #393939; --row-active: #ffffff1c; --row-hover: #ffffff10; --tab-active: #393939;
+    --code-bg: #2b2d31; --code-fg: #f78c6c; --quote-fg: #9aa0a6; --quote-bg: #26282c; --mark-bg: #6b5a12; --sel: #264f78;
+    --card-bg: #383838; --column-bg: #ffffff0f; --popover-bg: #383838; --shadow: #00000080; --toast-bg: #484848; --toast-fg: #ffffff; --destructive: #ff7b63;
 }
 
 * { box-sizing: border-box; }
@@ -177,3 +186,14 @@ kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 .cm-editor .cm-searchMatch { background: #ea5c0055; outline: 1px solid #ea5c0088; }
 .cm-editor .cm-searchMatch.cm-searchMatch-selected { background: #a8ac9455; outline-color: #a8ac94; }
 .cm-editor .cm-selectionMatch { background: #add6ff26; }
+
+/* The dialog: an Adwaita alert dialog. */
+.dialog-backdrop { position: fixed; inset: 0; z-index: 40; background: #00000052; display: flex; align-items: center; justify-content: center; }
+.dialog { width: 372px; max-width: calc(100% - 32px); background: var(--popover-bg); border-radius: 14px; box-shadow: 0 4px 24px var(--shadow); padding: 24px 24px 20px; text-align: center; }
+.dialog h2 { margin: 0 0 8px; font-size: 17px; font-weight: 700; color: var(--heading); }
+.dialog p { margin: 0 0 16px; color: var(--fg); overflow-wrap: anywhere; }
+.dialog .entry { display: flex; flex-direction: column; gap: 4px; margin: 0 0 16px; text-align: left; font-size: 13px; color: var(--fg-dim); }
+.dialog .entry input { background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg); border: 0; border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 14px; }
+.dialog .buttons { display: flex; flex-direction: row-reverse; gap: 12px; }
+.dialog .buttons .button { flex: 1; min-height: 38px; border-radius: 10px; }
+.button.destructive { color: var(--destructive, #c01c28); }

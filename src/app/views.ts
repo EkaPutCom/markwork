@@ -109,6 +109,9 @@ export interface ViewHost<E extends TextEditor> extends DocumentHost<E> {
     showRuns(file: string | null): void;   // the board view gets the runs of the cards of board `file` (none for null)
 }
 
+// A view's change made again on the board the text holds when the write is made; null = it no longer applies.
+type Again = ((current: Board) => Board | null) | null;
+
 // How one document is shown, kept here rather than on the document record.
 interface ViewState {
     textOverride: boolean;   // the user chose the text view for this board or inbox
@@ -291,7 +294,7 @@ export class ViewController<E extends TextEditor> {
         if (!next) view.setBoard(board);
         else if (next !== board) {
             this.shown = next;
-            this.writeInbox(next);
+            this.writeInbox(next, current => applyNoteEdit(current, edit));
         }
     }
 
@@ -314,12 +317,17 @@ export class ViewController<E extends TextEditor> {
         const board = applyNoteEdit(shown, edit);
         if (!board) { this.setBoardView(this.currentBoard()); return; }
         if (board === shown) return;
-        if (!grouped) { this.board = board; this.writeBoard(board); return; }
-        const source = ungroupBoard(grouped.source, grouped.view, board, grouped.field);
+        if (!grouped) { this.board = board; this.writeBoard(board, current => applyNoteEdit(current, edit)); return; }
+        const { field } = grouped;
+        const source = ungroupBoard(grouped.source, grouped.view, board, field);
         this.board = source;
-        this.grouped = { ...grouped, source, view: groupBoard(source, grouped.field) };
+        this.grouped = { ...grouped, source, view: groupBoard(source, field) };
         this.host.board.replace(this.grouped.view.board);
-        this.writeBoard(source);
+        this.writeBoard(source, current => {
+            const view = groupBoard(current, field);
+            const next = applyNoteEdit(view.board, edit);
+            return next && ungroupBoard(current, view, next, field);
+        });
     }
 
     // The document's board: the one the view shows (the source of a grouped one), or the document's text when none was shown.
@@ -410,11 +418,11 @@ export class ViewController<E extends TextEditor> {
     }
 
     // Changes from the inbox → document text (one undo step).
-    private writeInbox(board: Board): void {
-        const doc = this.host.active();
-        const text = serializeBoard(board);
-        this.state(doc).boardText = text;
-        doc.editor.replaceText(text);
+    private writeInbox(board: Board, again: Again = null): void {
+        const state = this.state(this.host.active());
+        const base = state.boardText, text = serializeBoard(board);
+        state.boardText = text;
+        this.writeThrough(base, text, again);
         this.host.screen.setInboxCounts(countCards(board));
     }
 
@@ -426,8 +434,30 @@ export class ViewController<E extends TextEditor> {
     }
 
     // Changes from the board → document text (one undo step).
-    private writeBoard(board: Board): void {
-        this.host.active().editor.replaceText(this.boardWritten(board));
+    private writeBoard(board: Board, again: Again = null): void {
+        const base = this.state(this.host.active()).boardText;
+        this.writeThrough(base, this.boardWritten(board), again);
+    }
+
+    // Write the text of a view's change. With `again` (the user's operation, applied to whatever board the text holds then)
+    // it goes through update(): over the app protocol the write may reach the editor after more typing, and is then made
+    // again from that text, so neither the typing nor the change is lost. base = the text the view's board was read from:
+    // while the editor still holds it (always under GTK) `text` is written as it is. A change that no longer applies (its
+    // card was edited away) is told, and the view reads the text.
+    private writeThrough(base: string, text: string, again: Again): void {
+        const doc = this.host.active();
+        if (!again) { doc.editor.replaceText(text); return; }
+        doc.editor.update(current => {
+            if (current === base) return text;
+            const next = isStructured(current) ? again(parseBoard(current)) : null;
+            if (!next) {
+                this.host.toast(_('The notes changed before the change could be written'));
+                return null;
+            }
+            const redone = serializeBoard(next);
+            this.state(doc).boardText = redone;   // recognize this change as the view's own
+            return redone;
+        });
     }
 
     // What writing `board` to the active document involves besides the text itself: the journal records the change, the

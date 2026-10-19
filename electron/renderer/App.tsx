@@ -7,6 +7,7 @@ import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './EditorArea.js';
 import { Explorer } from './Explorer.js';
 import { Palette } from './Palette.js';
+import { DialogLayer } from './Dialog.js';
 import { Tabs } from './Tabs.js';
 import { Icon } from './Icons.js';
 import { label, matches } from './keys.js';
@@ -46,6 +47,10 @@ function Menu({ items, onClose }: { items: { id: string; label: string; keys?: s
     );
 }
 
+// The name on the layout button: the page shown, as the GTK header bar names it.
+const LAYOUT_NAMES: Record<string, string> = { board: 'Board', list: 'List', inbox: 'List', table: 'Table', calendar: 'Calendar', timeline: 'Timeline', gallery: 'Gallery', chart: 'Chart' };
+const layoutName = (layout: string, page: string): string => LAYOUT_NAMES[page] ?? (layout ? LAYOUT_NAMES[layout] ?? 'Text' : 'Text');
+
 function HeaderBar() {
     const client = useClient();
     const s = useStore();
@@ -70,9 +75,10 @@ function HeaderBar() {
             </div>
             <Title />
             <div className="end">
-                {tab && (
-                    <button className="button flat" title="Board/List/Table View" disabled={!client.enabled(COMMANDS.find(c => c.id === 'kanban-view')!)} onClick={() => client.run('kanban-view')}>
-                        <Icon name="text-x-generic" /><span>{tab.page === 'board' ? 'Board' : 'Text'}</span>
+                {tab && s.layout.layout !== null && (
+                    <button className={`button flat${s.layout.structured ? ' checked' : ''}`} title="Board/List/Table View" aria-pressed={s.layout.structured}
+                        disabled={!client.enabled(COMMANDS.find(c => c.id === 'kanban-view')!)} onClick={() => client.run('kanban-view')}>
+                        <Icon name="text-x-generic" /><span>{layoutName(s.layout.layout, tab.page)}</span>
                     </button>
                 )}
                 <button className="button flat" title="Commands (Ctrl+Shift+P)" aria-label="Main Menu" onClick={() => client.openPalette()}><Icon name="open-menu" /></button>
@@ -98,15 +104,21 @@ function Rail() {
 function StatusBar() {
     const s = useStore();
     const tab = s.tabs.find(t => t.id === s.active);
-    const counts = useMemo(() => tab && tab.page !== 'board' ? { words: countWords(tab.mirror.text), characters: cpLength(tab.mirror.text) } : null, [tab, tab?.mirror.version]);
+    // The text's counts are the window's own (it has the text); the others come from the core (view.status).
+    const { counts, visible } = s.status;
+    const text = useMemo(() => tab && counts.kind === 'text' ? { words: countWords(tab.mirror.text), characters: cpLength(tab.mirror.text) } : null,
+        [tab, tab?.mirror.version, counts.kind]);
     if (!tab) return <footer className="statusbar">{!s.ready ? 'Starting…' : ''}</footer>;
-    const board = tab.page === 'board' && tab.board;
+    if (!visible) return <footer className="statusbar" />;
     return (
         <footer className="statusbar">
-            {board ? <span>{board.columns.length} lists · {board.columns.reduce((n, c) => n + c.cards.length, 0)} cards</span> : counts && (
+            {counts.kind === 'board' && <span>{counts.lists} lists · {counts.cards} cards</span>}
+            {counts.kind === 'inbox' && <span>{counts.items} items</span>}
+            {counts.kind === 'csv' && <span>{counts.rows} rows · {counts.columns} columns</span>}
+            {text && (
                 <>
-                    <span>{counts.words} words</span>
-                    <span>{counts.characters} characters</span>
+                    <span>{text.words} words</span>
+                    <span>{text.characters} characters</span>
                     <span>Line {s.line}, Column {s.column}</span>
                 </>
             )}
@@ -141,6 +153,8 @@ export function App() {
     // Every key of the command table, for the commands this window carries out. Captured before the editor sees it.
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
+            // A dialog has the keys to itself.
+            if (client.getState().dialog) return;
             for (const command of COMMANDS) {
                 if (command.keys.some(k => matches(event, k)) && client.enabled(command)) {
                     event.preventDefault();
@@ -168,6 +182,7 @@ export function App() {
             </div>
             <Notification />
             <Palette />
+            <DialogLayer />
         </div>
     );
 }
