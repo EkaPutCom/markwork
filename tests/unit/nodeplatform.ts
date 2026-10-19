@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { AppSettings } from '../../src/settings.js';
 import { JsonSettingsStore, parseSchema, parseVariant } from '../../src/platform/node/settings.js';
 import { catalogTranslations, languages, parseMo, pluralRule, userCatalog } from '../../src/platform/node/i18n.js';
+import { SecretVault, answerSecret, remoteSecrets, type Cipher, type SecretRequest } from '../../src/platform/node/vault.js';
 import { section, test, eq, ok, tmp, ROOT } from '../framework.js';
 
 const schemaText = () => readFileSync(join(ROOT, 'data', 'com.ekaput.Markwork.gschema.xml'), 'utf8');
@@ -89,5 +90,56 @@ export async function nodePlatformTests(): Promise<void> {
         writeFileSync(join(dir, 'pl', 'LC_MESSAGES', 'markwork.mo'), mo);
         ok(userCatalog(dir, env({ LANG: 'pl_PL.UTF-8' }))?.messages.has('Saved'), 'pl_PL falls back to pl');
         eq(userCatalog(dir, env({ LANG: 'de_DE.UTF-8' })), null);
+    });
+    section('The Node runtime: the secret vault');
+
+    // A cipher that reverses the text, standing in for safeStorage.
+    const cipher = (available = true): Cipher => ({
+        available: () => available,
+        encrypt: text => new TextEncoder().encode([...text].reverse().join('')),
+        decrypt: data => [...new TextDecoder().decode(data)].reverse().join(''),
+    });
+
+    await test('the vault keeps items encrypted, by schema and attributes in any order', () => {
+        const path = join(tmp, 'vault', 'secrets.json');
+        const vault = new SecretVault(path, cipher());
+        ok(vault.store('s', { a: '1', b: '2' }, 'sk-secret'), 'stored');
+        eq(vault.lookup('s', { b: '2', a: '1' }), 'sk-secret');
+        eq(vault.lookup('s', { a: '1' }), null, 'other attributes, other item');
+        ok(!readFileSync(path, 'utf8').includes('sk-secret'), 'the file does not hold the text');
+        eq(new SecretVault(path, cipher()).lookup('s', { a: '1', b: '2' }), 'sk-secret', 'a new vault reads it');
+        vault.clear('s', { a: '1', b: '2' });
+        eq(vault.lookup('s', { a: '1', b: '2' }), null);
+    });
+
+    await test('without encryption the vault stores nothing', () => {
+        const vault = new SecretVault(join(tmp, 'vault-off', 'secrets.json'), cipher(false));
+        eq(vault.store('s', {}, 'x'), false);
+        eq(vault.lookup('s', {}), null);
+    });
+
+    await test('the core asks the vault over the channel, and a malformed request gets no answer', async () => {
+        const vault = new SecretVault(join(tmp, 'vault-remote', 'secrets.json'), cipher());
+        const sent: SecretRequest[] = [];
+        const remote = remoteSecrets(request => {
+            sent.push(request);
+            const reply = answerSecret(vault, request);
+            if (reply) queueMicrotask(() => remote.receive(reply));
+        });
+        eq(await remote.secrets.store('s', { k: 'v' }, 'label', 'token'), true);
+        eq(await remote.secrets.lookup('s', { k: 'v' }), 'token');
+        await remote.secrets.clear('s', { k: 'v' });
+        eq(await remote.secrets.lookup('s', { k: 'v' }), null);
+        eq(sent.length, 4);
+        eq(answerSecret(vault, null), null);
+        eq(answerSecret(vault, { id: 1, op: 'store', schema: 's', attributes: { k: 'v' } }), null, 'a store without a secret');
+        eq(answerSecret(vault, { id: 1, op: 'lookup', schema: 's', attributes: { k: 3 } }), null, 'attributes are strings');
+        eq(answerSecret(vault, { id: 1, op: 'delete', schema: 's', attributes: {} }), null, 'unknown operation');
+    });
+
+    await test('an unanswered request ends as no keyring', async () => {
+        const remote = remoteSecrets(() => {}, 20);
+        eq(await remote.secrets.lookup('s', {}), null);
+        eq(await remote.secrets.store('s', {}, 'l', 'x'), false);
     });
 }

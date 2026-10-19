@@ -3,15 +3,30 @@
 // object per post (docs/design/protocol.md, 3.1).
 
 import '../src/platform/node/install.js';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import schema from '../data/com.ekaput.Markwork.gschema.xml?raw';
 import { AppSettings } from '../src/settings.js';
 import { platform } from '../src/platform/index.js';
 import { JsonSettingsStore, parseSchema } from '../src/platform/node/settings.js';
+import { catalogTranslations, userCatalog } from '../src/platform/node/i18n.js';
+import { remoteSecrets, type SecretReply } from '../src/platform/node/vault.js';
 import { ProtocolServer } from '../src/app/protocol/server.js';
 import type { Message } from '../src/app/protocol/messages.js';
 import type { Provider } from '../src/agent/provider.js';
 import type { CollabServices } from '../src/app/collab.js';
 import type { Spawner } from '../src/orchestrator.js';
+
+// The platform as the Node port builds it, with what the packaged app does differently: its catalogs sit next to this
+// file (dist-electron/locale, from po/), and where Node has no keyring (macOS, Windows) the secrets go to the main
+// process, which holds them with safeStorage. MARKWORK_SECRETS=vault does the same on Linux, for the tests.
+const here = dirname(fileURLToPath(import.meta.url));
+const mutable = platform() as { -readonly [K in 'translations' | 'secrets']: ReturnType<typeof platform>[K] };
+mutable.translations = catalogTranslations(userCatalog(join(here, 'locale')));
+const vault = platform().os !== 'linux' || process.env.MARKWORK_SECRETS === 'vault'
+    ? remoteSecrets(request => process.parentPort.postMessage({ secrets: request }))
+    : null;
+if (vault) mutable.secrets = vault.secrets;
 
 const { paths } = platform();
 const specs = parseSchema(schema);
@@ -24,7 +39,13 @@ const testForge = process.env.MARKWORK_TEST_FORGE;
 // And a module with a fake agent program (`spawn`), so no test needs pi or a model.
 const testHarness = process.env.MARKWORK_TEST_HARNESS;
 
-process.parentPort.on('message', async ({ ports: [port] }) => {
+process.parentPort.on('message', async ({ data, ports: [port] }: { data: unknown; ports: Electron.MessagePortMain[] }) => {
+    // An answer of the main process's vault, not the port for the window.
+    if (!port) {
+        const reply = (data as { secrets?: SecretReply } | null)?.secrets;
+        if (reply) vault?.receive(reply);
+        return;
+    }
     const provider = testModel ? ((await import(/* @vite-ignore */ testModel)) as { provider: Provider }).provider : null;
     const server = new ProtocolServer(settings, message => port.postMessage(message), { settingKeys: Object.keys(specs) });
     if (provider) server.session.assistant.chat.makeProvider = () => provider;

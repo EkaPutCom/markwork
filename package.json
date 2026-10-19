@@ -28,10 +28,16 @@
     "pot": "sh scripts/pot.sh",
     "electron:build": "tsc --noEmit -p tsconfig.electron.json && node scripts/electron-build.mjs",
     "electron": "npm run electron:build && electron .",
-    "test:electron": "npm run electron:build && xvfb-run -a -s '-screen 0 1280x800x24' sh -c 'node tests/electron-smoke.mjs && node tests/electron-editor.mjs && node tests/electron-structured.mjs && node tests/electron-assistant.mjs && node tests/electron-git.mjs && node tests/electron-harness.mjs'"
+    "test:electron": "npm run electron:build && xvfb-run -a -s '-screen 0 1280x800x24' npm run test:electron:run",
+    "electron:dist": "npm run electron:build && electron-builder",
+    "electron:pack": "npm run electron:build && electron-builder --dir",
+    "test:electron:run": "node tests/electron-smoke.mjs && node tests/electron-editor.mjs && node tests/electron-structured.mjs && node tests/electron-assistant.mjs && node tests/electron-git.mjs && node tests/electron-harness.mjs && node tests/electron-secrets.mjs",
+    "icon": "xvfb-run -a electron scripts/make-icon.cjs"
   },
   "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.11.1",
+    "@codemirror/language-data": "^6.5.2",
     "@codemirror/search": "^6.7.2",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.14",
@@ -51,11 +57,13 @@
     "@girs/secret-1": "^5.5.0",
     "@girs/soup-3.0": "^5.5.0",
     "@girs/webkit-6.0": "^5.5.0",
+    "@lezer/highlight": "^1.2.5",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
     "gifenc": "^1.0.3",
     "mermaid": "^12.1.0",
     "playwright-core": "^1.64.1",
@@ -66,8 +74,7 @@
   },
   "main": "dist-electron/main.js",
   "dependencies": {
-    "@codemirror/autocomplete": "^6.20.3",
-    "@codemirror/language-data": "^6.5.2",
-    "@lezer/highlight": "^1.2.5"
-  }
+    "electron-updater": "^6.8.9"
+  },
+  "homepage": "https://github.com/EkaPutCom/markwork"
 }
