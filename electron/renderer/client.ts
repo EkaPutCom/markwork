@@ -21,6 +21,10 @@ import type { SchemaDialogOptions } from '../../src/app/protocol/schema.js';
 import type { FieldDef } from '../../src/markdown/fields.js';
 import type { ChangeKind, Commit, DiscardOutcome, HistoryChanges, HistoryText, WriteResult } from '../../src/app/protocol/history.js';
 import type { CollabSnapshot, MergeMethod, PullSnapshot, RepoRef, SendChangesAnswer, SendChangesOptions, TokenSource } from '../../src/app/protocol/collab.js';
+import type { HarnessAsk, PullRequestAnswer, PullRequestOptions, ReviewSnapshot, ReviewTab } from '../../src/app/protocol/harness.js';
+import type { ProjectPage, WorktreeList } from '../../src/app/protocol/preferences.js';
+import type { TraceUpdate } from '../../src/agent/tracefeed.js';
+import { TraceReplica } from '../../src/agent/tracefeed.js';
 import { ChatModel } from './chatmodel.js';
 
 declare global {
@@ -43,7 +47,20 @@ export interface Tab {
     csvRev: number;               // how many times it sent it
     home: HomeData | null;        // a Home tab: what the page shows (view.home)
     html: { file: string; root: string } | null;   // an HTML tab: the file, and the folder it may read
+    runs: Record<string, string>;   // the runs of a board's cards by card text: the status of each (view.runs)
 }
+
+// A run's log window (view.runlog.*): the log is a copy of the core's, kept up to date by its updates.
+export interface RunLog { run: number; title: string; log: TraceReplica; rev: number }
+
+// A question of the agents that waits for the user: the answer of a harness, a line of steering or a reply, a machine to add.
+export type AgentAsk =
+    | { id: number; kind: 'answer'; ask: HarnessAsk; agent: string }
+    | { id: number; kind: 'text'; title: string; label: string; context: string; text: string }
+    | { id: number; kind: 'machine'; taken: string[] };
+
+// What a card's menu offers: the entries are the core's, each one run by its token.
+export interface CardMenuEntry { label: string; enabled?: boolean; token: number }
 
 // A dialog in the window: a question with buttons, and an entry when it asks for text. The first button is the default.
 export interface DialogButton { label: string; value: string; style?: 'suggested' | 'destructive' }
@@ -129,6 +146,13 @@ export interface State {
     pullShown: boolean;              // the content area shows it, not the document (view.pull.show, until the next page)
     tokenAsk: TokenAsk | null;       // the token dialog while the core asks for it (ask.token)
     sendAsk: SendAsk | null;         // the form that sends changes while the core asks for it (ask.sendChanges)
+    runLogs: RunLog[];               // the log windows of agent runs that are open, the latest last
+    review: ReviewSnapshot | null;   // the review of a card's worktree (view.review)
+    reviewShown: boolean;            // the content area shows it, not the document (view.review.show, until the next page)
+    agentAsks: AgentAsk[];           // the questions of the agents that wait; the first is the one shown
+    pullAsk: { id: number; options: PullRequestOptions } | null;   // the form that sends a worktree's branch as a pull request (ask.pullRequest)
+    project: ProjectPage | null;     // the project page of Preferences → Agents (view.prefs.project)
+    worktrees: WorktreeList | null;  // its card worktrees (view.prefs.worktrees)
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
@@ -147,6 +171,7 @@ export class Client {
         schema: null, csvFind: { n: 0, replace: false },
         history: { commits: [], more: false, note: '', changes: null, message: '', messageRev: 0 }, viewers: [],
         collab: { note: null, server: null, pulls: [] }, pull: null, pullShown: false, tokenAsk: null, sendAsk: null,
+        runLogs: [], review: null, reviewShown: false, agentAsks: [], pullAsk: null, project: null, worktrees: null,
     };
     // The Assistant panel's state: a store of its own, because an answer streams in many small notices.
     readonly chat = new ChatModel(() => this.conn);
@@ -156,6 +181,9 @@ export class Client {
     private tokenAnswer: ((token: string | null) => void) | null = null;
     private sendAnswer: ((answer: SendChangesAnswer | null) => void) | null = null;
     private askCount = 0;
+    // The questions of the agents the core waits on, by number; the first of `agentAsks` is the one drawn.
+    private readonly waiting = new Map<number, (reply: Record<string, unknown>) => void>();
+    private pullAnswer: ((answer: PullRequestAnswer | null) => void) | null = null;
     private readonly listeners = new Set<() => void>();
     private conn: Connection | null = null;
     private editor: MarkdownEditor | null = null;
@@ -243,6 +271,7 @@ export class Client {
     selectTab = (doc: number): void => {
         // A tab pressed while the review is shown brings the document back, even the one that is already the active tab.
         if (this.snapshot.pullShown) { this.set({ pullShown: false }); void this.ask('act.pull.close'); }
+        if (this.snapshot.reviewShown) { this.set({ reviewShown: false }); void this.ask('act.review.close'); }
         void this.ask('tab.select', { doc });
     };
     closeTab = (doc: number): void => { void this.ask('tab.close', { doc }); };
@@ -328,7 +357,7 @@ export class Client {
         if (prefs) this.set({ prefs: { ...prefs, [key]: value } });
         void this.ask('act.prefs.set', { key, value });
     }
-    closePreferences(): void { this.set({ prefs: null }); void this.conn?.request('act.prefs.closed', {}); this.editor?.focus(); }
+    closePreferences(): void { this.set({ prefs: null, project: null, worktrees: null }); void this.conn?.request('act.prefs.closed', {}); this.editor?.focus(); }
     showInfo(info: State['info']): void { this.set({ info }); }
 
     // ---------- Home ----------
@@ -492,6 +521,81 @@ export class Client {
         this.sendAnswer?.(answer);
         this.sendAnswer = null;
         this.editor?.focus();
+    }
+
+    // ---------- Agents ----------
+
+    // A card's menu: the harness entries of the core, or none (a card that is gone, a board grouped by a field).
+    async cardMenu(column: number, index: number, text: string): Promise<CardMenuEntry[]> {
+        const reply = await this.conn?.request('act.card.menu', { column, index, text });
+        return reply?.ok ? reply.entries as CardMenuEntry[] : [];
+    }
+    runCardEntry = (token: number): void => { void this.ask('act.card.run', { token }); };
+
+    // Open the log of a run again, or raise the window that is open.
+    closeRunLog(run: number): void {
+        this.set({ runLogs: this.snapshot.runLogs.filter(l => l.run !== run) });
+        void this.ask('act.runlog.closed', { run });
+        this.editor?.focus();
+    }
+
+    // The question of an agent, answered; the next one waits behind it. `{}` is "no answer".
+    answerAsk(id: number, reply: Record<string, unknown>): void {
+        const resolve = this.waiting.get(id);
+        if (!resolve) return;
+        this.waiting.delete(id);
+        this.set({ agentAsks: this.snapshot.agentAsks.filter(a => a.id !== id) });
+        resolve(reply);
+        if (!this.snapshot.agentAsks.length) this.editor?.focus();
+    }
+
+    private askAgent(make: (id: number) => AgentAsk, cancel: CancelSignal): Promise<Record<string, unknown>> {
+        return new Promise(resolve => {
+            const ask = make(++this.askCount);
+            this.waiting.set(ask.id, resolve);
+            this.set({ agentAsks: [...this.snapshot.agentAsks, ask] });
+            cancel.onCancel(() => this.answerAsk(ask.id, {}));
+        });
+    }
+
+    closeReview(): void { this.set({ reviewShown: false }); void this.ask('act.review.close'); this.editor?.focus(); }
+    selectReviewFile = (index: number): void => {
+        if (this.snapshot.review) this.set({ review: { ...this.snapshot.review, selected: index } });
+        void this.ask('act.review.select', { index });
+    };
+    includeReviewFile = (index: number, included: boolean): void => { void this.ask('act.review.include', { index, included }); };
+    finishReview = (action: string): void => { void this.ask('act.review.finish', { action }); };
+    reviewTab = (tab: ReviewTab): void => {
+        if (this.snapshot.review) this.set({ review: { ...this.snapshot.review, tab } });
+        void this.ask('act.review.tab', { tab });
+    };
+    commentOnReview = (line: number, text: string): void => { void this.ask('act.review.comment', { line, text }); };
+    reviewAction = (action: 'pullRequest' | 'reply' | 'folder' | 'terminal' | 'log' | 'banner'): void => { void this.ask(`act.review.${action}`); };
+
+    // The form that sends a worktree's branch as a pull request: the answer, or null for Cancel.
+    answerPullRequest(id: number, answer: PullRequestAnswer | null): void {
+        if (this.snapshot.pullAsk?.id !== id) return;
+        this.set({ pullAsk: null });
+        this.pullAnswer?.(answer);
+        this.pullAnswer = null;
+        this.editor?.focus();
+    }
+
+    // Preferences → Agents.
+    addMachine = (): void => { void this.ask('act.prefs.addMachine'); };
+    removeMachine = (name: string): void => { void this.ask('act.prefs.removeMachine', { name }); };
+    openProject = (name: string): void => { this.set({ project: null, worktrees: null }); void this.ask('act.prefs.openProject', { name }); };
+    closeProject = (): void => { this.set({ project: null, worktrees: null }); };
+    // An error to show, or null once the change is written (the core sends the page again).
+    async setProject(name: string, patch: Record<string, unknown>): Promise<string | null> {
+        const reply = await this.conn?.request('act.prefs.setProject', { name, patch });
+        if (!reply) return 'The core is not running';
+        return reply.ok ? reply.error as string | null : reply.error.message;
+    }
+    async removeWorktree(name: string, path: string): Promise<string | null> {
+        const reply = await this.conn?.request('act.prefs.removeWorktree', { name, path });
+        if (!reply) return 'The core is not running';
+        return reply.ok ? reply.error as string | null : reply.error.message;
     }
 
     // ---------- Settings ----------
@@ -675,6 +779,37 @@ export class Client {
             cancel.onCancel(() => this.answerSend(id, null));
         }));
         c.on('ask.file', async p => ({ path: await window.markwork.chooseFile(p as unknown as ChooseFileOptions) }));
+        c.on('ask.folder', async p => {
+            const path = await window.markwork.chooseFile({ title: String(p.title), selectFolder: true });
+            return path ? { path } : {};
+        });
+        // What a harness waits for, a line for the agent, a machine to add; the answers are read again by the core.
+        c.on('ask.harness.answer', async (p, cancel) => {
+            const reply = await this.askAgent(id => ({ id, kind: 'answer', ask: p.ask as HarnessAsk, agent: String(p.agent) }), cancel);
+            return reply;
+        });
+        c.on('ask.text', (p, cancel) => {
+            const o = p.options as { title: string; label: string; context?: string; text?: string };
+            return this.askAgent(id => ({ id, kind: 'text', title: o.title, label: o.label, context: o.context ?? '', text: o.text ?? '' }), cancel);
+        });
+        c.on('ask.machine', (p, cancel) => this.askAgent(id => ({ id, kind: 'machine', taken: (p.taken as string[]) ?? [] }), cancel));
+        c.on('ask.closeAgents', async (p, cancel) => {
+            const a = p.activity as { children: number; detachable: number; queued: number };
+            const stopping = a.children + a.queued, keeping = a.detachable;
+            const detail = [
+                stopping ? `${stopping} ${stopping === 1 ? 'agent works' : 'agents work'} in this window and will be stopped.` : '',
+                keeping ? `${keeping} ${keeping === 1 ? 'agent works' : 'agents work'} on a machine and can go on without this window.` : '',
+            ].filter(Boolean).join(' ');
+            const buttons: DialogButton[] = [{ label: 'Cancel', value: 'cancel' }, ...keeping ? [{ label: 'Keep Them Going', value: 'keep' }] : [], { label: 'Stop Agents and Quit', value: 'stop', style: 'destructive' as const }];
+            const { value } = await this.showDialog({ title: 'Agents are still working', detail, entry: null, buttons }, cancel);
+            return { answer: value ?? 'cancel' };
+        });
+        c.on('ask.pullRequest', (p, cancel) => new Promise(resolve => {
+            const id = ++this.askCount;
+            this.pullAnswer = answer => resolve(answer ? { answer } : {});
+            this.set({ pullAsk: { id, options: p.options as PullRequestOptions } });
+            cancel.onCancel(() => this.answerPullRequest(id, null));
+        }));
         c.onOther(this.genericAsk);
 
         void (async () => {
@@ -704,7 +839,7 @@ export class Client {
     windowActive(active: boolean): void { this.conn?.notify('window.active', { active }); }
 
     // The review is a page of the content area; the next page the core shows (a document, Home) takes its place.
-    private leaveReview(): void { if (this.snapshot.pullShown) this.set({ pullShown: false }); }
+    private leaveReview(): void { if (this.snapshot.pullShown || this.snapshot.reviewShown) this.set({ pullShown: false, reviewShown: false }); }
 
     private notice(ev: string, p: Record<string, unknown>): void {
         if (ev.startsWith('chat.') && this.chat.notice(ev, p)) return;
@@ -712,13 +847,13 @@ export class Client {
         const tab = this.tab(id);
         switch (ev) {
             case 'doc.open':
-                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0, home: null, html: null }] });
+                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0, home: null, html: null, runs: {} }] });
                 break;
             case 'page.open': {
                 const page = p.page as number, kind = p.kind as string, file = p.file as string | null;
                 this.set({ tabs: [...this.snapshot.tabs, {
                     id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, page: kind, board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0,
-                    home: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null,
+                    home: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null, runs: {},
                 }] });
                 break;
             }
@@ -790,7 +925,23 @@ export class Client {
             case 'view.historyViewer.close': this.set({ viewers: this.snapshot.viewers.filter(v => v.id !== p.viewer) }); break;
             case 'view.collab': this.set({ collab: { note: (p.note as string | null) ?? null, server: (p.server as string | null) ?? null, pulls: p.pulls as CollabSnapshot['pulls'] } }); break;
             case 'view.pull': this.set({ pull: p as unknown as PullSnapshot }); break;
-            case 'view.pull.show': this.set({ pullShown: true }); break;
+            case 'view.pull.show': this.set({ pullShown: true, reviewShown: false }); break;
+            case 'view.review': this.set({ review: p as unknown as ReviewSnapshot }); break;
+            case 'view.review.show': this.set({ reviewShown: true, pullShown: false }); break;
+            case 'view.runs': this.changeTab(id, { runs: Object.fromEntries((p.runs as { card: string; status: string }[]).map(r => [r.card, r.status])) }); break;
+            case 'view.runlog.open': {
+                const run = p.run as number, title = String(p.title);
+                const open = this.snapshot.runLogs.find(l => l.run === run);
+                if (open) { this.set({ runLogs: [...this.snapshot.runLogs.filter(l => l.run !== run), { ...open, title }] }); break; }
+                const log = new TraceReplica();
+                log.onClear = () => { void this.ask('act.runlog.clear', { run }); };
+                log.onChange = () => this.set({ runLogs: this.snapshot.runLogs.map(l => l.run === run ? { ...l, rev: l.rev + 1 } : l) });
+                this.set({ runLogs: [...this.snapshot.runLogs, { run, title, log, rev: 0 }] });
+                break;
+            }
+            case 'view.runlog.update': this.snapshot.runLogs.find(l => l.run === p.run)?.log.apply(p.update as TraceUpdate); break;
+            case 'view.prefs.project': this.set({ project: p.page as ProjectPage, worktrees: null }); break;
+            case 'view.prefs.worktrees': if (this.snapshot.project?.name === (p.list as WorktreeList).project) this.set({ worktrees: p.list as WorktreeList }); break;
             case 'open.uri': window.open(p.uri as string); break;
             case 'setting': this.applySettings({ [p.key as string]: p.value }); break;
             case 'commands.state': this.set({ disabled: p.disabled as string[] }); break;

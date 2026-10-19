@@ -627,3 +627,39 @@ pre.diff.large { max-height: 52vh; } pre.contents { margin: 0; max-height: 52vh;
 .comment .text { min-width: 0; flex: 1; } .comment .body { white-space: pre-wrap; overflow-wrap: anywhere; }
 .comment-form { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 .pull-row .dot { font-size: 10px; margin-right: 6px; vertical-align: 1px; } .pull-row .dot.success { color: var(--success); } .pull-row .dot.warning { color: var(--warning); } .pull-row .dot.dim { color: var(--fg-dim); }
+
+/* ---------- Agents: run badges, the review page, the questions of a harness, Preferences → Agents ---------- */
+.chip.agent.run-working { background: color-mix(in srgb, var(--accent-bg) 30%, transparent); }
+.chip.agent.run-waiting { background: color-mix(in srgb, #e9a23b 32%, transparent); }
+.chip.agent.run-done { background: color-mix(in srgb, #3fa66b 28%, transparent); }
+.chip.agent.run-failed { background: color-mix(in srgb, #e5484d 28%, transparent); }
+.chip.agent.run-stopped, .chip.agent.run-queued, .chip.agent.run-idle { background: color-mix(in srgb, var(--fg) 12%, transparent); }
+.form .choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.form .ask-message, .form pre.context { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 30vh; overflow: auto; }
+.form pre.context { margin: 0; font: 12px/1.45 var(--font-mono); background: var(--code-bg); border-radius: 8px; padding: 6px 10px; text-align: left; }
+.review-page .pull-files .file { padding: 2px 8px 2px 6px; cursor: default; }
+.review-page .pull-files .file .pick { display: flex; flex: 1; min-width: 0; align-items: center; gap: 8px; text-align: left; padding: 4px 0; }
+.review-page .mark.success { color: var(--success); } .review-page .mark.warning { color: var(--warning); } .review-page .mark.error { color: var(--error); }
+.review-page .merge-split { position: relative; }
+.review-page .merge-split .popover { top: 100%; right: 0; left: auto; min-width: 220px; }
+.review-page .pref-tabs .status { margin-left: auto; align-self: center; }
+.review-commits { list-style: none; margin: 10px 4px 0; padding: 8px 0 0; border-top: 1px solid var(--border); font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+.review-commits li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .review-commits code { color: var(--fg-dim); }
+pre.diff.commentable .line { display: flex; align-items: baseline; gap: 8px; } pre.diff.commentable .line .text { flex: 1; }
+pre.diff.commentable .line.commented { outline: 1px solid color-mix(in srgb, var(--accent-bg) 55%, transparent); }
+.comment-button { visibility: hidden; flex: none; padding: 0 6px; border-radius: 6px; color: var(--fg-dim); }
+pre.diff.commentable .line:hover .comment-button, .comment-button:focus-visible { visibility: visible; }
+.line-comment { padding: 6px 10px; display: flex; flex-direction: column; gap: 6px; font-family: inherit; white-space: normal; background: color-mix(in srgb, var(--fg) 5%, transparent); }
+.line-comment textarea { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font: 13px/1.4 inherit; }
+.line-comment .buttons { display: flex; gap: 8px; }
+.review-summary { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; } .review-summary h3 { margin: 10px 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--fg-dim); }
+.review-summary .answer { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.review-summary .commands { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; align-self: stretch; }
+.review-summary .commands li { display: flex; justify-content: space-between; gap: 10px; } .review-summary .commands li.failed code { color: var(--error); }
+.review-summary code, .pref-row code.path { font: 12px var(--font-mono); overflow-wrap: anywhere; }
+.pref-actions { padding: 10px 0; } .project-row { width: 100%; text-align: left; } .project-row:hover { background: var(--row-hover); }
+.project-head { display: flex; align-items: center; gap: 8px; } .project-head h3 { margin: 16px 0 4px; }
+.pref-page .worktrees { list-style: none; margin: 0; padding: 0; } .pref-page .worktrees li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--fg) 8%, transparent); }
+.pref-page .worktrees .text { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; } .pref-page .worktrees .subtitle { font-size: 12px; color: var(--fg-dim); }
+.pref-page .dim { color: var(--fg-dim); font-size: 12px; margin: 6px 0; }
+.pref-row input:not([type=checkbox]) { background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg); border: 0; border-radius: 8px; padding: 6px 8px; font: inherit; max-width: 220px; }

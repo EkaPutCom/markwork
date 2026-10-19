@@ -7,6 +7,7 @@ import { boardSchema, cardFields, cardMeta, dropIndex, dueStatus, type Board as 
 import { wikiLinksIn } from '../../src/markdown/wikilink.js';
 import { Icon } from './Icons.js';
 import { CardDialog, Chip, FieldChips, formatDay, Inline, PopupMenu, refOf, Tags, todayString, usePopup, useFieldEditor, type CardAnswer, type MenuEntry } from './notes.js';
+import type { CardMenuEntry } from './client.js';
 import { useClient } from './useClient.js';
 
 interface Drag { from: Position; text: string; target: Position | null }
@@ -17,7 +18,17 @@ function dropAt(list: HTMLElement, y: number): number {
     return dropIndex(centers, y);
 }
 
-export function Board({ board, groupField, agents }: { board: BoardData; groupField: string | null; agents: boolean }) {
+// The badge of an assigned card: what its run is doing, as the GTK board words it.
+const RUN_ICON: Record<string, string> = { queued: '◌', working: '●', waiting: '⏸', done: '✓', failed: '✕', stopped: '■' };
+const RUN_LABEL: Record<string, string> = { queued: 'queued', working: 'working', waiting: 'waiting for an answer', done: 'done', failed: 'failed', stopped: 'stopped' };
+
+function AgentChip({ agent, status }: { agent: string; status: string | null }) {
+    const title = status === 'waiting' ? `${agent} is waiting for your answer: right click the card → Answer ${agent}…`
+        : status ? `${agent}: ${RUN_LABEL[status] ?? status} (right click the card for the log)` : `Assigned to ${agent}; right click the card → Work on it with ${agent}`;
+    return <Chip text={`${status ? RUN_ICON[status] ?? '●' : '◇'} ${agent}${status ? ` · ${RUN_LABEL[status] ?? status}` : ''}`} className={`agent run-${status ?? 'idle'}`} title={title} />;
+}
+
+export function Board({ board, groupField, agents, runs }: { board: BoardData; groupField: string | null; agents: boolean; runs: Record<string, string> }) {
     const client = useClient();
     const schema = useMemo(() => boardSchema(board), [board.head.join('\n')]);   // eslint-disable-line react-hooks/exhaustive-deps
     const [menu, setMenu, closeMenu] = usePopup<{ at: { x: number; y: number }; entries: MenuEntry[] }>();
@@ -48,7 +59,8 @@ export function Board({ board, groupField, agents }: { board: BoardData; groupFi
         if (name) client.editNotes({ kind: 'renameColumn', column, title: current, to: name });
     };
 
-    const cardEntries = (at: Position): MenuEntry[] => {
+    // The entries of a card's menu; the harness ones are the core's (asked for when the menu opens) and run by their token.
+    const cardEntries = (at: Position, harness: CardMenuEntry[] = []): MenuEntry[] => {
         const col = board.columns[at.column], card = col.cards[at.index], ref = refOf(at, card);
         const move = board.columns.flatMap((target, t): MenuEntry[] => t === at.column ? []
             : [{ label: columnName(target.title), run: () => client.editNotes({ kind: 'move', ...ref, to: { column: t, index: target.cards.length } }) }]);
@@ -58,9 +70,15 @@ export function Board({ board, groupField, agents }: { board: BoardData; groupFi
             { label: 'Move to', enabled: board.columns.length > 1, submenu: move },
             { label: 'Move Up', enabled: at.index > 0, run: () => client.editNotes({ kind: 'move', ...ref, to: { column: at.column, index: at.index - 1 } }) },
             { label: 'Move Down', enabled: at.index < col.cards.length - 1, run: () => client.editNotes({ kind: 'move', ...ref, to: { column: at.column, index: at.index + 1 } }) },
+            ...harness.length ? [{ separator: true } as MenuEntry, ...harness.map(e => ({ label: e.label, enabled: e.enabled, run: () => client.runCardEntry(e.token) }))] : [],
             { separator: true },
             { label: 'Delete', run: () => void deleteCard(at) },
         ];
+    };
+    const openCardMenu = async (at: Position, x: number, y: number) => {
+        const card = board.columns[at.column]?.cards[at.index];
+        const harness = agents && card ? await client.cardMenu(at.column, at.index, card.text) : [];
+        setMenu({ at: { x, y }, entries: cardEntries(at, harness) });
     };
     const columnEntries = (column: number): MenuEntry[] => {
         // The group without a name stays first: it cannot be moved, and nothing is moved before it.
@@ -122,7 +140,7 @@ export function Board({ board, groupField, agents }: { board: BoardData; groupFi
                                             onDragEnd={() => setDrag(null)}
                                             onClick={() => setEditing({ ...at, text: card.text, notes: card.notes })}
                                             onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) setEditing({ ...at, text: card.text, notes: card.notes }); }}
-                                            onContextMenu={e => { e.preventDefault(); setMenu({ at: { x: e.clientX, y: e.clientY }, entries: cardEntries(at) }); }}>
+                                            onContextMenu={e => { e.preventDefault(); void openCardMenu(at, e.clientX, e.clientY); }}>
                                             <button className="check" aria-label={`${card.done ? 'Mark not done' : 'Mark done'}: ${meta.title}`}
                                                 onClick={e => { e.stopPropagation(); client.editNotes({ kind: 'toggle', ...ref }); }}>
                                                 {card.done ? <Icon name="emblem-ok" /> : <span className="ring" />}
@@ -130,7 +148,7 @@ export function Board({ board, groupField, agents }: { board: BoardData; groupFi
                                             <div className="body">
                                                 <div className="text"><Inline text={meta.title} /></div>
                                                 <div className="badges">
-                                                    {meta.agent && <Chip text={`@${meta.agent}`} className="agent" />}
+                                                    {meta.agent && <AgentChip agent={meta.agent} status={agents ? runs[card.text] ?? null : null} />}
                                                     <FieldChips chips={cardFields(card.text, schema)} onEdit={(key, e) => openField(ref, card.text, key, { x: e.clientX, y: e.clientY })} />
                                                     <Tags tags={meta.tags} />
                                                     {meta.due && <Chip text={`📅 ${formatDay(meta.due, today)}`} className={`due due-${dueStatus(meta.due, today)}`} title="Due date" onClick={e => openField(ref, card.text, 'due', { x: e.clientX, y: e.clientY })} />}

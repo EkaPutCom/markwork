@@ -16,7 +16,8 @@ import { ImageViewer } from './ImageViewer.js';
 import { Chat, ChatReview } from './Chat.js';
 import { Collab, SendChangesDialog, TokenDialog } from './Collab.js';
 import { History, HistoryViewers } from './History.js';
-import { LogViewer } from './LogViewer.js';
+import { LogViewer, RunLogs } from './LogViewer.js';
+import { AgentAsks, PullRequestDialog } from './Harness.js';
 import { Tabs } from './Tabs.js';
 import { Icon, type IconName } from './Icons.js';
 import { label, matches } from './keys.js';
@@ -248,6 +249,9 @@ export function App() {
             <FieldsDialog />
             <ChatReview />
             <LogViewer />
+            <RunLogs />
+            <AgentAsks />
+            <PullRequestDialog />
             <HistoryViewers />
             <TokenDialog />
             <SendChangesDialog />

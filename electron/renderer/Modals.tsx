@@ -3,6 +3,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
+import { AgentsPage } from './AgentsPrefs.js';
 import { label } from './keys.js';
 import { useClient, useStore } from './useClient.js';
 
@@ -31,7 +32,7 @@ function Row({ title, subtitle, children }: { title: string; subtitle?: string; 
 export function PreferencesDialog() {
     const client = useClient();
     const { prefs } = useStore();
-    const [page, setPage] = useState<'general' | 'assistant'>('general');
+    const [page, setPage] = useState<'general' | 'assistant' | 'agents'>('general');
     if (!prefs) return null;
     const set = (key: string) => (value: string | number | boolean) => client.setPreference(key, value);
     const toggle = (key: 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatThinking' | 'chatSave' | 'forgeNotify', title: string, subtitle?: string) => (
@@ -40,8 +41,8 @@ export function PreferencesDialog() {
     return (
         <Modal title="Preferences" onClose={() => client.closePreferences()} wide>
             <div className="pref-tabs" role="tablist">
-                {(['general', 'assistant'] as const).map(p => (
-                    <button key={p} role="tab" aria-selected={page === p} className={page === p ? 'active' : ''} onClick={() => setPage(p)}>{p === 'general' ? 'General' : 'Assistant'}</button>
+                {(['general', 'assistant', 'agents'] as const).map(p => (
+                    <button key={p} role="tab" aria-selected={page === p} className={page === p ? 'active' : ''} onClick={() => setPage(p)}>{{ general: 'General', assistant: 'Assistant', agents: 'Agents' }[p]}</button>
                 ))}
             </div>
             {page === 'general' ? (
@@ -64,7 +65,7 @@ export function PreferencesDialog() {
                     </Row>
                     {toggle('forgeNotify', 'Desktop notifications', 'When a pull request is opened or updated')}
                 </div>
-            ) : (
+            ) : page === 'agents' ? <AgentsPage prefs={prefs} /> : (
                 <div className="pref-page">
                     <Row title="Model">
                         <select value={prefs.chatModel} onChange={e => set('chatModel')(e.target.value)}>

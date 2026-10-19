@@ -3,12 +3,13 @@
 // follows the newest step until the user picks one.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { TraceReplica } from '../../src/agent/tracefeed.js';
 import { AgentTrace, type TraceEvent, type TraceKind } from '../../src/agent/trace.js';
 import { descendants, formatCount, formatMs, formatSize, traceStats, traceTree, turnEvents, type TraceNode } from '../../src/agent/tracetree.js';
 import { LOG_HEADERS, settledNewest, visibleSteps } from '../../src/agent/logrows.js';
 import { Icon } from './Icons.js';
 import { Modal } from './Modals.js';
-import { useChat, useClient } from './useClient.js';
+import { useChat, useClient, useStore } from './useClient.js';
 
 const FILTERS: [string, TraceKind[]][] = [['All', []], ['Tools', ['tool']], ['Reasoning', ['reasoning']], ['Model', ['round', 'text']]];
 const KIND_NAME: Record<TraceKind, string> = { turn: 'Question', round: 'Model round', reasoning: 'Reasoning', text: 'Answer', tool: 'Tool call', usage: 'Usage', note: 'Note', error: 'Error' };
@@ -89,57 +90,77 @@ function Detail({ event, nodes }: { event: TraceEvent | null; nodes: TraceNode[]
     );
 }
 
-export function LogViewer() {
-    const client = useClient();
-    const { logOpen, logRev } = useChat();
-    const { log } = client.chat;
+// The tree and the detail of one log. `rev` changes whenever the log does, so the tree is built again.
+export function LogPanel({ log, rev, empty }: { log: TraceReplica; rev: number; empty: string }) {
     const [filter, setFilter] = useState(0);
     const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set());
     const [picked, setPicked] = useState<number | null>(null);   // a step the user chose: the log stops following the newest
     const list = useRef<HTMLDivElement>(null);
     const stick = useRef(true);
-    const nodes = useMemo(() => traceTree(log.events), [log, logRev]);   // eslint-disable-line react-hooks/exhaustive-deps
+    const nodes = useMemo(() => traceTree(log.events), [log, rev]);   // eslint-disable-line react-hooks/exhaustive-deps
     const kinds = FILTERS[filter][1];
     const shown = useMemo(() => visibleSteps(nodes, kinds, collapsed), [nodes, kinds, collapsed]);
     const newest = settledNewest(nodes, shown);
     const selected = picked !== null && nodes.some(n => n.event.seq === picked) ? picked : newest;
     const event = nodes.find(n => n.event.seq === selected)?.event ?? null;
     useLayoutEffect(() => { const el = list.current; if (el && stick.current) el.scrollTop = el.scrollHeight; });
-    if (!logOpen) return null;
 
     const rounds = log.events.filter(e => e.kind === 'round').length, tools = log.events.filter(e => e.kind === 'tool').length;
     const toggle = (seq: number) => setCollapsed(c => { const next = new Set(c); if (!next.delete(seq)) next.add(seq); return next; });
     return (
-        <Modal title="Agent log" onClose={() => client.chat.openLog(false)} wide>
-            <div className="log">
-                <div className="log-bar">
-                    <button className="button" title="Copy the whole log as text" onClick={() => void navigator.clipboard.writeText(log.text())}>Copy all</button>
-                    <button className="button" title="Clear the log view (the conversation is not affected)" onClick={() => { setPicked(null); log.clear(); }}>Clear</button>
-                    <span className="filters" role="group" aria-label="Show">
-                        {FILTERS.map(([label], i) => <button key={label} className={`button${filter === i ? ' checked' : ''}`} aria-pressed={filter === i} onClick={() => setFilter(i)}>{label}</button>)}
-                    </span>
-                    <span className="side-meta summary">{log.events.length ? `${rounds} model rounds · ${tools} tool calls` : 'No activity yet. Send a question to the Assistant.'}</span>
-                </div>
-                <div className="log-body">
-                    <div className="log-tree" ref={list} role="tree" aria-label="Steps"
-                        onScroll={e => { const el = e.currentTarget; stick.current = el.scrollHeight - el.clientHeight - el.scrollTop < 24; }}>
-                        {nodes.filter(n => shown.has(n.event.seq)).map(n => {
-                            const e = n.event, header = LOG_HEADERS.has(e.kind);
-                            return (
-                                <div key={e.seq} role="treeitem" aria-selected={e.seq === selected} aria-level={n.depth + 1} tabIndex={0}
-                                    className={`step ${e.kind}${e.seq === selected ? ' selected' : ''}${e.status === 'failed' ? ' failed' : ''}`} style={{ paddingLeft: 4 + n.depth * 14 }}
-                                    onClick={() => setPicked(e.seq === newest ? null : e.seq)} onKeyDown={ev => { if (ev.key === 'Enter') setPicked(e.seq === newest ? null : e.seq); }}>
-                                    {header ? <button className="button flat circular" aria-label={collapsed.has(e.seq) ? 'Expand' : 'Collapse'} aria-expanded={!collapsed.has(e.seq)}
-                                        onClick={ev => { ev.stopPropagation(); toggle(e.seq); }}><Icon name={collapsed.has(e.seq) ? 'pan-end' : 'pan-down'} size={12} /></button> : <span className="gap" />}
-                                    <span className="label">{rowLabel(e)}{e.status === 'failed' ? ' — failed' : ''}</span>
-                                    <span className="side-meta">{rowMeta(e)}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <Detail event={event} nodes={nodes} />
-                </div>
+        <div className="log">
+            <div className="log-bar">
+                <button className="button" title="Copy the whole log as text" onClick={() => void navigator.clipboard.writeText(log.text())}>Copy all</button>
+                <button className="button" title="Clear the log view" onClick={() => { setPicked(null); log.clear(); }}>Clear</button>
+                <span className="filters" role="group" aria-label="Show">
+                    {FILTERS.map(([label], i) => <button key={label} className={`button${filter === i ? ' checked' : ''}`} aria-pressed={filter === i} onClick={() => setFilter(i)}>{label}</button>)}
+                </span>
+                <span className="side-meta summary">{log.events.length ? `${rounds} model rounds · ${tools} tool calls` : empty}</span>
             </div>
+            <div className="log-body">
+                <div className="log-tree" ref={list} role="tree" aria-label="Steps"
+                    onScroll={e => { const el = e.currentTarget; stick.current = el.scrollHeight - el.clientHeight - el.scrollTop < 24; }}>
+                    {nodes.filter(n => shown.has(n.event.seq)).map(n => {
+                        const e = n.event, header = LOG_HEADERS.has(e.kind);
+                        return (
+                            <div key={e.seq} role="treeitem" aria-selected={e.seq === selected} aria-level={n.depth + 1} tabIndex={0}
+                                className={`step ${e.kind}${e.seq === selected ? ' selected' : ''}${e.status === 'failed' ? ' failed' : ''}`} style={{ paddingLeft: 4 + n.depth * 14 }}
+                                onClick={() => setPicked(e.seq === newest ? null : e.seq)} onKeyDown={ev => { if (ev.key === 'Enter') setPicked(e.seq === newest ? null : e.seq); }}>
+                                {header ? <button className="button flat circular" aria-label={collapsed.has(e.seq) ? 'Expand' : 'Collapse'} aria-expanded={!collapsed.has(e.seq)}
+                                    onClick={ev => { ev.stopPropagation(); toggle(e.seq); }}><Icon name={collapsed.has(e.seq) ? 'pan-end' : 'pan-down'} size={12} /></button> : <span className="gap" />}
+                                <span className="label">{rowLabel(e)}{e.status === 'failed' ? ' — failed' : ''}</span>
+                                <span className="side-meta">{rowMeta(e)}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+                <Detail event={event} nodes={nodes} />
+            </div>
+        </div>
+    );
+}
+
+// The Assistant's log, a window of its own.
+export function LogViewer() {
+    const client = useClient();
+    const { logOpen, logRev } = useChat();
+    if (!logOpen) return null;
+    return (
+        <Modal title="Agent log" onClose={() => client.chat.openLog(false)} wide>
+            <LogPanel log={client.chat.log} rev={logRev} empty="No activity yet. Send a question to the Assistant." />
+        </Modal>
+    );
+}
+
+// The log of an agent run (View Log in a card's menu): the window opened last, in front.
+export function RunLogs() {
+    const client = useClient();
+    const { runLogs } = useStore();
+    const front = runLogs.at(-1);
+    if (!front) return null;
+    return (
+        <Modal key={front.run} title={front.title} onClose={() => client.closeRunLog(front.run)} wide>
+            <LogPanel log={front.log} rev={front.rev} empty="No activity yet." />
         </Modal>
     );
 }

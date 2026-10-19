@@ -55,7 +55,7 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Sidebar | Outline (`outline.ts`) | `OutlineView` | ✅ | — |
 | Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | ✅ | — |
 | Halaman | Tab HTML dengan sandbox (`htmlpage.ts`) | `showPageTab`, `markdown/htmlview.ts` | ✅ | — |
-| Dialog | Preferences umum (`preferences.ts`) | `PreferencesView` | ✅ umum dan Assistant; halaman Agents di Fase 6 | 6 |
+| Dialog | Preferences umum (`preferences.ts`) | `PreferencesView` | ✅ umum, Assistant, dan Agents | — |
 | Struktur | Board penuh: kolom, grup per field, popover field (`kanban.ts`, `fieldpopover.ts`) | `KanbanView`, `NoteEdit` | ✅ | — |
 | Struktur | List/inbox dengan capture (`inbox.ts`) | `CaptureView` | ✅ | — |
 | Struktur | Table (`table.ts`) | `CaptureView` | ✅ | — |
@@ -72,13 +72,13 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Git | History viewer per commit (`historyviewer.ts`) | `HistoryViewersView` | ✅ | — |
 | Kolaborasi | Tab pull request, token server (`collab.ts`, `serverdialog.ts`) | `CollabView`, `CollabDialogs` | ✅ | — |
 | Kolaborasi | Halaman review pull request (`pullview.ts`) | `PullReviewView`, `PullDialogs` | ✅ | — |
-| Kolaborasi | Kirim perubahan sebagai PR (`sendchanges.ts`) | `ContributeDialogs.send` | ⬜ | 5 |
-| Agent | Menu kartu, status run di board | `HarnessBoard` → `ask.menu` | ⬜ | 6 |
-| Agent | Jendela log run (`window/harnesslogs.ts`) | `HarnessLogs` | ⬜ | 6 |
-| Agent | Dialog harness: jawab, teks, folder, folder remote, tutup agent | `HarnessDialogs` | ⬜ | 6 |
-| Agent | Review worktree kartu, dialog PR (`harnessreview.ts`, `pullrequestdialog.ts`) | `ReviewView`, `ReviewDialogs` | ⬜ | 6 |
-| Agent | Preferences: mesin, proyek, worktree (`projectsettings.ts`) | `PreferencesView`, `PreferencesDialogs` | ⬜ | 6 |
-| Platform | Notifikasi desktop, buka terminal, buka folder | `notify`, `openTerminal`, `openFolder` | ⬜ | 0 / 6 |
+| Kolaborasi | Kirim perubahan sebagai PR (`sendchanges.ts`) | `ContributeDialogs.send` | ✅ | — |
+| Agent | Menu kartu, status run di board | `HarnessBoard` → `ask.menu` | ✅ | — |
+| Agent | Jendela log run (`window/harnesslogs.ts`) | `HarnessLogs` | ✅ | — |
+| Agent | Dialog harness: jawab, teks, folder, folder remote, tutup agent | `HarnessDialogs` | ✅ | — |
+| Agent | Review worktree kartu, dialog PR (`harnessreview.ts`, `pullrequestdialog.ts`) | `ReviewView`, `ReviewDialogs` | ✅ | — |
+| Agent | Preferences: mesin, proyek, worktree (`projectsettings.ts`) | `PreferencesView`, `PreferencesDialogs` | ✅ | — |
+| Platform | Notifikasi desktop, buka terminal, buka folder | `notify`, `openTerminal`, `openFolder` | ✅ | — |
 | Platform | Kunci API di macOS/Windows | `Secrets` → `safeStorage` | ⬜ | 7 |
 | Rilis | i18n `.mo`, packaging, update otomatis, CI 3 OS | — | ⬜ | 7 |
 
@@ -154,7 +154,7 @@ Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval 
 | Home | `view.home` (`HomeData`) | halaman Home; aksi kartu memakai `act.notes.edit` / `open.file` |
 | Tab HTML | `view.page` `html` + isi dari `markdown/htmlview.ts` | `<iframe sandbox>` dengan CSP; tautan dan jaringan dicegat dan dikonfirmasi lewat `will-navigate` di main (aturan sama dengan WebKitGTK) |
 | Menu utama dan Recent | `setRecent` | popover menu header bar (sudah ada kerangkanya) |
-| Preferences umum | `view.prefs.open`, `.values`; `act.prefs.set` | dialog Preferences: tab Umum, Editor, Assistant (halaman Agent menyusul di Fase 6) |
+| Preferences umum | `view.prefs.open`, `.values`; `act.prefs.set` | dialog Preferences: tab Umum, Editor, Assistant, Agents |
 | Keyboard Shortcuts, About | — (`runs: 'editor'`) | dua dialog, dibangun dari `COMMANDS` |
 
 Selesai bila: `tests/gui/folder*.ts`, `file.ts`, `tabs.ts`, `home.ts`, `htmlpage.ts`, `window.ts`, `dialogs.ts` punya padanan.
@@ -201,6 +201,8 @@ Selesai bila: `tests/gui/chat.ts`, `context.ts`, `journal.ts` punya padanan, dan
 Selesai bila: `tests/gui/history.ts`, `collab.ts`, `forgejo.ts` punya padanan; `npm run test:forgejo` dijalankan juga terhadap Electron.
 
 ### Fase 6 — Agent dan harness (L)
+
+**Status (20 Oktober 2026):** selesai. Core: `src/app/protocol/harness.ts` (`ProtocolRuns`, `ProtocolHarnessLogs`, `ProtocolHarnessDialogs`, `ProtocolReviewView`, `ProtocolReviewDialogs`) dan `ProtocolPreferencesDialogs` di `preferences.ts` mengubah `HarnessBoard`, `HarnessLogs`, `HarnessDialogs`, `ReviewView`, `ReviewDialogs`, dan `PreferencesDialogs` menjadi notice `view.runs`, `view.runlog.open/update`, `view.review.show`, `view.review` dan ask `ask.folder`, `ask.harness.answer`, `ask.text`, `ask.remoteFolder`, `ask.closeAgents`, `ask.review.merge/discard`, `ask.pullRequest`, `ask.machine`, `ask.removeWorktree`; `handlers/harness.ts` menerima `act.card.menu/run`, `act.runlog.clear/closed`, `act.review.*`, dan `handlers/preferences.ts` menerima `act.prefs.addMachine/removeMachine/openProject/setProject/removeWorktree`. Menu kartu tidak jadi `ask.menu` dari core: pengguna yang membuka menu, jadi frontend bertanya `act.card.menu {column, index, text}` (kartu harus yang dipegang core, kalau tidak `stale`; papan yang dikelompokkan tidak punya menu agent) dan menjalankan satu entri dengan tokennya (`act.card.run`). Frontend tidak pernah memilih apa yang ditulis: jawaban harness dibaca terhadap pertanyaannya (pilihan harus salah satu opsinya, konfirmasi hanya ya atau tidak), jendela log hanya bisa dikosongkan selama terbuka, berkas dan baris review harus yang dikirim halaman (`stale` kalau tidak), aksi akhir review harus `merge`, `squash`, `keep`, atau `discard`, jawaban `ask.pullRequest` dibaca terhadap tawarannya (jalur `direct` hanya kalau token boleh push), proyek dan worktree di Preferences harus yang didaftar core, dan perubahan proyek diperiksa kolom demi kolom (`ProjectsPages.set`). Pertanyaan saat jendela ditutup dengan agent bekerja (`ask.closeAgents`) lewat `app.close`. `unwired` menyusut dari 7 ke 1 (`frontendCommands.edit`, milik perintah editor). Renderer: `Review.tsx` (halaman review: berkas dengan kotak, diff dengan komentar per baris, ringkasan, Reply, Merge, Keep Branch, Discard, Create Pull Request), `Harness.tsx` (jawab harness, teks untuk agent, Add a Machine, form pull request), `LogViewer.tsx` (`LogPanel` dipakai Assistant dan run), `AgentsPrefs.tsx` (halaman Agents di Preferences dan halaman proyek), dan lencana status serta menu kartu di `Board.tsx`. Pilihan daemon lokal disembunyikan di luar Linux (`AgentsPage`). Tes: sepuluh skenario baru di `tests/unit/protocol.ts` (proses agent palsu lewat `orchestrator.spawn`, repositori git nyata untuk review dan merge), `tests/electron-harness.mjs` (agent palsu `tests/electron-agent.mjs` dimuat core lewat `MARKWORK_TEST_HARNESS`; folder proyek lewat `MARKWORK_PICK_FOLDER`) sebagai padanan `harness` dan `agentshost`. Belum: `tests/unit/daemon-fake.ts` dengan frontend protokol (daemon palsu ada di tes core sendiri, tidak lewat Electron), tombol Terminal memakai terminal sistem lewat `platform().processes.openTerminal` (terminal bawaan Electron nanti), jendela log dan review adalah dialog dan halaman di jendela utama (bukan jendela terpisah), dan run yang diikuti lagi dari daemon belum diuji lewat Electron.
 
 - **Menu kartu**: `ask.menu {at, entries}` → token (`protocol.md` 6.4). Status run masuk ke kartu lewat `view.notes`.
 - **Log run**: `view.runlog` dengan `TraceUpdate`, `act.runlog.clear` dan `.closed`. Viewer log Fase 4 dipakai ulang.

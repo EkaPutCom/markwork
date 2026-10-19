@@ -8,6 +8,8 @@ import { ProtocolServer } from '../../src/app/protocol/server.js';
 import { Connection } from '../../src/app/protocol/wire.js';
 import { unwiredTouched } from '../../src/app/protocol/unwired.js';
 import { Asks } from '../../src/app/protocol/asks.js';
+import { ProtocolHarnessDialogs, ProtocolReviewDialogs } from '../../src/app/protocol/harness.js';
+import type { SpawnHandlers } from '../../src/orchestrator.js';
 import { Cancellable } from '../../src/cancel.js';
 import { RequestError, type Message, type Reply, type Wire } from '../../src/app/protocol/messages.js';
 import { parseBoard } from '../../src/markdown/kanban.js';
@@ -1220,13 +1222,278 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    // ---------- Agents and harness (docs/design/electron-migrasi.md, phase 6) ----------
+
+    const agentFolder = disk.join(tmp, 'agent-project');
+    disk.mkdirs(agentFolder);
+    interface FakeRun { argv: string[]; cwd: string; handlers: SpawnHandlers; written: string[]; stopped: boolean }
+    // A server on a board whose harness is a fake process: what it is told is in `written`, what it prints is `say`.
+    const startAgents = async (boardText = BOARD) => {
+        const name = `agents-${++repoCount}.md`;
+        disk.write(disk.join(dir, name), boardText);
+        const { server, ui } = await start();
+        const spawned: FakeRun[] = [];
+        const orchestrator = server.session.harness.orchestrator;
+        orchestrator.program = spec => spec.program;
+        orchestrator.spawn = (argv, cwd, handlers) => {
+            const run: FakeRun = { argv, cwd, handlers, written: [], stopped: false };
+            spawned.push(run);
+            return { write: line => { run.written.push(line); return true; }, closeInput: () => handlers.exit(0, ''), stop: () => { run.stopped = true; } };
+        };
+        await ui.client.request('open.file', { name });
+        await until(() => ui.last('view.notes') !== undefined);
+        const say = (run: FakeRun, event: Record<string, unknown>) => run.handlers.line(JSON.stringify(event));
+        const menu = async (text: string, column = 0, index = 0) => {
+            const reply = await ui.client.request('act.card.menu', { column, index, text });
+            ok(reply.ok, 'act.card.menu');
+            return reply.entries as { label: string; token: number; enabled?: boolean }[];
+        };
+        const choose = async (entries: { label: string; token: number }[], label: string) => {
+            const entry = entries.find(e => e.label === label);
+            ok(entry !== undefined, `no "${label}" in ${entries.map(e => e.label).join(' | ')}`);
+            ok((await ui.client.request('act.card.run', { token: entry!.token })).ok, 'act.card.run');
+        };
+        const cardNow = () => server.session.views.currentBoard().columns[0].cards[0].text;
+        const runs = () => (ui.last('view.runs')?.runs ?? []) as { card: string; status: string }[];
+        return { server, ui, spawned, say, menu, choose, cardNow, runs };
+    };
+
+    await test('a card\'s menu is asked for (act.card.menu), an entry runs by its token, and the run shows on the board (view.runs)', async () => {
+        const { server, ui, spawned, menu, choose, cardNow, runs } = await startAgents();
+        const first = await menu('One');
+        eq(JSON.parse(JSON.stringify(first)), first, 'plain data');
+        ok(first.some(e => e.label === 'Work on it with pi'), 'the assign entry');
+        const gone = await ui.client.request('act.card.menu', { column: 0, index: 0, text: 'Nobody' });
+        ok(!gone.ok && gone.error.code === 'stale', 'a card that is not there');
+        const asked: string[] = [];
+        ui.client.on('ask.folder', p => { asked.push(String(p.title)); return { path: agentFolder }; });
+        await choose(first, 'Work on it with pi');
+        await until(() => spawned.length === 1);
+        eq([asked.length, spawned[0].cwd], [1, agentFolder]);
+        await until(() => runs().some(r => r.status === 'working'));
+        ok(cardNow().includes('[agent:: pi]'), cardNow());
+        const second = await menu(cardNow());
+        ok(second.some(e => e.label === 'Stop pi') && second.some(e => e.label === 'View pi Log'), second.map(e => e.label).join(' | '));
+        const stale = await ui.client.request('act.card.run', { token: first[0].token });
+        ok(stale.ok, 'a token of an earlier menu does nothing');
+        await choose(second, 'Stop pi');
+        await until(() => spawned[0].stopped);
+        server.dispose();
+    });
+
+    await test('a card of a grouped board has no agent menu', async () => {
+        const { server, ui } = await startAgents('---\nlayout: board\ngroup: s\nfields:\n  s: select(todo:gray, done:green)\n---\n\n- [ ] One [s:: todo]\n');
+        await until(() => ui.last('view.notes')?.agents === false);
+        const reply = await ui.client.request('act.card.menu', { column: 0, index: 0, text: 'One [s:: todo]' });
+        ok(reply.ok && (reply.entries as unknown[]).length === 0, JSON.stringify(reply));
+        server.dispose();
+    });
+
+    await test('a harness that asks is answered through ask.harness.answer, read against what it offered; steering goes through ask.text', async () => {
+        const { server, ui, spawned, say, menu, choose, cardNow, runs } = await startAgents();
+        ui.client.on('ask.folder', () => ({ path: agentFolder }));
+        await choose(await menu('One'), 'Work on it with pi');
+        await until(() => spawned.length === 1);
+        say(spawned[0], { type: 'extension_ui_request', id: 'u1', method: 'select', title: 'Which one?', options: ['red', 'blue'] });
+        await until(() => runs().some(r => r.status === 'waiting'));
+        const replies: unknown[] = [];
+        let next: unknown = { reply: { value: 'green' } };
+        ui.client.on('ask.harness.answer', p => { replies.push((p.ask as { title: string }).title); return next as Record<string, unknown>; });
+        await choose(await menu(cardNow()), 'Answer pi…');
+        await until(() => replies.length === 1);
+        await pause(30);
+        ok(!spawned[0].written.some(l => l.includes('extension_ui_response')), 'an option it did not offer is not sent');
+        next = { reply: { value: 'blue' } };
+        await choose(await menu(cardNow()), 'Answer pi…');
+        await until(() => spawned[0].written.some(l => l.includes('extension_ui_response') && l.includes('"blue"')));
+        await until(() => runs().some(r => r.status === 'working'));
+        // Steering: a line of text, sent to the harness before its next step.
+        let text = 'use the second file';
+        ui.client.on('ask.text', p => ({ text: (p.options as { title: string }).title.startsWith('Steering') ? text : '' }));
+        await choose(await menu(cardNow()), 'Steer pi…');
+        await until(() => spawned[0].written.some(l => l.includes('use the second file')));
+        server.dispose();
+    });
+
+    await test('a run\'s log is a window of its own: opened with the events, cleared and closed only while it is open', async () => {
+        const { server, ui, spawned, menu, choose, cardNow } = await startAgents();
+        ui.client.on('ask.folder', () => ({ path: agentFolder }));
+        await choose(await menu('One'), 'Work on it with pi');
+        await until(() => spawned.length === 1);
+        await choose(await menu(cardNow()), 'View pi Log');
+        await until(() => ui.last('view.runlog.open') !== undefined);
+        const run = ui.last('view.runlog.open')!.run as number;
+        ok(String(ui.last('view.runlog.open')!.title).startsWith('pi Log'), String(ui.last('view.runlog.open')!.title));
+        await until(() => ui.log.some(l => l.ev === 'view.runlog.update' && (l.payload.update as { events: unknown[] }).events.length > 0));
+        ok((await ui.client.request('act.runlog.clear', { run })).ok, 'clear');
+        await until(() => ui.log.some(l => l.ev === 'view.runlog.update' && (l.payload.update as { reset: boolean; events: unknown[] }).reset && (l.payload.update as { events: unknown[] }).events.length === 0));
+        ok((await ui.client.request('act.runlog.closed', { run })).ok, 'closed');
+        const late = await ui.client.request('act.runlog.clear', { run });
+        ok(!late.ok && late.error.code === 'stale', 'a log that is closed');
+        const unknown = await ui.client.request('act.runlog.clear', { run: 9999 });
+        ok(!unknown.ok && unknown.error.code === 'stale', 'a run that has no window');
+        server.dispose();
+    });
+
+    await test('closing the window with an agent at work asks (ask.closeAgents): Cancel keeps the window, Stop ends the agent', async () => {
+        const { server, ui, spawned, menu, choose } = await startAgents();
+        ui.client.on('ask.folder', () => ({ path: agentFolder }));
+        await choose(await menu('One'), 'Work on it with pi');
+        await until(() => spawned.length === 1);
+        const seen: unknown[] = [];
+        let answer = 'cancel';
+        ui.client.on('ask.saveChanges', () => ({ answer: 'save' }));
+        ui.client.on('ask.closeAgents', p => { seen.push(p.activity); return { answer }; });
+        let closed = await ui.client.request('app.close', {});
+        ok(closed.ok && closed.allowed === false, 'cancelled');
+        eq(seen[0], { children: 1, detachable: 0, queued: 0 });
+        answer = 'stop';
+        closed = await ui.client.request('app.close', {});
+        ok(closed.ok && closed.allowed === true, 'allowed');
+        server.dispose();
+        ok(spawned[0].stopped, 'the agent was stopped with the window');
+    });
+
+    await test('a project folder on another machine is asked as text (ask.remoteFolder), and a folder the core rejects is told', async () => {
+        const { server, ui, menu, choose } = await startAgents();
+        ui.client.on('ask.folder', () => ({ path: disk.join(dir, 'inside-the-work-folder') }));
+        const toasts = () => noticesOf(ui, 'toast').map(t => String(t.text));
+        await choose(await menu('One'), 'Work on it with pi');
+        await until(() => toasts().some(t => t.startsWith('Project folder rejected')));
+        server.dispose();
+    });
+
+    // A project that is a Git repository: the run works in a worktree of its own, and the card can be reviewed.
+    await test('the review of a card\'s worktree: view.review.show and view.review with the files, a comment, a reply, and a merge that asks first', async () => {
+        const repo = disk.join(tmp, `agent-repo-${++repoCount}`);
+        disk.mkdirs(repo);
+        await git(repo, 'init', '-q');
+        disk.write(disk.join(repo, 'readme.md'), '# Readme\n');
+        await git(repo, 'add', '.');
+        await git(repo, 'commit', '-q', '-m', 'First');
+        const { server, ui, spawned, say, menu, choose, cardNow } = await startAgents();
+        ui.client.on('ask.folder', () => ({ path: repo }));
+        await choose(await menu('One'), 'Work on it with pi');
+        await until(() => spawned.length === 1, 8000);
+        const worktree = spawned[0].cwd;
+        ok(worktree !== repo, 'the run works in a worktree');
+        disk.write(disk.join(worktree, 'notes.md'), '# Notes\n\nA line\n');
+        await git(worktree, 'add', '.');
+        await git(worktree, 'commit', '-q', '-m', 'Add notes');
+        say(spawned[0], { type: 'agent_settled' });
+        await until(() => cardNow().includes('[branch::'), 8000);
+        for (let tries = 0; tries < 300 && !(await menu(cardNow())).some(e => e.label === 'Review Changes'); tries++) await pause(20);
+        await choose(await menu(cardNow()), 'Review Changes');
+        await until(() => ui.last('view.review.show') !== undefined || ui.log.some(l => l.ev === 'view.review.show'));
+        await until(() => ((ui.last('view.review')?.files ?? []) as unknown[]).length === 1, 8000);
+        const page = ui.last('view.review')!;
+        eq((page.files as { path: string; status: string }[]).map(f => [f.path, f.status]), [['notes.md', 'added']]);
+        ok(!('part' in (page.files as object[])[0]), 'the diff text is sent for the selected file, not in the list');
+        ok((page.commits as { subject: string }[]).some(c => c.subject === 'Add notes'), 'the commits');
+        eq((page.pull as { enabled: boolean }).enabled, false, 'no origin remote, no pull request');
+        await until(() => ((ui.last('view.review')?.diff as { lines: unknown[] } | null)?.lines.length ?? 0) > 0);
+        const bad = await ui.client.request('act.review.select', { index: 4 });
+        ok(!bad.ok && bad.error.code === 'stale', 'a file that is not in the list');
+        const badLine = await ui.client.request('act.review.comment', { line: 999, text: 'x' });
+        ok(!badLine.ok && badLine.error.code === 'stale', 'a line that is not in the diff');
+        const lines = (ui.last('view.review')!.diff as { lines: { text: string }[] }).lines;
+        const at = lines.findIndex(l => l.text.includes('A line'));
+        ok((await ui.client.request('act.review.comment', { line: at, text: 'Make it longer' })).ok, 'comment');
+        await until(() => (ui.last('view.review')!.diff as { commented: number[] }).commented.includes(at));
+        eq(ui.last('view.review')!.replies, 1);
+        ok((await ui.client.request('act.review.tab', { tab: 'summary' })).ok, 'tab');
+        const wrongTab = await ui.client.request('act.review.tab', { tab: 'nope' });
+        ok(!wrongTab.ok && wrongTab.error.code === 'bad_request', 'tab');
+        const wrong = await ui.client.request('act.review.finish', { action: 'rebase' });
+        ok(!wrong.ok && wrong.error.code === 'bad_request', 'an action the page does not have');
+        // Merging asks first; a no merges nothing, a yes does.
+        const questions: string[] = [];
+        let merge = false;
+        ui.client.on('ask.review.merge', p => { questions.push((p.question as { message: string }).message); return { answer: merge }; });
+        ok((await ui.client.request('act.review.finish', { action: 'merge' })).ok, 'finish');
+        await until(() => questions.length === 1);
+        await pause(60);
+        ok(!disk.exists(disk.join(repo, 'notes.md')), 'nothing merged on a no');
+        merge = true;
+        await ui.client.request('act.review.finish', { action: 'merge' });
+        await until(() => disk.exists(disk.join(repo, 'notes.md')), 8000);
+        eq(disk.read(disk.join(repo, 'notes.md')), '# Notes\n\nA line\n');
+        await until(() => ui.log.some(l => l.ev === 'doc.active') && !cardNow().includes('[branch::'), 8000);
+        server.dispose();
+    });
+
+    await test('the form that sends a branch as a pull request is read against its offer, and a harness answer against its question', async () => {
+        const wire = scriptedWire();
+        const asks = new Asks(wire);
+        const reviews = new ProtocolReviewDialogs(asks);
+        const options = { repository: 'eka/notes', host: 'git.example.org', base: 'main', branch: 'markwork/x', title: 'T', body: '', canPush: false, uncommitted: false };
+        const first = reviews.pullRequest(options);
+        wire.sent[0].answer({ ok: true, answer: { title: 'T', body: '', via: 'direct' } });
+        eq(await first, null, 'a way the token cannot use');
+        const second = reviews.pullRequest(options);
+        wire.sent[1].answer({ ok: true, answer: { title: 'T', body: 'b', via: 'fork' } });
+        eq(await second, { title: 'T', body: 'b', via: 'fork' });
+        const third = reviews.pullRequest(options);
+        wire.sent[2].answer({ ok: true, answer: { title: '  ', body: '', via: 'fork' } });
+        eq(await third, null, 'a title with nothing in it');
+        const dialogs = new ProtocolHarnessDialogs(asks);
+        const ask = { kind: 'confirm' as const, id: 'u', title: 't', message: '', options: [], prefill: '', timeout: null };
+        const confirm = dialogs.answer(ask, 'pi');
+        wire.sent[3].answer({ ok: true, reply: { value: 'yes' } });
+        eq(await confirm, null, 'a confirmation is yes or no');
+        const skip = dialogs.answer(ask, 'pi');
+        wire.sent[4].answer({ ok: true, reply: { cancelled: true } });
+        eq(await skip, { cancelled: true });
+        const leave = dialogs.closeAgents({ children: 1, detachable: 0, queued: 0 });
+        wire.sent[5].answer({ ok: true, answer: 'quit' });
+        eq(await leave, 'cancel', 'anything but the three answers is Cancel');
+    });
+
+    await test('Preferences → Agents: a machine is added through ask.machine, a project is opened, changed field by field, and removed worktrees must be listed ones', async () => {
+        const { server, ui } = await start();
+        const { settings } = server.session;
+        settings.projects = { notes: agentFolder };
+        ok((await ui.client.request('command', { name: 'preferences' })).ok, 'preferences');
+        await until(() => ui.last('view.prefs.open') !== undefined);
+        const data = () => (ui.last('view.prefs.values') ?? ui.last('view.prefs.open'))!.data as { machines: { name: string; target: string }[]; projects: { name: string; folder: string }[]; machineChoices: { value: string }[]; harnessMachine: string };
+        eq(data().projects.map(p => [p.name, p.folder]), [['notes', agentFolder]]);
+        let machine: unknown = { name: 'bad name', target: 'me@box' };
+        ui.client.on('ask.machine', () => ({ machine }));
+        ok((await ui.client.request('act.prefs.addMachine', {})).ok, 'addMachine');
+        await pause(30);
+        eq(settings.machines, {}, 'a name that is not valid');
+        machine = { name: 'box', target: 'me@box' };
+        await ui.client.request('act.prefs.addMachine', {});
+        await until(() => data().machines.some(m => m.name === 'box'));
+        ok(data().machineChoices.some(c => c.value === 'box'), 'the choice of where agents run');
+        ok((await ui.client.request('act.prefs.set', { key: 'harnessMachine', value: 'box' })).ok, 'harnessMachine');
+        const unknownMachine = await ui.client.request('act.prefs.set', { key: 'harnessMachine', value: 'nowhere' });
+        ok(!unknownMachine.ok, 'a machine that is not in the list');
+        ok((await ui.client.request('act.prefs.removeMachine', { name: 'box' })).ok, 'removeMachine');
+        await until(() => data().machines.length === 0);
+        eq(data().harnessMachine, '', 'the choice of where agents run goes with the machine');
+        // A project.
+        ok((await ui.client.request('act.prefs.openProject', { name: 'notes' })).ok, 'openProject');
+        await until(() => ui.last('view.prefs.project') !== undefined);
+        const page = ui.last('view.prefs.project')!.page as { name: string; remote: boolean; maxSlots: number; isolation: { slots: number } };
+        eq([page.name, page.remote], ['notes', false]);
+        await until(() => (ui.last('view.prefs.worktrees')?.list as { loading: boolean } | undefined)?.loading === false);
+        const set = await ui.client.request('act.prefs.setProject', { name: 'notes', patch: { slots: 3, worktrees: false } });
+        ok(set.ok && set.error === null, JSON.stringify(set));
+        eq(JSON.parse(settings.projectOptions.notes), { worktrees: false, slots: 3, base: '', dir: '', afterMerge: 'remove' });
+        const tooMany = await ui.client.request('act.prefs.setProject', { name: 'notes', patch: { slots: 99 } });
+        ok(tooMany.ok && typeof tooMany.error === 'string', 'slots out of range');
+        const nobody = await ui.client.request('act.prefs.setProject', { name: 'nobody', patch: { slots: 2 } });
+        ok(nobody.ok && nobody.error === 'there is no such project', JSON.stringify(nobody));
+        const notListed = await ui.client.request('act.prefs.removeWorktree', { name: 'notes', path: '/etc' });
+        ok(notListed.ok && notListed.error === 'that worktree is not one of this project', JSON.stringify(notListed));
+        server.dispose();
+    });
+
     // The members of AppFrontend these scenarios reach that are still `unwired` (src/app/protocol/unwired.ts): a call does
     // nothing, a question counts as "no". Carrying one over removes it here; a member that appears here was reached
     // without being carried over, which is a feature the Electron window silently lacks (docs/design/electron-migrasi.md).
-    const STILL_UNWIRED: string[] = [
-        'dialogs.harness', 'dialogs.preferences', 'dialogs.review',
-        'frontendCommands.edit', 'host.board.setRuns', 'host.logs', 'host.reviewView',
-    ];
+    const STILL_UNWIRED: string[] = ['frontendCommands.edit'];
     await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {
         eq(unwiredTouched(), STILL_UNWIRED);
     });
