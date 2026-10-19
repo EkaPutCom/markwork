@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
+import { Icon } from './Icons.js';
 import { useClient, useStore } from './useClient.js';
 
 interface Node { name: string; path: string; children: Node[] | null }
 
-// The sorted tree of the file names ('/' separated): folders first, then files, each alphabetically, as VS Code lists them.
+// The sorted tree of the file names ('/' separated): folders first, then files, each alphabetically, as the GTK window lists them.
 function treeOf(files: string[]): Node[] {
     const root: Node = { name: '', path: '', children: [] };
     for (const file of files) {
@@ -37,12 +38,12 @@ function Row({ node, depth, activePath, collapsed, toggle, open }: {
                 aria-expanded={isFolder ? !closed : undefined}
                 aria-selected={node.path === activePath}
                 className={`row${node.path === activePath ? ' active' : ''}`}
-                style={{ paddingLeft: 8 + depth * 8 }}
+                style={{ paddingLeft: 10 + depth * 20 }}
                 onClick={() => (isFolder ? toggle(node.path) : open(node.path))}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (isFolder) toggle(node.path); else open(node.path); } }}
             >
-                <i className={`codicon codicon-${isFolder ? (closed ? 'chevron-right' : 'chevron-down') : 'blank'}`} />
-                <i className={`codicon codicon-${isFolder ? (closed ? 'folder' : 'folder-opened') : 'markdown'} icon`} />
+                {isFolder ? <Icon name={closed ? 'pan-end' : 'pan-down'} size={12} className="twisty" /> : <span className="twisty" />}
+                <Icon name={isFolder ? 'folder' : 'text-x-generic'} className="icon" />
                 <span className="label">{node.name}</span>
             </div>
             {isFolder && !closed && node.children!.map(c => (
@@ -56,8 +57,6 @@ export function Explorer() {
     const client = useClient();
     const { root, files, tabs, active } = useStore();
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-    const [openEditors, setOpenEditors] = useState(true);
-    const [folder, setFolder] = useState(true);
     const tree = useMemo(() => treeOf(files), [files]);
     const activeTab = tabs.find(t => t.id === active);
     const activePath = root && activeTab?.file && activeTab.file.startsWith(root) ? activeTab.file.slice(root.length + 1) : null;
@@ -65,33 +64,17 @@ export function Explorer() {
     const name = root?.split(/[\\/]/).pop() ?? '';
 
     return (
-        <aside className="sidebar" aria-label="Explorer">
-            <div className="title">EXPLORER</div>
+        <aside className="sidebar" aria-label="Files">
+            <div className="side-title">{root ? name.toUpperCase() : 'FILES'}</div>
             {!root ? (
-                <div className="welcome">
-                    <p>You have not yet opened a folder.</p>
-                    <button className="primary" onClick={() => void client.openFolder()}>Open Folder</button>
+                <div className="placeholder">
+                    <p>No folder is open</p>
+                    <button className="button" onClick={() => void client.openFolder()}>Open Folder…</button>
                 </div>
             ) : (
-                <div className="sections">
-                    <section>
-                        <h3 onClick={() => setOpenEditors(v => !v)}><i className={`codicon codicon-chevron-${openEditors ? 'down' : 'right'}`} />OPEN EDITORS</h3>
-                        {openEditors && tabs.map(t => (
-                            <div key={t.id} className={`row${t.id === active ? ' active' : ''}`} style={{ paddingLeft: 22 }} role="button" tabIndex={0}
-                                onClick={() => client.selectTab(t.id)} onKeyDown={e => { if (e.key === 'Enter') client.selectTab(t.id); }}>
-                                <i className="codicon codicon-markdown icon" />
-                                <span className="label">{t.name}</span>
-                                {t.mirror.modified && <span className="dirty">●</span>}
-                            </div>
-                        ))}
-                    </section>
-                    <section className="grow">
-                        <h3 onClick={() => setFolder(v => !v)}><i className={`codicon codicon-chevron-${folder ? 'down' : 'right'}`} />{name.toUpperCase()}</h3>
-                        {folder && <div role="tree" aria-label={name}>
-                            {tree.map(n => <Row key={n.path} node={n} depth={0} activePath={activePath} collapsed={collapsed} toggle={toggle} open={client.openFile} />)}
-                            {tree.length === 0 && <p className="empty">No Markdown files in this folder.</p>}
-                        </div>}
-                    </section>
+                <div className="tree" role="tree" aria-label={name}>
+                    {tree.map(n => <Row key={n.path} node={n} depth={0} activePath={activePath} collapsed={collapsed} toggle={toggle} open={client.openFile} />)}
+                    {tree.length === 0 && <p className="empty">No Markdown files in this folder.</p>}
                 </div>
             )}
         </aside>

@@ -56,7 +56,7 @@ Core berjalan di *utility process* Electron, bukan di sidecar terpisah dan bukan
 Urutannya: protokol diuji dulu tanpa UI, lalu satu irisan tipis dari ujung ke ujung, baru kemudian semua view. Tahap 1–3 mengikuti langkah 2–4 di [`docs/design/protocol.md`](protocol.md) bagian 15. Tahap 0 dan 4–7 khusus untuk Electron.
 
 0. **Putuskan arah.**
-   - Diputuskan 19 Oktober 2026: `AGENT.md` membatasi aturan GNOME HIG pada frontend GTK; frontend Electron memakai VS Code sebagai rujukan desain dan React.
+   - Diputuskan 19 Oktober 2026: `AGENT.md` membatasi aturan GNOME HIG pada frontend GTK; frontend Electron memakai React; tampilannya mengikuti jendela GTK (diputuskan 19 Oktober 2026, menggantikan rujukan VS Code).
    - Pilih editor (CodeMirror 6 adalah kandidat yang disebut dokumen protokol) dan framework UI renderer.
    - Platform target: Linux, macOS, dan Windows. Di Linux, `secret-tool` cukup untuk keyring. Di macOS dan Windows port Node memberi jawaban "keyring tidak ada", sehingga kredensial memakai file konfigurasi; frontend Electron mengganti `Secrets` dengan `safeStorage`.
 1. **Inti protokol, tanpa UI** (`src/app/protocol/`).
@@ -160,7 +160,7 @@ Irisan tipis tahap 1–5 sudah ada: protokol di `src/app/protocol/` (lihat bagia
 
 - `main.ts` membuat jendela (`contextIsolation`, `sandbox`, tanpa `nodeIntegration`), menjalankan `core.ts` di utility process, dan menyambungkan keduanya dengan `MessageChannelMain`.
 - `core.ts` memasang `platform/node`, `JsonSettingsStore` (schema GSettings dibundel dengan `?raw`), dan `ProtocolServer`, yang menjalankan `AppSession` asli.
-- Renderer: React, dengan VS Code sebagai rujukan desain (activity bar, Explorer berpohon, tab dengan breadcrumbs, status bar, command palette, tema Dark+/Light+ mengikuti sistem, ikon codicons). `client.ts` adalah store protokol (satu `DocMirror` per dokumen); komponen hanya menggambar. Editor adalah CodeMirror 6 (`editor.ts`): gaya dan penyembunyian sintaks dari parser bersama `markdown/highlight.ts`, perintah dari `markdown/editcommands.ts`, tombol dari tabel `COMMANDS`. Board (pindah, centang, tambah kartu) memakai `applyNoteEdit` yang sama dengan core.
+- Renderer: React, dengan tampilan yang sama dengan jendela GTK (header bar dengan New dan judul/subjudul, rail ikon dengan panel Files berpohon, tab bulat di tengah yang muncul mulai dua dokumen, hitungan kata/karakter/baris di kaki editor, command palette, warna Adwaita terang/gelap mengikuti sistem, ikon simbolis Adwaita dalam `Icons.tsx`, font Noto Sans). `client.ts` adalah store protokol (satu `DocMirror` per dokumen); komponen hanya menggambar. Editor adalah CodeMirror 6 (`editor.ts`): gaya dan penyembunyian sintaks dari parser bersama `markdown/highlight.ts`, perintah dari `markdown/editcommands.ts`, tombol dari tabel `COMMANDS`. Board (pindah, centang, tambah kartu) memakai `applyNoteEdit` yang sama dengan core.
 - Jalankan: `npm run electron` (atau `npm run electron -- <folder>`). Diuji di Linux saja.
 - Find dan replace memakai panel pencarian CodeMirror (`Ctrl+F`, `Ctrl+H`, `F3`); `doc.replace` di-rebase di `DocMirror` bila ketikan tidak menyentuh bagian yang diubah core.
 - Belum: pencarian di semua catatan, undo yang melintasi tulisan core, view dan dialog selain dokumen dan board, packaging, macOS dan Windows.

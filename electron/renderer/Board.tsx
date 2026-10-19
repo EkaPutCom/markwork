@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Board as BoardData } from '../../src/markdown/kanban.js';
+import { Icon } from './Icons.js';
 import { useClient } from './useClient.js';
 
 export function Board({ board }: { board: BoardData }) {
@@ -15,17 +16,17 @@ export function Board({ board }: { board: BoardData }) {
                         return (
                             <div key={`${index}:${card.text}`} className={`card${card.done ? ' done' : ''}`}>
                                 <button className="check" aria-label={`${card.done ? 'Mark not done' : 'Mark done'}: ${card.text}`} onClick={() => client.editNotes({ kind: 'toggle', at, card: card.text })}>
-                                    <i className={`codicon codicon-${card.done ? 'pass-filled' : 'circle-large-outline'}`} />
+                                    {card.done ? <Icon name="emblem-ok" /> : <span className="ring" />}
                                 </button>
                                 <span className="text">{card.text}</span>
                                 <span className="moves">
                                     <button aria-label={`Move left: ${card.text}`} disabled={c === 0}
                                         onClick={() => client.editNotes({ kind: 'move', at, card: card.text, to: { column: c - 1, index: board.columns[c - 1].cards.length } })}>
-                                        <i className="codicon codicon-arrow-left" />
+                                        <Icon name="go-previous" />
                                     </button>
                                     <button aria-label={`Move right: ${card.text}`} disabled={c === board.columns.length - 1}
                                         onClick={() => client.editNotes({ kind: 'move', at, card: card.text, to: { column: c + 1, index: board.columns[c + 1].cards.length } })}>
-                                        <i className="codicon codicon-arrow-right" />
+                                        <Icon name="go-next" />
                                     </button>
                                 </span>
                             </div>

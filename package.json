@@ -54,7 +54,6 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "@vscode/codicons": "^0.0.46-24",
     "electron": "^44.9.0",
     "gifenc": "^1.0.3",
     "mermaid": "^12.1.0",
