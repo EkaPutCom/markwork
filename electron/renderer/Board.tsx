@@ -1,48 +1,186 @@
-import { useState } from 'react';
-import type { Board as BoardData } from '../../src/markdown/kanban.js';
+// The kanban board: lists of cards that move between lists by dragging, a dialog to edit a card, a menu on the card and on
+// the list, and a popover on a card's field chips. A board grouped by a field (`group:`) shows the values of the field as
+// its lists. Every change is an operation (markdown/noteedit.ts) the client shows at once and the core applies to the text.
+
+import { useMemo, useState, type DragEvent } from 'react';
+import { boardSchema, cardFields, cardMeta, dropIndex, dueStatus, type Board as BoardData, type Position } from '../../src/markdown/kanban.js';
+import { wikiLinksIn } from '../../src/markdown/wikilink.js';
 import { Icon } from './Icons.js';
+import { CardDialog, Chip, FieldChips, formatDay, Inline, PopupMenu, refOf, Tags, todayString, usePopup, useFieldEditor, type CardAnswer, type MenuEntry } from './notes.js';
 import { useClient } from './useClient.js';
 
-export function Board({ board }: { board: BoardData }) {
+interface Drag { from: Position; text: string; target: Position | null }
+
+// The position a card dropped at height `y` takes in a list: the cards other than the dragged one whose middle is above it.
+function dropAt(list: HTMLElement, y: number): number {
+    const centers = [...list.querySelectorAll<HTMLElement>('.card:not(.dragging)')].map(el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; });
+    return dropIndex(centers, y);
+}
+
+export function Board({ board, groupField, agents }: { board: BoardData; groupField: string | null; agents: boolean }) {
     const client = useClient();
-    const [drafts, setDrafts] = useState<Record<number, string>>({});
+    const schema = useMemo(() => boardSchema(board), [board.head.join('\n')]);   // eslint-disable-line react-hooks/exhaustive-deps
+    const [menu, setMenu, closeMenu] = usePopup<{ at: { x: number; y: number }; entries: MenuEntry[] }>();
+    const [editing, setEditing, closeEditing] = usePopup<Position & { text: string; notes: string[] }>();
+    const [adding, setAdding] = useState<number | 'list' | null>(null);
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
+    const [drag, setDrag] = useState<Drag | null>(null);
+    const [openField, fieldPopover] = useFieldEditor(schema, (card, key, raw, field, option) => client.editNotes({ kind: 'field', ...card, key, raw, field, option }));
+    const today = todayString();
+    const columnName = (title: string) => title || (groupField ? `No ${groupField}` : 'No list');
+
+    const answer = (at: Position, text: string, result: CardAnswer | null) => {
+        closeEditing();
+        if (result) client.editNotes({ kind: 'update', at, card: text, text: result.text, notes: result.notes });
+    };
+    const deleteCard = async (at: Position) => {
+        const card = board.columns[at.column]?.cards[at.index];
+        if (card && await client.confirm(`Delete the card “${cardMeta(card.text).title}”?`, '', 'Delete')) client.editNotes({ kind: 'delete', ...refOf(at, card) });
+    };
+    const deleteColumn = async (column: number) => {
+        const col = board.columns[column];
+        const detail = col.cards.length ? `The ${col.cards.length} cards in it will also be deleted.` : '';
+        if (await client.confirm(`Delete the list “${columnName(col.title)}”?`, detail, 'Delete')) client.editNotes({ kind: 'deleteColumn', column, title: col.title, keepCards: false });
+    };
+    const renameColumn = async (column: number) => {
+        const current = board.columns[column].title;
+        const name = await client.promptText('Rename List', 'List name', current);
+        if (name) client.editNotes({ kind: 'renameColumn', column, title: current, to: name });
+    };
+
+    const cardEntries = (at: Position): MenuEntry[] => {
+        const col = board.columns[at.column], card = col.cards[at.index], ref = refOf(at, card);
+        const move = board.columns.flatMap((target, t): MenuEntry[] => t === at.column ? []
+            : [{ label: columnName(target.title), run: () => client.editNotes({ kind: 'move', ...ref, to: { column: t, index: target.cards.length } }) }]);
+        return [
+            { label: 'Edit…', run: () => setEditing({ ...at, text: card.text, notes: card.notes }) },
+            { label: card.done ? 'Mark Not Done' : 'Mark Done', run: () => client.editNotes({ kind: 'toggle', ...ref }) },
+            { label: 'Move to', enabled: board.columns.length > 1, submenu: move },
+            { label: 'Move Up', enabled: at.index > 0, run: () => client.editNotes({ kind: 'move', ...ref, to: { column: at.column, index: at.index - 1 } }) },
+            { label: 'Move Down', enabled: at.index < col.cards.length - 1, run: () => client.editNotes({ kind: 'move', ...ref, to: { column: at.column, index: at.index + 1 } }) },
+            { separator: true },
+            { label: 'Delete', run: () => void deleteCard(at) },
+        ];
+    };
+    const columnEntries = (column: number): MenuEntry[] => {
+        // The group without a name stays first: it cannot be moved, and nothing is moved before it.
+        const first = board.columns[0]?.title === '' ? 1 : 0;
+        const movable = board.columns[column].title !== '';
+        const title = board.columns[column].title;
+        return [
+            { label: 'Rename…', run: () => void renameColumn(column) },
+            { label: 'Move Left', enabled: movable && column > first, run: () => client.editNotes({ kind: 'moveColumn', column, title, to: column - 1 }) },
+            { label: 'Move Right', enabled: movable && column < board.columns.length - 1, run: () => client.editNotes({ kind: 'moveColumn', column, title, to: column + 1 }) },
+            { separator: true },
+            { label: 'Delete List…', run: () => void deleteColumn(column) },
+        ];
+    };
+
+    const drop = (e: DragEvent, column: number) => {
+        e.preventDefault();
+        const d = drag;
+        setDrag(null);
+        if (!d) return;
+        const card = board.columns[d.from.column]?.cards[d.from.index];
+        const to = { column, index: dropAt(e.currentTarget as HTMLElement, e.clientY) };
+        if (card && !(to.column === d.from.column && to.index === d.from.index)) client.editNotes({ kind: 'move', ...refOf(d.from, card), to });
+    };
+
     return (
-        <div className="board">
-            {board.columns.map((column, c) => (
-                <section key={c} className="column" aria-label={column.title}>
-                    <h2>{column.title}<span className="count">{column.cards.length}</span></h2>
-                    {column.cards.map((card, index) => {
-                        const at = { column: c, index };
-                        return (
-                            <div key={`${index}:${card.text}`} className={`card${card.done ? ' done' : ''}`}>
-                                <button className="check" aria-label={`${card.done ? 'Mark not done' : 'Mark done'}: ${card.text}`} onClick={() => client.editNotes({ kind: 'toggle', at, card: card.text })}>
-                                    {card.done ? <Icon name="emblem-ok" /> : <span className="ring" />}
-                                </button>
-                                <span className="text">{card.text}</span>
-                                <span className="moves">
-                                    <button aria-label={`Move left: ${card.text}`} disabled={c === 0}
-                                        onClick={() => client.editNotes({ kind: 'move', at, card: card.text, to: { column: c - 1, index: board.columns[c - 1].cards.length } })}>
-                                        <Icon name="go-previous" />
-                                    </button>
-                                    <button aria-label={`Move right: ${card.text}`} disabled={c === board.columns.length - 1}
-                                        onClick={() => client.editNotes({ kind: 'move', at, card: card.text, to: { column: c + 1, index: board.columns[c + 1].cards.length } })}>
-                                        <Icon name="go-next" />
-                                    </button>
-                                </span>
-                            </div>
-                        );
-                    })}
+        <div className="board" data-page="board">
+            {board.columns.map((column, c) => {
+                let others = 0;
+                const mark = <div className="drop-mark" aria-hidden="true" />;
+                return (
+                    <section key={`${c}:${column.title}`} className="column" aria-label={columnName(column.title)}
+                        onDragOver={e => {
+                            if (!drag) return;
+                            e.preventDefault();
+                            const index = dropAt(e.currentTarget, e.clientY);
+                            if (drag.target?.column !== c || drag.target.index !== index) setDrag({ ...drag, target: { column: c, index } });
+                        }}
+                        onDrop={e => drop(e, c)}>
+                        <h2>
+                            <span className="name">{columnName(column.title)}</span><span className="count">{column.cards.length}</span>
+                            <button className="icon-button" aria-label={`List menu: ${columnName(column.title)}`} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ at: { x: r.left, y: r.bottom }, entries: columnEntries(c) }); }}>⋯</button>
+                        </h2>
+                        <div className="cards">
+                            {column.cards.map((card, index) => {
+                                const at = { column: c, index };
+                                const dragging = drag?.from.column === c && drag.from.index === index;
+                                const here = !dragging && drag?.target?.column === c && drag.target.index === others;
+                                if (!dragging) others++;
+                                const meta = cardMeta(card.text);
+                                const inTitle = new Set(wikiLinksIn(card.text).map(l => l.target.toLowerCase()));
+                                const links = card.notes.length ? wikiLinksIn(card.notes.join('\n')).filter(l => !inTitle.has(l.target.toLowerCase())) : [];
+                                const ref = refOf(at, card);
+                                return (
+                                    <div key={`${index}:${card.text}`}>
+                                        {here && mark}
+                                        <div className={`card${card.done ? ' done' : ''}${dragging ? ' dragging' : ''}`} draggable tabIndex={0} role="group" aria-label={meta.title}
+                                            onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', card.text); setDrag({ from: at, text: card.text, target: null }); }}
+                                            onDragEnd={() => setDrag(null)}
+                                            onClick={() => setEditing({ ...at, text: card.text, notes: card.notes })}
+                                            onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) setEditing({ ...at, text: card.text, notes: card.notes }); }}
+                                            onContextMenu={e => { e.preventDefault(); setMenu({ at: { x: e.clientX, y: e.clientY }, entries: cardEntries(at) }); }}>
+                                            <button className="check" aria-label={`${card.done ? 'Mark not done' : 'Mark done'}: ${meta.title}`}
+                                                onClick={e => { e.stopPropagation(); client.editNotes({ kind: 'toggle', ...ref }); }}>
+                                                {card.done ? <Icon name="emblem-ok" /> : <span className="ring" />}
+                                            </button>
+                                            <div className="body">
+                                                <div className="text"><Inline text={meta.title} /></div>
+                                                <div className="badges">
+                                                    {meta.agent && <Chip text={`@${meta.agent}`} className="agent" />}
+                                                    <FieldChips chips={cardFields(card.text, schema)} onEdit={(key, e) => openField(ref, card.text, key, { x: e.clientX, y: e.clientY })} />
+                                                    <Tags tags={meta.tags} />
+                                                    {meta.due && <Chip text={`📅 ${formatDay(meta.due, today)}`} className={`due due-${dueStatus(meta.due, today)}`} title="Due date" onClick={e => openField(ref, card.text, 'due', { x: e.clientX, y: e.clientY })} />}
+                                                    {card.notes.length > 0 && <Chip text="≡" className="notes" title="Has notes" />}
+                                                </div>
+                                                {links.map(l => {
+                                                    const target = `${l.target}${l.heading ? `#${l.heading}` : ''}`;
+                                                    return <a key={target} href="#" className="note-link-row" onClick={e => { e.preventDefault(); e.stopPropagation(); client.openNote(target); }}>↗ {l.alias || target}</a>;
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {drag?.target?.column === c && drag.target.index >= others && mark}
+                        </div>
+                        {adding === c ? (
+                            <form onSubmit={e => {
+                                e.preventDefault();
+                                const text = (drafts[c] ?? '').trim();
+                                if (!text) return;
+                                client.editNotes({ kind: 'add', column: c, text, notes: [], now: Date.now() });
+                                setDrafts(d => ({ ...d, [c]: '' }));
+                            }}>
+                                <input autoFocus value={drafts[c] ?? ''} onChange={e => setDrafts(d => ({ ...d, [c]: e.target.value }))} placeholder="Add a card" aria-label={`Add a card to ${columnName(column.title)}`}
+                                    onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setAdding(null); } }} onBlur={() => { if (!(drafts[c] ?? '').trim()) setAdding(null); }} />
+                            </form>
+                        ) : <button className="add" onClick={() => setAdding(c)}>+ Add card</button>}
+                    </section>
+                );
+            })}
+            <div className="column add-list">
+                {adding === 'list' ? (
                     <form onSubmit={e => {
                         e.preventDefault();
-                        const text = (drafts[c] ?? '').trim();
-                        if (!text) return;
-                        client.editNotes({ kind: 'add', column: c, text, notes: [], now: Date.now() });
-                        setDrafts(d => ({ ...d, [c]: '' }));
+                        const title = (drafts.list ?? '').trim();
+                        if (!title) return;
+                        client.editNotes({ kind: 'addColumn', title });
+                        setDrafts(d => ({ ...d, list: '' }));
+                        setAdding(null);
                     }}>
-                        <input value={drafts[c] ?? ''} onChange={e => setDrafts(d => ({ ...d, [c]: e.target.value }))} placeholder="Add a card" aria-label={`Add a card to ${column.title}`} />
+                        <input autoFocus value={drafts.list ?? ''} onChange={e => setDrafts(d => ({ ...d, list: e.target.value }))} placeholder="List name" aria-label="New list name"
+                            onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setAdding(null); } }} onBlur={() => { if (!(drafts.list ?? '').trim()) setAdding(null); }} />
                     </form>
-                </section>
-            ))}
+                ) : <button className="add" onClick={() => setAdding('list')}>+ Add list</button>}
+            </div>
+            {menu && <PopupMenu at={menu.at} entries={menu.entries} onClose={closeMenu} />}
+            {fieldPopover}
+            {editing && <CardDialog heading="Edit Card" kind="card" text={editing.text} notes={editing.notes} schema={schema} agents={agents}
+                onDone={result => answer({ column: editing.column, index: editing.index }, editing.text, result)} />}
         </div>
     );
 }

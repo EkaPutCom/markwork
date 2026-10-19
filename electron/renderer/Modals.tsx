@@ -6,7 +6,7 @@ import { COMMANDS } from '../../src/app/commands.js';
 import { label } from './keys.js';
 import { useClient, useStore } from './useClient.js';
 
-function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
     useEffect(() => {
         const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
         window.addEventListener('keydown', key, true);

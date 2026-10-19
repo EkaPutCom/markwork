@@ -17,6 +17,8 @@ import type { SearchQuery, SearchResults } from '../../src/app/protocol/search.j
 import type { FolderEntry, NewKind } from '../../src/app/protocol/tree.js';
 import type { HomeData } from '../../src/app/protocol/screen.js';
 import type { PreferencesData } from '../../src/app/protocol/preferences.js';
+import type { SchemaDialogOptions } from '../../src/app/protocol/schema.js';
+import type { FieldDef } from '../../src/markdown/fields.js';
 
 declare global {
     interface Window {
@@ -31,6 +33,11 @@ export interface Tab {
     file: string | null;
     page: string;                 // 'text' or the structured page the core shows ('board', …); 'home' and 'html' for the pages that are tabs
     board: Board | null;
+    groupField: string | null;    // a board grouped by a field: its name (view.notes)
+    agents: boolean;              // a board lets agents be assigned to cards
+    capture: number;              // how many times the core asked for the cursor in the capture line (view.focusCapture)
+    csv: string | null;           // a CSV tab: the text the core sent (view.csv)
+    csvRev: number;               // how many times it sent it
     home: HomeData | null;        // a Home tab: what the page shows (view.home)
     html: { file: string; root: string } | null;   // an HTML tab: the file, and the folder it may read
 }
@@ -83,11 +90,13 @@ export interface State {
     search: SearchPanel;             // the Search panel's fields and the core's results (view.search)
     outline: { level: number; text: string; line: number }[];   // the headings of the active document (view.outline)
     layout: { layout: string | null; structured: boolean };   // the layout button (view.layout): '' = text, null = hidden
+    schema: { id: number; options: SchemaDialogOptions } | null;   // the Fields… dialog while the core asks for it (ask.schema)
+    csvFind: { n: number; replace: boolean };   // how many times the CSV tab's search bar was asked for
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
 const CORE_COMMANDS = new Set(['preferences', 'open-recent', 'home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
-    'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'sidebar', 'dark', 'autosave']);
+    'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave']);
 const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
 export const isAvailable = (command: Command): boolean =>
@@ -98,8 +107,11 @@ export class Client {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
         source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, recent: [], prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
+        schema: null, csvFind: { n: 0, replace: false },
     };
     private readonly waitingDialogs: Dialog[] = [];
+    private schemaAnswer: ((fields: FieldDef[] | null) => void) | null = null;
+    private schemaCount = 0;
     private readonly listeners = new Set<() => void>();
     private conn: Connection | null = null;
     private editor: MarkdownEditor | null = null;
@@ -193,6 +205,38 @@ export class Client {
         const next = tab?.board && applyNoteEdit(tab.board, edit);
         if (tab && next) this.changeTab(tab.id, { board: next });
         void this.conn?.request('act.notes.edit', { doc: this.snapshot.active, edit });
+    }
+
+    // ---------- The structured pages ----------
+
+    // The CSV tab changed: the whole text, one undo step in the document.
+    csvChange(text: string): void { void this.conn?.request('act.csv.change', { doc: this.snapshot.active, text }); }
+    csvShape(rows: number, columns: number): void { void this.conn?.request('act.csv.shape', { rows, columns }); }
+
+    // A yes-or-no question of a page (delete a card): the generic dialog, answered here.
+    async confirm(message: string, detail: string, accept: string): Promise<boolean> {
+        const { value } = await this.showDialog({ title: message, detail, entry: null, buttons: [{ label: accept, value: 'yes', style: 'destructive' }, { label: 'Cancel', value: 'no' }] });
+        return value === 'yes';
+    }
+
+    // A line of text a page asks for (a list's name); null = dismissed.
+    async promptText(title: string, label: string, value = ''): Promise<string | null> {
+        const answer = await this.showDialog({ title, detail: '', entry: { label, value }, buttons: [{ label: 'OK', value: 'ok', style: 'suggested' }, { label: 'Cancel', value: 'cancel' }] });
+        return answer.value === 'ok' && answer.text.trim() ? answer.text.trim() : null;
+    }
+
+    // One of several answers; null = dismissed.
+    async choose(title: string, detail: string, buttons: DialogButton[]): Promise<string | null> {
+        return (await this.showDialog({ title, detail, entry: null, buttons })).value;
+    }
+
+    // The Fields… dialog is answered with the fields, or null.
+    answerSchema(id: number, fields: FieldDef[] | null): void {
+        if (this.snapshot.schema?.id !== id) return;
+        this.set({ schema: null });
+        this.schemaAnswer?.(fields);
+        this.schemaAnswer = null;
+        this.editor?.focus();
     }
 
     zoomImage(image: { src: string; title: string }): void { this.set({ image }); }
@@ -329,7 +373,7 @@ export class Client {
     // The argument of an on/off command run from a key or the palette: the opposite of what is shown now.
     private toggled(command: Command): boolean | undefined {
         const { settings } = this.snapshot;
-        if (command.id === 'kanban-view') return this.tab()?.page !== 'board';
+        if (command.id === 'kanban-view') return !this.snapshot.layout.structured;
         if (command.id === 'source') return !this.snapshot.source;
         if (command.id === 'dark') return settings['color-scheme'] !== 'dark';
         if (command.kind === 'setting') return settings[command.id] !== true;
@@ -397,7 +441,10 @@ export class Client {
         const none = () => this.say('This is not available in this window yet');
         return {
             edit: editor?.edit ?? ({ undo: none, redo: none, wrap: none, link: none, block: none, prefix: none, heading: none, table: none, zoomImage: none }),
-            openFind: replace => { if (editor) editor.openFind(replace === true); else none(); },
+            openFind: replace => {
+                if (this.tab()?.page === 'csv') this.set({ csvFind: { n: this.snapshot.csvFind.n + 1, replace: replace === true } });
+                else if (editor) editor.openFind(replace === true); else none();
+            },
             showSearch: replace => this.showSearch(replace === true),
             setSource: on => { editor?.setSourceMode(on); this.set({ source: on }); },
             showPalette: () => this.openPalette(),
@@ -459,6 +506,12 @@ export class Client {
             }, cancel);
             return { answer: value ?? 'cancel' };
         });
+        c.on('ask.schema', (p, cancel) => new Promise(resolve => {
+            const id = ++this.schemaCount;
+            this.schemaAnswer = fields => resolve(fields ? { fields } : {});
+            this.set({ schema: { id, options: p as unknown as SchemaDialogOptions } });
+            cancel?.onCancel(() => this.answerSchema(id, null));
+        }));
         c.on('ask.file', async p => ({ path: await window.markwork.chooseFile(p as unknown as ChooseFileOptions) }));
         c.onOther(this.genericAsk);
 
@@ -492,12 +545,12 @@ export class Client {
         const tab = this.tab(id);
         switch (ev) {
             case 'doc.open':
-                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null, home: null, html: null }] });
+                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0, home: null, html: null }] });
                 break;
             case 'page.open': {
                 const page = p.page as number, kind = p.kind as string, file = p.file as string | null;
                 this.set({ tabs: [...this.snapshot.tabs, {
-                    id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, page: kind, board: null,
+                    id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, page: kind, board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0,
                     home: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null,
                 }] });
                 break;
@@ -532,7 +585,9 @@ export class Client {
             }
             case 'doc.saved': tab?.mirror.savedAt(p.version as number); this.changeTab(id, {}); break;
             case 'view.page': this.changeTab(id, { page: p.page as string }); break;
-            case 'view.notes': this.changeTab(id, { board: p.board as Board, page: p.page as string }); break;
+            case 'view.notes': this.changeTab(id, { board: p.board as Board, page: p.page as string, groupField: (p.groupField as string | null) ?? null, agents: p.agents !== false }); break;
+            case 'view.csv': this.changeTab(id, { csv: p.text as string, csvRev: (tab?.csvRev ?? 0) + 1 }); break;
+            case 'view.focusCapture': this.changeTab(id, { capture: (tab?.capture ?? 0) + 1 }); break;
             case 'view.files': this.set({ root: p.root as string, files: p.files as string[] }); break;
             case 'toast': this.say(p.text as string, (p.action as Toast['action']) ?? null); break;
             case 'error': this.say(p.message as string); break;

@@ -588,15 +588,152 @@ export async function protocolTests(): Promise<void> {
         eq((ui.last('doc.title')!.title as { name: string }).name, 'saved-as.md');
         server.dispose();
     });
+    // ---------- The structured pages: list, table, the layouts, Fields…, and the CSV tab ----------
+
+    const pages = disk.join(tmp, 'protocol-pages');
+    disk.mkdirs(pages);
+    disk.write(disk.join(pages, 'list.md'), '---\nlayout: list\nadd: top\nfields:\n  created: date = now\n---\n\n# Inbox\n\n- First idea #idea\n- Second\n');
+    disk.write(disk.join(pages, 'table.md'), '---\nlayout: table\nfields:\n  status: select(todo:gray, done:green) = todo\n---\n\n# Table\n\n- One [status:: todo]\n- Two [status:: done]\n');
+    disk.write(disk.join(pages, 'cal.md'), '---\nlayout: calendar\nfields:\n  due: date\n---\n\n- Release [due:: 2026-10-20]\n- Undated\n');
+    disk.write(disk.join(pages, 'line.md'), '---\nlayout: timeline\nfields:\n  start: date\n  due: date\n---\n\n- Build [start:: 2026-10-05] [due:: 2026-10-09]\n');
+    disk.write(disk.join(pages, 'chart.md'), '---\nlayout: chart\nfields:\n  status: select(todo, done)\n---\n\n- A [status:: todo]\n- B [status:: done]\n');
+    disk.write(disk.join(pages, 'board.md'), BOARD);
+    disk.write(disk.join(pages, 'sheet.csv'), 'name,qty\nada,3\nlin,5\n');
+
+    const startPages = async () => {
+        const post = { toClient: (_m: Message) => {} };
+        const server = new ProtocolServer(memorySettings(), m => post.toClient(m));
+        const ui = attach(server, post);
+        await ui.client.request('hello', { proto: 1 });
+        await ui.client.request('start', { path: pages });
+        await until(() => ui.last('view.files') !== undefined);
+        return { server, ui };
+    };
+    const shownPage = (ui: ReturnType<typeof attach>) => ui.last('view.page')?.page;
+
+    await test('a list, a table, and the layouts are shown as their own pages with the notes of the document', async () => {
+        const { server, ui } = await startPages();
+        for (const [name, page] of [['list.md', 'inbox'], ['table.md', 'table'], ['cal.md', 'calendar'], ['line.md', 'timeline'], ['chart.md', 'chart']]) {
+            await ui.client.request('open.file', { name });
+            await until(() => shownPage(ui) === page);
+            const notes = ui.last('view.notes')!;
+            eq(notes.page, page, `${name} sends its notes for the ${page} page`);
+            ok(parseBoard(ui.active.text).columns.length > 0 && (notes.board as ReturnType<typeof parseBoard>).columns.length > 0, 'the board arrives');
+        }
+        server.dispose();
+    });
+
+    await test('a note captured in the list, a date given in the calendar, and a bar moved in the timeline are written to the text', async () => {
+        const { server, ui } = await startPages();
+        await ui.client.request('open.file', { name: 'list.md' });
+        await until(() => shownPage(ui) === 'inbox');
+        ok((await ui.client.request('act.notes.edit', { edit: { kind: 'capture', text: 'Third #new', notes: [], now: Date.UTC(2026, 9, 19, 8, 30) } })).ok, 'capture');
+        await until(() => ui.active.text.includes('Third #new'));
+        ok(/- Third #new \[created:: 2026-10-19 \d\d:\d\d\]/.test(ui.active.text), 'the capture time is the default of the field');
+        await ui.client.request('open.file', { name: 'cal.md' });
+        await until(() => shownPage(ui) === 'calendar');
+        ok((await ui.client.request('act.notes.edit', { edit: { kind: 'date', at: { column: 0, index: 1 }, card: 'Undated', date: '2026-10-22' } })).ok, 'date');
+        await until(() => ui.active.text.includes('Undated [due:: 2026-10-22]'));
+        await ui.client.request('open.file', { name: 'line.md' });
+        await until(() => shownPage(ui) === 'timeline');
+        await ui.client.request('act.notes.edit', { edit: { kind: 'shift', at: { column: 0, index: 0 }, card: 'Build [start:: 2026-10-05] [due:: 2026-10-09]', days: 2 } });
+        await until(() => ui.active.text.includes('[start:: 2026-10-07] [due:: 2026-10-11]'));
+        server.dispose();
+    });
+
+    await test('a list opened after a board takes its own text, and a capture lands in the list', async () => {
+        const { server, ui } = await startPages();
+        await ui.client.request('act.tree.activate', { path: disk.join(pages, 'board.md') });
+        await until(() => shownPage(ui) === 'board');
+        await ui.client.request('act.tree.activate', { path: disk.join(pages, 'list.md') });
+        await until(() => shownPage(ui) === 'inbox');
+        const doc = ui.active.id;
+        await ui.client.request('act.notes.edit', { edit: { kind: 'capture', text: 'Fresh', notes: [], now: Date.now() } });
+        await until(() => ui.active.text.includes('Fresh'));
+        eq(ui.active.id, doc);
+        ok(ui.active.text.includes('layout: list') && ui.active.text.includes('First idea'), 'the list text, not the table\'s');
+        server.dispose();
+    });
+
+    await test('the panels of a chart are written to its frontmatter', async () => {
+        const { server, ui } = await startPages();
+        await ui.client.request('open.file', { name: 'chart.md' });
+        await until(() => shownPage(ui) === 'chart');
+        await ui.client.request('act.notes.edit', { edit: { kind: 'charts', items: [{ kind: 'donut', field: 'status' }, { kind: 'kpi' }] } });
+        await until(() => ui.active.text.includes('charts: [donut:status, kpi]'));
+        server.dispose();
+    });
+
+    await test('the layout command writes the layout into the frontmatter and the page follows', async () => {
+        const { server, ui } = await startPages();
+        await ui.client.request('open.file', { name: 'table.md' });
+        await until(() => shownPage(ui) === 'table');
+        await ui.client.request('command', { name: 'layout', arg: 'gallery' });
+        await until(() => shownPage(ui) === 'gallery');
+        ok(ui.active.text.includes('layout: gallery'), 'written');
+        await ui.client.request('command', { name: 'layout', arg: '' });
+        await until(() => shownPage(ui) === 'text');
+        server.dispose();
+    });
+
+    await test('Fields… asks the frontend (ask.schema) with the fields and how many notes use each option, and writes the answer', async () => {
+        const { server, ui } = await start();
+        const asked: Record<string, unknown>[] = [];
+        ui.client.on('ask.schema', p => { asked.push(p); return { fields: [{ key: 'status', type: 'select', multiple: false, options: ['todo', 'doing', 'done'], colors: { doing: 'blue' } }] }; });
+        await ui.client.request('open.file', { name: 'board.md' });
+        await until(() => shownPage(ui) === 'board');
+        ok((await ui.client.request('command', { name: 'fields-edit' })).ok, 'command');
+        await until(() => ui.active.text.includes('status: select(todo, doing:blue, done)'));
+        eq(asked.length, 1);
+        eq(asked[0].reserved, ['due', 'agent'], 'a board uses due and agent itself');
+        eq(asked[0].fields, [], 'the board declares no fields yet');
+        server.dispose();
+    });
+
+    await test('Fields… answered with nothing (Cancel) changes nothing', async () => {
+        const { server, ui } = await start();
+        ui.client.on('ask.schema', () => ({}));
+        await ui.client.request('open.file', { name: 'board.md' });
+        await until(() => shownPage(ui) === 'board');
+        const text = ui.active.text;
+        await ui.client.request('command', { name: 'fields-edit' });
+        await pause(30);
+        eq(ui.active.text, text);
+        server.dispose();
+    });
+
+    await test('a CSV file is a tab: view.csv sends the text, act.csv.change writes it, and the counts follow act.csv.shape', async () => {
+        const { server, ui } = await startPages();
+        ok((await ui.client.request('act.tree.activate', { path: disk.join(pages, 'sheet.csv') })).ok, 'a CSV file opens from the Files tab');
+        await until(() => shownPage(ui) === 'csv');
+        eq(ui.last('view.csv')!.text, 'name,qty\nada,3\nlin,5\n');
+        eq(ui.last('view.status'), { visible: true, counts: { kind: 'csv', rows: 2, columns: 2 } });
+        ok((await ui.client.request('act.csv.change', { doc: ui.active.id, text: 'name,qty\nada,3\nlin,5\nmo,9\n' })).ok, 'change');
+        await until(() => ui.active.text.endsWith('mo,9\n'));
+        ok((await ui.client.request('act.csv.shape', { rows: 3, columns: 2 })).ok, 'shape');
+        await until(() => (ui.last('view.status')?.counts as { rows: number }).rows === 3);
+        server.dispose();
+    });
+
+    await test('new inbox and new table documents ask for the cursor in the capture line', async () => {
+        const { server, ui } = await startPages();
+        await ui.client.request('command', { name: 'inbox-new' });
+        await until(() => ui.last('view.focusCapture') !== undefined);
+        eq(ui.last('view.focusCapture')!.page, 'inbox');
+        await ui.client.request('command', { name: 'table-new' });
+        await until(() => ui.last('view.focusCapture')!.page === 'table');
+        server.dispose();
+    });
+
     // The members of AppFrontend these scenarios reach that are still `unwired` (src/app/protocol/unwired.ts): a call does
     // nothing, a question counts as "no". Carrying one over removes it here; a member that appears here was reached
     // without being carried over, which is a feature the Electron window silently lacks (docs/design/electron-migrasi.md).
     const STILL_UNWIRED: string[] = [
         'dialogs.collab', 'dialogs.contribute', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
-        'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.views',
-        'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv',
-        'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs',
-        'host.pullView', 'host.reviewView', 'host.table',
+        'dialogs.preferences', 'dialogs.pulls', 'dialogs.review',
+        'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel',
+        'host.historyTab', 'host.historyViewers', 'host.logs',
+        'host.pullView', 'host.reviewView',
     ];
     await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {
         eq(unwiredTouched(), STILL_UNWIRED);

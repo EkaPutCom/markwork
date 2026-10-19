@@ -123,7 +123,7 @@ for (const pair of UI_ACTS_ALLOWED) {
 const renderer = join(root, 'electron', 'renderer');
 const RENDERER_VALUES = t => t.startsWith('markdown/')
     || ['app/protocol/messages.ts', 'app/protocol/wire.ts', 'app/protocol/mirror.ts', 'app/protocol/changes.ts', 'app/commands.ts'].includes(t);
-const RENDERER_TYPES = t => RENDERER_VALUES(t) || ['app/protocol/screen.ts', 'app/protocol/search.ts', 'app/protocol/tree.ts', 'app/protocol/preferences.ts', 'app/dialogs.ts', 'platform/index.ts'].includes(t);
+const RENDERER_TYPES = t => RENDERER_VALUES(t) || ['app/protocol/screen.ts', 'app/protocol/search.ts', 'app/protocol/tree.ts', 'app/protocol/preferences.ts', 'app/protocol/schema.ts', 'app/dialogs.ts', 'platform/index.ts'].includes(t);
 const rendererFiles = readdirSync(renderer, { recursive: true }).filter(f => /\.tsx?$/.test(f) && !f.endsWith('.d.ts')).map(f => f.split('\\').join('/'));
 for (const file of rendererFiles) {
     const text = readFileSync(join(renderer, file), 'utf8');
