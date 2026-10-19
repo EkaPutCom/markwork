@@ -15,7 +15,9 @@ import { localDate } from '../../src/markdown/home.js';
 import { journalName } from '../../src/markdown/journal.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import { memorySettings } from './appsession.js';
-import { section, test, eq, ok, tmp, disk, until, pause } from '../framework.js';
+import { runGit } from '../../src/git.js';
+import { host } from '../host.js';
+import { section, test, eq, ok, tmp, disk, until, pause, within } from '../framework.js';
 
 const ALPHABET = ['a', 'b', ' ', '\n', '🎉', 'é', '#', 'x'];
 
@@ -916,15 +918,314 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    // ---------- Git and collaboration (docs/design/electron-migrasi.md, phase 5) ----------
+
+    for (const [name, value] of Object.entries({ GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 'tester@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 'tester@example.com' })) host().setenv(name, value);
+    const git = async (cwd: string, ...args: string[]): Promise<string> => {
+        const run = await within(runGit(cwd, args));
+        if (run?.status !== 0) throw new Error(`git ${args.join(' ')}: ${run?.err}`);
+        return run.out.trim();
+    };
+
+    // A fake forge behind the work folder: the pull requests it lists, and the requests it saw.
+    const fakeForge = (token: string | null = 'secret') => {
+        const seen: string[] = [];
+        const stored = { token };
+        const pullBody = { number: 7, title: 'Move the release', state: 'open', merged: false, mergeable: true, user: { login: 'sari' }, head: { ref: 'moved', sha: 'h7' }, base: { ref: 'main', sha: 'b7' },
+            body: 'Moves it by a week.', comments: 1, created_at: '2026-10-12T01:00:00Z', updated_at: '2026-10-12T02:00:00Z', html_url: 'https://git.example.org/eka/notes/pulls/7' };
+        const answers: Record<string, () => { status: number; body: string }> = {
+            'GET /pulls?state=open&limit=50&page=1': () => ({ status: 200, body: JSON.stringify([pullBody]) }),
+            'GET /pulls/7': () => ({ status: 200, body: JSON.stringify(pullBody) }),
+            'GET /pulls/7/files?limit=50&page=1': () => ({ status: 200, body: JSON.stringify([{ filename: 'plan.md', status: 'modified', additions: 1, deletions: 1 }, { filename: 'logo.png', status: 'added', additions: 0, deletions: 0 }]) }),
+            'GET /pulls/7.diff': () => ({ status: 200, body: 'diff --git a/plan.md b/plan.md\n--- a/plan.md\n+++ b/plan.md\n@@ -1 +1 @@\n-Ship 15 November\n+Ship 22 November\n' }),
+            'GET /raw/plan.md?ref=b7': () => ({ status: 200, body: 'Ship 15 November\n' }),
+            'GET /raw/plan.md?ref=h7': () => ({ status: 200, body: 'Ship 22 November\n' }),
+            'GET /issues/7/comments': () => ({ status: 200, body: JSON.stringify([{ id: 1, body: 'Looks fine', user: { login: 'budi' }, created_at: '2026-10-12T03:00:00Z' }]) }),
+            'POST /issues/7/comments': () => ({ status: 201, body: JSON.stringify({ id: 2, body: 'Thanks', user: { login: 'eka' }, created_at: '2026-10-12T04:00:00Z' }) }),
+            'POST /pulls/7/merge': () => ({ status: 200, body: '' }),
+            'GET ': () => ({ status: 200, body: JSON.stringify({ name: 'notes', owner: { login: 'eka' }, clone_url: 'https://git.example.org/eka/notes.git', default_branch: 'main', permissions: { push: true }, fork: false }) }),
+        };
+        const services = {
+            tokens: {
+                get: async () => stored.token ? { token: stored.token, source: 'keyring' as const } : null,
+                set: async (_host: string, t: string) => { stored.token = t; return 'keyring' as const; },
+                clear: async () => { stored.token = null; },
+            },
+            transport: async (request: { method: string; url: string; body?: string }) => {
+                const path = request.url.replace('https://git.example.org/api/v1/repos/eka/notes', '');
+                seen.push(`${request.method} ${path}`);
+                return answers[`${request.method} ${path}`]?.() ?? { status: 404, body: '{"message":"no route"}' };
+            },
+            remoteUrl: async () => 'https://git.example.org/eka/notes.git',
+        };
+        return { services, seen, stored };
+    };
+
+    let repoCount = 0;
+    // A repository with a.md in two commits and b.md not committed yet, a server on it with the History tab as the open page.
+    const startGit = async (forge?: ReturnType<typeof fakeForge>) => {
+        const root = disk.join(tmp, `protocol-git-${++repoCount}`);
+        disk.mkdirs(root);
+        const a = disk.join(root, 'a.md'), b = disk.join(root, 'b.md');
+        await git(root, 'init', '-q');
+        disk.write(a, '# A\n\none\n');
+        await git(root, 'add', 'a.md');
+        await git(root, 'commit', '-q', '-m', 'Create note');
+        disk.write(a, '# A\n\none\ntwo\n');
+        await git(root, 'commit', '-q', '-a', '-m', 'Add line two');
+        disk.write(b, 'brand new\n');
+        const settings = memorySettings();
+        settings.chatSave = false;
+        const post = { toClient: (_m: Message) => {} };
+        const server = new ProtocolServer(settings, m => post.toClient(m));
+        if (forge) Object.assign(server.session.collab.services, forge.services);
+        const ui = attach(server, post);
+        await ui.client.request('hello', { proto: 1 });
+        ui.client.notify('setting', { key: 'sidebar', value: true });
+        ui.client.notify('setting', { key: 'sidebar-page', value: 'history' });
+        await ui.client.request('start', { path: root });
+        await until(() => ui.last('view.files') !== undefined);
+        await ui.client.request('open.file', { name: 'a.md' });
+        return { server, ui, root, a, b, settings };
+    };
+    const listLength = (ui: ReturnType<typeof attach>, ev: string, key: string): number => (ui.last(ev)?.[key] as unknown[] | undefined)?.length ?? -1;
+
+    await test('the History tab is told the commits and the uncommitted files (view.history, view.historyChanges) once its page is the open one', async () => {
+        const { server, ui, a, b } = await startGit();
+        await until(() => listLength(ui, 'view.history', 'commits') === 2);
+        eq((ui.last('view.history')!.commits as { subject: string }[]).map(c => c.subject), ['Add line two', 'Create note']);
+        await until(() => listLength(ui, 'view.historyChanges', 'changed') === 1);
+        const changes = ui.last('view.historyChanges') as { file: string; state: string; changed: { path: string; kind: string; name: string }[] };
+        eq([changes.file, changes.state, changes.changed[0].path, changes.changed[0].kind, changes.changed[0].name], [a, 'clean', b, 'untracked', 'b.md']);
+        server.dispose();
+    });
+
+    await test('the history is not read while another page of the side panel is open', async () => {
+        const { server, ui, b } = await startGit();
+        await until(() => listLength(ui, 'view.history', 'commits') === 2);
+        ui.client.notify('setting', { key: 'sidebar-page', value: 'files' });
+        await pause(40);
+        const seen = ui.log.length;
+        await ui.client.request('act.tree.activate', { path: b });
+        await pause(80);
+        eq(ui.log.slice(seen).filter(l => l.ev === 'view.history' || l.ev === 'view.historyChanges').length, 0, 'no new history while the Files tab is shown');
+        ui.client.notify('setting', { key: 'sidebar-page', value: 'history' });
+        await until(() => ui.log.slice(seen).some(l => l.ev === 'view.history' || l.ev === 'view.historyChanges'));
+        server.dispose();
+    });
+
+    await test('a commit opens in a viewer (view.historyViewer.*) with its changes and the file as it was, and closing it is reported', async () => {
+        const { server, ui } = await startGit();
+        await until(() => listLength(ui, 'view.history', 'commits') === 2);
+        const hash = (ui.last('view.history')!.commits as { hash: string }[])[0].hash;
+        ok((await ui.client.request('act.history.open', { hash })).ok, 'open');
+        await until(() => ui.last('view.historyViewer.diff') !== undefined && ui.last('view.historyViewer.content') !== undefined);
+        const opened = ui.last('view.historyViewer.open') as { viewer: number; commit: { hash: string } | null };
+        eq(opened.commit?.hash, hash);
+        const diff = ui.last('view.historyViewer.diff') as { viewer: number; diff: { lines: { kind: string; text: string }[] } };
+        eq(diff.viewer, opened.viewer);
+        ok(diff.diff.lines.some(l => l.kind === 'add' && l.text.includes('two')), 'the diff has the added line');
+        ok((ui.last('view.historyViewer.content') as { text: string }).text.includes('two'), 'the file at that commit');
+        await ui.client.request('act.history.open', { hash: 'not-a-commit' });
+        eq(ui.log.filter(l => l.ev === 'view.historyViewer.open').length, 1, 'a hash the core did not show opens nothing');
+        ok((await ui.client.request('act.historyViewer.closed', { viewer: opened.viewer })).ok, 'closed');
+        server.dispose();
+    });
+
+    await test('committing from the tab writes only the listed files that changed, and the log follows', async () => {
+        const { server, ui, root, b } = await startGit();
+        await until(() => listLength(ui, 'view.historyChanges', 'changed') === 1);
+        eq((await ui.client.request('act.history.commit', { files: [], message: 'x' })).error, 'Select the files to commit');
+        eq((await ui.client.request('act.history.commit', { files: [disk.join(root, 'nothing.md')], message: 'x' })).error, 'Select the files to commit', 'a file the tab did not show is ignored');
+        eq((await ui.client.request('act.history.commit', { files: [b], message: '  ' })).error, 'Enter a commit message first');
+        ok(!(await ui.client.request('act.history.commit', { files: 'b.md', message: 'x' })).ok, 'files is a list');
+        eq((await ui.client.request('act.history.commit', { files: [b], message: 'Add b' })).error, null);
+        eq(await git(root, 'log', '--format=%s', '-1'), 'Add b');
+        await until(() => listLength(ui, 'view.historyChanges', 'changed') === 0);
+        server.dispose();
+    });
+
+    await test('discarding asks (ask.discard) with the kind and the file, and does nothing when the answer is no', async () => {
+        const { server, ui, a, b } = await startGit();
+        await until(() => listLength(ui, 'view.historyChanges', 'changed') === 1);
+        const asked: Record<string, unknown>[] = [];
+        let yes = false;
+        ui.client.on('ask.discard', p => { asked.push(p); return { answer: yes }; });
+        eq((await ui.client.request('act.history.discard', { path: b })).outcome, 'declined');
+        ok(disk.exists(b), 'the file stays');
+        yes = true;
+        eq((await ui.client.request('act.history.discard', { path: b })).outcome, 'done');
+        ok(!disk.exists(b), 'the new file went to the Trash');
+        eq([asked[0].kind, asked[0].path, asked[0].viewer], ['untracked', b, null]);
+        const gone = (await ui.client.request('act.history.discard', { path: a })).outcome as { error: string };
+        eq(gone.error, 'The file is no longer in the list of changes', 'a file the tab does not list is refused');
+        server.dispose();
+    });
+
+    await test('the commit message is written by the assistant and streams as history.messageText; the reply says how it ended', async () => {
+        const { server, ui, b } = await startGit();
+        await until(() => listLength(ui, 'view.historyChanges', 'changed') === 1);
+        const { chat } = server.session.assistant;
+        chat.keyStore = KEY;
+        chat.makeProvider = () => scripted(null, 'Add the b note');
+        const result = (await ui.client.request('act.history.write', { files: [b] })).result as { ok: boolean; message: string };
+        eq([result.ok, result.message], [true, 'Add the b note']);
+        ok(noticesOf(ui, 'history.messageText').some(p => p.text === 'Add the b note'), 'the text reached the form');
+        chat.keyStore = { get: async () => null, set: async () => 'keyring' as const, clear: async () => {} };
+        eq(((await ui.client.request('act.history.write', { files: [b] })).result as { reason: string }).reason, 'no-key');
+        server.dispose();
+    });
+
+    await test('the uncommitted changes of a file open in a viewer with a commit form, and committing closes it', async () => {
+        const { server, ui, root, b } = await startGit();
+        await until(() => listLength(ui, 'view.historyChanges', 'changed') === 1);
+        ok((await ui.client.request('act.history.openChanges', { path: b })).ok, 'open');
+        await until(() => ui.last('view.historyViewer.diff') !== undefined);
+        const viewer = ui.last('view.historyViewer.open') as { viewer: number; commit: unknown; file: string };
+        eq([viewer.commit, viewer.file], [null, b]);
+        eq((await ui.client.request('act.historyViewer.commit', { viewer: viewer.viewer, message: 'Add b from the viewer' })).error, null);
+        await until(() => ui.last('view.historyViewer.close') !== undefined);
+        eq(await git(root, 'log', '--format=%s', '-1'), 'Add b from the viewer');
+        ok(!(await ui.client.request('act.historyViewer.commit', { viewer: 'one', message: 'x' })).ok, 'a viewer is a number');
+        server.dispose();
+    });
+
+    await test('the pull requests tab is told the server and the list (view.collab), and a missing token is told as a note', async () => {
+        const forge = fakeForge();
+        const { server, ui } = await startGit(forge);
+        await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
+        const tab = ui.last('view.collab') as { server: string; pulls: { number: number; title: string }[] };
+        eq([tab.server, tab.pulls[0].number, tab.pulls[0].title], ['git.example.org · eka/notes', 7, 'Move the release']);
+        server.dispose();
+
+        const other = await startGit(fakeForge(null));
+        await until(() => typeof other.ui.last('view.collab')?.note === 'string');
+        ok((other.ui.last('view.collab')!.note as string).includes('access token for git.example.org'), 'the note asks for a token');
+        other.server.dispose();
+    });
+
+    await test('the token dialog (ask.token) can try a typed token (act.collab.testToken) before it is saved, and the saved token connects', async () => {
+        const forge = fakeForge(null);
+        const { server, ui } = await startGit(forge);
+        await until(() => typeof ui.last('view.collab')?.note === 'string');
+        const asks: Record<string, unknown>[] = [];
+        let tested: Record<string, unknown> | undefined;
+        ui.client.on('ask.token', async p => {
+            asks.push(p);
+            tested = await ui.client.request('act.collab.testToken', { ask: p.ask, token: ' typed ' });
+            return { token: 'typed' };
+        });
+        ok((await ui.client.request('act.collab.server', {})).ok, 'server');
+        await until(() => forge.stored.token === 'typed');
+        eq([(asks[0].repo as { host: string }).host, asks[0].hasToken, asks[0].source], ['git.example.org', false, null]);
+        eq(tested?.message, 'Connected — 1 open pull requests');
+        await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
+        const stale = await ui.client.request('act.collab.testToken', { ask: 999, token: 'x' });
+        ok(!stale.ok && stale.error.code === 'stale', 'a dialog that is closed cannot be asked to test');
+        server.dispose();
+    });
+
+    await test('the token dialog answered with an empty token forgets the saved one, and Cancel changes nothing', async () => {
+        const forge = fakeForge();
+        const { server, ui } = await startGit(forge);
+        await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
+        ui.client.on('ask.token', () => ({}));
+        await ui.client.request('act.collab.server', {});
+        await pause(60);
+        eq(forge.stored.token, 'secret', 'cancelled');
+        ui.client.on('ask.token', () => ({ token: '' }));
+        await ui.client.request('act.collab.server', {});
+        await until(() => forge.stored.token === null);
+        server.dispose();
+    });
+
+    await test('a pull request opens as a page (view.pull.show, view.pull) with its files, the first file\'s note view, and the discussion', async () => {
+        const forge = fakeForge();
+        const { server, ui } = await startGit(forge);
+        await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
+        const missing = await ui.client.request('act.collab.open', { number: 99 });
+        ok(!missing.ok && missing.error.code === 'stale', 'a pull request the core did not list');
+        ok((await ui.client.request('act.collab.open', { number: 7 })).ok, 'open');
+        await until(() => ui.last('view.pull.show') !== undefined);
+        await until(() => !!(ui.last('view.pull') as { fileView?: unknown } | undefined)?.fileView);
+        const page = ui.last('view.pull') as { pull: { number: number }; files: { path: string }[]; selected: string; fileView: { rendered: { kind: string; text: string }[] | null; raw: unknown[] }; comments: { author: string }[] };
+        eq([page.pull.number, page.files.map(f => f.path), page.selected], [7, ['plan.md', 'logo.png'], 'plan.md']);
+        ok(page.fileView.rendered!.some(l => l.kind === 'add' && l.text.includes('22 November')), 'the note view marks the change');
+        ok(page.fileView.raw.length > 0, 'and the raw diff is there');
+        eq(page.comments.map(c => c.author), ['budi']);
+        // A file that is not a note has only its raw diff (or says why not).
+        ok((await ui.client.request('act.pull.select', { path: 'logo.png' })).ok, 'select');
+        await until(() => (ui.last('view.pull') as { selected: string; fileView: { rendered: unknown } | null }).selected === 'logo.png'
+            && (ui.last('view.pull') as { fileView: { rendered: unknown } | null }).fileView?.rendered === null);
+        server.dispose();
+    });
+
+    await test('a comment is sent to the forge and the box is cleared; closing the review shows the document again', async () => {
+        const forge = fakeForge();
+        const { server, ui } = await startGit(forge);
+        await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
+        await ui.client.request('act.collab.open', { number: 7 });
+        await until(() => listLength(ui, 'view.pull', 'files') === 2);
+        const cleared = (ui.last('view.pull') as { cleared: number }).cleared;
+        ok((await ui.client.request('act.pull.comment', { text: 'Thanks' })).ok, 'comment');
+        await until(() => forge.seen.includes('POST /issues/7/comments') && (ui.last('view.pull') as { cleared: number }).cleared > cleared);
+        const pageViews = ui.log.filter(l => l.ev === 'view.page').length;
+        ok((await ui.client.request('act.pull.close', {})).ok, 'close');
+        await until(() => ui.log.filter(l => l.ev === 'view.page').length > pageViews);
+        server.dispose();
+    });
+
+    await test('merging asks (ask.pull.merge) first: nothing is merged on a no, one POST on a yes; an unknown method is refused', async () => {
+        const forge = fakeForge();
+        const { server, ui } = await startGit(forge);
+        await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
+        await ui.client.request('act.collab.open', { number: 7 });
+        await until(() => listLength(ui, 'view.pull', 'files') === 2);
+        let yes = false;
+        const questions: { message: string; accept: string }[] = [];
+        ui.client.on('ask.pull.merge', p => { questions.push(p.question as { message: string; accept: string }); return { answer: yes }; });
+        ok(!(await ui.client.request('act.pull.merge', { method: 'fast-forward' })).ok, 'a method the forges do not have');
+        await ui.client.request('act.pull.merge', { method: 'squash' });
+        await until(() => questions.length === 1);
+        await pause(40);
+        ok(!forge.seen.includes('POST /pulls/7/merge'), 'nothing is merged on a no');
+        yes = true;
+        await ui.client.request('act.pull.merge', { method: 'squash' });
+        await until(() => forge.seen.includes('POST /pulls/7/merge'));
+        eq([questions[0].message, questions[0].accept], ['Merge pull request #7?', 'Merge']);
+        await until(() => noticesOf(ui, 'toast').some(t => String(t.text).startsWith('Merged pull request #7')));
+        server.dispose();
+    });
+
+    await test('sending changes asks (ask.sendChanges) with where it goes and what can be sent, and an answer outside the offer sends nothing', async () => {
+        const forge = fakeForge();
+        const { server, ui, b } = await startGit(forge);
+        await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
+        const offers: { repository: string; base: string; canPush: boolean; changes: { path: string }[] }[] = [];
+        let answer: unknown = null;
+        ui.client.on('ask.sendChanges', p => { offers.push(p.options as never); return { answer }; });
+        ok((await ui.client.request('act.collab.send', {})).ok, 'send');
+        await until(() => offers.length === 1);
+        eq([offers[0].repository, offers[0].base, offers[0].canPush, offers[0].changes.map(c => c.path)], ['eka/notes', 'main', true, [b]]);
+        answer = { title: 'T', body: '', branch: 'update', via: 'direct', files: [disk.join(tmp, 'elsewhere.md')] };
+        await ui.client.request('command', { name: 'send-changes' });
+        await until(() => offers.length === 2);
+        await pause(60);
+        ok(!noticesOf(ui, 'toast').some(t => t.text === 'Sending…'), 'a file that was not offered is not sent');
+        answer = { title: 'T', body: '', branch: 'bad branch', via: 'direct', files: [b] };
+        await ui.client.request('command', { name: 'send-changes' });
+        await until(() => offers.length === 3);
+        await pause(60);
+        ok(!noticesOf(ui, 'toast').some(t => t.text === 'Sending…'), 'and neither is a branch git would refuse');
+        server.dispose();
+    });
+
     // The members of AppFrontend these scenarios reach that are still `unwired` (src/app/protocol/unwired.ts): a call does
     // nothing, a question counts as "no". Carrying one over removes it here; a member that appears here was reached
     // without being carried over, which is a feature the Electron window silently lacks (docs/design/electron-migrasi.md).
     const STILL_UNWIRED: string[] = [
-        'dialogs.collab', 'dialogs.contribute', 'dialogs.harness', 'dialogs.history',
-        'dialogs.preferences', 'dialogs.pulls', 'dialogs.review',
-        'frontendCommands.edit', 'host.board.setRuns', 'host.collabPanel',
-        'host.historyTab', 'host.historyViewers', 'host.logs',
-        'host.pullView', 'host.reviewView',
+        'dialogs.harness', 'dialogs.preferences', 'dialogs.review',
+        'frontendCommands.edit', 'host.board.setRuns', 'host.logs', 'host.reviewView',
     ];
     await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {
         eq(unwiredTouched(), STILL_UNWIRED);

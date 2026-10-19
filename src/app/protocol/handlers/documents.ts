@@ -10,6 +10,8 @@ export function documentHandlers({ wire, session, frontend, notice, sendFiles }:
     // Open the tabs of the last session, or the path the frontend was started with.
     wire.on('start', p => {
         session.start();
+        // The side panel's page as the settings have it, so the history is read when its tab is the one that was open.
+        session.sidebarShown(session.settings.sidebar ? session.settings.sidebarPage : null);
         session.open(typeof p.path === 'string' ? p.path : null);
         sendFiles();
     });

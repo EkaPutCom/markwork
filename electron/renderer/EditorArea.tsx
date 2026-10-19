@@ -7,6 +7,7 @@ import { Chart } from './Chart.js';
 import { Csv } from './Csv.js';
 import { Gallery } from './Gallery.js';
 import { Inbox } from './Inbox.js';
+import { PullPage } from './Pull.js';
 import { TableView } from './TableView.js';
 import { Timeline } from './Timeline.js';
 import type { Board as BoardData } from '../../src/markdown/kanban.js';
@@ -48,7 +49,7 @@ function StructuredPage({ tab, board }: { tab: Tab; board: BoardData }) {
 
 export function EditorArea() {
     const client = useClient();
-    const { tabs, active, csvFind } = useStore();
+    const { tabs, active, csvFind, pullShown } = useStore();
     const host = useRef<HTMLDivElement>(null);
     const tab = tabs.find(t => t.id === active);
 
@@ -74,12 +75,13 @@ export function EditorArea() {
     const isPage = tab?.page === 'home' || tab?.page === 'html';
     return (
         <div className="editor-area">
-            <div ref={host} className="text-editor" hidden={!tab || structured || csv || isPage} />
-            {structured && tab && board && <StructuredPage key={`${tab.id}:${tab.page}`} tab={tab} board={board} />}
-            {csv && tab && <Csv key={tab.id} text={tab.csv!} rev={tab.csvRev} find={csvFind} />}
-            {tab?.page === 'home' && <Home data={tab.home} />}
-            {tab?.page === 'html' && tab.html && <HtmlPage key={tab.id} id={tab.id} file={tab.html.file} root={tab.html.root} />}
-            {!tab && <Welcome />}
+            <div ref={host} className="text-editor" hidden={!tab || structured || csv || isPage || pullShown} />
+            {pullShown && <PullPage />}
+            {!pullShown && structured && tab && board && <StructuredPage key={`${tab.id}:${tab.page}`} tab={tab} board={board} />}
+            {!pullShown && csv && tab && <Csv key={tab.id} text={tab.csv!} rev={tab.csvRev} find={csvFind} />}
+            {!pullShown && tab?.page === 'home' && <Home data={tab.home} />}
+            {!pullShown && tab?.page === 'html' && tab.html && <HtmlPage key={tab.id} id={tab.id} file={tab.html.file} root={tab.html.root} />}
+            {!tab && !pullShown && <Welcome />}
         </div>
     );
 }

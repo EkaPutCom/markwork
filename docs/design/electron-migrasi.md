@@ -68,10 +68,10 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Assistant | Popover konteks, riwayat, pengaturan + API key | `onPreview`, `onChats`, `onSaveKey` | ✅ | — |
 | Assistant | Proposal dan review perubahan (`proposalcard.ts`, `proposalviewer.ts`) | `review` → `ask.proposal` | ✅ | — |
 | Assistant | Log agent (`logviewer.ts`, `logdetail.ts`) | `logUpdate`, `TraceReplica` | ✅ | — |
-| Git | Tab History, commit, discard, pesan commit dari AI (`history.ts`, `messagebox.ts`, `messagewriter.ts`) | `HistoryTabView`, `HistoryDialogs` | ⬜ | 5 |
-| Git | History viewer per commit (`historyviewer.ts`) | `HistoryViewersView` | ⬜ | 5 |
-| Kolaborasi | Tab pull request, token server (`collab.ts`, `serverdialog.ts`) | `CollabView`, `CollabDialogs` | ⬜ | 5 |
-| Kolaborasi | Halaman review pull request (`pullview.ts`) | `PullReviewView`, `PullDialogs` | ⬜ | 5 |
+| Git | Tab History, commit, discard, pesan commit dari AI (`history.ts`, `messagebox.ts`, `messagewriter.ts`) | `HistoryTabView`, `HistoryDialogs` | ✅ | — |
+| Git | History viewer per commit (`historyviewer.ts`) | `HistoryViewersView` | ✅ | — |
+| Kolaborasi | Tab pull request, token server (`collab.ts`, `serverdialog.ts`) | `CollabView`, `CollabDialogs` | ✅ | — |
+| Kolaborasi | Halaman review pull request (`pullview.ts`) | `PullReviewView`, `PullDialogs` | ✅ | — |
 | Kolaborasi | Kirim perubahan sebagai PR (`sendchanges.ts`) | `ContributeDialogs.send` | ⬜ | 5 |
 | Agent | Menu kartu, status run di board | `HarnessBoard` → `ask.menu` | ⬜ | 6 |
 | Agent | Jendela log run (`window/harnesslogs.ts`) | `HarnessLogs` | ⬜ | 6 |
@@ -150,7 +150,7 @@ Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval 
 | Files penuh | `view.tree.root`, `view.tree.folder`, `view.tree.expand`, `view.tree.reveal`; `act.tree.open`, `.activate`, `.create`, `.rename`, `.remove`, `.move`, `.copy`; ask `files.name`, `files.confirm` | `Explorer.tsx` diganti pohon malas (folder dibuka saat dibutuhkan), menu konteks, drag di dalam pohon, drop dari file manager (path diambil di preload lewat `webUtils.getPathForFile`) |
 | Search di semua catatan | `view.search`; `act.search.run`, `.openHit`, `.replaceAll`; ask `search.confirm` | panel Search; `Ctrl+Shift+F` / `Ctrl+Shift+H` |
 | Outline | `view.outline`; `act.outline.jump` | panel Outline |
-| Rail ikon | setting `sidebar-page` | rail dengan Files, Search, Outline, History, Pull requests (dua yang terakhir aktif di Fase 5) |
+| Rail ikon | setting `sidebar-page` | rail dengan Files, Search, Outline, History, Pull requests (semuanya aktif sejak Fase 5) |
 | Home | `view.home` (`HomeData`) | halaman Home; aksi kartu memakai `act.notes.edit` / `open.file` |
 | Tab HTML | `view.page` `html` + isi dari `markdown/htmlview.ts` | `<iframe sandbox>` dengan CSP; tautan dan jaringan dicegat dan dikonfirmasi lewat `will-navigate` di main (aturan sama dengan WebKitGTK) |
 | Menu utama dan Recent | `setRecent` | popover menu header bar (sudah ada kerangkanya) |
@@ -188,6 +188,8 @@ Selesai bila: `tests/gui/kanban*.ts`, `inbox.ts`, `layouts.ts`, `tablelayout.ts`
 Selesai bila: `tests/gui/chat.ts`, `context.ts`, `journal.ts` punya padanan, dan `tests/unit/assistant.ts` dijalankan juga lewat protokol. (`assistant.ts` berjalan dengan panel perekam; lewat protokol, ceritanya ada di `tests/unit/protocol.ts`: giliran, proposal, apply, undo, tolak, hentikan.)
 
 ### Fase 5 — Git dan kolaborasi (L)
+
+**Status (20 Oktober 2026):** selesai. Core: `src/app/protocol/history.ts` (`ProtocolHistoryTab`, `ProtocolHistoryViewers`, `ProtocolHistoryDialogs`) dan `src/app/protocol/collab.ts` (`ProtocolCollabPanel`, `ProtocolPullView`, `ProtocolPullDialogs`, `ProtocolCollabDialogs`, `ProtocolContributeDialogs`) mengubah view dan dialog GTK menjadi notice `view.history`, `view.historyChanges`, `history.messageText`, `view.historyViewer.*`, `view.collab`, `view.pull`, `view.pull.show` dan ask `ask.discard`, `ask.token`, `ask.pull.merge/local/abort`, `ask.sendChanges`; `handlers/history.ts` dan `handlers/collab.ts` menerima `act.history.*`, `act.historyViewer.*`, `act.collab.*`, `act.pull.*`. Frontend tidak pernah memilih apa yang ditulis: pull request disebut dengan nomor dan harus yang sudah didaftar core (`stale` kalau tidak), file commit harus yang ditampilkan tab, jawaban `ask.sendChanges` dibaca terhadap tawarannya (hanya file dari daftar, cara kirim yang boleh, nama branch yang diterima git), dan tombol Test di dialog token memakai nomor ask (dialog yang sudah tutup dijawab `stale`). Halaman sidebar yang terbuka adalah setting (`sidebar`, `sidebar-page`), jadi core membaca history hanya saat tab History terbuka (`AppSession.sidebarShown`) tanpa pesan tambahan. Notice yang datang berurutan dalam satu giliran (review membuka belasan hal) dikirim sekali dengan nilai terakhir. Renderer: `History.tsx` (tab, form commit dengan tombol asisten, viewer commit dan perubahan), `Collab.tsx` (tab, dialog token dengan Test, form Send Changes), `Pull.tsx` (halaman review: file, tampilan Note/Raw, diskusi, merge, resolve lokal), dan `Diff.tsx` (satu komponen diff untuk proposal, history, dan pull request). Rail sekarang punya History dan Pull requests. Tes: 14 skenario baru di `tests/unit/protocol.ts` (repositori git nyata dan forge palsu lewat `CollabServices`), `tests/electron-git.mjs` (git nyata, forge palsu `tests/electron-forge.mjs` dimuat core lewat `MARKWORK_TEST_FORGE`). `unwired` menyusut dari 15 ke 7 (`dialogs.harness`, `dialogs.preferences`, `dialogs.review`, `frontendCommands.edit`, `host.board.setRuns`, `host.logs`, `host.reviewView`). Belum: `npm run test:forgejo` terhadap Electron (butuh Podman/Docker dan Forgejo sungguhan; skenario yang sama dengan forge palsu sudah jalan), kirim perubahan sampai push sungguhan lewat Electron (`forge/contribute.ts` punya tes sendiri di `tests/unit/contribute.ts`), dan jendela viewer terpisah (viewer adalah dialog di jendela utama).
 
 - **History**: `view.history`, `view.historyChanges`, `history.messageText`, dan aksi `act.history.*` (`protocol.md` 6.5). Kotak pesan commit dengan tombol sparkle (pesan ditulis streaming oleh core).
 - **History viewer**: `view.historyViewer.*` sebagai dialog besar di jendela utama, dengan tab Changes dan Contents; `ask.discard`.
