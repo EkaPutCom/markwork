@@ -11,6 +11,9 @@ import { Asks } from '../../src/app/protocol/asks.js';
 import { Cancellable } from '../../src/cancel.js';
 import { RequestError, type Message, type Reply, type Wire } from '../../src/app/protocol/messages.js';
 import { parseBoard } from '../../src/markdown/kanban.js';
+import { localDate } from '../../src/markdown/home.js';
+import { journalName } from '../../src/markdown/journal.js';
+import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import { memorySettings } from './appsession.js';
 import { section, test, eq, ok, tmp, disk, until, pause } from '../framework.js';
 
@@ -725,13 +728,201 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    // ---------- The Assistant and the journal (docs/design/electron-migrasi.md, phase 4) ----------
+
+    const chatDir = disk.join(tmp, 'protocol-chat');
+    disk.mkdirs(chatDir);
+    disk.write(disk.join(chatDir, 'notes.md'), 'Release 15 November\n');
+    disk.write(disk.join(chatDir, 'plan.md'), 'Ship 15 November\n');
+    const KEY = { get: async () => ({ key: 'test', source: 'env' as const }), set: async () => 'keyring' as const, clear: async () => {} };
+
+    // A model that calls one tool in its first round (when it is given one), then answers with `answer`.
+    const scripted = (tool: { name: string; args: object } | null, answer: string, told: string[] = []): Provider => {
+        let round = 0;
+        return {
+            async chat(req): Promise<ChatResult> {
+                for (const m of req.messages) if (m.role === 'tool') told.push(m.content);
+                if (tool && ++round === 1) return { usage: null, cancelled: false, reasoning: '', toolCalls: [{ id: 't1', name: tool.name, arguments: JSON.stringify(tool.args) }] };
+                req.onText(answer);
+                return { usage: { prompt: 10, cached: 0, completion: 5 }, cancelled: false, reasoning: '', toolCalls: [] };
+            },
+        };
+    };
+    const edit = { name: 'notes', old_text: '15 November', new_text: '22 November', reason: 'the meeting moved it' };
+
+    const startChat = async (settings = memorySettings()) => {
+        const post = { toClient: (_m: Message) => {} };
+        settings.chatSave = false;
+        const server = new ProtocolServer(settings, m => post.toClient(m));
+        const ui = attach(server, post);
+        await ui.client.request('hello', { proto: 1 });
+        await ui.client.request('start', { path: chatDir });
+        await until(() => ui.last('view.files') !== undefined);
+        await ui.client.request('open.file', { name: 'plan.md' });
+        const { chat } = server.session.assistant;
+        chat.keyStore = KEY;
+        disk.write(disk.join(chatDir, 'notes.md'), 'Release 15 November\n');
+        return { server, ui, chat, settings };
+    };
+    const noticesOf = (ui: ReturnType<typeof attach>, ev: string) => ui.log.filter(l => l.ev === ev).map(l => l.payload);
+
+    await test('Add to Journal asks the frontend for a line (ask.capture) and writes it into today\'s journal', async () => {
+        const { server, ui } = await startChat();
+        let prompt: Record<string, unknown> | undefined;
+        ui.client.on('ask.capture', p => { prompt = p.prompt as Record<string, unknown>; return { text: 'met the printer' }; });
+        ok((await ui.client.request('command', { name: 'journal-capture' })).ok, 'command');
+        await until(() => disk.exists(disk.join(chatDir, 'journal')) && ui.last('toast') !== undefined);
+        eq(prompt?.title, 'Add to Journal');
+        const today = localDate(new Date());
+        ok(disk.read(disk.join(chatDir, ...journalName(today).split('/'))).includes('met the printer'), 'the note is in the journal file');
+        server.dispose();
+    });
+
+    await test('Add to Journal answered with nothing (Cancel) writes nothing', async () => {
+        const { server, ui } = await startChat();
+        const before = ui.log.length;
+        ui.client.on('ask.capture', () => ({}));
+        await ui.client.request('command', { name: 'journal-capture' });
+        await pause(60);
+        eq(noticesOf(ui, 'toast').length, ui.log.slice(0, before).filter(l => l.ev === 'toast').length, 'no new toast');
+        server.dispose();
+    });
+
+    await test('a turn is told as chat.* notices: the question, the streamed answer, the end, and busy around it', async () => {
+        const { server, ui, chat } = await startChat();
+        chat.makeProvider = () => scripted(null, 'Hello there');
+        const sync = await ui.client.request('act.chat.sync', {});
+        ok(sync.ok && (sync.settings as { model: string }).model.length > 0, 'sync gives the settings');
+        ok((await ui.client.request('act.chat.send', { text: 'say hello' })).ok, 'send');
+        eq(noticesOf(ui, 'chat.busy').map(p => p.busy), [true, false]);
+        eq(noticesOf(ui, 'chat.turn').map(p => p.question), ['say hello']);
+        eq(noticesOf(ui, 'chat.text').map(p => p.delta).join(''), 'Hello there');
+        const end = noticesOf(ui, 'chat.end')[0].outcome as { cancelled: boolean; text: string; usage: { prompt: number } };
+        eq([end.cancelled, end.text, end.usage.prompt], [false, 'Hello there', 10]);
+        eq(noticesOf(ui, 'chat.context').length, 1, 'the context that was sent');
+        await until(() => noticesOf(ui, 'chat.log').length > 0);
+        const events = (noticesOf(ui, 'chat.log').flatMap(p => (p.update as { events: { kind: string }[] }).events));
+        ok(events.some(e => e.kind === 'turn'), 'the agent log follows the turn');
+        server.dispose();
+    });
+
+    await test('without an API key the turn asks for one (chat.noKey) and the key is saved by act.chat.key', async () => {
+        const { server, ui, chat } = await startChat();
+        let stored: string | null = null;
+        chat.keyStore = { get: async () => stored ? { key: stored, source: 'keyring' as const } : null, set: async key => { stored = key; return 'keyring' as const; }, clear: async () => { stored = null; } };
+        await ui.client.request('act.chat.send', { text: 'hi' });
+        eq(noticesOf(ui, 'chat.noKey').length, 1);
+        eq(noticesOf(ui, 'chat.turn').length, 0, 'no turn was started');
+        eq((await ui.client.request('act.chat.key', { action: 'status' })).source, null);
+        eq((await ui.client.request('act.chat.key', { action: 'save', key: ' sk-1 ' })).source, 'keyring');
+        eq(stored, 'sk-1');
+        eq((await ui.client.request('act.chat.key', { action: 'status' })).source, 'keyring');
+        ok(!(await ui.client.request('act.chat.key', { action: 'save', key: '  ' })).ok, 'an empty key is refused');
+        await ui.client.request('act.chat.key', { action: 'forget' });
+        eq(stored, null);
+        server.dispose();
+    });
+
+    await test('model, thinking and saving are settings of the core; the panel gets them back as chat.settings', async () => {
+        const { server, ui, settings } = await startChat();
+        await ui.client.request('act.chat.thinking', { thinking: true });
+        await until(() => noticesOf(ui, 'chat.settings').some(p => (p.settings as { thinking: boolean }).thinking));
+        eq(settings.chatThinking, true);
+        await ui.client.request('act.chat.save', { save: true });
+        await until(() => settings.chatSave === true);
+        ok(!(await ui.client.request('act.chat.thinking', { thinking: 'yes' })).ok, 'a value of the wrong type is refused');
+        await ui.client.request('act.chat.options', { options: { activeDocument: false, selection: true, project: true } });
+        const preview = await ui.client.request('act.chat.preview', { draft: 'what is in @notes' });
+        ok(preview.ok && Array.isArray((preview.built as { items: unknown[] }).items), 'preview');
+        ok(!(preview.built as { items: { kind: string }[] }).items.some(i => i.kind === 'active'), 'the open document is not in the context after its option is off');
+        server.dispose();
+    });
+
+    await test('a proposal is the ask ask.proposal: the frontend gets how it looks, asks the core to apply it, and answers with its note', async () => {
+        const { server, ui, chat } = await startChat();
+        const told: string[] = [];
+        chat.makeProvider = () => scripted({ name: 'edit_file', args: edit }, 'done', told);
+        let seen: Record<string, unknown> | undefined;
+        ui.client.on('ask.proposal', async p => {
+            seen = p;
+            eq(disk.read(disk.join(chatDir, 'notes.md')), 'Release 15 November\n', 'nothing is written before the user decides');
+            const applied = await ui.client.request('act.proposal.apply', { ask: p.ask, chosen: null });
+            ok(applied.ok && applied.error === null, 'apply');
+            return { note: 'thanks' };
+        });
+        await ui.client.request('act.chat.send', { text: 'move the release' });
+        eq(disk.read(disk.join(chatDir, 'notes.md')), 'Release 22 November\n');
+        const changes = seen!.changes as { kind: string; file: string; added: number; removed: number; diff: { kind: string; text: string }[]; before?: string }[];
+        eq([seen!.batch, changes.length, changes[0].kind, changes[0].file, changes[0].added, changes[0].removed], [false, 1, 'edit', 'notes.md', 1, 1]);
+        ok(changes[0].diff.some(l => l.kind === 'add' && l.text.includes('22 November')), 'the diff lines are sent');
+        ok(!('before' in changes[0]), 'the file contents are not');
+        ok(told.some(t => t.includes('thanks')), 'the agent got the note');
+        // Undo names the proposal; the core writes the reverse.
+        eq((await ui.client.request('act.chat.undo', { target: { ask: seen!.ask } })).error, null);
+        eq(disk.read(disk.join(chatDir, 'notes.md')), 'Release 15 November\n');
+        ok(!(await ui.client.request('act.chat.undo', { target: { ask: seen!.ask } })).ok || (await ui.client.request('act.chat.undo', { target: { ask: seen!.ask } })).error !== null, 'a second undo has nothing to undo');
+        server.dispose();
+    });
+
+    await test('a rejected proposal writes nothing, and a stopped turn withdraws the ask so a late apply is refused', async () => {
+        const { server, ui, chat } = await startChat();
+        chat.makeProvider = () => scripted({ name: 'edit_file', args: edit }, 'ok');
+        ui.client.on('ask.proposal', () => ({ note: 'no thanks' }));
+        await ui.client.request('act.chat.send', { text: 'move the release' });
+        eq(disk.read(disk.join(chatDir, 'notes.md')), 'Release 15 November\n');
+
+        const open: { ask: number; cancelled: boolean }[] = [];
+        ui.client.on('ask.proposal', (p, cancel) => new Promise(() => { const o = { ask: p.ask as number, cancelled: false }; open.push(o); cancel.onCancel(() => { o.cancelled = true; }); }));
+        chat.makeProvider = () => scripted({ name: 'edit_file', args: edit }, 'ok');
+        const turn = ui.client.request('act.chat.send', { text: 'again' });
+        await until(() => open.length === 1);
+        ok((await ui.client.request('act.chat.stop', {})).ok, 'stop');
+        await until(() => open[0].cancelled);
+        await turn;
+        const late = await ui.client.request('act.proposal.apply', { ask: open[0].ask, chosen: null });
+        ok(late.ok && typeof late.error === 'string', 'a late apply is refused');
+        eq(disk.read(disk.join(chatDir, 'notes.md')), 'Release 15 November\n');
+        server.dispose();
+    });
+
+    await test('saved conversations: the list, opening one, and deleting one only by a path the core listed', async () => {
+        const settings = memorySettings();
+        const { server, ui, chat } = await startChat(settings);
+        settings.chatSave = true;
+        chat.makeProvider = () => scripted(null, 'Saved answer');
+        await ui.client.request('act.chat.send', { text: 'keep this one' });
+        const listed = (await ui.client.request('act.chat.chats', {})).chats as { path: string; title: string; turns: number }[];
+        eq(listed.length, 1);
+        eq(listed[0].title, 'keep this one');
+        ok(!(await ui.client.request('act.chat.open', { path: disk.join(chatDir, 'notes.md') })).ok, 'a path that is not a conversation of the list is refused');
+        ok(!(await ui.client.request('act.chat.delete', { path: disk.join(chatDir, 'notes.md') })).ok, 'and so is deleting it');
+        ok(disk.exists(disk.join(chatDir, 'notes.md')), 'the file is still there');
+        await ui.client.request('act.chat.reset', {});
+        const opened = (await ui.client.request('act.chat.open', { path: listed[0].path })).chat as { turns: { role: string; content: string }[] };
+        eq(opened.turns.map(t => t.content), ['keep this one', 'Saved answer']);
+        eq((await ui.client.request('act.chat.delete', { path: listed[0].path })).error, null);
+        eq((await ui.client.request('act.chat.chats', {})).chats, []);
+        server.dispose();
+    });
+
+    await test('Insert into note puts the answer into the open document, and clearing the log empties it', async () => {
+        const { server, ui, chat } = await startChat();
+        chat.makeProvider = () => scripted(null, 'x');
+        await ui.client.request('act.chat.send', { text: 'q' });
+        eq((await ui.client.request('act.chat.insert', { text: 'An answer' })).inserted, true);
+        await until(() => ui.active.text.includes('An answer'));
+        await ui.client.request('act.chat.clearLog', {});
+        await until(() => noticesOf(ui, 'chat.log').some(p => (p.update as { reset: boolean; events: unknown[] }).reset && (p.update as { events: unknown[] }).events.length === 0));
+        server.dispose();
+    });
+
     // The members of AppFrontend these scenarios reach that are still `unwired` (src/app/protocol/unwired.ts): a call does
     // nothing, a question counts as "no". Carrying one over removes it here; a member that appears here was reached
     // without being carried over, which is a feature the Electron window silently lacks (docs/design/electron-migrasi.md).
     const STILL_UNWIRED: string[] = [
-        'dialogs.collab', 'dialogs.contribute', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
+        'dialogs.collab', 'dialogs.contribute', 'dialogs.harness', 'dialogs.history',
         'dialogs.preferences', 'dialogs.pulls', 'dialogs.review',
-        'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel',
+        'frontendCommands.edit', 'host.board.setRuns', 'host.collabPanel',
         'host.historyTab', 'host.historyViewers', 'host.logs',
         'host.pullView', 'host.reviewView',
     ];

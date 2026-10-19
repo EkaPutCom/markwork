@@ -8,6 +8,7 @@ import GLib from 'gi://GLib';
 import { type TraceEvent, type TraceKind } from '../agent/trace.js';
 import type { LogSource } from '../agent/tracefeed.js';
 import { formatMs, traceTree, type TraceNode } from '../agent/tracetree.js';
+import { LOG_HEADERS, settledNewest, visibleSteps } from '../agent/logrows.js';
 import { onKeyPress } from '../gtkutil.js';
 import { _, fmt } from '../i18n.js';
 import { LogDetail } from './logdetail.js';
@@ -17,7 +18,7 @@ const KIND_ICON: Record<TraceKind, string> = {
     tool: 'utilities-terminal-symbolic', usage: 'view-list-symbolic', note: 'media-playback-stop-symbolic', error: 'dialog-warning-symbolic',
 };
 const KIND_FILTER = (): [string, TraceKind[]][] => [[_('All'), []], [_('Tools'), ['tool']], [_('Reasoning'), ['reasoning']], [_('Model'), ['round', 'text']]];
-const HEADER: ReadonlySet<TraceKind> = new Set(['turn', 'round']);
+const HEADER = LOG_HEADERS;
 
 function rowLabel(e: TraceEvent): string {
     if (e.kind === 'round') return fmt(_('Round {n}'), { n: e.round ?? '' });
@@ -148,16 +149,8 @@ export class LogViewer {
         this.showDetail();
     }
 
-    private lastVisible(): number | null {
-        for (let i = this.nodes.length - 1; i >= 0; i--) if (this.rows.get(this.nodes[i].event.seq)?.row.get_visible()) return this.nodes[i].event.seq;
-        return null;
-    }
-
-    // A finished turn ends with a note: the summary of the turn is more useful there than the note itself.
     private settledNewest(): number | null {
-        const newest = this.lastVisible();
-        const node = this.nodes.find(n => n.event.seq === newest);
-        return node && (node.event.kind === 'note' || node.event.kind === 'usage') && node.parent !== null ? node.parent : newest;
+        return settledNewest(this.nodes, new Set([...this.rows].filter(([, r]) => r.row.get_visible()).map(([seq]) => seq)));
     }
 
     private showDetail(): void {
@@ -233,26 +226,14 @@ export class LogViewer {
         } else this.showDetail();
     }
 
-    // A step is shown when no ancestor is collapsed and it matches the filter; a turn always, a round when something in it matches.
+    // Which steps show is decided by logrows.ts; this sets the rows and the chevrons.
     private applyVisibility(): void {
-        const matching = new Set<number>();
-        const parentOf = new Map(this.nodes.map(n => [n.event.seq, n.parent]));
-        for (const n of this.nodes) {
-            if (HEADER.has(n.event.kind) || (this.filter.length && !this.filter.includes(n.event.kind))) continue;
-            for (let p = n.parent; p !== null; p = parentOf.get(p) ?? null) matching.add(p);
-        }
+        const shown = visibleSteps(this.nodes, this.filter, this.collapsed);
         for (const n of this.nodes) {
             const row = this.rows.get(n.event.seq);
             if (!row) continue;
-            const hidden = this.hiddenByAncestor(n, parentOf);
-            const passes = !this.filter.length || n.event.kind === 'turn' || (HEADER.has(n.event.kind) ? matching.has(n.event.seq) : this.filter.includes(n.event.kind));
-            row.row.set_visible(!hidden && passes);
+            row.row.set_visible(shown.has(n.event.seq));
             row.chevron?.set_icon_name(this.collapsed.has(n.event.seq) ? 'pan-end-symbolic' : 'pan-down-symbolic');
         }
-    }
-
-    private hiddenByAncestor(node: TraceNode, parentOf: Map<number, number | null>): boolean {
-        for (let p = node.parent; p !== null; p = parentOf.get(p) ?? null) if (this.collapsed.has(p)) return true;
-        return false;
     }
 }

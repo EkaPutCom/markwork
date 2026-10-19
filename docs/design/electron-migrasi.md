@@ -53,7 +53,7 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Sidebar | Files: pohon, buat, ganti nama, hapus, pindah, drop dari luar (`filetree.ts`) | `FileTreeView`, `FilesDialogs` | ✅ | — |
 | Sidebar | Search di semua catatan, replace all (`searchpanel.ts`) | `SearchView`, `SearchDialogs` | ✅ | — |
 | Sidebar | Outline (`outline.ts`) | `OutlineView` | ✅ | — |
-| Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | 🟡 semua kecuali Add to Journal (Fase 4) | 4 |
+| Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | ✅ | — |
 | Halaman | Tab HTML dengan sandbox (`htmlpage.ts`) | `showPageTab`, `markdown/htmlview.ts` | ✅ | — |
 | Dialog | Preferences umum (`preferences.ts`) | `PreferencesView` | ✅ umum dan Assistant; halaman Agents di Fase 6 | 6 |
 | Struktur | Board penuh: kolom, grup per field, popover field (`kanban.ts`, `fieldpopover.ts`) | `KanbanView`, `NoteEdit` | ✅ | — |
@@ -63,11 +63,11 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Struktur | Dialog Fields… (`schemadialog.ts`) | `ViewDialogs.editSchema` | ✅ | — |
 | Struktur | Tab CSV dengan find bar (`csvpage.ts`, `csvfindbar.ts`) | `CsvPage` | ✅ | — |
 | Struktur | Dokumen baru: board, inbox, table, CSV | `COMMANDS` `*-new` | ✅ | — |
-| Journal | Jurnal hari ini, Add to Journal, ringkasan | `JournalController`, `JournalDialogs.capture` | ⬜ | 4 |
-| Assistant | Panel chat streaming (`chat.ts`, `chatturn.ts`, `worklist.ts`) | `ChatPanelView` | ⬜ | 4 |
-| Assistant | Popover konteks, riwayat, pengaturan + API key | `onPreview`, `onChats`, `onSaveKey` | ⬜ | 4 |
-| Assistant | Proposal dan review perubahan (`proposalcard.ts`, `proposalviewer.ts`) | `review` → `ask.proposal` | ⬜ | 4 |
-| Assistant | Log agent (`logviewer.ts`, `logdetail.ts`) | `logUpdate`, `TraceReplica` | ⬜ | 4 |
+| Journal | Jurnal hari ini, Add to Journal, ringkasan | `JournalController`, `JournalDialogs.capture` | ✅ | — |
+| Assistant | Panel chat streaming (`chat.ts`, `chatturn.ts`, `worklist.ts`) | `ChatPanelView` | ✅ | — |
+| Assistant | Popover konteks, riwayat, pengaturan + API key | `onPreview`, `onChats`, `onSaveKey` | ✅ | — |
+| Assistant | Proposal dan review perubahan (`proposalcard.ts`, `proposalviewer.ts`) | `review` → `ask.proposal` | ✅ | — |
+| Assistant | Log agent (`logviewer.ts`, `logdetail.ts`) | `logUpdate`, `TraceReplica` | ✅ | — |
 | Git | Tab History, commit, discard, pesan commit dari AI (`history.ts`, `messagebox.ts`, `messagewriter.ts`) | `HistoryTabView`, `HistoryDialogs` | ⬜ | 5 |
 | Git | History viewer per commit (`historyviewer.ts`) | `HistoryViewersView` | ⬜ | 5 |
 | Kolaborasi | Tab pull request, token server (`collab.ts`, `serverdialog.ts`) | `CollabView`, `CollabDialogs` | ⬜ | 5 |
@@ -143,7 +143,7 @@ Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval 
 
 ### Fase 2 — Kerangka jendela dan sidebar (L)
 
-**Status (19 Oktober 2026):** dimulai. Selesai: menu utama (Commands, Find, Export, Home, Journal, Dark Mode, Preferences, Shortcuts, About, Quit; menu New dengan Open dan Recent lewat notice `recent`), dialog Preferences (`view.prefs.open/values`, `act.prefs.set/closed`; halaman General dan Assistant), Keyboard Shortcuts dan About; tab halaman (`page.open/close/active`, `view.home`, `act.home.*`; Home dan tab HTML lewat skema `mwhtml://` di `main.ts` dengan CSP dan `will-frame-navigate`; tombol Add to Journal menunggu Fase 4, HTML belum memuat ulang otomatis saat file berubah), pohon Files penuh (`view.tree.root/folder/expand/reveal`, `act.tree.openFolder/activate/create/rename/remove/move/copy`, `ask.files.name`, `ask.files.confirm`; folder dibuka malas, menu konteks, F2/Delete, seret ke folder; drop dari file manager lewat `webUtils.getPathForFile` belum diuji otomatis), panel Search (`view.search`, `act.search.run/openHit/replaceAll`, `ask.search.confirm`; `doc.select` menandai hit; Ctrl+Shift+F/H) dan rail tiga halaman (Files, Search, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Fase 2 selesai kecuali yang menunggu fase lain (Add to Journal, halaman Agents, tab History dan Pull requests di rail) dan tes asap untuk drop dari file manager. Berikutnya: Fase 3 (view terstruktur).
+**Status (19 Oktober 2026):** dimulai. Selesai: menu utama (Commands, Find, Export, Home, Journal, Dark Mode, Preferences, Shortcuts, About, Quit; menu New dengan Open dan Recent lewat notice `recent`), dialog Preferences (`view.prefs.open/values`, `act.prefs.set/closed`; halaman General dan Assistant), Keyboard Shortcuts dan About; tab halaman (`page.open/close/active`, `view.home`, `act.home.*`; Home dan tab HTML lewat skema `mwhtml://` di `main.ts` dengan CSP dan `will-frame-navigate`; tombol Add to Journal ditambah di Fase 4, HTML belum memuat ulang otomatis saat file berubah), pohon Files penuh (`view.tree.root/folder/expand/reveal`, `act.tree.openFolder/activate/create/rename/remove/move/copy`, `ask.files.name`, `ask.files.confirm`; folder dibuka malas, menu konteks, F2/Delete, seret ke folder; drop dari file manager lewat `webUtils.getPathForFile` belum diuji otomatis), panel Search (`view.search`, `act.search.run/openHit/replaceAll`, `ask.search.confirm`; `doc.select` menandai hit; Ctrl+Shift+F/H) dan rail tiga halaman (Files, Search, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Fase 2 selesai kecuali yang menunggu fase lain (halaman Agents, tab History dan Pull requests di rail) dan tes asap untuk drop dari file manager. Berikutnya: Fase 3 (view terstruktur).
 
 | Fitur | Pesan | Komponen |
 | --- | --- | --- |
@@ -177,13 +177,15 @@ Selesai bila: `tests/gui/kanban*.ts`, `inbox.ts`, `layouts.ts`, `tablelayout.ts`
 
 ### Fase 4 — Journal dan Assistant (L)
 
+**Status (20 Oktober 2026):** selesai. Journal: `ask.capture` (`dialogs.journal`), tombol Add to Journal di Home, dan perintah `journal`, `journal-capture`, `journal-summary` di menu utama. Assistant: `ProtocolChatPanel` (`src/app/protocol/chat.ts`) mengubah `ChatPanelView` menjadi notice `chat.settings/busy/turn/context/text/reasoning/tool/work/end/noKey/saveFailed/log` dan ask `ask.proposal`; `handlers/chat.ts` menerima `act.chat.sync/send/stop/reset/preview/options/chats/open/delete/undo/insert/model/thinking/save/key/clearLog` dan `act.proposal.apply`. Frontend tidak pernah mengirim `Change` kembali: proposal dikirim sebagai `ProposalChange` (kata-kata, ukuran, baris diff), disebut dengan nomor dari core, dan path percakapan harus yang sudah didaftar core. Kunci API dikirim ke core dan hanya sumbernya yang kembali. Renderer: `chatmodel.ts` (store sendiri, supaya jawaban yang mengalir tidak menggambar ulang jendela), `Chat.tsx` (panel, kartu status, daftar kerja, kartu proposal, review dengan diff dan catatan, popover konteks, riwayat, pengaturan), dan `LogViewer.tsx` (pohon dan detail). Perhitungan yang sama dengan GTK dipindah ke `src/agent/logrows.ts` (`visibleSteps`, `settledNewest`), dan `scripts/layers.mjs` mengizinkan renderer memakai modul log yang murni. Tes: sembilan skenario baru di `tests/unit/protocol.ts` dan satu di `tests/unit/trace.ts`; `tests/electron-assistant.mjs` (model berskrip `tests/electron-model.mjs`, dimuat core lewat `MARKWORK_TEST_MODEL`) memberi padanan `chat`, `context`, `journal`. `unwired` menyusut dari 17 ke 15 (`dialogs.journal`, `host.chatPanel`). Belum: jendela log terpisah per run agent (Fase 6), tombol Terminal di review.
+
 - **Journal**: `ask.capture`, ditambah perintah `journal`, `journal-capture`, dan `journal-summary` (cukup menjalankan perintah core). **S**.
 - **Panel Assistant**: notice `chat.*` dan aksi `act.chat.*` sesuai `protocol.md` 6.5. Jawaban asisten digambar dengan `markdown/chatblocks.ts` + `chathtml.ts`, yang sudah menghasilkan HTML aman. Kartu status turn, daftar kerja, tombol Insert/Undo.
 - **Popover** konteks (`act.chat.preview`, `.options`), riwayat (`.chats`, `.open`, `.delete`), dan pengaturan (`.model`, `.thinking`, `.save`, `.key`).
 - **Proposal**: `ask.proposal` dengan diff, `act.proposal.apply` untuk sebagian batch, dan `ask.cancel` saat turn dihentikan. Aturan agent tidak berubah: hanya core yang menulis, dan `applyChange()` memeriksa ulang teks.
 - **Log agent**: `chat.log` membawa `TraceUpdate`. Renderer memegang `TraceReplica` (`agent/tracetree.ts` sudah murni) dan menggambar pohon dan detail.
 
-Selesai bila: `tests/gui/chat.ts`, `context.ts`, `journal.ts` punya padanan, dan `tests/unit/assistant.ts` dijalankan juga lewat protokol.
+Selesai bila: `tests/gui/chat.ts`, `context.ts`, `journal.ts` punya padanan, dan `tests/unit/assistant.ts` dijalankan juga lewat protokol. (`assistant.ts` berjalan dengan panel perekam; lewat protokol, ceritanya ada di `tests/unit/protocol.ts`: giliran, proposal, apply, undo, tolak, hentikan.)
 
 ### Fase 5 — Git dan kolaborasi (L)
 
