@@ -8,6 +8,7 @@ import type { TextEditor, ToastButton } from '../../src/app/document.js';
 import { addCard, parseBoard } from '../../src/markdown/kanban.js';
 import { applyChangeBatch } from '../../src/app/agentwrites.js';
 import { platform, setPlatform } from '../../src/platform/index.js';
+import { fileUri } from '../../src/files.js';
 import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
@@ -295,7 +296,7 @@ export async function appSessionTests(): Promise<void> {
             eq(session.documents.active.file, next, 'a Markdown link opens in a tab, read from the document\'s folder');
             session.openLink(session.documents.active.id, 'https://example.org/a b');
             session.openLink(session.documents.active.id, 'my file.pdf');
-            eq(uris, ['https://example.org/a b', `file://${disk.join(dir, 'my%20file.pdf')}`], 'anything else goes to the system');
+            eq(uris, ['https://example.org/a b', fileUri(disk.join(dir, 'my file.pdf'))], 'anything else goes to the system');
             session.host.openFile(image);
             eq(images, [image], 'an image goes to the viewer');
             session.host.openFile(page);

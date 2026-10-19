@@ -5,6 +5,7 @@
 
 import { cardMeta, dueStatus, parseBoard, type Board, type Card, type DueStatus, type Position } from './kanban.js';
 import { isList, isStructured } from './layout.js';
+import { below } from './pathbelow.js';
 
 export interface HomeFile {
     name: string;    // relative to the work folder
@@ -85,7 +86,7 @@ export function rememberRecent(list: RecentFile[], path: string, time: number, m
 
 // Replace a path after a file is moved or its parent folder is renamed.
 export function moveRecent(list: RecentFile[], from: string, to: string): RecentFile[] {
-    return list.map(r => r.path === from ? { ...r, path: to } : r.path.startsWith(`${from}/`) ? { ...r, path: to + r.path.slice(from.length) } : r);
+    return list.map(r => r.path === from ? { ...r, path: to } : below(from, r.path) ? { ...r, path: to + r.path.slice(from.length) } : r);
 }
 
 const parentOf = (path: string): string => path.slice(0, Math.max(0, path.lastIndexOf('/')));

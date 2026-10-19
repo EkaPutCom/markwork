@@ -157,7 +157,9 @@ export async function listWorktrees(git: GitRunner, repo: string): Promise<Liste
         const lines = block.split('\n');
         const value = (key: string) => lines.find(l => l.startsWith(`${key} `))?.slice(key.length + 1) ?? null;
         const ref = value('branch');
-        return { path: value('worktree') ?? '', branch: ref?.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : null, head: value('HEAD') ?? '' };
+        // Git writes a Windows path with / (C:/Users/…); the app's paths use the system's own separator.
+        const path = value('worktree');
+        return { path: path ? platform().paths.resolve(path) : '', branch: ref?.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : null, head: value('HEAD') ?? '' };
     }).filter(w => w.path);
 }
 

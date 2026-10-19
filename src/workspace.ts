@@ -15,6 +15,7 @@
 
 import { onDiskChange, readTextFile } from './files.js';
 import { platform } from './platform/index.js';
+import { atOrBelow } from './markdown/pathbelow.js';
 
 export interface WorkspaceFile {
     name: string;   // relative to the folder, with '/'
@@ -96,7 +97,7 @@ class Snapshot {
     // Can requests be answered without walking the folder?
     get valid(): boolean { return this.scanned && !this.dirty && this.watched && !this.scan; }
 
-    contains(path: string): boolean { return path === this.root || path.startsWith(`${this.root}/`); }
+    contains(path: string): boolean { return atOrBelow(this.root, path); }
 
     close(): void {
         for (const stop of this.monitors.values()) stop();

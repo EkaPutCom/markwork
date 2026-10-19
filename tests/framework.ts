@@ -54,7 +54,10 @@ export function test(name: string, fn: () => void | Promise<void>): Promise<void
         pass(name);
         return Promise.resolve();
     }
-    return result.then(() => pass(name), e => fail(name, e));
+    // A test that never settles (a process that was never answered) fails after a minute instead of stalling the run.
+    let cancelTimer = () => {};
+    const stalled = new Promise<never>((_, reject) => { cancelTimer = platform().scheduler.idleAfter(60000, () => reject(new Error('the test did not finish in 60 s'))); });
+    return Promise.race([result, stalled]).then(() => { cancelTimer(); pass(name); }, e => { cancelTimer(); fail(name, e); });
 }
 
 // Used by the runner for failures outside test(), e.g. a GUI test that stops halfway.

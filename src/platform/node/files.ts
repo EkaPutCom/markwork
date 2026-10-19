@@ -190,9 +190,14 @@ const RECYCLE = [
 ].join('; ');
 
 function trashWindows(path: string): void {
-    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', RECYCLE], {
-        env: { ...process.env, MARKWORK_TRASH_PATH: path }, stdio: 'ignore', timeout: 30000,
-    });
+    try {
+        execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', RECYCLE], {
+            env: { ...process.env, MARKWORK_TRASH_PATH: path }, stdio: ['ignore', 'ignore', 'pipe'], timeout: 30000,
+        });
+    } catch (e) {
+        const stderr = String((e as { stderr?: unknown }).stderr ?? '').trim();
+        throw new Error(stderr || (e as Error).message);
+    }
 }
 
 const trash = (path: string): void =>

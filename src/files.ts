@@ -3,6 +3,7 @@
 // is the platform's (platform().fs; GLib and Gio under GJS).
 
 import { platform } from './platform/index.js';
+import { atOrBelow } from './markdown/pathbelow.js';
 
 export function readTextFile(path: string): string {
     return platform().fs.readText(path);
@@ -30,7 +31,7 @@ export function fileUri(path: string): string {
 // separator is); null when it is not strictly inside (the root itself, or elsewhere).
 export function insideName(root: string, path: string): string | null {
     const rel = platform().paths.relative(root, path);
-    return rel && /^[A-Za-z]:/.test(root) ? rel.replace(/\\/g, '/') : rel;
+    return rel && platform().os === 'win32' ? rel.replace(/\\/g, '/') : rel;
 }
 
 // Move to the Trash (recoverable), not a permanent delete.
@@ -124,7 +125,7 @@ export function writeTextFileAsync(path: string, text: string, done: Done): void
 // their done callbacks follow later from the main loop. Rarely waits: a background write takes
 // only a few milliseconds.
 export function flushWrites(path: string): void {
-    const busy = () => [...queues.keys()].some(p => p === path || p.startsWith(`${path}/`));
+    const busy = () => [...queues.keys()].some(p => atOrBelow(path, p));
     while (busy()) platform().fs.pumpWrites(true);
 }
 

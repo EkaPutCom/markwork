@@ -14,6 +14,7 @@ import { cardMeta, type Board, type Card, type Position } from '../markdown/kanb
 import { AgentTrace, prettyArguments } from './trace.js';
 import { wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
 import type { Worktree } from './worktree.js';
+import { atOrBelow, below } from '../markdown/pathbelow.js';
 
 export interface HarnessSpec {
     name: string;          // the assignment name on the card, without "@"
@@ -110,8 +111,8 @@ export function checkProjectFolder(folder: string, workspace: string | null): st
     if (clean === '/' || /^[a-z]:$/.test(clean)) return 'the project folder must not be the root';
     if (workspace) {
         const ws = norm(workspace).replace(/\/+$/, '');
-        if (clean === ws || clean.startsWith(`${ws}/`)) return 'the project folder must not be inside the Markwork work folder';
-        if (ws.startsWith(`${clean}/`)) return 'the project folder must not contain the Markwork work folder';
+        if (atOrBelow(ws, clean)) return 'the project folder must not be inside the Markwork work folder';
+        if (below(clean, ws)) return 'the project folder must not contain the Markwork work folder';
     }
     return null;
 }
