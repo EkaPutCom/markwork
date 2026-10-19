@@ -41,7 +41,7 @@ const nodeHost: TestHost = {
     args: process.argv.slice(2),
     print: text => { process.stdout.write(`${text}\n`); },
     // The real path: git reports paths without symlinks, and macOS's temp folder (/var/folders) is behind one (/private/var).
-    makeTempDir: () => realpathSync(mkdtempSync(join(tmpdir(), 'markwork-test-'))),
+    makeTempDir: () => realpathSync.native(mkdtempSync(join(tmpdir(), 'markwork-test-'))),
     setenv: (name, value) => { if (value === null) delete process.env[name]; else process.env[name] = value; },
     pathOfUrl: url => fileURLToPath(url),
     gc: () => { (globalThis as { gc?: () => void }).gc?.(); },

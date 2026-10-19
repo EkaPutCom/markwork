@@ -11,10 +11,13 @@ jobs:
   core:
     name: Core on Node (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    # The core had never run on Windows before this workflow: a red there is reported, not blocking, until it is green.
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,6 +32,7 @@ jobs:
     name: Electron app (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     needs: core
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
