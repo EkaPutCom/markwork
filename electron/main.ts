@@ -12,7 +12,7 @@ function createWindow(): void {
         width: 1100,
         height: 720,
         title: 'Markwork',
-        backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#ffffff',
+        backgroundColor: nativeTheme.shouldUseDarkColors ? '#242424' : '#fafafa',
         webPreferences: {
             preload: join(here, 'preload.cjs'),
             contextIsolation: true,

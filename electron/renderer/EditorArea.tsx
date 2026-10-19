@@ -17,7 +17,7 @@ function Welcome() {
                 {hint('Open Folder', 'Ctrl+Shift+O')}
                 {hint('New Document', 'Ctrl+N')}
             </ul>
-            {!root && <button className="primary" onClick={() => void client.openFolder()}>Open Folder</button>}
+            {!root && <button className="button suggested" onClick={() => void client.openFolder()}>Open Folder</button>}
         </div>
     );
 }
