@@ -14,6 +14,7 @@ import type { HandlerContext } from './handlers/context.js';
 import { commandHandlers } from './handlers/commands.js';
 import { documentHandlers } from './handlers/documents.js';
 import { notesHandlers } from './handlers/notes.js';
+import { outlineHandlers } from './handlers/outline.js';
 import { sessionHandlers } from './handlers/session.js';
 
 export { PROTOCOL_VERSION } from './handlers/session.js';
@@ -37,6 +38,7 @@ export class ProtocolServer {
         this.frontend = new ProtocolFrontend(settings, this.wire);
         this.session = new AppSession(this.frontend);
         this.frontend.edited = id => this.session.edited(id);
+        this.frontend.headingsChanged = id => this.session.headingsChanged(id);
         this.frontend.folderOpened = () => this.sendFiles();
 
         const context: HandlerContext = {
@@ -46,7 +48,7 @@ export class ProtocolServer {
             sendFiles: () => this.sendFiles(),
             onDispose: stop => { this.stops.push(stop); },
         };
-        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, commandHandlers]) handlers(context);
+        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, commandHandlers]) handlers(context);
         this.wire.onNotice((ev, payload) => this.notices.get(ev)?.(payload));
         this.stops.push(onDiskChange(() => this.queueFiles()));
     }

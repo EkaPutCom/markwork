@@ -52,7 +52,7 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | Jendela | Tema terang/gelap, setting `dark` | setting `color-scheme` | ✅ | — |
 | Sidebar | Files: pohon, buat, ganti nama, hapus, pindah, drop dari luar (`filetree.ts`) | `FileTreeView`, `FilesDialogs` | 🟡 pohon baca saja dari `view.files` | 2 |
 | Sidebar | Search di semua catatan, replace all (`searchpanel.ts`) | `SearchView`, `SearchDialogs` | ⬜ | 2 |
-| Sidebar | Outline (`outline.ts`) | `OutlineView` | ⬜ | 2 |
+| Sidebar | Outline (`outline.ts`) | `OutlineView` | ✅ | — |
 | Halaman | Home (`home.ts`) | `ViewScreen.showHome`, `HomeData` | ⬜ | 2 |
 | Halaman | Tab HTML dengan sandbox (`htmlpage.ts`) | `showPageTab`, `markdown/htmlview.ts` | ⬜ | 2 |
 | Dialog | Preferences umum (`preferences.ts`) | `PreferencesView` | ⬜ | 2 |
@@ -142,6 +142,8 @@ Selesai bila: setiap skenario editor di `tests/gui/` (`format`, `lists`, `table`
 Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval penggabungan) diukur dan ditutup di fase ini.
 
 ### Fase 2 — Kerangka jendela dan sidebar (L)
+
+**Status (19 Oktober 2026):** dimulai. Selesai: rail dua halaman (Files, Outline; setting `sidebar-page`) dan panel Outline (`view.outline` dari `ProtocolOutline`, `act.outline.jump`; replika melapor perubahan judul ke sesi lewat `onHeadings`). Berikutnya: Search, pohon Files penuh, Home, tab HTML, menu utama, Preferences, Shortcuts/About.
 
 | Fitur | Pesan | Komponen |
 | --- | --- | --- |

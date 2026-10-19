@@ -354,6 +354,17 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('the outline lists the headings of the active document, and a jump reveals the line', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.last('view.outline') !== undefined);
+        eq(ui.last('view.outline'), { headings: [{ level: 1, text: 'Note', line: 0 }] });
+        ok((await ui.client.request('act.outline.jump', { index: 0 })).ok, 'act.outline.jump');
+        await until(() => ui.last('doc.reveal') !== undefined);
+        eq(ui.last('doc.reveal')!.line, 0);
+        server.dispose();
+    });
+
     await test('app.close lets a window with nothing unsaved go', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
@@ -488,7 +499,7 @@ export async function protocolTests(): Promise<void> {
         'dialogs.collab', 'dialogs.contribute', 'dialogs.files', 'dialogs.harness', 'dialogs.history', 'dialogs.journal',
         'dialogs.preferences', 'dialogs.pulls', 'dialogs.review', 'dialogs.search', 'dialogs.views',
         'frontendCommands.edit', 'host.board.setRuns', 'host.chatPanel', 'host.collabPanel', 'host.csv', 'host.fileTree',
-        'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs', 'host.outlineView',
+        'host.historyTab', 'host.historyViewers', 'host.inbox', 'host.layouts', 'host.logs',
         'host.preferencesView', 'host.pullView', 'host.reviewView', 'host.searchView', 'host.setRecent', 'host.table',
     ];
     await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {

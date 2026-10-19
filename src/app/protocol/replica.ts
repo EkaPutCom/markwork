@@ -37,7 +37,14 @@ export function headingsOf(text: string): Heading[] {
 }
 
 export class ProtocolEditor implements TextEditor {
-    private text = '';
+    private current = '';
+    private reported = '[]';     // the headings the session was last told of
+    private get text(): string { return this.current; }
+    private set text(text: string) {
+        this.current = text;
+        const headings = JSON.stringify(this.headings);
+        if (headings !== this.reported) { this.reported = headings; this.onHeadings(); }
+    }
     private _version = 0;
     private _modified = false;
     private cursor = 0;
@@ -46,6 +53,9 @@ export class ProtocolEditor implements TextEditor {
     private flying = false;
     private generation = 0;      // changes with every reset, so a reply to a write made before it is ignored
     private cache: { text: string; headings: Heading[] } | null = null;
+
+    // The headings of the text changed (the Outline panel lists them).
+    onHeadings: () => void = () => {};
 
     // The text changed (typing arrived, or a write of the core landed): the session reacts as it does to a GTK buffer's `changed`.
     onEdited: () => void = () => {};

@@ -6,6 +6,7 @@ import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './EditorArea.js';
 import { Explorer } from './Explorer.js';
+import { Outline } from './Outline.js';
 import { Palette } from './Palette.js';
 import { DialogLayer } from './Dialog.js';
 import { ImageViewer } from './ImageViewer.js';
@@ -88,15 +89,24 @@ function HeaderBar() {
     );
 }
 
-// The rail of icons that picks the panel beside it. Files is the only panel carried over so far.
+// The rail of icons that picks the panel beside it. Files and Outline are carried over so far.
+const PAGES: { page: string; label: string; icon: 'folder' | 'outline' }[] = [
+    { page: 'files', label: 'Files', icon: 'folder' },
+    { page: 'outline', label: 'Outline', icon: 'outline' },
+];
+
 function Rail() {
     const client = useClient();
-    const { sidebar } = useStore();
+    const { sidebar, settings } = useStore();
+    const current = settings['sidebar-page'] ?? 'files';
     return (
         <nav className="rail" aria-label="Sidebar pages">
-            <button className={`button flat${sidebar ? ' checked' : ''}`} title="Files" aria-label="Files" aria-pressed={sidebar} onClick={() => client.toggleSidebar()}>
-                <Icon name="folder" />
-            </button>
+            {PAGES.map(({ page, label, icon }) => (
+                <button key={page} className={`button flat${sidebar && current === page ? ' checked' : ''}`} title={label} aria-label={label}
+                    aria-pressed={sidebar && current === page} onClick={() => client.showSidebarPage(page)}>
+                    <Icon name={icon} />
+                </button>
+            ))}
         </nav>
     );
 }
@@ -149,7 +159,8 @@ function Notification() {
 
 export function App() {
     const client = useClient();
-    const { sidebar } = useStore();
+    const { sidebar, settings } = useStore();
+    const page = settings['sidebar-page'];
 
     // Every key of the command table, for the commands this window carries out. Captured before the editor sees it.
     useEffect(() => {
@@ -174,7 +185,7 @@ export function App() {
             <HeaderBar />
             <div className="main">
                 <Rail />
-                {sidebar && <Explorer />}
+                {sidebar && (page === 'outline' ? <Outline /> : <Explorer />)}
                 <div className="editor-group">
                     <Tabs />
                     <EditorArea />

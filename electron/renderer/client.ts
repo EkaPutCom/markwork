@@ -63,6 +63,7 @@ export interface State {
     disabled: string[];           // the commands the core says do not apply now (commands.state)
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
     image: { src: string; title: string } | null;   // the picture shown large (view.image, or a double click)
+    outline: { level: number; text: string; line: number }[];   // the headings of the active document (view.outline)
     layout: { layout: string | null; structured: boolean };   // the layout button (view.layout): '' = text, null = hidden
 }
 
@@ -77,7 +78,7 @@ export const isAvailable = (command: Command): boolean =>
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, disabled: [],
+        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, outline: [], disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
     };
     private readonly waitingDialogs: Dialog[] = [];
@@ -199,6 +200,16 @@ export class Client {
     focusEditor(): void { this.editor?.focus(); }
     openPalette(open = true): void { this.set({ palette: open }); }
     toggleSidebar(): void { this.setSetting('sidebar', !this.snapshot.sidebar); }
+
+    // A rail button: its page opens; the button of the page that is open closes the side panel.
+    showSidebarPage(page: string): void {
+        const { sidebar, settings } = this.snapshot;
+        if (sidebar && settings['sidebar-page'] === page) { this.setSetting('sidebar', false); return; }
+        this.setSetting('sidebar-page', page);
+        if (!sidebar) this.setSetting('sidebar', true);
+    }
+
+    jumpToHeading(index: number): void { void this.ask('act.outline.jump', { index }); }
 
     // ---------- Settings ----------
 
@@ -412,6 +423,7 @@ export class Client {
             case 'view.files': this.set({ root: p.root as string, files: p.files as string[] }); break;
             case 'toast': this.say(p.text as string, (p.action as Toast['action']) ?? null); break;
             case 'error': this.say(p.message as string); break;
+            case 'view.outline': this.set({ outline: p.headings as State['outline'] }); break;
             case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split('/').pop() ?? '' } }); break;
             case 'open.uri': window.open(p.uri as string); break;
             case 'setting': this.applySettings({ [p.key as string]: p.value }); break;

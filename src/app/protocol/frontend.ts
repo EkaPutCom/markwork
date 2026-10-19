@@ -14,6 +14,7 @@ import { ProtocolEditor } from './replica.js';
 import { Asks } from './asks.js';
 import type { Wire } from './messages.js';
 import { unwired } from './unwired.js';
+import { ProtocolOutline } from './outline.js';
 import { ProtocolScreen } from './screen.js';
 
 class ProtocolBoard {
@@ -31,12 +32,16 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly editors = new Map<number, ProtocolEditor>();
     // The server sets it: a document's text changed (the session's `edited`).
     edited: (id: number) => void = () => {};
+    // The server sets it: a document's headings changed (the session's `headingsChanged`).
+    headingsChanged: (id: number) => void = () => {};
     // The server sets it: a folder was opened (by a command or by restoring the last one), so the file list changed.
     folderOpened: () => void = () => {};
     private active = 0;
     private readonly row: number[] = [];
 
     readonly host: FrontendHost<ProtocolEditor>;
+    // The Outline panel's end of the wire: the handler for `act.outline.jump` calls its `onJump`.
+    readonly outline: ProtocolOutline;
     readonly documents: FrontendDocuments<ProtocolEditor>;
     readonly dialogs: AppDialogs;
     // The questions the dialogs ask over the wire.
@@ -45,9 +50,11 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     constructor(readonly settings: AppSettings, private readonly wire: Wire) {
         this.asks = new Asks(wire);
         const board = new ProtocolBoard((b, groupField, agents) => this.showNotes(b, groupField, agents));
+        this.outline = new ProtocolOutline(wire);
         this.host = unwired<FrontendHost<ProtocolEditor>>({
             screen: unwired<ViewScreen<ProtocolEditor>>(new ProtocolScreen(wire, () => this.active), 'host.screen'),
             board: unwired<KanbanView>(board, 'host.board'),
+            outlineView: this.outline,
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
             openUri: (uri: string) => wire.notify('open.uri', { uri }),
             // The frontend decides whether a desktop notification is right (protocol.md 9.1): it knows its window.
@@ -79,6 +86,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     createEditor(id: number): ProtocolEditor {
         const editor = new ProtocolEditor(id, this.wire);
         editor.onEdited = () => this.edited(id);
+        editor.onHeadings = () => this.headingsChanged(id);
         editor.onFailed = message => this.wire.notify('toast', { text: message, action: null });
         this.editors.set(id, editor);
         return editor;

@@ -254,3 +254,7 @@ kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 /* A code block as a box that scrolls sideways. */
 .cm-md-codebox { contain: inline-size; min-width: 0; max-width: 100%; box-sizing: border-box; margin: 8px 0; padding: 8px 12px; background: var(--code-bg); border-radius: 8px; overflow-x: auto; cursor: text; }
 .cm-md-codebox pre { margin: 0; font-family: var(--font-mono); font-size: 14px; line-height: 1.5; white-space: pre; }
+
+/* The Outline panel. */
+.sidebar .outline { list-style: none; margin: 0; padding: 4px 6px; overflow: auto; flex: 1; }
+.sidebar .outline .row { width: 100%; text-align: left; height: 32px; }
