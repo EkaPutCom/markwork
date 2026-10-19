@@ -19,7 +19,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import type { CodeBlock } from '../markdown/highlight.js';
 import type { CodeHighlighter } from './codehighlight.js';
-import { diagramKind } from './mermaid.js';
+import { diagramKind } from '../markdown/diagram.js';
 import { setTagGroup, setTagRanges, type Range } from './tagsync.js';
 import { OverlaySlots } from './overlays.js';
 import { iterAtLine, lineSpanOffsets, onClick } from '../gtkutil.js';

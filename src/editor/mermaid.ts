@@ -20,6 +20,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import type { CodeBlock } from '../markdown/highlight.js';
+import { diagramKind, type Kind } from '../markdown/diagram.js';
 import { mermaidRenderer, type DiagramTheme } from './mermaidrender.js';
 import { dbmlToMermaid } from '../markdown/dbml.js';
 import { setTagGroup, setTagRanges, type Range } from './tagsync.js';
@@ -31,15 +32,6 @@ const GAP = 12;             // distance above and below the diagram
 const NOTE_HEIGHT = 24;     // height of the "Rendering…" / error message
 const MAX_HEIGHT = 640;     // maximum height of the displayed diagram
 const DEBOUNCE_MS = 400;    // pause after the code changes before rendering
-
-export type Kind = 'mermaid' | 'dbml';
-
-// The diagram type of a code block, or null if it is not a diagram (or is empty/unclosed).
-export const diagramKind = (block: CodeBlock): Kind | null => {
-    if (!block.closed || block.text.trim() === '') return null;
-    const lang = block.lang.toLowerCase();
-    return lang === 'mermaid' ? 'mermaid' : lang === 'dbml' ? 'dbml' : null;
-};
 
 type Status = 'loading' | 'ok' | 'error';
 

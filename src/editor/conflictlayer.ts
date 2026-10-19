@@ -13,7 +13,7 @@ import GLib from 'gi://GLib';
 import type { Palette } from '../colors.js';
 import { _, fmt } from '../i18n.js';
 import { iterAtLine, lineSpanOffsets } from '../gtkutil.js';
-import { findConflicts, resolution, roles, type Choice, type Conflict, type Role } from './conflicts.js';
+import { findConflicts, resolution, roles, type Choice, type Conflict, type Role } from '../markdown/conflicts.js';
 import { OverlaySlots } from './overlays.js';
 import { setTagGroup, type Range } from './tagsync.js';
 

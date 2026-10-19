@@ -228,3 +228,29 @@ export function deleteColumn(table: Table, at: number): Table {
 export function setAlign(table: Table, col: number, align: Align): Table {
     return { ...table, aligns: table.aligns.map((a, c) => (c === col ? align : a)) };
 }
+
+// ---------- Drawing a table as a grid ----------
+
+const MIN_COLUMN = 56;  // smallest column width (pixels) when the table has to be narrowed
+
+// Column widths so that they fit in `available`. Columns that are already narrow are left alone,
+// the remaining space is divided evenly among the wide columns (their text wraps onto the next line).
+export function fitColumns(natural: number[], available: number): number[] {
+    const widths = [...natural];
+    if (natural.reduce((a, b) => a + b, 0) <= available) return widths;
+
+    let remaining = available;
+    let open = natural.map((_, i) => i);
+    for (let changed = true; changed && open.length;) {
+        changed = false;
+        const share = remaining / open.length;
+        for (const i of [...open]) {
+            if (natural[i] > share) continue;
+            remaining -= natural[i];
+            open = open.filter(j => j !== i);
+            changed = true;
+        }
+    }
+    for (const i of open) widths[i] = Math.max(MIN_COLUMN, Math.floor(remaining / open.length));
+    return widths;
+}

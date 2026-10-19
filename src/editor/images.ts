@@ -20,6 +20,7 @@ import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import type { ImageRef } from '../markdown/highlight.js';
+import { imageSource, type PathOps } from '../markdown/imagesource.js';
 import { setTagGroup, type Range } from './tagsync.js';
 import { OverlaySlots } from './overlays.js';
 import { iterAtLine, onClick, removeChildren, textureFromPixbuf } from '../gtkutil.js';
@@ -31,11 +32,12 @@ const SPACING = 8;       // distance between images on one line
 
 // ---------- Loading images ----------
 
-// URL in Markdown → GIO URI. Relative paths are resolved from the document folder.
+const GLIB_PATHS: PathOps = { isAbsolute: path => GLib.path_is_absolute(path), join: (...parts) => GLib.build_filenamev(parts) };
+
+// URL in Markdown → GIO URI. Relative paths are resolved from the document folder (markdown/imagesource.ts decides, GIO makes the URI).
 export function resolveImageUri(url: string, baseDir: string): string {
-    if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
-    const path = GLib.path_is_absolute(url) ? url : GLib.build_filenamev([baseDir, decodeURI(url)]);
-    return Gio.File.new_for_path(path).get_uri();
+    const source = imageSource(url, baseDir, GLIB_PATHS);
+    return source.kind === 'url' ? source.url : Gio.File.new_for_path(source.path).get_uri();
 }
 
 interface CacheEntry {
