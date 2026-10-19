@@ -54,6 +54,8 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             notify: (id: string, title: string, body: string) => wire.notify('notify', { id, title, body }),
             // A folder in the file manager (a card's worktree); the frontend opens it with the system's handler.
             openFolder: (path: string) => wire.notify('reveal.folder', { path }),
+            // An image chosen in the Files tab: the frontend's viewer.
+            showImage: (path: string) => wire.notify('view.image', { path }),
             showSidebar: () => this.folderOpened(),
         }, 'host');
         this.documents = unwired<FrontendDocuments<ProtocolEditor>>({

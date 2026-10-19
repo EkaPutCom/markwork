@@ -32,19 +32,19 @@ Status: ✅ ada di Electron · 🟡 sebagian · ⬜ belum.
 | --- | --- | --- | --- | --- |
 | Dokumen | Tab, buka, tutup, simpan, autosave | `DocumentController`, `FrontendDocuments` | ✅ | — |
 | Dokumen | Simpan Sebagai, Buka File, Export HTML, Recent | `DocumentDialogs.chooseFile`, `setRecent` | 🟡 tanpa Recent | 0 |
-| Dokumen | Tutup aplikasi dengan perubahan belum disimpan | `ask.saveChanges` saat quit | 🟡 dialog ada, saat quit belum | 1 |
+| Dokumen | Tutup aplikasi dengan perubahan belum disimpan | `ask.saveChanges` saat quit | ✅ | — |
 | Editor | Highlight, sembunyi sintaks, perintah format | `markdown/highlight.ts`, `editcommands.ts` | ✅ | — |
 | Editor | Find/replace dalam dokumen | panel CodeMirror | ✅ | — |
-| Editor | Enter/Tab di list, quote, tabel (`lists.ts`, `tableedit.ts`) | `editcommands.ts` | 🟡 cek paritas | 1 |
-| Editor | Klik checkbox, Ctrl+klik link dan wikilink (`clicks.ts`) | `NoteLinks`, `markdown/clicks.ts` (murni) | ⬜ | 1 |
-| Editor | Saran `[[` (`wikicomplete.ts`) | `ask.notes` | ⬜ | 1 |
-| Editor | Gambar inline, zoom gambar (`images.ts`, `imageviewer.ts`) | `showImage`, `markdown/imagesource.ts` (murni) | ⬜ | 1 |
-| Editor | Blok kode berwarna (`codehighlight.ts`, `codelayer.ts`) | — (renderer) | ⬜ | 1 |
-| Editor | Tabel sebagai grid (`tablelayer.ts`) | `markdown/table.ts` (termasuk `fitColumns`) | ⬜ | 1 |
-| Editor | Mermaid dan DBML (`mermaid.ts`, `mermaidrender.ts`) | `markdown/dbml.ts`, `markdown/diagram.ts` | ⬜ | 1 |
-| Editor | Penanda konflik git (`conflictlayer.ts`) | `markdown/conflicts.ts` (murni) | ⬜ | 1 |
-| Editor | Hanging indent list (`listindent.ts`) | — | ⬜ | 1 |
-| Editor | Mode source, focus, typewriter | `ViewOption`, setting | 🟡 source saja | 1 |
+| Editor | Enter/Tab di list, quote, tabel (`lists.ts`, `tableedit.ts`) | `editcommands.ts` | ✅ | — |
+| Editor | Klik checkbox, Ctrl+klik link dan wikilink (`clicks.ts`) | `NoteLinks`, `markdown/clicks.ts` (murni) | ✅ | — |
+| Editor | Saran `[[` (`wikicomplete.ts`) | `ask.notes` | ✅ | — |
+| Editor | Gambar inline, zoom gambar (`images.ts`, `imageviewer.ts`) | `showImage`, `markdown/imagesource.ts` (murni) | ✅ | — |
+| Editor | Blok kode berwarna (`codehighlight.ts`, `codelayer.ts`) | — (renderer) | ✅ | — |
+| Editor | Tabel sebagai grid (`tablelayer.ts`) | `markdown/table.ts` (termasuk `fitColumns`) | ✅ | — |
+| Editor | Mermaid dan DBML (`mermaid.ts`, `mermaidrender.ts`) | `markdown/dbml.ts`, `markdown/diagram.ts` | ✅ | — |
+| Editor | Penanda konflik git (`conflictlayer.ts`) | `markdown/conflicts.ts` (murni) | ✅ | — |
+| Editor | Hanging indent list (`listindent.ts`) | — | ✅ | — |
+| Editor | Mode source, focus, typewriter | `ViewOption`, setting | ✅ | — |
 | Jendela | Header bar, menu utama, tombol layout | `ViewScreen.showLayout`, `enableActions` | 🟡 tombol layout dan status perintah ada; menu layout belum | 2 |
 | Jendela | Command palette | `COMMANDS` | ✅ | — |
 | Jendela | Status: kata, board, inbox, CSV (`statusbar.ts`) | `ViewScreen.setCounts…` | ✅ | — |
@@ -117,116 +117,4 @@ Selesai bila: semua ask dan notice di atas punya tes protokol, dan tes asap Elec
 
 ### Fase 1 — Paritas editor (L)
 
-Editor adalah alasan utama aplikasi ini ada, jadi editor didahulukan. Hampir semua pekerjaan di fase ini ada di renderer (`electron/renderer/editor.ts`), karena logikanya sudah murni.
-
-| Fitur | Rujukan GTK | Cara di CodeMirror | Butuh pesan baru |
-| --- | --- | --- | --- |
-| Enter/Tab di list, quote, tabel | `editor/lists.ts`, `tableedit.ts` | keymap ke `editcommands.ts`; cek paritas dengan `tests/gui/lists.ts`, `table.ts` | — |
-| Klik checkbox, Ctrl+klik link | `editor/clicks.ts` | `EditorView.domEventHandlers`; link luar lewat `open.uri` | — |
-| Wikilink: buka target, saran `[[` | `clicks.ts`, `wikicomplete.ts`, `app/notes.ts` | `@codemirror/autocomplete` dengan cache jawaban `ask.notes`; klik mengirim `open.note` | `ask.notes`, `open.note` |
-| Gambar inline | `editor/images.ts` | block widget di baris tidak aktif; path dibaca lewat protokol `app://` milik main | — |
-| Zoom gambar | `ui/imageviewer.ts` | dialog di jendela utama | `view.image` (`showImage`) |
-| Blok kode | `codehighlight.ts`, `codelayer.ts` | `@codemirror/language` + `language-data` untuk bahasa di dalam fence; box yang bisa digulir menyamping | — |
-| Tabel sebagai grid | `tablelayer.ts` | block widget yang dibangun dari `markdown/table.ts`; edit sel menjadi transaksi | — |
-| Mermaid, DBML | `mermaid.ts`, `mermaidrender.ts` | `mermaid` (sudah di devDependencies) dirender di renderer; DBML diterjemahkan dengan `markdown/dbml.ts` | — |
-| Konflik git | `conflictlayer.ts`, `conflicts.ts` | dekorasi warna + baris tombol, logika dari `conflicts.ts` | — |
-| Hanging indent | `listindent.ts` | line decoration dengan `text-indent` negatif | — |
-| Focus, typewriter, source | `editor/view.ts`, `decorations.ts` | dekorasi redup + scroll ke tengah; source sudah ada | setting (Fase 0) |
-| Quit / tutup jendela | `window.ts` | `before-unload` di main → `ask.saveChanges` per dokumen | `app.quit` |
-
-Selesai bila: setiap skenario editor di `tests/gui/` (`format`, `lists`, `table`, `wikilink`, `image`, `imagezoom`, `codeblock`, `codecolor`, `syntax`, `mermaid`, `conflicts`) punya padanan Playwright di Electron, atau tes protokol bila perilakunya ada di core.
-
-Pertanyaan terbuka dari `protocol.md` 16 (undo melintasi tulisan core, interval penggabungan) diukur dan ditutup di fase ini.
-
-### Fase 2 — Kerangka jendela dan sidebar (L)
-
-| Fitur | Pesan | Komponen |
-| --- | --- | --- |
-| Files penuh | `view.tree.root`, `view.tree.folder`, `view.tree.expand`, `view.tree.reveal`; `act.tree.open`, `.activate`, `.create`, `.rename`, `.remove`, `.move`, `.copy`; ask `files.name`, `files.confirm` | `Explorer.tsx` diganti pohon malas (folder dibuka saat dibutuhkan), menu konteks, drag di dalam pohon, drop dari file manager (path diambil di preload lewat `webUtils.getPathForFile`) |
-| Search di semua catatan | `view.search`; `act.search.run`, `.openHit`, `.replaceAll`; ask `search.confirm` | panel Search; `Ctrl+Shift+F` / `Ctrl+Shift+H` |
-| Outline | `view.outline`; `act.outline.jump` | panel Outline |
-| Rail ikon | setting `sidebar-page` | rail dengan Files, Search, Outline, History, Pull requests (dua yang terakhir aktif di Fase 5) |
-| Home | `view.home` (`HomeData`) | halaman Home; aksi kartu memakai `act.notes.edit` / `open.file` |
-| Tab HTML | `view.page` `html` + isi dari `markdown/htmlview.ts` | `<iframe sandbox>` dengan CSP; tautan dan jaringan dicegat dan dikonfirmasi lewat `will-navigate` di main (aturan sama dengan WebKitGTK) |
-| Menu utama dan Recent | `setRecent` | popover menu header bar (sudah ada kerangkanya) |
-| Preferences umum | `view.prefs.open`, `.values`; `act.prefs.set` | dialog Preferences: tab Umum, Editor, Assistant (halaman Agent menyusul di Fase 6) |
-| Keyboard Shortcuts, About | — (`runs: 'editor'`) | dua dialog, dibangun dari `COMMANDS` |
-
-Selesai bila: `tests/gui/folder*.ts`, `file.ts`, `tabs.ts`, `home.ts`, `htmlpage.ts`, `window.ts`, `dialogs.ts` punya padanan.
-
-### Fase 3 — View terstruktur (L)
-
-Semua view memakai `view.notes` + `act.notes.edit` yang sudah ada. Pekerjaannya kebanyakan di renderer.
-
-1. **Board penuh**: tambah/ubah/hapus kolom, pindah kolom, edit kartu, `groupField`, popover field (select, tanggal, teks dengan validasi dari `markdown/fields.ts`), `view.focusCapture`. Rujukan: `ui/kanban.ts`, `fieldpopover.ts`, `tests/gui/kanban*.ts`.
-2. **List/inbox** dengan capture dan section (`ui/inbox.ts`).
-3. **Table** (`ui/table.ts`, `markdown/tablelayout.ts`).
-4. **Calendar, timeline, gallery, chart** (`ui/calendar.ts`, `timeline.ts`, `gallery.ts`, `chart.ts`). Modelnya sudah di `markdown/*.ts`. Chart cukup SVG di React tanpa pustaka chart.
-5. **Dialog Fields…**: `ask.schema {fields, reserved, uses}` (`protocol.md` 7).
-6. **Tab CSV**: grid yang bisa diedit, dengan find bar sendiri. Butuh `view.csv` dan `act.csv.change` / `.shape` (`CsvPage.onChange`, `onShape`).
-7. **Menu layout dan perintah `*-new`**: `command layout <arg>`, `inbox-new`, `table-new`, `csv-new`.
-
-Selesai bila: `tests/gui/kanban*.ts`, `inbox.ts`, `layouts.ts`, `tablelayout.ts`, `csv*.ts` punya padanan, dan undo langkah kartu berperilaku sama dengan GTK.
-
-### Fase 4 — Journal dan Assistant (L)
-
-- **Journal**: `ask.capture`, ditambah perintah `journal`, `journal-capture`, dan `journal-summary` (cukup menjalankan perintah core). **S**.
-- **Panel Assistant**: notice `chat.*` dan aksi `act.chat.*` sesuai `protocol.md` 6.5. Jawaban asisten digambar dengan `markdown/chatblocks.ts` + `chathtml.ts`, yang sudah menghasilkan HTML aman. Kartu status turn, daftar kerja, tombol Insert/Undo.
-- **Popover** konteks (`act.chat.preview`, `.options`), riwayat (`.chats`, `.open`, `.delete`), dan pengaturan (`.model`, `.thinking`, `.save`, `.key`).
-- **Proposal**: `ask.proposal` dengan diff, `act.proposal.apply` untuk sebagian batch, dan `ask.cancel` saat turn dihentikan. Aturan agent tidak berubah: hanya core yang menulis, dan `applyChange()` memeriksa ulang teks.
-- **Log agent**: `chat.log` membawa `TraceUpdate`. Renderer memegang `TraceReplica` (`agent/tracetree.ts` sudah murni) dan menggambar pohon dan detail.
-
-Selesai bila: `tests/gui/chat.ts`, `context.ts`, `journal.ts` punya padanan, dan `tests/unit/assistant.ts` dijalankan juga lewat protokol.
-
-### Fase 5 — Git dan kolaborasi (L)
-
-- **History**: `view.history`, `view.historyChanges`, `history.messageText`, dan aksi `act.history.*` (`protocol.md` 6.5). Kotak pesan commit dengan tombol sparkle (pesan ditulis streaming oleh core).
-- **History viewer**: `view.historyViewer.*` sebagai dialog besar di jendela utama, dengan tab Changes dan Contents; `ask.discard`.
-- **Collab**: `view.collab`; `act.collab.*`; `ask.token` dengan tombol Test (`act.collab.testToken`).
-- **Review pull request**: `view.pull` dan `act.pull.*` sebagai halaman di area konten (`showPull`); `ask.pull.merge` dan sejenisnya.
-- **Kirim perubahan**: `ask.sendChanges` (form `SendChangesOptions`).
-- Komponen diff dibuat sekali (`DiffLine[]`) dan dipakai ulang oleh history, pull request, proposal, dan review worktree.
-
-Selesai bila: `tests/gui/history.ts`, `collab.ts`, `forgejo.ts` punya padanan; `npm run test:forgejo` dijalankan juga terhadap Electron.
-
-### Fase 6 — Agent dan harness (L)
-
-- **Menu kartu**: `ask.menu {at, entries}` → token (`protocol.md` 6.4). Status run masuk ke kartu lewat `view.notes`.
-- **Log run**: `view.runlog` dengan `TraceUpdate`, `act.runlog.clear` dan `.closed`. Viewer log Fase 4 dipakai ulang.
-- **Dialog harness**: `ask.folder`, `ask.harness.answer`, `ask.text`, `ask.remoteFolder`, `ask.closeAgents` (juga dipanggil saat jendela ditutup).
-- **Review worktree**: `view.review` + `act.review.*`, `ask.review.merge`/`discard`, `ask.pullRequest`. Tombol Terminal memakai `platform().processes.openTerminal`, atau terminal bawaan Electron nanti.
-- **Preferences → Agents**: mesin (`ask.machine`), proyek, isolasi, worktree (`ask.removeWorktree`).
-- **Status `markworkd`** di Home dan Preferences (`agentHost()`). Di macOS dan Windows daemon belum ada (`electron.md`, status celah), jadi agent berjalan sebagai proses anak dan UI menyembunyikan pilihan daemon lokal.
-
-Selesai bila: `tests/gui/harness.ts`, `agentshost.ts` punya padanan, dan `tests/unit/daemon-fake.ts` dijalankan dengan frontend protokol.
-
-### Fase 7 — Platform dan rilis (M–L)
-
-- `Secrets` di macOS dan Windows lewat `safeStorage`, diteruskan dari main ke core (`electron.md` tahap 3).
-- Bundel `.mo` dan schema untuk i18n (`po/`), di `scripts/electron-build.mjs`.
-- Packaging dengan electron-builder (AppImage/deb, dmg, nsis), update otomatis, tanda tangan kode di Windows, notarisasi di macOS.
-- CI tiga OS: `npm run test:core:node`, tes protokol, dan tes asap Electron.
-- Keputusan multi-jendela: satu utility process per jendela, atau tetap satu jendela.
-
-## Urutan dan ketergantungan
-
-```
-Fase 0 ──┬─> Fase 1 (editor)
-         ├─> Fase 2 (kerangka) ──┬─> Fase 5 (git, kolaborasi)
-         │                       └─> Fase 6 (agent) <── Fase 4 (log viewer)
-         ├─> Fase 3 (view terstruktur) ─> Fase 6 (menu kartu)
-         └─> Fase 4 (assistant)
-Fase 7 bisa mulai kapan saja, tetapi harus selesai sebelum rilis di luar Linux.
-```
-
-Fase 1, 2, 3, dan 4 bisa berjalan paralel setelah Fase 0, asalkan tiap PR hanya menyentuh `frontend.ts`/`server.ts` di bagian fiturnya sendiri. Supaya tidak bentrok, pecah handler server per controller (misalnya `src/app/protocol/handlers/<fitur>.ts`) sebagai langkah pertama Fase 0.
-
-**Titik "bisa dipakai sehari-hari"** ada setelah Fase 0–3: editor Markdown lengkap dengan Files, Search, Outline, Home, dan semua layout. Fase 4–6 membawa fitur khas Markwork (Assistant, git, agent).
-
-## Risiko
-
-- **Perilaku editor yang halus.** Hal seperti penyembunyian sintaks, hanging indent, dan undo dari tulisan core mudah berbeda sedikit dari GTK. Mitigasinya adalah skenario Playwright yang meniru `tests/gui/` satu per satu, bukan pemeriksaan manual.
-- **Widget blok di CodeMirror** (tabel, gambar, mermaid) memengaruhi pengukuran tinggi baris dan scroll. Mulai dari tabel, yang paling sering dipakai, lalu ukur di dokumen besar (`bench/tables-500.json`).
-- **Server protokol membengkak.** Tanpa pemecahan per controller, `server.ts` dan `frontend.ts` akan menjadi file ribuan baris. Pecah di Fase 0.
-- **Logika bocor ke renderer.** Godaan terbesar ada di board dan Assistant. Aturannya: kalau GTK dan Electron butuh perhitungan yang sama, perhitungan itu tempatnya di `src/markdown/` atau `src/app/`. `scripts/layers.mjs` sudah memeriksa `electron/renderer` (dari `src/` hanya `markdown/`, `app/protocol/` messages, wire, mirror, changes, `app/commands.ts`, dan tipe dari `screen.ts`, `dialogs.ts`, `platform/index.ts`).
-- **Strategi produk.** Memori proyek mencatat "GNOME dulu; Electron kontingensi". Rencana ini menganggap keputusan 19 Oktober 2026 (Electron dibangun aktif) berlaku. Kalau prioritas kembali ke GTK, Fase 0 tetap berguna dan fase lain bisa berhenti di batas fase mana pun tanpa meninggalkan fitur setengah jadi.
+**Status (19 Oktober 2026):** dimulai. Selesai: hanging indent, klik checkbox, Ctrl+klik link, wikilink (`ask.notes`, `open.note` di `handlers/notes.ts`, saran `[[` dengan `@codemirror/autocomplete`), gambar inline (`electron/renderer/images.ts`, skema `app://` di `main.ts`) dan zoom (`view.image`, `ImageViewer.tsx`), warna blok kode (`codecolor.ts`, `@codemirror/language-data` dimuat per bahasa), tabel sebagai grid (`tables.ts`; klik sel membuka teks mentah di sel itu, seperti GTK), Mermaid dan DBML (`diagrams.ts`; `mermaid.min.js` disalin saat build dan dimuat saat diagram pertama tampil), konflik git (`conflicts.ts`, tombol Accept Current/Incoming/Both), focus dan typewriter (setting inti, digambar editor), dan quit (`app.close` → `closeRequest()`, main menahan `close` sampai halaman melepas); dicakup `tests/electron-smoke.mjs` dan `tests/unit/protocol.ts`. Blok kode juga box yang digulir menyamping (`CodeBoxWidget`). Paritas Enter/Tab diuji (menemukan dan memperbaiki Enter di blok kode, seleksi, Shift+Enter) dan pertanyaan terbuka undo ditutup (`protocol.md` 16). `tests/electron-editor.mjs` memberi padanan Playwright untuk `format`, `syntax`, `wikilink`, `image`, `imagezoom`, `codeblock`, `codecolor`, dan `conflicts` (`lists`, `table`, dan Mermaid ada di `electron-smoke.mjs`). Yang ditemukan dan ditutup: lompat ke section `[[note#heading]]` (`doc.reveal`), Ctrl+klik link relatif `.md` (`open.link`), gambar tersembunyi di mode source, Tab menerima saran `[[`, widget blok ikut redup di focus mode, penampil gambar dengan zoom, geser, dan fit. **Fase 1 selesai**, kecuali CI (belum ada).s` (`lists` dan `table` ada di `electron-smoke.mjs`; `mermaid` di sana juga). Menemukan dan menutup: lompat ke section `[[note#heading]]` (`doc.reveal`), Ctrl+klik link relatif `.md` (`open.link`), gambar tersembunyi di mode source, Tab menerima saran `[[`, widget blok ikut redup di focus mode, penampil gambar dengan zoom/geser/fit. **Fase 1 selesai** kecuali CI.

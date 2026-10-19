@@ -34,6 +34,11 @@ export function EditorArea() {
             changed: text => client.typed(text),
             moved: (line, column) => client.moved(line, column),
             message: text => client.say(text),
+            openLink: uri => client.openLink(uri),
+            zoomImage: image => client.zoomImage(image),
+            baseDir: () => client.baseDir(),
+            openNote: link => client.openNote(link),
+            noteNames: () => client.noteNames(),
         });
         client.attachEditor(editor);
         return () => { client.attachEditor(null); editor.view.destroy(); };

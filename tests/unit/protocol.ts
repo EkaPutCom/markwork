@@ -316,6 +316,53 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('ask.notes lists the notes a [[ may link to, and open.note follows a link into a tab', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.active?.text.startsWith('# Note') === true);
+        const doc = ui.active.id;
+        const names = await ui.client.request('ask.notes', { doc });
+        ok(names.ok, 'answered');
+        eq((names.names as string[]).sort(), ['board.md', 'note.md']);
+        eq((await ui.client.request('ask.notes', { doc: 9999 })).names, [], 'an unknown document has no names');
+        ok((await ui.client.request('open.note', { doc, link: 'board' })).ok, 'open.note');
+        await until(() => ui.active?.text.includes('layout: board') === true);
+        const gone = await ui.client.request('open.note', { doc: 9999, link: 'board' });
+        ok(!gone.ok && gone.error.code === 'stale', 'a closed document is stale');
+        server.dispose();
+    });
+
+    await test('an image chosen in the Files tab is shown by the frontend (view.image)', async () => {
+        const { server, ui } = await start();
+        const png = disk.join(dir, 'pic.png');
+        disk.write(png, 'not really a png');
+        ok((await ui.client.request('open.file', { name: 'pic.png' })).ok, 'open.file');
+        await until(() => ui.last('view.image') !== undefined);
+        eq(ui.last('view.image'), { path: png });
+        server.dispose();
+    });
+
+    await test('open.link opens a relative Markdown link in a tab, and a closed document is stale', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.active?.text.startsWith('# Note') === true);
+        const doc = ui.active.id;
+        ok((await ui.client.request('open.link', { doc, url: 'board.md' })).ok, 'open.link');
+        await until(() => ui.active?.text.includes('layout: board') === true);
+        const gone = await ui.client.request('open.link', { doc: 9999, url: 'board.md' });
+        ok(!gone.ok && gone.error.code === 'stale', 'stale');
+        server.dispose();
+    });
+
+    await test('app.close lets a window with nothing unsaved go', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.active?.text.startsWith('# Note') === true);
+        const reply = await ui.client.request('app.close', {});
+        ok(reply.ok && reply.allowed === true, 'allowed');
+        server.dispose();
+    });
+
     await test('a card moved in the board view is written through doc.replace and shown again', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'board.md' });

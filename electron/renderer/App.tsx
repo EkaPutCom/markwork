@@ -8,6 +8,7 @@ import { EditorArea } from './EditorArea.js';
 import { Explorer } from './Explorer.js';
 import { Palette } from './Palette.js';
 import { DialogLayer } from './Dialog.js';
+import { ImageViewer } from './ImageViewer.js';
 import { Tabs } from './Tabs.js';
 import { Icon } from './Icons.js';
 import { label, matches } from './keys.js';
@@ -182,6 +183,7 @@ export function App() {
             </div>
             <Notification />
             <Palette />
+            <ImageViewer />
             <DialogLayer />
         </div>
     );

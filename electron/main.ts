@@ -1,12 +1,31 @@
 // The Electron main process: a window, the core in a utility process, and the channel between them. It holds no
 // application logic; the file dialogs are the one thing only it can show.
 
-import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, shell, utilityProcess } from 'electron';
+import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, protocol, shell, utilityProcess } from 'electron';
 import { statSync } from 'node:fs';
-import { dirname, isAbsolute, join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { dirname, extname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+// The images of a document: app://file/<absolute path>, so the page (which may not load file: URLs) can show the
+// pictures next to the text. Only image files are served, and only to this app's own pages.
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp|svg|bmp|avif|ico)$/i;
+const IMAGE_TYPES: Record<string, string> = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+    bmp: 'image/bmp', avif: 'image/avif', ico: 'image/x-icon',
+};
+protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+
+// Windows the page has let go (the core agreed to the close).
+const mayClose = new WeakSet<BrowserWindow>();
+ipcMain.handle('close-window', event => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+    mayClose.add(win);
+    win.close();
+});
 
 function createWindow(): void {
     const win = new BrowserWindow({
@@ -31,13 +50,22 @@ function createWindow(): void {
     const core = utilityProcess.fork(join(here, 'core.js'), [], { stdio: 'pipe' });
     let stderr = '';
     core.stderr?.on('data', chunk => { stderr = (stderr + chunk).slice(-2000); });
+    let coreGone = false;
     core.on('exit', code => {
+        coreGone = true;
         if (!win.isDestroyed()) win.webContents.send('core-exit', code, stderr);
     });
     const { port1, port2 } = new MessageChannelMain();
     core.postMessage('port', [port1]);
     win.webContents.once('did-finish-load', () => win.webContents.postMessage('port', null, [port2]));
     win.on('closed', () => core.kill());
+    // Closing waits for the core, which asks about unsaved documents; the page says when the window may go (close-window).
+    // Without a core to ask (it has exited) the window just closes.
+    win.on('close', event => {
+        if (mayClose.has(win) || core.pid === undefined || coreGone) return;
+        event.preventDefault();
+        win.webContents.send('close-request');
+    });
 
     void win.loadFile(join(here, 'renderer', 'index.html'));
 }
@@ -82,6 +110,16 @@ ipcMain.handle('open-folder', async (_event, path: unknown) => {
 ipcMain.handle('initial-folder', () => process.argv.slice(app.isPackaged ? 1 : 2).find(a => !a.startsWith('-')) ?? null);
 
 void app.whenReady().then(() => {
+    protocol.handle('app', async request => {
+        try {
+            const path = decodeURIComponent(new URL(request.url).pathname);
+            if (!isAbsolute(path) || !IMAGE_FILE.test(path)) return new Response('not an image', { status: 403 });
+            const type = IMAGE_TYPES[extname(path).slice(1).toLowerCase()] ?? 'application/octet-stream';
+            return new Response(await readFile(path), { headers: { 'content-type': type } });
+        } catch {
+            return new Response('not found', { status: 404 });
+        }
+    });
     // The keys belong to the command table of the page (app/commands.ts); a default menu would take Ctrl+W and others first.
     if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
     createWindow();
