@@ -124,6 +124,8 @@ export interface State {
     source: boolean;              // source mode: no syntax is hidden
     palette: boolean;
     sidebar: boolean;             // the `sidebar` setting
+    width: number;                // the window's width, which decides whether the side panels float (layoutOf)
+    floating: { sidebar: boolean; chat: boolean };   // a side panel opened over the content while the window is too narrow for it
     settings: Record<string, unknown>;   // the core's settings, as `hello` and `setting` notices give them
     commands: CommandEntry[];     // the core's command table
     dialog: Dialog | null;        // the dialog shown; others wait behind it
@@ -163,10 +165,31 @@ const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 export const isAvailable = (command: Command): boolean =>
     command.runs === 'core' ? CORE_COMMANDS.has(command.id) : !EDITOR_COMMANDS_UNAVAILABLE.has(command.id);
 
+// The adaptive layout of the GTK window (window.ts addBreakpoints): below NARROW the Assistant panel no longer takes editor
+// width but floats over it, below PHONE the side panel does too and the header bar shows icons only. A floating panel is
+// opened on demand and closes when the content is clicked; the settings keep what the wide layout shows, so a panel closed
+// on purpose stays closed when the window widens again.
+export const NARROW = 900, PHONE = 600;
+
+export interface PanelLayout {
+    compact: boolean;                                          // the header bar shows icons only
+    sidebar: { shown: boolean; floats: boolean };
+    chat: { shown: boolean; floats: boolean };
+}
+
+export function layoutOf(state: Pick<State, 'width' | 'sidebar' | 'settings' | 'floating'>): PanelLayout {
+    const chatFloats = state.width <= NARROW, sidebarFloats = state.width <= PHONE;
+    return {
+        compact: sidebarFloats,
+        sidebar: { floats: sidebarFloats, shown: sidebarFloats ? state.floating.sidebar : state.sidebar },
+        chat: { floats: chatFloats, shown: chatFloats ? state.floating.chat : state.settings.chat === true },
+    };
+}
+
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, settings: {}, commands: [], dialog: null, image: null, recent: [], prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
+        source: false, palette: false, sidebar: true, width: 1100, floating: { sidebar: false, chat: false }, settings: {}, commands: [], dialog: null, image: null, recent: [], prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
         schema: null, csvFind: { n: 0, replace: false },
         history: { commits: [], more: false, note: '', changes: null, message: '', messageRev: 0 }, viewers: [],
@@ -340,14 +363,46 @@ export class Client {
 
     focusEditor(): void { this.editor?.focus(); }
     openPalette(open = true): void { this.set({ palette: open }); }
-    toggleSidebar(): void { this.setSetting('sidebar', !this.snapshot.sidebar); }
+    toggleSidebar(): void {
+        if (layoutOf(this.snapshot).sidebar.floats) this.float('sidebar', !this.snapshot.floating.sidebar);
+        else this.setSetting('sidebar', !this.snapshot.sidebar);
+    }
 
     // A rail button: its page opens; the button of the page that is open closes the side panel.
     showSidebarPage(page: string): void {
-        const { sidebar, settings } = this.snapshot;
+        const { sidebar, floating, settings } = this.snapshot;
+        if (layoutOf(this.snapshot).sidebar.floats) {
+            if (floating.sidebar && settings['sidebar-page'] === page) { this.float('sidebar', false); return; }
+            if (settings['sidebar-page'] !== page) this.setSetting('sidebar-page', page);
+            this.float('sidebar', true);
+            return;
+        }
         if (sidebar && settings['sidebar-page'] === page) { this.setSetting('sidebar', false); return; }
         this.setSetting('sidebar-page', page);
         if (!sidebar) this.setSetting('sidebar', true);
+    }
+
+    // The window was resized. A panel that starts or stops floating starts closed as a floating one.
+    setWidth(width: number): void {
+        const before = layoutOf(this.snapshot), after = layoutOf({ ...this.snapshot, width });
+        const floating = { ...this.snapshot.floating };
+        if (before.sidebar.floats !== after.sidebar.floats) floating.sidebar = false;
+        if (before.chat.floats !== after.chat.floats) floating.chat = false;
+        this.set({ width, floating });
+    }
+
+    // Open or close a floating panel; closeFloating() closes both (a click on the content, Escape). There is room for one
+    // floating panel at a time, so opening one closes the other if that one floats too.
+    float(panel: 'sidebar' | 'chat', open: boolean): void {
+        const other = panel === 'chat' ? 'sidebar' : 'chat';
+        const floating = { ...this.snapshot.floating, [panel]: open };
+        if (open && layoutOf(this.snapshot)[other].floats) floating[other] = false;
+        this.set({ floating });
+        if (panel === 'chat' && open) this.chat.focusInput();
+    }
+    closeFloating(): void {
+        const { floating } = this.snapshot;
+        if (floating.sidebar || floating.chat) this.set({ floating: { sidebar: false, chat: false } });
     }
 
     // ---------- Preferences, Keyboard Shortcuts, About ----------
@@ -608,8 +663,13 @@ export class Client {
     }
 
     private applySettings(changed: Record<string, unknown>): void {
+        const opened = (key: string) => changed[key] === true && this.snapshot.settings[key] !== true;
         const settings = { ...this.snapshot.settings, ...changed };
         this.set({ settings, sidebar: settings.sidebar !== false });
+        // Something opened a panel (the core asks the Assistant for a journal summary) while it floats: show it floating.
+        const panels = layoutOf(this.snapshot);
+        if (opened('chat') && panels.chat.floats) this.float('chat', true);
+        if (opened('sidebar') && panels.sidebar.floats) this.float('sidebar', true);
         // 'system' follows the system theme (the media query of theme.css); 'light' and 'dark' win over it.
         this.applyModes();
         const scheme = settings['color-scheme'];
@@ -707,6 +767,11 @@ export class Client {
         // The core's table says where a command runs; the window's own copy is the fallback before `hello` arrives.
         const runs = this.snapshot.commands.find(c => c.id === id)?.runs ?? command.runs;
         // A setting command is the setting of the same name (app/commands.ts): the frontend writes it, as GTK binds it.
+        const panels = layoutOf(this.snapshot);
+        if ((id === 'chat' && panels.chat.floats) || (id === 'sidebar' && panels.sidebar.floats)) {
+            this.float(id, arg === undefined ? !this.snapshot.floating[id] : arg === true);
+            return;
+        }
         if (command.kind === 'setting') {
             this.setSetting(id, argument === true);
             if (id === 'chat' && argument === true) this.chat.focusInput();
