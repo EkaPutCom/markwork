@@ -3,7 +3,7 @@
 
 import { platform } from './platform/index.js';
 import { flushWrites, notifyDiskChange, trashFile } from './files.js';
-import { atOrBelow } from './markdown/pathbelow.js';
+import { atOrBelow } from './markdown/paths.js';
 
 const MARKDOWN_EXTENSION = /\.(md|markdown|mdown|mkd)$/i;
 // Every kind of file the tree shows; a rename keeps these, so the file does not disappear from the tree.

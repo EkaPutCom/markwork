@@ -14,7 +14,7 @@ import { cardMeta, type Board, type Card, type Position } from '../markdown/kanb
 import { AgentTrace, prettyArguments } from './trace.js';
 import { wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
 import type { Worktree } from './worktree.js';
-import { atOrBelow, below } from '../markdown/pathbelow.js';
+import { atOrBelow, below, isWindowsPath, slashed } from '../markdown/paths.js';
 
 export interface HarnessSpec {
     name: string;          // the assignment name on the card, without "@"
@@ -105,8 +105,8 @@ export function cardProject(board: Board, card: Card): string | null {
 export function checkProjectFolder(folder: string, workspace: string | null): string | null {
     if (!platform().paths.isAbsolute(folder)) return 'the project folder must be an absolute path';
     // A Windows path (C:\Users\eka\web) is compared with / for a separator and without regard to case.
-    const windows = /^[A-Za-z]:/.test(folder);
-    const norm = (p: string) => windows ? p.replace(/\\/g, '/').toLowerCase() : p;
+    const windows = isWindowsPath(folder);
+    const norm = (p: string) => windows ? slashed(p).toLowerCase() : p;
     const clean = norm(folder).replace(/\/+$/, '') || '/';
     if (clean === '/' || /^[a-z]:$/.test(clean)) return 'the project folder must not be the root';
     if (workspace) {

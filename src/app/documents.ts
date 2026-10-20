@@ -13,7 +13,7 @@ import { _, fmt, ngettext } from '../i18n.js';
 import { errorMessage, type Doc, type Page, type TextEditor, type ToastAction } from './document.js';
 import type { ChooseFileOptions } from './dialogs.js';
 import type { Autosaver } from './autosave.js';
-import { below } from '../markdown/pathbelow.js';
+import { below } from '../markdown/paths.js';
 
 export const UNTITLED = _('Untitled');
 export const HOME = _('Home');

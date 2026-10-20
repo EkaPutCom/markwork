@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkForUpdates } from './updater.js';
+import { hasDrive } from '../src/markdown/paths.js';
 import { SecretVault, answerSecret } from '../src/platform/node/vault.js';
 import { HTML_CSP, HTML_SCHEME, htmlContentType, parseHtmlUrl, resolveHtmlRequest } from '../src/markdown/htmlview.js';
 
@@ -162,7 +163,7 @@ void app.whenReady().then(() => {
         try {
             // app://file/C%3A/a/b.png is C:/a/b.png on Windows: the drive comes after the URL's first /.
             const decoded = decodeURIComponent(new URL(request.url).pathname);
-            const path = /^\/[A-Za-z]:\//.test(decoded) ? decoded.slice(1) : decoded;
+            const path = decoded.startsWith('/') && hasDrive(decoded.slice(1)) ? decoded.slice(1) : decoded;
             if (!isAbsolute(path) || !IMAGE_FILE.test(path)) return new Response('not an image', { status: 403 });
             const type = IMAGE_TYPES[extname(path).slice(1).toLowerCase()] ?? 'application/octet-stream';
             return new Response(await readFile(path), { headers: { 'content-type': type } });

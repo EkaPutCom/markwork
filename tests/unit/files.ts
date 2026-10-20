@@ -1,7 +1,7 @@
 // Background write tests: ordering per path, coalescing, and an explicit flush.
 
 import { fileUri, flushWrites, insideName, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/files.js';
-import { below, atOrBelow } from '../../src/markdown/pathbelow.js';
+import { below, atOrBelow, hasDrive, isAbsolutePath, isWindowsPath, slashed } from '../../src/markdown/paths.js';
 import { section, test, eq, ok, tmp, until, disk } from '../framework.js';
 
 export async function fileWriteTests(): Promise<void> {
@@ -27,6 +27,13 @@ export async function fileWriteTests(): Promise<void> {
     await test('below: a path under a folder, with / everywhere and \\ under a Windows folder', () => {
         eq([below('/a/b', '/a/b/c'), below('/a/b', '/a/b'), below('/a/b', '/a/bc/d'), below('/a/b', '/a/b/')], [true, false, false, false]);
         eq([below('C:\\a', 'C:\\a\\b'), below('C:\\a', 'C:\\a/b'), below('/a', '/a\\b'), atOrBelow('/a', '/a')], [true, true, false, true]);
+    });
+
+    await test('paths: Windows spellings are told apart from POSIX names that hold a \\', () => {
+        eq(['C:\\a', 'c:/a', 'C:', '/a', 'a\\b'].map(hasDrive), [true, true, false, false, false]);
+        eq(['C:', '\\\\srv\\share', '/a', 'a\\b'].map(isWindowsPath), [true, true, false, false]);
+        eq(['/a', 'C:\\a', '\\\\srv\\x', 'a/b', 'C:a'].map(isAbsolutePath), [true, true, true, false, false]);
+        eq([slashed('C:\\a\\b.md'), slashed('/home/a\\b.md')], ['C:/a/b.md', '/home/a\\b.md']);
     });
 
     await test('overlapping background writes to one file end with the newest text', async () => {

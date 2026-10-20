@@ -1,5 +1,5 @@
 // The main window: composes the components and connects the callbacks between components. The open
-// documents (tabs, open/save, the Home tab) are kept by window/documents.ts; the window shows them.
+// documents (tabs, open/save, the Home tab) are kept by app/documents.ts; the window shows them.
 //
 //   ┌ HeaderBar ─────────────────────────────────────┐
 //   │ Sidebar   │ TabBar (if ≥ 2 documents)          │
@@ -11,7 +11,8 @@
 // Each document has its own MarkdownView (undo, cursor, and scroll are preserved when switching
 // tabs); the other components (outline, status, search, kanban board) follow the active document.
 // Features that span components (journal, harness runs, Home, agent writes, autosave) are controllers in
-// window/*; they see the window only through the host built in makeHost().
+// app/*, built by AppSession; they see the window only through the hosts it fills (frontendHost(), documentsHost(),
+// appDialogs()).
 
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';

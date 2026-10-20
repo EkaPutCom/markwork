@@ -6,6 +6,8 @@
 // sandbox is: every request is answered from that folder and nowhere else (resolveHtmlRequest), and the page's CSP
 // keeps it from reaching anything but that scheme (HTML_CSP).
 
+import { isWindowsPath, slashed } from './paths.js';
+
 export const HTML_EXTENSIONS = ['.html', '.htm', '.xhtml'];
 export const HTML_SCHEME = 'mwhtml';
 
@@ -80,7 +82,7 @@ export function resolveHtmlRequest(root: string, requested: string, readLink: (p
         }
         if (++hops > 32) return null;   // a link loop
         // A link restarts the walk at its target, which must itself be inside the folder.
-        const resolved = target.startsWith('/') || WINDOWS_PATH.test(target) ? splitPath(target) : [...splitPath(current), ...splitPath(target)];
+        const resolved = target.startsWith('/') || isWindowsPath(target) ? splitPath(target) : [...splitPath(current), ...splitPath(target)];
         const inside = relativeParts(root, normalize(resolved));
         if (!inside) return null;
         current = root;
@@ -88,11 +90,6 @@ export function resolveHtmlRequest(root: string, requested: string, readLink: (p
     }
     return current === root ? null : current;   // the folder itself is not a page
 }
-
-// A Windows path (C:\notes\page.html, \\server\share) with / for its separators, which Windows accepts too, so the rest
-// of this module works on one form. Other paths are left alone: on Linux and macOS \ is a letter of a name.
-const WINDOWS_PATH = /^([A-Za-z]:|\\\\)/;
-const slashed = (path: string): string => WINDOWS_PATH.test(path) ? path.replace(/\\/g, '/') : path;
 
 function splitPath(path: string): string[] {
     return path.split('/').filter(part => part !== '' && part !== '.');
