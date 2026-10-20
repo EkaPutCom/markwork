@@ -57,7 +57,7 @@ try {
     await step('board: a card is added from the list and shows in the text', async () => {
         await open('board.md');
         await page.locator('[data-page=board]').waitFor();
-        await page.getByRole('button', { name: '+ Add card' }).first().click();
+        await page.getByRole('button', { name: 'Add card' }).first().click();
         await dialog.getByLabel('Title').fill('Three');
         await dialog.getByLabel('Tags').fill('tag');
         await dialog.getByLabel('Due', { exact: true }).fill('2026-10-25');
@@ -100,7 +100,7 @@ try {
     });
 
     await step('board: a list is added, renamed, and deleted', async () => {
-        await page.getByRole('button', { name: '+ Add list' }).click();
+        await page.getByRole('button', { name: 'Add list' }).click();
         await page.getByLabel('New list name').fill('Later');
         await page.keyboard.press('Enter');
         await page.locator('.board .column[aria-label=Later]').waitFor();

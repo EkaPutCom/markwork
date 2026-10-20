@@ -98,7 +98,7 @@ export function Explorer() {
 
     return (
         <aside className="sidebar" aria-label="Files">
-            <div className="side-title">{root ? name.toUpperCase() : 'FILES'}</div>
+            <div className="side-title">Files</div>
             {!root ? (
                 <div className="placeholder">
                     <p>No folder is open</p>

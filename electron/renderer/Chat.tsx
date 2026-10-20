@@ -355,7 +355,7 @@ export function Chat() {
     return (
         <aside className="chat" aria-label="Assistant">
             <div className="chat-head">
-                <span className="side-title">ASSISTANT</span>
+                <span className="side-title">Assistant</span>
                 <button className="button flat" title="New conversation" aria-label="New conversation" onClick={() => model.reset()}><Icon name="edit-clear" /></button>
                 <button className="button flat" title="Agent log" aria-label="Agent log" onClick={() => model.openLog(true)}><Icon name="utilities-terminal" /></button>
                 <HistoryButton />

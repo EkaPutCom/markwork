@@ -53,7 +53,7 @@ try {
         await page.keyboard.press('ControlOrMeta+End');
         await page.keyboard.type('world\n');
         await page.keyboard.press('ControlOrMeta+s');
-        await page.waitForFunction(() => !document.querySelector('.headerbar .title')?.textContent?.startsWith('•'));
+        await page.locator('.headerbar .state', { hasText: /^Saved$/ }).waitFor();
         assert.equal(readFileSync(join(notes, 'note.md'), 'utf8'), '# Note\n\nhello\nworld\n');
     });
 
@@ -208,7 +208,7 @@ try {
         }
         assert.equal(await docText(), 'plain\n', 'Enter in the palette types nothing into the document');
         // Closing asks only once the core has the change, which the tab shows with its unsaved mark.
-        await page.getByRole('tab', { selected: true, name: /•/ }).waitFor();
+        await page.getByRole('tab', { selected: true, name: /Unsaved/ }).waitFor();
         await page.keyboard.press('ControlOrMeta+w');
         const dialog = page.getByRole('alertdialog');
         await dialog.getByRole('button', { name: 'Discard' }).click();

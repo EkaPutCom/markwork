@@ -25,7 +25,8 @@ try {
     const assistantButton = page.getByRole('button', { name: 'Assistant', exact: true });
     const sidebarButton = page.getByRole('button', { name: 'Toggle Sidebar' });
     // Whether a panel floats over the content (absolute) or takes its own width beside it.
-    const floats = async locator => (await locator.evaluate(el => getComputedStyle(el).position)) === 'absolute';
+    // A panel floats when it (or, for a page of the side panel, the sidebar around it) lies over the content.
+    const floats = async locator => (await locator.evaluate(el => getComputedStyle(el.closest('.side-shell') ?? el).position)) === 'absolute';
     const editorWidth = () => page.locator('.editor-group').evaluate(el => el.getBoundingClientRect().width);
     const content = page.locator('.cm-content');
 

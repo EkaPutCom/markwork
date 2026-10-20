@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
+import { Icon } from './Icons.js';
 import { label } from './keys.js';
 import { useClient, useStore } from './useClient.js';
 
@@ -30,8 +31,10 @@ export function Palette() {
     return (
         <div className="palette-backdrop" onMouseDown={close}>
             <div className="palette" role="dialog" aria-label="Command Palette" onMouseDown={e => e.stopPropagation()}>
+                <div className="input-row">
+                <Icon name="search" />
                 <input
-                    ref={input} value={query} placeholder="Type the name of a command" aria-label="Command"
+                    ref={input} value={query} placeholder="Type a command or search…" aria-label="Command"
                     onChange={e => setQuery(e.target.value)}
                     onKeyDown={e => {
                         if (e.key === 'Escape') close();
@@ -41,6 +44,8 @@ export function Palette() {
                         else if (e.key === 'Enter' && commands[index]) { e.preventDefault(); choose(commands[index].id); }
                     }}
                 />
+                <kbd>Esc</kbd>
+                </div>
                 <ul role="listbox">
                     {commands.map((c, i) => (
                         <li key={c.id} role="option" aria-selected={i === index} className={i === index ? 'selected' : ''} onMouseMove={() => setIndex(i)} onClick={() => choose(c.id)}>
@@ -50,6 +55,7 @@ export function Palette() {
                     ))}
                     {commands.length === 0 && <li className="none">No matching commands</li>}
                 </ul>
+                <div className="foot" aria-hidden="true"><span>↑↓ to move</span><span>↵ to run</span></div>
             </div>
         </div>
     );

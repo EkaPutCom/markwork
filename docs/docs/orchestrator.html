@@ -90,7 +90,7 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <li>On another machine (through markworkd) the worktrees are made and read there: Git runs through the daemon, so it must be allowed (<code>git</code> in <code>programs</code> when that list is set), and the worktree folder must be inside its <code>roots</code>. The push of <em>Create Pull Request…</em> runs there too (the machine must be able to reach the server), with the access token in the environment of that one git call; for that the daemon's <code>env_allow</code> must contain <code>GIT_CONFIG_*</code>, otherwise the push is refused with a message that says so. The daemon keeps the call's environment in its run record (readable only by its user) until Markwork forgets the run, which is right after git ends. The default, next to the project, is inside the same root when the root is the project's parent. <em>Open Terminal</em> opens <code>ssh</code> to the worktree there.</li>
 </ul>
 <figure><img src="../assets/pi-review.png" width="1280" height="780" loading="lazy" alt="The review page of a card: the changed files and commits on the left, a diff in the middle, and the Reply with 1 Comment and Merge buttons"><figcaption>The review of a card: what pi changed in its worktree, a comment on the diff, and Merge</figcaption></figure>
-<figure class="narrow-fig"><img src="../assets/pi-pr-menu.png" width="220" height="194" loading="lazy" alt="The arrow menu of the Merge button: Merge into main, Squash into main, Create Pull Request, Keep the Branch, Remove the Worktree, and Discard"><figcaption>The Merge menu with <em>Create Pull Request…</em></figcaption></figure>
+<figure class="narrow-fig"><img src="../assets/pi-pr-menu.png" width="220" height="180" loading="lazy" alt="The arrow menu of the Merge button: Merge into main, Squash into main, Create Pull Request, Keep the Branch, Remove the Worktree, and Discard"><figcaption>The Merge menu with <em>Create Pull Request…</em></figcaption></figure>
 <figure><img src="../assets/pi-pr-dialog.png" width="1280" height="780" loading="lazy" alt="The Create Pull Request dialog over the review: where the branch is pushed, the title, the description, and how it is sent"><figcaption>The confirmation: nothing is pushed until <em>Send</em></figcaption></figure>
 <figure class="narrow-fig"><img src="../assets/pi-project.png" width="1280" height="780" loading="lazy" alt="The page of one project in Preferences: the project folder, a switch for one worktree per card, how many cards at the same time, the base branch, the worktree folder, and the card worktrees that exist"><figcaption>Preferences → Agents → a project: how its cards are isolated</figcaption></figure>
 
@@ -104,7 +104,7 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <li><strong>Reply to pi…</strong> after it finishes: continues the same pi session so the card is worked on again.</li>
 </ul>
 <figure><img src="../assets/pi-waiting.png" width="1280" height="780" loading="lazy" alt="A kanban board: the card Tidy up the README shows pi waiting for an answer in In Progress, two other cards finished in Review"><figcaption>A card waiting for an answer stays in In Progress</figcaption></figure>
-<figure class="narrow-fig"><img src="../assets/pi-answer.png" width="440" height="334" loading="lazy" alt="The Answer pi dialog with the question of pi about the README, an answer box, and the Later, End without replying, and Send buttons"><figcaption>The Answer pi dialog</figcaption></figure>
+<figure class="narrow-fig"><img src="../assets/pi-answer.png" width="480" height="358" loading="lazy" alt="The Answer pi dialog with the question of pi about the README, an answer box, and the Later, End without replying, and Send buttons"><figcaption>The Answer pi dialog</figcaption></figure>
 
 
 <h2 id="log">Log and control</h2>
@@ -114,7 +114,7 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <li><em>Stop pi</em> / <em>Cancel Queue</em></li>
   <li><em>Remove Assignment</em> and <em>Change Project Folder…</em></li>
 </ul>
-<figure><img src="../assets/pi-log.png" width="980" height="630" loading="lazy" alt="The pi Log window with the prompt sent to pi, the session, the model reasoning, the bash and edit tool calls, and the finished summary"><figcaption>The pi log: the prompt from the card, the reasoning, the tools, and the summary</figcaption></figure>
+<figure><img src="../assets/pi-log.png" width="980" height="652" loading="lazy" alt="The pi Log window with the prompt sent to pi, the session, the model reasoning, the bash and edit tool calls, and the finished summary"><figcaption>The pi log: the prompt from the card, the reasoning, the tools, and the summary</figcaption></figure>
 
 
 <h2 id="daemon">Agents that keep working: markworkd</h2>

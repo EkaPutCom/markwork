@@ -1,7 +1,7 @@
 {
   // The Electron shell: main, preload, and the core entry run on Node; the renderer is the page. No GJS globals.
   "extends": "./tsconfig.json",
-  "compilerOptions": { "types": ["node"], "lib": ["ES2023", "DOM", "DOM.Iterable"], "jsx": "react-jsx" },
+  "compilerOptions": { "types": ["node"], "lib": ["ES2023", "DOM", "DOM.Iterable"], "jsx": "react-jsx", "paths": { "@/*": ["./electron/renderer/*"] } },
   "include": ["electron"],
   "exclude": []
 }

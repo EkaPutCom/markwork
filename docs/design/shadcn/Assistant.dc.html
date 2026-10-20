@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Markwork editor with Assistant, shadcn dark</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#fafafa}a:hover{color:#d4d4d8}
+button{font:inherit;cursor:pointer}
+textarea{font:inherit}
+</style>
+</helmet>
+<div style="width: 100%; height: 800px; display: flex; background: #09090b; color: #fafafa; font-family: Geist, system-ui, sans-serif; font-size: 14px; overflow: hidden;">
+
+  <aside aria-label="Sidebar, collapsed to icons" style="width: 56px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; background: #18181b; border-right: 1px solid #27272a;">
+    <span aria-label="markwork-launch" role="img" style="width: 32px; height: 32px; border-radius: 8px; background: #fafafa; color: #18181b; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-bottom: 8px;">M</span>
+    <button type="button" aria-label="Home" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #fafafa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
+    <button type="button" aria-label="Inbox, 3 items" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #fafafa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></button>
+    <button type="button" aria-label="Files" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: #27272a; display: flex; align-items: center; justify-content: center; color: #fafafa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></button>
+    <button type="button" aria-label="Search" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #fafafa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+    <button type="button" aria-label="History" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #fafafa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></button>
+  </aside>
+
+  <main style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+    <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid #27272a;">
+      <button type="button" aria-label="Toggle sidebar" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #fafafa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button>
+      <span aria-hidden="true" style="width: 1px; height: 16px; background: #27272a; margin: 0 4px;"></span>
+      <nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 6px; color: #a1a1aa;">
+        <span>plans</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        <span style="color: #fafafa; font-weight: 500;">launch.md</span>
+      </nav>
+      <span style="margin-left: 6px; font-size: 12px; font-weight: 500; color: #d4d4d8; border: 1px solid #27272a; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Saved</span>
+      <span style="flex: 1;"></span>
+      <button type="button" aria-label="Layout: Text" style="height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid #27272a; border-radius: 6px; background: #09090b; color: #fafafa; font-weight: 500;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Text<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div style="display: flex; height: 32px; border-radius: 6px; background: #fafafa;">
+        <button type="button" style="display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; border: 0; border-radius: 6px 0 0 6px; background: transparent; color: #18181b; font-weight: 500;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New</button>
+        <span aria-hidden="true" style="width: 1px; background: #d4d4d8; margin: 6px 0;"></span>
+        <button type="button" aria-label="More new options" style="width: 28px; border: 0; border-radius: 0 6px 6px 0; background: transparent; color: #18181b; display: flex; align-items: center; justify-content: center; padding: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      </div>
+      <span aria-hidden="true" style="width: 1px; height: 16px; background: #27272a; margin: 0 4px;"></span>
+      <button type="button" aria-label="Assistant" aria-pressed="true" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: #27272a; display: flex; align-items: center; justify-content: center; color: #fafafa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg></button>
+      <button type="button" aria-label="Main menu" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #fafafa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+    </header>
+
+    <div style="flex: 1; min-height: 0; display: flex;">
+      <article style="flex: 1; min-width: 0; overflow: hidden; padding: 40px 40px 0; display: flex; flex-direction: column;">
+        <div style="max-width: 620px; width: 100%; margin: 0 auto; flex: 1;">
+          <h1 style="margin: 0 0 8px; font-size: 36px; line-height: 1.15; font-weight: 700; letter-spacing: -0.025em;">Markwork 1.0 Launch Plan</h1>
+          <p style="margin: 0 0 28px; color: #a1a1aa;">plans · edited just now by the Assistant</p>
+          <h2 style="margin: 0 0 12px; padding-bottom: 8px; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; border-bottom: 1px solid #27272a;">Goal</h2>
+          <p style="margin: 0 0 28px; font-size: 16px; line-height: 1.75;">Release Markwork 1.0 for Linux users, complete with folder syncing.</p>
+          <h2 style="margin: 0 0 12px; padding-bottom: 8px; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; border-bottom: 1px solid #27272a;">Schedule</h2>
+          <ul style="margin: 0 0 28px; padding-left: 24px; font-size: 16px; line-height: 1.75;">
+            <li>Closed beta: <strong>20 October</strong></li>
+            <li>Public release: <mark style="background: rgba(74,222,128,0.16); color: #fafafa; border-radius: 4px; padding: 0 4px; font-weight: 600;">22 November</mark></li>
+            <li>Evaluation: 30 November</li>
+          </ul>
+          <h2 style="margin: 0 0 12px; padding-bottom: 8px; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; border-bottom: 1px solid #27272a;">Budget</h2>
+          <p style="margin: 0; font-size: 16px; line-height: 1.75;">Total $3,000, including the redesign and a test server.</p>
+        </div>
+        <footer style="height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 16px; font-size: 12px; color: #a1a1aa;">
+          <span>37 words</span><span>269 characters</span><span>Ln 1, Col 1</span>
+        </footer>
+      </article>
+
+      <aside aria-label="Assistant" style="width: 384px; flex-shrink: 0; display: flex; flex-direction: column; border-left: 1px solid #27272a; background: #09090b;">
+        <div style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 16px; border-bottom: 1px solid #27272a;">
+          <h2 style="margin: 0; font-size: 14px; font-weight: 600; flex: 1;">Assistant</h2>
+          <span style="font-size: 12px; font-weight: 500; color: #d4d4d8; background: #27272a; border-radius: 6px; padding: 0 8px; line-height: 20px; margin-right: 4px; font-family: 'Geist Mono', monospace;">deepseek-chat</span>
+          <button type="button" aria-label="Conversation history" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #a1a1aa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></button>
+          <button type="button" aria-label="Clear conversation" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #a1a1aa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2"/></svg></button>
+          <button type="button" aria-label="Assistant settings" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #a1a1aa; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg></button>
+        </div>
+
+        <div style="flex: 1; min-height: 0; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="align-self: flex-end; max-width: 85%; background: #27272a; border-radius: 12px; padding: 10px 14px; line-height: 1.5;">Yes, update the release date and move the release material card to In Progress.</div>
+
+          <button type="button" aria-expanded="false" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid #27272a; border-radius: 8px; background: transparent; color: #d4d4d8; text-align: left;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            <span style="flex: 1;">Read 2 files</span>
+            <span style="font-size: 12px; color: #a1a1aa; font-family: 'Geist Mono', monospace;">6.0s</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+
+          <div style="border: 1px solid #27272a; border-radius: 10px; overflow: hidden;">
+            <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #27272a; background: #18181b;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+              <span style="font-weight: 600; flex: 1; font-size: 13px;">Edit plans/launch.md</span>
+              <span style="font-size: 12px; font-weight: 500; color: #4ade80; border: 1px solid rgba(74,222,128,0.35); border-radius: 6px; padding: 0 8px; line-height: 20px;">Applied</span>
+            </div>
+            <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 10px;">
+              <p style="margin: 0; font-size: 13px; color: #a1a1aa; line-height: 1.5;">The 1 October meeting postponed the public release to 22 November.</p>
+              <div style="font-family: 'Geist Mono', monospace; font-size: 12px; border-radius: 6px; overflow: hidden; border: 1px solid #27272a;">
+                <div style="padding: 2px 8px; background: rgba(248,113,113,0.12); color: #fca5a5;">- Public release: 15 November</div>
+                <div style="padding: 2px 8px; background: rgba(74,222,128,0.12); color: #86efac;">+ Public release: 22 November</div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" style="height: 28px; padding: 0 10px; border: 1px solid #27272a; border-radius: 6px; background: transparent; color: #fafafa; font-weight: 500; font-size: 13px; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
+                <button type="button" style="height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #d4d4d8; font-weight: 500; font-size: 13px;">Open file</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid #27272a; border-radius: 10px; overflow: hidden;">
+            <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #18181b;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg>
+              <span style="font-weight: 600; flex: 1; font-size: 13px;">Move card in tasks.md</span>
+              <span style="font-size: 12px; font-weight: 500; color: #4ade80; border: 1px solid rgba(74,222,128,0.35); border-radius: 6px; padding: 0 8px; line-height: 20px;">Applied</span>
+            </div>
+          </div>
+
+          <p style="margin: 0; line-height: 1.6;">Done. The release date in the plan is now <strong>22 November</strong>, and <em>Prepare the release material</em> is in <em>In Progress</em>.</p>
+
+          <div style="display: flex; gap: 2px; margin-left: -8px;">
+            <button type="button" style="height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #a1a1aa; font-size: 13px; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Copy</button>
+            <button type="button" style="height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #a1a1aa; font-size: 13px;">Insert into note</button>
+            <button type="button" style="height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #a1a1aa; font-size: 13px;">Retry</button>
+            <button type="button" style="height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #a1a1aa; font-size: 13px;">Log</button>
+          </div>
+          <p style="margin: 0; font-size: 12px; color: #a1a1aa; font-family: 'Geist Mono', monospace;">7.6k in (4.6k cached) · 228 out · 2 applied</p>
+        </div>
+
+        <div style="padding: 12px; border-top: 1px solid #27272a; display: flex; flex-direction: column; gap: 8px;">
+          <label for="ask" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Ask the assistant</label>
+          <div style="border: 1px solid #27272a; border-radius: 10px; background: #18181b; padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 8px;">
+            <textarea id="ask" rows="2" placeholder="Ask a question or describe a change…" style="border: 0; outline: none; resize: none; background: transparent; color: #fafafa; font-size: 14px; line-height: 1.5;"></textarea>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" style="height: 26px; padding: 0 8px; border: 1px solid #27272a; border-radius: 6px; background: #09090b; color: #d4d4d8; font-size: 12px; display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>launch.md</button>
+              <span style="font-size: 12px; color: #a1a1aa; flex: 1;">≈2.5k tokens</span>
+              <button type="button" aria-label="Send" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: #fafafa; color: #18181b; display: flex; align-items: center; justify-content: center; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

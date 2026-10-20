@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Markwork kanban board, shadcn light</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#18181b}a:hover{color:#52525b}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 100%; height: 800px; display: flex; background: #ffffff; color: #09090b; font-family: Geist, system-ui, sans-serif; font-size: 14px; overflow: hidden;">
+
+  <aside aria-label="Sidebar, collapsed to icons" style="width: 56px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; background: #fafafa; border-right: 1px solid #e4e4e7;">
+    <span aria-label="markwork-launch" role="img" style="width: 32px; height: 32px; border-radius: 8px; background: #18181b; color: #fafafa; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-bottom: 8px;">M</span>
+    <button type="button" aria-label="Home" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
+    <button type="button" aria-label="Inbox, 3 items" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></button>
+    <button type="button" aria-label="Files" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: #f4f4f5; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></button>
+    <button type="button" aria-label="Search" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+    <button type="button" aria-label="History" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></button>
+    <button type="button" aria-label="Pull requests, 2 open" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg></button>
+  </aside>
+
+  <main style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+    <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid #e4e4e7;">
+      <button type="button" aria-label="Toggle sidebar" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button>
+      <span aria-hidden="true" style="width: 1px; height: 16px; background: #e4e4e7; margin: 0 4px;"></span>
+      <nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 6px; color: #71717a;">
+        <span>markwork-launch</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        <span style="color: #09090b; font-weight: 500;">board.md</span>
+      </nav>
+      <span style="margin-left: 6px; font-size: 12px; font-weight: 500; color: #52525b; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Saved</span>
+      <span style="flex: 1;"></span>
+      <div role="radiogroup" aria-label="Layout" style="display: flex; padding: 3px; gap: 2px; border-radius: 8px; background: #f4f4f5;">
+        <button type="button" role="radio" aria-checked="false" style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #52525b; font-weight: 500;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Text</button>
+        <button type="button" role="radio" aria-checked="true" style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: 6px; background: #ffffff; color: #09090b; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.08);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg>Board</button>
+        <button type="button" role="radio" aria-checked="false" style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #52525b; font-weight: 500;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Calendar</button>
+        <button type="button" aria-label="More layouts" style="height: 26px; width: 26px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: #52525b; padding: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      </div>
+      <div style="display: flex; height: 32px; border-radius: 6px; background: #18181b;">
+        <button type="button" style="display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; border: 0; border-radius: 6px 0 0 6px; background: transparent; color: #fafafa; font-weight: 500;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New</button>
+        <span aria-hidden="true" style="width: 1px; background: #3f3f46; margin: 6px 0;"></span>
+        <button type="button" aria-label="More new options" style="width: 28px; border: 0; border-radius: 0 6px 6px 0; background: transparent; color: #fafafa; display: flex; align-items: center; justify-content: center; padding: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      </div>
+      <span aria-hidden="true" style="width: 1px; height: 16px; background: #e4e4e7; margin: 0 4px;"></span>
+      <button type="button" aria-label="Assistant" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg></button>
+      <button type="button" aria-label="Main menu" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #09090b; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+    </header>
+
+    <div style="flex: 1; min-height: 0; overflow-x: auto; padding: 20px 20px 0;">
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(260px, 1fr)); gap: 16px; height: 100%;">
+
+        <section aria-label="Plan" style="display: flex; flex-direction: column; gap: 8px; padding: 8px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fafafa; min-height: 0;">
+          <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 8px;">
+            <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Plan</h2>
+            <span style="font-size: 12px; font-weight: 500; color: #52525b; background: #f4f4f5; border-radius: 6px; padding: 0 6px; line-height: 20px;">3</span>
+            <span style="flex: 1;"></span>
+            <button type="button" aria-label="Plan list actions" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #71717a; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+          </div>
+          <article style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <label style="display: flex; align-items: flex-start; gap: 10px; font-weight: 500;"><input type="checkbox" style="width: 16px; height: 16px; margin: 2px 0 0; accent-color: #18181b;">User research</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 500; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #ea580c;"></span>research</span>
+              <span style="font-size: 12px; font-weight: 500; color: #ffffff; background: #dc2626; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>10 Oct · overdue</span>
+            </div>
+          </article>
+          <article style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <label style="display: flex; align-items: flex-start; gap: 10px; font-weight: 500;"><input type="checkbox" style="width: 16px; height: 16px; margin: 2px 0 0; accent-color: #18181b;">Redesign the home page</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 500; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #ca8a04;"></span>design</span>
+            </div>
+          </article>
+          <article style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <label style="display: flex; align-items: flex-start; gap: 10px; font-weight: 500;"><input type="checkbox" style="width: 16px; height: 16px; margin: 2px 0 0; accent-color: #18181b;"><span>Write the <strong>API</strong> documentation</span></label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 500; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #2563eb;"></span>docs</span>
+              <span style="font-size: 12px; font-weight: 500; color: #52525b; background: #f4f4f5; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>25 Oct</span>
+            </div>
+          </article>
+          <button type="button" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #52525b; font-weight: 500;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add card</button>
+        </section>
+
+        <section aria-label="In Progress" style="display: flex; flex-direction: column; gap: 8px; padding: 8px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fafafa; min-height: 0;">
+          <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 8px;">
+            <h2 style="margin: 0; font-size: 14px; font-weight: 600;">In Progress</h2>
+            <span style="font-size: 12px; font-weight: 500; color: #52525b; background: #f4f4f5; border-radius: 6px; padding: 0 6px; line-height: 20px;">2</span>
+            <span style="flex: 1;"></span>
+            <button type="button" aria-label="In Progress list actions" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #71717a; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+          </div>
+          <article style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <label style="display: flex; align-items: flex-start; gap: 10px; font-weight: 500;"><input type="checkbox" style="width: 16px; height: 16px; margin: 2px 0 0; accent-color: #18181b;">Implement the kanban board</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 500; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #16a34a;"></span>feature</span>
+              <span style="font-size: 12px; font-weight: 500; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #9333ea;"></span>important</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid #f4f4f5; font-size: 12px; color: #71717a;">
+              <span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 10px; background: #f4f4f5; color: #52525b; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;">pi</span>
+              Agent working · 4 min
+            </div>
+          </article>
+          <article style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <label style="display: flex; align-items: flex-start; gap: 10px; font-weight: 500;"><input type="checkbox" style="width: 16px; height: 16px; margin: 2px 0 0; accent-color: #18181b;"><span>Fix the <code style="font-family: 'Geist Mono', monospace; font-size: 13px; background: #f4f4f5; border-radius: 4px; padding: 1px 4px;">HTML export</code> bug</span></label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 500; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #db2777;"></span>bug</span>
+              <span style="font-size: 12px; font-weight: 500; color: #ffffff; background: #dc2626; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>3 Oct · overdue</span>
+            </div>
+          </article>
+          <button type="button" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #52525b; font-weight: 500;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add card</button>
+        </section>
+
+        <section aria-label="Review" style="display: flex; flex-direction: column; gap: 8px; padding: 8px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fafafa; min-height: 0;">
+          <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 8px;">
+            <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Review</h2>
+            <span style="font-size: 12px; font-weight: 500; color: #52525b; background: #f4f4f5; border-radius: 6px; padding: 0 6px; line-height: 20px;">1</span>
+            <span style="flex: 1;"></span>
+            <button type="button" aria-label="Review list actions" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #71717a; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+          </div>
+          <article style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <label style="display: flex; align-items: flex-start; gap: 10px; font-weight: 500;"><input type="checkbox" style="width: 16px; height: 16px; margin: 2px 0 0; accent-color: #18181b;">Trial on Ubuntu 24.04</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 500; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #0d9488;"></span>qa</span>
+            </div>
+            <button type="button" style="height: 28px; border: 1px solid #e4e4e7; border-radius: 6px; background: #ffffff; color: #09090b; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg>Review changes</button>
+          </article>
+          <button type="button" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #52525b; font-weight: 500;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add card</button>
+        </section>
+
+        <section aria-label="Done" style="display: flex; flex-direction: column; gap: 8px; padding: 8px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fafafa; min-height: 0;">
+          <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 8px;">
+            <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Done</h2>
+            <span style="font-size: 12px; font-weight: 500; color: #52525b; background: #f4f4f5; border-radius: 6px; padding: 0 6px; line-height: 20px;">2</span>
+            <span style="flex: 1;"></span>
+            <button type="button" aria-label="Done list actions" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; color: #71717a; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+          </div>
+          <article style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff;">
+            <label style="display: flex; align-items: flex-start; gap: 10px; font-weight: 500; color: #71717a; text-decoration: line-through;"><input type="checkbox" checked style="width: 16px; height: 16px; margin: 2px 0 0; accent-color: #18181b;">Choose the project name: Markwork</label>
+          </article>
+          <article style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff;">
+            <label style="display: flex; align-items: flex-start; gap: 10px; font-weight: 500; color: #71717a; text-decoration: line-through;"><input type="checkbox" checked style="width: 16px; height: 16px; margin: 2px 0 0; accent-color: #18181b;">Set up the GitHub repository</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 500; color: #52525b; border: 1px solid #e4e4e7; border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #16a34a;"></span>infra</span>
+            </div>
+          </article>
+          <button type="button" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #52525b; font-weight: 500;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add card</button>
+        </section>
+      </div>
+    </div>
+
+    <footer style="height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 0 16px; font-size: 12px; color: #71717a;">
+      <span>4 lists</span><span>8 cards</span>
+    </footer>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
