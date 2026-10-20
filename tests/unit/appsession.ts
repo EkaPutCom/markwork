@@ -1,6 +1,6 @@
 // The command registry and the application session.
 
-import { AppSettings } from '../../src/settings.js';
+import { AppSettings } from '../../src/base/settings.js';
 import type { SettingValue } from '../../src/platform/index.js';
 import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost, type EditCommands, type FrontendCommands } from '../../src/app/commands.js';
 import { AppSession, type AppFrontend, type DocumentTitle, type FrontendHost } from '../../src/app/session.js';
@@ -8,7 +8,7 @@ import type { TextEditor, ToastButton } from '../../src/app/document.js';
 import { addCard, parseBoard } from '../../src/markdown/kanban.js';
 import { applyChangeBatch } from '../../src/app/agentwrites.js';
 import { platform, setPlatform } from '../../src/platform/index.js';
-import { fileUri } from '../../src/files.js';
+import { fileUri } from '../../src/base/files.js';
 import { section, test, eq, ok, tmp, disk, until, untilText } from '../core/framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.

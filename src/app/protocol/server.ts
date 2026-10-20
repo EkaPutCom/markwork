@@ -2,8 +2,8 @@
 // (docs/design/protocol.md, sections 4.5 to 6). One server serves one window. The requests and notices it answers are
 // in handlers/, one file per controller; this file only puts them together.
 
-import type { AppSettings } from '../../settings.js';
-import { onDiskChange } from '../../files.js';
+import type { AppSettings } from '../../base/settings.js';
+import { onDiskChange } from '../../base/files.js';
 import { platform } from '../../platform/index.js';
 import { AppSession } from '../session.js';
 import { ProtocolFrontend } from './frontend.js';

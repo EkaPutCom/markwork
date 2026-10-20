@@ -11,7 +11,7 @@ import { structureCheck, VERIFY_TOOL, verifyWork } from './verification.js';
 import { describeGitCall, formatGit, GIT_TOOLS, isGitTool, parseGitCall, type GitAnswer, type GitRequest } from './gittools.js';
 import { journalText, reconcileEvents, type ActionEvent } from './journal.js';
 import { compactHistory } from './recovery.js';
-import type { Cancellable } from '../cancel.js';
+import type { Cancellable } from '../base/cancel.js';
 import { buildContext, buildMessages, estimateTokens, type BuiltContext, type ContextInput, type SourceFile, type Turn } from './context.js';
 import type { ChatMessage, ChatResult, Provider, ToolCall, ToolSpec, Usage } from './provider.js';
 import { describeCall, runTool, TOOLS } from './tools.js';

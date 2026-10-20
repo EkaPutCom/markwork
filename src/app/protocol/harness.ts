@@ -9,7 +9,7 @@ import type { ChangedFile, Commit, RanCommand } from '../../agent/worktreereview
 import type { SendVia } from '../../forge/contribute.js';
 import type { FileStatus } from '../../forge/types.js';
 import type { TraceUpdate } from '../../agent/tracefeed.js';
-import type { DiffLine } from '../../gitlog.js';
+import type { DiffLine } from '../../base/gitlog.js';
 import type { Prompt, Question } from '../dialogs.js';
 import type { CardRun, CloseAgentsChoice, HarnessDialogs, HarnessLogs } from '../harness.js';
 import type { FinishAction, PullOffer, PullRequestAnswer, PullRequestOptions, ReviewDialogs, ReviewTab, ReviewView, SummaryView } from '../harnessreview.js';

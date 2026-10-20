@@ -4,7 +4,7 @@
 import { base64, credentialEnv } from '../../src/forge/contribute.js';
 import { GiteaProvider } from '../../src/forge/gitea.js';
 import { parseRemote } from '../../src/forge/remote.js';
-import { runGit } from '../../src/git.js';
+import { runGit } from '../../src/base/git.js';
 import { disk, errorMessage, tmp } from '../core/framework.js';
 import { platform } from '../../src/platform/index.js';
 

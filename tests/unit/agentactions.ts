@@ -11,7 +11,7 @@ import { verifyWork } from '../../src/agent/verification.js';
 import { ChatSession, type ProposalResult, type TurnHandlers } from '../../src/agent/session.js';
 import type { ChatRequest, ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
 import { localLinks, newIssues, resolveLink, structureIssues } from '../../src/markdown/lint.js';
-import { agentGit, gitLimits, runGit } from '../../src/git.js';
+import { agentGit, gitLimits, runGit } from '../../src/base/git.js';
 import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
 
 const NOTES = '---\ntitle: meeting\n---\n# Meeting\n\nRelease November 15.\nNote: November 15 final.\n';

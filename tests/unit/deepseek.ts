@@ -4,7 +4,7 @@
 import { DeepSeek } from '../../src/agent/deepseek.js';
 import { section, test, eq, ok, contains, within } from '../core/framework.js';
 import { host, type FakeReply } from '../core/host.js';
-import { Cancellable } from '../../src/cancel.js';
+import { Cancellable } from '../../src/base/cancel.js';
 
 export async function deepseekTests(): Promise<void> {
     section('DeepSeek client (fake server)');

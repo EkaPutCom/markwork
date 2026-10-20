@@ -1,10 +1,10 @@
 // Autosave: a document with a file is written to disk after a pause without keystrokes, or right away at safe
 // points (leaving a tab, closing). Failures are toasts, not dialogs, because autosave keeps trying.
 
-import { writeTextFile, writeTextFileAsync } from '../files.js';
+import { writeTextFile, writeTextFileAsync } from '../base/files.js';
 import { platform } from '../platform/index.js';
-import type { AppSettings } from '../settings.js';
-import { _, fmt } from '../i18n.js';
+import type { AppSettings } from '../base/settings.js';
+import { _, fmt } from '../base/i18n.js';
 import { errorMessage, type Doc, type ToastAction } from './document.js';
 
 // Pause without keystrokes before autosave writes to disk.

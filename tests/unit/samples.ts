@@ -1,7 +1,7 @@
 // The sample documents in tests/samples must stay valid: the layout is recognized, the schema reads without problems,
 // every value fits its field, and the file is already in the form the app writes (so opening and saving changes nothing).
 
-import { readTextFile } from '../../src/files.js';
+import { readTextFile } from '../../src/base/files.js';
 import { parseSchema, readItem } from '../../src/markdown/fields.js';
 import { boardSchema, parseBoard, serializeBoard } from '../../src/markdown/kanban.js';
 import { layoutOf, type Layout } from '../../src/markdown/layout.js';

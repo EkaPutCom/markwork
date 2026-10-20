@@ -16,7 +16,7 @@ export function setRoot(url: string): void {
 }
 
 // Settings and test files are put in a temporary folder, not ~/.config. It is safe to set
-// after the import because settings.ts only reads XDG_CONFIG_HOME when called.
+// after the import because base/settings.ts only reads XDG_CONFIG_HOME when called.
 export const tmp = host().makeTempDir();
 host().setenv('XDG_CONFIG_HOME', tmp);
 host().setenv('XDG_DATA_HOME', platform().paths.join(tmp, 'data'));   // the Trash a test moves files to is its own, not the user's

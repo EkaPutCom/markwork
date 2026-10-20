@@ -1,5 +1,5 @@
 // A complete-work evaluation with a deterministic provider, a virtual disk, and real checkpoints.
-import { WorkspaceRepository } from '../../src/workspace.js';
+import { WorkspaceRepository } from '../../src/base/workspace.js';
 import { projectPath } from '../../src/agent/path.js';
 import { ChatSession, type TurnHandlers } from '../../src/agent/session.js';
 import { applyBatch } from '../../src/agent/batch.js';

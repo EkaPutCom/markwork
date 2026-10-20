@@ -2,7 +2,7 @@
 //. The core talks to the forge; this draws what it sends and reports what the user did.
 
 import { useEffect, useRef, useState } from 'react';
-import { relativeTime } from '../../../src/gitlog.js';
+import { relativeTime } from '../../../src/base/gitlog.js';
 import type { SendVia } from '../../../src/app/protocol/collab.js';
 import { Icon } from './Icons.js';
 import { Modal } from './Modals.js';

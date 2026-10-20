@@ -6,13 +6,13 @@
 import type { TokenSource } from '../../forge/token.js';
 import type { FileStatus, MergeMethod, PullComment, PullFile, PullRequest, RepoRef } from '../../forge/types.js';
 import type { SendVia } from '../../forge/contribute.js';
-import type { FileChange } from '../../gitlog.js';
+import type { FileChange } from '../../base/gitlog.js';
 import { branchError } from '../../forge/contribute.js';
 import type { CollabDialogs, CollabView } from '../collab.js';
 import type { ContributeDialogs, SendChangesAnswer, SendChangesOptions } from '../contribute.js';
 import type { Question } from '../dialogs.js';
 import type { FileView, PullDialogs, PullReviewView } from '../pulls.js';
-import { _ } from '../../i18n.js';
+import { _ } from '../../base/i18n.js';
 import type { Asks } from './asks.js';
 import type { Wire } from './messages.js';
 

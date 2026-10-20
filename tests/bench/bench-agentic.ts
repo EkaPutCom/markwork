@@ -5,7 +5,7 @@ import { planBatch } from '../../src/agent/batch.js';
 import { verifyWork } from '../../src/agent/verification.js';
 import { serializeChat, parseChat, type SavedChat } from '../../src/agent/transcript.js';
 import { compactHistory } from '../../src/agent/recovery.js';
-import { readTextFile, writeTextFile } from '../../src/files.js';
+import { readTextFile, writeTextFile } from '../../src/base/files.js';
 import type { ActionEvent } from '../../src/agent/journal.js';
 import { disk, say } from '../core/framework.js';
 import { host } from '../core/host.js';

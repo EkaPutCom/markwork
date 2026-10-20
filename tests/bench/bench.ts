@@ -19,7 +19,7 @@ import { hostname } from 'node:os';
 import { dirname } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { DIM, GREEN, RED, RESET, errorMessage, optVal, say } from '../core/framework.js';
-import { readTextFile, writeTextFile } from '../../src/files.js';
+import { readTextFile, writeTextFile } from '../../src/base/files.js';
 import { markdownToHtml } from '../../src/markdown/html.js';
 import { parseInline } from '../../src/markdown/inline.js';
 import { findTables, parseTable, renderTable } from '../../src/markdown/table.js';

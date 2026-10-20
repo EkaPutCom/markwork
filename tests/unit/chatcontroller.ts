@@ -7,7 +7,7 @@ import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import type { ProposalResult } from '../../src/agent/session.js';
 import { chatLogPath } from '../../src/agent/chatstore.js';
 import { section, test, eq, ok, within, tmp, disk } from '../core/framework.js';
-import type { Cancellable } from '../../src/cancel.js';
+import type { Cancellable } from '../../src/base/cancel.js';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
 const answer = (text: string): Provider => ({

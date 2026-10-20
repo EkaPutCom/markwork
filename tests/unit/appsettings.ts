@@ -1,6 +1,6 @@
-// The typed settings (settings.ts AppSettings) on a plain in-memory store: what every frontend's store sits under.
+// The typed settings (base/settings.ts AppSettings) on a plain in-memory store: what every frontend's store sits under.
 
-import { AppSettings } from '../../src/settings.js';
+import { AppSettings } from '../../src/base/settings.js';
 import type { SettingValue, SettingsStore } from '../../src/platform/index.js';
 import { section, test, eq } from '../core/framework.js';
 

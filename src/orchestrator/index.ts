@@ -5,16 +5,16 @@
 // Markwork writes nothing to the project folder; only its own board is written. When the project isolates its cards, each
 // card gets a Git worktree of its own first (agent/worktree.ts) and the harness works there.
 
-import { assignCard, cardMeta, moveCard, setCardBranch, updateCard, type Board, type Card, type Position } from './markdown/kanban.js';
+import { assignCard, cardMeta, moveCard, setCardBranch, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
 import {
     buildPrompt, cardWikiLinks, checkProjectFolder, describeReply, endsWithQuestion, HARNESSES, locateCard, PiReader, resultNote, rpcGetState,
     rpcPrompt, rpcSteer, rpcUiResponse, RunQueue, stageColumn, type HarnessReply, type HarnessSpec, type LinkedNote, type NewRun, type PiSignal, type Run,
-} from './agent/harness.js';
-import { createWorktree, removeWorktree, type Isolation, type Worktree } from './agent/worktree.js';
-import type { GitRunner } from './forge/contribute.js';
-import type { WikiLink } from './markdown/wikilink.js';
-import { platform } from './platform/index.js';
-import { _, fmt } from './i18n.js';
+} from '../agent/harness.js';
+import { createWorktree, removeWorktree, type Isolation, type Worktree } from '../agent/worktree.js';
+import type { GitRunner } from '../forge/contribute.js';
+import type { WikiLink } from '../markdown/wikilink.js';
+import { platform } from '../platform/index.js';
+import { _, fmt } from '../base/i18n.js';
 
 export interface HarnessProcess {
     write(line: string): boolean;   // one JSONL command to stdin; false if stdin is already closed or failed

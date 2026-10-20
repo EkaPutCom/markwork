@@ -7,8 +7,8 @@ import { isRemoteMachine, machineProjectKey } from '../agent/daemon/machines.js'
 import { BRANCH_PREFIX, isAbsoluteDir, listWorktrees, MAX_SLOTS, parseIsolation, removeWorktree, worktreeRoot, writeIsolation, type Isolation } from '../agent/worktree.js';
 import type { GitRunner } from '../forge/contribute.js';
 import { platform } from '../platform/index.js';
-import type { AppSettings } from '../settings.js';
-import { _, fmt } from '../i18n.js';
+import type { AppSettings } from '../base/settings.js';
+import { _, fmt } from '../base/i18n.js';
 import type { Question } from './dialogs.js';
 
 // What the Projects page needs from the harness controller.

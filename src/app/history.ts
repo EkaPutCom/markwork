@@ -1,17 +1,17 @@
 // The git history in the application layer: the History tab (the commits of the active file, the uncommitted files of its
 // repository, the commit form) and the history viewer windows (one commit, or one file's uncommitted changes). The
-// controller runs git (git.ts, through platform()) and the commit message writer (agent/commitmessage.ts); the views of a
+// controller runs git (base/git.ts, through platform()) and the commit message writer (agent/commitmessage.ts); the views of a
 // frontend only draw what they are sent and report what the user did through their on* actions (docs/design/protocol.md
 // 6.5). A path a view sends back is only acted on when it is one the controller showed (4.4).
 
 import { commitContent, commitDiff, commitFile, commitFiles, discardChanges, fileLog, recentSubjects, repoChanges, workingDiff,
-    workingState, type GitFailure, type TextResult, type WorkingState } from '../git.js';
-import { parseDiff, type ChangeKind, type Commit, type DiffLine, type FileChange } from '../gitlog.js';
+    workingState, type GitFailure, type TextResult, type WorkingState } from '../base/git.js';
+import { parseDiff, type ChangeKind, type Commit, type DiffLine, type FileChange } from '../base/gitlog.js';
 import { writeCommitMessage, type CommitSources, type WriteResult } from '../agent/commitmessage.js';
-import { Cancellable } from '../cancel.js';
-import { fileExists, insideName, readTextFile } from '../files.js';
+import { Cancellable } from '../base/cancel.js';
+import { fileExists, insideName, readTextFile } from '../base/files.js';
 import { platform } from '../platform/index.js';
-import { _, fmt } from '../i18n.js';
+import { _, fmt } from '../base/i18n.js';
 import { docFor, type Doc, type DocumentHost, type TextEditor } from './document.js';
 
 // Commits loaded per request; a long history is loaded incrementally.

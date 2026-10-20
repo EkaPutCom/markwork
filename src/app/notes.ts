@@ -2,9 +2,9 @@
 
 import { newNotePath, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
 import { platform } from '../platform/index.js';
-import { insideName } from '../files.js';
-import type { WorkspaceRepository } from '../workspace.js';
-import { _, fmt } from '../i18n.js';
+import { insideName } from '../base/files.js';
+import type { WorkspaceRepository } from '../base/workspace.js';
+import { _, fmt } from '../base/i18n.js';
 import type { Doc, DocumentHost } from './document.js';
 
 export interface NoteHost extends DocumentHost {

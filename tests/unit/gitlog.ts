@@ -1,6 +1,6 @@
 // Tests for the git output parser.
 
-import { parseDiff, parseLog, parseStatus, relativeTime } from '../../src/gitlog.js';
+import { parseDiff, parseLog, parseStatus, relativeTime } from '../../src/base/gitlog.js';
 import { section, test, eq } from '../core/framework.js';
 
 const record = (hash: string, short: string, author: string, time: number, subject: string, ...files: string[]) =>

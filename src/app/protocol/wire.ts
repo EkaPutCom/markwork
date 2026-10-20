@@ -3,7 +3,7 @@
 // `ask.cancel` (section 7) both ways: a request it sent can be withdrawn, and a request it is answering can be withdrawn
 // by the other side, in which case its answer is not sent.
 
-import { Cancellable } from '../../cancel.js';
+import { Cancellable } from '../../base/cancel.js';
 import type { CancelSignal } from '../../platform/index.js';
 import { CANCELLED, RequestError, isReply, isRequest, type Message, type Reply, type Wire } from './messages.js';
 

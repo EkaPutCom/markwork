@@ -1,6 +1,6 @@
 // File operation tests: create files/folders and move.
 
-import { copyEntry, createFile, createFolder, moveEntry, renameEntry } from '../../src/fileops.js';
+import { copyEntry, createFile, createFolder, moveEntry, renameEntry } from '../../src/base/fileops.js';
 import { remapPath } from '../../src/app/documents.js';
 import { section, test, eq, ok, tmp, disk } from '../core/framework.js';
 

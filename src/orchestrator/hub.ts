@@ -2,13 +2,13 @@
 // A connection is made when something first needs it and kept; the window listens to their state to tell the user
 // when a machine cannot be reached.
 
-import type { Link } from './agent/daemon/client.js';
-import { DaemonConnection, type ConnectionState } from './agent/daemon/connection.js';
-import { LOCAL_MACHINE, isValidSshTarget } from './agent/daemon/machines.js';
-import { openCommandLink, openSocketLink, sshBridgeArgv } from './agent/daemon/streamlink.js';
-import { findProgram } from './orchestrator.js';
-import { platform } from './platform/index.js';
-import { _, fmt } from './i18n.js';
+import type { Link } from '../agent/daemon/client.js';
+import { DaemonConnection, type ConnectionState } from '../agent/daemon/connection.js';
+import { LOCAL_MACHINE, isValidSshTarget } from '../agent/daemon/machines.js';
+import { openCommandLink, openSocketLink, sshBridgeArgv } from '../agent/daemon/streamlink.js';
+import { findProgram } from './index.js';
+import { platform } from '../platform/index.js';
+import { _, fmt } from '../base/i18n.js';
 
 export { LOCAL_MACHINE };
 

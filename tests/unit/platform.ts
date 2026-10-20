@@ -2,8 +2,8 @@
 // config folder is touched; the contract of the installed platform (files, idle work, processes), so every
 // implementation is held to the same behaviour; and the runtime-free base64 that builds the git credential header.
 
-import { clearCredential, readCredential, saveCredential, type Credential } from '../../src/credentials.js';
-import { Cancellable } from '../../src/cancel.js';
+import { clearCredential, readCredential, saveCredential, type Credential } from '../../src/base/credentials.js';
+import { Cancellable } from '../../src/base/cancel.js';
 import { base64 } from '../../src/forge/contribute.js';
 import { platform, setPlatform, type Platform } from '../../src/platform/index.js';
 import { section, test, eq, ok, within, tmp } from '../core/framework.js';

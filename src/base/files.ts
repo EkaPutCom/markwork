@@ -2,8 +2,8 @@
 // path, and every change is announced (onDiskChange). Throws on failure; handling is up to the caller. The disk itself
 // is the platform's (platform().fs).
 
-import { platform } from './platform/index.js';
-import { atOrBelow, hasDrive, slashed } from './markdown/paths.js';
+import { platform } from '../platform/index.js';
+import { atOrBelow, hasDrive, slashed } from '../markdown/paths.js';
 
 export function readTextFile(path: string): string {
     return platform().fs.readText(path);

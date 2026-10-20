@@ -2,8 +2,8 @@
 import type { Provider } from '../../src/agent/provider.js';
 import { ChatSession } from '../../src/agent/session.js';
 import { applyBatch } from '../../src/agent/batch.js';
-import { readTextFile, writeTextFile, fileExists } from '../../src/files.js';
-import { WorkspaceRepository } from '../../src/workspace.js';
+import { readTextFile, writeTextFile, fileExists } from '../../src/base/files.js';
+import { WorkspaceRepository } from '../../src/base/workspace.js';
 import { GREEN, RED, RESET } from '../core/framework.js';
 import { disk, say } from '../core/framework.js';
 import { host } from '../core/host.js';

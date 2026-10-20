@@ -9,15 +9,15 @@ import { Connection } from '../../src/app/protocol/wire.js';
 import { unwiredTouched } from '../../src/app/protocol/unwired.js';
 import { Asks } from '../../src/app/protocol/asks.js';
 import { ProtocolHarnessDialogs, ProtocolReviewDialogs } from '../../src/app/protocol/harness.js';
-import type { SpawnHandlers } from '../../src/orchestrator.js';
-import { Cancellable } from '../../src/cancel.js';
+import type { SpawnHandlers } from '../../src/orchestrator/index.js';
+import { Cancellable } from '../../src/base/cancel.js';
 import { RequestError, type Message, type Reply, type Wire } from '../../src/app/protocol/messages.js';
 import { parseBoard } from '../../src/markdown/kanban.js';
 import { localDate } from '../../src/markdown/home.js';
 import { journalName } from '../../src/markdown/journal.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import { memorySettings } from './appsession.js';
-import { runGit } from '../../src/git.js';
+import { runGit } from '../../src/base/git.js';
 import { host } from '../core/host.js';
 import { section, test, eq, ok, tmp, disk, until, pause, within } from '../core/framework.js';
 

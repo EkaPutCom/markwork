@@ -2,7 +2,7 @@
 // (docs/design/protocol.md, sections 5 to 7). This is the slice the first Electron window needs: documents and their
 // tabs, the text/board screen, the board, toasts, and the questions about documents. Everything else is `unwired`.
 
-import type { AppSettings } from '../../settings.js';
+import type { AppSettings } from '../../base/settings.js';
 import type { Board } from '../../markdown/kanban.js';
 import type { NoteEdit } from '../../markdown/noteedit.js';
 import type { CaptureView, CsvPage, KanbanView, LayoutPage, NotesView, SchemaDialogOptions, ViewDialogs, ViewScreen } from '../views.js';

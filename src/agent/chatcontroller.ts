@@ -3,7 +3,7 @@
 // saved conversations, undoing applied changes, and composing the context. The panel (electron/renderer/components/Chat.tsx) draws what it
 // is told through ChatView and passes user actions in; tests drive this class with a fake view and provider.
 
-import { Cancellable } from '../cancel.js';
+import { Cancellable } from '../base/cancel.js';
 import { platform } from '../platform/index.js';
 import { systemKeyStore, type KeyStore } from './apikey.js';
 import { buildContext, DEFAULT_BUDGET, findMentions, type BuiltContext, type ContextOptions, type SourceFile } from './context.js';
@@ -16,7 +16,7 @@ import { invertChange, type Change } from './changes.js';
 import type { GitAnswer, GitRequest } from './gittools.js';
 import type { SavedChat } from './transcript.js';
 import type { WorkState } from './work.js';
-import type { Freshness } from '../workspace.js';
+import type { Freshness } from '../base/workspace.js';
 
 export const FOLDER_CHANGED = 'The work folder changed during the request';
 
