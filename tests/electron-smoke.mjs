@@ -166,7 +166,7 @@ try {
         await editor.locator('.cm-md-dim').first().waitFor({ state: 'detached' });
     });
 
-    await step('Enter and Tab in lists and tables do what the GTK editor does', async () => {
+    await step('Enter and Tab in lists and tables do what the commands say', async () => {
         await page.keyboard.press('ControlOrMeta+n');
         await editor.click();
         const enter = async (from, expected, why) => {
@@ -199,6 +199,14 @@ try {
         await setDoc('plain', 5);
         await page.keyboard.press('Enter');
         assert.equal(await docText(), 'plain\n', 'Enter outside a table is a plain line break');
+        // The Enter that runs a palette command stays in the palette, though the editor has the focus again right after.
+        for (let i = 0; i < 2; i++) {
+            await page.keyboard.press('ControlOrMeta+Shift+P');
+            await page.locator('.palette input').fill('autosave');
+            await page.keyboard.press('Enter');
+            await page.locator('.palette').waitFor({ state: 'detached' });
+        }
+        assert.equal(await docText(), 'plain\n', 'Enter in the palette types nothing into the document');
         // Closing asks only once the core has the change, which the tab shows with its unsaved mark.
         await page.getByRole('tab', { selected: true, name: /•/ }).waitFor();
         await page.keyboard.press('ControlOrMeta+w');

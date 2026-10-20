@@ -37,7 +37,8 @@ export function Palette() {
                         if (e.key === 'Escape') close();
                         else if (e.key === 'ArrowDown') { e.preventDefault(); setIndex(i => Math.min(i + 1, commands.length - 1)); }
                         else if (e.key === 'ArrowUp') { e.preventDefault(); setIndex(i => Math.max(i - 1, 0)); }
-                        else if (e.key === 'Enter' && commands[index]) choose(commands[index].id);
+                        // preventDefault: close() focuses the editor, which would otherwise take this Enter as a new line.
+                        else if (e.key === 'Enter' && commands[index]) { e.preventDefault(); choose(commands[index].id); }
                     }}
                 />
                 <ul role="listbox">
