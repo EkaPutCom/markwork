@@ -1,4 +1,4 @@
-// Agents of the GTK window (tests/gui/: harness, agentshost) run against the Electron window with Playwright: the real main
+// Agents (harness, agentshost) run against the Electron window with Playwright: the real main
 // process, core, and renderer, a real git repository for the project, and a fake agent program (tests/electron-agent.mjs) in
 // place of pi. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 

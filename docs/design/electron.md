@@ -2,6 +2,8 @@
 
 17 Oktober 2026, diperbarui 18 Oktober 2026 · Eka Putra · salinan dari [doc Claude](https://claude.ai/code/artifact/86001ae8-365a-41e1-b0b5-cf4e07c2ef3b)
 
+> **Selesai.** Migrasi ke Electron rampung pada 20 Oktober 2026: Electron adalah satu-satunya frontend dan frontend GTK dihapus (lihat [`hapus-gtk.md`](hapus-gtk.md), tag `v-gtk-final`). Dokumen ini disimpan sebagai catatan rancangan.
+
 ## Ringkasan
 
 Fondasi untuk frontend kedua sudah selesai, tetapi protokol yang dibutuhkan Electron belum ditulis satu baris pun. Core sudah berjalan di Node (706 tes core lulus di Node v24), dan `AppSession` sudah memegang semua keputusan aplikasi. Antarmuka ke frontend juga sudah hanya menerima data biasa.

@@ -28,7 +28,7 @@ export function formatDay(date: string, today = todayString()): string {
     return `${d} ${MONTHS[m - 1]}${today.startsWith(`${y}-`) ? '' : ` ${y}`}`;
 }
 
-// A stable color for a tag, one of eight (the same hash as the GTK board's).
+// A stable color for a tag, one of eight.
 export function tagColor(tag: string): number {
     let hash = 0;
     for (const ch of tag) hash = (hash * 31 + ch.codePointAt(0)!) >>> 0;

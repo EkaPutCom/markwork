@@ -1,4 +1,4 @@
-// The Assistant and the journal of the GTK window (tests/gui/: chat, context, journal) run against the Electron window with
+// The Assistant and the journal (chat, context, journal) run against the Electron window with
 // Playwright: the real main process, core, and renderer, with a scripted model (tests/electron-model.mjs) in place of the
 // network. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 

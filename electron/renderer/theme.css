@@ -1,4 +1,4 @@
-/* The look of the GTK window: Adwaita colors and shapes, Noto Sans for the text, the same layout (header bar, icon rail
+/* The look of the window: Adwaita colors and shapes, Noto Sans for the text, the same layout (header bar, icon rail
    with its panel, tabs, the counts at the foot). The theme follows the `color-scheme` setting. */
 :root {
     color-scheme: light;
@@ -38,7 +38,7 @@ button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2
 kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 .icon-svg { flex: none; }
 
-/* Buttons, as Adwaita draws them */
+/* Buttons */
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; min-width: 34px; padding: 0 10px; border-radius: 8px; background: var(--btn-bg); font-weight: 700; }
 .button:disabled { opacity: .45; cursor: default; }
 .button.flat { background: none; }
@@ -174,7 +174,7 @@ kbd { font: 11px var(--font-text); color: var(--fg-dim); letter-spacing: .3px; }
 .cm-editor .cm-searchMatch.cm-searchMatch-selected { background: #a8ac9455; outline-color: #a8ac94; }
 .cm-editor .cm-selectionMatch { background: #add6ff26; }
 
-/* The dialog: an Adwaita alert dialog. */
+/* The dialog: an alert dialog. */
 .dialog-backdrop { position: fixed; inset: 0; z-index: 40; background: #00000052; display: flex; align-items: center; justify-content: center; }
 .dialog { width: 372px; max-width: calc(100% - 32px); background: var(--popover-bg); border-radius: 14px; box-shadow: 0 4px 24px var(--shadow); padding: 24px 24px 20px; text-align: center; }
 .dialog h2 { margin: 0 0 8px; font-size: 17px; font-weight: 700; color: var(--heading); }

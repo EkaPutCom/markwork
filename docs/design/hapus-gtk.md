@@ -86,11 +86,15 @@ Lulus bila typecheck, tes core di Node, dan tes Electron hijau di tiga OS.
 
 ### PR C — rapikan
 
-- `platform/index.ts` tetap (fake platform di tes memakainya); buang komentar dan cabang khusus GJS.
-- `scripts/layers.mjs`: aturan untuk `ui/`, `editor/`, `window`, `gi://`, dan `platform/gjs/` tidak lagi berlaku; sederhanakan.
-- `tests/host.ts`: antarmuka tes yang dulu melayani GJS dan Node (`settle()` hanya untuk GJS).
-- Jalan pintas di `app/` yang ada demi dua frontend, misalnya `Awaitable` yang bisa sinkron.
-- Tulis ulang README (cara build dan jalankan kini `npm start`), AGENT.md, dan `docs/ONBOARDING.md`; perbarui atau buang `bench/` (catatan performa GTK); arsipkan `docs/audit-gtk4.md` dan `docs/learn-gtk.html`; tandai `electron.md` dan `electron-migrasi.md` selesai.
+- [x] `platform/index.ts` tetap (fake platform di tes memakainya); komentar dan cabang khusus GJS dibuang.
+- [x] `scripts/layers.mjs`: aturan untuk `ui/`, `editor/`, `window`, `gi://`, dan `platform/gjs/` dibuang.
+- [x] `tests/host.ts`: `settle()` dan `gc()` dibuang; `collectBeforeEachTest` di `tests/framework.ts` juga.
+- [ ] Jalan pintas di `app/` yang ada demi dua frontend, misalnya `Awaitable` yang bisa sinkron. Ditunda: ini mengubah perilaku `AppSession` dan `DocumentManager`, jadi dikerjakan di PR sendiri.
+- [x] README, AGENT.md, dan `docs/ONBOARDING.md` ditulis ulang untuk Electron.
+- [x] Tangkapan layar `docs/assets/` dibuat ulang dari Electron (`npm run docs`, `scripts/capture.mjs` dengan model, forge, dan pi palsu di `scripts/capture/`).
+- [x] `bench/`: catatan dan baseline era GTK dibuang (tetap ada di tag `v-gtk-final`); `bench/baseline.json` dibuat ulang dari bench Node.
+- [x] `docs/audit-gtk4.md` dan `docs/learn-gtk.html` dibuang; teks instalasi GTK, WebKitGTK, Flatpak, dan GNOME di situs `docs/docs/` diganti.
+- [x] `electron.md` dan `electron-migrasi.md` ditandai selesai.
 
 ## Risiko
 

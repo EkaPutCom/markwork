@@ -1,7 +1,7 @@
 import { Icon } from './Icons.js';
 import { useClient, useStore } from './useClient.js';
 
-// The tab bar, shown once there is more than one document, with the tabs sharing its width as the GTK ones do.
+// The tab bar, shown once there is more than one document, with the tabs sharing its width.
 export function Tabs() {
     const client = useClient();
     const { tabs, active } = useStore();

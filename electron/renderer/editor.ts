@@ -1,7 +1,7 @@
 // The Markdown editor of the Electron window: CodeMirror 6 with the app's own Markdown parser (markdown/highlight.ts) for
 // styling and for hiding syntax away from the cursor, and the app's editor commands (markdown/editcommands.ts) for
 // bold, links, lists, and tables. Only the drawing is here; what the syntax is and what a command does is shared with the
-// GTK editor. CodeMirror counts UTF-16 units, as the commands do; the protocol's code points are converted at this edge.
+// core. CodeMirror counts UTF-16 units, as the commands do; the protocol's code points are converted at this edge.
 
 import { Annotation, EditorSelection, EditorState, StateEffect, StateField, type Extension, type Text } from '@codemirror/state';
 import { Decoration, EditorView, drawSelection, keymap, type DecorationSet } from '@codemirror/view';

@@ -55,9 +55,9 @@ function createWindow(): void {
     const win = new BrowserWindow({
         width: 1100,
         height: 720,
-        // The sizes are the page's, not the window's with its frame (which Windows counts), as GTK's size request is.
+        // The sizes are the page's, not the window's with its frame (which Windows counts).
         useContentSize: true,
-        minWidth: 360,    // the smallest the GTK window allows; below 600 the side panels float (renderer/client.ts)
+        minWidth: 360,    // a phone's width; below 600 the side panels float (renderer/client.ts)
         minHeight: 294,
         title: 'Markwork',
         backgroundColor: nativeTheme.shouldUseDarkColors ? '#242424' : '#fafafa',

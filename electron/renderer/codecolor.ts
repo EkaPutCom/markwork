@@ -1,5 +1,5 @@
-// The colors inside a fenced code block, by its language (```js, ```python, ...). The GTK editor reads them from
-// GtkSourceView; here the grammars are CodeMirror's (@codemirror/language-data), loaded the first
+// The colors inside a fenced code block, by its language (```js, ```python, ...). The
+// grammars are CodeMirror's (@codemirror/language-data), loaded the first
 // time a block names the language, so the window starts without them. A block of a language that is not known, or not loaded
 // yet, keeps the plain code style.
 

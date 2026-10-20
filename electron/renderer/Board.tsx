@@ -18,7 +18,7 @@ function dropAt(list: HTMLElement, y: number): number {
     return dropIndex(centers, y);
 }
 
-// The badge of an assigned card: what its run is doing, as the GTK board words it.
+// The badge of an assigned card: what its run is doing.
 const RUN_ICON: Record<string, string> = { queued: '◌', working: '●', waiting: '⏸', done: '✓', failed: '✕', stopped: '■' };
 const RUN_LABEL: Record<string, string> = { queued: 'queued', working: 'working', waiting: 'waiting for an answer', done: 'done', failed: 'failed', stopped: 'stopped' };
 

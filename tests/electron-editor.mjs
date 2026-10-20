@@ -1,4 +1,4 @@
-// The editor scenarios of the GTK window (tests/gui/: format, syntax, lists, wikilink, image, imagezoom, codeblock,
+// The editor scenarios (format, syntax, lists, wikilink, image, imagezoom, codeblock,
 // codecolor, conflicts), run against the Electron window with Playwright: the real main process, core, and renderer. The
 // ones whose behaviour lives in the core are also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 

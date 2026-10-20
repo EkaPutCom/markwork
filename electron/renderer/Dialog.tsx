@@ -1,4 +1,4 @@
-// The window's dialog, drawn like an Adwaita alert dialog: a heading, the detail, an entry when the core asks for text,
+// The window's dialog, drawn as an alert dialog: a heading, the detail, an entry when the core asks for text,
 // and a row of buttons. It answers the questions of the core (client.ts): the ones this window knows by name and any
 // `Question` or `Prompt` it has no dialog of its own for.
 

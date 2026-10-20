@@ -285,7 +285,7 @@ export async function daemonLiveTests(): Promise<void> {
 
 // The client through a real `ssh` to a machine that runs markworkd and has a `pi` that speaks pi's RPC mode (the Docker
 // image in markworkd/contrib/docker is one). Off unless MARKWORK_TEST_SSH is set, e.g.
-//   MARKWORK_TEST_SSH="-F /path/ssh_config markwork-vps" gjs -m dist/run-tests.js --only-daemon
+//   MARKWORK_TEST_SSH="-F /path/ssh_config markwork-vps" node dist-node/run-core-node.js --only-daemon
 // The last word is the host, the others are ssh options. The run folder is MARKWORK_TEST_SSH_DIR.
 export async function daemonSshTests(): Promise<void> {
     const spec = platform().env('MARKWORK_TEST_SSH');
