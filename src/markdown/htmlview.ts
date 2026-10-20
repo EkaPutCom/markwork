@@ -39,7 +39,7 @@ export function htmlContentType(name: string): string {
 
 // The address of `file` for the viewer `id` whose folder is `root`; null if the file is not inside that folder.
 export function htmlViewUrl(id: number, root: string, file: string): string | null {
-    const below = relativeParts(root, file);
+    const below = relativeParts(slashed(root), slashed(file));
     return below && `${HTML_SCHEME}://v${id}/${below.map(encodeURIComponent).join('/')}`;
 }
 
@@ -59,6 +59,7 @@ export function parseHtmlUrl(uri: string): { id: number; path: string } | null {
 // target of a symbolic link (null for anything else), so a link inside the folder that points out of it is refused too.
 export function resolveHtmlRequest(root: string, requested: string, readLink: (path: string) => string | null): string | null {
     if (requested.includes('\0') || requested.includes('\\')) return null;
+    root = slashed(root);
     let pending = splitPath(requested);
     let current = root;
     for (let hops = 0; pending.length;) {
@@ -70,7 +71,8 @@ export function resolveHtmlRequest(root: string, requested: string, readLink: (p
             continue;
         }
         const next = `${current === '/' ? '' : current}/${name}`;
-        const target = readLink(next);
+        const link = readLink(next);
+        const target = link === null ? null : slashed(link);
         if (target === null) {
             current = next;
             pending = rest;
@@ -78,7 +80,7 @@ export function resolveHtmlRequest(root: string, requested: string, readLink: (p
         }
         if (++hops > 32) return null;   // a link loop
         // A link restarts the walk at its target, which must itself be inside the folder.
-        const resolved = target.startsWith('/') ? splitPath(target) : [...splitPath(current), ...splitPath(target)];
+        const resolved = target.startsWith('/') || WINDOWS_PATH.test(target) ? splitPath(target) : [...splitPath(current), ...splitPath(target)];
         const inside = relativeParts(root, normalize(resolved));
         if (!inside) return null;
         current = root;
@@ -86,6 +88,11 @@ export function resolveHtmlRequest(root: string, requested: string, readLink: (p
     }
     return current === root ? null : current;   // the folder itself is not a page
 }
+
+// A Windows path (C:\notes\page.html, \\server\share) with / for its separators, which Windows accepts too, so the rest
+// of this module works on one form. Other paths are left alone: on Linux and macOS \ is a letter of a name.
+const WINDOWS_PATH = /^([A-Za-z]:|\\\\)/;
+const slashed = (path: string): string => WINDOWS_PATH.test(path) ? path.replace(/\\/g, '/') : path;
 
 function splitPath(path: string): string[] {
     return path.split('/').filter(part => part !== '' && part !== '.');

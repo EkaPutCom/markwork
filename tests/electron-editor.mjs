@@ -63,8 +63,9 @@ const app = await electron.launch({
     env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), XDG_DATA_HOME: join(scratch, 'data') },   // the Trash of this run only
 });
 let failed = false;
+let page;
 try {
-    const page = await app.firstWindow();
+    page = await app.firstWindow();
     const editor = page.locator('.cm-content');
     const title = page.locator('.headerbar .title');
 
@@ -504,6 +505,10 @@ try {
     });
 } catch {
     failed = true;
+    // What the window showed when a step failed: its tabs (the selected one marked) and the start of the content.
+    const tabs = await page?.getByRole('tab').evaluateAll(els => els.map(e => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)).catch(() => []);
+    console.error(`tabs: ${JSON.stringify(tabs)}`);
+    console.error(String(await page?.locator('main').innerText().catch(() => '(no main)')).slice(0, 600));
 } finally {
     await Promise.race([app.close().catch(() => {}), new Promise(r => setTimeout(r, 5000))]);
     try { app.process().kill(); } catch { /* already gone */ }
