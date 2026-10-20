@@ -1,7 +1,7 @@
-// Interface translations on Node: the same compiled catalogs gettext reads under GJS (<locale>/<lang>/LC_MESSAGES/
+// Interface translations on Node: the compiled gettext catalogs (<locale>/<lang>/LC_MESSAGES/
 // markwork.mo), read by this module, so a core running on Node speaks the user's language too. The language comes from
 // the environment the way gettext picks it (LANGUAGE, then LC_ALL, LC_MESSAGES, LANG); without a catalog for it, the
-// source text is shown, as under GJS.
+// source text is shown.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

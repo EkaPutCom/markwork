@@ -224,8 +224,6 @@ export async function forgeTests(): Promise<void> {
     });
 
     section('Forge: the platform HTTP transport (fake server)');
-    // Earlier unit tests run without a main loop and can leave GC pending; a Soup callback that arrives at that time is blocked by GJS.
-    host().gc();
     const received: { method: string; auth: string | undefined; contentType: string | undefined; body: string }[] = [];
     const server = await host().serve((request, reply) => {
         received.push({ method: request.method, auth: request.headers.authorization, contentType: request.headers['content-type'], body: request.body });

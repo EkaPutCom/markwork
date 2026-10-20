@@ -1,5 +1,5 @@
 // Pictures in the text: ![alt](url) is shown under its line as a block widget, so the text stays what the user wrote
-// (like the GTK editor, editor/images.ts). Where a picture comes from is decided by markdown/imagesource.ts; the page
+//. Where a picture comes from is decided by markdown/imagesource.ts; the page
 // loads a file through the app:// scheme the main process serves (main.ts).
 
 import { WidgetType } from '@codemirror/view';

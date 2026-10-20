@@ -1,4 +1,4 @@
-// The questions of the agents (app/harness.ts HarnessDialogs, ui/harnessdialogs.ts): what a harness waits for, a line of steering
+// The questions of the agents (app/harness.ts HarnessDialogs): what a harness waits for, a line of steering
 // or a reply, a machine to add, and the form that sends a worktree's branch as a pull request. The core asks and reads the
 // answer again against what it offered; this draws the question and reports what the user chose.
 

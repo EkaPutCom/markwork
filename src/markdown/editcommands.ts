@@ -1,8 +1,8 @@
 // The editor commands as text → edit: bold and the other markers, links, blocks, line prefixes, headings, Enter and Tab in
 // lists and quotes, and the table commands. Each takes the text and the selection and returns the changes to make and the
-// selection after them; an editor (GtkTextBuffer, CodeMirror) only reads its text and applies the result, so every
+// selection after them; an editor (CodeMirror) only reads its text and applies the result, so every
 // frontend edits the same way. Offsets are UTF-16 units of the given text, the unit of JavaScript strings; an editor that
-// counts otherwise (GTK counts code points) converts at its edge.
+// counts otherwise converts at its edge.
 
 import { RE } from './syntax.js';
 import {
@@ -51,7 +51,7 @@ export function applyChanges(text: string, changes: readonly TextChange[]): stri
 }
 
 // Where a position of the text before the changes ends up after them. A position inside a replaced range, or at an
-// insertion, moves to the end of the inserted text: the way a GtkTextBuffer moves its cursor.
+// insertion, moves to the end of the inserted text, the way a text editor moves its cursor.
 export function mapPosition(pos: number, changes: readonly TextChange[]): number {
     let shift = 0;
     for (const c of changes) {
@@ -108,7 +108,7 @@ function lineNumberAt(text: string, pos: number): number {
 
 // Wrap the selection with a marker, e.g. ** for bold. If the selection is already wrapped, the marker is removed.
 // Without a selection: insert a pair of markers and put the cursor in between. The selected text stays selected, with
-// the cursor at its start; the selection is never empty in between (see editor/editing.ts on why that matters on X11).
+// the cursor at its start; the selection is never empty in between (on X11 an empty one would clear the primary selection).
 export function wrap(state: TextState, left: string, right = left): TextEdit {
     const from = Math.min(state.anchor, state.head), to = Math.max(state.anchor, state.head);
     if (from === to) return { changes: [{ from, to, insert: left + right }], selection: cursorAt(from + left.length) };

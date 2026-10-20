@@ -44,12 +44,10 @@ const nodeHost: TestHost = {
     makeTempDir: () => realpathSync.native(mkdtempSync(join(tmpdir(), 'markwork-test-'))),
     setenv: (name, value) => { if (value === null) delete process.env[name]; else process.env[name] = value; },
     pathOfUrl: url => fileURLToPath(url),
-    gc: () => { (globalThis as { gc?: () => void }).gc?.(); },
     symlink: (target, path) => symlinkSync(target, path),
     modified: path => Number(statSync(path, { bigint: true }).mtimeNs / 1000n),
     setModified: (path, us) => utimesSync(path, statSync(path).atime, us / 1e6),   // seconds as a number keep the microseconds
     serve,
-    settle: () => { throw new Error('settle() needs a nested main loop, which Node does not have; await the Promise instead'); },
     exit: code => process.exit(code),
 };
 

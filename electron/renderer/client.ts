@@ -165,7 +165,7 @@ const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 export const isAvailable = (command: Command): boolean =>
     command.runs === 'core' ? CORE_COMMANDS.has(command.id) : !EDITOR_COMMANDS_UNAVAILABLE.has(command.id);
 
-// The adaptive layout of the GTK window (window.ts addBreakpoints): below NARROW the Assistant panel no longer takes editor
+// The adaptive layout (the GTK window's breakpoints, carried over): below NARROW the Assistant panel no longer takes editor
 // width but floats over it, below PHONE the side panel does too and the header bar shows icons only. A floating panel is
 // opened on demand and closes when the content is clicked; the settings keep what the wide layout shows, so a panel closed
 // on purpose stays closed when the window widens again.

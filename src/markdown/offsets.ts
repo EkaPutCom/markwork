@@ -1,6 +1,6 @@
-// GtkTextIter counts positions per Unicode character (code point), while
+// The app protocol counts positions per Unicode character (code point, docs/design/protocol.md), while
 // JavaScript strings count per UTF-16 unit. An emoji such as 🎉 = 1 character
-// in GTK but 2 units in JavaScript, so positions need to be converted.
+// in a code point count but 2 units in JavaScript, so positions need to be converted.
 
 // Returns a function: UTF-16 offset → code point offset.
 export function makeCpMap(text: string): (offset: number) => number {
@@ -33,7 +33,7 @@ export function makeU16Map(text: string): (offset: number) => number {
 // Code point offset → UTF-16 offset inside string s.
 export const cpToU16 = (s: string, cp: number): number => Array.from(s).slice(0, cp).join('').length;
 
-// String length in code points (the unit used by GtkTextBuffer).
+// String length in code points (the unit of the app protocol).
 export function cpLength(s: string): number {
     if (!/[\uD800-\uDFFF]/.test(s)) return s.length;
     let count = 0;

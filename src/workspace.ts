@@ -2,7 +2,7 @@
 // [[note]] suggestions and links, and harness prompts.
 //
 // - A snapshot per folder holds the list of Markdown files with their size and modification time. Every folder in
-//   it is watched (platform().fs.watchDir; a Gio.FileMonitor under GJS), so the folder is only walked again after
+//   it is watched (platform().fs.watchDir), so the folder is only walked again after
 //   something changed. Changes the app makes itself arrive at once through files.ts (onDiskChange), before the
 //   monitor reports them. A folder
 //   that cannot be fully watched (too many folders, or a file system without monitors) is walked on every request,

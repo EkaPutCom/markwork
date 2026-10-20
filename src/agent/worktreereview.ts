@@ -1,4 +1,4 @@
-// Reviewing what a harness did in a card's worktree, and merging it into the base branch (pure, no GTK; git is a
+// Reviewing what a harness did in a card's worktree, and merging it into the base branch (pure; git is a
 // parameter, as in worktree.ts). The review reads the branch and what was left uncommitted against the commit it
 // started from; nothing here trusts the harness's own account of what it changed.
 //

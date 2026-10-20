@@ -13,7 +13,6 @@ import type { ChatRequest, ChatResult, Provider, ToolCall } from '../../src/agen
 import { localLinks, newIssues, resolveLink, structureIssues } from '../../src/markdown/lint.js';
 import { agentGit, gitLimits, runGit } from '../../src/git.js';
 import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
-import { host } from '../host.js';
 
 const NOTES = '---\ntitle: meeting\n---\n# Meeting\n\nRelease November 15.\nNote: November 15 final.\n';
 const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n## Done\n\n- [x] Book venue\n';
@@ -239,10 +238,6 @@ export async function agentActionTests(): Promise<void> {
     });
 
     section('Agent: Git history tools');
-    // Earlier unit tests run without a main loop and can leave GC pending; git's async callback (and the runGit watchdog,
-    // which is a JS callback too) arriving at that time is blocked by GJS ("callback during garbage collection"), and the
-    // run never settles. In the app the main loop always runs. Same as the forge and DeepSeek tests.
-    host().gc();
 
     await test('parseGitCall validates the commit and file; formatGit tidies the log, diff, and file contents', async () => {
         eq(parseGitCall('git_log', '{}'), { kind: 'log', file: null, limit: 15 });
@@ -298,7 +293,6 @@ export async function agentActionTests(): Promise<void> {
         contains(old.content, '1│ Release November 15');
     });
 
-    // A result lost by the runtime is GJS's own failure; its test is in gjsport.ts.
     await test('runGit: a git that hangs ends as a failure instead of waiting forever', async () => {
         const limits = { ...gitLimits };
         try {

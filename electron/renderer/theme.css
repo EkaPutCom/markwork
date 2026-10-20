@@ -477,7 +477,7 @@ input.error { outline: 1px solid var(--destructive, #c01c28); }
 .find-bar .row { display: flex; align-items: center; gap: 4px; } .find-bar input { flex: 1; background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg); border: 0; border-radius: 6px; padding: 5px 8px; font: inherit; }
 .find-bar .count { min-width: 70px; font-size: 12px; color: var(--fg-dim); } .find-bar .count.error { color: var(--destructive, #c01c28); }
 
-/* The Assistant panel (ui/chat.ts): on the right of the editor, with its review and log dialogs */
+/* The Assistant panel: on the right of the editor, with its review and log dialogs */
 .side-meta { font-size: 12px; color: var(--fg-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-error { font-size: 13px; color: var(--destructive, #c01c28); white-space: pre-wrap; overflow-wrap: anywhere; }
 .spinner { width: 12px; height: 12px; flex: none; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--fg) 25%, transparent); border-top-color: var(--accent-bg); animation: spin .8s linear infinite; display: inline-block; }

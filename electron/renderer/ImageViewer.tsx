@@ -1,4 +1,4 @@
-// A picture shown large over the window (the GTK image viewer, ui/imageviewer.ts). A small picture opens at 100%, a large one
+// A picture shown large over the window. A small picture opens at 100%, a large one
 // fitted to the window. Keys: + and − zoom by 1.25 (5% to 800%), 0 is 100%, F fits, Escape closes. The wheel zooms at the
 // pointer, dragging moves the picture, a double click alternates between fit and 100%, a click outside the picture closes.
 

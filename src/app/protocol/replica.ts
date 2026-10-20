@@ -57,7 +57,7 @@ export class ProtocolEditor implements TextEditor {
     // The headings of the text changed (the Outline panel lists them).
     onHeadings: () => void = () => {};
 
-    // The text changed (typing arrived, or a write of the core landed): the session reacts as it does to a GTK buffer's `changed`.
+    // The text changed (typing arrived, or a write of the core landed): the session reacts as it does to an editor's change.
     onEdited: () => void = () => {};
     // A write could not be made: the text changed under it too often, or the frontend refused it.
     onFailed: (message: string) => void = () => {};

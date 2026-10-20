@@ -1,4 +1,4 @@
-// Composes the manuscript context for the model. Pure TypeScript without GTK.
+// Composes the manuscript context for the model. Pure TypeScript.
 //
 // The model only knows what we send, so the quality of its answers is decided here. The context is split in two:
 //

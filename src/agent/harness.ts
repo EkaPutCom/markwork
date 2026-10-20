@@ -1,4 +1,4 @@
-// External harness orchestration (pure, no GTK): kanban cards assigned to a harness (e.g. "@pi")
+// External harness orchestration (pure): kanban cards assigned to a harness (e.g. "@pi")
 // are worked on by another agent program in a separate project folder, not in the Markwork work folder. This module
 // only composes commands and prompts, reads its JSON output stream (including permission/input requests),
 // and manages the queue; running the process and writing the board is in orchestrator.ts.

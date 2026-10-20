@@ -1,5 +1,5 @@
 // Data for the Home page: due dates from kanban boards, unprocessed inbox items, recent files,
-// and a time-based greeting. Pure TypeScript without GTK; the window reads files and settings.
+// and a time-based greeting. Pure TypeScript; the window reads files and settings.
 // The source of truth remains the Markdown files, so there is no index or database that can go stale:
 // everything is recomputed every time Home is shown.
 

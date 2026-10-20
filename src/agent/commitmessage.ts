@@ -1,6 +1,6 @@
 // Writes a commit message for the checked files with the model. It only reads: the files' diffs against the
 // last commit and the repository's recent commit subjects. The message lands in the commit box, where the
-// user reviews it; nothing is committed here. Without GTK; git and the key come in through CommitSources.
+// user reviews it; nothing is committed here. Git and the key come in through CommitSources.
 
 import type { Cancellable } from '../cancel.js';
 import type { KeyStore } from './apikey.js';

@@ -1,5 +1,5 @@
 // Shared types of the forge layer: a Git hosting service (Forgejo/Gitea first) seen through the few things Markwork needs
-// for collaboration. No GTK here; the widgets and the window only know these types, never the REST details.
+// for collaboration. The views only know these types, never the REST details.
 
 // Where the repository of the open folder lives, taken from its git remote.
 export interface RepoRef {

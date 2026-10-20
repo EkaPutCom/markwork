@@ -1,15 +1,15 @@
 import { platform } from '../platform/index.js';
 
 // The open documents as the application layer sees them: an id, a file, and a text editor it can read and change,
-// never a widget. Every frontend gives its editor this shape (MarkdownView under GTK), and each feature controller in
+// never a widget. Every frontend gives its editor this shape, and each feature controller in
 // app/ gets a narrow host that hands out these records.
 
 // How the editor shows the text: source = raw Markdown, focus = dim all but the current paragraph, typewriter = keep
 // the cursor line in the middle.
 export type EditorMode = 'source' | 'focus' | 'typewriter';
 
-// What app/ may do with a document's text. The frontend's editor keeps the text (a GtkSourceBuffer under GTK, for
-// speed); the controllers only go through these calls.
+// What app/ may do with a document's text. The frontend's editor keeps the text; the controllers only go
+// through these calls.
 export interface TextEditor {
     getText(): string;
     setText(text: string): void;                 // the whole contents, outside the undo history (opening a file)

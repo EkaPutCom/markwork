@@ -2,7 +2,7 @@
 // checked against the keys of data/com.ekaput.Markwork.gschema.xml (platform/node/settings.ts).
 //
 // Other code writes `settings.autosave = true`; every write is saved immediately, there is no save(). Code that reacts to a
-// change listens with onChanged(); the GTK preferences and actions also bind widgets straight to GSettings (gsettingsOf).
+// change listens with onChanged().
 
 import type { RecentFile } from './markdown/home.js';
 import type { SettingValue, SettingsStore } from './platform/index.js';

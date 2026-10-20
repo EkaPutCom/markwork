@@ -1,5 +1,4 @@
-// Parses git output (history and diffs) into data. Pure, no GTK and no
-// calls to git, so it is easy to test; the caller is in git.ts.
+// Parses git output (history and diffs) into data. Pure, no calls to git, so it is easy to test; the caller is in git.ts.
 
 export interface Commit {
     hash: string;
@@ -74,7 +73,7 @@ function unquote(path: string): string {
     return path.slice(1, -1).replace(/\\([tn"\\])/g, (_m, c: string) => ({ t: '\t', n: '\n' })[c] ?? c);
 }
 
-// Output of `git status --porcelain=v1` (without -z: GJS reads output as a UTF-8 string truncated at NUL):
+// Output of `git status --porcelain=v1` (without -z: process output is read as a UTF-8 string):
 // "XY path", and for rename/copy "XY old -> new".
 export function parseStatus(output: string): FileChange[] {
     const changes: FileChange[] = [];

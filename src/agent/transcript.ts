@@ -1,4 +1,4 @@
-// A conversation with the assistant as a plain Markdown file (pure, no GTK), so the history can be
+// A conversation with the assistant as a plain Markdown file (pure), so the history can be
 // opened in the editor, searched, and diffed like a manuscript:
 //
 //   ---

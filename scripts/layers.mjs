@@ -10,49 +10,34 @@ import { parseAst } from 'rolldown/parseAst';   // the oxc parser that Vite 8 al
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'src');
 
-const GTK = /^gi:\/\/(Gtk|Gdk|GdkPixbuf|GdkX11|Gsk|Adw|GtkSource|WebKit|Pango|Graphene)(\?|$)/;
-const BASE = ['settings.ts', 'welcome.ts', 'files.ts', 'fileops.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'config.ts', 'colors.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'awaitable.ts', 'activity.ts'];
+const BASE = ['settings.ts', 'welcome.ts', 'files.ts', 'fileops.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'awaitable.ts', 'activity.ts'];
 
-// The core: everything below the interface. It reaches the runtime only through platform/index.ts, never through gi:// and
-// never through platform/gjs/, so it can run on another runtime. GI_ALLOWED listed the core modules that still imported
-// gi:// while they were moved behind the port; it is empty now that every one is. An entry may not be added back, and one
-// has to go once its module is clean.
+// The core: everything below the application layer. It reaches the runtime only through platform/index.ts, so it runs on
+// Node (platform/node/) and on a fake platform in the tests.
 const isCore = f => /^(markdown|agent|forge)\//.test(f) || BASE.includes(f)
     || ['orchestrator.ts', 'orchestratordaemon.ts', 'daemonhub.ts', 'platform/index.ts'].includes(f);
-const GI_ALLOWED = new Set([]);
 
-// [files the rule applies to, what they may not import, why]. Targets are src-relative paths of
-// local modules or gi:// specifiers.
+// [files the rule applies to, what they may not import, why]. Targets are src-relative paths of local modules, or
+// `node:` specifiers.
 const rules = [
-    [f => f.startsWith('markdown/'), t => t.startsWith('gi://') || !t.startsWith('markdown/'), 'markdown/ only holds string → data functions: no GI, nothing outside markdown/'],
-    [f => f.startsWith('agent/'), t => GTK.test(t) || /^(ui|editor|window)\//.test(t) || t === 'window.ts', 'agent/ is free of GTK and knows nothing about the editor, widgets, or the window'],
-    [f => f.startsWith('forge/'), t => GTK.test(t) || /^(ui|editor|window|agent)\//.test(t) || t === 'window.ts', 'forge/ talks to Git hosting services: free of GTK and knows nothing about widgets, the editor, the window, or the agent'],
-    [f => f.startsWith('editor/'), t => /^(ui|window|agent)\//.test(t) || t === 'window.ts', 'editor/ knows nothing about files, menus, the sidebar, or the agent'],
-    [f => f.startsWith('ui/') || f.startsWith('window/') || f === 'actions.ts', t => t === 'window.ts', 'only app.ts composes MainWindow; components and controllers get a host interface'],
-    [f => BASE.includes(f), t => /^(ui|editor|agent|window)\//.test(t) || t === 'window.ts', 'base modules do not reach up into the layers above them'],
-    [f => f === 'orchestrator.ts' || f === 'orchestratordaemon.ts' || f === 'daemonhub.ts', t => GTK.test(t) || /^(ui|editor|window)\//.test(t) || t === 'window.ts', 'the orchestrator runs harness processes for window/harness.ts; it uses agent/, markdown/, and base modules, never GTK, widgets, or the window'],
-    [f => isCore(f) && !GI_ALLOWED.has(f), t => t.startsWith('gi://'), 'the core reaches the runtime through platform() (platform/index.ts), not gi://'],
-    [isCore, t => t.startsWith('platform/gjs/'), 'the core uses the platform port, never its GJS implementation; entry points install it'],
-    [isCore, t => t.startsWith('gjs:'), 'the core does not use GJS built-in modules; what it needs is in the platform port'],
+    [f => f.startsWith('markdown/'), t => !t.startsWith('markdown/'), 'markdown/ only holds string → data functions: nothing outside markdown/'],
+    [f => f.startsWith('forge/'), t => t.startsWith('agent/'), 'forge/ talks to Git hosting services and knows nothing about the agent'],
+    [f => BASE.includes(f), t => t.startsWith('agent/'), 'base modules do not reach up into the agent'],
     [isCore, t => t.startsWith('app/'), 'the core does not know the application layer above it'],
-    [f => f.startsWith('app/'), t => t.startsWith('gi://') || t.startsWith('gjs:') || t.startsWith('platform/gjs/') || !(isCore(t) || t.startsWith('app/')),
-        'app/ is the application layer every frontend shares: it imports only the core and app/, never GI, widgets, or the window'],
-    [isCore, t => !t.startsWith('gi://') && !t.startsWith('gjs:') && !isCore(t), 'the core imports only the core, so it is free of GI all the way down, not only in its own imports'],
+    [f => f.startsWith('app/'), t => !(isCore(t) || t.startsWith('app/')), 'app/ is the application layer the frontend talks to: it imports only the core and app/'],
+    [isCore, t => !isCore(t), 'the core imports only the core'],
     [f => f === 'platform/index.ts', () => true, 'platform/index.ts is the contract and imports nothing'],
-    [f => f === 'platform/terminals.ts', t => t !== 'platform/index.ts', 'platform/terminals.ts is shared by both ports and imports only the contract'],
-    [f => f.startsWith('platform/gjs/'), t => /^(ui|editor|window|agent|forge|markdown)\//.test(t) || t === 'window.ts', 'platform/gjs/ implements the port with GI and base modules; it knows nothing about the layers that use it'],
-    [f => f.startsWith('platform/node/'), t => t.startsWith('gi://') || t.startsWith('gjs:') || !(t.startsWith('node:') || t.startsWith('platform/node/') || t === 'platform/index.ts' || t === 'platform/terminals.ts'),
-        'platform/node/ implements the port with Node built-ins only: the contract, the shared terminal list, and its own files, nothing above it'],
+    [f => f === 'platform/terminals.ts', t => t !== 'platform/index.ts', 'platform/terminals.ts imports only the contract'],
+    [f => f.startsWith('platform/node/'), t => !(t.startsWith('node:') || t.startsWith('platform/node/') || t === 'platform/index.ts' || t === 'platform/terminals.ts'),
+        'platform/node/ implements the port with Node built-ins only: the contract, the terminal list, and its own files, nothing above it'],
     [f => !f.startsWith('platform/node/'), t => t.startsWith('node:') || t.startsWith('platform/node/'), 'only platform/node/ uses Node built-ins; the rest reaches them through platform(), and only an entry point installs it'],
     [() => true, t => t.startsWith('../'), 'src/ is the shared code: electron/ uses it, never the other way round'],
 ];
 
-const GJS_BUILTINS = new Set(['system', 'gettext', 'cairo', 'console', 'byteArray', 'mainloop']);
 const files = readdirSync(src, { recursive: true }).filter(f => f.endsWith('.ts') && !f.endsWith('.d.ts')).map(f => f.split('\\').join('/'));
 const IMPORT = /(?:^|\n)\s*(?:import|export)(\s+type\b)?[^'"]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
 
 const errors = [];
-const giImporters = new Set();
 const valueImports = new Map();   // src-relative module → the local modules it imports for their values (not `import type`)
 for (const file of files) {
     const text = readFileSync(join(src, file), 'utf8');
@@ -61,12 +46,9 @@ for (const file of files) {
         let target = spec;
         if (spec.startsWith('.')) {
             target = relative(src, normalize(join(src, dirname(file), spec.split('?')[0]))).split('\\').join('/').replace(/\.js$/, '.ts');
-        } else if (GJS_BUILTINS.has(spec)) {
-            target = `gjs:${spec}`;   // a GJS built-in module (system, gettext, cairo)
         } else if (spec.startsWith('node:')) {
             target = spec;   // a Node built-in module
-        } else if (!spec.startsWith('gi://')) continue;   // npm packages
-        if (target.startsWith('gi://')) giImporters.add(file);
+        } else continue;   // npm packages
         if (!m[1] && spec.startsWith('.')) valueImports.set(file, [...valueImports.get(file) ?? [], target]);
         for (const [applies, forbidden, why] of rules) {
             if (applies(file) && forbidden(target)) errors.push(`src/${file}: imports ${spec} (${why})`);
@@ -77,7 +59,7 @@ for (const file of files) {
 // ---------- System specifics stay in the port ----------
 //
 // What differs between Linux, macOS, and Windows (the system's name, the GNOME terminals, the keyring program) is written
-// once in platform/ (platform/node/dirs.ts, platform/terminals.ts, the GJS and Node ports), where tests/unit/crossos.ts
+// once in platform/ (platform/node/dirs.ts, platform/terminals.ts, the Node port), where tests/unit/crossos.ts
 // runs it for all three systems. The core and app/ ask the port; they never test `process.platform` or name such a program.
 const SYSTEM_SPECIFIC = /process\.platform|\b(kgx|ptyxis|gnome-terminal|xdg-terminal-exec|secret-tool|osascript)\b/;
 for (const file of files.filter(f => (isCore(f) || f.startsWith('app/')) && !f.startsWith('platform/'))) {
@@ -85,15 +67,10 @@ for (const file of files.filter(f => (isCore(f) || f.startsWith('app/')) && !f.s
     if (hit) errors.push(`src/${file}: mentions "${hit[0]}" (what differs per system belongs in platform/, behind platform(); see "The foundation for other frontends" in AGENT.md)`);
 }
 
-// ---------- Views do not act ----------
+// ---------- What reaches the runtime ----------
 //
-// A component in ui/ draws and reports; the work it starts goes through app/ (or the window), so the same work can later
-// be asked for by a frontend in another process (docs/design/protocol.md, section 13). A core module "acts" when it
-// reaches the runtime: it imports platform/index.ts, directly or through other modules (i18n.ts does not count, it only
-// translates text). ui/ may import such a module for its types (`import type`), and pure core modules freely.
-// UI_ACTS_ALLOWED listed the imports that still did it while they were moved (the Assistant, History, and the file tree);
-// it is empty now and may not grow.
-const UI_ACTS_ALLOWED = new Set([]);
+// A module "acts" when it reaches the runtime: it imports platform/index.ts, directly or through other modules (i18n.ts
+// does not count, it only translates text). The renderer may import such a module only for its types (below).
 const acting = new Map();
 const acts = file => {
     if (!acting.has(file)) {
@@ -102,25 +79,13 @@ const acts = file => {
     }
     return acting.get(file);
 };
-const uiActs = new Set();
-for (const file of files.filter(f => f.startsWith('ui/'))) {
-    for (const target of valueImports.get(file) ?? []) {
-        if (!(isCore(target) || target === 'fileops.ts') || target === 'i18n.ts' || !acts(target)) continue;
-        const pair = `${file} -> ${target}`;
-        uiActs.add(pair);
-        if (!UI_ACTS_ALLOWED.has(pair)) errors.push(`src/${file}: imports ${target}, which reaches the runtime (a view draws and reports; the work goes through app/, see docs/design/protocol.md section 13; import its types with \`import type\`)`);
-    }
-}
-for (const pair of UI_ACTS_ALLOWED) {
-    if (!uiActs.has(pair)) errors.push(`scripts/layers.mjs: ${pair} is no longer an import that acts; remove it from UI_ACTS_ALLOWED`);
-}
 
 // ---------- The Electron renderer is a view ----------
 //
 // electron/renderer/ draws in a browser page and talks to the core in the main process over the protocol. From src/ it
 // takes only what runs anywhere: the pure Markdown modules, the protocol's messages, wire, document mirror, and change
-// math, the command list, the git log parser, and the agent log's pure modules (the log is kept and drawn here), the rules for a machine's name and target (the Add Machine form checks them before asking); dialogs, the history and collaboration views and the forge's types, the screen, the search and tree views, and the platform contract only for their types. Never node:, gi://,
-// or a port, and nothing that reaches the runtime for its values (see "Views do not act" above).
+// math, the command list, the git log parser, and the agent log's pure modules (the log is kept and drawn here), the rules for a machine's name and target (the Add Machine form checks them before asking); dialogs, the history and collaboration views and the forge's types, the screen, the search and tree views, and the platform contract only for their types. Never node:,
+// or a port, and nothing that reaches the runtime for its values (see "What reaches the runtime" above).
 const renderer = join(root, 'electron', 'renderer');
 const RENDERER_VALUES = t => t.startsWith('markdown/')
     || ['app/protocol/messages.ts', 'app/protocol/wire.ts', 'app/protocol/mirror.ts', 'app/protocol/changes.ts', 'app/commands.ts', 'gitlog.ts',
@@ -132,8 +97,8 @@ for (const file of rendererFiles) {
     for (const m of text.matchAll(IMPORT)) {
         const spec = m[2] ?? m[3] ?? m[4];
         const where = `electron/renderer/${file}: imports ${spec}`;
-        if (spec.startsWith('node:') || spec.startsWith('gi://') || GJS_BUILTINS.has(spec)) {
-            errors.push(`${where} (the renderer is a browser page: no Node, GI, or GJS built-ins)`);
+        if (spec.startsWith('node:')) {
+            errors.push(`${where} (the renderer is a browser page: no Node built-ins)`);
             continue;
         }
         if (!spec.startsWith('.')) continue;   // npm packages
@@ -147,11 +112,6 @@ for (const file of rendererFiles) {
             errors.push(`${where} (it reaches the runtime; the renderer gets that work from the main process over the protocol)`);
         }
     }
-}
-
-for (const file of GI_ALLOWED) {
-    if (!files.includes(file)) errors.push(`scripts/layers.mjs: GI_ALLOWED lists ${file}, which no longer exists; remove the entry`);
-    else if (!giImporters.has(file)) errors.push(`scripts/layers.mjs: src/${file} no longer imports gi://; remove it from GI_ALLOWED`);
 }
 
 // ---------- Cyclomatic complexity ----------
@@ -245,4 +205,4 @@ if (errors.length) {
     console.error(`Layer and complexity violations:\n  ${errors.join('\n  ')}`);
     process.exit(1);
 }
-console.log(`Layer rules: ${files.length} modules and ${rendererFiles.length} renderer files checked, ${GI_ALLOWED.size} core modules still on gi://, ${UI_ACTS_ALLOWED.size} views still acting; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`);
+console.log(`Layer rules: ${files.length} modules and ${rendererFiles.length} renderer files checked; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`);

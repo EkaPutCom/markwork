@@ -1,5 +1,5 @@
-// Git conflict markers in a text: where each conflict is, and what a choice turns it into. Pure functions over lines, no GTK,
-// so they run in unit tests; editor/conflictlayer.ts draws the result and applies the choice to the buffer.
+// Git conflict markers in a text: where each conflict is, and what a choice turns it into. Pure functions over lines,
+// so they run in unit tests; electron/renderer/conflicts.ts draws the result and applies the choice.
 //
 //   <<<<<<< HEAD            start   (current: what is in the folder)
 //   our lines

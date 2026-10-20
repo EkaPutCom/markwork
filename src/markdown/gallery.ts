@@ -10,7 +10,7 @@
 //   ---
 //
 // The cover of a note is its `cover` field, else the first image in the note (`![](images/a.png)`), else a color taken
-// from its first tag. Pure TypeScript without GTK.
+// from its first tag. Pure TypeScript.
 
 import type { FieldDef } from './fields.js';
 import { readItem } from './fields.js';

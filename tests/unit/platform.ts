@@ -1,5 +1,5 @@
 // The platform port: the credential order (environment, keyring, file) against a fake platform, so no keyring or real
-// config folder is touched; the contract of the installed platform (GJS or Node: files, idle work, processes), so every
+// config folder is touched; the contract of the installed platform (files, idle work, processes), so every
 // implementation is held to the same behaviour; and the runtime-free base64 that builds the git credential header.
 
 import { clearCredential, readCredential, saveCredential, type Credential } from '../../src/credentials.js';

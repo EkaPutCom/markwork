@@ -1,5 +1,5 @@
-// The Outline tab and the [[ suggestions without GTK: OutlineController (app/outline.ts) and NoteLinks.namesFor
-// (app/notes.ts) in an AppSession, with views that record what they are sent. Runs on GJS and on Node.
+// The Outline tab and the [[ suggestions: OutlineController (app/outline.ts) and NoteLinks.namesFor
+// (app/notes.ts) in an AppSession, with views that record what they are sent.
 
 import { AppSession } from '../../src/app/session.js';
 import type { OutlineHeading, OutlineView } from '../../src/app/outline.js';
@@ -9,7 +9,7 @@ import { fakeFrontend, FakeEditor, memorySettings, quiet } from './appsession.js
 const H = (level: number, text: string, line: number): OutlineHeading => ({ level, text, line });
 
 export async function outlineTests(): Promise<void> {
-    section('Outline and note suggestions in the application session (no GTK)');
+    section('Outline and note suggestions in the application session');
     const setup = () => {
         const shown: (readonly OutlineHeading[])[] = [];
         const view = quiet<OutlineView>({ showHeadings: headings => { shown.push(headings); } });

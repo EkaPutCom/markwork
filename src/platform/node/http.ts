@@ -4,7 +4,7 @@ import type { HttpRequest, HttpStream, StreamTransport, Transport } from '../ind
 
 const TIMEOUT_SECONDS = 30;
 
-// A body without a Content-Type is sent as JSON, like the GJS port.
+// A body without a Content-Type is sent as JSON.
 function init(request: HttpRequest, signal: AbortSignal): RequestInit {
     const headers = { ...request.headers };
     if (request.body !== undefined && !Object.keys(headers).some(name => name.toLowerCase() === 'content-type')) headers['Content-Type'] = 'application/json';

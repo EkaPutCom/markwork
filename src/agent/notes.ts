@@ -1,6 +1,6 @@
 // What the agent knows about the notes of a structured document (one with a `layout:` in its frontmatter: a board, list,
 // table, calendar, timeline, gallery, or chart): its schema, its notes, and checks of both. Everything here is read-only
-// and pure TypeScript without GTK; edit_note and edit_schema (notechanges.ts) and the read tools describe_schema and
+// and pure TypeScript; edit_note and edit_schema (notechanges.ts) and the read tools describe_schema and
 // query_notes (schematools.ts) are built on it.
 
 import type { Issue } from '../markdown/lint.js';

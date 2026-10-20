@@ -1,4 +1,4 @@
-// Agent activity log (pure, no GTK): the sequence of events of one conversation, from model rounds, reasoning,
+// Agent activity log (pure): the sequence of events of one conversation, from model rounds, reasoning,
 // tool calls with their arguments and results, to change proposals. Only for the user to view;
 // never sent to the model and not part of the conversation file.
 

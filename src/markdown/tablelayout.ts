@@ -7,7 +7,7 @@
 //   sort: -due                       ← optional; a field or `title`, a minus for descending
 //   ---
 //
-// Pure TypeScript without GTK.
+// Pure TypeScript.
 
 import type { DateValue, FieldDef, ProgressValue } from './fields.js';
 import { readItem } from './fields.js';

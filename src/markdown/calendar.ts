@@ -8,7 +8,7 @@
 //     due: date
 //   ---
 //
-// Pure TypeScript without GTK.
+// Pure TypeScript.
 
 import type { DateValue, FieldDef } from './fields.js';
 import { readItem, writeField } from './fields.js';

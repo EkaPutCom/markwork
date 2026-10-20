@@ -1,5 +1,5 @@
-// Which fenced code blocks are drawn as diagrams. Shared by every frontend: GTK draws them in editor/mermaid.ts (DBML is
-// first translated by dbml.ts) and leaves them out of the code coloring in editor/codelayer.ts.
+// Which fenced code blocks are drawn as diagrams. The Electron window draws them in electron/renderer/diagrams.ts (DBML is
+// first translated by dbml.ts) and leaves them out of the code coloring in electron/renderer/codecolor.ts.
 
 import type { CodeBlock } from './highlight.js';
 

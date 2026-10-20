@@ -1,4 +1,4 @@
-// The core's tests on Node, with the Node platform: proof that the core needs nothing from GJS. Bundled by Vite
+// The core's tests on Node, with the Node platform: proof that the core reaches the runtime only through the platform port. Bundled by Vite
 // (vite.node.config.ts) into dist-node/run-core-node.js.
 //
 //   npm run test:core:node                          build, then every core test on Node

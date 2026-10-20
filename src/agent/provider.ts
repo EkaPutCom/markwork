@@ -1,5 +1,5 @@
 // Model provider interface. The real client (deepseek.ts) and the fake provider in tests use the same shape.
-// Pure TypeScript without GTK.
+// Pure TypeScript.
 
 import type { Cancellable } from '../cancel.js';
 

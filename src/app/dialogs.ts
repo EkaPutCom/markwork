@@ -1,4 +1,4 @@
-// The file chooser as the application layer asks for it; each frontend shows its own (Gtk.FileDialog under GTK).
+// The file chooser as the application layer asks for it; the frontend shows its own.
 
 // A yes-or-no question as a controller asks it. Its sentences are written (and translated) in the core, so every frontend
 // asks the same question; the frontend only draws it.

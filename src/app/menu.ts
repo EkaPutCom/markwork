@@ -1,5 +1,5 @@
-// Menus as data: what a card or a file offers, independent of how a frontend shows it (a Gtk.PopoverMenu under GTK,
-// see ui/menu.ts). Tests find an entry by label and call run().
+// Menus as data: what a card or a file offers, independent of how a frontend shows it. Tests find an entry by label
+// and call run().
 
 // One menu item. An empty label = a section separator; submenu = an item containing a child menu.
 export interface MenuEntry {

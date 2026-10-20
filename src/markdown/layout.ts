@@ -22,7 +22,7 @@
 // `layout: board` can also say `group: status` to make the columns the values of a select field.
 //
 // Any other value, or no `layout:` line, is an ordinary document. Other one-line options sit beside it (`add:`, see
-// inbox.ts) and are read with `optionOf`. Pure TypeScript without GTK.
+// inbox.ts) and are read with `optionOf`. Pure TypeScript.
 
 export type Layout = 'board' | 'list' | 'table' | 'calendar' | 'timeline' | 'gallery' | 'chart';
 

@@ -1,6 +1,6 @@
 // Calendar-day arithmetic on "YYYY-MM-DD" strings, shared by the calendar and timeline layouts. A day is a whole
 // number counted from 1970-01-01, so there are no time zones and no daylight saving to worry about. Pure TypeScript
-// without GTK.
+// 
 
 const DAY = 86400000;
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;

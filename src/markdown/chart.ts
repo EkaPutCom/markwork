@@ -16,7 +16,7 @@
 // `bar:due:month`), `donut` (notes per value of a select field: `donut:priority`), and `tags`. `bar` and `donut` without
 // a field use `by:` and `group:`. A name that is none of those, or a field that does not fit, is left out.
 //
-// Pure TypeScript without GTK.
+// Pure TypeScript.
 
 import type { FieldDef } from './fields.js';
 import { readItem } from './fields.js';

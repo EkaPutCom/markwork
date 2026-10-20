@@ -1,4 +1,4 @@
-// The command registry and the application session without GTK: the same list runs on GJS and on Node.
+// The command registry and the application session.
 
 import { AppSettings } from '../../src/settings.js';
 import type { SettingValue } from '../../src/platform/index.js';
@@ -120,7 +120,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
 }
 
 export async function appSessionTests(): Promise<void> {
-    section('Command registry (no GTK)');
+    section('Command registry');
     await test('ids are unique, keys are well formed, and the palette order is kept', () => {
         eq(new Set(COMMANDS.map(c => c.id)).size, COMMANDS.length, 'duplicate command id');
         for (const c of COMMANDS) for (const key of c.keys) ok(/^((Ctrl|Alt|Shift)\+)*(\S|[A-Z][A-Za-z0-9]+)$/.test(key), `${c.id}: ${key}`);
@@ -170,7 +170,7 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    section('Application session (no GTK)');
+    section('Application session');
     await test('the session builds the controllers on a frontend and opens a file', () => {
         const toasts: string[] = [];
         const settings = memorySettings();

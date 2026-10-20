@@ -1,4 +1,4 @@
-// The review of a card's worktree (ui/harnessreview.ts), a page of the content area: the files the agent changed with a box each,
+// The review of a card's worktree, a page of the content area: the files the agent changed with a box each,
 // the diff with comments on its lines, the summary of the run, and what to do with the work: reply, merge, keep the branch,
 // discard, or send it as a pull request. The core reads git and decides; this draws what it sends and reports what the user did.
 

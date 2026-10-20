@@ -16,7 +16,7 @@
 //   - [x] Workbench name idea #markwork [created:: 2026-10-07 09:10]
 //
 // One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without a time are
-// still valid. Pure TypeScript without GTK; all operations return a new board.
+// still valid. Pure TypeScript; all operations return a new board.
 
 import { applyDefaults, fieldChips, findSegments, readItem, type DateValue, type FieldChip, type FieldDef } from './fields.js';
 import { boardSchema, type Board, type Card, type Column } from './kanban.js';

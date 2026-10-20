@@ -1,5 +1,4 @@
-// The Assistant panel (ui/chat.ts, chatturn.ts, worklist.ts, proposalcard.ts, proposalviewer.ts, chatcontext.ts, chathistory.ts,
-// chatsettings.ts): the conversation, the context it sends, saved conversations, the API key, and the review of a change the
+// The Assistant panel: the conversation, the context it sends, saved conversations, the API key, and the review of a change the
 // agent proposes. It draws what the core told (chatmodel.ts) and reports what the user did; it writes no file.
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';

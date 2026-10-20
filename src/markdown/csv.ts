@@ -1,4 +1,4 @@
-// A CSV file as rows of cells, and the operations the CSV tab offers. Pure TypeScript without GTK.
+// A CSV file as rows of cells, and the operations the CSV tab offers. Pure TypeScript.
 //
 // The file text stays the source of truth: parseCsv() reads it, the operations return a new table (the rows they leave
 // alone are shared), and serializeCsv() writes it back. A row nobody touched is written exactly as it was read (its

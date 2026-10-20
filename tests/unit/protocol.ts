@@ -1,5 +1,5 @@
 // The app protocol without a window: changes in code points, the replica of a document, and a ProtocolServer driven by a
-// scripted frontend (DocMirror) over an in-memory line. The same list runs on GJS and on Node.
+// scripted frontend (DocMirror) over an in-memory line.
 
 import { applyChanges, diffChanges } from '../../src/app/protocol/changes.js';
 import { DocMirror } from '../../src/app/protocol/mirror.js';

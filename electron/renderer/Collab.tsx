@@ -1,5 +1,5 @@
-// The pull requests tab (ui/collab.ts), the token dialog (ui/serverdialog.ts), and the form that sends changes as a pull request
-// (ui/sendchanges.ts). The core talks to the forge; this draws what it sends and reports what the user did.
+// The pull requests tab, the token dialog, and the form that sends changes as a pull request
+//. The core talks to the forge; this draws what it sends and reports what the user did.
 
 import { useEffect, useRef, useState } from 'react';
 import { relativeTime } from '../../src/gitlog.js';

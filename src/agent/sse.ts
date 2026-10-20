@@ -1,5 +1,5 @@
 // Reads one line of an SSE stream from an OpenAI-style chat API (used by DeepSeek).
-// Pure TypeScript without GTK so it is easy to test.
+// Pure TypeScript so it is easy to test.
 
 import type { Usage } from './provider.js';
 

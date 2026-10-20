@@ -82,7 +82,7 @@ export function PreferencesDialog() {
 
 // ---------- Keyboard Shortcuts ----------
 
-// The sections and the commands in them (ui/shortcuts.ts has the same list for the GTK window).
+// The sections and the commands in them.
 const SECTIONS: [string, string[]][] = [
     ['Files', ['new', 'open', 'open-folder', 'save', 'save-as', 'export-html']],
     ['Tab', ['home', 'next-tab', 'prev-tab', 'close-tab']],

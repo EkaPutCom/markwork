@@ -20,7 +20,7 @@ export function exitStatus(code: number | null, signal: NodeJS.Signals | null): 
     return 128 + (signal ? numbers[signal] ?? 0 : 0);
 }
 
-// Like the GJS port: a run that has not finished by timeoutMs is stopped, and one whose output has not arrived lostMs
+// A run that has not finished by timeoutMs is stopped, and one whose output has not arrived lostMs
 // after the program exited is settled as lost.
 function run({ argv, cwd, env = {}, timeoutMs = 120000, lostMs = 5000 }: RunRequest): Promise<RunResult | null> {
     const name = basename(argv[0]);

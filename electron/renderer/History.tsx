@@ -1,4 +1,4 @@
-// The History tab (ui/history.ts, messagebox.ts) and the history viewer (ui/historyviewer.ts): the commits of the active file,
+// The History tab and the history viewer: the commits of the active file,
 // the uncommitted files of its repository with the commit form, and one commit or one file's changes in a large dialog. The core
 // runs git and the commit message writer; this draws what it sends and reports what the user did.
 

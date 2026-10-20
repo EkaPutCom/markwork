@@ -1,5 +1,5 @@
 // Obsidian-style links between documents: [[Note]], [[Note|other text]], [[folder/Note#Section]].
-// Pure, no GTK: used by the inline parser (highlighting), HTML export, link clicks, and name suggestions while typing [[.
+// Pure: used by the inline parser (highlighting), HTML export, link clicks, and name suggestions while typing [[.
 //
 // The target is matched against Markdown file names in the project folder without extension and case-insensitively,
 // so [[daily note]] finds "Journal/Daily Note.md". A target containing '/' is matched against
