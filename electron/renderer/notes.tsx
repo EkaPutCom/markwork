@@ -4,12 +4,13 @@
 // (src/markdown/noteedit.ts); what an operation does is the core's (and applyNoteEdit's, which the client also runs to
 // show a change at once).
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DUE_FIELD, AGENT_FIELD, AGENT_NAME, DUE_INPUT, splitCard, withDueDate, type Board, type Card, type Position } from '../../src/markdown/kanban.js';
 import { fieldInputText, nearestOption, OPTION_COLORS, OPTION_TEXT, parseValue, readItem, type FieldChip, type FieldDef } from '../../src/markdown/fields.js';
 import { CREATED_FIELD, itemMeta } from '../../src/markdown/inbox.js';
 import { inlineRuns } from '../../src/markdown/inlineruns.js';
 import type { CardForm, CardRef } from '../../src/markdown/noteedit.js';
+import { Icon } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useClient } from './useClient.js';
 
@@ -26,6 +27,12 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export function formatDay(date: string, today = todayString()): string {
     const [y, m, d] = date.split('-').map(Number);
     return `${d} ${MONTHS[m - 1]}${today.startsWith(`${y}-`) ? '' : ` ${y}`}`;
+}
+
+// "2026-10-05" → "5 Oct": a day as the axes of the timeline and the chart write it.
+export function dayMonth(date: string): string {
+    const [, m, d] = date.split('-').map(Number);
+    return `${d} ${MONTHS[m - 1]}`;
 }
 
 // A stable color for a tag, one of eight.
@@ -193,6 +200,24 @@ interface CardDialogProps {
     onDone(answer: CardAnswer | null): void;
 }
 
+// The due date: text (a time can still be typed after the day) and a button beside it that opens a calendar. The calendar
+// starts on the day in the field (or today); picking a day writes it and keeps the time.
+function DueInput({ value, onChange }: { value: string; onChange(value: string): void }) {
+    const id = useId();
+    const picker = useRef<HTMLInputElement>(null);
+    return (
+        <div className="due-field">
+            <label htmlFor={id}>Due</label>
+            <div className="with-button">
+                <input id={id} value={value} placeholder="YYYY-MM-DD" onChange={e => onChange(e.target.value)} />
+                <input ref={picker} type="date" className="picker" tabIndex={-1} aria-hidden="true" value={/^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : ''}
+                    onChange={e => onChange(e.target.value ? withDueDate(value, e.target.value) : '')} />
+                <button type="button" className="button flat" title="Pick a date" aria-label="Pick a date" onClick={() => picker.current?.showPicker()}><Icon name="x-office-calendar" /></button>
+            </div>
+        </div>
+    );
+}
+
 export function CardDialog({ heading, kind, text, notes, schema, agents = false, onDone }: CardDialogProps) {
     const parts = useMemo(() => kind === 'card' ? splitCard(text) : { ...itemMeta(text), due: '', agent: '' }, [kind, text]);
     const shown = useMemo(() => schema.filter(f => kind === 'card' ? f.key !== DUE_FIELD.key && f.key !== AGENT_FIELD.key : f.key !== CREATED_FIELD.key), [schema, kind]);
@@ -223,9 +248,9 @@ export function CardDialog({ heading, kind, text, notes, schema, agents = false,
         <Modal title={heading} onClose={() => onDone(null)}>
             <form className="card-form" onSubmit={e => { e.preventDefault(); submit(); }}>
                 <label><span>Title</span><input autoFocus value={title} onChange={e => { setTitle(e.target.value); setProblem(null); }} /></label>
-                <label><span>Tags</span><input value={tags} placeholder="tag1 tag2" onChange={e => setTags(e.target.value)} /></label>
-                {kind === 'card' && <label><span>Due date</span><input value={due} placeholder="YYYY-MM-DD" onChange={e => { setDue(e.target.value); setProblem(null); }} /></label>}
-                {kind === 'card' && agents && <label><span>Agent</span><input value={agent} placeholder="e.g. pi (empty = not assigned)" onChange={e => { setAgent(e.target.value); setProblem(null); }} /></label>}
+                <label><span>Tags (separated by spaces)</span><input value={tags} placeholder="tag1 tag2" onChange={e => setTags(e.target.value)} /></label>
+                {kind === 'card' && <DueInput value={due} onChange={value => { setDue(value); setProblem(null); }} />}
+                {kind === 'card' && agents && <label><span>Assigned to</span><input value={agent} placeholder="e.g. pi (empty = not assigned)" onChange={e => { setAgent(e.target.value); setProblem(null); }} /></label>}
                 {shown.map(f => (
                     <label key={f.key}><span>{f.key}</span>
                         {f.type === 'select' && !f.multiple && f.options.length ? (
@@ -238,8 +263,8 @@ export function CardDialog({ heading, kind, text, notes, schema, agents = false,
                 <label><span>Notes</span><textarea rows={6} value={body} onChange={e => setBody(e.target.value)} /></label>
                 {problem && <div className="field-error" role="alert">{problem}</div>}
                 <div className="buttons">
-                    <button type="button" className="button" onClick={() => onDone(null)}>Cancel</button>
                     <button type="submit" className="button suggested">Save</button>
+                    <button type="button" className="button" onClick={() => onDone(null)}>Cancel</button>
                 </div>
             </form>
         </Modal>
@@ -273,7 +298,7 @@ export function PageHeader({ board, fallback, onNew, children }: { board: Board;
         <header className="page-header">
             <div className="titles"><h1>{title}</h1>{description && <p className="dim">{description}</p>}</div>
             {children}
-            {onNew && <button className="button" title="Add a note with a title, fields, and notes" onClick={onNew}>+ New Note</button>}
+            {onNew && <button className="button" title="Add a note with a title, fields, and notes" onClick={onNew}>New Note</button>}
         </header>
     );
 }

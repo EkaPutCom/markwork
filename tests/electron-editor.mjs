@@ -304,6 +304,26 @@ try {
         await open(/Source\.md/);
     });
 
+    // ---------- findbar.ts ----------
+    await step('find bar: Ctrl+F counts the results, Enter goes to the next, Ctrl+H replaces all, Escape closes', async () => {
+        await open(/Source\.md/);
+        await setDoc('one two one\nOne\n', 0);
+        await page.keyboard.press('ControlOrMeta+f');
+        await page.getByRole('textbox', { name: 'Find in the document' }).fill('one');
+        const count = page.locator('.find-panel .count');
+        await page.waitForFunction(() => document.querySelector('.find-panel .count')?.textContent === '1 of 3');
+        await page.keyboard.press('Enter');
+        assert.equal(await count.textContent(), '2 of 3');
+        await page.getByRole('button', { name: 'Match Case' }).click();
+        await page.waitForFunction(() => /of 2$|^2$/.test(document.querySelector('.find-panel .count')?.textContent ?? ''));
+        await page.keyboard.press('ControlOrMeta+h');
+        await page.getByRole('textbox', { name: 'Replace in the document' }).fill('1');
+        await page.locator('.find-panel').getByRole('button', { name: 'Replace All' }).click();
+        assert.equal(await docText(), '1 two 1\nOne\n');
+        await page.keyboard.press('Escape');
+        await page.locator('.find-panel').waitFor({ state: 'detached' });
+    });
+
     // ---------- search.ts (the side panel) ----------
     await step('search: Ctrl+Shift+F finds in all notes, a hit opens with the match selected, Replace All asks first', async () => {
         await open(/Source\.md/);
@@ -354,8 +374,9 @@ try {
     });
 
     // ---------- imagezoom.ts ----------
-    const caption = () => page.locator('.image-viewer .caption').textContent();
-    const percent = async () => Number((await caption()).match(/(\d+)%/)[1]);
+    // The viewer's title (in its header) and its zoom (in the bar under the picture).
+    const caption = async () => `${await page.locator('.image-viewer .viewer-head .name').textContent()} · ${await page.locator('.image-viewer .zoom-level').textContent()}`;
+    const percent = async () => Number((await page.locator('.image-viewer .zoom-level').textContent()).match(/(\d+)%/)[1]);
     await step('imagezoom: a double click enlarges; small opens at 100%, large is fitted; Esc closes', async () => {
         await setDoc('![A small one](images/small.png)![A large one](images/large.png)', 0);
         await page.waitForFunction(() => document.querySelectorAll('.cm-md-pictures img').length === 2);
@@ -363,14 +384,14 @@ try {
         await editor.locator('.cm-md-pictures img').first().dblclick();
         await page.locator('.image-viewer img').waitFor();
         assert.match(await caption(), /A small one/, 'the title is the alt text');
-        await page.waitForFunction(() => document.querySelector('.image-viewer .caption').textContent.includes('100%'));
+        await page.waitForFunction(() => document.querySelector('.image-viewer .zoom-level').textContent.includes('100%'));
         await page.keyboard.press('Escape');
         await page.locator('.image-viewer').waitFor({ state: 'detached' });
         await editor.locator('.cm-md-pictures img').nth(1).dblclick();
         await page.locator('.image-viewer img').waitFor();
         assert.match(await caption(), /A large one/, 'a double click picks the right image on a line with several');
         await page.waitForFunction(() => document.querySelector('.image-viewer img').naturalWidth > 0);
-        await page.waitForFunction(() => !document.querySelector('.image-viewer .caption').textContent.includes('100%'));
+        await page.waitForFunction(() => !document.querySelector('.image-viewer .zoom-level').textContent.includes('100%'));
         assert.ok(await percent() < 100, 'a large image is fitted to the window');
     });
 
@@ -402,7 +423,7 @@ try {
         const fitted = await percent();
         await page.mouse.move(600, 400);
         await page.mouse.wheel(0, -100);
-        await page.waitForFunction(fit => !document.querySelector('.image-viewer .caption').textContent.includes(`${fit}%`), fitted);
+        await page.waitForFunction(fit => !document.querySelector('.image-viewer .zoom-level').textContent.includes(`${fit}%`), fitted);
         assert.ok(await percent() > fitted, 'the wheel zooms in');
         const before = await img.evaluate(el => el.getBoundingClientRect().x);
         await page.mouse.move(600, 400);

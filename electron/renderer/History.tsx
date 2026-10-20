@@ -50,14 +50,17 @@ function MessageBox({ streamed, rev, files, label, busy, onCommit, write, stop }
             <div className="message-box">
                 <textarea aria-label="Commit message" placeholder="Commit message" rows={3} value={text} disabled={writing} onChange={e => setText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void commit(); } }} />
-                <button className="button flat circular write" title={writing ? 'Stop writing' : 'Write the message with the assistant (reads the checked changes)'}
-                    aria-label={writing ? 'Stop writing' : 'Write the message with the assistant'} disabled={!writing && files.length === 0}
-                    onClick={() => { if (writing) stop(); else void ask(); }}>
-                    <Icon name={writing ? 'media-playback-stop' : 'insert-text'} />
-                </button>
             </div>
             {problem && <div className="form-error" role="alert">{problem}</div>}
-            <button className="button suggested" disabled={busy || writing || !text.trim() || files.length === 0} onClick={() => void commit()}>{label}</button>
+            {/* The commit button, and beside it ✨ that has the assistant write the message (■ stops it). */}
+            <div className="commit-row">
+                <button className="button suggested" disabled={busy || writing || !text.trim() || files.length === 0} onClick={() => void commit()}>{label}</button>
+                <button className="button write" title={writing ? 'Stop writing' : 'Write the message with the assistant (reads the checked changes)'}
+                    aria-label={writing ? 'Stop writing' : 'Write the message with the assistant'} disabled={!writing && files.length === 0}
+                    onClick={() => { if (writing) stop(); else void ask(); }}>
+                    <Icon name={writing ? 'media-playback-stop' : 'sparkle'} />
+                </button>
+            </div>
         </div>
     );
 }
@@ -70,7 +73,7 @@ function ChangeRow({ change, checked, onCheck, client }: { change: ChangedFile; 
             <button className="name" title="View the changes against the last commit" onClick={() => client.openChanges(change.path)}>{change.name}</button>
             <button className="button flat circular" title={discardLabel(change.kind)} aria-label={`${discardLabel(change.kind)}: ${change.name}`}
                 onClick={() => void client.discardFile(change.path).then(outcome => { if (typeof outcome === 'object') client.say(outcome.error); })}>
-                <Icon name="edit-clear" />
+                <Icon name="edit-undo" />
             </button>
         </div>
     );
@@ -82,6 +85,7 @@ export function History() {
     const { changes, commits } = history;
     const changed = changes?.changed ?? [];
     const [unchecked, setUnchecked] = useState<Set<string>>(new Set());
+    const [folded, setFolded] = useState(false);
     // Every uncommitted file starts checked; a file the user unchecked stays so while it is in the list.
     const chosen = useMemo(() => changed.filter(c => !unchecked.has(c.path)).map(c => c.path), [changed, unchecked]);
     const now = Date.now() / 1000;
@@ -89,9 +93,9 @@ export function History() {
 
     return (
         <aside className="sidebar history" aria-label="History">
-            <div className="side-title">
-                <span>HISTORY</span>
-                <button className="button flat circular" title="Reload history" aria-label="Reload history" onClick={() => client.refreshHistory()}><Icon name="view-refresh" /></button>
+            <div className="side-head">
+                <div className="side-title">HISTORY</div>
+                <button className="button flat" title="Reload history" aria-label="Reload history" onClick={() => client.refreshHistory()}><Icon name="view-refresh" /></button>
             </div>
             <div className="history-body">
                 {changes?.file && state && state !== 'clean' && (
@@ -101,8 +105,8 @@ export function History() {
                 )}
                 {changed.length > 0 && (
                     <section className="changes" aria-label="Uncommitted">
-                        <h3>Uncommitted ({changed.length})</h3>
-                        {changed.map(c => (
+                        <h3><button className="fold" aria-expanded={!folded} onClick={() => setFolded(v => !v)}><Icon name={folded ? 'pan-end' : 'pan-down'} size={12} />Uncommitted ({changed.length})</button></h3>
+                        {!folded && changed.map(c => (
                             <ChangeRow key={c.path} change={c} client={client} checked={!unchecked.has(c.path)}
                                 onCheck={on => setUnchecked(old => { const next = new Set(old); if (on) next.delete(c.path); else next.add(c.path); return next; })} />
                         ))}

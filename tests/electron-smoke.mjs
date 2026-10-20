@@ -218,7 +218,7 @@ try {
     await step('a board shows its counts and the layout button, and text commands no longer apply', async () => {
         await page.getByRole('treeitem', { name: /board\.md/ }).click();
         await page.locator('.statusbar').getByText('2 lists · 3 cards').waitFor();
-        await page.locator('.headerbar button[aria-pressed=true]', { hasText: 'Board' }).waitFor();
+        await page.locator('.headerbar button[aria-label=Layout]', { hasText: 'Board' }).waitFor();
         await page.keyboard.press('ControlOrMeta+Shift+P');
         await page.locator('.palette input').fill('bold');
         await page.locator('.palette li.none').waitFor();

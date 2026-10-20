@@ -4,10 +4,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
 import { AgentsPage } from './AgentsPrefs.js';
+import { Icon } from './Icons.js';
 import { label } from './keys.js';
 import { useClient, useStore } from './useClient.js';
 
-export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+// A dialog with its header bar: the title in the middle (or what `header` puts there, as the tabs of Preferences) and Close.
+export function Modal({ title, onClose, children, wide, header, className }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; header?: ReactNode; className?: string }) {
     useEffect(() => {
         const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
         window.addEventListener('keydown', key, true);
@@ -15,8 +17,8 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
     }, [onClose]);
     return (
         <div className="dialog-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className={`dialog modal${wide ? ' wide' : ''}`} role="dialog" aria-label={title} aria-modal="true">
-                <header><h2>{title}</h2><button className="button flat circular" aria-label="Close" onClick={onClose}>×</button></header>
+            <div className={`dialog modal${wide ? ' wide' : ''}${className ? ` ${className}` : ''}`} role="dialog" aria-label={title} aria-modal="true">
+                <header>{header ?? <h2>{title}</h2>}<button className="button flat circular" aria-label="Close" onClick={onClose}><Icon name="window-close" /></button></header>
                 {children}
             </div>
         </div>
@@ -29,6 +31,39 @@ function Row({ title, subtitle, children }: { title: string; subtitle?: string; 
     return <label className="pref-row"><span className="text"><span className="title">{title}</span>{subtitle && <span className="subtitle">{subtitle}</span>}</span>{children}</label>;
 }
 
+// A group of rows in a box, under its title (and what the group is about), as an Adwaita preferences group.
+export function Group({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+    return (
+        <section className="pref-group">
+            <h3>{title}</h3>
+            {description && <p className="description">{description}</p>}
+            <div className="boxed">{children}</div>
+        </section>
+    );
+}
+
+// A number with − and + beside it, kept between `min` and `max` and moved by `step`.
+function SpinButton({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (n: number) => void }) {
+    const [text, setText] = useState(String(value));
+    useEffect(() => { setText(String(value)); }, [value]);
+    const set = (n: number) => { const clamped = Math.min(max, Math.max(min, Math.round(n))); setText(String(clamped)); if (clamped !== value) onChange(clamped); };
+    return (
+        <span className="spin">
+            <input type="text" inputMode="numeric" role="spinbutton" aria-label={label} aria-valuenow={value} aria-valuemin={min} aria-valuemax={max} value={text}
+                onChange={e => setText(e.target.value)} onBlur={() => { const n = Number(text); if (Number.isFinite(n) && text.trim()) set(n); else setText(String(value)); }}
+                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'ArrowUp') { e.preventDefault(); set(value + step); } else if (e.key === 'ArrowDown') { e.preventDefault(); set(value - step); } }} />
+            <button type="button" className="button circular" aria-label="Decrease" disabled={value <= min} onClick={e => { e.preventDefault(); set(value - step); }}><Icon name="list-remove" /></button>
+            <button type="button" className="button circular" aria-label="Increase" disabled={value >= max} onClick={e => { e.preventDefault(); set(value + step); }}><Icon name="list-add" /></button>
+        </span>
+    );
+}
+
+const PREF_PAGES = [
+    { page: 'general', label: 'General', icon: 'preferences-system' },
+    { page: 'assistant', label: 'Assistant', icon: 'user-available' },
+    { page: 'agents', label: 'Agents', icon: 'system-run' },
+] as const;
+
 export function PreferencesDialog() {
     const client = useClient();
     const { prefs } = useStore();
@@ -38,42 +73,48 @@ export function PreferencesDialog() {
     const toggle = (key: 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatThinking' | 'chatSave' | 'forgeNotify', title: string, subtitle?: string) => (
         <Row title={title} subtitle={subtitle}><input type="checkbox" role="switch" checked={prefs[key]} onChange={e => set(key)(e.target.checked)} /></Row>
     );
+    const tabs = (
+        <div className="pref-tabs" role="tablist">
+            {PREF_PAGES.map(p => (
+                <button key={p.page} role="tab" aria-selected={page === p.page} className={page === p.page ? 'active' : ''} onClick={() => setPage(p.page)}><Icon name={p.icon} />{p.label}</button>
+            ))}
+        </div>
+    );
     return (
-        <Modal title="Preferences" onClose={() => client.closePreferences()} wide>
-            <div className="pref-tabs" role="tablist">
-                {(['general', 'assistant', 'agents'] as const).map(p => (
-                    <button key={p} role="tab" aria-selected={page === p} className={page === p ? 'active' : ''} onClick={() => setPage(p)}>{{ general: 'General', assistant: 'Assistant', agents: 'Agents' }[p]}</button>
-                ))}
-            </div>
+        <Modal title="Preferences" onClose={() => client.closePreferences()} wide header={tabs} className="preferences">
             {page === 'general' ? (
                 <div className="pref-page">
-                    <h3>View</h3>
-                    <Row title="Color scheme">
-                        <select value={prefs.colorScheme} onChange={e => set('colorScheme')(e.target.value)}>
-                            <option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option>
-                        </select>
-                    </Row>
-                    {toggle('focus', 'Focus mode', 'Dim all paragraphs except the one being edited')}
-                    {toggle('typewriter', 'Typewriter mode', 'Keep the line being typed in the middle')}
-                    <h3>Files</h3>
-                    {toggle('home', 'Home', 'Show when no document is open')}
-                    {toggle('autosave', 'Autosave', 'Applies to documents that already have a file')}
-                    <h3>Collaboration</h3>
-                    <Row title="Check every" subtitle="Seconds between looks for new pull requests">
-                        <input type="number" min={30} max={3600} value={prefs.forgePollSeconds}
-                            onChange={e => { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 30 && n <= 3600) set('forgePollSeconds')(n); }} />
-                    </Row>
-                    {toggle('forgeNotify', 'Desktop notifications', 'When a pull request is opened or updated')}
+                    <Group title="View">
+                        <Row title="Color scheme">
+                            <select value={prefs.colorScheme} onChange={e => set('colorScheme')(e.target.value)}>
+                                <option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option>
+                            </select>
+                        </Row>
+                        {toggle('focus', 'Focus mode', 'Dim all paragraphs except the one being edited')}
+                        {toggle('typewriter', 'Typewriter mode', 'Keep the line being typed in the middle')}
+                    </Group>
+                    <Group title="Files">
+                        {toggle('home', 'Home', 'Show when no document is open')}
+                        {toggle('autosave', 'Autosave', 'Applies to documents that already have a file')}
+                    </Group>
+                    <Group title="Collaboration" description="Pull requests of the Forgejo or Gitea server behind the folder's git remote">
+                        <Row title="Check every" subtitle="Seconds between looks for new pull requests">
+                            <SpinButton label="Check every" value={prefs.forgePollSeconds} min={30} max={3600} step={30} onChange={set('forgePollSeconds')} />
+                        </Row>
+                        {toggle('forgeNotify', 'Desktop notifications', 'When a pull request is opened or updated')}
+                    </Group>
                 </div>
             ) : page === 'agents' ? <AgentsPage prefs={prefs} /> : (
                 <div className="pref-page">
-                    <Row title="Model">
-                        <select value={prefs.chatModel} onChange={e => set('chatModel')(e.target.value)}>
-                            {prefs.chatModels.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                    </Row>
-                    {toggle('chatThinking', 'Thinking mode', 'More thorough, but slower')}
-                    {toggle('chatSave', 'Save conversation history', 'Saved in the work folder, in .markwork/chats')}
+                    <Group title="Assistant">
+                        <Row title="Model">
+                            <select value={prefs.chatModel} onChange={e => set('chatModel')(e.target.value)}>
+                                {prefs.chatModels.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                        </Row>
+                        {toggle('chatThinking', 'Thinking mode', 'More thorough, but slower')}
+                        {toggle('chatSave', 'Save conversation history', 'Saved in the work folder, in .markwork/chats')}
+                    </Group>
                 </div>
             )}
         </Modal>

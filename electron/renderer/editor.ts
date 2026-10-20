@@ -14,6 +14,7 @@ import { acceptCompletion, autocompletion, type CompletionContext } from '@codem
 import { linkAt, taskToggleAt, wikiLinkAt } from '../../src/markdown/clicks.js';
 import { suggestNotes, wikiQuery, wikiTargetFor } from '../../src/markdown/wikilink.js';
 import { conflictDecorations } from './conflicts.js';
+import { createFindBar, findBarOf } from './findbar.js';
 import { DiagramWidget } from './diagrams.js';
 import { diagramKind } from '../../src/markdown/diagram.js';
 import { TableWidget, tableOf } from './tables.js';
@@ -328,7 +329,7 @@ export class MarkdownEditor {
         return EditorState.create({
             doc: text,
             extensions: [
-                history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, syntaxField(this.events, () => this.rebuild()), search({ top: true }), highlightSelectionMatches(),
+                history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, syntaxField(this.events, () => this.rebuild()), search({ top: true, createPanel: createFindBar }), highlightSelectionMatches(),
                 clicks(this.events), wikiSuggestions(this.events),
                 EditorView.contentAttributes.of({ 'aria-label': 'Editor', spellcheck: 'false' }),
                 keymap.of([
@@ -414,12 +415,11 @@ export class MarkdownEditor {
         return { offset: cp(main.head), selection: main.empty ? null : [cp(main.from), cp(main.to)] };
     }
 
-    // Find (and replace) in this document: the search panel of CodeMirror, with the selection as the query.
+    // Find (and replace) in this document: the find bar (findbar.ts), with the selection as the query; Replace unfolds its row.
     openFind(replace: boolean): void {
         openSearchPanel(this.view);
-        const field = this.view.dom.querySelector<HTMLInputElement>(replace ? 'input[name=replace]' : 'input[name=search]');
-        field?.focus();
-        field?.select();
+        const bar = findBarOf(this.view);
+        if (replace && bar) { bar.setExpanded(true); bar.focusReplace(); }
     }
 
     closeFind(): void { closeSearchPanel(this.view); }

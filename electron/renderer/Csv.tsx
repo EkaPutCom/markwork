@@ -13,22 +13,33 @@ import {
     parseCsv, replaceInCell, replaceInCells, serializeCsv, setCell, type CsvTable,
 } from '../../src/markdown/csv.js';
 import { buildPattern, type SearchOptions } from '../../src/markdown/search.js';
+import { Icon } from './Icons.js';
 import { PopupMenu, usePopup, type MenuEntry } from './notes.js';
 import { useClient } from './useClient.js';
 
-const ROW_HEIGHT = 30, NUMBER_WIDTH = 52, BUFFER = 6;
+const ROW_HEIGHT = 33, NUMBER_WIDTH = 48, BUFFER = 6;
 const MATCH_ROW = 100000;   // a match is the number row * MATCH_ROW + column
 
 interface Cell { row: number; column: number }
 
-function widthsOf(table: CsvTable): number[] {
+// The width of each column from its longest text; when they leave room, the columns share it, so the grid fills the tab.
+function widthsOf(table: CsvTable, room: number): number[] {
     const columns = columnCount(table);
-    return Array.from({ length: columns }, (_, c) => {
+    const widths = Array.from({ length: columns }, (_, c) => {
         let longest = 0;
         for (const row of table.rows.slice(0, 101)) longest = Math.max(longest, (row.cells[c] ?? '').length);
-        return Math.min(36, Math.max(8, longest)) * 8 + 24;
+        return Math.min(36, Math.max(8, longest)) * 8 + 64;   // the grip and the ⋮ of the header too
     });
+    const sum = widths.reduce((n, w) => n + w, 0);
+    return sum > 0 && sum < room ? widths.map(w => Math.floor(w * room / sum)) : widths;
 }
+
+// The switches inside the Find field, as in the editor's find bar.
+const TOGGLES = [
+    { key: 'caseSensitive', label: 'Aa', title: 'Match Case' },
+    { key: 'wholeWord', label: 'ab', title: 'Whole Words' },
+    { key: 'regex', label: '.*', title: 'Regular Expression' },
+] as const;
 
 export function Csv({ text, rev, find }: { text: string; rev: number; find: { n: number; replace: boolean } }) {
     const client = useClient();
@@ -36,7 +47,7 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
     const tableRef = useRef(table);
     const sent = useRef(text);
     const body = useRef<HTMLDivElement>(null);
-    const [scroll, setScroll] = useState({ top: 0, height: 600 });
+    const [scroll, setScroll] = useState({ top: 0, height: 600, width: 0 });
     const [menu, setMenu, closeMenu] = usePopup<{ at: { x: number; y: number }; entries: MenuEntry[] }>();
     const [want, setWant] = useState<Cell | null>(null);
     const [drag, setDrag] = useState<{ kind: 'row' | 'column'; index: number; gap: number | null } | null>(null);
@@ -61,16 +72,16 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
     }, [client]);
 
     const columns = columnCount(table);
-    const widths = useMemo(() => widthsOf(table), [table]);
+    const widths = useMemo(() => widthsOf(table, scroll.width - NUMBER_WIDTH), [table, scroll.width]);
     const numeric = useMemo(() => Array.from({ length: columns }, (_, c) => isNumericColumn(table, c)), [table, columns]);
     const rowCount = table.rows.length;
-    const total = NUMBER_WIDTH + widths.reduce((n, w) => n + w, 0) + 40;
+    const total = NUMBER_WIDTH + widths.reduce((n, w) => n + w, 0);
 
     // The size of the view, for the rows to draw.
     useEffect(() => {
         const el = body.current;
         if (!el) return;
-        const measure = () => setScroll({ top: el.scrollTop, height: el.clientHeight });
+        const measure = () => setScroll({ top: el.scrollTop, height: el.clientHeight, width: el.clientWidth });
         measure();
         const observer = new ResizeObserver(measure);
         observer.observe(el);
@@ -192,7 +203,8 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
     };
     const replaceAll = () => { if (pattern) apply(replaceInCells(tableRef.current, pattern, replacement, options.regex).table); };
     const closeSearch = () => { setOpen(false); setQuery(''); if (at) setWant(at); };
-    const label = !query || (built && !(built instanceof RegExp)) ? '' : matches.length ? `${current + 1} of ${matches.length}` : 'No results';
+    const invalid = !!built && !(built instanceof RegExp);
+    const label = !query || invalid ? '' : matches.length ? `${current + 1} of ${matches.length}` : 'No results';
 
     // ---------- Dragging a row or a column ----------
 
@@ -225,7 +237,7 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
         const value = cellAt(table, row, column);
         return (
             <input key={`${row}:${column}:${value}`} data-cell={`${row}:${column}`} defaultValue={value} spellCheck={false} aria-label={header ? `Column ${column + 1} name` : `Row ${row}, ${cellAt(table, 0, column) || `column ${column + 1}`}`}
-                className={`csv-cell${header ? ' head' : ''}${numeric[column] && !header ? ' num' : ''}${mark({ row, column })}`} style={{ width: widths[column] }}
+                className={`csv-cell${header ? ' head' : ''}${numeric[column] ? ' num' : ''}${mark({ row, column })}`} style={{ width: widths[column] }}
                 onBlur={e => commit(row, column, e.target.value)} onKeyDown={e => keyDown(e, row, column)}
                 onContextMenu={e => { e.preventDefault(); commit(row, column, e.currentTarget.value); setMenu({ at: { x: e.clientX, y: e.clientY }, entries: [...rowMenu(row), { separator: true }, ...columnMenu(column)] }); }} />
         );
@@ -235,42 +247,56 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
     return (
         <div className="csv-page" data-page="csv">
             {open && (
-                <div className="find-bar" role="search">
-                    <div className="row">
-                        <input ref={queryInput} value={query} placeholder="Find" aria-label="Find in the table" onChange={e => setQuery(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); } else if (e.key === 'Escape') { e.preventDefault(); closeSearch(); } }} />
-                        <button className={`button flat${options.caseSensitive ? ' checked' : ''}`} aria-pressed={options.caseSensitive} title="Match case" onClick={() => setOptions(o => ({ ...o, caseSensitive: !o.caseSensitive }))}>Aa</button>
-                        <button className={`button flat${options.wholeWord ? ' checked' : ''}`} aria-pressed={options.wholeWord} title="Whole word" onClick={() => setOptions(o => ({ ...o, wholeWord: !o.wholeWord }))}>ab</button>
-                        <button className={`button flat${options.regex ? ' checked' : ''}`} aria-pressed={options.regex} title="Regular expression" onClick={() => setOptions(o => ({ ...o, regex: !o.regex }))}>.*</button>
-                        <span className={`count${built && !(built instanceof RegExp) ? ' error' : ''}`} title={built && !(built instanceof RegExp) ? built.error : undefined}>{label}</span>
-                        <button className="button flat" aria-label="Previous match" onClick={() => step(-1)}>↑</button>
-                        <button className="button flat" aria-label="Next match" onClick={() => step(1)}>↓</button>
-                        <button className={`button flat${withReplace ? ' checked' : ''}`} aria-pressed={withReplace} aria-label="Replace" title="Replace" onClick={() => setWithReplace(v => !v)}>⇄</button>
-                        <button className="button flat" aria-label="Close search" onClick={closeSearch}>×</button>
-                    </div>
-                    {withReplace && (
-                        <div className="row">
-                            <input value={replacement} placeholder="Replace with" aria-label="Replace with" onChange={e => setReplacement(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); replaceOne(); } else if (e.key === 'Escape') closeSearch(); }} />
-                            <button className="button" onClick={replaceOne}>Replace</button>
-                            <button className="button" onClick={replaceAll}>All</button>
+                // The same find bar as the editor's (findbar.ts): ▸ unfolds Replace, the toggles sit in the Find field.
+                <div className="find-panel csv-find" role="search">
+                    <div className="find-box">
+                        <button className={`button expand${withReplace ? ' checked' : ''}`} aria-pressed={withReplace} aria-label="Replace" title="Replace" onClick={() => setWithReplace(v => !v)}>
+                            <Icon name={withReplace ? 'pan-down' : 'pan-end'} />
+                        </button>
+                        <div className="fields">
+                            <div className={`entry${invalid ? ' invalid' : ''}`} title={invalid ? (built as { error: string }).error : undefined}>
+                                <Icon name="edit-find" />
+                                <input ref={queryInput} value={query} placeholder="Find" aria-label="Find in the table" spellCheck={false} onChange={e => setQuery(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); } else if (e.key === 'Escape') { e.preventDefault(); closeSearch(); } }} />
+                                {TOGGLES.map(t => (
+                                    <button key={t.key} className={`chip-button${options[t.key] ? ' checked' : ''}`} aria-pressed={options[t.key]} title={t.title} aria-label={t.title}
+                                        onMouseDown={e => e.preventDefault()} onClick={() => setOptions(o => ({ ...o, [t.key]: !o[t.key] }))}>{t.label}</button>
+                                ))}
+                            </div>
+                            {withReplace && (
+                                <div className="entry">
+                                    <input value={replacement} placeholder="Replace" aria-label="Replace in the table" spellCheck={false} onChange={e => setReplacement(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); replaceOne(); } else if (e.key === 'Escape') closeSearch(); }} />
+                                    <button className="chip-button" title="Replace the selected result and go to the next" aria-label="Replace the selected result and go to the next" onMouseDown={e => e.preventDefault()} onClick={replaceOne}>Replace</button>
+                                    <button className="chip-button" title="Replace All" aria-label="Replace All" onMouseDown={e => e.preventDefault()} onClick={replaceAll}>All</button>
+                                </div>
+                            )}
                         </div>
-                    )}
+                        <div className="linked">
+                            <button className="button" title="Previous result (Shift+Enter)" aria-label="Previous match" onClick={() => step(-1)}><Icon name="chevron-up" /></button>
+                            <button className="button" title="Next result (Enter)" aria-label="Next match" onClick={() => step(1)}><Icon name="chevron-down" /></button>
+                        </div>
+                        {label && <span className="count" role="status">{label}</span>}
+                        <span className="separator" />
+                        <button className="button flat close" title="Close" aria-label="Close search" onClick={closeSearch}><Icon name="window-close" /></button>
+                    </div>
                 </div>
             )}
             <div className="csv-toolbar">
-                <button className="button" onClick={() => insertRowAt(rowCount, 0)}>+ Add Row</button>
-                <button className="button" onClick={() => insertColumnAt(columns)}>+ Add Column</button>
+                <button className="button" onClick={() => insertRowAt(rowCount, 0)}><Icon name="list-add" />Add Row</button>
+                <button className="button" onClick={() => insertColumnAt(columns)}><Icon name="list-add" />Add Column</button>
             </div>
-            <div className="csv-body" ref={body} onScroll={e => setScroll({ top: e.currentTarget.scrollTop, height: e.currentTarget.clientHeight })}
+            <div className="csv-body" ref={body} onScroll={e => setScroll({ top: e.currentTarget.scrollTop, height: e.currentTarget.clientHeight, width: e.currentTarget.clientWidth })}
                 onDragOver={dragOver} onDrop={drop}>
                 <div className="csv-inner" style={{ width: total }}>
                     <div className="csv-head-row" style={{ height: ROW_HEIGHT }}>
                         <span className="csv-number" style={{ width: NUMBER_WIDTH }} />
                         {Array.from({ length: columns }, (_, c) => (
                             <span key={c} className="csv-head-cell">
-                                <span className="grip" draggable title="Drag to move the column" aria-label={`Move column ${c + 1}`} onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(c)); setDrag({ kind: 'column', index: c, gap: null }); }} onDragEnd={() => setDrag(null)}>⠿</span>
+                                <span className="grip" draggable title="Drag to move the column" aria-label={`Move column ${c + 1}`} onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(c)); setDrag({ kind: 'column', index: c, gap: null }); }} onDragEnd={() => setDrag(null)}><Icon name="list-drag-handle" /></span>
                                 {input(0, c, true)}
+                                <button className="button flat circular more" title="Column menu" aria-label={`Column menu: ${cellAt(table, 0, c) || `column ${c + 1}`}`} aria-haspopup="menu"
+                                    onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ at: { x: r.left, y: r.bottom }, entries: columnMenu(c) }); }}><Icon name="view-more" /></button>
                             </span>
                         ))}
                         {drag?.kind === 'column' && drag.gap !== null && <span className="csv-drop-v" style={{ left: gapX, height: scroll.height + ROW_HEIGHT }} />}
