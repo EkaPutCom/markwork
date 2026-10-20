@@ -322,7 +322,8 @@ export class Client {
     // The folder of the active document, which its relative picture paths start from.
     baseDir(): string | null {
         const file = this.tab()?.file ?? null;
-        return file && file.includes('/') ? file.slice(0, file.lastIndexOf('/')) || '/' : null;
+        const cut = file ? Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\')) : -1;   // C:\notes\a.md on Windows
+        return file && cut >= 0 ? file.slice(0, cut) || '/' : null;
     }
 
     // A link Ctrl+clicked in the active document: the core decides (a note in a tab, a URL in the browser).
@@ -908,7 +909,7 @@ export class Client {
             case 'view.prefs.values': if (this.snapshot.prefs) this.set({ prefs: p.data as PreferencesData }); break;
             case 'view.search': this.set({ search: { ...this.snapshot.search, results: p.results as SearchResults } }); break;
             case 'view.outline': this.set({ outline: p.headings as State['outline'] }); break;
-            case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split('/').pop() ?? '' } }); break;
+            case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split(/[\\/]/).pop() ?? '' } }); break;
             case 'view.history': this.set({ history: { ...this.snapshot.history, commits: p.commits as Commit[], more: p.more === true, note: String(p.note ?? '') } }); break;
             case 'view.historyChanges': this.set({ history: { ...this.snapshot.history, changes: p as unknown as HistoryChanges } }); break;
             case 'history.messageText': this.set({ history: { ...this.snapshot.history, message: p.text as string, messageRev: this.snapshot.history.messageRev + 1 } }); break;

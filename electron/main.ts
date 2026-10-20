@@ -171,7 +171,12 @@ void app.whenReady().then(() => {
         }
     });
     // The keys belong to the command table of the page (app/commands.ts); a default menu would take Ctrl+W and others first.
-    if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
+    // macOS keeps a menu bar, so it gets one with nothing the page handles: the app menu (Hide, Quit) and the clipboard keys,
+    // which a text field there only has through menu roles. Undo, Close (Cmd+W), and New stay with the page.
+    Menu.setApplicationMenu(process.platform === 'darwin' ? Menu.buildFromTemplate([
+        { role: 'appMenu' },
+        { label: 'Edit', submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+    ]) : null);
     createWindow();
     checkForUpdates();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
