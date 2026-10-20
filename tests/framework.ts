@@ -19,6 +19,7 @@ export function setRoot(url: string): void {
 // after the import because settings.ts only reads XDG_CONFIG_HOME when called.
 export const tmp = host().makeTempDir();
 host().setenv('XDG_CONFIG_HOME', tmp);
+host().setenv('XDG_DATA_HOME', platform().paths.join(tmp, 'data'));   // the Trash a test moves files to is its own, not the user's
 // The test repositories compare file bytes: git on Windows must not turn LF into CRLF on checkout, whatever the machine's config.
 host().setenv('GIT_CONFIG_COUNT', '1');
 host().setenv('GIT_CONFIG_KEY_0', 'core.autocrlf');

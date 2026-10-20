@@ -11,6 +11,8 @@ import { protocolTests } from './unit/protocol.js';
 import { noteEditTests } from './unit/noteedit.js';
 import { assistantTests } from './unit/assistant.js';
 import { historyControllerTests } from './unit/history.js';
+import { discardTests } from './unit/discard.js';
+import { appSettingsTests } from './unit/appsettings.js';
 import { wikiLinkTests } from './unit/wikilink.js';
 import { searchFilterTests, searchTests } from './unit/search.js';
 import { kanbanModelTests } from './unit/kanban.js';
@@ -128,6 +130,8 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await noteEditTests();
     await assistantTests();
     await historyControllerTests();
+    await discardTests();
+    appSettingsTests();
     noteDiffTests();
     await contributeTests();
     await publishTests();

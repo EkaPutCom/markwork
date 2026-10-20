@@ -69,6 +69,25 @@ export async function nodePlatformTests(): Promise<void> {
         eq(new AppSettings(new JsonSettingsStore(join(tmp, 'node-settings', 'none.json'), specs)).width, 1100, 'no file yet');
     });
 
+    await test('every setting has its default, and compound values are written and read back', () => {
+        const file = join(tmp, 'node-settings', 'defaults.json');
+        const s = new AppSettings(new JsonSettingsStore(file, parseSchema(schemaText())));
+        eq([s.focus, s.autosave, s.dark, s.folder, s.tabs, s.projects, s.sidebarPage, s.activeTab, s.home, s.recentFiles],
+            [false, true, null, null, [], {}, 'files', -1, true, []], 'the defaults');
+        eq([s.harnessMachine, s.machines, s.machineProjects, s.daemonCommand], ['', {}, {}, ''], 'where harnesses run: in this window, no machines');
+        s.tabs = [{ file: '/tmp/a.md', cursor: 7 }, { file: '/tmp/b.md', cursor: 0 }];
+        s.projects = { shop: '/tmp/shop' };
+        s.sidebarPage = 'collab';
+        Object.assign(s, { harnessMachine: 'vps', machines: { vps: 'eka@vps.example.com' }, machineProjects: { 'vps:shop': '/srv/shop' }, daemonCommand: '~/.local/bin/markworkd' });
+        const again = new AppSettings(new JsonSettingsStore(file, parseSchema(schemaText())));
+        eq(again.tabs, [{ file: '/tmp/a.md', cursor: 7 }, { file: '/tmp/b.md', cursor: 0 }], 'tabs');
+        eq([again.projects, again.sidebarPage], [{ shop: '/tmp/shop' }, 'collab']);
+        eq([again.harnessMachine, again.machines, again.machineProjects, again.daemonCommand], ['vps', { vps: 'eka@vps.example.com' }, { 'vps:shop': '/srv/shop' }, '~/.local/bin/markworkd'], 'machines');
+        again.dark = false;
+        again.dark = null;
+        eq(again.dark, null, 'dark goes back to the system');
+    });
+
     await test('translations come from the gettext catalog of the user\'s language, with its plural rule and contexts', () => {
         const mo = moFile('Content-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n', {
             Saved: ['Zapisano'],

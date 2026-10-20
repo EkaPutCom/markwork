@@ -44,7 +44,7 @@ import { incrementalTests } from './unit/incremental.js';
 import { settingsTests } from './unit/settings.js';
 import { actionTests } from './unit/actions.js';
 import { codeLanguageTests } from './unit/codelang.js';
-import { discardTests } from './unit/discard.js';
+import { discardPromptTests } from './unit/discardprompt.js';
 import { gjsPortTests } from './unit/gjsport.js';
 import { runCoreTests } from './core-tests.js';
 import { dialogTests } from './gui/dialogs.js';
@@ -95,7 +95,7 @@ function runUnitTests(): void {
     settingsTests();
     actionTests();
     codeLanguageTests();
-    discardTests();
+    discardPromptTests();
     settle(gjsPortTests(), 60 * 1000);
 }
 
