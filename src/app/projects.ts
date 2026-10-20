@@ -10,7 +10,6 @@ import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import { _, fmt } from '../i18n.js';
 import type { Question } from './dialogs.js';
-import type { Awaitable } from '../awaitable.js';
 
 // What the Projects page needs from the harness controller.
 export interface ProjectsAccess {
@@ -61,7 +60,7 @@ export function machineProjects(settings: AppSettings, machine: string): Record<
 }
 
 export interface ProjectsDialogs {
-    removeWorktree(question: Question): Awaitable<boolean>;   // "Remove the worktree of {branch}?"
+    removeWorktree(question: Question): Promise<boolean>;   // "Remove the worktree of {branch}?"
 }
 
 export class ProjectsPages {

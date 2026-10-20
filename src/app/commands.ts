@@ -2,7 +2,6 @@
 // keys, when it applies, and what it does. The Electron window maps this table onto its keys and menus; another
 // frontend maps it onto its own menus and keymap. A command acts only through CommandHost, so nothing here knows a widget.
 
-import type { Awaitable } from '../awaitable.js';
 import { _ } from '../i18n.js';
 
 // The edits a command makes to the text of the active document; the frontend implements them on its editor.
@@ -47,14 +46,14 @@ export interface CoreCommands {
     newCsvTable(): void;
     editFields(): void;
     sendChanges(): void;
-    closeTab(): Awaitable<boolean>;
+    closeTab(): Promise<boolean>;
     switchTab(step: number): void;
     openHome(): void;
     readonly journal: { open(): unknown; capture(): unknown; summarize(): unknown };
     open(): Promise<void>;
     load(path: string): boolean;
     chooseFolder(): Promise<void>;
-    save(): Awaitable<boolean>;
+    save(): Promise<boolean>;
     saveAs(): Promise<boolean>;
     exportHtml(): Promise<void>;
     insertImage(): Promise<void>;

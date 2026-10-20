@@ -115,7 +115,7 @@ export function fakeFrontend(settings: AppSettings, toasts: string[], makeEditor
         }),
         documents: quiet<AppFrontend<FakeEditor>['documents']>({ dialogs: quiet({}), ...tabRow() }),
         // The file dialogs are a plain object a test can fill in; they answer "cancelled" until it does.
-        dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({ files: { name: () => null, confirm: () => false, error: () => {} }, search: { confirm: () => false }, preferences: { machine: () => null, removeWorktree: () => false } }),
+        dialogs: quiet<AppFrontend<FakeEditor>['dialogs']>({ files: { name: async () => null, confirm: async () => false, error: () => {} }, search: { confirm: async () => false }, preferences: { machine: async () => null, removeWorktree: async () => false } }),
     };
 }
 
@@ -249,6 +249,56 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
+    await test('unsaved changes are asked about one tab at a time: Cancel keeps the tab, the folder, and the window', async () => {
+        const base = disk.join(tmp, 'appsession-unsaved');
+        const [one, two] = [disk.join(base, 'one'), disk.join(base, 'two')];
+        disk.mkdirs(one);
+        disk.mkdirs(two);
+        const [a, b, c] = ['a.md', 'b.md', 'c.md'].map(name => disk.join(one, name));
+        for (const f of [a, b, c]) disk.write(f, 'saved\n');
+        const settings = memorySettings();
+        settings.autosave = false;
+        const asked: string[] = [], answers: ('save' | 'discard' | 'cancel')[] = [];
+        const frontend = fakeFrontend(settings, []);
+        const session = new AppSession({ ...frontend, documents: quiet<AppFrontend<FakeEditor>['documents']>({ ...frontend.documents,
+            dialogs: quiet<AppFrontend<FakeEditor>['documents']['dialogs']>({ askSaveChanges: async name => { asked.push(name); return answers.shift() ?? 'cancel'; } }) }) });
+        session.start();
+        session.open(null);
+        eq(await session.openFolder(one), true);
+        const docs = session.documents;
+        const doc = (file: string) => docs.all.find(d => d.file === file)!;
+        for (const f of [a, b, c]) { docs.openInTab(f); docs.active.editor.replaceText(`typed in ${f.slice(-4)}\n`); }
+
+        answers.push('cancel');
+        eq(await docs.closeTab(doc(a)), false, 'Cancel');
+        eq([asked, docs.all.length, doc(a).editor.isModified()], [['a.md'], 3, true], 'the tab and its changes stay');
+
+        asked.length = 0;
+        answers.push('discard', 'cancel');
+        eq(await session.openFolder(two), false, 'Cancel on the second tab');
+        eq(asked, ['a.md', 'b.md'], 'asked in order, and not past the Cancel');
+        eq([session.files.root, settings.folder, docs.all.length], [one, one, 3], 'the folder is not switched and no tab is closed');
+
+        asked.length = 0;
+        answers.push('cancel');
+        eq(await session.closeRequest(), false, 'Cancel keeps the window');
+        eq(asked, ['a.md']);
+
+        asked.length = 0;
+        answers.push('discard');
+        eq(await docs.closeTab(doc(a)), true, 'Discard');
+        eq([docs.all.length, disk.read(a)], [2, 'saved\n'], 'the tab is closed, the file untouched');
+
+        asked.length = 0;
+        answers.push('save', 'discard');
+        eq(await session.openFolder(two), true);
+        eq(asked, ['b.md', 'c.md']);
+        eq([disk.read(b), disk.read(c)], ['typed in b.md\n', 'saved\n'], 'Save wrote b; Discard left c');
+        eq([session.files.root, settings.folder], [two, two]);
+        ok(docs.all.every(d => d.file === null), 'the tabs of the other folder are closed');
+        session.dispose();
+    });
+
     await test('the history is read only while its tab is shown, and coming back to the window reads it again', () => {
         const session = new AppSession(fakeFrontend(memorySettings(), []));
         session.start();
@@ -268,7 +318,7 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('titles, links, the Recent list, and a file chosen in the tree are the session\'s', () => {
+    await test('titles, links, the Recent list, and a file chosen in the tree are the session\'s', async () => {
         // The home folder is the test folder here, so the title can show `~` without touching the real one.
         const real = platform();
         setPlatform({ ...real, paths: new Proxy(real.paths, { get: (target, key) => key === 'homeDir' ? () => tmp : Reflect.get(target, key) }) });
@@ -289,7 +339,7 @@ export async function appSessionTests(): Promise<void> {
             session.open(note);
             const id = session.documents.active.id;
             eq(titles.get(id), { name: 'note.md', file: note, page: false, place: '~/appsession-titles/notes' }, 'the home folder is ~');
-            session.openFolder(dir, false);
+            await session.openFolder(dir, false);
             eq(session.host.projectName(note), 'note.md');
             eq(session.host.projectName(disk.join(other, 'x.md')), 'x.md');
             session.openLink(id, 'next.md#part');

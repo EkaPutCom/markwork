@@ -89,7 +89,7 @@ Lulus bila typecheck, tes core di Node, dan tes Electron hijau di tiga OS.
 - [x] `platform/index.ts` tetap (fake platform di tes memakainya); komentar dan cabang khusus GJS dibuang.
 - [x] `scripts/layers.mjs`: aturan untuk `ui/`, `editor/`, `window`, `gi://`, dan `platform/gjs/` dibuang.
 - [x] `tests/host.ts`: `settle()` dan `gc()` dibuang; `collectBeforeEachTest` di `tests/framework.ts` juga.
-- [ ] Jalan pintas di `app/` yang ada demi dua frontend, misalnya `Awaitable` yang bisa sinkron. Ditunda: ini mengubah perilaku `AppSession` dan `DocumentManager`, jadi dikerjakan di PR sendiri.
+- [x] Jalan pintas di `app/` yang ada demi dua frontend, misalnya `Awaitable` yang bisa sinkron: dikerjakan di PR sendiri karena mengubah perilaku `AppSession` dan `DocumentManager`. `src/awaitable.ts` dan `after()` dibuang; setiap jawaban yang bisa datang belakangan kini selalu `Promise`.
 - [x] README, AGENT.md, dan `docs/ONBOARDING.md` ditulis ulang untuk Electron.
 - [x] Tangkapan layar `docs/assets/` dibuat ulang dari Electron (`npm run docs`, `scripts/capture.mjs` dengan model, forge, dan pi palsu di `scripts/capture/`).
 - [x] `bench/`: catatan dan baseline era GTK dibuang (tetap ada di tag `v-gtk-final`); `bench/baseline.json` dibuat ulang dari bench Node.

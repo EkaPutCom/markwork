@@ -1,7 +1,6 @@
 // The daily journal and the activity log behind it: opening today's journal, quick capture, the end-of-day
 // summary through the Assistant, and recording work activity (cards, agent changes, harness runs).
 
-import { after, type Awaitable } from '../awaitable.js';
 import { readTextFile, writeTextFile, flushWrites, fileExists, insideName } from '../files.js';
 import { platform } from '../platform/index.js';
 import { commitsBetween } from '../git.js';
@@ -22,7 +21,7 @@ export interface JournalChat {
 
 // The quick capture question ("Add to Journal"); null = cancelled.
 export interface JournalDialogs {
-    capture(prompt: Prompt): Awaitable<string | null>;
+    capture(prompt: Prompt): Promise<string | null>;
 }
 
 export interface JournalHost extends DocumentHost {
@@ -104,7 +103,7 @@ export class JournalController {
             return;
         }
         const prompt = { title: _('Add to Journal'), label: _('Recorded in today\'s journal with the current time.'), accept: _('Add') };
-        void after(this.dialogs.capture(prompt), note => { if (note) this.addNote(note); });
+        void this.dialogs.capture(prompt).then(note => { if (note) this.addNote(note); });
     }
 
     // An open journal is changed through its editor (one undo step); one that is not open is written directly to disk.

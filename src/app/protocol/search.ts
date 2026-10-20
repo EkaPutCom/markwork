@@ -10,7 +10,7 @@ export type { SearchQuery, SearchResults };
 export class ProtocolSearch implements SearchView {
     onSearch: SearchView['onSearch'] = () => {};
     onOpenHit: SearchView['onOpenHit'] = () => {};
-    onReplaceAll: SearchView['onReplaceAll'] = () => {};
+    onReplaceAll: SearchView['onReplaceAll'] = async () => {};
 
     constructor(private readonly wire: Wire) {}
 

@@ -7,7 +7,6 @@
 import { DEEPSEEK_MODELS } from '../agent/models.js';
 import { LOCAL_MACHINE, isValidMachineName, isValidSshTarget, machineProjectKey } from '../agent/daemon/machines.js';
 import type { AppSettings } from '../settings.js';
-import type { Awaitable } from '../awaitable.js';
 import type { Isolation } from '../agent/worktree.js';
 import { _ } from '../i18n.js';
 import type { Question } from './dialogs.js';
@@ -54,11 +53,11 @@ export type PreferenceKey = 'colorScheme' | 'focus' | 'typewriter' | 'home' | 'a
 
 export interface PreferencesView {
     onSet: (key: PreferenceKey, value: Plain) => void;
-    onAddMachine: () => Awaitable<void>;
+    onAddMachine: () => Promise<void>;
     onRemoveMachine: (name: string) => void;
     onOpenProject: (name: string) => void;       // a project's row was chosen: its page and worktrees follow
-    onSetProject: (name: string, patch: Partial<Isolation>) => Awaitable<string | null>;   // an error message, or null once written
-    onRemoveWorktree: (name: string, path: string) => Awaitable<string | null>;
+    onSetProject: (name: string, patch: Partial<Isolation>) => Promise<string | null>;   // an error message, or null once written
+    onRemoveWorktree: (name: string, path: string) => Promise<string | null>;
     open(data: PreferencesData): void;           // show the dialog
     showValues(data: PreferencesData): void;     // a setting changed while it is open
     showProject(page: ProjectPage): void;        // a project's page
@@ -66,8 +65,8 @@ export interface PreferencesView {
 }
 
 export interface PreferencesDialogs {
-    machine(taken: string[]): Awaitable<MachineDraft | null>;
-    removeWorktree(question: Question): Awaitable<boolean>;
+    machine(taken: string[]): Promise<MachineDraft | null>;
+    removeWorktree(question: Question): Promise<boolean>;
 }
 
 export interface PreferencesHost {
@@ -109,7 +108,7 @@ export class PreferencesController {
         view.onRemoveMachine = name => this.removeMachine(name);
         this.projects = new ProjectsPages(s, host.harness, dialogs, list => host.preferencesView.showWorktrees(list));
         view.onOpenProject = name => this.openProject(name);
-        view.onSetProject = (name, patch) => this.projects.set(name, patch);
+        view.onSetProject = async (name, patch) => this.projects.set(name, patch);
         view.onRemoveWorktree = (name, path) => this.projects.remove(name, path);
         // The dialog follows the settings it shows, whoever changes them.
         this.stop = s.onChanged(null, () => { if (this.isOpen) host.preferencesView.showValues(this.data()); });

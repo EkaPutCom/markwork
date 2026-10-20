@@ -7,7 +7,7 @@ import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } fr
 import type { KeyStore } from '../../src/agent/apikey.js';
 import type { TraceUpdate } from '../../src/agent/tracefeed.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within, until, untilText, tmp, disk, sync } from '../framework.js';
+import { section, test, eq, ok, contains, within, until, untilText, tmp, disk } from '../framework.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
@@ -70,7 +70,7 @@ export async function assistantTests(): Promise<void> {
         let before = '';
         decideWith(async (ask, panel) => {
             before = read(root, 'notes.md');
-            eq(panel.onApply(ask.id, null), null, 'apply');
+            eq(await panel.onApply(ask.id, null), null, 'apply');
             return { note: 'thanks' };
         });
         chat.makeProvider = () => proposing('edit_file', edit('notes'), replies);
@@ -88,28 +88,28 @@ export async function assistantTests(): Promise<void> {
         const { root, chat, panel, decideWith } = setup();
         const replies: string[] = [];
         let askId = 0;
-        decideWith(async (ask, view) => { askId = ask.id; eq(view.onApply(ask.id, null), null, 'apply'); return { note: '' }; });
+        decideWith(async (ask, view) => { askId = ask.id; eq(await view.onApply(ask.id, null), null, 'apply'); return { note: '' }; });
         chat.makeProvider = () => proposing('edit_file', edit('notes'), replies);
         await within(chat.send('move the release'));
         eq(read(root, 'notes.md'), 'Release 22 November\n');
-        ok(panel.onUndo({ ask: askId + 5 }) !== null, 'an ask that was never applied');
-        ok(panel.onUndo({ event: 'no-such-event' }) !== null, 'an event that does not exist');
+        ok(await panel.onUndo({ ask: askId + 5 }) !== null, 'an ask that was never applied');
+        ok(await panel.onUndo({ event: 'no-such-event' }) !== null, 'an event that does not exist');
         eq(read(root, 'notes.md'), 'Release 22 November\n', 'nothing changed');
-        eq(panel.onUndo({ ask: askId }), null, 'undo by ask');
+        eq(await panel.onUndo({ ask: askId }), null, 'undo by ask');
         eq(read(root, 'notes.md'), 'Release 15 November\n');
-        ok(panel.onUndo({ ask: askId }) !== null, 'once only');
+        ok(await panel.onUndo({ ask: askId }) !== null, 'once only');
         eq(chat.session.events[0].status, 'reverted');
     });
 
     await test('an applied action of an opened conversation is undone by its event id', async () => {
         const { root, chat, panel, decideWith } = setup();
-        decideWith(async (ask, view) => { view.onApply(ask.id, null); return { note: '' }; });
+        decideWith(async (ask, view) => { await view.onApply(ask.id, null); return { note: '' }; });
         chat.makeProvider = () => proposing('edit_file', edit('notes'), []);
         await within(chat.send('move the release'));
         const event = chat.session.events[0];
-        eq(panel.onUndo({ event: event.id }), null, 'undo by event');
+        eq(await panel.onUndo({ event: event.id }), null, 'undo by event');
         eq(read(root, 'notes.md'), 'Release 15 November\n');
-        ok(panel.onUndo({ event: event.id }) !== null, 'a reverted event is not undone again');
+        ok(await panel.onUndo({ event: event.id }) !== null, 'a reverted event is not undone again');
     });
 
     await test('the agent log reaches the panel as updates of plain events, and clearing it is asked of the core', async () => {
@@ -142,7 +142,7 @@ export async function assistantTests(): Promise<void> {
         decideWith(async (ask, panel) => {
             eq(ask.batch, true);
             eq(ask.changes.map(c => c.file), ['notes.md', 'plan.md']);
-            answers.push(sync(panel.onApply(ask.id, [1])), sync(panel.onApply(ask.id, [0])));
+            answers.push(await panel.onApply(ask.id, [1]), await panel.onApply(ask.id, [0]));
             return { note: '' };
         });
         const actions = ['notes', 'plan'].map(name => ({ tool: 'edit_file', arguments: JSON.stringify(edit(name)) }));
@@ -161,7 +161,7 @@ export async function assistantTests(): Promise<void> {
         let answer: string | null = null;
         decideWith(async (ask, panel) => {
             disk.write(disk.join(root, 'notes.md'), 'Release 15 November, maybe\n');
-            answer = sync(panel.onApply(ask.id, null));
+            answer = await panel.onApply(ask.id, null);
             return { note: '' };
         });
         chat.makeProvider = () => proposing('edit_file', edit('notes'), replies);
@@ -175,9 +175,9 @@ export async function assistantTests(): Promise<void> {
         const { root, chat, log, decideWith } = setup();
         let late: string | null = null;
         decideWith((ask, panel) => new Promise(resolve => {
-            setTimeout(() => {
+            setTimeout(async () => {
                 chat.stop();
-                late = sync(panel.onApply(ask.id, null));
+                late = await panel.onApply(ask.id, null);
                 resolve({ note: '' });
             }, 0);
         }));
@@ -216,7 +216,7 @@ export async function assistantTests(): Promise<void> {
         ok(session.host.openInTab(disk.join(root, 'notes.md')), 'openInTab');
         const editor = session.documents.active.editor;
         const replies: string[] = [];
-        decideWith(async (ask, panel) => ({ note: sync(panel.onApply(ask.id, null)) ?? '' }));
+        decideWith(async (ask, panel) => ({ note: await panel.onApply(ask.id, null) ?? '' }));
         // The model reads the file again right after the change was applied, in the same turn of the main loop.
         let round = 0;
         chat.makeProvider = () => ({
@@ -239,10 +239,10 @@ export async function assistantTests(): Promise<void> {
         await until(() => { try { return editor.getText() === 'Release 15 November\n'; } catch { return false; } });
     });
 
-    await test('an answer goes into the open note only while its text is shown', () => {
+    await test('an answer goes into the open note only while its text is shown', async () => {
         const { session, root, panel } = setup();
         ok(session.host.openInTab(disk.join(root, 'notes.md')), 'openInTab');
-        ok(panel.onInsert('  The answer.  '), 'insert');
+        ok(await panel.onInsert('  The answer.  '), 'insert');
         eq(session.documents.active.editor.getText(), 'Release 15 November\nThe answer.\n');
     });
 }

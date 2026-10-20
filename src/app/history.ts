@@ -11,7 +11,6 @@ import { writeCommitMessage, type CommitSources, type WriteResult } from '../age
 import { Cancellable } from '../cancel.js';
 import { fileExists, insideName, readTextFile } from '../files.js';
 import { platform } from '../platform/index.js';
-import { after, type Awaitable } from '../awaitable.js';
 import { _, fmt } from '../i18n.js';
 import { docFor, type Doc, type DocumentHost, type TextEditor } from './document.js';
 
@@ -91,7 +90,7 @@ export interface HistoryViewersView {
 
 export interface HistoryDialogs {
     // Before the changes of a file are thrown away; viewer = the window it was asked from, null = the History tab.
-    discard(kind: ChangeKind, path: string, viewer: number | null): Awaitable<boolean>;
+    discard(kind: ChangeKind, path: string, viewer: number | null): Promise<boolean>;
 }
 
 export interface HistoryHost<E extends TextEditor = TextEditor> extends DocumentHost<E> {
@@ -328,7 +327,7 @@ export class HistoryController<E extends TextEditor = TextEditor> {
     }
 
     private async discard(kind: ChangeKind, path: string, viewer: number | null): Promise<DiscardOutcome> {
-        if (!await after(this.dialogs.discard(kind, path, viewer), yes => yes)) return 'declined';
+        if (!await this.dialogs.discard(kind, path, viewer)) return 'declined';
         if (viewer !== null && !this.viewers.has(viewer)) return 'declined';
         if (!this.host.saveAll()) return { error: _('The document failed to save; the changes were not discarded') };
         const result = await discardChanges([path]);

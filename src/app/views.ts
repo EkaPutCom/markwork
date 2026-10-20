@@ -12,7 +12,6 @@ import { columnCount, fitsTableView, isCsvFile, parseCsv } from '../markdown/csv
 import { boardSchema, countCards, declaredFields, fieldUses, newBoard, parseBoard, reservedFields, serializeBoard, withSchema, type Board } from '../markdown/kanban.js';
 import type { FieldDef } from '../markdown/fields.js';
 import { applyNoteEdit, type NoteEdit } from '../markdown/noteedit.js';
-import { after, type Awaitable } from '../awaitable.js';
 import { _, fmt } from '../i18n.js';
 import { missingField, withField } from '../markdown/layouthint.js';
 import { errorMessage, type Doc, type DocumentHost, type TextEditor } from './document.js';
@@ -45,7 +44,7 @@ export interface FieldUse {
 
 // The dialogs of this controller; tests replace them.
 export interface ViewDialogs {
-    editSchema(options: SchemaDialogOptions): Awaitable<FieldDef[] | null>;
+    editSchema(options: SchemaDialogOptions): Promise<FieldDef[] | null>;
 }
 
 export type LayoutPage = 'calendar' | 'timeline' | 'gallery' | 'chart';
@@ -387,7 +386,7 @@ export class ViewController<E extends TextEditor> {
             ...f.options.map(option => ({ key: f.key, option, count: fieldUses(board, f.key, option) })),
         ]);
         const options: SchemaDialogOptions = { fields, reserved: reservedFields(board), uses };
-        void after(this.dialogs.editSchema(options), fields => {
+        void this.dialogs.editSchema(options).then(fields => {
             if (fields) view.write(withSchema(view.current(), fields));
         });
     }

@@ -5,7 +5,6 @@
 // core to apply some of them while the ask is open, and answers with its note; the result the agent sees is what the
 // core wrote, never what the panel claims.
 
-import type { Awaitable } from '../awaitable.js';
 import { agentGit } from '../git.js';
 import { ChatController, type ChatView, type TurnOutcome, type TurnView } from '../agent/chatcontroller.js';
 import type { KeySource } from '../agent/apikey.js';
@@ -48,21 +47,21 @@ export interface ChatPanelSettings {
 export type UndoTarget = { ask: number } | { event: string };
 
 export interface ChatPanelView {
-    // What the user did; the controller sets these. An answer may come later (Awaitable): over the app protocol each is a
+    // What the user did; the controller sets these. Each answer comes later: over the app protocol each is a
     // request whose reply arrives a turn or more after it was sent, so the panel goes on only once it has it.
     onSend: (text: string) => Promise<void>;
     onStop: () => void;
     onReset: () => void;
-    onPreview: (draft: string) => Awaitable<BuiltContext>;                       // the context a draft would send, nothing sent
+    onPreview: (draft: string) => Promise<BuiltContext>;                       // the context a draft would send, nothing sent
     onOptions: (options: ContextOptions) => void;                     // which parts of the context are sent
-    onChats: () => Awaitable<ChatSummary[] | null>;                        // saved conversations; null = no work folder
-    onOpenChat: (path: string) => Awaitable<SavedChat | null>;                // null = the file could not be read
-    onDeleteChat: (path: string) => Awaitable<string | null>;                // an error message, or null
+    onChats: () => Promise<ChatSummary[] | null>;                        // saved conversations; null = no work folder
+    onOpenChat: (path: string) => Promise<SavedChat | null>;                // null = the file could not be read
+    onDeleteChat: (path: string) => Promise<string | null>;                // an error message, or null
     // Apply part of an open proposal (chosen = indices of a batch, null = all): an error message, or null once written.
-    onApply: (ask: number, chosen: number[] | null) => Awaitable<string | null>;
-    onUndo: (target: UndoTarget) => Awaitable<string | null>;                // undo applied changes: an error message, or null
+    onApply: (ask: number, chosen: number[] | null) => Promise<string | null>;
+    onUndo: (target: UndoTarget) => Promise<string | null>;                // undo applied changes: an error message, or null
     onClearLog: () => void;                                           // empty the agent log
-    onInsert: (text: string) => Awaitable<boolean>;                        // put an answer into the open note
+    onInsert: (text: string) => Promise<boolean>;                        // put an answer into the open note
     onModel: (model: string) => void;
     onThinking: (thinking: boolean) => void;
     onSaveChats: (save: boolean) => void;
@@ -194,17 +193,17 @@ export class AssistantController<E extends TextEditor = TextEditor> {
         panel.onSend = text => chat.send(text);
         panel.onStop = () => chat.stop();
         panel.onReset = () => chat.reset();
-        panel.onPreview = draft => chat.preview(draft);
+        panel.onPreview = async draft => chat.preview(draft);
         panel.onOptions = options => { chat.options = { ...options }; };
-        panel.onChats = () => chat.chats();
-        panel.onOpenChat = path => chat.open(path);
-        panel.onDeleteChat = path => {
+        panel.onChats = async () => chat.chats();
+        panel.onOpenChat = async path => chat.open(path);
+        panel.onDeleteChat = async path => {
             try { chat.deleteChat(path); return null; } catch (e) { return errorMessage(e); }
         };
-        panel.onApply = (ask, chosen) => this.apply(ask, chosen);
-        panel.onUndo = target => this.undo(target);
+        panel.onApply = async (ask, chosen) => this.apply(ask, chosen);
+        panel.onUndo = async target => this.undo(target);
         panel.onClearLog = () => chat.session.trace.clear();
-        panel.onInsert = text => {
+        panel.onInsert = async text => {
             if (!this.session.canInsert()) return false;
             host.active().editor.insertAtCursor(`${text.trim()}\n`);
             return true;

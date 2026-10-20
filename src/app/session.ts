@@ -7,7 +7,6 @@ import type { AppSettings, SidebarPage } from '../settings.js';
 import { WorkspaceRepository } from '../workspace.js';
 import { fileUri, insideName } from '../files.js';
 import { platform } from '../platform/index.js';
-import { after, type Awaitable } from '../awaitable.js';
 import { WELCOME } from '../welcome.js';
 import { Autosaver, type AutosaveHost } from './autosave.js';
 import { CollabController, type CollabDialogs, type CollabHost } from './collab.js';
@@ -340,20 +339,20 @@ export class AppSession<E extends TextEditor> {
 
     // The user asked to close the window. true = it may close: every changed document was asked about, the agents that
     // are still working were dealt with, and the tabs are remembered for the next launch.
-    closeRequest(): Awaitable<boolean> {
-        return after(this.documents.confirmDiscardAll(), yes => yes ? after(this.harness.confirmClose(), go => {
-            if (go) this.documents.rememberTabs();
-            return go;
-        }) : false);
+    async closeRequest(): Promise<boolean> {
+        if (!await this.documents.confirmDiscardAll()) return false;
+        const go = await this.harness.confirmClose();
+        if (go) this.documents.rememberTabs();
+        return go;
     }
 
     // Show a folder in the Files tab and remember it to open again next time. Switching to another folder closes the tabs
     // of files outside it first (false = the user kept one, and the folder is not switched). show = false when restoring
     // the last folder, so a side panel that was closed on purpose does not appear.
-    openFolder(path: string, show = true): Awaitable<boolean> {
+    async openFolder(path: string, show = true): Promise<boolean> {
         const absolute = platform().paths.resolve(path);
         const root = this.files.root;
-        if (root && root !== absolute) return after(this.documents.closeOutside(absolute), yes => yes && this.applyFolder(absolute, show));
+        if (root && root !== absolute && !await this.documents.closeOutside(absolute)) return false;
         return this.applyFolder(absolute, show);
     }
 

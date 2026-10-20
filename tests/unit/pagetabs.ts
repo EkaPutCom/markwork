@@ -79,13 +79,13 @@ export function pageTabTests(): void {
         docs.openInTab(a);
         docs.active.editor.setModified(true);
         docs.openHtml(page, dir);
-        eq(docs.save(), true);
+        eq(await docs.save(), true);
         eq(await docs.saveAs(), false);
         ok(docs.active.editor.isModified(), 'the document behind the page was not saved by it');
         session.dispose();
     });
 
-    test('closing a shown page shows its neighbor; closing a page that is not shown changes nothing', () => {
+    test('closing a shown page shows its neighbor; closing a page that is not shown changes nothing', async () => {
         const { session, docs, ids, shown } = setup();
         docs.openInTab(a);
         const docId = docs.active.id;
@@ -94,37 +94,37 @@ export function pageTabTests(): void {
         const [first, second] = docs.allPages;
         eq(ids(), [docId, first.id, second.id]);
         eq(shown(), second.id);
-        docs.closeById(first.id);
+        await docs.closeById(first.id);
         eq([shown(), ids()], [second.id, [docId, second.id]], 'a page behind the shown one closed');
-        docs.closeById(second.id);
+        await docs.closeById(second.id);
         eq([docs.page, shown()], [null, docId], 'the neighbor is shown');
         session.dispose();
     });
 
-    test('closing the last document leaves the page that is open; with none, Home comes back', () => {
+    test('closing the last document leaves the page that is open; with none, Home comes back', async () => {
         const { session, docs, ids, shown } = setup();
         docs.openInTab(a);
         docs.openHtml(page, dir);
         const pageId = docs.page!.id;
         docs.select(docs.active.id);
-        eq(docs.closeById(docs.active.id), true);
+        eq(await docs.closeById(docs.active.id), true);
         eq([docs.page?.id, ids(), docs.all.length], [pageId, [pageId], 1], 'the page stays, the empty document waits');
-        docs.closeById(pageId);
+        await docs.closeById(pageId);
         eq(docs.page?.kind, 'home', 'the last tab closed: Home is shown');
         eq(ids().length, 1);
         eq(shown(), docs.page!.id);
         session.dispose();
     });
 
-    test('Home stays when it is the last tab; with Home switched off the empty document takes its place', () => {
+    test('Home stays when it is the last tab; with Home switched off the empty document takes its place', async () => {
         const on = setup(true);
         on.docs.openHome();
-        on.docs.closeById(on.docs.page!.id);
+        await on.docs.closeById(on.docs.page!.id);
         eq(on.docs.page?.kind, 'home', 'Home is the last tab and stays');
         on.session.dispose();
         const off = setup(false);
         off.docs.openHome();
-        off.docs.closeById(off.docs.page!.id);
+        await off.docs.closeById(off.docs.page!.id);
         eq([off.docs.page, off.ids()], [null, [off.docs.active.id]], 'the empty document is a tab again');
         off.session.dispose();
     });

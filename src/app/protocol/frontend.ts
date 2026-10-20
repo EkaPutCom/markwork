@@ -12,7 +12,6 @@ import type { ChooseFileOptions, Prompt } from '../dialogs.js';
 import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session.js';
 import type { Page, ToastButton } from '../document.js';
 import type { Card, Position } from '../../markdown/kanban.js';
-import type { Awaitable } from '../../awaitable.js';
 import type { CardRun, HarnessBoard, HarnessMenuEntry } from '../harness.js';
 import { ProtocolEditor } from './replica.js';
 import { Asks } from './asks.js';
@@ -46,7 +45,7 @@ class ProtocolNotes implements KanbanView, CaptureView {
 // The board also carries the agents: the runs of its cards come as data, and a card's menu is asked for when it opens (the
 // frontend asks with `act.card.menu`, the harness controller answers with entries that name their action by a token).
 class ProtocolBoard extends ProtocolNotes implements HarnessBoard {
-    onCardMenu: (card: Card, at: Position) => Awaitable<HarnessMenuEntry[]> = () => [];
+    onCardMenu: (card: Card, at: Position) => Promise<HarnessMenuEntry[]> = async () => [];
     onRunMenu: (token: number) => void = () => {};
 
     constructor(page: string, show: ConstructorParameters<typeof ProtocolNotes>[1], focus: ConstructorParameters<typeof ProtocolNotes>[2],
