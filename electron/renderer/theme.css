@@ -358,7 +358,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .context-menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
 
 /* Home and an HTML tab. */
-.home-page { flex: 1; overflow: auto; padding: 32px 16px; max-width: 720px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+.home-scroll { flex: 1; overflow: auto; min-height: 0; }
+.home-page { padding: 32px 16px; max-width: 720px; width: 100%; margin: 0 auto; box-sizing: border-box; }
 .home-page header h1 { margin: 0; font-size: 26px; color: var(--heading); }
 .home-page header p { margin: 4px 0 24px; color: var(--muted-foreground); }
 .home-page.welcome { text-align: center; padding-top: 80px; }

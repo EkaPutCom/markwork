@@ -56,18 +56,18 @@ function Task({ task }: { task: HomeData['tasks'][number] }) {
 export function Home({ data }: { data: HomeData | null }) {
     const client = useClient();
     const [allTasks, setAllTasks] = useState(false);
-    if (!data) return <div className="home-page" />;
+    if (!data) return <div className="home-scroll"><div className="home-page" /></div>;
     const now = new Date(data.now);
     if (!data.workspace && !data.resume.length && !data.recent.length) {
         return (
-            <div className="home-page welcome">
+            <div className="home-scroll"><div className="home-page welcome">
                 <h1>Welcome to Markwork</h1>
                 <p>Open a work folder to see the latest files, kanban due dates, and the inbox here.</p>
                 <div className="actions">
                     <button className="button suggested" onClick={() => void client.openFolder()}>Open Folder…</button>
                     <button className="button" onClick={() => client.run('new')}>New Document</button>
                 </div>
-            </div>
+            </div></div>
         );
     }
     const part = GREETINGS[dayPart(now.getHours())];
@@ -76,7 +76,7 @@ export function Home({ data }: { data: HomeData | null }) {
     const journalLine = journal && ([journal.notes ? `${journal.notes} note${journal.notes === 1 ? '' : 's'}` : '', journal.activity ? `${journal.activity} activit${journal.activity === 1 ? 'y' : 'ies'}` : ''].filter(Boolean).join(' · ')
         || (journal.exists ? 'No notes yet' : 'Not written yet'));
     return (
-        <div className="home-page">
+        <div className="home-scroll"><div className="home-page">
             <header>
                 <h1>{data.name ? `${part}, ${data.name}` : part}</h1>
                 <p>{now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
@@ -113,6 +113,6 @@ export function Home({ data }: { data: HomeData | null }) {
             {data.recent.length > 0 && (
                 <Section title="Recent files">{data.recent.map(e => <Row key={e.path} title={e.title} subtitle={e.subtitle} suffix={ageLabel(e.time, data.now)} onClick={() => client.openRecent(e.path)} />)}</Section>
             )}
-        </div>
+        </div></div>
     );
 }
