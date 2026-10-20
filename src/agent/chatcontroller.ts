@@ -1,6 +1,6 @@
 // The life cycle of an assistant conversation, without widgets: sending a turn and stopping it, guarding against
 // a work folder that changes during a request, saving the conversation after every turn, reopening and deleting
-// saved conversations, undoing applied changes, and composing the context. The panel (electron/renderer/Chat.tsx) draws what it
+// saved conversations, undoing applied changes, and composing the context. The panel (electron/renderer/components/Chat.tsx) draws what it
 // is told through ChatView and passes user actions in; tests drive this class with a fake view and provider.
 
 import { Cancellable } from '../cancel.js';

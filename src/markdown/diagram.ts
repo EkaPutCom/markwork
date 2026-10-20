@@ -1,5 +1,5 @@
-// Which fenced code blocks are drawn as diagrams. The Electron window draws them in electron/renderer/diagrams.ts (DBML is
-// first translated by dbml.ts) and leaves them out of the code coloring in electron/renderer/codecolor.ts.
+// Which fenced code blocks are drawn as diagrams. The Electron window draws them in electron/renderer/lib/diagrams.ts (DBML is
+// first translated by dbml.ts) and leaves them out of the code coloring in electron/renderer/lib/codecolor.ts.
 
 import type { CodeBlock } from './highlight.js';
 

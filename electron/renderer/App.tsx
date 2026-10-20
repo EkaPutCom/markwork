@@ -4,31 +4,31 @@
 import { useEffect, useMemo } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
-import { EditorArea } from './EditorArea.js';
-import { Explorer } from './Explorer.js';
-import { Outline } from './Outline.js';
-import { Search } from './Search.js';
-import { Palette } from './Palette.js';
-import { DialogLayer } from './Dialog.js';
-import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './Modals.js';
-import { FieldsDialog } from './FieldsDialog.js';
-import { ImageViewer } from './ImageViewer.js';
-import { Chat, ChatReview } from './Chat.js';
-import { Collab, SendChangesDialog, TokenDialog } from './Collab.js';
-import { History, HistoryViewers } from './History.js';
-import { LogViewer, RunLogs } from './LogViewer.js';
-import { AgentAsks, PullRequestDialog } from './Harness.js';
-import { Tabs } from './Tabs.js';
-import { Icon, type IconName } from './Icons.js';
-import { label, matches } from './keys.js';
-import { Rail, SideShell } from './Sidebar.js';
+import { EditorArea } from './components/EditorArea.js';
+import { Explorer } from './components/Explorer.js';
+import { Outline } from './components/Outline.js';
+import { Search } from './components/Search.js';
+import { Palette } from './components/Palette.js';
+import { DialogLayer } from './components/Dialog.js';
+import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './components/Modals.js';
+import { FieldsDialog } from './components/FieldsDialog.js';
+import { ImageViewer } from './components/ImageViewer.js';
+import { Chat, ChatReview } from './components/Chat.js';
+import { Collab, SendChangesDialog, TokenDialog } from './components/Collab.js';
+import { History, HistoryViewers } from './components/History.js';
+import { LogViewer, RunLogs } from './components/LogViewer.js';
+import { AgentAsks, PullRequestDialog } from './components/Harness.js';
+import { Tabs } from './components/Tabs.js';
+import { Icon, type IconName } from './components/Icons.js';
+import { label, matches } from './lib/keys.js';
+import { Rail, SideShell } from './components/Sidebar.js';
 import { Button } from './ui/button.js';
 import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
 } from './ui/dropdown-menu.js';
 import { cn } from './lib/utils.js';
-import { useClient, useStore } from './useClient.js';
-import { layoutOf } from './client.js';
+import { useClient, useStore } from './lib/useClient.js';
+import { layoutOf } from './lib/client.js';
 
 // The title of the header: where the document is, as a breadcrumb, and its name, which is the Document Menu button
 // (Save, Save As, Autosave, Export, the recent files). Home and an empty window have a plain title.
