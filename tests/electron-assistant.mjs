@@ -240,7 +240,7 @@ try {
     await step('Home has a button for Add to Journal', async () => {
         await page.getByRole('button', { name: 'Main Menu' }).click();
         await page.getByRole('menuitem', { name: /^Home/ }).click();
-        await page.getByText("Today's journal").waitFor();
+        await page.getByText("Today's journal", { exact: true }).waitFor();
         await page.getByRole('button', { name: 'Add to Journal…', exact: true }).click();
         const dialog = page.getByRole('alertdialog');
         await dialog.getByRole('textbox').fill('from home');
