@@ -443,6 +443,8 @@ try {
         await page.keyboard.press('Enter');
         await page.locator('.image-viewer img').waitFor();
         await page.keyboard.press('Escape');
+        // The palette key must reach the window, not the viewer that is still on its way out.
+        await page.locator('.image-viewer').waitFor({ state: 'detached' });
         await setDoc('no image here', 0);
         await page.keyboard.press('ControlOrMeta+Shift+P');
         await page.locator('.palette input').fill('zoom image');

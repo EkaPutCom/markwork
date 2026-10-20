@@ -50,6 +50,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run electron:build
+      # The tests compare file bytes after git restores them; the Windows runner's git would write CRLF.
+      - run: git config --global core.autocrlf false
       - name: Smoke and feature tests (Linux, under a virtual display)
         if: runner.os == 'Linux'
         run: xvfb-run -a -s '-screen 0 1280x800x24' npm run test:electron:run
