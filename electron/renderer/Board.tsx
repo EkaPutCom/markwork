@@ -33,7 +33,9 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
     const schema = useMemo(() => boardSchema(board), [board.head.join('\n')]);   // eslint-disable-line react-hooks/exhaustive-deps
     const [menu, setMenu, closeMenu] = usePopup<{ at: { x: number; y: number }; entries: MenuEntry[] }>();
     const [editing, setEditing, closeEditing] = usePopup<Position & { text: string; notes: string[] }>();
-    const [adding, setAdding] = useState<number | 'list' | null>(null);
+    const [adding, setAdding] = useState<'list' | null>(null);
+    // A new card is filled in through the same dialog as editing a card.
+    const [addingCard, setAddingCard, closeAddingCard] = usePopup<number>();
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     const [drag, setDrag] = useState<Drag | null>(null);
     const [openField, fieldPopover] = useFieldEditor(schema, (card, key, raw, field, option) => client.editNotes({ kind: 'field', ...card, key, raw, field, option }));
@@ -165,18 +167,7 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
                             })}
                             {drag?.target?.column === c && drag.target.index >= others && mark}
                         </div>
-                        {adding === c ? (
-                            <form onSubmit={e => {
-                                e.preventDefault();
-                                const text = (drafts[c] ?? '').trim();
-                                if (!text) return;
-                                client.editNotes({ kind: 'add', column: c, text, notes: [], now: Date.now() });
-                                setDrafts(d => ({ ...d, [c]: '' }));
-                            }}>
-                                <input autoFocus value={drafts[c] ?? ''} onChange={e => setDrafts(d => ({ ...d, [c]: e.target.value }))} placeholder="Add a card" aria-label={`Add a card to ${columnName(column.title)}`}
-                                    onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setAdding(null); } }} onBlur={() => { if (!(drafts[c] ?? '').trim()) setAdding(null); }} />
-                            </form>
-                        ) : <button className="add" onClick={() => setAdding(c)}>+ Add card</button>}
+                        <button className="add" onClick={() => setAddingCard(c)}>+ Add card</button>
                     </section>
                 );
             })}
@@ -199,6 +190,11 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
             {fieldPopover}
             {editing && <CardDialog heading="Edit Card" kind="card" text={editing.text} notes={editing.notes} schema={schema} agents={agents}
                 onDone={result => answer({ column: editing.column, index: editing.index }, editing.text, result)} />}
+            {addingCard !== null && <CardDialog heading="Add Card" kind="card" text="" notes={[]} schema={schema} agents={agents}
+                onDone={result => {
+                    closeAddingCard();
+                    if (result) client.editNotes({ kind: 'add', column: addingCard, text: result.text, notes: result.notes, now: Date.now() });
+                }} />}
         </div>
     );
 }

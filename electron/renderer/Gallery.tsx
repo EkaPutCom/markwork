@@ -7,6 +7,7 @@ import { CARD_WIDTH, galleryCards, GALLERY_SIZES, gallerySize, type GallerySize 
 import { boardSchema, type Board } from '../../src/markdown/kanban.js';
 import { imageUrl } from './images.js';
 import { Chip, PageHeader, Tags, useNoteDialog } from './notes.js';
+import { Icon } from './Icons.js';
 import { useClient } from './useClient.js';
 
 const SIZE_LABEL: Record<GallerySize, string> = { small: 'Small', medium: 'Medium', large: 'Large' };
@@ -29,7 +30,7 @@ export function Gallery({ board }: { board: Board }) {
         <div className="layout-page gallery" data-page="gallery">
             <PageHeader board={board} fallback="Gallery" onNew={() => add()} />
             <div className="gallery-bar">
-                <input type="search" value={query} placeholder="Search notes…" aria-label="Search the notes of the gallery" onChange={e => setQuery(e.target.value)} />
+                <span className="search-entry"><Icon name="edit-find" /><input type="search" value={query} placeholder="Search notes…" aria-label="Search the notes of the gallery" onChange={e => setQuery(e.target.value)} /></span>
                 <span className="linked">{GALLERY_SIZES.map(s => <button key={s} className={`button${size === s ? ' checked' : ''}`} aria-pressed={size === s} onClick={() => setSizeOverride(s)}>{SIZE_LABEL[s]}</button>)}</span>
             </div>
             <div className="gallery-grid">
@@ -41,8 +42,8 @@ export function Gallery({ board }: { board: Board }) {
                             onClick={() => edit(card.at)} onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) edit(card.at); }}>
                             <div className={`cover ${card.cover.kind === 'color' ? `cover-${card.cover.index}` : card.cover.kind === 'image' ? 'cover-missing' : 'cover-none'}`} style={{ height: Math.round(width * 0.45) }}>
                                 {src && <img src={src} alt={card.title} onError={e => { e.currentTarget.hidden = true; }} />}
-                                <button className="delete icon-button" title="Delete note" aria-label={`Delete note: ${card.title}`}
-                                    onClick={async e => { e.stopPropagation(); if (await client.confirm(`Delete the note “${card.title}”?`, '', 'Delete')) client.editNotes({ kind: 'delete', at: card.at, card: card.card.text }); }}>✕</button>
+                                <button className="delete button circular" title="Delete note" aria-label={`Delete note: ${card.title}`}
+                                    onClick={async e => { e.stopPropagation(); if (await client.confirm(`Delete the note “${card.title}”?`, '', 'Delete')) client.editNotes({ kind: 'delete', at: card.at, card: card.card.text }); }}><Icon name="window-close" /></button>
                             </div>
                             <div className="text">
                                 <h3>{card.title}</h3>

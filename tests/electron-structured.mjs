@@ -58,8 +58,10 @@ try {
         await open('board.md');
         await page.locator('[data-page=board]').waitFor();
         await page.getByRole('button', { name: '+ Add card' }).first().click();
-        await page.getByLabel('Add a card to Plan').fill('Three #tag [due:: 2026-10-25]');
-        await page.keyboard.press('Enter');
+        await dialog.getByLabel('Title').fill('Three');
+        await dialog.getByLabel('Tags').fill('tag');
+        await dialog.getByLabel('Due', { exact: true }).fill('2026-10-25');
+        await dialog.getByRole('button', { name: 'Save' }).click();
         await page.locator('.board .card', { hasText: 'Three' }).waitFor();
         await page.locator('.board .card', { hasText: 'Three' }).getByText('#tag').waitFor();
         assert.match(await saved('board.md', /- \[ \] Three #tag \[due:: 2026-10-25\]/), /- \[ \] Three #tag \[due:: 2026-10-25\]/);
@@ -114,7 +116,7 @@ try {
     });
 
     await step('Fields…: a field with colored options is added, and a card\'s chip changes it from a popover', async () => {
-        await page.locator('.headerbar button[aria-label=Layout]').click();
+        await page.getByRole('button', { name: 'Main Menu' }).click();
         await page.getByRole('menuitem', { name: 'Fields…' }).click();
         await dialog.getByRole('button', { name: '+ Add field' }).click();
         await dialog.getByLabel('Field name').fill('prio');
@@ -289,7 +291,7 @@ try {
         await open('table.md');
         await page.locator('[data-page=table]').waitFor();
         await page.locator('.headerbar button[aria-label=Layout]').click();
-        await page.getByRole('menuitem', { name: '✓ Table' }).waitFor();
+        await page.locator('.layout-menu [role=menuitem].checked', { hasText: 'Table' }).waitFor();
         await page.getByRole('menuitem', { name: 'Board' }).click();
         await page.locator('[data-page=board]').waitFor();
         assert.match(await saved('table.md', /layout: board/), /layout: board/);
@@ -331,7 +333,7 @@ try {
     });
 
     await step('csv: rows and columns are added and removed from the menus, and Escape puts the old value back', async () => {
-        await page.getByRole('button', { name: '+ Add Column' }).click();
+        await page.getByRole('button', { name: 'Add Column' }).click();
         await page.locator('[data-cell="0:2"]').waitFor();
         await page.locator('[data-cell="1:0"]').click({ button: 'right' });
         await page.getByRole('menuitem', { name: 'Delete Column' }).click();
@@ -349,12 +351,12 @@ try {
         await page.keyboard.press('ControlOrMeta+h');
         await page.getByLabel('Find in the table').fill('5');
         await page.locator('.csv-cell.current-match').waitFor();
-        await page.getByLabel('Replace with').fill('7');
-        await page.getByRole('button', { name: 'All', exact: true }).click();
+        await page.getByLabel('Replace in the table').fill('7');
+        await page.getByRole('button', { name: 'Replace All', exact: true }).click();
         await page.waitForFunction(() => document.querySelector('[data-cell="2:0"]')?.value === '77');
         assert.match(await saved('sheet.csv', /^qty,Column 3\n3,\n77,\n9,\n/), /^qty,Column 3\n3,\n77,\n9,\n/);
         await page.getByLabel('Find in the table').press('Escape');
-        await page.locator('.find-bar').waitFor({ state: 'detached' });
+        await page.locator('.csv-find').waitFor({ state: 'detached' });
     });
 } catch {
     failed = true;

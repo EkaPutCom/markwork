@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { daysBetween } from '../../src/markdown/dates.js';
 import { boardSchema, type Board } from '../../src/markdown/kanban.js';
 import { barSpan, PIXELS_PER_DAY, timelineRange, timelineRows, timelineTicks, timelineZoom, ZOOMS, type TimelineRow, type Zoom } from '../../src/markdown/timeline.js';
-import { formatDate, PageHeader, refOf, todayString, useNoteDialog } from './notes.js';
+import { dayMonth, formatDate, PageHeader, refOf, todayString, useNoteDialog } from './notes.js';
 import { useClient } from './useClient.js';
 
 const ROW_HEIGHT = 34, HEAD_HEIGHT = 30, LABEL_WIDTH = 200, CLICK_SLOP = 4;
@@ -56,10 +56,11 @@ export function Timeline({ board }: { board: Board }) {
 
     return (
         <div className="layout-page timeline" data-page="timeline">
-            <PageHeader board={board} fallback="Timeline" onNew={() => add()}>
+            <PageHeader board={board} fallback="Timeline" onNew={() => add()} />
+            <div className="timeline-controls">
                 <span className="linked">{ZOOMS.map(z => <button key={z} className={`button${zoom === z ? ' checked' : ''}`} aria-pressed={zoom === z} onClick={() => setZoomOverride(z)}>{ZOOM_LABEL[z]}</button>)}</span>
-                <button className="button" title="Go to today" onClick={() => scroller.current?.scrollTo({ left: Math.max(0, offsetToday * px - 120), behavior: 'smooth' })}>Today</button>
-            </PageHeader>
+                <button className="button" title="Scroll to today" onClick={() => scroller.current?.scrollTo({ left: Math.max(0, offsetToday * px - 120), behavior: 'smooth' })}>Today</button>
+            </div>
             <div className="timeline-chart">
                 <div className="timeline-labels" style={{ width: LABEL_WIDTH }}>
                     <div className="timeline-head" style={{ height: HEAD_HEIGHT }}>Notes</div>
@@ -72,7 +73,7 @@ export function Timeline({ board }: { board: Board }) {
                     <div className="timeline-canvas" style={{ width: range.days * px, height }}>
                         {timelineTicks(range, zoom).map(tick => (
                             <div key={tick.date} className="timeline-tick" style={{ left: tick.offset * px, height }}>
-                                <span className="timeline-head" style={{ height: HEAD_HEIGHT }}>{formatDate(tick.date, zoom === 'week' ? { weekday: 'short', day: 'numeric' } : { day: 'numeric', month: 'short' })}</span>
+                                <span className="timeline-head" style={{ height: HEAD_HEIGHT }}>{zoom === 'week' ? `${formatDate(tick.date, { weekday: 'short' })} ${Number(tick.date.slice(8, 10))}` : dayMonth(tick.date)}</span>
                             </div>
                         ))}
                         {offsetToday >= 0 && offsetToday <= range.days && <div className="timeline-today" title="Today" style={{ left: offsetToday * px, height }} />}

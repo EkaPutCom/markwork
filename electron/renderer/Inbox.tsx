@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { boardSchema, dropSpot, type Board, type DropRow, type DropSpot, type Position } from '../../src/markdown/kanban.js';
 import { ageOf, itemFields, itemMeta } from '../../src/markdown/inbox.js';
 import { CardDialog, FieldChips, headingOf, Inline, PopupMenu, refOf, Tags, usePopup, useFieldEditor, type CardAnswer, type MenuEntry } from './notes.js';
+import { Icon } from './Icons.js';
 import { useClient, useStore } from './useClient.js';
 
 export function ageLabel(captured: Date, now: Date): string {
@@ -62,8 +63,12 @@ export function Inbox({ board, focus, tab }: { board: Board; focus: number; tab:
             { label: 'Move Up', enabled: at.index > 0, run: () => client.editNotes({ kind: 'move', ...ref, to: { column: at.column, index: at.index - 1 } }) },
             { label: 'Move Down', enabled: at.index < col.cards.length - 1, run: () => client.editNotes({ kind: 'move', ...ref, to: { column: at.column, index: at.index + 1 } }) },
             { separator: true },
-            { label: 'Delete', run: () => void client.confirm(`Delete the note “${itemMeta(item.text).title}”?`, '', 'Delete').then(yes => { if (yes) client.editNotes({ kind: 'delete', ...ref }); }) },
+            { label: 'Delete', run: () => void deleteNote(at) },
         ];
+    };
+    const deleteNote = async (at: Position) => {
+        const item = board.columns[at.column]?.cards[at.index];
+        if (item && await client.confirm(`Delete the note “${itemMeta(item.text).title}”?`, '', 'Delete')) client.editNotes({ kind: 'delete', ...refOf(at, item) });
     };
     const sectionEntries = (column: number): MenuEntry[] => {
         const section = board.columns[column];
@@ -117,7 +122,7 @@ export function Inbox({ board, focus, tab }: { board: Board; focus: number; tab:
             <div className="inbox-page">
                 <header>
                     <div className="titles"><h1>{title}</h1>{description && <p className="dim">{description}</p>}</div>
-                    <button className="button" title="Add a note with a title, tags, and full notes" onClick={() => setDialog({ at: null, text: '', notes: [] })}>+ New Note</button>
+                    <button className="button" title="Add a note with a title, tags, and full notes" onClick={() => setDialog({ at: null, text: '', notes: [] })}><Icon name="list-add" />New Note</button>
                 </header>
                 <input ref={entry} className="capture" value={text} placeholder="Write an idea, link, or quick note…" aria-label="Quick capture to the inbox"
                     onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); capture(); } }} />
@@ -147,6 +152,8 @@ export function Inbox({ board, focus, tab }: { board: Board; focus: number; tab:
                                         <div className="text"><div className="title"><Inline text={meta.title} /></div>{sub && <div className="dim caption">{sub}</div>}</div>
                                         <FieldChips chips={itemFields(card.text, schema)} onEdit={(key, e) => openField(ref, card.text, key, { x: e.clientX, y: e.clientY })} />
                                         <Tags tags={meta.tags} />
+                                        <button className="button flat circular remove" title="Delete note" aria-label={`Delete note: ${meta.title}`}
+                                            onClick={e => { e.stopPropagation(); void deleteNote(at); }}><Icon name="window-close" /></button>
                                     </div>
                                 );
                             })}

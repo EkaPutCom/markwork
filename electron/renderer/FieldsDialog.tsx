@@ -130,8 +130,8 @@ function Form({ id, options }: { id: number; options: NonNullable<ReturnType<typ
                 </div>
                 <button type="button" className="button flat" onClick={() => setDraft(l => [...l, { def: { key: '', type: 'text', multiple: false, options: [] }, fresh: true, options: [] }])}>+ Add field</button>
                 <div className="buttons">
-                    <button type="button" className="button" onClick={() => client.answerSchema(id, null)}>Cancel</button>
                     <button type="submit" className="button suggested">Save</button>
+                    <button type="button" className="button" onClick={() => client.answerSchema(id, null)}>Cancel</button>
                 </div>
             </form>
         </Modal>

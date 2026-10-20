@@ -5,7 +5,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { barData, chartData, chartItems, dateFields, donutData, NO_VALUE, selectFields, type ChartData, type ChartItem, type Period, type Slice } from '../../src/markdown/chart.js';
 import { boardSchema, type Board } from '../../src/markdown/kanban.js';
-import { formatDate, PageHeader, todayString } from './notes.js';
+import { Icon } from './Icons.js';
+import { dayMonth, formatDate, PageHeader, todayString } from './notes.js';
 import { useClient } from './useClient.js';
 
 const SLICE_COLORS: Record<string, string> = { red: '#e5484d', amber: '#e9a23b', green: '#3fa66b', blue: '#3b7dd8', purple: '#8e5bd6', teal: '#2f8f99', pink: '#c2417a', gray: '#8a8f98' };
@@ -52,7 +53,7 @@ function Periods({ counts, period }: { counts: { start: string; count: number }[
                 <div key={entry.start} className="bar-col" title={`${entry.start}: ${entry.count}`}>
                     <span className="caption">{entry.count}</span>
                     <div className="chart-bar" style={{ height: Math.max(4, Math.round((entry.count / max) * BAR_AREA)) }} />
-                    <span className="dim caption">{formatDate(entry.start, period === 'week' ? { day: 'numeric', month: 'short' } : { month: 'short', year: 'numeric' })}</span>
+                    <span className="dim caption">{period === 'week' ? dayMonth(entry.start) : formatDate(entry.start, { month: 'short', year: 'numeric' })}</span>
                 </div>
             ))}
         </div>
@@ -101,13 +102,14 @@ export function Chart({ board }: { board: Board }) {
             if (!donut.field) return null;
             title = `By ${donut.field}`; body = <Donut slices={donut.slices} />;
         }
-        return <section key={i} className="card chart-panel"><h3>{title}</h3>{body}</section>;
+        return <section key={i} className={`card chart-panel panel-${item.kind}`}><h3>{title}</h3>{body}</section>;
     };
 
     return (
         <div className="layout-page chart" data-page="chart">
-            <PageHeader board={board} fallback="Chart" />
-            <button className="button settings-toggle" aria-expanded={settings} aria-label="Edit the panels" onClick={() => setSettings(v => !v)}>⚙ Panels</button>
+            <PageHeader board={board} fallback="Chart">
+                <button className={`button settings-toggle${settings ? ' checked' : ''}`} aria-expanded={settings} aria-label="Edit the panels" title="Panels" onClick={() => setSettings(v => !v)}><Icon name="emblem-system" /></button>
+            </PageHeader>
             {settings && (
                 <div className="chart-settings" role="group" aria-label="Panels">
                     <h3>Panels</h3>

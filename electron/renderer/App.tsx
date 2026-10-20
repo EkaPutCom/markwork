@@ -1,7 +1,7 @@
 // The window: a header bar, a rail of icons with its panel, the editor with its tabs, the
 // counts at the foot, and the command palette over all of it.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './EditorArea.js';
@@ -24,26 +24,40 @@ import { label, matches } from './keys.js';
 import { useClient, useStore } from './useClient.js';
 import { layoutOf } from './client.js';
 
-// The title of the header bar: the document's name over where it is.
-function Title() {
+// The title of the header bar: the document's name over where it is. A document's title is the Document Menu button
+// (Save, Save As, Autosave, Export, the recent files); Home and an empty window have a plain title.
+function Title({ menu }: { menu: (onClose: () => void) => ReactNode }) {
     const s = useStore();
+    const [open, setOpen] = useState(false);
     const tab = s.tabs.find(t => t.id === s.active);
     if (!tab) return <div className="title"><span className="name">Markwork</span></div>;
     // Where the document is, as the core words it (~ for the home folder); a page (Home, an HTML file) is not saved.
     const place = tab.place ?? (tab.file ? tab.file.replace(/[\\/][^\\/]*$/, '') : null);
     const saved = tab.file && tab.page !== 'home' && tab.page !== 'html' && !tab.mirror.modified ? ' · Saved' : '';
-    return (
-        <div className="title">
+    const words = (
+        <span className="title">
             <span className="name">{tab.mirror.modified ? '• ' : ''}{tab.name}</span>
             <span className="subtitle">{place ? `${place}${saved}` : 'Markwork'}</span>
+        </span>
+    );
+    if (tab.page === 'home') return <div className="title-box">{words}</div>;
+    return (
+        <div className="title-box">
+            <button className="button flat title-button" title="Document Menu" aria-label="Document Menu" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(v => !v)}>
+                {words}<Icon name="pan-down" />
+            </button>
+            {open && menu(() => setOpen(false))}
         </div>
     );
 }
 
-// One line of a menu: a command (with the argument it runs with), a heading over what follows, or a separator.
-interface MenuItem { id: string; label?: string; keys?: string; arg?: string; heading?: boolean }
+// One line of a menu: a command (with the argument it runs with), a heading over what follows, or a separator. A line
+// with an icon can be the one chosen (`checked`, the layout shown); a `check` line is an on/off setting with its box.
+interface MenuItem { id: string; label?: string; keys?: string; arg?: string; heading?: boolean; icon?: IconName; checked?: boolean; check?: boolean; enabled?: boolean }
+// A button of the row at the top of the ☰ menu: an icon over its name.
+interface QuickAction { id: string; label: string; icon: IconName }
 
-function Menu({ items, onClose, align }: { items: MenuItem[]; onClose: () => void; align?: 'right' }) {
+function Menu({ items, onClose, align, quick, className }: { items: MenuItem[]; onClose: () => void; align?: 'right' | 'center'; quick?: QuickAction[]; className?: string }) {
     const client = useClient();
     useEffect(() => {
         const close = (e: Event) => { if (!(e.target as Element).closest('.popover')) onClose(); };
@@ -52,20 +66,54 @@ function Menu({ items, onClose, align }: { items: MenuItem[]; onClose: () => voi
         document.addEventListener('keydown', key);
         return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key); };
     }, [onClose]);
+    const run = (item: { id: string; arg?: string }) => { onClose(); if (item.id === 'open-folder') void client.openFolder(); else client.run(item.id, item.arg); };
     return (
-        <div className={`popover${align === 'right' ? ' right' : ''}`} role="menu">
-            {items.map((item, i) => item.id === '-' ? <hr key={i} /> : item.heading ? <div key={item.label} className="menu-heading">{item.label}</div> : (
-                <button key={`${item.id}:${item.arg ?? ''}`} role="menuitem" title={item.arg} onClick={() => { onClose(); if (item.id === 'open-folder') void client.openFolder(); else client.run(item.id, item.arg); }}>
-                    <span>{item.label}</span>{item.keys && <kbd>{label(item.keys)}</kbd>}
+        <div className={`popover${align ? ` ${align}` : ''}${className ? ` ${className}` : ''}`} role="menu">
+            {quick && (
+                <div className="quick-actions">
+                    {quick.map(q => {
+                        const command = COMMANDS.find(c => c.id === q.id);
+                        return (
+                            <button key={q.id} role="menuitem" className="button" title={q.label} disabled={!command || !client.enabled(command)} onClick={() => run(q)}>
+                                <Icon name={q.icon} /><span>{q.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+            {items.map((item, i) => item.id === '-' ? <hr key={i} /> : item.heading ? <div key={item.label} className="menu-heading">{item.label}</div> : item.check !== undefined && item.check !== false ? (
+                <button key={`${item.id}:${item.arg ?? ''}`} role="menuitemcheckbox" aria-checked={item.checked === true} className="check-item" disabled={item.enabled === false} onClick={() => run(item)}>
+                    <span className="box" aria-hidden="true">{item.checked && <Icon name="emblem-ok" size={14} />}</span><span className="label">{item.label}</span>{item.keys && <kbd>{label(item.keys)}</kbd>}
+                </button>
+            ) : (
+                <button key={`${item.id}:${item.arg ?? ''}`} role="menuitem" title={item.arg} className={`${item.icon ? 'icon-item' : ''}${item.checked ? ' checked' : ''}`} disabled={item.enabled === false} onClick={() => run(item)}>
+                    {item.icon && <Icon name={item.icon} />}<span className="label">{item.label}</span>{item.keys && <kbd>{label(item.keys)}</kbd>}
                 </button>
             ))}
         </div>
     );
 }
 
-// The name on the layout button: the page shown.
-const LAYOUT_NAMES: Record<string, string> = { board: 'Board', list: 'List', inbox: 'List', table: 'Table', calendar: 'Calendar', timeline: 'Timeline', gallery: 'Gallery', chart: 'Chart' };
-const layoutName = (layout: string, page: string): string => LAYOUT_NAMES[page] ?? (layout ? LAYOUT_NAMES[layout] ?? 'Text' : 'Text');
+// The layouts the layout button offers, with the name and the icon it shows for each; '' is the text view.
+const LAYOUTS: { layout: string; name: string; icon: IconName }[] = [
+    { layout: 'table', name: 'Table', icon: 'x-office-spreadsheet' },
+    { layout: 'board', name: 'Board', icon: 'view-dual' },
+    { layout: 'list', name: 'List', icon: 'view-list' },
+    { layout: 'calendar', name: 'Calendar', icon: 'x-office-calendar' },
+    { layout: 'timeline', name: 'Timeline', icon: 'view-continuous' },
+    { layout: 'gallery', name: 'Gallery', icon: 'view-grid' },
+    { layout: 'chart', name: 'Chart', icon: 'view-sort-descending' },
+    { layout: '', name: 'Text', icon: 'text-x-generic' },
+];
+// What the layout button shows: the page on screen (an inbox is drawn as a list).
+const PAGE_LAYOUT: Record<string, string> = { board: 'board', list: 'list', inbox: 'list', table: 'table', calendar: 'calendar', timeline: 'timeline', gallery: 'gallery', chart: 'chart' };
+const shownLayout = (layout: string, page: string, structured: boolean) => LAYOUTS.find(l => l.layout === (PAGE_LAYOUT[page] ?? (structured ? layout : ''))) ?? LAYOUTS[LAYOUTS.length - 1];
+
+const QUICK: QuickAction[] = [
+    { id: 'command-palette', label: 'Commands', icon: 'system-run' },
+    { id: 'find', label: 'Find', icon: 'edit-find' },
+    { id: 'export-html', label: 'Export', icon: 'document-send' },
+];
 
 function HeaderBar() {
     const client = useClient();
@@ -77,12 +125,12 @@ function HeaderBar() {
     const tab = s.tabs.find(t => t.id === s.active);
     const keyOf = (id: string) => COMMANDS.find(c => c.id === id)?.keys[0];
     // A command of the table as a menu line, left out when this window cannot carry it out.
-    const entry = (id: string, text?: string): MenuItem[] => {
+    const entry = (id: string, text?: string, extra: Partial<MenuItem> = {}): MenuItem[] => {
         const command = COMMANDS.find(c => c.id === id);
         if (!command?.label || (id !== 'open-folder' && !client.enabled(command))) return [];
-        return [{ id, label: text ?? command.label.replace(/…$/, ''), keys: keyOf(id) }];
+        return [{ id, label: text ?? command.label.replace(/…$/, ''), keys: keyOf(id), ...extra }];
     };
-    const named = (id: string): MenuItem[] => entry(id, COMMANDS.find(c => c.id === id)?.label ?? undefined);
+    const named = (id: string, extra: Partial<MenuItem> = {}): MenuItem[] => entry(id, COMMANDS.find(c => c.id === id)?.label ?? undefined, extra);
     const recent: MenuItem[] = s.recent.length
         ? [{ id: '-' }, { id: 'recent', label: 'Recent', heading: true }, ...s.recent.map(path => ({ id: 'open-recent', label: path.split(/[\\/]/).pop(), arg: path }))]
         : [];
@@ -90,16 +138,24 @@ function HeaderBar() {
         ...['new', 'kanban-new', 'table-new', 'inbox-new', 'csv-new'].flatMap(id => entry(id)),
         { id: '-' }, ...named('open'), ...named('open-folder'), ...recent,
     ];
-    // The layout menu: the text view and each layout the document can be shown as; the one shown is marked.
-    const LAYOUT_MENU: [string, string][] = [['', 'Text'], ['board', 'Board'], ['list', 'List'], ['table', 'Table'], ['calendar', 'Calendar'], ['timeline', 'Timeline'], ['gallery', 'Gallery'], ['chart', 'Chart']];
+    // The document's menu: what is done to the document itself.
+    const documentItems: MenuItem[] = [
+        ...named('save'), ...named('save-as'), ...named('autosave', { check: true, checked: s.settings.autosave === true }),
+        { id: '-' }, ...named('export-html'), ...recent,
+    ];
+    // The layout menu: a row for each layout with its icon, the one shown marked, then the view modes as checks.
+    const shown = tab ? shownLayout(s.layout.layout ?? '', tab.page, s.layout.structured) : LAYOUTS[LAYOUTS.length - 1];
     const layoutItems: MenuItem[] = [
-        ...LAYOUT_MENU.map(([arg, name]) => ({ id: 'layout', arg, label: `${s.layout.layout === arg ? '✓ ' : ''}${name}` })),
-        ...(s.layout.structured ? [{ id: '-' }, ...entry('fields-edit', 'Fields…')] : []),
+        ...LAYOUTS.flatMap(({ layout, name, icon }): MenuItem[] => [...layout === '' ? [{ id: '-' }] : [], { id: 'layout', arg: layout, label: name, icon, checked: shown.layout === layout }]),
+        { id: '-' },
+        ...named('source', { check: true, checked: s.source }),
+        ...named('focus', { check: true, checked: s.settings.focus === true }),
+        ...named('typewriter', { check: true, checked: s.settings.typewriter === true }),
     ];
     const mainItems: MenuItem[] = [
-        ...named('command-palette'), ...named('find'), ...named('export-html'),
-        { id: '-' }, ...named('home'), ...named('journal'), ...named('journal-capture'), ...named('journal-summary'),
-        { id: '-' }, ...named('dark'), ...named('preferences'), ...named('shortcuts'), ...named('about'), ...named('quit'),
+        ...named('home'), ...named('journal'), ...named('journal-capture'), ...named('journal-summary'),
+        { id: '-' }, ...named('kanban-view', { check: true, checked: s.layout.structured }), ...named('fields-edit'), ...named('send-changes'),
+        { id: '-' }, ...named('dark', { check: true, checked: s.settings['color-scheme'] === 'dark' }), ...named('preferences'), ...named('shortcuts'), ...named('about'), ...named('quit'),
     ];
     return (
         <header className={`headerbar${panels.compact ? ' compact' : ''}`}>
@@ -113,23 +169,21 @@ function HeaderBar() {
                     {menu && <Menu items={items} onClose={() => setMenu(false)} />}
                 </div>
             </div>
-            <Title />
+            <Title menu={close => <Menu items={documentItems} onClose={close} align="center" />} />
             <div className="end">
                 {tab && s.layout.layout !== null && (
                     <div className="split">
-                        <button className={`button flat${s.layout.structured ? ' checked' : ''}`} title="Board/List/Table View" aria-pressed={s.layout.structured}
-                            disabled={!client.enabled(COMMANDS.find(c => c.id === 'kanban-view')!)} onClick={() => client.run('kanban-view')}>
-                            <Icon name="text-x-generic" /><span>{layoutName(s.layout.layout, tab.page)}</span>
+                        <button className="button layout-button" aria-label="Layout" title="View" aria-haspopup="menu" aria-expanded={layoutMenu} onClick={() => setLayoutMenu(v => !v)}>
+                            <Icon name={shown.icon} /><span>{shown.name}</span><Icon name="pan-down" />
                         </button>
-                        <button className="button flat narrow" aria-label="Layout" title="Layout" aria-haspopup="menu" aria-expanded={layoutMenu} onClick={() => setLayoutMenu(v => !v)}><Icon name="pan-down" /></button>
-                        {layoutMenu && <Menu items={layoutItems} onClose={() => setLayoutMenu(false)} align="right" />}
+                        {layoutMenu && <Menu items={layoutItems} onClose={() => setLayoutMenu(false)} align="right" className="layout-menu" />}
                     </div>
                 )}
                 <button className={`button flat${panels.chat.shown ? ' checked' : ''}`} title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={panels.chat.shown}
                     onClick={() => client.run('chat')}><Icon name="chat-message-new" /></button>
                 <div className="split">
                     <button className="button flat" title="Main Menu" aria-label="Main Menu" aria-haspopup="menu" aria-expanded={main} onClick={() => setMain(v => !v)}><Icon name="open-menu" /></button>
-                    {main && <Menu items={mainItems} onClose={() => setMain(false)} align="right" />}
+                    {main && <Menu items={mainItems} onClose={() => setMain(false)} align="right" quick={QUICK} />}
                 </div>
             </div>
         </header>
@@ -175,7 +229,7 @@ function StatusBar() {
     return (
         <footer className="statusbar">
             {counts.kind === 'board' && <span>{counts.lists} lists · {counts.cards} cards</span>}
-            {counts.kind === 'inbox' && <span>{counts.items} items</span>}
+            {counts.kind === 'inbox' && <span>{counts.items} {counts.items === 1 ? 'note' : 'notes'}</span>}
             {counts.kind === 'csv' && <span>{counts.rows} rows · {counts.columns} columns</span>}
             {text && (
                 <>
