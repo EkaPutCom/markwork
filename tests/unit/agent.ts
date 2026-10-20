@@ -7,7 +7,6 @@ import { ChatSession, MAX_ROUNDS, type ToolStep } from '../../src/agent/session.
 import { describeCall, runTool } from '../../src/agent/tools.js';
 import { toApiMessage } from '../../src/agent/deepseek.js';
 import type { ChatMessage, ChatRequest, ChatResult, Provider } from '../../src/agent/provider.js';
-import { chatMarkup } from '../../src/markdown/chatmarkup.js';
 import { systemKeyStore } from '../../src/agent/apikey.js';
 import { section, test, eq, ok, contains, within } from '../framework.js';
 import { host } from '../host.js';
@@ -227,26 +226,6 @@ export async function agentTests(): Promise<void> {
         contains(httpErrorMessage(401, '{"error":{"message":"Authentication Fails"}}'), 'Authentication Fails');
         contains(httpErrorMessage(402, ''), 'balance');
         contains(httpErrorMessage(418, 'not json'), 'status 418');
-    });
-
-    section('Assistant: answer markup');
-
-    const colors = { code: '#c00', codeBg: '#eee', link: '#06c', mark: '#ff0' };
-    await test('chatMarkup: heading, list, quote, code block, and escape', async () => {
-        const out = chatMarkup('## Title\n- one **bold**\n  - two\n> quote\n```ts\nconst a = 1 < 2;\n```\n1. first', colors);
-        contains(out, '<span font_weight="bold" size="larger">Title</span>');
-        contains(out, '•  one <span font_weight="bold">bold</span>');
-        contains(out, '    •  two');
-        contains(out, '<span font_style="italic">quote</span>');
-        contains(out, 'const a = 1 &lt; 2;');
-        ok(!out.includes('```'), 'the code fence was shown too');
-        contains(out, '1. first');
-    });
-
-    await test('chatMarkup tolerates truncated text (an unclosed code block, an unpaired bold marker)', async () => {
-        const out = chatMarkup('Text **bold not yet\n```\ncode <b>', colors);
-        contains(out, 'code &lt;b&gt;');
-        ok(!/<b>/.test(out), 'a raw tag slipped through');
     });
 
     section('Assistant: conversation session');

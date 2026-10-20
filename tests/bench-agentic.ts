@@ -1,21 +1,24 @@
 // Measure the cost of the new feature locally, without a model provider or widgets.
-import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
-import GLib from 'gi://GLib';
+import '../src/platform/node/install.js';   // the core reaches the runtime through platform()
+import './host-node.js';
 import { planBatch } from '../src/agent/batch.js';
 import { verifyWork } from '../src/agent/verification.js';
 import { serializeChat, parseChat, type SavedChat } from '../src/agent/transcript.js';
 import { compactHistory } from '../src/agent/recovery.js';
 import { readTextFile, writeTextFile } from '../src/files.js';
 import type { ActionEvent } from '../src/agent/journal.js';
+import { disk, say } from './framework.js';
+import { host } from './host.js';
+import { platform } from '../src/platform/index.js';
 
-const directory = GLib.dir_make_tmp('markwork-bench-agentic-XXXXXX');
-const checkpoint = GLib.build_filenamev([directory, 'checkpoint.md']);
+const directory = host().makeTempDir();
+const checkpoint = disk.join(directory, 'checkpoint.md');
 const measure = (name: string, action: () => void) => {
     for (let i = 0; i < 3; i++) action();
     const samples: number[] = [];
-    for (let i = 0; i < 10; i++) { const start = GLib.get_monotonic_time(); action(); samples.push((GLib.get_monotonic_time() - start) / 1000); }
+    for (let i = 0; i < 10; i++) { const start = (platform().monotonicMs() * 1000); action(); samples.push(((platform().monotonicMs() * 1000) - start) / 1000); }
     const sorted = [...samples].sort((a, b) => a - b);
-    print(`${name}: median ${((sorted[4] + sorted[5]) / 2).toFixed(3)} ms · p95 ${sorted[9].toFixed(3)} ms · max ${sorted[9].toFixed(3)} ms`);
+    say(`${name}: median ${((sorted[4] + sorted[5]) / 2).toFixed(3)} ms · p95 ${sorted[9].toFixed(3)} ms · max ${sorted[9].toFixed(3)} ms`);
 };
 try {
     for (const length of [2000, 32000]) {
@@ -26,7 +29,7 @@ try {
         if (planned.error) throw Error(planned.error);
         const events: ActionEvent[] = [{ id: '1', question: 'Sync the schedule', tool: 'propose_batch', status: 'applied', changes: planned.changes, summary: 'Applied', time: '2026-10-05' }];
         const chat: SavedChat = { title: 'Schedule', model: 'fake', created: '2026-10-05', turns: [{ role: 'user', content: 'Sync the schedule' }, { role: 'assistant', content: 'Checked and finished' }], events };
-        print(`\n20 files × ${text.length} characters; 10 repetitions, 3 warm-ups`);
+        say(`\n20 files × ${text.length} characters; 10 repetitions, 3 warm-ups`);
         measure('Plan batch', () => { if (planBatch(raw, files).changes.length !== 20) throw Error('the batch is incomplete'); });
         const changed = planned.changes.map(c => ({ name: c.file, text: c.after }));
         const checks = JSON.stringify({ checks: changed.map(f => ({ file: f.name, kind: 'present', text: '22 November' })) });
@@ -43,5 +46,5 @@ try {
     const history = Array.from({ length: 200 }, (_, n) => ({ role: n % 2 ? 'assistant' as const : 'user' as const, content: 'Old notes '.repeat(2000) }));
     measure('Summarize 200 turns', () => { if (!compactHistory(history, 12000).summary) throw Error('empty summary'); });
 } finally {
-    GLib.unlink(checkpoint); GLib.rmdir(directory);
+    disk.remove(checkpoint); disk.remove(directory);
 }

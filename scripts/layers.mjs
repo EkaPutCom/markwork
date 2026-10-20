@@ -44,6 +44,7 @@ const rules = [
     [f => f.startsWith('platform/node/'), t => t.startsWith('gi://') || t.startsWith('gjs:') || !(t.startsWith('node:') || t.startsWith('platform/node/') || t === 'platform/index.ts' || t === 'platform/terminals.ts'),
         'platform/node/ implements the port with Node built-ins only: the contract, the shared terminal list, and its own files, nothing above it'],
     [f => !f.startsWith('platform/node/'), t => t.startsWith('node:') || t.startsWith('platform/node/'), 'only platform/node/ uses Node built-ins; the rest reaches them through platform(), and only an entry point installs it'],
+    [() => true, t => t.startsWith('../'), 'src/ is the shared code: electron/ uses it, never the other way round'],
 ];
 
 const GJS_BUILTINS = new Set(['system', 'gettext', 'cairo', 'console', 'byteArray', 'mainloop']);

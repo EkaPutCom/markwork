@@ -1,6 +1,6 @@
-// Interface translations. The source language is English: text in code and .ui files is written in English and
-// wrapped in _(), then po/*.po translates it. The translating itself is the platform's (gettext under GJS, bound in
-// platform/gjs/i18n.ts before other modules are evaluated); without a platform the source text is shown.
+// Interface translations. The source language is English: text in code is written in English and wrapped in _(), then
+// po/*.po translates it. The translating itself is the platform's (the gettext catalogs read by platform/node/i18n.ts);
+// without a platform the source text is shown.
 
 import { installedPlatform } from './platform/index.js';
 

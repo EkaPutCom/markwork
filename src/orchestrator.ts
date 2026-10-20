@@ -46,7 +46,7 @@ export interface SpawnMeta {
 // Throws if the program cannot be run. The local spawner ignores meta.
 export type Spawner = (argv: string[], cwd: string, handlers: SpawnHandlers, meta?: SpawnMeta) => HarnessProcess;
 
-// This computer's processes, through the platform (platform/gjs/process.ts under GJS).
+// This computer's processes, through the platform (platform/node/process.ts).
 export const spawnHarness: Spawner = (argv, cwd, handlers) => platform().processes.spawn(argv, cwd, handlers);
 
 // Apps launched from the desktop menu often do not inherit the shell PATH; the platform also looks in ~/.local/bin and the like.

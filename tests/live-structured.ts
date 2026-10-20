@@ -2,7 +2,6 @@
 // real model. Each scenario writes fixtures into a temporary folder, lets the model work, approves every proposal like
 // the Apply button would, and then checks the files. Part of npm run test:live with --structured (or --structured-only).
 
-import GLib from 'gi://GLib';
 import type { Change } from '../src/agent/changes.js';
 import type { Provider } from '../src/agent/provider.js';
 import { applyBatch } from '../src/agent/batch.js';
@@ -13,6 +12,9 @@ import { parseSchema, readItem } from '../src/markdown/fields.js';
 import { layoutOf } from '../src/markdown/layout.js';
 import { WorkspaceRepository } from '../src/workspace.js';
 import { DIM, GREEN, RED, RESET, errorMessage } from './framework.js';
+import { disk, say } from './framework.js';
+import { host } from './host.js';
+import { platform } from '../src/platform/index.js';
 
 const TASKS = `---
 layout: table
@@ -179,8 +181,8 @@ const SCENARIOS: Scenario[] = [
 ];
 
 async function runScenario(sc: Scenario, provider: Provider, model: string, thinking: boolean): Promise<boolean> {
-    const root = GLib.dir_make_tmp('markwork-eval-structured-XXXXXX');
-    const path = (name: string) => GLib.build_filenamev([root, name]);
+    const root = host().makeTempDir();
+    const path = (name: string) => disk.join(root, name);
     const workspace = new WorkspaceRepository();
     let proposals = 0;
     try {
@@ -191,37 +193,37 @@ async function runScenario(sc: Scenario, provider: Provider, model: string, thin
             proposals++;
             const error = applyBatch(changes, { read: f => fileExists(path(f)) ? readTextFile(path(f)) : null,
                 write: c => { writeTextFile(path(c.file), c.after); },
-                rollback: c => { if (c.kind === 'create') GLib.unlink(path(c.file)); else writeTextFile(path(c.file), c.before); } });
+                rollback: c => { if (c.kind === 'create') disk.remove(path(c.file)); else writeTextFile(path(c.file), c.before); } });
             return { applied: !error, ...(error ? { error } : {}) };
         };
-        const started = GLib.get_monotonic_time();
+        const started = (platform().monotonicMs() * 1000);
         const r = await session.ask({ question: sc.question, active: null, files: workspace.files(root), selection: '', mentions: [], options: { project: true, activeDocument: true, selection: true }, budget: 8000 }, provider, model, {
             onContext: () => {}, onText: () => {}, onReasoning: () => {}, currentFiles: () => workspace.files(root, { freshness: 'fresh' }),
-            onTool: s => { if (s.summary) print(`    ${DIM}• ${s.label} → ${s.summary}${RESET}`); },
+            onTool: s => { if (s.summary) say(`    ${DIM}• ${s.label} → ${s.summary}${RESET}`); },
             onProposal: c => apply([c]), onBatchProposal: apply,
         });
         const tools = session.events.map(e => e.tool);
         const problems = sc.check({ read: n => readTextFile(path(n)), answer: r.text, tools, proposals });
-        const secs = ((GLib.get_monotonic_time() - started) / 1e6).toFixed(1);
+        const secs = (((platform().monotonicMs() * 1000) - started) / 1e6).toFixed(1);
         const used = sc.expectTool && !tools.includes(sc.expectTool) && !tools.includes('propose_batch')
             ? ` (note: ${sc.expectTool} was not used; tools: ${[...new Set(tools)].join(', ') || 'none'})` : '';
-        print(`  ${problems.length ? RED : GREEN}${problems.length ? '✗' : '✓'} ${sc.name}: ${proposals} proposals, ${secs} s${used}${RESET}`);
-        for (const p of problems) print(`      ${RED}${p}${RESET}`);
-        if (problems.length) print(`      ${DIM}answer: ${r.text.trim().slice(0, 300).replace(/\n/g, ' ')}${RESET}`);
+        say(`  ${problems.length ? RED : GREEN}${problems.length ? '✗' : '✓'} ${sc.name}: ${proposals} proposals, ${secs} s${used}${RESET}`);
+        for (const p of problems) say(`      ${RED}${p}${RESET}`);
+        if (problems.length) say(`      ${DIM}answer: ${r.text.trim().slice(0, 300).replace(/\n/g, ' ')}${RESET}`);
         return problems.length === 0;
     } catch (e) {
-        print(`  ${RED}✗ ${sc.name}: ${errorMessage(e)}${RESET}`);
+        say(`  ${RED}✗ ${sc.name}: ${errorMessage(e)}${RESET}`);
         return false;
     } finally {
-        for (const f of workspace.files(root)) GLib.unlink(path(f.name));
-        GLib.rmdir(root);
+        for (const f of workspace.files(root)) disk.remove(path(f.name));
+        disk.remove(root);
     }
 }
 
 export async function liveStructured(provider: Provider, model: string, thinking: boolean): Promise<number> {
-    print('\nStructured documents');
+    say('\nStructured documents');
     let failures = 0;
     for (const sc of SCENARIOS) if (!await runScenario(sc, provider, model, thinking)) failures++;
-    print(`${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} structured scenarios passed${RESET}`);
+    say(`${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} structured scenarios passed${RESET}`);
     return failures;
 }

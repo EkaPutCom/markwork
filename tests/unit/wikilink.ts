@@ -3,7 +3,6 @@
 import { section, test, eq, ok, contains } from '../framework.js';
 import { newNotePath, noteSection, parseWikiLink, wikiLinksIn, resolveWikiLink, suggestNotes, wikiQuery, wikiTargetFor } from '../../src/markdown/wikilink.js';
 import { parseInline } from '../../src/markdown/inline.js';
-import { cellMarkup, NOTE_URI } from '../../src/markdown/pango.js';
 import { body } from './helpers.js';
 
 const FILES = ['Idea.md', 'Journal/Daily Note.md', 'Journal/Idea.md', 'project/book-plan.md', 'project/sub/Chapter 1.markdown', 'image.png'];
@@ -86,13 +85,5 @@ export function wikiLinkTests(): void {
         eq(noteSection(doc, 'color'), '## Color\n\nblue\n\n```\n# not a heading\n```\n\n### Sub\n\ncontent');
         eq(noteSection(doc, 'Other'), '## Other\n\nx');
         eq(noteSection(doc, 'nonexistent'), null);
-    });
-    test('card markup: [[note]] becomes a clickable <a>, other content stays', () => {
-        const colors = { code: '#c', codeBg: '#b', link: '#l', mark: '#m' };
-        const m = cellMarkup('Read [[Spec#Color|color]] **fast**', colors, true);
-        contains(m, `<a href="${NOTE_URI}Spec%23Color%7Ccolor"><span foreground="#l" underline="single">color</span></a>`);
-        contains(m, '<span font_weight="bold">fast</span>');
-        ok(!cellMarkup('[[Spec]]', colors).includes('<a '), 'without the link option it does not become <a>');
-        ok(!cellMarkup('`[[Spec]]`', colors, true).includes('<a '), 'inline code');
     });
 }

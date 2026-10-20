@@ -1,32 +1,31 @@
 // Shared by the tests that run against a real Forgejo or Gitea (tests/live-forge.ts and tests/gui/forgejo.ts): the server, the
 // tokens, and the small helpers to talk to it with plain API calls and git. Tokens are never printed.
 
-import GLib from 'gi://GLib';
-import { credentialEnv } from '../src/forge/contribute.js';
+import { base64, credentialEnv } from '../src/forge/contribute.js';
 import { GiteaProvider } from '../src/forge/gitea.js';
-import { soupTransport } from '../src/platform/gjs/http.js';
 import { parseRemote } from '../src/forge/remote.js';
 import { runGit } from '../src/git.js';
-import { errorMessage, tmp } from './framework.js';
+import { disk, errorMessage, tmp } from './framework.js';
+import { platform } from '../src/platform/index.js';
 
-export const SERVER_URL = GLib.getenv('FORGEJO_URL') ?? 'http://localhost:3000';
-export const REPO = GLib.getenv('FORGEJO_REPO') ?? 'eka/notes';
-export const OWNER_TOKEN = GLib.getenv('FORGEJO_TOKEN') ?? '';
-export const CONTRIBUTOR_TOKEN = GLib.getenv('FORGEJO_CONTRIBUTOR_TOKEN') ?? '';
+export const SERVER_URL = platform().env('FORGEJO_URL') ?? 'http://localhost:3000';
+export const REPO = platform().env('FORGEJO_REPO') ?? 'eka/notes';
+export const OWNER_TOKEN = platform().env('FORGEJO_TOKEN') ?? '';
+export const CONTRIBUTOR_TOKEN = platform().env('FORGEJO_CONTRIBUTOR_TOKEN') ?? '';
 
 export const repo = parseRemote(`${SERVER_URL}/${REPO}.git`)!;
-export const owner = new GiteaProvider(repo, OWNER_TOKEN, soupTransport);
-export const contributor = new GiteaProvider(repo, CONTRIBUTOR_TOKEN, soupTransport);
+export const owner = new GiteaProvider(repo, OWNER_TOKEN, platform().http);
+export const contributor = new GiteaProvider(repo, CONTRIBUTOR_TOKEN, platform().http);
 export const stamp = String(Math.floor(Date.now() / 1000));
 
-export const sleep = (ms: number) => new Promise<void>(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => { resolve(); return GLib.SOURCE_REMOVE; }));
+export const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 export function check(cond: unknown, message: string): asserts cond { if (!cond) throw new Error(message); }
-export const write = (path: string, text: string) => GLib.file_set_contents(path, text);
-export const read = (path: string) => new TextDecoder().decode(GLib.file_get_contents(path)[1]);
+export const write = (path: string, text: string) => disk.write(path, text);
+export const read = (path: string) => disk.read(path);
 
 // The server's own API, for what the forge layer does not offer (editing a file on the base branch, closing a pull request, settings).
 export async function api(token: string, method: 'GET' | 'POST' | 'PUT' | 'PATCH', path: string, body?: object): Promise<{ status: number; json: any }> {
-    const response = await soupTransport({
+    const response = await platform().http({
         method, url: `${SERVER_URL}/api/v1${path}`, headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {}),
     });
@@ -41,8 +40,8 @@ export async function git(cwd: string, args: string[], env?: Record<string, stri
 
 // A clone of the repository made as the owner of `token`, with that user as the committer.
 export async function clone(token: string, name: string): Promise<{ folder: string; login: string }> {
-    const login = await new GiteaProvider(repo, token, soupTransport).currentUser();
-    const folder = GLib.build_filenamev([tmp, name]);
+    const login = await new GiteaProvider(repo, token, platform().http).currentUser();
+    const folder = disk.join(tmp, name);
     await git(tmp, ['clone', '-q', `${SERVER_URL}/${REPO}.git`, folder], credentialEnv(login, token));
     await git(folder, ['config', 'user.name', login]);
     await git(folder, ['config', 'user.email', `${login}@example.com`]);
@@ -61,7 +60,7 @@ export async function waitFor<T>(what: string, probe: () => Promise<T | null | f
 // Changes the file `path` on the base branch of the repository through the server's API (create or update).
 export async function putFile(token: string, path: string, text: string, message: string): Promise<void> {
     const existing = await api(token, 'GET', `/repos/${REPO}/contents/${path}?ref=main`);
-    const body = { content: GLib.base64_encode(new TextEncoder().encode(text)), message, branch: 'main', ...(existing.status === 200 ? { sha: existing.json.sha } : {}) };
+    const body = { content: base64(new TextEncoder().encode(text)), message, branch: 'main', ...(existing.status === 200 ? { sha: existing.json.sha } : {}) };
     const done = await api(token, existing.status === 200 ? 'PUT' : 'POST', `/repos/${REPO}/contents/${path}`, body);
     check(done.status === 200 || done.status === 201, `could not write ${path}: HTTP ${done.status} ${errorMessage(done.json?.message ?? '')}`);
 }

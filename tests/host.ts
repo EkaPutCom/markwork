@@ -1,5 +1,5 @@
 // The test host: what the test framework and the tests need from the runtime beyond the platform port (the command
-// line, output, the environment, a fake HTTP server). host-gjs.ts and host-node.ts fill it; every test entry point
+// line, output, the environment, a fake HTTP server). host-node.ts fills it; every test entry point
 // installs one right after the platform, before anything imports framework.ts.
 
 // One request to the fake server. Header names are lower case.
@@ -50,6 +50,6 @@ export function setHost(host: TestHost): void {
 }
 
 export function host(): TestHost {
-    if (!current) throw new Error('No test host installed: the entry point must import tests/host-gjs.js or tests/host-node.js first');
+    if (!current) throw new Error('No test host installed: the entry point must import tests/host-node.js first');
     return current;
 }

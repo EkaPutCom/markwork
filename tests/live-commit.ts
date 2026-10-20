@@ -2,13 +2,14 @@
 // repository, the real workingDiff/recentSubjects, and the message checked the way the commit box would show it.
 // Part of npm run test:live.
 
-import GLib from 'gi://GLib';
 import { systemKeyStore } from '../src/agent/apikey.js';
 import { writeCommitMessage } from '../src/agent/commitmessage.js';
 import type { Provider } from '../src/agent/provider.js';
-import { recentSubjects, workingDiff } from '../src/git.js';
+import { recentSubjects, runGit, workingDiff } from '../src/git.js';
 import { DIM, GREEN, RED, RESET, errorMessage, tmp } from './framework.js';
 import { Cancellable } from '../src/cancel.js';
+import { disk, say } from './framework.js';
+import { platform } from '../src/platform/index.js';
 
 interface CommitScenario {
     name: string;
@@ -46,39 +47,38 @@ const SCENARIOS: CommitScenario[] = [
     },
 ];
 
-function makeRepo(sc: CommitScenario, n: number): string {
-    const repo = GLib.build_filenamev([tmp, `live-commit-${n}`]);
-    GLib.mkdir_with_parents(repo, 0o755);
-    const git = (...args: string[]) => {
-        const [, , err, status] = GLib.spawn_sync(repo, ['git', '-c', 'user.name=Tester', '-c', 'user.email=tester@example.com', ...args],
-            null, GLib.SpawnFlags.SEARCH_PATH, null);
-        if (status !== 0) throw new Error(`git ${args.join(' ')}: ${new TextDecoder().decode(err ?? undefined)}`);
+async function makeRepo(sc: CommitScenario, n: number): Promise<string> {
+    const repo = disk.join(tmp, `live-commit-${n}`);
+    disk.mkdirs(repo);
+    const git = async (...args: string[]) => {
+        const run = await runGit(repo, ['-c', 'user.name=Tester', '-c', 'user.email=tester@example.com', ...args]);
+        if (run?.status !== 0) throw new Error(`git ${args.join(' ')}: ${run?.err ?? 'git cannot be run'}`);
     };
     const write = (files: Record<string, string>) => {
-        for (const [name, text] of Object.entries(files)) GLib.file_set_contents(GLib.build_filenamev([repo, name]), text);
+        for (const [name, text] of Object.entries(files)) disk.write(disk.join(repo, name), text);
     };
-    git('init', '-q');
+    await git('init', '-q');
     write(sc.before);
-    sc.history.forEach((subject, i) => {
-        if (i > 0) GLib.file_set_contents(GLib.build_filenamev([repo, `.step-${i}`]), String(i));
-        git('add', '-A');
-        git('commit', '-q', '-m', subject);
-    });
+    for (const [i, subject] of sc.history.entries()) {
+        if (i > 0) disk.write(disk.join(repo, `.step-${i}`), String(i));
+        await git('add', '-A');
+        await git('commit', '-q', '-m', subject);
+    }
     write(sc.after);
     return repo;
 }
 
 export async function liveCommitMessage(provider: Provider, model: string): Promise<number> {
-    print('\nCommit message writer');
+    say('\nCommit message writer');
     let failures = 0;
     for (const [n, sc] of SCENARIOS.entries()) {
-        print(`\n▶ ${sc.name}`);
+        say(`\n▶ ${sc.name}`);
         try {
-            const repo = makeRepo(sc, n);
-            const files = Object.keys(sc.after).map(name => GLib.build_filenamev([repo, name]));
+            const repo = await makeRepo(sc, n);
+            const files = Object.keys(sc.after).map(name => disk.join(repo, name));
             const cancellable = new Cancellable();
             let updates = 0;
-            const started = GLib.get_monotonic_time();
+            const started = (platform().monotonicMs() * 1000);
             const result = await writeCommitMessage({
                 keyStore: systemKeyStore, makeProvider: () => provider, model: () => model,
                 diff: workingDiff, subjects: recentSubjects,
@@ -86,12 +86,12 @@ export async function liveCommitMessage(provider: Provider, model: string): Prom
                 updates++;
                 if (sc.stopAfter && message.length >= sc.stopAfter) cancellable.cancel();
             }, cancellable);
-            const secs = ((GLib.get_monotonic_time() - started) / 1e6).toFixed(1);
+            const secs = (((platform().monotonicMs() * 1000) - started) / 1e6).toFixed(1);
             const problems: string[] = [];
             if (!result.ok) {
                 problems.push(`failed (${result.reason}): ${result.message}`);
             } else {
-                print(`  “${result.message}”  ${DIM}${secs} s · ${updates} updates${result.cancelled ? ' · stopped' : ''}${RESET}`);
+                say(`  “${result.message}”  ${DIM}${secs} s · ${updates} updates${result.cancelled ? ' · stopped' : ''}${RESET}`);
                 const msg = result.message;
                 if (sc.stopAfter) {
                     if (!result.cancelled) problems.push('Stop did not end the request');
@@ -107,13 +107,13 @@ export async function liveCommitMessage(provider: Provider, model: string): Prom
                     if (updates < 1) problems.push('nothing streamed');
                 }
             }
-            if (problems.length) { failures++; print(`  ${RED}✗ ${problems.join('; ')}${RESET}`); }
-            else print(`  ${GREEN}✓ passed${RESET}`);
+            if (problems.length) { failures++; say(`  ${RED}✗ ${problems.join('; ')}${RESET}`); }
+            else say(`  ${GREEN}✓ passed${RESET}`);
         } catch (e) {
             failures++;
-            print(`  ${RED}✗ error: ${errorMessage(e)}${RESET}`);
+            say(`  ${RED}✗ error: ${errorMessage(e)}${RESET}`);
         }
     }
-    print(`\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} commit message scenarios passed${RESET}`);
+    say(`\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} commit message scenarios passed${RESET}`);
     return failures;
 }
