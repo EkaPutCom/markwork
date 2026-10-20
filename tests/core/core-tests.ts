@@ -1,6 +1,6 @@
 // The tests of the core (markdown/, agent/, forge/, the base modules, the orchestrator, the daemon client) and of the
 // application layer's pure parts. They reach the runtime only through the platform port and the test host; Node runs them
-// (run-core-node.ts). The Electron window has its own tests (tests/electron-*.mjs).
+// (run-core-node.ts). The Electron window has its own tests (tests/electron/*.mjs).
 
 import { inlineTests } from '../unit/inline.js';
 import { inlineHtmlTests } from '../unit/inlinehtml.js';
