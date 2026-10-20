@@ -88,8 +88,9 @@ try {
         await dialog.getByLabel('Notes').fill('a note\nsecond line');
         await dialog.getByRole('button', { name: 'Save' }).click();
         await page.locator('.board .card', { hasText: 'Three edited' }).waitFor();
-        const text = await saved('board.md');
-        assert.match(text, /- \[ \] Three edited #tag \[due:: 2026-10-25\]\n {2}a note\n {2}second line/);
+        const expected = /- \[ \] Three edited #tag \[due:: 2026-10-25\]\n {2}a note\n {2}second line/;
+        const text = await saved('board.md', expected);
+        assert.match(text, expected);
     });
 
     await step('board: a card dragged to another list moves there', async () => {
@@ -188,7 +189,7 @@ try {
         const third = page.locator('.inbox-row', { hasText: 'Third idea' });
         await first.dragTo(third, { targetPosition: { x: 40, y: 3 } });
         await page.waitForTimeout(200);
-        const text = await saved('list.md');
+        const text = await saved('list.md', /First idea[\s\S]*Third idea/);
         assert.ok(text.indexOf('First idea') < text.indexOf('Third idea'), 'First idea is now above Third idea');
     });
 
@@ -228,7 +229,8 @@ try {
         await page.locator(`.calendar-day[data-date="${month}-10"]`).getByText('Release').waitFor();
         await page.locator('.calendar-undated').getByText('Undated').dragTo(page.locator(`.calendar-day[data-date="${month}-15"]`));
         await page.locator(`.calendar-day[data-date="${month}-15"]`).getByText('Undated').waitFor();
-        assert.match(await saved('cal.md'), new RegExp(`Undated \\[due:: ${month}-15\\]`));
+        const undated = new RegExp(`Undated \\[due:: ${month}-15\\]`);
+        assert.match(await saved('cal.md', undated), undated);
         await page.locator(`.calendar-day[data-date="${month}-16"]`).dblclick({ position: { x: 20, y: 60 } });
         await dialog.getByLabel('Title').fill('Planning');
         await dialog.getByRole('button', { name: 'Save' }).click();
@@ -301,7 +303,7 @@ try {
         assert.match(await saved('chart.md', /charts: \[kpi, bar, donut\]/), /charts: \[kpi, bar, donut\]/);
         await page.getByRole('button', { name: 'Reset to default' }).click();
         await page.waitForTimeout(200);
-        assert.doesNotMatch(await saved('chart.md'), /charts:/);
+        assert.doesNotMatch(await saved('chart.md', /^(?![\s\S]*charts:)/), /charts:/);
     });
 
     // ---------- Layout menu ----------
@@ -347,8 +349,9 @@ try {
         await cell(3, 1).fill('9');
         await cell(3, 1).press('Enter');
         await page.locator('.statusbar').getByText('4 rows · 2 columns').waitFor({ timeout: 8000 });
-        const text = await saved('sheet.csv');
-        assert.match(text, /^name,qty\nada lovelace,3\nlin,55\nmo,9\n/);
+        const expected = /^name,qty\nada lovelace,3\nlin,55\nmo,9\n/;
+        const text = await saved('sheet.csv', expected);
+        assert.match(text, expected);
     });
 
     await step('csv: rows and columns are added and removed from the menus, and Escape puts the old value back', async () => {
@@ -360,8 +363,9 @@ try {
         await page.locator('[data-cell="1:0"]').fill('changed');
         await page.keyboard.press('Escape');
         assert.equal(await page.locator('[data-cell="1:0"]').inputValue(), '3', 'the first column is now qty (name was deleted), and Escape restored it');
-        const text = await saved('sheet.csv');
-        assert.match(text, /^qty,Column 3\n3,\n55,\n9,\n/);
+        const expected = /^qty,Column 3\n3,\n55,\n9,\n/;
+        const text = await saved('sheet.csv', expected);
+        assert.match(text, expected);
     });
 
     await step('csv: the search bar marks the cells that match and replaces them', async () => {
