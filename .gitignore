@@ -6,3 +6,4 @@ po/markwork.pot
 .env.forgejo
 dist-electron/
 release
+journal/
