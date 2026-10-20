@@ -8,7 +8,7 @@
 - **Tidak ada kompatibilitas mundur.** Setting di GSettings tidak dimigrasi ke `markwork-electron/settings.json`, dan tidak ada shim untuk pengguna GTK. Format data produk (berkas Markdown, frontmatter, `[key:: value]`) tidak termasuk keputusan ini.
 - Sebelum menghapus, dua celah kualitas Electron sudah ditutup (PR 69): tata letak adaptif (`renderer/client.ts` `layoutOf`) dan padanan `tests/gui/sample.ts` dan `robust.ts` (`tests/electron-robust.mjs`).
 
-**Pertanyaan terbuka:** pengganti Flatpak. Pilihannya Flathub dengan base app Electron (`org.electronjs.Electron2.BaseApp`), atau cukup AppImage dan deb dari electron-builder. Sampai diputuskan, `build-aux/flatpak/` dihapus bersama GTK dan Linux dirilis lewat AppImage dan deb.
+- Linux dirilis lewat AppImage dan deb dari electron-builder (`electron-builder.yml`). Flatpak dihapus bersama GTK dan tidak diganti dengan Flatpak berbasis Electron (keputusan 20 Oktober 2026).
 
 ## Yang terdampak
 
@@ -91,6 +91,7 @@ Lulus bila typecheck, tes core di Node, dan tes Electron hijau di tiga OS.
 ## Risiko
 
 - Setelah PR B di-merge, GTK hanya ada di riwayat git (tag `v-gtk-final`).
-- Fitur GNOME yang tidak punya padanan hilang: tampilan libadwaita, aksen sistem, `Adw.ShortcutsDialog`, Flatpak (lihat pertanyaan terbuka), metainfo untuk GNOME Software.
+- Fitur GNOME yang tidak punya padanan hilang: tampilan libadwaita, aksen sistem, `Adw.ShortcutsDialog`, dan metainfo untuk GNOME Software.
+- Tidak ada lagi Flatpak, jadi tidak ada rilis lewat Flathub atau GNOME Software. Pengguna Linux memasang AppImage (dengan update otomatis) atau deb (diperbarui manual).
 - Log run dan penampil commit tetap berupa dialog di jendela utama, bukan jendela terpisah seperti di GTK.
 - Ukuran aplikasi naik dari skrip GJS kecil menjadi bundle Electron sekitar 100 MB.
