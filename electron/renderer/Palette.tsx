@@ -19,7 +19,9 @@ export function Palette() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [palette, query, tabs, active, client]);
 
-    useEffect(() => { if (palette) { setQuery(''); setIndex(0); input.current?.focus(); } }, [palette]);
+    // The query is emptied when the palette closes, not after it opens: an effect after opening would wipe what was typed
+    // in the first moment (and Enter would then run the first command of the whole list).
+    useEffect(() => { if (palette) input.current?.focus(); else { setQuery(''); setIndex(0); } }, [palette]);
     useEffect(() => setIndex(0), [query]);
     if (!palette) return null;
 
