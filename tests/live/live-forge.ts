@@ -10,20 +10,20 @@
 // FORGEJO_URL (default http://localhost:3000) and FORGEJO_REPO (default eka/notes) select the server and the repository.
 // Tokens are never printed.
 
-import '../src/platform/node/install.js';   // the core reaches the runtime through platform()
-import './host-node.js';   // the tests reach the runtime through host(), installed before framework.ts
+import '../../src/platform/node/install.js';   // the core reaches the runtime through platform()
+import '../core/host-node.js';   // the tests reach the runtime through host(), installed before framework.ts
 import { CONTRIBUTOR_TOKEN, OWNER_TOKEN, REPO, SERVER_URL as URL, api, check, clone, contributor, git, owner, read, repo, stamp, waitFor, write } from './forgejo-support.js';
-import { sendChanges, type SendContext } from '../src/forge/contribute.js';
-import { fileDiff } from '../src/forge/diff.js';
-import { publishBranch } from '../src/forge/publish.js';
-import { GiteaProvider } from '../src/forge/gitea.js';
-import { platform } from '../src/platform/index.js';
-import { host } from './host.js';
-import { base64 } from '../src/forge/contribute.js';
-import { confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../src/forge/resolve.js';
-import type { PullRequest } from '../src/forge/types.js';
-import { runGit } from '../src/git.js';
-import { DIM, GREEN, RED, RESET, disk, errorMessage, opt, say } from './framework.js';
+import { sendChanges, type SendContext } from '../../src/forge/contribute.js';
+import { fileDiff } from '../../src/forge/diff.js';
+import { publishBranch } from '../../src/forge/publish.js';
+import { GiteaProvider } from '../../src/forge/gitea.js';
+import { platform } from '../../src/platform/index.js';
+import { host } from '../core/host.js';
+import { base64 } from '../../src/forge/contribute.js';
+import { confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
+import type { PullRequest } from '../../src/forge/types.js';
+import { runGit } from '../../src/git.js';
+import { DIM, GREEN, RED, RESET, disk, errorMessage, opt, say } from '../core/framework.js';
 
 let passed = 0, failed = 0;
 async function step<T>(name: string, run: () => Promise<T>): Promise<T | undefined> {
@@ -101,7 +101,7 @@ async function writeChecks(): Promise<void> {
     // 1. A pull request through the contributor's fork, merged by the owner.
     const sent = await step('sendChanges through the fork: push over HTTP with the token as a Basic header, then the pull request', async () => {
         write(disk.join(contrib.folder, 'journal.md'), `# Journal\n\nlive test ${stamp}\n`);
-        const result = await sendChanges(context(), { folder: contrib.folder, files: [disk.join(contrib.folder, 'journal.md')], title: `Live test ${stamp}`, body: 'Sent by tests/live-forge.ts', branch: `live-${stamp}`, via: 'fork' });
+        const result = await sendChanges(context(), { folder: contrib.folder, files: [disk.join(contrib.folder, 'journal.md')], title: `Live test ${stamp}`, body: 'Sent by tests/live/live-forge.ts', branch: `live-${stamp}`, via: 'fork' });
         check(result.ok && result.pull, `not sent: ${!result.ok && result.message}`);
         return result.pull;
     });
@@ -192,7 +192,7 @@ async function publishChecks(): Promise<void> {
     const branch = `markwork/live-${stamp}`;
     await branchIn(mine, branch, 'publish.md');
     const context = (provider: GiteaProvider, token: string): SendContext => ({ provider, repo, token, git: runGit });
-    const request = { cwd: mine.folder, branch, base: 'main', title: `Publish ${stamp}`, body: 'From tests/live-forge.ts', via: 'direct' as const };
+    const request = { cwd: mine.folder, branch, base: 'main', title: `Publish ${stamp}`, body: 'From tests/live/live-forge.ts', via: 'direct' as const };
     const opened = await step('publishBranch (direct): the branch is pushed over HTTP with the token as a Basic header, and the pull request opened', async () => {
         const result = await publishBranch(context(owner, OWNER_TOKEN), request);
         check(result.ok && result.pull, `not published: ${!result.ok && result.message}`);

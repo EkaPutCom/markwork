@@ -1,6 +1,6 @@
 // CSV model tests: reading, writing without disturbing untouched rows, and the operations of the CSV tab.
 
-import { section, test, eq } from '../framework.js';
+import { section, test, eq } from '../core/framework.js';
 import { buildPattern, type SearchOptions } from '../../src/markdown/search.js';
 import {
     cellAt, columnCount, findCells, replaceInCell, replaceInCells, landing, moveColumn, moveRow, CSV_VIEW_CELLS, fitsTableView, deleteColumn, deleteRow, insertColumn, insertRow, isCsvFile, isNumericColumn, newCsvText, nextColumnName, parseCsv,

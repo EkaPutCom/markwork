@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { scratchFolder, launchApp, stepper } from './electron-support.mjs';
+import { scratchFolder, launchApp, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('secrets');
 writeFileSync(join(notes, 'plan.md'), '# Plan\n');

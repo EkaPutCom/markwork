@@ -1,6 +1,6 @@
 // Markdown → HTML conversion tests.
 
-import { section, test, eq, contains } from '../framework.js';
+import { section, test, eq, contains } from '../core/framework.js';
 import { markdownToHtml } from '../../src/markdown/html.js';
 import { body } from './helpers.js';
 

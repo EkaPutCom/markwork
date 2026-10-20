@@ -75,15 +75,15 @@ Without a path, the folder and the tabs of the last session come back. On the fi
 | `npm run build` | Check the types and the layer rules, then build the app into `dist-electron/` |
 | `npm run typecheck` | Only check the types (the core without Node's types, the core's tests and the Node port, the Electron app) and the layer rules |
 | `npm test` | The core's tests on Node, then the Electron app's tests (below) |
-| `npm run test:core:node` | The core's tests on Node (`tests/core-tests.ts` through `tests/run-core-node.ts`) |
-| `npm run test:electron` | Build, then drive the real app with Playwright under Xvfb (`tests/electron-*.mjs`) |
+| `npm run test:core:node` | The core's tests on Node (`tests/core/core-tests.ts` through `tests/core/run-core-node.ts`) |
+| `npm run test:electron` | Build, then drive the real app with Playwright under Xvfb (`tests/electron/*.mjs`) |
 | `npm run electron:dist` | Build the installers for the system it runs on into `release/` (electron-builder, `electron-builder.yml`) |
 | `npm run electron:pack` | The same, unpacked, to try the packaged app without installing it |
 | `npm run docs` | Take the screenshots and animations of `docs/assets/` from the real app (`scripts/capture.mjs`) |
 | `npm run test:live` | The Assistant against the real DeepSeek API on the sample manuscript (needs `DEEPSEEK_API_KEY` in `.env`, see `.env.example`) |
 | `npm run test:live:forge` | The forge layer against a real Forgejo or Gitea (needs `FORGEJO_TOKEN` in `.env`; add `FORGEJO_CONTRIBUTOR_TOKEN` and `-- --write` to also send, merge, and resolve) |
 | `scripts/forgejo.sh test [read\|write\|all]` | The live Forgejo suite against a throwaway Forgejo in a Podman (or Docker) container that the script starts, seeds, and tears down with `down`; the tokens go to `.env.forgejo` |
-| `npm run bench` | Measure the Markdown module on Node; `bench:save` and `bench:compare` keep and compare results (`bench/`) |
+| `npm run bench` | Measure the Markdown module on Node; `bench:save` and `bench:compare` keep and compare results (`tests/bench/`) |
 | `npm run bench:agentic` | Measure the cost of batches, verification, and checkpoints |
 | `npm run pot` | Make the translation template `po/markwork.pot` from the files in `po/POTFILES.in` |
 
@@ -227,13 +227,13 @@ npm test
 
 runs both suites below. The Electron tests need a display; on Linux `npm run test:electron` starts Xvfb (`sudo apt install xvfb xauth`), and `npm run test:electron:run` runs them on the display you have. CI runs both suites on Linux, macOS, and Windows for every pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)); a pull request is merged only when all of them pass.
 
-**The core's tests** (`npm run test:core:node`, about 830) are TypeScript without a framework (`tests/framework.ts`), bundled by Vite (`vite.node.config.ts`) and run on Node. They test the Markdown module, the agent, the forge, git, the orchestrator and the daemon client, and the application layer (`AppSession` with recording views), and they drive `ProtocolServer` with a scripted frontend over an in-memory line (`tests/unit/protocol.ts`), so what the window is told and what it may ask is tested without a window. They reach the runtime only through the platform port and a test host (`tests/host.ts`), wait for what they expect (`until()`, `within()`) rather than a fixed time, and use a temporary folder for settings, data, and the Trash.
+**The core's tests** (`npm run test:core:node`, about 830) are TypeScript without a framework (`tests/core/framework.ts`), bundled by Vite (`vite.node.config.ts`) and run on Node. They test the Markdown module, the agent, the forge, git, the orchestrator and the daemon client, and the application layer (`AppSession` with recording views), and they drive `ProtocolServer` with a scripted frontend over an in-memory line (`tests/unit/protocol.ts`), so what the window is told and what it may ask is tested without a window. They reach the runtime only through the platform port and a test host (`tests/core/host.ts`), wait for what they expect (`until()`, `within()`) rather than a fixed time, and use a temporary folder for settings, data, and the Trash.
 
-**The Electron tests** (`npm run test:electron`) launch the real app (main process, core, and renderer) with Playwright and use it as a person would: the editor (`electron-smoke.mjs`, `electron-editor.mjs`), the sample document and a hunt for crashes that compares what the editor draws after random edits with a fresh tab (`electron-robust.mjs`), the structured views (`electron-structured.mjs`), the adaptive layout (`electron-layout.mjs`), the Assistant and the journal (`electron-assistant.mjs`), the History tab and pull requests (`electron-git.mjs`), agents and their worktrees (`electron-harness.mjs`), and the keyring through `safeStorage` (`electron-secrets.mjs`). The model, the forge, and the agent are scripted fakes the core loads in place of the real ones (`MARKWORK_TEST_MODEL`, `MARKWORK_TEST_FORGE`, `MARKWORK_TEST_HARNESS`), so no test reaches the network. Each test file gets its own settings and data folder (`tests/electron-support.mjs`).
+**The Electron tests** (`npm run test:electron`) launch the real app (main process, core, and renderer) with Playwright and use it as a person would: the editor (`smoke.mjs`, `editor.mjs`), the sample document and a hunt for crashes that compares what the editor draws after random edits with a fresh tab (`robust.mjs`), the structured views (`structured.mjs`), the adaptive layout (`layout.mjs`), the Assistant and the journal (`assistant.mjs`), the History tab and pull requests (`git.mjs`), agents and their worktrees (`harness.mjs`), and the keyring through `safeStorage` (`secrets.mjs`). The model, the forge, and the agent are scripted fakes the core loads in place of the real ones (`MARKWORK_TEST_MODEL`, `MARKWORK_TEST_FORGE`, `MARKWORK_TEST_HARNESS`), so no test reaches the network. Each test file gets its own settings and data folder (`tests/electron/support.mjs`).
 
 ### The sample files
 
-[`tests/samples/all-formats.md`](tests/samples/all-formats.md) holds all the supported formats together with the tricky cases: nested emphasis, escapes, URLs with underscores, emoji and non-Latin text, a table without pipes at the edges, a four-backtick code block, and unclosed emphasis. `tests/electron-robust.mjs` checks how it is styled and exported; open it to look at it yourself:
+[`tests/samples/all-formats.md`](tests/samples/all-formats.md) holds all the supported formats together with the tricky cases: nested emphasis, escapes, URLs with underscores, emoji and non-Latin text, a table without pipes at the edges, a four-backtick code block, and unclosed emphasis. `tests/electron/robust.mjs` checks how it is styled and exported; open it to look at it yourself:
 
 ```bash
 npm start -- tests/samples/all-formats.md
@@ -286,9 +286,11 @@ src/
   orchestrator.ts         runs harness processes for app/harness.ts; orchestratordaemon.ts through markworkd
   settings.ts, files.ts, fileops.ts, workspace.ts, git.ts, gitlog.ts, credentials.ts, i18n.ts, …   base modules
 tests/
-  unit/                   the core's tests; core-tests.ts lists them, run-core-node.ts runs them
-  electron-*.mjs          the app's tests with Playwright; electron-support.mjs is what they share
-  live*.ts, bench*.ts     live tests against real services, and benchmarks
+  unit/                   the core's tests, one file per module
+  core/                   core-tests.ts lists them, run-core-node.ts runs them; the framework, fixtures, and test host
+  electron/               the app's tests with Playwright; support.mjs is what they share
+  live/                   live tests against real services
+  bench/                  benchmarks and their baseline
   samples/                sample documents
 scripts/
   electron-build.mjs      the build: main, core, preload, and renderer with Vite; the translations
@@ -453,7 +455,7 @@ A tab is a `Doc` (a text, with an editor, a file, and changes to save) or a `Pag
 3. `src/app/session.ts` and the controllers it builds (`documents.ts`, `views.ts`, …): what the application does
 4. `docs/design/protocol.md`, then `src/app/protocol/`: how the window is told and asked
 5. `electron/renderer/client.ts`, `App.tsx`, and `editor.ts`: the window
-6. `tests/unit/protocol.ts` and `tests/electron-*.mjs`: examples of every part in use
+6. `tests/unit/protocol.ts` and `tests/electron/*.mjs`: examples of every part in use
 
 ### Adding a feature
 
@@ -463,7 +465,7 @@ An example of adding a new format, such as `^superscript^`:
 2. Give `cm-md-sup` a style in `electron/renderer/theme.css`
 3. Add its conversion in `emphHtml()` (`src/markdown/html.ts`)
 4. If a command is needed, add it to `COMMANDS` in `src/app/commands.ts` (`wrap('sup', _('Superscript'), ['Ctrl+Shift+p'], '^')`); the window takes its keys and its place in the palette from there
-5. Add an example to `tests/samples/all-formats.md`, a parsing and export test in `tests/unit/`, and a step in `tests/electron-editor.mjs`
+5. Add an example to `tests/samples/all-formats.md`, a parsing and export test in `tests/unit/`, and a step in `tests/electron/editor.mjs`
 
 ## Settings
 

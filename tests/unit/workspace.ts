@@ -2,7 +2,7 @@
 
 import { writeTextFile } from '../../src/files.js';
 import { WorkspaceRepository } from '../../src/workspace.js';
-import { section, test, eq, ok, tmp, until, disk } from '../framework.js';
+import { section, test, eq, ok, tmp, until, disk } from '../core/framework.js';
 
 export async function workspaceTests(): Promise<void> {
     section('Workspace');

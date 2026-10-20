@@ -1,6 +1,6 @@
 // Tests for Obsidian-style [[note]] links: parsing, file lookup, name suggestions, inline highlighting, and HTML export.
 
-import { section, test, eq, ok, contains } from '../framework.js';
+import { section, test, eq, ok, contains } from '../core/framework.js';
 import { newNotePath, noteSection, parseWikiLink, wikiLinksIn, resolveWikiLink, suggestNotes, wikiQuery, wikiTargetFor } from '../../src/markdown/wikilink.js';
 import { parseInline } from '../../src/markdown/inline.js';
 import { body } from './helpers.js';

@@ -5,7 +5,7 @@ import { ChatSession } from '../../src/agent/session.js';
 import type { ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
 import { traceTree, descendants, traceStats, turnEvents, formatMs, formatSize } from '../../src/agent/tracetree.js';
 import { settledNewest, visibleSteps } from '../../src/agent/logrows.js';
-import { section, test, eq, ok, contains, within, pause, until } from '../framework.js';
+import { section, test, eq, ok, contains, within, pause, until } from '../core/framework.js';
 
 const files = [{ name: 'a.md', text: '# A\nRelease November 15\n' }];
 const input = { question: 'When is the release?', active: null, selection: '', files, mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 };

@@ -9,7 +9,7 @@ import { addCard, parseBoard } from '../../src/markdown/kanban.js';
 import { applyChangeBatch } from '../../src/app/agentwrites.js';
 import { platform, setPlatform } from '../../src/platform/index.js';
 import { fileUri } from '../../src/files.js';
-import { section, test, eq, ok, tmp, disk, until, untilText } from '../framework.js';
+import { section, test, eq, ok, tmp, disk, until, untilText } from '../core/framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
 export function memorySettings(): AppSettings {

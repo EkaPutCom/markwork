@@ -5,12 +5,12 @@
 //   node dist-node/run-core-node.js --only-worktrees  only the harness queue and the worktree per card
 //   node dist-node/run-core-node.js --only-daemon     only the markworkd client tests
 
-import '../src/platform/node/install.js';   // the core reaches the runtime through platform()
+import '../../src/platform/node/install.js';   // the core reaches the runtime through platform()
 import './host-node.js';                    // the tests reach the runtime through host(), installed before framework.ts
 import { GREEN, RED, RESET, errorMessage, opt, recordFailure, say, setRoot, summary } from './framework.js';
 import { runCoreTests } from './core-tests.js';
-import { crossOsTests } from './unit/crossos.js';
-import { nodePlatformTests } from './unit/nodeplatform.js';
+import { crossOsTests } from '../unit/crossos.js';
+import { nodePlatformTests } from '../unit/nodeplatform.js';
 
 setRoot(import.meta.url);
 

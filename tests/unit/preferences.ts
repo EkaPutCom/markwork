@@ -7,8 +7,8 @@ import type { MachineDraft, PreferencesData, PreferencesView } from '../../src/a
 import type { ProjectPage, WorktreeList } from '../../src/app/projects.js';
 import type { Question } from '../../src/app/dialogs.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, within, until, tmp, disk, slash } from '../framework.js';
-import { host as testHost } from '../host.js';
+import { section, test, eq, ok, within, until, tmp, disk, slash } from '../core/framework.js';
+import { host as testHost } from '../core/host.js';
 import { fakeFrontend, memorySettings, quiet } from './appsession.js';
 
 export async function preferencesTests(): Promise<void> {

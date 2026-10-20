@@ -9,8 +9,8 @@ import { publishBranch, pushFailure, type PublishRequest } from '../../src/forge
 import { forgeKind } from '../../src/forge/remote.js';
 import { ForgeError, type ForgeProvider, type NewPull, type PullRequest, type RepoInfo } from '../../src/forge/types.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
     const run = await within(runGit(cwd, args));

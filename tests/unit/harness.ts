@@ -6,7 +6,7 @@ import {
     rpcPrompt, rpcSteer, rpcUiResponse, RunQueue, stageColumn, type HarnessAsk,
 } from '../../src/agent/harness.js';
 import { AgentTrace } from '../../src/agent/trace.js';
-import { section, test, eq, ok, contains } from '../framework.js';
+import { section, test, eq, ok, contains } from '../core/framework.js';
 
 const BOARD = `---
 layout: board

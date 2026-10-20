@@ -11,7 +11,7 @@ import { groupBoard, groupFieldOf, ungroupBoard } from '../../src/markdown/board
 import { addCard, boardSchema, deleteCard, moveCard, parseBoard, serializeBoard, updateCard } from '../../src/markdown/kanban.js';
 import { isCalendar, isChart, isGallery, isTimeline, layoutOf } from '../../src/markdown/layout.js';
 import { missingField, withField } from '../../src/markdown/layouthint.js';
-import { ROOT, section, test, eq, ok, disk } from '../framework.js';
+import { ROOT, section, test, eq, ok, disk } from '../core/framework.js';
 
 const sample = (name: string): string => readTextFile(disk.join(ROOT, 'tests', 'samples', name));
 const titles = (cards: { card: { text: string } }[]): string[] => cards.map(c => c.card.text.replace(/ ?\[.*$/, '').replace(/ #\w+/g, ''));

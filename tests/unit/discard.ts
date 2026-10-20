@@ -1,7 +1,7 @@
 // Tests for throwing away uncommitted changes (git.ts discardChanges) against a real repository.
 
 import { discardChanges, repoChanges, runGit } from '../../src/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
 
 export async function discardTests(): Promise<void> {
     section('Discarding uncommitted changes');

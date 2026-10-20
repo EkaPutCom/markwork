@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
+import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('structured');
 const pad = n => String(n).padStart(2, '0');

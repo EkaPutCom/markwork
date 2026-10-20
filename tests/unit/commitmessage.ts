@@ -2,7 +2,7 @@
 
 import { cleanMessage, commitLimits, commitPrompt, fitDiffs, names, writeCommitMessage, type CommitSources } from '../../src/agent/commitmessage.js';
 import type { ChatRequest } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within } from '../framework.js';
+import { section, test, eq, ok, contains, within } from '../core/framework.js';
 
 export async function commitMessageTests(): Promise<void> {
     section('Commit message writer');

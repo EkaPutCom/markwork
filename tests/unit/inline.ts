@@ -2,7 +2,7 @@
 
 import { makeCpMap, cpLength, countWords } from '../../src/markdown/offsets.js';
 import { parseInline } from '../../src/markdown/inline.js';
-import { section, test, eq, ok } from '../framework.js';
+import { section, test, eq, ok } from '../core/framework.js';
 
 export function inlineTests(): void {
     section('parseInline');

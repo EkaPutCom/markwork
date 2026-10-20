@@ -1,4 +1,4 @@
-// What every Electron test (tests/electron-*.mjs) shares: a scratch folder of its own, the app launched on it with its
+// What every Electron test (tests/electron/*.mjs) shares: a scratch folder of its own, the app launched on it with its
 // settings and data kept inside that folder on every system, the steps it reports, and waiting for a condition.
 
 import { _electron as electron } from 'playwright-core';
@@ -9,10 +9,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-export const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
+export const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // A module of tests/ as the URL the core imports it by (MARKWORK_TEST_MODEL and the like).
-export const testModule = name => pathToFileURL(join(repo, 'tests', name)).href;
+export const testModule = name => pathToFileURL(join(repo, 'tests', 'electron', name)).href;
 
 // A fresh folder for one test file, with an empty notes/ folder in it.
 export function scratchFolder(prefix) {

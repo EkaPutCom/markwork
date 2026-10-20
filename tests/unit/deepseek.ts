@@ -2,8 +2,8 @@
 // transport, without a real network.
 
 import { DeepSeek } from '../../src/agent/deepseek.js';
-import { section, test, eq, ok, contains, within } from '../framework.js';
-import { host, type FakeReply } from '../host.js';
+import { section, test, eq, ok, contains, within } from '../core/framework.js';
+import { host, type FakeReply } from '../core/host.js';
 import { Cancellable } from '../../src/cancel.js';
 
 export async function deepseekTests(): Promise<void> {

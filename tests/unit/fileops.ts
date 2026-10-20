@@ -2,7 +2,7 @@
 
 import { copyEntry, createFile, createFolder, moveEntry, renameEntry } from '../../src/fileops.js';
 import { remapPath } from '../../src/app/documents.js';
-import { section, test, eq, ok, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, tmp, disk } from '../core/framework.js';
 
 const throws = (fn: () => unknown, part: string): void => {
     try { fn(); } catch (e) { ok((e as Error).message.includes(part), `message "${(e as Error).message}" does not contain "${part}"`); return; }

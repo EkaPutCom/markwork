@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { repo, scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
+import { repo, scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('robust');
 const SAMPLE = readFileSync(join(repo, 'tests/samples/all-formats.md'), 'utf8');

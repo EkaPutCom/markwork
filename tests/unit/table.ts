@@ -1,7 +1,7 @@
 // Markdown table model tests (markdown/table.ts).
 
 import { cellIndexAt, cellStart, deleteColumn, deleteRow, displayWidth, findTables, fitColumns, insertColumn, insertRow, parseTable, renderTable, setAlign, splitRow, tableEnd } from '../../src/markdown/table.js';
-import { section, test, eq, ok } from '../framework.js';
+import { section, test, eq, ok } from '../core/framework.js';
 
 export function tableTests(): void {
     section('Markdown tables');

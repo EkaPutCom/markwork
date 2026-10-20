@@ -1,7 +1,7 @@
 // Tests for the git output parser.
 
 import { parseDiff, parseLog, parseStatus, relativeTime } from '../../src/gitlog.js';
-import { section, test, eq } from '../framework.js';
+import { section, test, eq } from '../core/framework.js';
 
 const record = (hash: string, short: string, author: string, time: number, subject: string, ...files: string[]) =>
     `\x1e${hash}\x1f${short}\x1f${author}\x1f${time}\x1f${subject}\n\n${files.join('\n')}\n`;

@@ -2,7 +2,7 @@
 
 import { fileUri, flushWrites, insideName, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/files.js';
 import { below, atOrBelow, hasDrive, isAbsolutePath, isWindowsPath, slashed } from '../../src/markdown/paths.js';
-import { section, test, eq, ok, tmp, until, disk } from '../framework.js';
+import { section, test, eq, ok, tmp, until, disk } from '../core/framework.js';
 
 export async function fileWriteTests(): Promise<void> {
     section('Background writes');

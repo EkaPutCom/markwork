@@ -6,8 +6,8 @@ import { platform } from '../../src/platform/index.js';
 import { diffPulls, PullMonitor } from '../../src/forge/monitor.js';
 import { parseRemote } from '../../src/forge/remote.js';
 import { ForgeError, type HttpRequest, type HttpResponse, type PullRequest, type RepoRef, type Transport } from '../../src/forge/types.js';
-import { section, test, eq, ok, contains, within } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, contains, within } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 const REPO: RepoRef = { baseUrl: 'https://git.example.org', host: 'git.example.org', owner: 'eka', repo: 'notes' };
 

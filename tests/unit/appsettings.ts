@@ -2,7 +2,7 @@
 
 import { AppSettings } from '../../src/settings.js';
 import type { SettingValue, SettingsStore } from '../../src/platform/index.js';
-import { section, test, eq } from '../framework.js';
+import { section, test, eq } from '../core/framework.js';
 
 export function appSettingsTests(): void {
     section('Settings: AppSettings on any store');

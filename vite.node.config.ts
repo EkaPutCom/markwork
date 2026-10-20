@@ -13,12 +13,12 @@ export default defineConfig({
         ssr: true,
         lib: {
             entry: {
-                'run-core-node': 'tests/run-core-node.ts',
+                'run-core-node': 'tests/core/run-core-node.ts',
                 // Not part of the tests: live runs against DeepSeek and Forgejo, and the benchmarks (package.json).
-                live: 'tests/live.ts',
-                'live-forge': 'tests/live-forge.ts',
-                bench: 'tests/bench.ts',
-                'bench-agentic': 'tests/bench-agentic.ts',
+                live: 'tests/live/live.ts',
+                'live-forge': 'tests/live/live-forge.ts',
+                bench: 'tests/bench/bench.ts',
+                'bench-agentic': 'tests/bench/bench-agentic.ts',
             },
             formats: ['es'],
             fileName: (_format, name) => `${name}.js`,

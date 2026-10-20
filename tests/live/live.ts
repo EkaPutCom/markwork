@@ -3,27 +3,27 @@
 //   npm run test:live                  key from .env (DEEPSEEK_API_KEY), without thinking mode
 //   npm run test:live -- --thinking    with thinking mode
 //   npm run test:live -- --model=deepseek-v4-pro
-//   npm run test:live -- --commit-only  only the commit message writer (tests/live-commit.ts)
-//   npm run test:live -- --structured    also the tools for structured documents (tests/live-structured.ts)
+//   npm run test:live -- --commit-only  only the commit message writer (tests/live/live-commit.ts)
+//   npm run test:live -- --structured    also the tools for structured documents (tests/live/live-structured.ts)
 //   npm run test:live -- --structured-only  only those
 //
 // Uses the manuscript tests/samples/sample-book (deliberately containing contradictions: Raka's age 17 vs 25, the name Hasan vs Hasyim,
 // white vs black ship) and runs ChatSession + DeepSeek + the same browsing tools as the app.
 // The key is never printed.
 
-import '../src/platform/node/install.js';   // the core reaches the runtime through platform()
-import './host-node.js';   // the tests reach the runtime through host(), installed before framework.ts
+import '../../src/platform/node/install.js';   // the core reaches the runtime through platform()
+import '../core/host-node.js';   // the tests reach the runtime through host(), installed before framework.ts
 import { liveAgentic } from './live-agentic.js';
 import { liveCommitMessage } from './live-commit.js';
 import { liveStructured } from './live-structured.js';
-import { systemKeyStore } from '../src/agent/apikey.js';
-import { DEEPSEEK_MODELS, DeepSeek } from '../src/agent/deepseek.js';
-import { DEFAULT_BUDGET } from '../src/agent/context.js';
-import { WorkspaceRepository } from '../src/workspace.js';
-import { ChatSession } from '../src/agent/session.js';
-import { DIM, GREEN, RED, RESET, ROOT, optVal, opt, setRoot } from './framework.js';
-import { disk, say } from './framework.js';
-import { platform } from '../src/platform/index.js';
+import { systemKeyStore } from '../../src/agent/apikey.js';
+import { DEEPSEEK_MODELS, DeepSeek } from '../../src/agent/deepseek.js';
+import { DEFAULT_BUDGET } from '../../src/agent/context.js';
+import { WorkspaceRepository } from '../../src/workspace.js';
+import { ChatSession } from '../../src/agent/session.js';
+import { DIM, GREEN, RED, RESET, ROOT, optVal, opt, setRoot } from '../core/framework.js';
+import { disk, say } from '../core/framework.js';
+import { platform } from '../../src/platform/index.js';
 
 setRoot(import.meta.url);
 

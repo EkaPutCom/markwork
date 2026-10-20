@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
-import { scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
+import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('editor');
 mkdirSync(join(notes, 'images'), { recursive: true });
@@ -110,7 +110,7 @@ try {
         assert.equal((await lineTexts())[0], 'a', 'and hides them again');
     });
 
-    // ---------- lists.ts (and the table keys, in electron-smoke.mjs) ----------
+    // ---------- lists.ts (and the table keys, in smoke.mjs) ----------
     // ---------- wikilink.ts ----------
     await step('wikilink: [[note]] is a link with its brackets hidden on other lines', async () => {
         await setDoc('see [[Idea]] and [[Journal/Plan|plan]]\n\nother line');

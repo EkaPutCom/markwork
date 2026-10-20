@@ -6,7 +6,7 @@ import {
     applyChanges, block, continueBlock, enterInTable, heading, indentListItem, isInCodeBlock, link, mapPosition,
     runTableCommand, tabInTable, togglePrefix, wrap, type TextEdit, type TextState,
 } from '../../src/markdown/editcommands.js';
-import { section, test, eq, ok } from '../framework.js';
+import { section, test, eq, ok } from '../core/framework.js';
 
 const HEAD = '‸', ANCHOR = '·';
 
