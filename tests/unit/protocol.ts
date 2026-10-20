@@ -19,7 +19,7 @@ import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import { memorySettings } from './appsession.js';
 import { runGit } from '../../src/git.js';
 import { host } from '../host.js';
-import { section, test, eq, ok, tmp, disk, until, pause, within, trace } from '../framework.js';
+import { section, test, eq, ok, tmp, disk, until, pause, within } from '../framework.js';
 
 const ALPHABET = ['a', 'b', ' ', '\n', '🎉', 'é', '#', 'x'];
 
@@ -1260,31 +1260,23 @@ export async function protocolTests(): Promise<void> {
     };
 
     await test('a card\'s menu is asked for (act.card.menu), an entry runs by its token, and the run shows on the board (view.runs)', async () => {
-        trace('start');
         const { server, ui, spawned, menu, choose, cardNow, runs } = await startAgents();
-        trace('started');
         const first = await menu('One');
-        trace('menu');
         eq(JSON.parse(JSON.stringify(first)), first, 'plain data');
         ok(first.some(e => e.label === 'Work on it with pi'), 'the assign entry');
         const gone = await ui.client.request('act.card.menu', { column: 0, index: 0, text: 'Nobody' });
         ok(!gone.ok && gone.error.code === 'stale', 'a card that is not there');
         const asked: string[] = [];
         ui.client.on('ask.folder', p => { asked.push(String(p.title)); return { path: agentFolder }; });
-        trace('choosing');
         await choose(first, 'Work on it with pi');
-        trace('chosen');
         await until(() => spawned.length === 1);
-        trace('spawned');
         eq([asked.length, spawned[0].cwd], [1, agentFolder]);
         await until(() => runs().some(r => r.status === 'working'));
-        trace('working');
         ok(cardNow().includes('[agent:: pi]'), cardNow());
         const second = await menu(cardNow());
         ok(second.some(e => e.label === 'Stop pi') && second.some(e => e.label === 'View pi Log'), second.map(e => e.label).join(' | '));
         const stale = await ui.client.request('act.card.run', { token: first[0].token });
         ok(stale.ok, 'a token of an earlier menu does nothing');
-        trace('stopping');
         await choose(second, 'Stop pi');
         await until(() => spawned[0].stopped);
         server.dispose();
