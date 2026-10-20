@@ -2,7 +2,8 @@
 
 import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasMarkers, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
 import { ForgeError, type ForgeProvider } from '../../src/forge/types.js';
-import { runGit } from '../../src/git.js';
+import { repoChanges, runGit } from '../../src/git.js';
+import { platform } from '../../src/platform/index.js';
 import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
 import { host } from '../host.js';
 
@@ -207,6 +208,21 @@ export async function resolveTests(): Promise<void> {
         const f = forge(['open'], async () => { throw new ForgeError('network', 'Cannot reach git.example.org'); });
         const result = await within(confirmMerged(f.provider, 7, 'abc'));
         ok(!result.ok && result.message === 'Cannot reach git.example.org', 'passed on');
+    });
+
+    await test('a repository opened through a symbolic link keeps that spelling in its changes', async () => {
+        if (platform().os === 'win32') return;   // a folder link needs rights a Windows runner may not have
+        const real = disk.join(dir, 'linked-real'), link = disk.join(dir, 'linked');
+        disk.mkdirs(disk.join(real, 'sub'));
+        await sh(real, 'init', '-q', '-b', 'main');
+        write(disk.join(real, 'a.md'), 'a\n');
+        await sh(real, 'add', '-A');
+        await sh(real, 'commit', '-q', '-m', 'First');
+        host().symlink(real, link);
+        write(disk.join(real, 'sub', 'b.md'), 'b\n');
+        const changes = await within(repoChanges(disk.join(link, 'sub')));
+        ok(changes.ok, 'read');
+        eq(changes.ok && changes.changes.map(c => c.path), [disk.join(link, 'sub', 'b.md')]);
     });
 
     for (const name of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) host().setenv(name, null);

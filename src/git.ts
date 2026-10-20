@@ -44,6 +44,17 @@ function failure(run: Run | null): { ok: false; reason: GitFailure; message: str
 }
 
 const dirOf = (file: string) => platform().paths.dirname(file);
+
+// The top folder of the repository `dir` is in, spelled the way `dir` is: git's --show-toplevel gives the real path (macOS's
+// /private/var for /var, C:/Users/… on Windows), so a file the app knows by the folder the user opened would not be found
+// inside it. --show-cdup says how far up the top is instead ('' when dir is the top).
+async function repoTop(dir: string): Promise<{ ok: true; top: string } | { ok: false; failed: Run | null }> {
+    const run = await runGit(dir, ['rev-parse', '--show-cdup']);
+    if (run?.status !== 0) return { ok: false, failed: run };
+    const up = run.out.trim();
+    const { paths } = platform();
+    return { ok: true, top: up ? paths.resolve(paths.join(dir, up)) : dir };
+}
 const nameOf = (file: string) => platform().paths.basename(file);
 
 // Commits that touch the file, newest first, following renames. skip/limit for incremental loading.
@@ -103,11 +114,11 @@ export type ChangesResult =
 
 // All files in this folder's repository that differ from the last commit; paths are absolute.
 export async function repoChanges(dir: string): Promise<ChangesResult> {
-    const root = await runGit(dir, ['rev-parse', '--show-toplevel']);
-    if (root?.status !== 0) return failure(root);
+    const root = await repoTop(dir);
+    if (!root.ok) return failure(root.failed);
     const run = await runGit(dir, ['status', '--porcelain=v1', '--untracked-files=all']);
     if (run?.status !== 0) return failure(run);
-    const top = root.out.trim();
+    const { top } = root;
     return { ok: true, changes: parseStatus(run.out).map(c => ({ ...c, path: platform().paths.join(top, c.path) })) };
 }
 
@@ -153,9 +164,9 @@ export async function commitFile(file: string, message: string): Promise<TextRes
 export async function commitFiles(files: string[], message: string): Promise<TextResult> {
     if (!files.length) return { ok: false, reason: 'failed', message: 'No files selected' };
     const dir = dirOf(files[0]);
-    const root = await runGit(dir, ['rev-parse', '--show-toplevel']);
-    if (root?.status !== 0) return failure(root);
-    const top = root.out.trim();
+    const root = await repoTop(dir);
+    if (!root.ok) return failure(root.failed);
+    const { top } = root;
     const specs = files.map(f => `:(top,literal)${insideName(top, f) ?? f}`);
     const add = await runGit(dir, ['add', '--all', '--', ...specs]);
     if (add?.status !== 0) return failure(add);
@@ -170,9 +181,9 @@ export async function commitFiles(files: string[], message: string): Promise<Tex
 export async function discardChanges(files: string[]): Promise<TextResult> {
     if (!files.length) return { ok: false, reason: 'failed', message: 'No files selected' };
     const dir = dirOf(files[0]);
-    const root = await runGit(dir, ['rev-parse', '--show-toplevel']);
-    if (root?.status !== 0) return failure(root);
-    const top = root.out.trim();
+    const root = await repoTop(dir);
+    if (!root.ok) return failure(root.failed);
+    const { top } = root;
     const specOf = (path: string) => `:(top,literal)${path}`;
     const wanted = new Set(files.map(f => insideName(top, f) ?? f));
     // The whole repository, not just these paths: with a pathspec git no longer pairs a rename's two names, and the new name alone

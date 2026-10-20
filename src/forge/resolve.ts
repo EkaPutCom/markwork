@@ -44,12 +44,13 @@ export async function preflight(git: GitRunner, folder: string, base: string): P
 }
 
 export async function conflictedFiles(git: GitRunner, folder: string): Promise<string[]> {
-    const top = await out(git, folder, ['rev-parse', '--show-toplevel']);
+    // The top as the folder is spelled (--show-toplevel would give the real path: /private/var on macOS, C:/… on Windows).
+    const up = await out(git, folder, ['rev-parse', '--show-cdup']);
     const names = await out(git, folder, ['diff', '--name-only', '--diff-filter=U']);
-    if (top === null || !names) return [];
-    // On this computer: the system's own paths (git writes C:/Users/… on Windows).
+    if (up === null || !names) return [];
     const { paths } = platform();
-    return names.split('\n').filter(Boolean).map(name => paths.join(paths.resolve(top), name));
+    const top = up ? paths.resolve(paths.join(folder, up)) : folder;
+    return names.split('\n').filter(Boolean).map(name => paths.join(top, name));
 }
 
 export interface PendingMerge {
