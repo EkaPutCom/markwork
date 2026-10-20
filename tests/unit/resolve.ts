@@ -76,7 +76,7 @@ export async function resolveTests(): Promise<void> {
         if (!found || !start.ok) return;
         eq(found.pull, 7);
         eq(found.before, start.before);
-        eq(found.conflicts, [`${work}/journal.md`]);
+        eq(found.conflicts, [disk.join(work, 'journal.md')]);
         await sh(work, 'merge', '--abort');
         eq(await within(pendingMerge(runGit, work)), null);
     });
@@ -99,10 +99,10 @@ export async function resolveTests(): Promise<void> {
         const start = await within(startLocalMerge(runGit, merge));
         ok(start.ok, `started: ${!start.ok && start.message}`);
         if (!start.ok) return;
-        eq(start.conflicts, [`${work}/journal.md`]);
+        eq(start.conflicts, [disk.join(work, 'journal.md')]);
         contains(read(`${work}/journal.md`), '<<<<<<<');
-        eq(await within(conflictedFiles(runGit, work)), [`${work}/journal.md`]);
-        eq(unresolved(start.conflicts, read), [`${work}/journal.md`]);
+        eq(await within(conflictedFiles(runGit, work)), [disk.join(work, 'journal.md')]);
+        eq(unresolved(start.conflicts, read), [disk.join(work, 'journal.md')]);
         eq(await sh(work, 'rev-parse', 'HEAD'), start.before);
     });
 

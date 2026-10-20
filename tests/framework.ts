@@ -19,6 +19,13 @@ export function setRoot(url: string): void {
 // after the import because settings.ts only reads XDG_CONFIG_HOME when called.
 export const tmp = host().makeTempDir();
 host().setenv('XDG_CONFIG_HOME', tmp);
+// The test repositories compare file bytes: git on Windows must not turn LF into CRLF on checkout, whatever the machine's config.
+host().setenv('GIT_CONFIG_COUNT', '1');
+host().setenv('GIT_CONFIG_KEY_0', 'core.autocrlf');
+host().setenv('GIT_CONFIG_VALUE_0', 'false');
+
+// A path with / for every separator, to compare a path git wrote (C:/Users/…) with one the system built.
+export const slash = (path: string): string => path.replace(/\\/g, '/');
 
 export const errorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e);
 

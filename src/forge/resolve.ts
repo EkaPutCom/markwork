@@ -47,7 +47,9 @@ export async function conflictedFiles(git: GitRunner, folder: string): Promise<s
     const top = await out(git, folder, ['rev-parse', '--show-toplevel']);
     const names = await out(git, folder, ['diff', '--name-only', '--diff-filter=U']);
     if (top === null || !names) return [];
-    return names.split('\n').filter(Boolean).map(name => `${top}/${name}`);
+    // On this computer: the system's own paths (git writes C:/Users/… on Windows).
+    const { paths } = platform();
+    return names.split('\n').filter(Boolean).map(name => paths.join(paths.resolve(top), name));
 }
 
 export interface PendingMerge {

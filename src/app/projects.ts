@@ -6,6 +6,7 @@
 import { isRemoteMachine, machineProjectKey } from '../agent/daemon/machines.js';
 import { BRANCH_PREFIX, isAbsoluteDir, listWorktrees, MAX_SLOTS, parseIsolation, removeWorktree, worktreeRoot, writeIsolation, type Isolation } from '../agent/worktree.js';
 import type { GitRunner } from '../forge/contribute.js';
+import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
 import { _, fmt } from '../i18n.js';
 import type { Question } from './dialogs.js';
@@ -129,7 +130,8 @@ export class ProjectsPages {
     // Remove a worktree the core listed, with its branch, after asking. An error message, or null.
     async remove(name: string, path: string): Promise<string | null> {
         const folder = this.folderOf(name);
-        const wt = this.listed.get(name)?.find(w => w.path === path);
+        // Git lists a Windows path with / (C:/Users/…), the frontend may send it with \.
+        const wt = this.listed.get(name)?.find(w => w.path === path || platform().paths.same(w.path, path));
         if (folder === undefined || !wt) return 'that worktree is not one of this project';
         if (!await this.dialogs.removeWorktree({
             message: fmt(_('Remove the worktree of {branch}?'), { branch: wt.branch }),

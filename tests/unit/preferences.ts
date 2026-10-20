@@ -7,7 +7,7 @@ import type { MachineDraft, PreferencesData, PreferencesView } from '../../src/a
 import type { ProjectPage, WorktreeList } from '../../src/app/projects.js';
 import type { Question } from '../../src/app/dialogs.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, within, until, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, within, until, tmp, disk, slash } from '../framework.js';
 import { host as testHost } from '../host.js';
 import { fakeFrontend, memorySettings, quiet } from './appsession.js';
 
@@ -149,7 +149,7 @@ export async function preferencesTests(): Promise<void> {
         eq(JSON.parse(JSON.stringify(pages[0])), pages[0], 'not plain data');
         await until(() => lists.some(l => !l.loading));
         eq(lists[0].loading, true, 'first "looking"');
-        eq(lists.at(-1)!.items, [{ branch: 'markwork/fix-login', path: wt }]);
+        eq(lists.at(-1)!.items.map(w => ({ ...w, path: slash(w.path) })), [{ branch: 'markwork/fix-login', path: slash(wt) }]);
         session.dispose();
     });
 

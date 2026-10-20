@@ -6,7 +6,7 @@ import { commentsReply, mergeWorktree, newLineNumbers, readReview, splitDiff } f
 import { parseDiff } from '../../src/gitlog.js';
 import { cardBranch, setCardBranch } from '../../src/markdown/kanban.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, contains, within, tmp, disk, slash } from '../framework.js';
 import { host } from '../host.js';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
@@ -65,9 +65,9 @@ export async function worktreeTests(): Promise<void> {
         const made = await within(createWorktree(runGit, { folder: `${repo}/web`, title: 'Checkout with QRIS', isolation: iso() }));
         if (!made.ok) throw new Error(made.message);
         const wt = made.value;
-        eq(wt.path, `${root}/.markwork-worktrees/shop/checkout-with-qris`);
+        eq(slash(wt.path), slash(`${root}/.markwork-worktrees/shop/checkout-with-qris`));
         eq(wt.cwd, `${wt.path}/web`, 'the harness runs where the project folder is inside the repository');
-        eq([wt.branch, wt.base, wt.repo], ['markwork/checkout-with-qris', 'main', repo]);
+        eq([wt.branch, wt.base, slash(wt.repo)], ['markwork/checkout-with-qris', 'main', slash(repo)]);
         eq(wt.baseCommit, await sh(repo, 'rev-parse', 'main'));
         ok(exists(`${wt.cwd}/cart.ts`), 'checked out');
         eq(await sh(repo, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main', 'the project folder stays on its branch');
