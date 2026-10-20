@@ -2,17 +2,12 @@
 // Electron window with Playwright: the real main process, core, and renderer. What the core decides is also in
 // tests/unit/protocol.ts. Run with `npm run test:electron`.
 
-import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
-const scratch = mkdtempSync(join(tmpdir(), 'markwork-structured-'));
-const notes = join(scratch, 'notes');
-mkdirSync(notes);
+const { scratch, notes } = scratchFolder('structured');
 const pad = n => String(n).padStart(2, '0');
 const now = new Date();
 const month = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
@@ -27,23 +22,9 @@ writeFileSync(join(notes, 'gallery.md'), '---\nlayout: gallery\nfields:\n  cover
 writeFileSync(join(notes, 'chart.md'), '---\nlayout: chart\nfields:\n  status: select(todo:gray, done:green)\n---\n\n# Chart\n\n- A [status:: todo]\n- B [status:: done]\n- C [status:: done]\n');
 writeFileSync(join(notes, 'sheet.csv'), 'name,qty\nada,3\nlin,5\n');
 
-async function waitFor(condition, ms = 5000) {
-    for (const end = Date.now() + ms; Date.now() < end;) { if (condition()) return; await new Promise(r => setTimeout(r, 50)); }
-    assert.fail('timed out');
-}
+const { steps, step } = stepper();
 
-const steps = [];
-async function step(name, run) {
-    try {
-        await run();
-        steps.push(`  ✓ ${name}`);
-    } catch (e) {
-        steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
-        throw e;
-    }
-}
-
-const app = await electron.launch({ args: [repo, notes], cwd: repo, env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config') } });
+const app = await launchApp({ scratch, notes });
 let failed = false;
 try {
     const page = await app.firstWindow();

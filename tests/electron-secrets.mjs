@@ -2,17 +2,12 @@
 // the main process, which keeps the item encrypted in its own folder. MARKWORK_SECRETS=vault does the same on Linux, so this
 // runs everywhere. What the vault and the proxy decide is also in tests/unit/nodeplatform.ts. Run with `npm run test:electron`.
 
-import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { scratchFolder, launchApp, stepper } from './electron-support.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
-const scratch = mkdtempSync(join(tmpdir(), 'markwork-secrets-'));
-const notes = join(scratch, 'notes');
-mkdirSync(notes);
+const { scratch, notes } = scratchFolder('secrets');
 writeFileSync(join(notes, 'plan.md'), '# Plan\n');
 const KEY = 'sk-test-vault-key-123';
 
@@ -24,21 +19,9 @@ if (process.platform === 'darwin' && process.env.CI) {
 // Whatever else blocks, the run ends with a failure instead of holding the job.
 setTimeout(() => { console.log('Electron secrets\n  ✗ did not finish in 2 minutes'); process.exit(1); }, 120000).unref();
 
-const steps = [];
-async function step(name, run) {
-    try {
-        await run();
-        steps.push(`  ✓ ${name}`);
-    } catch (e) {
-        steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
-        throw e;
-    }
-}
+const { steps, step } = stepper();
 
-const launch = () => electron.launch({
-    args: [repo, notes], cwd: repo,
-    env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), MARKWORK_SECRETS: 'vault', MARKWORK_TEST_PLAIN_STORAGE: '1', DEEPSEEK_API_KEY: '' },
-});
+const launch = () => launchApp({ scratch, notes, env: { MARKWORK_SECRETS: 'vault', MARKWORK_TEST_PLAIN_STORAGE: '1', DEEPSEEK_API_KEY: '' } });
 
 let app, failed = false;
 try {

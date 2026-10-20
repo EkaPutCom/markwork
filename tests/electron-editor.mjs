@@ -2,17 +2,13 @@
 // codecolor, conflicts), run against the Electron window with Playwright: the real main process, core, and renderer. The
 // ones whose behaviour lives in the core are also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 
-import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
+import { scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
-const scratch = mkdtempSync(join(tmpdir(), 'markwork-editor-'));
-const notes = join(scratch, 'notes');
+const { scratch, notes } = scratchFolder('editor');
 mkdirSync(join(notes, 'images'), { recursive: true });
 mkdirSync(join(notes, 'Journal'));
 mkdirSync(join(notes, 'projects'));
@@ -42,28 +38,11 @@ writeFileSync(join(notes, 'page.html'), '<!doctype html><h1 id="h">hello html</h
 writeFileSync(join(notes, 'Journal', 'Daily Notes.md'), '# Daily\n');
 writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
 
-async function waitFor(condition, ms = 5000) {
-    for (const end = Date.now() + ms; Date.now() < end;) { if (condition()) return; await new Promise(r => setTimeout(r, 50)); }
-    assert.fail('timed out');
-}
+// The tabs after each step, to compare a run on another system (CI sets MARKWORK_TRACE).
+const tabsNow = async () => `      tabs: ${JSON.stringify(await page.getByRole('tab').evaluateAll(els => els.map(e => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)))}`;
+const { steps, step } = stepper({ after: process.env.MARKWORK_TRACE ? tabsNow : undefined });
 
-const steps = [];
-async function step(name, run) {
-    try {
-        await run();
-        steps.push(`  ✓ ${name}`);
-        // The tabs after each step, to compare a run on another system (CI sets MARKWORK_TRACE).
-        if (process.env.MARKWORK_TRACE) steps.push(`      tabs: ${JSON.stringify(await page.getByRole('tab').evaluateAll(els => els.map(e => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)))}`);
-    } catch (e) {
-        steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
-        throw e;
-    }
-}
-
-const app = await electron.launch({
-    args: [repo, notes], cwd: repo,
-    env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), XDG_DATA_HOME: join(scratch, 'data') },   // the Trash of this run only
-});
+const app = await launchApp({ scratch, notes });   // its data folder holds the Trash of this run only
 let failed = false;
 let page;
 try {
