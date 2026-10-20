@@ -245,6 +245,8 @@ try {
         const bar = page.locator('.timeline-bar');
         await bar.waitFor();
         const title = bar.locator('.bar-title');
+        // The timeline opens scrolled to today; the bar may start outside the window (a narrower window on macOS and Windows).
+        await title.scrollIntoViewIfNeeded();
         let box = await title.boundingBox();
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
         await page.mouse.down();
@@ -255,6 +257,7 @@ try {
         await page.waitForTimeout(250);
         assert.match(await saved('line.md', /\[start:: 2026-10-07\] \[due:: 2026-10-11\]/), /\[start:: 2026-10-07\] \[due:: 2026-10-11\]/);
         const handle = bar.locator('.handle.end');
+        await handle.scrollIntoViewIfNeeded();
         box = await handle.boundingBox();
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
         await page.mouse.down();
