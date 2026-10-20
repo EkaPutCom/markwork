@@ -21,7 +21,7 @@ export interface EditCommands {
     zoomImage(): void;
 }
 
-// A view option the commands can change: the GSettings-like boolean settings and source mode.
+// A view option the commands can change: the boolean settings and source mode.
 export type ViewOption = 'sidebar' | 'chat' | 'dark' | 'autosave' | 'focus' | 'typewriter' | 'source';
 
 // What a command may ask of the frontend: its editor's edits and its own windows. These commands are carried out by the

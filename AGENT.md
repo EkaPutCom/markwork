@@ -79,8 +79,8 @@ A card of a Git project gets its own worktree (`src/agent/worktree.ts`, branch `
 ## Installation and the app identity
 
 - The app ID is `com.ekaput.Markwork` (the domain markwork.ekaput.com). The installers are made by electron-builder from `electron-builder.yml`: AppImage and deb for Linux, dmg and zip for macOS, NSIS for Windows; the release workflow publishes them for a `v*` tag, and `electron/updater.ts` updates an installed AppImage, dmg, or Windows app from those releases.
-- The icon is `build/icon.png`, drawn from `data/icons/hicolor/scalable/apps/com.ekaput.Markwork.svg` by `npm run icon`; redraw it when the SVG changes.
-- The settings schema is `data/com.ekaput.Markwork.gschema.xml`: the core reads its keys, types, and defaults (`platform/node/settings.ts`). A new setting is added there and to `AppSettings` (`src/settings.ts`).
+- The icon is `resources/icon.png`, drawn from `resources/icon.svg` by `npm run icon`; redraw it when the SVG changes.
+- The settings keys are `src/settingskeys.ts`: their types and defaults, which `platform/node/settings.ts` checks. A new setting is added there and to `AppSettings` (`src/settings.ts`).
 
 ## Structure and the layer rules
 

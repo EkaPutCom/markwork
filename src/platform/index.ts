@@ -133,8 +133,16 @@ export interface Processes {
 }
 
 // The app's stored preferences, by key. The values are the shapes AppSettings (settings.ts) reads and writes; which keys
-// exist and their defaults belong to the store (the schema in data/com.ekaput.Markwork.gschema.xml).
+// exist and their defaults belong to the store (the list in settingskeys.ts).
 export type SettingValue = boolean | number | string | [string, number][] | Record<string, string>;
+
+// One key: its type ('b', 's', 'i', 'u', 'x', 'a(si)', 'a(sx)', 'a{ss}'; see settingskeys.ts), its default, and for a
+// string key that takes one of a few values, those values.
+export interface SettingSpec {
+    type: string;
+    default: SettingValue;
+    choices?: string[];
+}
 
 export interface SettingsStore {
     get(key: string): SettingValue;

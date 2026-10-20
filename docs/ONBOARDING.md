@@ -102,8 +102,7 @@ markwork/
 │   ├── core-tests.ts, run-core-node.ts
 │   └── live*.ts, bench*.ts  live tests and benchmarks (not in npm test)
 ├── scripts/                 electron-build.mjs, layers.mjs (architecture guard), capture.mjs (docs screenshots)
-├── data/                    the settings schema and the app icon
-├── build/, electron-builder.yml   packaging (AppImage, deb, dmg, NSIS)
+├── resources/, electron-builder.yml   the app icon and packaging (AppImage, deb, dmg, NSIS)
 ├── docs/                    user docs (docs/docs/*.html), design docs, learn-*.html, this file
 ├── bench/                   performance baselines
 └── po/                      translations
@@ -170,7 +169,7 @@ flowchart LR
     P --- tr["translations: gettext"]
 ```
 
-The implementation is `platform/node/`, built from Node built-ins only: files and atomic background writes, the Trash on each system, processes, sockets, `fetch`, `secret-tool` for the keyring on Linux, a JSON settings store checked against the schema in `data/`, and gettext catalogs. On macOS and Windows the keyring is Electron's `safeStorage`, which only the main process can call, so `electron/core.ts` installs secrets that ask the main process (`platform/node/vault.ts`).
+The implementation is `platform/node/`, built from Node built-ins only: files and atomic background writes, the Trash on each system, processes, sockets, `fetch`, `secret-tool` for the keyring on Linux, a JSON settings store checked against the keys in `settingskeys.ts`, and gettext catalogs. On macOS and Windows the keyring is Electron's `safeStorage`, which only the main process can call, so `electron/core.ts` installs secrets that ask the main process (`platform/node/vault.ts`).
 
 Every entry point (`electron/core.ts`, the test runner, the live tests and benchmarks) starts with `import '…/platform/node/install.js'`, which calls `setPlatform(...)`. A test can replace the platform with a fake; `tests/unit/platform.ts` holds the installed platform to the contract, and `tests/unit/crossos.ts` runs what differs per system (folders, program names, terminals) for Linux, macOS, and Windows on one machine.
 
@@ -576,7 +575,7 @@ flowchart TD
     q -->|"what the window shows"| r5["a notice in app/protocol/ + a component in electron/renderer/<br/>+ tests/unit/protocol.ts + an Electron test"]
     q -->|"the assistant can READ more"| r6["agent/tools.ts<br/>register in TOOLS + runTool() + describeCall()"]
     q -->|"the assistant can WRITE more"| r7["agent/changes.ts CHANGE_TOOLS<br/>pure Change + approval + applyChange re-check<br/>tests/unit/changes.ts + tests/unit/assistant.ts"]
-    q -->|"a preference"| r8["data/*.gschema.xml + AppSettings<br/>+ the Preferences dialog (renderer/Modals.tsx)"]
+    q -->|"a preference"| r8["src/settingskeys.ts + AppSettings<br/>+ the Preferences dialog (renderer/Modals.tsx)"]
     q -->|"needs the OS (file, process, HTTP)"| r9["add it to platform/index.ts<br/>implement in platform/node/ + a test"]
 ```
 

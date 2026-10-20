@@ -1,16 +1,16 @@
 // The parts of the Node runtime a core on Node needs besides the port's contract (tests/unit/platform.ts): its settings
-// store, with the GSettings schema's keys and defaults, and its translations, from the same catalogs gettext reads.
+// store, with the keys and defaults of settingskeys.ts, and its translations, from the same catalogs gettext reads.
 // Node only: these modules use Node built-ins, so run-core-node.ts runs them after the core's tests.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppSettings } from '../../src/settings.js';
-import { JsonSettingsStore, parseSchema, parseVariant } from '../../src/platform/node/settings.js';
+import { SETTING_KEYS } from '../../src/settingskeys.js';
+import { JsonSettingsStore } from '../../src/platform/node/settings.js';
 import { catalogTranslations, languages, parseMo, pluralRule, userCatalog } from '../../src/platform/node/i18n.js';
 import { SecretVault, answerSecret, remoteSecrets, type Cipher, type SecretRequest } from '../../src/platform/node/vault.js';
-import { section, test, eq, ok, tmp, ROOT } from '../framework.js';
-
-const schemaText = () => readFileSync(join(ROOT, 'data', 'com.ekaput.Markwork.gschema.xml'), 'utf8');
+import type { SettingSpec } from '../../src/platform/index.js';
+import { section, test, eq, ok, tmp } from '../framework.js';
 
 // A .mo catalog with `messages` (msgid → translations; "context\u0004id" for a context), as msgfmt writes one.
 function moFile(header: string, messages: Record<string, string[]>): Uint8Array {
@@ -35,17 +35,15 @@ function moFile(header: string, messages: Record<string, string[]>): Uint8Array 
 export async function nodePlatformTests(): Promise<void> {
     section('The Node runtime: settings and translations');
 
-    await test('the settings have the keys, types, and defaults of the GSettings schema', () => {
-        const specs = parseSchema(schemaText());
-        eq(Object.keys(specs).length, (schemaText().match(/<key /g) ?? []).length, 'every key');
+    await test('the settings have their keys, types, and defaults', () => {
+        const specs: Record<string, SettingSpec> = SETTING_KEYS;
+        eq(Object.keys(specs).length, 26, 'every key');
         eq(specs['color-scheme'], { type: 's', default: 'system', choices: ['system', 'light', 'dark'] });
         eq([specs.autosave.default, specs.width.default, specs.tabs.default, specs.projects.default, specs['active-tab'].default], [true, 1100, [], {}, -1]);
-        eq(parseVariant("[('a.md', 3), ('b', -1)]"), [['a.md', 3], ['b', -1]]);
-        eq(parseVariant("{'shop': '/srv/shop'}"), { shop: '/srv/shop' });
     });
 
     await test('the settings are kept in a JSON file; a key or a value the schema does not take is refused', () => {
-        const specs = parseSchema(schemaText());
+        const specs = SETTING_KEYS;
         const file = join(tmp, 'node-settings', 'markwork', 'settings.json');
         const settings = new AppSettings(new JsonSettingsStore(file, specs));
         const changed: string[] = [];
@@ -71,7 +69,7 @@ export async function nodePlatformTests(): Promise<void> {
 
     await test('every setting has its default, and compound values are written and read back', () => {
         const file = join(tmp, 'node-settings', 'defaults.json');
-        const s = new AppSettings(new JsonSettingsStore(file, parseSchema(schemaText())));
+        const s = new AppSettings(new JsonSettingsStore(file, SETTING_KEYS));
         eq([s.focus, s.autosave, s.dark, s.folder, s.tabs, s.projects, s.sidebarPage, s.activeTab, s.home, s.recentFiles],
             [false, true, null, null, [], {}, 'files', -1, true, []], 'the defaults');
         eq([s.harnessMachine, s.machines, s.machineProjects, s.daemonCommand], ['', {}, {}, ''], 'where harnesses run: in this window, no machines');
@@ -79,7 +77,7 @@ export async function nodePlatformTests(): Promise<void> {
         s.projects = { shop: '/tmp/shop' };
         s.sidebarPage = 'collab';
         Object.assign(s, { harnessMachine: 'vps', machines: { vps: 'eka@vps.example.com' }, machineProjects: { 'vps:shop': '/srv/shop' }, daemonCommand: '~/.local/bin/markworkd' });
-        const again = new AppSettings(new JsonSettingsStore(file, parseSchema(schemaText())));
+        const again = new AppSettings(new JsonSettingsStore(file, SETTING_KEYS));
         eq(again.tabs, [{ file: '/tmp/a.md', cursor: 7 }, { file: '/tmp/b.md', cursor: 0 }], 'tabs');
         eq([again.projects, again.sidebarPage], [{ shop: '/tmp/shop' }, 'collab']);
         eq([again.harnessMachine, again.machines, again.machineProjects, again.daemonCommand], ['vps', { vps: 'eka@vps.example.com' }, { 'vps:shop': '/srv/shop' }, '~/.local/bin/markworkd'], 'machines');

@@ -1,91 +1,9 @@
-// The SettingsStore on Node: the same keys as the GSettings schema (data/com.ekaput.Markwork.gschema.xml), kept in a
-// JSON file next to the configuration (docs/design/protocol.md, section 9.2). The schema stays the one source of the
-// keys, their types, and their defaults: the entry point hands its text to parseSchema() (bundled with `?raw`), and a
-// key the schema does not have is refused, as GSettings refuses it.
+// The SettingsStore on Node: the keys of settingskeys.ts, kept in a JSON file next to the configuration
+// (docs/design/protocol.md, section 9.2). The entry point hands the keys in, and a key that is not one of them is refused.
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { SettingValue, SettingsStore } from '../index.js';
-
-// One key of the schema: its GVariant type ('b', 's', 'i', 'u', 'x', 'a(si)', 'a{ss}', …), its default, and for an enum
-// key the values it takes (its type is then 's').
-export interface SettingSpec {
-    type: string;
-    default: SettingValue;
-    choices?: string[];
-}
-
-const unescape = (text: string) => text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
-
-// The keys of a GSettings schema file, with their defaults.
-export function parseSchema(xml: string): Record<string, SettingSpec> {
-    const enums = new Map<string, string[]>();
-    for (const [, id, body] of xml.matchAll(/<enum\s+id="([^"]+)">([\s\S]*?)<\/enum>/g))
-        enums.set(id, [...body.matchAll(/<value\s+nick="([^"]+)"/g)].map(m => m[1]));
-    const specs: Record<string, SettingSpec> = {};
-    for (const [, attributes, body] of xml.matchAll(/<key\s+([^>]*)>([\s\S]*?)<\/key>/g)) {
-        const name = /name="([^"]+)"/.exec(attributes)?.[1];
-        const enumId = /enum="([^"]+)"/.exec(attributes)?.[1];
-        const type = enumId ? 's' : /type="([^"]+)"/.exec(attributes)?.[1];
-        const text = /<default>([\s\S]*?)<\/default>/.exec(body)?.[1];
-        if (!name || !type || text === undefined) throw new Error(`a schema key that cannot be read: ${attributes}`);
-        specs[name] = { type, default: parseVariant(unescape(text).trim()), ...(enumId && { choices: enums.get(enumId) ?? [] }) };
-    }
-    return specs;
-}
-
-// A GVariant text the schema uses for a default: a boolean, a number, a 'string', and arrays, tuples, and dictionaries
-// of those ([('a', 1)], {'k': 'v'}).
-export function parseVariant(text: string): SettingValue {
-    let at = 0;
-    const space = () => { while (/\s/.test(text[at] ?? '')) at++; };
-    const value = (): unknown => {
-        space();
-        const c = text[at];
-        if (c === "'" || c === '"') return string(c);
-        if (c === '[' || c === '(') return list(c === '[' ? ']' : ')');
-        return c === '{' ? dictionary() : word();
-    };
-    const string = (quote: string): string => {
-        let out = '';
-        for (at++; at < text.length && text[at] !== quote; at++) out += text[at] === '\\' ? text[++at] : text[at];
-        at++;
-        return out;
-    };
-    const dictionary = (): Record<string, unknown> => {
-        at++;
-        const out: Record<string, unknown> = {};
-        for (space(); text[at] !== '}'; space()) {
-            const key = String(value());
-            space(); at++;   // ':'
-            out[key] = value();
-            space();
-            if (text[at] === ',') at++;
-        }
-        at++;
-        return out;
-    };
-    const word = (): unknown => {
-        const word = /^[^\s,)\]}:]+/.exec(text.slice(at))?.[0] ?? '';
-        at += word.length;
-        if (word === 'true' || word === 'false') return word === 'true';
-        const number = Number(word.replace(/^(int|uint)\d+\s*/, ''));
-        if (word === '' || Number.isNaN(number)) throw new Error(`a GVariant text that cannot be read: ${text}`);
-        return number;
-    };
-    const list = (end: string): unknown[] => {
-        at++;
-        const out: unknown[] = [];
-        for (space(); text[at] !== end; space()) {
-            out.push(value());
-            space();
-            if (text[at] === ',') at++;
-        }
-        at++;
-        return out;
-    };
-    return value() as SettingValue;
-}
+import type { SettingSpec, SettingValue, SettingsStore } from '../index.js';
 
 const isInteger = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 
