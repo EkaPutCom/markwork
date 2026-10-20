@@ -5,7 +5,7 @@
 
 import { cardMeta, dueStatus, parseBoard, type Board, type Card, type DueStatus, type Position } from './kanban.js';
 import { isList, isStructured } from './layout.js';
-import { below } from './pathbelow.js';
+import { below } from './paths.js';
 
 export interface HomeFile {
     name: string;    // relative to the work folder

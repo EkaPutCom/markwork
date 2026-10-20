@@ -3,7 +3,7 @@
 // is the platform's (platform().fs; GLib and Gio under GJS).
 
 import { platform } from './platform/index.js';
-import { atOrBelow } from './markdown/pathbelow.js';
+import { atOrBelow, hasDrive, slashed } from './markdown/paths.js';
 
 export function readTextFile(path: string): string {
     return platform().fs.readText(path);
@@ -20,8 +20,8 @@ export const fileExists = (path: string): boolean => platform().fs.exists(path);
 // An absolute path as a file:// URI, each part percent-encoded. A Windows path (C:\a b\c) becomes file:///C:/a%20b/c.
 export function fileUri(path: string): string {
     const encode = (parts: string[]) => parts.map(encodeURIComponent).join('/');
-    if (/^[A-Za-z]:[\\/]/.test(path)) {
-        const [drive, ...rest] = path.replace(/\\/g, '/').split('/');
+    if (hasDrive(path)) {
+        const [drive, ...rest] = slashed(path).split('/');
         return `file:///${drive}/${encode(rest)}`;
     }
     return `file://${encode(path.split('/'))}`;

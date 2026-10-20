@@ -2,20 +2,13 @@
 // Playwright: the real main process, core, and renderer, a real git repository, and a fake forge (tests/electron-forge.mjs) in
 // place of the network. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 
-import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { identity, testModule, scratchFolder, gitIn, launchApp, waitFor, stepper } from './electron-support.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
-const scratch = mkdtempSync(join(tmpdir(), 'markwork-git-'));
-const notes = join(scratch, 'notes');
-mkdirSync(notes);
-const identity = { GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 'tester@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 'tester@example.com' };
-const git = (...args) => execFileSync('git', args, { cwd: notes, env: { ...process.env, ...identity }, encoding: 'utf8' }).trim();
+const { scratch, notes } = scratchFolder('git');
+const git = gitIn(notes);
 
 git('init', '-q');
 writeFileSync(join(notes, 'a.md'), '# A\n\none\n');
@@ -25,29 +18,11 @@ writeFileSync(join(notes, 'a.md'), '# A\n\none\ntwo\n');
 git('commit', '-q', '-a', '-m', 'Add line two');
 writeFileSync(join(notes, 'b.md'), 'brand new\n');
 
-async function waitFor(condition, ms = 8000) {
-    for (const end = Date.now() + ms; Date.now() < end;) { if (await condition()) return; await new Promise(r => setTimeout(r, 50)); }
-    assert.fail('timed out');
-}
+const { steps, step } = stepper();
 
-const steps = [];
-async function step(name, run) {
-    try {
-        await run();
-        steps.push(`  ✓ ${name}`);
-    } catch (e) {
-        steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
-        throw e;
-    }
-}
-
-const app = await electron.launch({
-    args: [repo, notes], cwd: repo,
-    env: {
-        ...process.env, ...identity, XDG_CONFIG_HOME: join(scratch, 'config'), DEEPSEEK_API_KEY: 'test',
-        MARKWORK_TEST_MODEL: pathToFileURL(join(repo, 'tests/electron-model.mjs')).href,
-        MARKWORK_TEST_FORGE: pathToFileURL(join(repo, 'tests/electron-forge.mjs')).href,
-    },
+const app = await launchApp({
+    scratch, notes,
+    env: { ...identity, DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('electron-model.mjs'), MARKWORK_TEST_FORGE: testModule('electron-forge.mjs') },
 });
 let failed = false;
 let page;

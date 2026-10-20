@@ -6,21 +6,22 @@ import { WidgetType } from '@codemirror/view';
 import type { EditorView } from '@codemirror/view';
 import type { ImageRef } from '../../src/markdown/highlight.js';
 import { imageSource, type PathOps } from '../../src/markdown/imagesource.js';
+import { isAbsolutePath, slashed } from '../../src/markdown/paths.js';
 
 const MAX_HEIGHT = 480, MAX_WIDTH = 700;
 
 export interface ZoomedImage { src: string; title: string }
 
 const PATHS: PathOps = {
-    isAbsolute: path => path.startsWith('/') || /^[a-z]:[\\/]/i.test(path),
+    isAbsolute: isAbsolutePath,
     join: (...parts) => parts.join('/').replace(/\/{2,}/g, '/'),
 };
 
 // The URL the page loads a file by: app://file/<path>, one encoded segment at a time.
 // A Windows path (C:\a\b.png) goes with / for a separator, as app://file/C%3A/a/b.png.
 export const appUrl = (path: string): string => {
-    const slashed = path.replace(/\\/g, '/');
-    return 'app://file' + (slashed.startsWith('/') ? '' : '/') + slashed.split('/').map(encodeURIComponent).join('/');
+    const url = slashed(path);
+    return 'app://file' + (url.startsWith('/') ? '' : '/') + url.split('/').map(encodeURIComponent).join('/');
 };
 
 // A picture's address as written → the URL to load, or null for a relative path in a document that is not saved.

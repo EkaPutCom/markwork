@@ -2,22 +2,15 @@
 // process, core, and renderer, a real git repository for the project, and a fake agent program (tests/electron-agent.mjs) in
 // place of pi. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 
-import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { identity, testModule, scratchFolder, gitIn, launchApp, waitFor, stepper } from './electron-support.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
-const scratch = mkdtempSync(join(tmpdir(), 'markwork-agents-'));
-const notes = join(scratch, 'notes');
+const { scratch, notes } = scratchFolder('agents');
 const project = join(scratch, 'project');
-mkdirSync(notes);
 mkdirSync(project);
-const identity = { GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 'tester@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 'tester@example.com' };
-const git = (...args) => execFileSync('git', args, { cwd: project, env: { ...process.env, ...identity }, encoding: 'utf8' }).trim();
+const git = gitIn(project);
 
 git('init', '-q');
 writeFileSync(join(project, 'readme.md'), '# Project\n');
@@ -25,30 +18,14 @@ git('add', '.');
 git('commit', '-q', '-m', 'First');
 writeFileSync(join(notes, 'board.md'), '---\nlayout: board\n---\n\n## Todo\n\n- [ ] Write the notes\n\n## Done\n\n- [x] Old\n');
 
-async function waitFor(condition, ms = 10000) {
-    for (const end = Date.now() + ms; Date.now() < end;) { if (await condition()) return; await new Promise(r => setTimeout(r, 50)); }
-    assert.fail('timed out');
-}
+const { steps, step } = stepper({ echo: true });
 
-const steps = [];
-async function step(name, run) {
-    try {
-        await run();
-        steps.push(`  ✓ ${name}`);
-        console.log(steps.at(-1));
-    } catch (e) {
-        steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
-        console.log(steps.at(-1));
-        throw e;
-    }
-}
-
-const app = await electron.launch({
-    args: [repo, notes], cwd: repo,
+const app = await launchApp({
+    scratch, notes,
     env: {
-        ...process.env, ...identity, XDG_CONFIG_HOME: join(scratch, 'config'),
+        ...identity,
         MARKWORK_PICK_FOLDER: project,   // the answer of the folder chooser
-        MARKWORK_TEST_HARNESS: pathToFileURL(join(repo, 'tests/electron-agent.mjs')).href,
+        MARKWORK_TEST_HARNESS: testModule('electron-agent.mjs'),
     },
 });
 let failed = false;

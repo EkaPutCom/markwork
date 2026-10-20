@@ -2,43 +2,21 @@
 // Playwright: the real main process, core, and renderer, with a scripted model (tests/electron-model.mjs) in place of the
 // network. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 
-import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { readFileSync, readdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { testModule, scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
-const scratch = mkdtempSync(join(tmpdir(), 'markwork-assistant-'));
-const notes = join(scratch, 'notes');
-mkdirSync(notes);
+const { scratch, notes } = scratchFolder('assistant');
 const read = name => readFileSync(join(notes, name), 'utf8');
 const plan = () => read('plan.md');
 
 writeFileSync(join(notes, 'plan.md'), '# Plan\n\nShip 15 November\n');
 writeFileSync(join(notes, 'other.md'), '# Other\n\nSecond note\n');
 
-async function waitFor(condition, ms = 8000) {
-    for (const end = Date.now() + ms; Date.now() < end;) { if (condition()) return; await new Promise(r => setTimeout(r, 50)); }
-    assert.fail('timed out');
-}
+const { steps, step } = stepper();
 
-const steps = [];
-async function step(name, run) {
-    try {
-        await run();
-        steps.push(`  ✓ ${name}`);
-    } catch (e) {
-        steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
-        throw e;
-    }
-}
-
-const app = await electron.launch({
-    args: [repo, notes], cwd: repo,
-    env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: pathToFileURL(join(repo, 'tests/electron-model.mjs')).href },
-});
+const app = await launchApp({ scratch, notes, env: { DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('electron-model.mjs') } });
 let failed = false;
 let page;
 try {

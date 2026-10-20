@@ -113,12 +113,21 @@ export function sync<T>(value: T | Promise<T>): T {
 }
 
 // Polls until cond() holds, letting timers and I/O run in between; fails after timeoutMs.
+// Wait for what a test expects to happen, never a fixed time: a fixed pause is too short on a slow runner and too long
+// everywhere else. A fixed pause is right only to show that something does NOT happen (nothing is sent, the file stays).
 export async function until(cond: () => boolean, timeoutMs = 5000): Promise<void> {
     const end = platform().monotonicMs() + timeoutMs;
     while (!cond()) {
         if (platform().monotonicMs() > end) throw new Error('timed out');
         await pause(1);
     }
+}
+
+// Until an editor holds `expected`. A lagging editor (tests/unit/appsession.ts) throws while a write is on its way; that
+// counts as not yet.
+export async function untilText(editor: { getText(): string }, expected: string, timeoutMs = 5000): Promise<void> {
+    const text = () => { try { return editor.getText(); } catch { return null; } };
+    await until(() => text() === expected, timeoutMs);
 }
 
 // Test files through the platform port, so a test of the core touches the disk the same way on every runtime.

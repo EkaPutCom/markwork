@@ -2,17 +2,12 @@
 // folder of notes. It checks that the pieces are connected, not every behaviour (tests/unit/protocol.ts does that without
 // a window). Run with `npm run test:electron` (built first, in Xvfb).
 
-import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
-const scratch = mkdtempSync(join(tmpdir(), 'markwork-electron-'));
-const notes = join(scratch, 'notes');
-mkdirSync(notes);
+const { scratch, notes } = scratchFolder('electron');
 writeFileSync(join(notes, 'note.md'), '# Note\n\nhello\n');
 writeFileSync(join(notes, 'board.md'), '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two\n\n## Done\n\n- [x] Old\n');
 
@@ -29,31 +24,9 @@ writeFileSync(join(notes, 'diagram.md'), '# Diagram\n\n```mermaid\nflowchart LR\
 
 writeFileSync(join(notes, 'conflict.md'), '# Conflict\n\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\n\nend\n');
 
-async function waitFor(condition, ms = 5000) {
-    for (const end = Date.now() + ms; Date.now() < end;) { if (condition()) return; await new Promise(r => setTimeout(r, 50)); }
-    assert.fail('timed out');
-}
+const { steps, step } = stepper();
 
-const steps = [];
-async function step(name, run) {
-    try {
-        await run();
-        steps.push(`  ✓ ${name}`);
-    } catch (e) {
-        steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
-        throw e;
-    }
-}
-
-const app = await electron.launch({
-    args: [repo, notes],
-    cwd: repo,
-    env: {
-        ...process.env,
-        XDG_CONFIG_HOME: join(scratch, 'config'),        // settings of this run only
-        MARKWORK_CHOOSE_FILE: join(notes, 'saved-as'),   // the answer of the file chooser
-    },
-});
+const app = await launchApp({ scratch, notes, env: { MARKWORK_CHOOSE_FILE: join(notes, 'saved-as') } });   // the answer of the file chooser
 let failed = false;
 try {
     const page = await app.firstWindow();

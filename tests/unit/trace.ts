@@ -5,7 +5,7 @@ import { ChatSession } from '../../src/agent/session.js';
 import type { ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
 import { traceTree, descendants, traceStats, turnEvents, formatMs, formatSize } from '../../src/agent/tracetree.js';
 import { settledNewest, visibleSteps } from '../../src/agent/logrows.js';
-import { section, test, eq, ok, contains, within, pause } from '../framework.js';
+import { section, test, eq, ok, contains, within, pause, until } from '../framework.js';
 
 const files = [{ name: 'a.md', text: '# A\nRelease November 15\n' }];
 const input = { question: 'When is the release?', active: null, selection: '', files, mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 };
@@ -165,8 +165,7 @@ export async function traceTests(): Promise<void> {
         for (const word of ['a', 'b', 'c']) trace.append('text', 1, word);
         trace.finish('tool', 'k', 'ok', undefined, undefined, { result: 'done' });
         eq(updates.length, 1, 'nothing is sent until the interval is over');
-        await pause(80);
-        eq(updates.length, 2);
+        await until(() => updates.length === 2);
         eq(updates[1].reset, false);
         eq(updates[1].events.map(e => e.seq), [2, 3], 'each event that changed, once');
         eq(JSON.parse(JSON.stringify(updates[1])), updates[1], 'not plain data');

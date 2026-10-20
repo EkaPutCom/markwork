@@ -2,17 +2,13 @@
 // codecolor, conflicts), run against the Electron window with Playwright: the real main process, core, and renderer. The
 // ones whose behaviour lives in the core are also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 
-import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
+import { scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
-const scratch = mkdtempSync(join(tmpdir(), 'markwork-editor-'));
-const notes = join(scratch, 'notes');
+const { scratch, notes } = scratchFolder('editor');
 mkdirSync(join(notes, 'images'), { recursive: true });
 mkdirSync(join(notes, 'Journal'));
 mkdirSync(join(notes, 'projects'));
@@ -42,28 +38,11 @@ writeFileSync(join(notes, 'page.html'), '<!doctype html><h1 id="h">hello html</h
 writeFileSync(join(notes, 'Journal', 'Daily Notes.md'), '# Daily\n');
 writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
 
-async function waitFor(condition, ms = 5000) {
-    for (const end = Date.now() + ms; Date.now() < end;) { if (condition()) return; await new Promise(r => setTimeout(r, 50)); }
-    assert.fail('timed out');
-}
+// The tabs after each step, to compare a run on another system (CI sets MARKWORK_TRACE).
+const tabsNow = async () => `      tabs: ${JSON.stringify(await page.getByRole('tab').evaluateAll(els => els.map(e => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)))}`;
+const { steps, step } = stepper({ after: process.env.MARKWORK_TRACE ? tabsNow : undefined });
 
-const steps = [];
-async function step(name, run) {
-    try {
-        await run();
-        steps.push(`  ✓ ${name}`);
-        // The tabs after each step, to compare a run on another system (CI sets MARKWORK_TRACE).
-        if (process.env.MARKWORK_TRACE) steps.push(`      tabs: ${JSON.stringify(await page.getByRole('tab').evaluateAll(els => els.map(e => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)))}`);
-    } catch (e) {
-        steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
-        throw e;
-    }
-}
-
-const app = await electron.launch({
-    args: [repo, notes], cwd: repo,
-    env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), XDG_DATA_HOME: join(scratch, 'data') },   // the Trash of this run only
-});
+const app = await launchApp({ scratch, notes });   // its data folder holds the Trash of this run only
 let failed = false;
 let page;
 try {
@@ -187,7 +166,7 @@ try {
         assert.equal(await docText(), '[[pl\n', 'Enter after Esc is a line break');
         await setDoc('');
         await page.keyboard.type('[[zzz');
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(300);   // the suggestions come from the core: time for a popup that must not appear
         assert.equal(await popup.count(), 0, 'no suggestion without a match');
         await setDoc('[[]]', 2);
         await page.keyboard.type('Pla');
@@ -196,7 +175,7 @@ try {
         assert.equal(await docText(), '[[Plan]]', 'Tab accepts, and ]] is not doubled');
         await setDoc('[[pl\n\nend', 9);
         await page.keyboard.press('ControlOrMeta+Home');
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(300);   // as above: a popup that must not appear
         assert.equal(await popup.count(), 0, 'moving the cursor to an old [[ shows nothing');
     });
 
@@ -370,7 +349,7 @@ try {
         await setDoc('text only');
         await pictures.waitFor({ state: 'detached' });
         await setDoc('| ![a](images/small.png) |\n| --- |\n\n```\n![b](images/small.png)\n```\n\nend', 70);
-        await page.waitForTimeout(300);
+        await editor.locator('.cm-md-table-grid').waitFor();   // drawn in the same pass that would add a picture
         assert.equal(await pictures.count(), 0, 'images in table rows and code blocks are ignored');
     });
 
@@ -462,10 +441,9 @@ try {
         await box.waitFor({ state: 'detached' });
         assert.ok((await lineTexts()).includes('```js'), 'the fence is visible inside the block');
         await setDoc('a\n```mermaid\nflowchart LR\n  A --> B\n```\nb', 0);
-        await page.waitForTimeout(300);
+        await editor.locator('.cm-md-diagram').waitFor();   // drawn as a diagram, the same pass that would draw a box
         assert.equal(await box.count(), 0, 'a diagram is not a code box');
-        await setDoc('a\n```js\nunclosed\n', 0);
-        await page.waitForTimeout(300);
+        await setDoc('a\n```js\nunclosed\n', 0);   // the decorations are computed in the transaction itself
         assert.equal(await box.count(), 0, 'an unclosed block is text');
     });
 
@@ -504,8 +482,7 @@ try {
         assert.equal(await docText(), 'a1\n\nmid\n\n<<<<<<< HEAD\na2\n=======\nb2\n>>>>>>> topic');
         await editor.getByRole('button', { name: 'Accept Both' }).click();
         assert.equal(await docText(), 'a1\n\nmid\n\na2\nb2', 'the conflict at the end of the file resolves');
-        await setDoc('Title\n=======\n\ntext', 0);
-        await page.waitForTimeout(200);
+        await setDoc('Title\n=======\n\ntext', 0);   // the conflicts are found in the transaction itself
         assert.equal(await editor.locator('.cm-md-conflict').count(), 0, 'a heading underline is not a conflict');
     });
 } catch {
