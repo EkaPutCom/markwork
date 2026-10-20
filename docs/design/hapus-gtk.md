@@ -6,7 +6,7 @@
 
 - Electron menjadi satu-satunya frontend, juga di Linux. Frontend GTK (GTK 4, libadwaita, GJS) dihapus.
 - **Tidak ada kompatibilitas mundur.** Setting di GSettings tidak dimigrasi ke `markwork-electron/settings.json`, dan tidak ada shim untuk pengguna GTK. Format data produk (berkas Markdown, frontmatter, `[key:: value]`) tidak termasuk keputusan ini.
-- Sebelum menghapus, dua celah kualitas Electron sudah ditutup (PR 69): tata letak adaptif (`renderer/client.ts` `layoutOf`) dan padanan `tests/gui/sample.ts` dan `robust.ts` (`tests/electron-robust.mjs`).
+- Sebelum menghapus, dua celah kualitas Electron sudah ditutup (PR 69): tata letak adaptif (`renderer/lib/client.ts` `layoutOf`) dan padanan `tests/gui/sample.ts` dan `robust.ts` (`tests/electron-robust.mjs`).
 
 - Linux dirilis lewat AppImage dan deb dari electron-builder (`electron-builder.yml`). Flatpak dihapus bersama GTK dan tidak diganti dengan Flatpak berbasis Electron (keputusan 20 Oktober 2026).
 
@@ -30,7 +30,7 @@ Ditentukan dengan graf impor dari entry point Electron (`electron/core.ts`, `mai
 | `settings.ts` | Tes `AppSettings` pindah ke `appsettings.ts` (core). Default dan simpan-baca tipe majemuk pindah ke `nodeplatform.ts` di atas `JsonSettingsStore`. Sisanya, GSettings, dihapus bersama GTK | PR A |
 | `incremental.ts` | Tidak di-port: ketiga tesnya sudah punya padanan di `highlight.ts` (Node). Yang tersisa hanya sinkronisasi tag `GtkTextBuffer` | dihapus di PR B |
 | `plaindata.ts` | Diperiksa juga oleh `tsconfig.node.json` | PR A |
-| `actions.ts`, `gjsport.ts`, `codelang.ts` | Khusus GTK; pemilihan bahasa kode di Electron ada di `renderer/codecolor.ts` dan dites `electron-editor.mjs` | dihapus di PR B |
+| `actions.ts`, `gjsport.ts`, `codelang.ts` | Khusus GTK; pemilihan bahasa kode di Electron ada di `renderer/lib/codecolor.ts` dan dites `electron-editor.mjs` | dihapus di PR B |
 | `discardprompt.ts` | Pertanyaan discard dialog GTK (`ui/discard.ts`), dipisah dari `discard.ts` | dihapus di PR B |
 
 ### Tes GUI GTK (`tests/gui/`) dan padanannya

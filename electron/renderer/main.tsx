@@ -1,9 +1,9 @@
-import './globals.css';
+import './styles/globals.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
-import { Client } from './client.js';
-import { ClientContext } from './useClient.js';
+import { Client } from './lib/client.js';
+import { ClientContext } from './lib/useClient.js';
 
 const client = new Client();
 
