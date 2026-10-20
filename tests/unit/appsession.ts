@@ -8,7 +8,8 @@ import type { TextEditor, ToastButton } from '../../src/app/document.js';
 import { addCard, parseBoard } from '../../src/markdown/kanban.js';
 import { applyChangeBatch } from '../../src/app/agentwrites.js';
 import { platform, setPlatform } from '../../src/platform/index.js';
-import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
+import { fileUri } from '../../src/files.js';
+import { section, test, eq, ok, tmp, disk, pause, until } from '../framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
 export function memorySettings(): AppSettings {
@@ -51,7 +52,7 @@ export class LaggingEditor extends FakeEditor {
     private pending: string | null = null;
     private readonly waiting: ((text: string) => string | null)[] = [];
     override getText(): string {
-        if (this.pending !== null) throw new Error('read the text while a write to it had not landed (docs/design/protocol.md 5.5)');
+        if (this.pending !== null) throw new Error(`read the text while a write to it had not landed (docs/design/protocol.md 5.5)\n${new Error().stack}`);
         return this.text;
     }
     // A whole text computed while a write is on its way would undo that write; update() is the way to follow one.
@@ -295,7 +296,7 @@ export async function appSessionTests(): Promise<void> {
             eq(session.documents.active.file, next, 'a Markdown link opens in a tab, read from the document\'s folder');
             session.openLink(session.documents.active.id, 'https://example.org/a b');
             session.openLink(session.documents.active.id, 'my file.pdf');
-            eq(uris, ['https://example.org/a b', `file://${disk.join(dir, 'my%20file.pdf')}`], 'anything else goes to the system');
+            eq(uris, ['https://example.org/a b', fileUri(disk.join(dir, 'my file.pdf'))], 'anything else goes to the system');
             session.host.openFile(image);
             eq(images, [image], 'an image goes to the viewer');
             session.host.openFile(page);
@@ -409,7 +410,8 @@ export async function appSessionTests(): Promise<void> {
         // Two harness runs that end in the same turn, each moving its own card.
         eq(session.host.updateBoardFile(file, b => addCard(b, 0, 'Two')), null, 'first');
         eq(session.host.updateBoardFile(file, b => addCard(b, 0, 'Three')), null, 'second');
-        await pause(5);
+        // The editor lands its writes in a timer; Windows timers can take 15 ms.
+        await until(() => { try { session.documents.active.editor.getText(); return true; } catch { return false; } });
         const text = session.documents.active.editor.getText();
         ok(text.includes('- [ ] Two') && text.includes('- [ ] Three'), text);
         session.dispose();

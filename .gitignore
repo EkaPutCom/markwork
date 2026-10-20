@@ -5,3 +5,4 @@ dist-node/
 po/markwork.pot
 .env.forgejo
 dist-electron/
+release

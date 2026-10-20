@@ -16,6 +16,8 @@ export async function crossOsTests(): Promise<void> {
         eq(userDirs('win32', { APPDATA: 'C:\\Users\\eka\\AppData\\Roaming', LOCALAPPDATA: 'C:\\Users\\eka\\AppData\\Local' }, 'C:\\Users\\eka', win32.join),
             { config: 'C:\\Users\\eka\\AppData\\Roaming', data: 'C:\\Users\\eka\\AppData\\Local', runtime: 'C:\\Users\\eka\\AppData\\Local\\Temp' });
         eq(userDirs('win32', {}, 'C:\\Users\\eka', win32.join).config, 'C:\\Users\\eka\\AppData\\Roaming', 'without the variables');
+        eq(userDirs('darwin', { XDG_CONFIG_HOME: '/c', XDG_DATA_HOME: '/d' }, '/Users/eka', posix.join).config, '/c', 'an XDG folder that is set wins on macOS');
+        eq(userDirs('win32', { XDG_CONFIG_HOME: 'D:\\c', APPDATA: 'C:\\a' }, 'C:\\Users\\eka', win32.join).config, 'D:\\c', 'and on Windows');
     });
 
     await test('program names: a bare name gets each PATHEXT extension on Windows only', () => {

@@ -3,6 +3,7 @@
 
 import { platform } from './platform/index.js';
 import { flushWrites, notifyDiskChange, trashFile } from './files.js';
+import { atOrBelow } from './markdown/pathbelow.js';
 
 const MARKDOWN_EXTENSION = /\.(md|markdown|mdown|mkd)$/i;
 // Every kind of file the tree shows; a rename keeps these, so the file does not disappear from the tree.
@@ -59,7 +60,7 @@ export function moveEntry(source: string, destDir: string): string | null {
     const { paths } = platform();
     const name = paths.basename(source);
     if (paths.dirname(source) === destDir) return null;
-    if (destDir === source || destDir.startsWith(`${source}/`)) {
+    if (atOrBelow(source, destDir)) {
         throw new Error('A folder cannot be moved into itself.');
     }
     const target = join(destDir, name);
@@ -89,7 +90,7 @@ function freeName(dir: string, name: string): string {
 // taken gets a number ("photo (2).png") instead of overwriting. Returns the new path.
 export function copyEntry(source: string, destDir: string): string {
     const name = platform().paths.basename(source);
-    if (destDir === source || destDir.startsWith(`${source}/`)) {
+    if (atOrBelow(source, destDir)) {
         throw new Error('A folder cannot be copied into itself.');
     }
     const target = join(destDir, freeName(destDir, name));

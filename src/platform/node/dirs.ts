@@ -6,14 +6,16 @@ import type { OS } from '../index.js';
 
 export interface UserDirs { config: string; data: string; runtime: string }
 
+// XDG_CONFIG_HOME and XDG_DATA_HOME win on macOS and Windows too: nothing sets them there, so one that is set was meant
+// (a test run keeps its settings apart that way on every system).
 export function userDirs(os: OS, env: Record<string, string | undefined>, home: string, join: (...parts: string[]) => string): UserDirs {
     if (os === 'darwin') {
         const support = join(home, 'Library', 'Application Support');
-        return { config: support, data: support, runtime: env.TMPDIR || join(home, 'Library', 'Caches') };
+        return { config: env.XDG_CONFIG_HOME || support, data: env.XDG_DATA_HOME || support, runtime: env.TMPDIR || join(home, 'Library', 'Caches') };
     }
     if (os === 'win32') {
         const local = env.LOCALAPPDATA || join(home, 'AppData', 'Local');
-        return { config: env.APPDATA || join(home, 'AppData', 'Roaming'), data: local, runtime: join(local, 'Temp') };
+        return { config: env.XDG_CONFIG_HOME || env.APPDATA || join(home, 'AppData', 'Roaming'), data: env.XDG_DATA_HOME || local, runtime: join(local, 'Temp') };
     }
     return {
         config: env.XDG_CONFIG_HOME || join(home, '.config'),

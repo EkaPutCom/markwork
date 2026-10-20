@@ -2,7 +2,9 @@
 // ESM), and the renderer as one script next to its static files.
 import { build } from 'vite';
 import react from '@vitejs/plugin-react';
-import { cp, readFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const common = { configFile: false, logLevel: 'warn' };
 const node = (entry, format, fileName, external) => build({
@@ -14,7 +16,7 @@ const node = (entry, format, fileName, external) => build({
     },
 });
 
-await node('electron/main.ts', 'es', 'main.js', [/^node:/, 'electron']);
+await node('electron/main.ts', 'es', 'main.js', [/^node:/, 'electron', 'electron-updater']);
 await node('electron/core.ts', 'es', 'core.js', [/^node:/]);
 await node('electron/preload.ts', 'cjs', 'preload.cjs', ['electron']);
 await build({
@@ -28,3 +30,13 @@ await build({
 });
 await cp('electron/renderer/index.html', 'dist-electron/renderer/index.html');
 await cp('node_modules/mermaid/dist/mermaid.min.js', 'dist-electron/renderer/mermaid.min.js');
+
+// The interface translations: each language of po/LINGUAS compiled to dist-electron/locale/<lang>/LC_MESSAGES/markwork.mo,
+// the layout the core reads (platform/node/i18n.ts). msgfmt comes with gettext; with no language listed it is not needed.
+const languages = (await readFile('po/LINGUAS', 'utf8')).split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+await rm('dist-electron/locale', { recursive: true, force: true });
+for (const lang of languages) {
+    const out = `dist-electron/locale/${lang}/LC_MESSAGES`;
+    await mkdir(out, { recursive: true });
+    await promisify(execFile)('msgfmt', ['--check', '-o', `${out}/markwork.mo`, `po/${lang}.po`]);
+}

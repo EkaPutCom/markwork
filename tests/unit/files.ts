@@ -1,6 +1,7 @@
 // Background write tests: ordering per path, coalescing, and an explicit flush.
 
 import { fileUri, flushWrites, insideName, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/files.js';
+import { below, atOrBelow } from '../../src/markdown/pathbelow.js';
 import { section, test, eq, ok, tmp, until, disk } from '../framework.js';
 
 export async function fileWriteTests(): Promise<void> {
@@ -21,6 +22,11 @@ export async function fileWriteTests(): Promise<void> {
         eq(insideName('/home/eka/notes', '/home/eka/notes'), null, 'the folder itself');
         eq(insideName('/home/eka/notes', '/home/eka/notes-other/b.md'), null, 'the same name prefix is not inside');
         eq(insideName('/home/eka/notes', '/home/eka/b.md'), null, 'outside');
+    });
+
+    await test('below: a path under a folder, with / everywhere and \\ under a Windows folder', () => {
+        eq([below('/a/b', '/a/b/c'), below('/a/b', '/a/b'), below('/a/b', '/a/bc/d'), below('/a/b', '/a/b/')], [true, false, false, false]);
+        eq([below('C:\\a', 'C:\\a\\b'), below('C:\\a', 'C:\\a/b'), below('/a', '/a\\b'), atOrBelow('/a', '/a')], [true, true, false, true]);
     });
 
     await test('overlapping background writes to one file end with the newest text', async () => {

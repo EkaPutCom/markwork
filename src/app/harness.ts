@@ -506,8 +506,9 @@ export class HarnessController {
 // file in a worktree or submodule).
 function inRepository(folder: string): boolean {
     const { paths } = platform();
-    for (let dir = folder; dir && dir !== '/'; dir = paths.dirname(dir)) {
+    // Up to the root, which is its own parent (/ here, C:\ on Windows).
+    for (let dir = folder; ; dir = paths.dirname(dir)) {
         if (fileExists(paths.join(dir, '.git'))) return true;
+        if (paths.dirname(dir) === dir) return false;
     }
-    return false;
 }

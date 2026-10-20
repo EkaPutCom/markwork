@@ -19,6 +19,13 @@ export function setRoot(url: string): void {
 // after the import because settings.ts only reads XDG_CONFIG_HOME when called.
 export const tmp = host().makeTempDir();
 host().setenv('XDG_CONFIG_HOME', tmp);
+// The test repositories compare file bytes: git on Windows must not turn LF into CRLF on checkout, whatever the machine's config.
+host().setenv('GIT_CONFIG_COUNT', '1');
+host().setenv('GIT_CONFIG_KEY_0', 'core.autocrlf');
+host().setenv('GIT_CONFIG_VALUE_0', 'false');
+
+// A path with / for every separator, to compare a path git wrote (C:/Users/…) with one the system built.
+export const slash = (path: string): string => path.replace(/\\/g, '/');
 
 export const errorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e);
 
@@ -41,8 +48,12 @@ export function collectBeforeEachTest(on: boolean): void { collectFirst = on; }
 
 // A synchronous test is recorded before test() returns; an async one when the returned Promise settles, so a module
 // whose tests wait awaits each test() in turn.
+// A step inside a test, printed when MARKWORK_TRACE is set.
+export function trace(step: string): void { if (platform().env('MARKWORK_TRACE')) host().print(`      · ${step}`); }
+
 export function test(name: string, fn: () => void | Promise<void>): Promise<void> {
     let result: void | Promise<void>;
+    if (platform().env('MARKWORK_TRACE')) host().print(`  … ${name}`);   // which test a stalled run is in (CI sets it)
     if (collectFirst) host().gc();
     try {
         result = fn();
@@ -54,7 +65,10 @@ export function test(name: string, fn: () => void | Promise<void>): Promise<void
         pass(name);
         return Promise.resolve();
     }
-    return result.then(() => pass(name), e => fail(name, e));
+    // A test that never settles (a process that was never answered) fails after a minute instead of stalling the run.
+    let cancelTimer = () => {};
+    const stalled = new Promise<never>((_, reject) => { cancelTimer = platform().scheduler.idleAfter(60000, () => reject(new Error('the test did not finish in 60 s'))); });
+    return Promise.race([result, stalled]).then(() => { cancelTimer(); pass(name); }, e => { cancelTimer(); fail(name, e); });
 }
 
 // Used by the runner for failures outside test(), e.g. a GUI test that stops halfway.

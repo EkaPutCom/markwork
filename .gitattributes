@@ -1,0 +1,4 @@
+# Samples and fixtures compare byte for byte, so a Windows checkout must not turn LF into CRLF.
+* text=auto eol=lf
+*.png binary
+*.ico binary

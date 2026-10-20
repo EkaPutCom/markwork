@@ -1,14 +1,24 @@
 // The Electron main process: a window, the core in a utility process, and the channel between them. It holds no
 // application logic; the file dialogs are the one thing only it can show.
 
-import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, protocol, shell, utilityProcess } from 'electron';
+import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, protocol, safeStorage, shell, utilityProcess } from 'electron';
 import { readlinkSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkForUpdates } from './updater.js';
+import { SecretVault, answerSecret } from '../src/platform/node/vault.js';
 import { HTML_CSP, HTML_SCHEME, htmlContentType, parseHtmlUrl, resolveHtmlRequest } from '../src/markdown/htmlview.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+// The keyring of the core where the OS gives Node none (core.ts): safeStorage, which only this process can call.
+let vault: SecretVault | null = null;
+const secretVault = () => vault ??= new SecretVault(join(app.getPath('userData'), 'secrets.json'), {
+    available: () => safeStorage.isEncryptionAvailable(),
+    encrypt: text => safeStorage.encryptString(text),
+    decrypt: data => safeStorage.decryptString(Buffer.from(data)),
+});
 
 // The images of a document: app://file/<absolute path>, so the page (which may not load file: URLs) can show the
 // pictures next to the text. Only image files are served, and only to this app's own pages.
@@ -75,6 +85,10 @@ function createWindow(): void {
         coreGone = true;
         if (!win.isDestroyed()) win.webContents.send('core-exit', code, stderr);
     });
+    core.on('message', message => {
+        const reply = answerSecret(secretVault(), (message as { secrets?: unknown } | null)?.secrets);
+        if (reply) core.postMessage({ secrets: reply });
+    });
     const { port1, port2 } = new MessageChannelMain();
     core.postMessage('port', [port1]);
     win.webContents.once('did-finish-load', () => win.webContents.postMessage('port', null, [port2]));
@@ -130,6 +144,8 @@ ipcMain.handle('open-folder', async (_event, path: unknown) => {
 ipcMain.handle('initial-folder', () => process.argv.slice(app.isPackaged ? 1 : 2).find(a => !a.startsWith('-')) ?? null);
 
 void app.whenReady().then(() => {
+    // For the Playwright tests on a machine without a keychain: safeStorage on its plain-text backend (Linux only).
+    if (process.env.MARKWORK_TEST_PLAIN_STORAGE && process.platform === 'linux') safeStorage.setUsePlainTextEncryption(true);
     // An HTML page: every request is answered from the page's folder (a link out of it is refused) with the page policy.
     protocol.handle(HTML_SCHEME, async request => {
         const target = parseHtmlUrl(request.url);
@@ -144,7 +160,9 @@ void app.whenReady().then(() => {
     });
     protocol.handle('app', async request => {
         try {
-            const path = decodeURIComponent(new URL(request.url).pathname);
+            // app://file/C%3A/a/b.png is C:/a/b.png on Windows: the drive comes after the URL's first /.
+            const decoded = decodeURIComponent(new URL(request.url).pathname);
+            const path = /^\/[A-Za-z]:\//.test(decoded) ? decoded.slice(1) : decoded;
             if (!isAbsolute(path) || !IMAGE_FILE.test(path)) return new Response('not an image', { status: 403 });
             const type = IMAGE_TYPES[extname(path).slice(1).toLowerCase()] ?? 'application/octet-stream';
             return new Response(await readFile(path), { headers: { 'content-type': type } });
@@ -153,8 +171,14 @@ void app.whenReady().then(() => {
         }
     });
     // The keys belong to the command table of the page (app/commands.ts); a default menu would take Ctrl+W and others first.
-    if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
+    // macOS keeps a menu bar, so it gets one with nothing the page handles: the app menu (Hide, Quit) and the clipboard keys,
+    // which a text field there only has through menu roles. Undo, Close (Cmd+W), and New stay with the page.
+    Menu.setApplicationMenu(process.platform === 'darwin' ? Menu.buildFromTemplate([
+        { role: 'appMenu' },
+        { label: 'Edit', submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+    ]) : null);
     createWindow();
+    checkForUpdates();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

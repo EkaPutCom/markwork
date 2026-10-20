@@ -257,7 +257,7 @@ export async function platformTests(): Promise<void> {
     });
 
     await test('findProgram finds a program on PATH and not one that does not exist', async () => {
-        ok(installed.processes.findProgram('sh')?.endsWith('/sh'), 'sh not found');
+        ok(/(^|[\\/])node(\.exe)?$/i.test(installed.processes.findProgram('node') ?? ''), 'node not found');
         eq(installed.processes.findProgram('markwork-no-such-program'), null);
     });
 

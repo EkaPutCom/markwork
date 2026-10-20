@@ -118,7 +118,8 @@ try {
         assert.match(readFileSync(join(notes, 'a.md'), 'utf8'), /changed on disk/);
         await history.getByRole('button', { name: /Discard the changes to this file: a\.md/ }).click();
         await page.getByRole('alertdialog').getByRole('button', { name: 'Discard Changes' }).click();
-        await waitFor(() => readFileSync(join(notes, 'a.md'), 'utf8') === '# A\n\none\ntwo\n');
+        // git on a Windows runner can take seconds for the restore.
+        await waitFor(() => readFileSync(join(notes, 'a.md'), 'utf8') === '# A\n\none\ntwo\n', 20000);
     });
 
     await step('the Pull requests page shows the server and the open pull requests', async () => {

@@ -44,6 +44,10 @@ function collect(): Collected {
 export async function daemonLiveTests(): Promise<void> {
     section('markworkd client: against the real daemon');
     const modDir = disk.join(ROOT, 'markworkd');
+    if (platform().os === 'win32') {
+        say(`  ${DIM}skipped: markworkd is not built for Windows yet (docs/design/electron.md, its open gaps)${RESET}`);
+        return;
+    }
     if (!platform().processes.findProgram('go') || !disk.isDirectory(modDir)) {
         say(`  ${DIM}skipped: Go is not installed (or markworkd/ is missing), so the daemon cannot be built${RESET}`);
         return;

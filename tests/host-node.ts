@@ -1,6 +1,6 @@
 // The test host on Node: process for the environment, node:http for the fake HTTP server.
 
-import { mkdtempSync, statSync, symlinkSync, utimesSync } from 'node:fs';
+import { mkdtempSync, realpathSync, statSync, symlinkSync, utimesSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,7 +40,8 @@ const nodeHost: TestHost = {
     runtime: 'node',
     args: process.argv.slice(2),
     print: text => { process.stdout.write(`${text}\n`); },
-    makeTempDir: () => mkdtempSync(join(tmpdir(), 'markwork-test-')),
+    // The real path: git reports paths without symlinks, and macOS's temp folder (/var/folders) is behind one (/private/var).
+    makeTempDir: () => realpathSync.native(mkdtempSync(join(tmpdir(), 'markwork-test-'))),
     setenv: (name, value) => { if (value === null) delete process.env[name]; else process.env[name] = value; },
     pathOfUrl: url => fileURLToPath(url),
     gc: () => { (globalThis as { gc?: () => void }).gc?.(); },

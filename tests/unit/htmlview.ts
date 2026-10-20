@@ -52,6 +52,17 @@ export function htmlViewTests(): void {
         eq(resolve('/a\0.html'), null);
         eq(resolve('/..\\x'), null);
     });
+    test('a Windows folder works with \\ or /, and a link to a drive path is read as absolute', () => {
+        const win = 'C:\\Users\\u\\site';
+        eq(htmlViewUrl(2, win, 'C:\\Users\\u\\site\\a b\\index.html'), 'mwhtml://v2/a%20b/index.html');
+        eq(htmlViewUrl(2, win, 'C:\\Users\\u\\other\\index.html'), null);
+        const winLinks: Record<string, string> = { 'C:/Users/u/site/in': 'C:\\Users\\u\\site\\sub', 'C:/Users/u/site/out': 'D:\\secret' };
+        const winResolve = (requested: string) => resolveHtmlRequest(win, requested, path => winLinks[path] ?? null);
+        eq(winResolve('/a b/index.html'), 'C:/Users/u/site/a b/index.html');
+        eq(winResolve('/../x.html'), null);
+        eq(winResolve('/in/x.js'), 'C:/Users/u/site/sub/x.js');
+        eq(winResolve('/out/x'), null);
+    });
     test('a symbolic link is followed only while it stays inside the folder', () => {
         eq(resolve('/out/passwd'), null, 'a link to /etc');
         eq(resolve('/in/x.js'), '/home/u/site/sub/x.js', 'a link to a folder inside');

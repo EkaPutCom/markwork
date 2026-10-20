@@ -89,7 +89,7 @@ export async function daemonAppTests(): Promise<void> {
         conn.start();
         await flush();
         eq(b.calls, [{ kind: 'socket', arg: localSocketPath() }]);
-        ok(localSocketPath().endsWith('/markworkd/markworkd.sock'), 'in the runtime directory');
+        ok(/[\\/]markworkd[\\/]markworkd\.sock$/.test(localSocketPath()), 'in the runtime directory');
         b.hub.dispose();
 
         const c = hubWith({ machines: { vps: 'eka@vps.example.com' }, command: '~/.local/bin/markworkd' });

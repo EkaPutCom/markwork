@@ -1,0 +1,50 @@
+# Packaging of the Electron app (docs/design/electron-migrasi.md, Fase 7). `npm run electron:dist` builds for the system it
+# runs on; the CI workflow (.github/workflows/release.yml) runs it on each of the three. Signing and notarizing take their
+# secrets from the environment, and are skipped when those are not set (a build on a developer machine, a fork's CI).
+appId: com.ekaput.Markwork
+productName: Markwork
+copyright: Copyright © Eka Putra
+directories:
+  output: release
+  buildResources: build
+files:
+  - package.json
+  - dist-electron/**
+  - "!dist-electron/**/*.map"
+asar: true
+publish:
+  provider: github
+  owner: EkaPutCom
+  repo: markwork
+fileAssociations:
+  - ext: [md, markdown]
+    name: Markdown document
+    role: Editor
+linux:
+  target: [AppImage, deb]
+  category: Office
+  icon: icon.png
+  executableName: markwork
+  desktop:
+    entry:
+      Comment: Markdown workspace for humans and AI agents
+      MimeType: text/markdown
+deb:
+  depends: [libsecret-tools]
+mac:
+  target: [dmg, zip]       # the zip is what the updater reads
+  category: public.app-category.productivity
+  icon: icon.png
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: true           # reads APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID; no notarizing without them
+win:
+  target: [nsis]
+  icon: icon.png
+  # Signing reads WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD (a code-signing certificate); an unsigned build otherwise.
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true

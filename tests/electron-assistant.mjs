@@ -60,9 +60,9 @@ try {
         assert.equal(await panel.count(), 0);
         await page.getByRole('button', { name: 'Assistant', exact: true }).click();
         await panel.waitFor();
-        await page.keyboard.press('Control+Shift+a');
+        await page.keyboard.press('ControlOrMeta+Shift+a');
         await panel.waitFor({ state: 'detached' });
-        await page.keyboard.press('Control+Shift+a');
+        await page.keyboard.press('ControlOrMeta+Shift+a');
         await panel.waitFor();
         await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Ask the Assistant');
     });
@@ -129,7 +129,7 @@ try {
         await panel.locator('.chat-proposal', { hasText: 'Applied.' }).waitFor();
         await panel.locator('.chat-assistant', { hasText: 'Proposal answered' }).waitFor();
         await page.waitForFunction(() => document.querySelector('.cm-content')?.textContent?.includes('22 November'));
-        await page.keyboard.press('Control+s');
+        await page.keyboard.press('ControlOrMeta+s');
         await waitFor(() => /22 November/.test(plan()));
     });
 
@@ -137,7 +137,7 @@ try {
         await panel.locator('.chat-proposal', { hasText: 'Applied.' }).last().getByRole('button', { name: 'Undo' }).click();
         await panel.locator('.chat-proposal', { hasText: 'Undone.' }).waitFor();
         await page.waitForFunction(() => document.querySelector('.cm-content')?.textContent?.includes('15 November'));
-        await page.keyboard.press('Control+s');
+        await page.keyboard.press('ControlOrMeta+s');
         await waitFor(() => /15 November/.test(plan()));
     });
 
@@ -240,7 +240,7 @@ try {
     await step('Home has a button for Add to Journal', async () => {
         await page.getByRole('button', { name: 'Main Menu' }).click();
         await page.getByRole('menuitem', { name: /^Home/ }).click();
-        await page.getByText("Today's journal").waitFor();
+        await page.getByText("Today's journal", { exact: true }).waitFor();
         await page.getByRole('button', { name: 'Add to Journal…', exact: true }).click();
         const dialog = page.getByRole('alertdialog');
         await dialog.getByRole('textbox').fill('from home');

@@ -1,0 +1,59 @@
+# The core's tests on Node and the Electron app's tests on the three systems it ships for (docs/design/electron-migrasi.md,
+# Fase 7). The GTK app's own tests need GTK 4 and a display and are run on a developer machine (`npm test`).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core:
+    name: Core on Node (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # The type check, the layer rules, and every core test on Node, with the protocol server driven by a scripted frontend.
+      - run: npm run test:core:node
+        env:
+          MARKWORK_TRACE: ${{ matrix.os == 'windows-latest' && '1' || '' }}
+
+  electron:
+    name: Electron app (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: core
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run electron:build
+      # The tests compare file bytes after git restores them; the Windows runner's git would write CRLF.
+      - run: git config --global core.autocrlf false
+      - name: Smoke and feature tests (Linux, under a virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a -s '-screen 0 1280x800x24' npm run test:electron:run
+      - name: Smoke and feature tests
+        if: runner.os != 'Linux'
+        run: npm run test:electron:run
+        env:
+          MARKWORK_TRACE: '1'
+      - name: Package without publishing
+        run: npx electron-builder --dir

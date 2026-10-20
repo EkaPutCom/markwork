@@ -77,9 +77,9 @@ try {
         await page.getByRole('treeitem', { name: /note\.md/ }).click();
         await assert.doesNotReject(title.getByText('note.md').waitFor());
         await editor.click();
-        await page.keyboard.press('Control+End');
+        await page.keyboard.press('ControlOrMeta+End');
         await page.keyboard.type('world\n');
-        await page.keyboard.press('Control+s');
+        await page.keyboard.press('ControlOrMeta+s');
         await page.waitForFunction(() => !document.querySelector('.headerbar .title')?.textContent?.startsWith('•'));
         assert.equal(readFileSync(join(notes, 'note.md'), 'utf8'), '# Note\n\nhello\nworld\n');
     });
@@ -100,18 +100,18 @@ try {
     });
 
     await step('Ctrl+click on a [[wikilink]] opens the note, and [[ suggests note names', async () => {
-        await editor.locator('.cm-md-link', { hasText: 'note' }).click({ modifiers: ['Control'] });
+        await editor.locator('.cm-md-link', { hasText: 'note' }).click({ modifiers: ['ControlOrMeta'] });
         await title.getByText('note.md').waitFor();
         await editor.click();
-        await page.keyboard.press('Control+End');
+        await page.keyboard.press('ControlOrMeta+End');
         await page.keyboard.type('[[boa');
         // The list narrows as the answers arrive; Enter takes what is selected, so wait for the last one.
         await page.waitForFunction(() => document.querySelectorAll('.cm-tooltip-autocomplete li').length === 1);
         await page.locator('.cm-tooltip-autocomplete').getByText('board').waitFor();
         await page.keyboard.press('Enter');
         await editor.getByText('[[board]]').waitFor();
-        await page.keyboard.press('Control+z');
-        await page.keyboard.press('Control+z');
+        await page.keyboard.press('ControlOrMeta+z');
+        await page.keyboard.press('ControlOrMeta+z');
     });
 
     await step('a picture shows under its line, a double click zooms it, and Escape closes it', async () => {
@@ -140,7 +140,7 @@ try {
         assert.ok(await box.evaluate(el => el.scrollWidth > el.clientWidth), 'a long line scrolls sideways');
         await box.click();
         await box.waitFor({ state: 'detached' });
-        await page.keyboard.press('Control+Home');
+        await page.keyboard.press('ControlOrMeta+Home');
         await box.waitFor();
     });
 
@@ -154,7 +154,7 @@ try {
         await grid.getByText('pear').click();
         await grid.waitFor({ state: 'detached' });
         await editor.getByText('| pear').waitFor();
-        await page.keyboard.press('Control+Home');
+        await page.keyboard.press('ControlOrMeta+Home');
         await grid.waitFor();
     });
 
@@ -167,7 +167,7 @@ try {
         assert.equal(await drawn.count(), 2);
         await editor.locator('.cm-md-diagram').first().click();
         await editor.getByText('flowchart LR').waitFor();
-        await page.keyboard.press('Control+End');
+        await page.keyboard.press('ControlOrMeta+End');
     });
 
     await step('a git conflict has buttons above it, and Accept Incoming keeps their side in one undo step', async () => {
@@ -179,14 +179,14 @@ try {
         await editor.locator('.cm-md-conflict-bar').waitFor({ state: 'detached' });
         await editor.getByText('theirs').waitFor();
         assert.equal(await editor.getByText('ours').count(), 0);
-        await page.keyboard.press('Control+z');
+        await page.keyboard.press('ControlOrMeta+z');
         await editor.locator('.cm-md-conflict-bar').waitFor();
     });
 
     await step('Focus Mode (F8) dims the other paragraphs and it is the core\'s setting', async () => {
         await page.getByRole('treeitem', { name: /note\.md/ }).click();
         await editor.click();
-        await page.keyboard.press('Control+Home');
+        await page.keyboard.press('ControlOrMeta+Home');
         await page.keyboard.press('F8');
         await editor.locator('.cm-md-dim').first().waitFor();
         await page.keyboard.press('F8');
@@ -194,7 +194,7 @@ try {
     });
 
     await step('Enter and Tab in lists and tables do what the GTK editor does', async () => {
-        await page.keyboard.press('Control+n');
+        await page.keyboard.press('ControlOrMeta+n');
         await editor.click();
         const enter = async (from, expected, why) => {
             await setDoc(from);
@@ -226,7 +226,9 @@ try {
         await setDoc('plain', 5);
         await page.keyboard.press('Enter');
         assert.equal(await docText(), 'plain\n', 'Enter outside a table is a plain line break');
-        await page.keyboard.press('Control+w');
+        // Closing asks only once the core has the change, which the tab shows with its unsaved mark.
+        await page.getByRole('tab', { selected: true, name: /•/ }).waitFor();
+        await page.keyboard.press('ControlOrMeta+w');
         const dialog = page.getByRole('alertdialog');
         await dialog.getByRole('button', { name: 'Discard' }).click();
         await dialog.waitFor({ state: 'detached' });
@@ -236,7 +238,7 @@ try {
         await page.getByRole('treeitem', { name: /board\.md/ }).click();
         await page.locator('.statusbar').getByText('2 lists · 3 cards').waitFor();
         await page.locator('.headerbar button[aria-pressed=true]', { hasText: 'Board' }).waitFor();
-        await page.keyboard.press('Control+Shift+P');
+        await page.keyboard.press('ControlOrMeta+Shift+P');
         await page.locator('.palette input').fill('bold');
         await page.locator('.palette li.none').waitFor();
         await page.keyboard.press('Escape');
@@ -244,26 +246,26 @@ try {
 
     await step('Ctrl+Shift+D switches to dark, and the setting is the core\'s', async () => {
         const before = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-        await page.keyboard.press('Control+Shift+D');
+        await page.keyboard.press('ControlOrMeta+Shift+D');
         await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
         assert.notEqual(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), before);
     });
 
     await step('a new document is saved where the file chooser says', async () => {
-        await page.keyboard.press('Control+n');
+        await page.keyboard.press('ControlOrMeta+n');
         await editor.click();
         await page.keyboard.type('# Saved as\n');
-        await page.keyboard.press('Control+Shift+S');
+        await page.keyboard.press('ControlOrMeta+Shift+S');
         await title.getByText('saved-as.md').waitFor();
         await waitFor(() => existsSync(join(notes, 'saved-as.md')));   // the title changes a moment before the file is written
         assert.equal(readFileSync(join(notes, 'saved-as.md'), 'utf8'), '# Saved as\n');
     });
 
     await step('closing an unsaved document asks in the window\'s dialog, and Cancel keeps it', async () => {
-        await page.keyboard.press('Control+n');
+        await page.keyboard.press('ControlOrMeta+n');
         await editor.click();
         await page.keyboard.type('unsaved');
-        await page.keyboard.press('Control+w');
+        await page.keyboard.press('ControlOrMeta+w');
         const dialog = page.getByRole('alertdialog');
         await dialog.getByText('Save Changes?').waitFor();
         await dialog.getByRole('button', { name: 'Cancel' }).click();

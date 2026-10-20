@@ -3,6 +3,7 @@
 // is the platform's (platform().fs; GLib and Gio under GJS).
 
 import { platform } from './platform/index.js';
+import { atOrBelow } from './markdown/pathbelow.js';
 
 export function readTextFile(path: string): string {
     return platform().fs.readText(path);
@@ -30,7 +31,7 @@ export function fileUri(path: string): string {
 // separator is); null when it is not strictly inside (the root itself, or elsewhere).
 export function insideName(root: string, path: string): string | null {
     const rel = platform().paths.relative(root, path);
-    return rel && /^[A-Za-z]:/.test(root) ? rel.replace(/\\/g, '/') : rel;
+    return rel && platform().os === 'win32' ? rel.replace(/\\/g, '/') : rel;
 }
 
 // Move to the Trash (recoverable), not a permanent delete.
@@ -118,13 +119,20 @@ export function writeTextFileAsync(path: string, text: string, done: Done): void
     ensurePump();
 }
 
+const FLUSH_LIMIT_MS = 20000;
+
 // Finish the background writes to `path` (or to files inside the folder `path`), including any
 // waiting ones. Called before writing, moving, or deleting a file, so the result of an older
 // background write does not overwrite later changes. Only write completions run while it waits;
 // their done callbacks follow later from the main loop. Rarely waits: a background write takes
 // only a few milliseconds.
 export function flushWrites(path: string): void {
-    const busy = () => [...queues.keys()].some(p => p === path || p.startsWith(`${path}/`));
-    while (busy()) platform().fs.pumpWrites(true);
+    const busy = () => [...queues.keys()].some(p => atOrBelow(path, p));
+    // A write that never reports back must not stall the caller for good.
+    const deadline = platform().monotonicMs() + FLUSH_LIMIT_MS;
+    while (busy()) {
+        if (platform().monotonicMs() > deadline) throw new Error(`background writes to ${path} did not finish: ${[...queues.keys()].filter(p => atOrBelow(path, p)).join(', ')}`);
+        platform().fs.pumpWrites(true);
+    }
 }
 

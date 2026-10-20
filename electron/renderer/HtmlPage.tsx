@@ -15,7 +15,7 @@ export function HtmlPage({ id, file, root }: { id: number; file: string; root: s
         return () => { live = false; void window.markwork.unregisterHtml(id); };
     }, [id, root]);
     useEffect(() => {
-        const key = (e: KeyboardEvent) => { if (e.key === 'F5' || (e.ctrlKey && e.key.toLowerCase() === 'r')) { e.preventDefault(); setReload(n => n + 1); } };
+        const key = (e: KeyboardEvent) => { if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) { e.preventDefault(); setReload(n => n + 1); } };
         window.addEventListener('keydown', key);
         return () => window.removeEventListener('keydown', key);
     }, []);

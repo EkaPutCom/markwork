@@ -7,7 +7,7 @@ import type { MachineDraft, PreferencesData, PreferencesView } from '../../src/a
 import type { ProjectPage, WorktreeList } from '../../src/app/projects.js';
 import type { Question } from '../../src/app/dialogs.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, within, until, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, within, until, tmp, disk, slash } from '../framework.js';
 import { host as testHost } from '../host.js';
 import { fakeFrontend, memorySettings, quiet } from './appsession.js';
 
@@ -120,7 +120,9 @@ export async function preferencesTests(): Promise<void> {
         disk.write(disk.join(repo, 'a.txt'), 'a\n');
         await gitIn(repo, 'add', '-A');
         await gitIn(repo, 'commit', '-q', '-m', 'First');
-        const wt = disk.join(parent, '.markwork-worktrees', 'shop', 'fix-login');
+        // Git lists a worktree by its real path (macOS keeps /var/folders behind the symlink /private/var).
+        const realParent = disk.dirname(await gitIn(repo, 'rev-parse', '--show-toplevel'));
+        const wt = disk.join(realParent, '.markwork-worktrees', 'shop', 'fix-login');
         await gitIn(repo, 'worktree', 'add', '-q', '-b', 'markwork/fix-login', wt);
         const pages: ProjectPage[] = [];
         const lists: WorktreeList[] = [];
@@ -147,7 +149,7 @@ export async function preferencesTests(): Promise<void> {
         eq(JSON.parse(JSON.stringify(pages[0])), pages[0], 'not plain data');
         await until(() => lists.some(l => !l.loading));
         eq(lists[0].loading, true, 'first "looking"');
-        eq(lists.at(-1)!.items, [{ branch: 'markwork/fix-login', path: wt }]);
+        eq(lists.at(-1)!.items.map(w => ({ ...w, path: slash(w.path) })), [{ branch: 'markwork/fix-login', path: slash(wt) }]);
         session.dispose();
     });
 

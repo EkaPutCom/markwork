@@ -1006,7 +1006,8 @@ export async function protocolTests(): Promise<void> {
         const { server, ui, b } = await startGit();
         await until(() => listLength(ui, 'view.history', 'commits') === 2);
         ui.client.notify('setting', { key: 'sidebar-page', value: 'files' });
-        await pause(40);
+        // A read already under way (git is slow on some systems) may still arrive; the count starts when the log is quiet.
+        for (let quiet = 0, last = -1; quiet < 5; await pause(40)) { quiet = ui.log.length === last ? quiet + 1 : 0; last = ui.log.length; }
         const seen = ui.log.length;
         await ui.client.request('act.tree.activate', { path: b });
         await pause(80);

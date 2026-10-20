@@ -13,6 +13,7 @@ import { _, fmt, ngettext } from '../i18n.js';
 import { errorMessage, type Doc, type Page, type TextEditor, type ToastAction } from './document.js';
 import type { ChooseFileOptions } from './dialogs.js';
 import type { Autosaver } from './autosave.js';
+import { below } from '../markdown/pathbelow.js';
 
 export const UNTITLED = _('Untitled');
 export const HOME = _('Home');
@@ -29,7 +30,7 @@ export interface DocumentDialogs {
 // Where `path` lands when `source` is moved to `target`; null if path is outside source.
 export function remapPath(path: string, source: string, target: string): string | null {
     if (path === source) return target;
-    return path.startsWith(`${source}/`) ? target + path.slice(source.length) : null;
+    return below(source, path) ? target + path.slice(source.length) : null;
 }
 
 export interface DocumentsHost<E extends TextEditor> {
