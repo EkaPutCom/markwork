@@ -7,7 +7,7 @@ import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } fr
 import type { KeyStore } from '../../src/agent/apikey.js';
 import type { TraceUpdate } from '../../src/agent/tracefeed.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within, until, pause, tmp, disk, sync } from '../framework.js';
+import { section, test, eq, ok, contains, within, until, untilText, tmp, disk, sync } from '../framework.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
@@ -117,13 +117,11 @@ export async function assistantTests(): Promise<void> {
         eq([updates.length, updates[0].reset, updates[0].events.length], [1, true, 0], 'the log as it is when the panel is connected');
         chat.makeProvider = () => proposing('read_file', { name: 'notes' }, []);
         await within(chat.send('what is in notes'));
-        await pause(80);
-        const events = updates.flatMap(u => u.events);
-        ok(events.some(e => e.kind === 'turn') && events.some(e => e.kind === 'tool'), JSON.stringify(events.map(e => e.kind)));
+        const events = () => updates.flatMap(u => u.events);
+        await until(() => events().some(e => e.kind === 'turn') && events().some(e => e.kind === 'tool'));
         eq(JSON.parse(JSON.stringify(updates)), updates, 'not plain data');
         panel.onClearLog();
-        await pause(80);
-        eq([updates.at(-1)!.reset, updates.at(-1)!.events.length], [true, 0], 'cleared');
+        await until(() => updates.at(-1)!.reset && updates.at(-1)!.events.length === 0);
         eq(chat.session.trace.events.length, 0);
     });
 
@@ -232,8 +230,7 @@ export async function assistantTests(): Promise<void> {
             },
         });
         await within(chat.send('move the release'));
-        await pause(5);
-        eq(editor.getText(), 'Release 22 November\n');
+        await untilText(editor, 'Release 22 November\n');
         ok(replies.some(r => r.includes('Release 22 November')), `the agent read an old text: ${replies.join('\n')}`);
         eq(read(root, 'notes.md'), 'Release 15 November\n', 'an open document is changed in its editor, not on disk');
         ok(replies.some(r => r.includes('has been applied')), replies.join('\n'));

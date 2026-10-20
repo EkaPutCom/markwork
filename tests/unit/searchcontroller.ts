@@ -3,7 +3,7 @@
 
 import { AppSession } from '../../src/app/session.js';
 import type { SearchQuery, SearchResults, SearchView } from '../../src/app/search.js';
-import { section, test, eq, ok, pause, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, tmp, disk, untilText } from '../framework.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
 
 const QUERY: SearchQuery = { text: '', caseSensitive: false, wholeWord: false, regex: false, include: '', exclude: '' };
@@ -96,8 +96,7 @@ export async function searchControllerTests(): Promise<void> {
         view.onSearch({ ...QUERY, text: 'foo' });
         await view.onReplaceAll('baz');
         eq(last().total, 0, 'the results already follow the replacement, before the editor has applied it');
-        await pause(5);
-        eq(session.documents.active.editor.getText(), '# Alpha\nbaz bar\n');
+        await untilText(session.documents.active.editor, '# Alpha\nbaz bar\n');
         session.dispose();
     });
 }

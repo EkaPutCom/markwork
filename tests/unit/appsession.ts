@@ -9,7 +9,7 @@ import { addCard, parseBoard } from '../../src/markdown/kanban.js';
 import { applyChangeBatch } from '../../src/app/agentwrites.js';
 import { platform, setPlatform } from '../../src/platform/index.js';
 import { fileUri } from '../../src/files.js';
-import { section, test, eq, ok, tmp, disk, pause, until } from '../framework.js';
+import { section, test, eq, ok, tmp, disk, until, untilText } from '../framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
 export function memorySettings(): AppSettings {
@@ -393,8 +393,7 @@ export async function appSessionTests(): Promise<void> {
             ]);
         } finally { setPlatform(real); }
         ok(error !== null && error.includes('restored'), `error: ${error}`);
-        await pause(10);
-        eq(session.documents.active.editor.getText(), 'one\n', 'the open document is back to what it was');
+        await untilText(session.documents.active.editor, 'one\n');   // the open document is back to what it was
         eq(disk.read(disk.join(dir, 'second.md')), 'first\n');
         session.dispose();
     });

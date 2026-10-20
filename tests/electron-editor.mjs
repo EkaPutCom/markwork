@@ -166,7 +166,7 @@ try {
         assert.equal(await docText(), '[[pl\n', 'Enter after Esc is a line break');
         await setDoc('');
         await page.keyboard.type('[[zzz');
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(300);   // the suggestions come from the core: time for a popup that must not appear
         assert.equal(await popup.count(), 0, 'no suggestion without a match');
         await setDoc('[[]]', 2);
         await page.keyboard.type('Pla');
@@ -175,7 +175,7 @@ try {
         assert.equal(await docText(), '[[Plan]]', 'Tab accepts, and ]] is not doubled');
         await setDoc('[[pl\n\nend', 9);
         await page.keyboard.press('ControlOrMeta+Home');
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(300);   // as above: a popup that must not appear
         assert.equal(await popup.count(), 0, 'moving the cursor to an old [[ shows nothing');
     });
 
@@ -349,7 +349,7 @@ try {
         await setDoc('text only');
         await pictures.waitFor({ state: 'detached' });
         await setDoc('| ![a](images/small.png) |\n| --- |\n\n```\n![b](images/small.png)\n```\n\nend', 70);
-        await page.waitForTimeout(300);
+        await editor.locator('.cm-md-table-grid').waitFor();   // drawn in the same pass that would add a picture
         assert.equal(await pictures.count(), 0, 'images in table rows and code blocks are ignored');
     });
 
@@ -441,10 +441,9 @@ try {
         await box.waitFor({ state: 'detached' });
         assert.ok((await lineTexts()).includes('```js'), 'the fence is visible inside the block');
         await setDoc('a\n```mermaid\nflowchart LR\n  A --> B\n```\nb', 0);
-        await page.waitForTimeout(300);
+        await editor.locator('.cm-md-diagram').waitFor();   // drawn as a diagram, the same pass that would draw a box
         assert.equal(await box.count(), 0, 'a diagram is not a code box');
-        await setDoc('a\n```js\nunclosed\n', 0);
-        await page.waitForTimeout(300);
+        await setDoc('a\n```js\nunclosed\n', 0);   // the decorations are computed in the transaction itself
         assert.equal(await box.count(), 0, 'an unclosed block is text');
     });
 
@@ -483,8 +482,7 @@ try {
         assert.equal(await docText(), 'a1\n\nmid\n\n<<<<<<< HEAD\na2\n=======\nb2\n>>>>>>> topic');
         await editor.getByRole('button', { name: 'Accept Both' }).click();
         assert.equal(await docText(), 'a1\n\nmid\n\na2\nb2', 'the conflict at the end of the file resolves');
-        await setDoc('Title\n=======\n\ntext', 0);
-        await page.waitForTimeout(200);
+        await setDoc('Title\n=======\n\ntext', 0);   // the conflicts are found in the transaction itself
         assert.equal(await editor.locator('.cm-md-conflict').count(), 0, 'a heading underline is not a conflict');
     });
 } catch {

@@ -31,16 +31,18 @@ try {
     const open = async name => {
         await page.getByRole('treeitem', { name: new RegExp(name.replace('.', '\\.')) }).click();
     };
-    // The file as saved: Ctrl+S, then what is on the disk.
+    // The file once it is saved as `expect` says: Ctrl+S, then the disk is read until it matches. A change may not have
+    // reached the document when the first Ctrl+S goes, so the key is pressed again while the file is not there yet.
     const saved = async (name, expect) => {
         let text = '';
-        await page.waitForTimeout(400);   // the change reaches the document first
-        for (let i = 0; i < 20; i++) {
+        await waitFor(async () => {
             await page.keyboard.press('ControlOrMeta+s');
-            await page.waitForTimeout(200);
-            text = read(name);
-            if (!expect || expect.test(text)) break;
-        }
+            for (const end = Date.now() + 500; Date.now() < end; await new Promise(r => setTimeout(r, 50))) {
+                text = read(name);
+                if (expect.test(text)) return true;
+            }
+            return false;
+        });
         return text;
     };
     const dialog = page.getByRole('dialog');
@@ -169,7 +171,6 @@ try {
         const first = page.locator('.inbox-row', { hasText: 'First idea' });
         const third = page.locator('.inbox-row', { hasText: 'Third idea' });
         await first.dragTo(third, { targetPosition: { x: 40, y: 3 } });
-        await page.waitForTimeout(200);
         const text = await saved('list.md', /First idea[\s\S]*Third idea/);
         assert.ok(text.indexOf('First idea') < text.indexOf('Third idea'), 'First idea is now above Third idea');
     });
@@ -236,8 +237,6 @@ try {
         await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2, { steps: 4 });
         await page.mouse.move(box.x + box.width / 2 + 41, box.y + box.height / 2, { steps: 4 });
         await page.mouse.up();
-        await waitFor(() => true);
-        await page.waitForTimeout(250);
         assert.match(await saved('line.md', /\[start:: 2026-10-07\] \[due:: 2026-10-11\]/), /\[start:: 2026-10-07\] \[due:: 2026-10-11\]/);
         const handle = bar.locator('.handle.end');
         await handle.scrollIntoViewIfNeeded();
@@ -246,7 +245,6 @@ try {
         await page.mouse.down();
         await page.mouse.move(box.x + box.width / 2 + 41, box.y + box.height / 2, { steps: 6 });
         await page.mouse.up();
-        await page.waitForTimeout(250);
         assert.match(await saved('line.md', /\[start:: 2026-10-07\] \[due:: 2026-10-13\]/), /\[start:: 2026-10-07\] \[due:: 2026-10-13\]/);
     });
 
@@ -280,10 +278,8 @@ try {
         await page.locator('.donut svg[aria-label*="done: 2"]').waitFor();
         await page.getByRole('button', { name: 'Edit the panels' }).click();
         await page.getByRole('button', { name: 'Remove' }).last().click();
-        await page.waitForTimeout(200);
         assert.match(await saved('chart.md', /charts: \[kpi, bar, donut\]/), /charts: \[kpi, bar, donut\]/);
         await page.getByRole('button', { name: 'Reset to default' }).click();
-        await page.waitForTimeout(200);
         assert.doesNotMatch(await saved('chart.md', /^(?![\s\S]*charts:)/), /charts:/);
     });
 
@@ -306,7 +302,6 @@ try {
         await page.getByRole('button', { name: 'More ways to create' }).click();
         await page.getByRole('menuitem', { name: 'New Inbox' }).click();
         await page.locator('[data-page=inbox]').waitFor();
-        await waitFor(() => true);
         await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Quick capture to the inbox');
         await page.keyboard.type('typed at once');
         await page.keyboard.press('Enter');

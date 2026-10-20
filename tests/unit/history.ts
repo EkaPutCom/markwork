@@ -128,9 +128,8 @@ export async function historyControllerTests(): Promise<void> {
         // A window closed before its git answer arrives is not drawn on.
         session.host.historyTab.onOpen(second.hash);
         session.host.historyViewers.onClosed(3);
-        await pause(300);
+        await within(history.settled());   // the git answers for it have arrived
         ok(!diffs.has(3) && !contents.has(3), 'a closed viewer was drawn on');
-        await within(history.settled());
         session.dispose();
     });
 

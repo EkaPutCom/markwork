@@ -6,7 +6,7 @@ import { parseBoard, serializeBoard } from '../../src/markdown/kanban.js';
 import { AppSession } from '../../src/app/session.js';
 import type { NotesView } from '../../src/app/views.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
-import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
+import { section, test, eq, ok, tmp, disk, pause, until } from '../framework.js';
 
 const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two #a\n\n## Done\n\n- [x] Old\n';
 const titles = (text: string, column = 0) => parseBoard(text).columns[column].cards.map(c => c.text);
@@ -72,7 +72,8 @@ export async function noteEditTests(): Promise<void> {
         eq(session.host.updateBoardFile(file, b => ({ ...b, columns: b.columns.map((c, i) => i === 0 ? { ...c, cards: [{ done: false, text: 'Zero', notes: [] }, ...c.cards] } : c) })), null);
         await pause(5);
         session.host.board.onEdit({ kind: 'move', at: { column: 0, index: 0 }, card: 'One', to: { column: 1, index: 0 } });
-        await pause(5);
+        const now = () => { try { return session.documents.active.editor.getText(); } catch { return ''; } };
+        await until(() => { const text = now(); return text !== '' && titles(text, 1).includes('One'); });
         const text = session.documents.active.editor.getText();
         eq([titles(text), titles(text, 1)], [['Zero', 'Two #a'], ['One', 'Old']], 'both changes are kept');
         session.dispose();
