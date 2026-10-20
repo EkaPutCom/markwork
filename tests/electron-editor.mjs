@@ -91,25 +91,25 @@ try {
     // ---------- format.ts ----------
     await step('format: Ctrl+B wraps and unwraps, undo restores, headings, quote, link', async () => {
         await setDoc('some word', 5, 9);
-        await page.keyboard.press('Control+b');
+        await page.keyboard.press('ControlOrMeta+b');
         assert.equal(await docText(), 'some **word**');
-        await page.keyboard.press('Control+b');
+        await page.keyboard.press('ControlOrMeta+b');
         assert.equal(await docText(), 'some word', 'Ctrl+B again removes **');
         await setDoc('x', 0, 1);
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('ControlOrMeta+i');
         assert.equal(await docText(), '*x*');
-        await page.keyboard.press('Control+z');
+        await page.keyboard.press('ControlOrMeta+z');
         assert.equal(await docText(), 'x', 'undo restores the change');
         await setDoc('title', 0);
-        await page.keyboard.press('Control+2');
+        await page.keyboard.press('ControlOrMeta+2');
         assert.equal(await docText(), '## title');
-        await page.keyboard.press('Control+0');
+        await page.keyboard.press('ControlOrMeta+0');
         assert.equal(await docText(), 'title');
         await setDoc('a\nb', 0, 3);
-        await page.keyboard.press('Control+Shift+q');
+        await page.keyboard.press('ControlOrMeta+Shift+q');
         assert.equal(await docText(), '> a\n> b', 'the quote is applied to several lines');
         await setDoc('GTK', 0, 3);
-        await page.keyboard.press('Control+k');
+        await page.keyboard.press('ControlOrMeta+k');
         assert.equal(await docText(), '[GTK]()');
     });
 
@@ -117,14 +117,14 @@ try {
     await step('syntax: markers hide away from the cursor and come back on its line', async () => {
         await setDoc('# Title\n\ntext **bold** here', 26);
         assert.deepEqual((await lineTexts()).filter(Boolean), ['Title', 'text **bold** here'], 'the # is hidden, the ** on the active line are not');
-        await page.keyboard.press('Control+Home');
+        await page.keyboard.press('ControlOrMeta+Home');
         assert.deepEqual((await lineTexts()).filter(Boolean), ['# Title', 'text bold here']);
         await setDoc('🎉 **a**\n', 9);
         assert.equal((await lineTexts())[0], '🎉 a', 'the offset is right after an emoji');
         await setDoc('# a\n\n**b**', 10);
-        await page.keyboard.press('Control+/');
+        await page.keyboard.press('ControlOrMeta+/');
         assert.equal((await lineTexts())[0], '# a', 'source mode shows all markers');
-        await page.keyboard.press('Control+/');
+        await page.keyboard.press('ControlOrMeta+/');
         assert.equal((await lineTexts())[0], 'a', 'and hides them again');
     });
 
@@ -138,7 +138,7 @@ try {
 
     await step('wikilink: Ctrl+click opens the note in a new tab and jumps to the section', async () => {
         await setDoc('see [[Idea#Section Two]]\n\nx');
-        await editor.locator('.cm-md-link').click({ modifiers: ['Control'] });
+        await editor.locator('.cm-md-link').click({ modifiers: ['ControlOrMeta'] });
         await title.getByText('Idea.md').waitFor();
         await page.waitForFunction(() => document.querySelector('.statusbar')?.textContent?.includes('5'), null, { timeout: 5000 }).catch(() => {});
         assert.equal(await cursorLine(), 5, 'the cursor is on the heading Section Two');
@@ -147,7 +147,7 @@ try {
 
     await step('wikilink: a note that does not exist opens empty and is not written to disk', async () => {
         await setDoc('continue to [[New Note]]\n\nx');
-        await editor.locator('.cm-md-link').click({ modifiers: ['Control'] });
+        await editor.locator('.cm-md-link').click({ modifiers: ['ControlOrMeta'] });
         await title.getByText('New Note.md').waitFor();
         assert.equal(await docText(), '');
         assert.ok(!existsSync(join(notes, 'New Note.md')));
@@ -156,7 +156,7 @@ try {
 
     await step('wikilink: Ctrl+click on a relative link to an .md file opens it in Markwork', async () => {
         await setDoc('see [plan](Plan.md)\n\nx');
-        await editor.locator('.cm-md-link').click({ modifiers: ['Control'] });
+        await editor.locator('.cm-md-link').click({ modifiers: ['ControlOrMeta'] });
         await title.getByText('Plan.md').waitFor();
         await open(/Source\.md/);
     });
@@ -192,7 +192,7 @@ try {
         await page.keyboard.press('Tab');
         assert.equal(await docText(), '[[Plan]]', 'Tab accepts, and ]] is not doubled');
         await setDoc('[[pl\n\nend', 9);
-        await page.keyboard.press('Control+Home');
+        await page.keyboard.press('ControlOrMeta+Home');
         await page.waitForTimeout(300);
         assert.equal(await popup.count(), 0, 'moving the cursor to an old [[ shows nothing');
     });
@@ -309,7 +309,7 @@ try {
         await prefs.getByLabel('Model').waitFor();
         await page.keyboard.press('Escape');
         await prefs.waitFor({ state: 'detached' });
-        await page.keyboard.press('Control+?');
+        await page.keyboard.press('ControlOrMeta+?');
         const shortcuts = page.getByRole('dialog', { name: 'Keyboard Shortcuts' });
         await shortcuts.getByText('Save As').waitFor();
         await page.keyboard.press('Escape');
@@ -325,7 +325,7 @@ try {
     await step('search: Ctrl+Shift+F finds in all notes, a hit opens with the match selected, Replace All asks first', async () => {
         await open(/Source\.md/);
         await editor.click();
-        await page.keyboard.press('Control+Shift+f');
+        await page.keyboard.press('ControlOrMeta+Shift+f');
         const box = page.getByRole('searchbox', { name: 'Search' });
         await box.fill('Section Two');
         const hit = page.locator('.results .hit');
@@ -335,7 +335,7 @@ try {
         await hit.first().click();
         await title.getByText('Idea.md').waitFor();
         await page.waitForFunction(() => { const v = document.querySelector('.cm-content').cmTile.view; const s = v.state.selection.main; return v.state.sliceDoc(s.from, s.to) === 'Section Two'; });
-        await page.keyboard.press('Control+Shift+h');
+        await page.keyboard.press('ControlOrMeta+Shift+h');
         await page.getByRole('textbox', { name: 'Replace', exact: true }).fill('Part Two');
         await page.getByRole('button', { name: 'Replace All' }).click();
         const dialog = page.getByRole('alertdialog');
@@ -359,9 +359,9 @@ try {
         await setDoc('![small](images/small.png)\ntext', 30);
         await pictures.click();
         assert.equal(await cursorLine(), 1, 'the click moves the cursor to the image line');
-        await page.keyboard.press('Control+/');
+        await page.keyboard.press('ControlOrMeta+/');
         await pictures.waitFor({ state: 'detached' });
-        await page.keyboard.press('Control+/');
+        await page.keyboard.press('ControlOrMeta+/');
         await pictures.waitFor();
         await setDoc('text only');
         await pictures.waitFor({ state: 'detached' });
@@ -434,13 +434,13 @@ try {
     await step('imagezoom: the Zoom Image command uses the cursor line, and says when there is no image', async () => {
         await setDoc('![A small one](images/small.png)\ntext', 0);
         await page.waitForFunction(() => document.querySelectorAll('.cm-md-pictures img').length === 1);
-        await page.keyboard.press('Control+Shift+P');
+        await page.keyboard.press('ControlOrMeta+Shift+P');
         await page.locator('.palette input').fill('zoom image');
         await page.keyboard.press('Enter');
         await page.locator('.image-viewer img').waitFor();
         await page.keyboard.press('Escape');
         await setDoc('no image here', 0);
-        await page.keyboard.press('Control+Shift+P');
+        await page.keyboard.press('ControlOrMeta+Shift+P');
         await page.locator('.palette input').fill('zoom image');
         await page.keyboard.press('Enter');
         await page.getByText('There is no image on this line').waitFor();
@@ -477,10 +477,10 @@ try {
         const keywordColor = () => editor.locator('.tok-keyword').first().evaluate(el => getComputedStyle(el).color);
         await setDoc('para\n\n```js\nconst z = 3\n```\n\nlast', 0);
         const light = await keywordColor();
-        await page.keyboard.press('Control+Shift+D');
+        await page.keyboard.press('ControlOrMeta+Shift+D');
         await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
         assert.notEqual(await keywordColor(), light, 'dark mode uses other colors');
-        await page.keyboard.press('Control+Shift+D');
+        await page.keyboard.press('ControlOrMeta+Shift+D');
         await page.keyboard.press('F8');
         await editor.locator('.cm-md-codebox.cm-md-dim').waitFor();
         await page.keyboard.press('F8');

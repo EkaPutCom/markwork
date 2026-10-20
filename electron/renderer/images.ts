@@ -17,7 +17,11 @@ const PATHS: PathOps = {
 };
 
 // The URL the page loads a file by: app://file/<path>, one encoded segment at a time.
-export const appUrl = (path: string): string => 'app://file' + (path.startsWith('/') ? '' : '/') + path.split('/').map(encodeURIComponent).join('/');
+// A Windows path (C:\a\b.png) goes with / for a separator, as app://file/C%3A/a/b.png.
+export const appUrl = (path: string): string => {
+    const slashed = path.replace(/\\/g, '/');
+    return 'app://file' + (slashed.startsWith('/') ? '' : '/') + slashed.split('/').map(encodeURIComponent).join('/');
+};
 
 // A picture's address as written → the URL to load, or null for a relative path in a document that is not saved.
 export function imageUrl(url: string, baseDir: string | null): string | null {

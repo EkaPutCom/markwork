@@ -41,7 +41,7 @@ try {
     const settings = () => page.getByRole('complementary', { name: 'Assistant' }).getByRole('dialog', { name: 'Assistant settings' });
     const openSettings = async () => {
         await page.getByRole('treeitem', { name: /plan\.md/ }).waitFor({ timeout: 15000 });
-        if (!(await page.getByRole('complementary', { name: 'Assistant' }).count())) await page.keyboard.press('Control+Shift+A');
+        if (!(await page.getByRole('complementary', { name: 'Assistant' }).count())) await page.keyboard.press('ControlOrMeta+Shift+A');
         await page.getByRole('button', { name: 'Assistant settings' }).click();
     };
 

@@ -55,7 +55,7 @@ try {
         let text = '';
         await page.waitForTimeout(400);   // the change reaches the document first
         for (let i = 0; i < 20; i++) {
-            await page.keyboard.press('Control+s');
+            await page.keyboard.press('ControlOrMeta+s');
             await page.waitForTimeout(200);
             text = read(name);
             if (!expect || expect.test(text)) break;
@@ -363,7 +363,7 @@ try {
 
     await step('csv: the search bar marks the cells that match and replaces them', async () => {
         await page.locator('[data-cell="1:0"]').click();
-        await page.keyboard.press('Control+h');
+        await page.keyboard.press('ControlOrMeta+h');
         await page.getByLabel('Find in the table').fill('5');
         await page.locator('.csv-cell.current-match').waitFor();
         await page.getByLabel('Replace with').fill('7');

@@ -130,7 +130,7 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
             case 'Enter':
                 e.preventDefault();
                 commit(row, column, input.value);
-                if (e.ctrlKey) insertRowAt(row + 1, column);
+                if (e.ctrlKey || e.metaKey) insertRowAt(row + 1, column);
                 else if (e.shiftKey) go(row - 1, column);
                 else if (row === lastRow) insertRowAt(lastRow + 1, column);
                 else go(row + 1, column);

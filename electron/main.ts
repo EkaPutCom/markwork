@@ -160,7 +160,9 @@ void app.whenReady().then(() => {
     });
     protocol.handle('app', async request => {
         try {
-            const path = decodeURIComponent(new URL(request.url).pathname);
+            // app://file/C%3A/a/b.png is C:/a/b.png on Windows: the drive comes after the URL's first /.
+            const decoded = decodeURIComponent(new URL(request.url).pathname);
+            const path = /^\/[A-Za-z]:\//.test(decoded) ? decoded.slice(1) : decoded;
             if (!isAbsolute(path) || !IMAGE_FILE.test(path)) return new Response('not an image', { status: 403 });
             const type = IMAGE_TYPES[extname(path).slice(1).toLowerCase()] ?? 'application/octet-stream';
             return new Response(await readFile(path), { headers: { 'content-type': type } });
