@@ -111,7 +111,8 @@ try {
 
     await step('the window does not get smaller than 360 px', async () => {
         await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(200, 200));
-        await waitFor(async () => (await page.evaluate(() => window.innerWidth)) >= 360, 3000);
+        let width = 0;
+        await waitFor(async () => (width = await page.evaluate(() => window.innerWidth)) >= 360, 3000).catch(() => assert.fail(`the page is ${width} px wide`));
     });
 } catch {
     failed = true;
