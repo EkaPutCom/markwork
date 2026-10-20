@@ -55,6 +55,8 @@ function createWindow(): void {
     const win = new BrowserWindow({
         width: 1100,
         height: 720,
+        minWidth: 360,    // the smallest the GTK window allows; below 600 the side panels float (renderer/client.ts)
+        minHeight: 294,
         title: 'Markwork',
         backgroundColor: nativeTheme.shouldUseDarkColors ? '#242424' : '#fafafa',
         webPreferences: {

@@ -22,6 +22,7 @@ import { Tabs } from './Tabs.js';
 import { Icon, type IconName } from './Icons.js';
 import { label, matches } from './keys.js';
 import { useClient, useStore } from './useClient.js';
+import { layoutOf } from './client.js';
 
 // The title of the header bar: the document's name over where it is, as the GTK window shows them.
 function Title() {
@@ -67,6 +68,7 @@ const layoutName = (layout: string, page: string): string => LAYOUT_NAMES[page] 
 function HeaderBar() {
     const client = useClient();
     const s = useStore();
+    const panels = layoutOf(s);
     const [menu, setMenu] = useState(false);
     const [main, setMain] = useState(false);
     const [layoutMenu, setLayoutMenu] = useState(false);
@@ -98,9 +100,9 @@ function HeaderBar() {
         { id: '-' }, ...named('dark'), ...named('preferences'), ...named('shortcuts'), ...named('about'), ...named('quit'),
     ];
     return (
-        <header className="headerbar">
+        <header className={`headerbar${panels.compact ? ' compact' : ''}`}>
             <div className="start">
-                <button className={`button flat${s.sidebar ? ' checked' : ''}`} title="Toggle Sidebar" aria-label="Toggle Sidebar" aria-pressed={s.sidebar} onClick={() => client.toggleSidebar()}>
+                <button className={`button flat${panels.sidebar.shown ? ' checked' : ''}`} title="Toggle Sidebar" aria-label="Toggle Sidebar" aria-pressed={panels.sidebar.shown} onClick={() => client.toggleSidebar()}>
                     <Icon name="sidebar-show" />
                 </button>
                 <div className="split">
@@ -121,7 +123,7 @@ function HeaderBar() {
                         {layoutMenu && <Menu items={layoutItems} onClose={() => setLayoutMenu(false)} align="right" />}
                     </div>
                 )}
-                <button className={`button flat${s.settings.chat === true ? ' checked' : ''}`} title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={s.settings.chat === true}
+                <button className={`button flat${panels.chat.shown ? ' checked' : ''}`} title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={panels.chat.shown}
                     onClick={() => client.run('chat')}><Icon name="chat-message-new" /></button>
                 <div className="split">
                     <button className="button flat" title="Main Menu" aria-label="Main Menu" aria-haspopup="menu" aria-expanded={main} onClick={() => setMain(v => !v)}><Icon name="open-menu" /></button>
@@ -143,8 +145,9 @@ const PAGES: { page: string; label: string; icon: IconName }[] = [
 
 function Rail() {
     const client = useClient();
-    const { sidebar, settings } = useStore();
-    const current = settings['sidebar-page'] ?? 'files';
+    const state = useStore();
+    const sidebar = layoutOf(state).sidebar.shown;
+    const current = state.settings['sidebar-page'] ?? 'files';
     return (
         <nav className="rail" aria-label="Sidebar pages">
             {PAGES.map(({ page, label, icon }) => (
@@ -205,9 +208,26 @@ function Notification() {
 
 export function App() {
     const client = useClient();
-    const { sidebar, settings } = useStore();
-    const page = settings['sidebar-page'];
-    const chat = settings.chat === true;
+    const state = useStore();
+    const page = state.settings['sidebar-page'];
+    const panels = layoutOf(state);
+
+    // The window's width decides which side panels float (client.ts layoutOf).
+    useEffect(() => {
+        const resize = () => client.setWidth(window.innerWidth);
+        resize();
+        window.addEventListener('resize', resize);
+        return () => window.removeEventListener('resize', resize);
+    }, [client]);
+
+    // Escape closes a floating panel, unless something inside took the key (a popover, a suggestion list).
+    useEffect(() => {
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !event.defaultPrevented && !client.getState().dialog) client.closeFloating();
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [client]);
 
     // Every key of the command table, for the commands this window carries out. Captured before the editor sees it.
     useEffect(() => {
@@ -230,15 +250,18 @@ export function App() {
     return (
         <div className="workbench">
             <HeaderBar />
-            <div className="main">
+            <div className={`main${panels.sidebar.floats ? ' float-sidebar' : ''}${panels.chat.floats ? ' float-chat' : ''}`}>
                 <Rail />
-                {sidebar && (page === 'outline' ? <Outline /> : page === 'search' ? <Search /> : page === 'history' ? <History /> : page === 'collab' ? <Collab /> : <Explorer />)}
+                {panels.sidebar.shown && (page === 'outline' ? <Outline /> : page === 'search' ? <Search /> : page === 'history' ? <History /> : page === 'collab' ? <Collab /> : <Explorer />)}
                 <div className="editor-group">
                     <Tabs />
                     <EditorArea />
                     <StatusBar />
                 </div>
-                {chat && <Chat />}
+                {panels.chat.shown && <Chat />}
+                {/* A floating panel closes when the content beside it is clicked, as a collapsed GTK split view does. */}
+                {((panels.sidebar.floats && panels.sidebar.shown) || (panels.chat.floats && panels.chat.shown)) &&
+                    <div className="float-backdrop" aria-hidden="true" onMouseDown={() => client.closeFloating()} />}
             </div>
             <Notification />
             <Palette />
