@@ -1,12 +1,12 @@
 // Evaluation of tool choice by a real model. It only writes fixtures in a temporary folder.
-import type { Provider } from '../src/agent/provider.js';
-import { ChatSession } from '../src/agent/session.js';
-import { applyBatch } from '../src/agent/batch.js';
-import { readTextFile, writeTextFile, fileExists } from '../src/files.js';
-import { WorkspaceRepository } from '../src/workspace.js';
-import { GREEN, RED, RESET } from './framework.js';
-import { disk, say } from './framework.js';
-import { host } from './host.js';
+import type { Provider } from '../../src/agent/provider.js';
+import { ChatSession } from '../../src/agent/session.js';
+import { applyBatch } from '../../src/agent/batch.js';
+import { readTextFile, writeTextFile, fileExists } from '../../src/files.js';
+import { WorkspaceRepository } from '../../src/workspace.js';
+import { GREEN, RED, RESET } from '../core/framework.js';
+import { disk, say } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 export async function liveAgentic(provider: Provider, model: string, thinking: boolean): Promise<number> {
     let failures = 0;
@@ -21,7 +21,7 @@ export async function liveAgentic(provider: Provider, model: string, thinking: b
             for (const [name, text] of Object.entries(original)) writeTextFile(path(name), text);
             const session = new ChatSession(); session.thinking = thinking;
             let proposals = 0;
-            const apply = async (changes: import('../src/agent/changes.js').Change[]) => {
+            const apply = async (changes: import('../../src/agent/changes.js').Change[]) => {
                 proposals++;
                 if (decision === 'reject') return { applied: false };
                 if (decision === 'conflict') writeTextFile(path('plan.md'), '# Edited by the user\n');

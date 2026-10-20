@@ -46,6 +46,6 @@ export function setHost(host: TestHost): void {
 }
 
 export function host(): TestHost {
-    if (!current) throw new Error('No test host installed: the entry point must import tests/host-node.js first');
+    if (!current) throw new Error('No test host installed: the entry point must import tests/core/host-node.js first');
     return current;
 }

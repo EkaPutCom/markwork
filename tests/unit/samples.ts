@@ -5,7 +5,7 @@ import { readTextFile } from '../../src/files.js';
 import { parseSchema, readItem } from '../../src/markdown/fields.js';
 import { boardSchema, parseBoard, serializeBoard } from '../../src/markdown/kanban.js';
 import { layoutOf, type Layout } from '../../src/markdown/layout.js';
-import { ROOT, section, test, eq, disk } from '../framework.js';
+import { ROOT, section, test, eq, disk } from '../core/framework.js';
 
 const SAMPLES: [string, Layout][] = [['kanban-board.md', 'board'], ['inbox.md', 'list'], ['reading-list.md', 'list'], ['sprint-table.md', 'table'],
     ['calendar.md', 'calendar'], ['timeline.md', 'timeline'], ['gallery.md', 'gallery'], ['chart.md', 'chart'], ['board-by-field.md', 'board']];

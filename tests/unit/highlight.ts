@@ -2,7 +2,7 @@
 // parse of an edited range compared with a full parse of the same text.
 
 import { HighlightCache, highlightText, textLines, type HighlightResult, type Styles, type TextLines } from '../../src/markdown/highlight.js';
-import { section, test, eq, ok } from '../framework.js';
+import { section, test, eq, ok } from '../core/framework.js';
 
 // Each style is its own name.
 const NAMES = new Proxy({}, { get: (_target, name) => name }) as Styles<string>;

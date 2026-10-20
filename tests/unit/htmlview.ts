@@ -1,6 +1,6 @@
 // HTML viewer tests: which files open there, the address scheme, and the rule that keeps a page inside its folder.
 
-import { section, test, eq } from '../framework.js';
+import { section, test, eq } from '../core/framework.js';
 import { HTML_CSP, htmlContentType, htmlViewUrl, isHtmlFile, parseHtmlUrl, resolveHtmlRequest } from '../../src/markdown/htmlview.js';
 
 export function htmlViewTests(): void {

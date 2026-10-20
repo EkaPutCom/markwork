@@ -1,11 +1,11 @@
 // Agents (harness, agentshost) run against the Electron window with Playwright: the real main
-// process, core, and renderer, a real git repository for the project, and a fake agent program (tests/electron-agent.mjs) in
+// process, core, and renderer, a real git repository for the project, and a fake agent program (tests/electron/agent.mjs) in
 // place of pi. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { identity, testModule, scratchFolder, gitIn, launchApp, waitFor, stepper } from './electron-support.mjs';
+import { identity, testModule, scratchFolder, gitIn, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('agents');
 const project = join(scratch, 'project');
@@ -25,7 +25,7 @@ const app = await launchApp({
     env: {
         ...identity,
         MARKWORK_PICK_FOLDER: project,   // the answer of the folder chooser
-        MARKWORK_TEST_HARNESS: testModule('electron-agent.mjs'),
+        MARKWORK_TEST_HARNESS: testModule('agent.mjs'),
     },
 });
 let failed = false;

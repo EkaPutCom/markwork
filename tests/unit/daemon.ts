@@ -8,8 +8,8 @@ import { DaemonError, encodeRequest, exitStatus, parseExit, parseFrame, type Dae
 import { adoptRun, daemonGit, daemonSpawner, newRunId } from '../../src/orchestratordaemon.js';
 import { Orchestrator, type HarnessProcess, type SpawnHandlers, type SpawnMeta, type Spawner } from '../../src/orchestrator.js';
 import { parseBoard, type Board } from '../../src/markdown/kanban.js';
-import { section, test, eq, ok, contains, within } from '../framework.js';
-import { host as testHost } from '../host.js';
+import { section, test, eq, ok, contains, within } from '../core/framework.js';
+import { host as testHost } from '../core/host.js';
 import { FakeDaemon, ManualTimers, flush } from './daemon-fake.js';
 
 function setup(opts: { backoffMs?: number[]; expectBridge?: boolean } = {}) {

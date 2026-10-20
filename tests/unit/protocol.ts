@@ -18,8 +18,8 @@ import { journalName } from '../../src/markdown/journal.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
 import { memorySettings } from './appsession.js';
 import { runGit } from '../../src/git.js';
-import { host } from '../host.js';
-import { section, test, eq, ok, tmp, disk, until, pause, within } from '../framework.js';
+import { host } from '../core/host.js';
+import { section, test, eq, ok, tmp, disk, until, pause, within } from '../core/framework.js';
 
 const ALPHABET = ['a', 'b', ' ', '\n', '🎉', 'é', '#', 'x'];
 

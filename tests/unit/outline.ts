@@ -3,7 +3,7 @@
 
 import { AppSession } from '../../src/app/session.js';
 import type { OutlineHeading, OutlineView } from '../../src/app/outline.js';
-import { section, test, eq, ok, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, tmp, disk } from '../core/framework.js';
 import { fakeFrontend, FakeEditor, memorySettings, quiet } from './appsession.js';
 
 const H = (level: number, text: string, line: number): OutlineHeading => ({ level, text, line });

@@ -6,7 +6,7 @@ import { parseBoard, serializeBoard } from '../../src/markdown/kanban.js';
 import { AppSession } from '../../src/app/session.js';
 import type { NotesView } from '../../src/app/views.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
-import { section, test, eq, ok, tmp, disk, pause, until } from '../framework.js';
+import { section, test, eq, ok, tmp, disk, pause, until } from '../core/framework.js';
 
 const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two #a\n\n## Done\n\n- [x] Old\n';
 const titles = (text: string, column = 0) => parseBoard(text).columns[column].cards.map(c => c.text);

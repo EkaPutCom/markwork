@@ -6,7 +6,7 @@ import { cleanNewName, CHANGE_TOOLS, diffPreview, planChange, unifiedDiff, type 
 import { ChatSession, type ProposalResult, type ToolStep } from '../../src/agent/session.js';
 import { describeCall } from '../../src/agent/tools.js';
 import type { ChatRequest, ChatResult, Provider } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within } from '../framework.js';
+import { section, test, eq, ok, contains, within } from '../core/framework.js';
 
 const PLAN = '# Plan\n\n- First draft: October\n- Revision: November\n\n## Notes\n\nNone yet.\n';
 const files: SourceFile[] = [{ name: 'plan.md', text: PLAN }, { name: 'research/harbor.md', text: '# Harbor\n\nThere are two piers.\n' }];

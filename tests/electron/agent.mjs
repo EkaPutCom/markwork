@@ -1,4 +1,4 @@
-// A fake agent program for the Electron tests (tests/electron-harness.mjs): the core loads it when MARKWORK_TEST_HARNESS names this
+// A fake agent program for the Electron tests (tests/electron/harness.mjs): the core loads it when MARKWORK_TEST_HARNESS names this
 // file, so no test needs pi or a model. Given its prompt it writes notes.md in the folder it runs in and commits it, asks one
 // yes-or-no question, and when that is answered says it is done and ends.
 

@@ -1,7 +1,7 @@
 // Tests for what a click on a line means (markdown/clicks.ts), which diagram a code block is (markdown/diagram.ts), and
 // where an image comes from (markdown/imagesource.ts). Columns are in code points.
 
-import { section, test, eq } from '../framework.js';
+import { section, test, eq } from '../core/framework.js';
 import { linkAt, taskToggleAt, wikiLinkAt } from '../../src/markdown/clicks.js';
 import { diagramKind } from '../../src/markdown/diagram.js';
 import { imageSource, type PathOps } from '../../src/markdown/imagesource.js';

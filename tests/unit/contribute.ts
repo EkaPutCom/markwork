@@ -4,8 +4,8 @@
 import { branchError, credentialEnv, sendChanges, slug, type SendContext, type SendRequest } from '../../src/forge/contribute.js';
 import type { ForgeProvider, NewPull, PullRequest, RepoInfo } from '../../src/forge/types.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
     const run = await within(runGit(cwd, args));

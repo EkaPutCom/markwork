@@ -11,7 +11,7 @@ import { describeSchema, queryNotes } from '../../src/agent/schematools.js';
 import { describeCall, runTool, TOOLS } from '../../src/agent/tools.js';
 import { verifyWork } from '../../src/agent/verification.js';
 import { parseSchema } from '../../src/markdown/fields.js';
-import { section, test, eq, ok, contains } from '../framework.js';
+import { section, test, eq, ok, contains } from '../core/framework.js';
 
 const TABLE = `---
 layout: table

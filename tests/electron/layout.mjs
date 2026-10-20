@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
+import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('layout');
 writeFileSync(join(notes, 'note.md'), '# Note\n\n' + 'Some text that fills the line. '.repeat(30) + '\n');

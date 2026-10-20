@@ -8,8 +8,8 @@ import type { KeyStore } from '../../src/agent/apikey.js';
 import type { ChatResult } from '../../src/agent/provider.js';
 import type { Cancellable } from '../../src/cancel.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, within, until, pause, tmp, disk } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, within, until, pause, tmp, disk } from '../core/framework.js';
+import { host } from '../core/host.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };

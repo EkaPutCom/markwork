@@ -1,11 +1,11 @@
 // History and pull requests (history, collab, forgejo) run against the Electron window with
-// Playwright: the real main process, core, and renderer, a real git repository, and a fake forge (tests/electron-forge.mjs) in
+// Playwright: the real main process, core, and renderer, a real git repository, and a fake forge (tests/electron/forge.mjs) in
 // place of the network. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { identity, testModule, scratchFolder, gitIn, launchApp, waitFor, stepper } from './electron-support.mjs';
+import { identity, testModule, scratchFolder, gitIn, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('git');
 const git = gitIn(notes);
@@ -22,7 +22,7 @@ const { steps, step } = stepper();
 
 const app = await launchApp({
     scratch, notes,
-    env: { ...identity, DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('electron-model.mjs'), MARKWORK_TEST_FORGE: testModule('electron-forge.mjs') },
+    env: { ...identity, DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('model.mjs'), MARKWORK_TEST_FORGE: testModule('forge.mjs') },
 });
 let failed = false;
 let page;

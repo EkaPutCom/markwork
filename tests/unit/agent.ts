@@ -8,8 +8,8 @@ import { describeCall, runTool } from '../../src/agent/tools.js';
 import { toApiMessage } from '../../src/agent/deepseek.js';
 import type { ChatMessage, ChatRequest, ChatResult, Provider } from '../../src/agent/provider.js';
 import { systemKeyStore } from '../../src/agent/apikey.js';
-import { section, test, eq, ok, contains, within } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, contains, within } from '../core/framework.js';
+import { host } from '../core/host.js';
 import { platform } from '../../src/platform/index.js';
 
 const CH1 = `# Chapter 1: The Harbor

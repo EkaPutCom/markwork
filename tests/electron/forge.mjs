@@ -1,4 +1,4 @@
-// A fake forge for the Electron tests (tests/electron-git.mjs): the core loads it when MARKWORK_TEST_FORGE names this file,
+// A fake forge for the Electron tests (tests/electron/git.mjs): the core loads it when MARKWORK_TEST_FORGE names this file,
 // so no test reaches a server. It holds one open pull request (#7) that changes plan.md, its discussion, and what was done to it.
 
 const base = 'https://git.example.org/api/v1/repos/eka/notes';

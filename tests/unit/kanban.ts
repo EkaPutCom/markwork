@@ -2,8 +2,8 @@
 
 import { addCard, addColumn, deleteColumnKeepCards, dropSpot, placeMove, type DropRow, boardSchema, declaredFields, fieldUses, reservedFields, withSchema, cardFields, cardMeta, setCardField, withFieldOption, countCards, deleteCard, deleteColumn as deleteList, dropIndex, dueStatus, moveCard, moveColumn, newBoard, parseBoard, renameColumn, serializeBoard, splitCard, toggleDone, updateCard, withDueDate, type Board } from '../../src/markdown/kanban.js';
 import { isBoard } from '../../src/markdown/layout.js';
-import { section, test, eq, ok } from '../framework.js';
-import { BOARD } from '../fixtures.js';
+import { section, test, eq, ok } from '../core/framework.js';
+import { BOARD } from '../core/fixtures.js';
 
 export function kanbanModelTests(): void {
     section('Kanban (model)');

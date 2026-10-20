@@ -3,8 +3,8 @@
 import { addTarget, ageOf, captureItem, composeItem, itemFields, itemMeta, newList } from '../../src/markdown/inbox.js';
 import { addColumn, boardSchema, deleteCard, moveColumn, parseBoard, serializeBoard, setCardField, updateCard, withFieldOption } from '../../src/markdown/kanban.js';
 import { isList } from '../../src/markdown/layout.js';
-import { section, test, eq, ok } from '../framework.js';
-import { BOARD, INBOX } from '../fixtures.js';
+import { section, test, eq, ok } from '../core/framework.js';
+import { BOARD, INBOX } from '../core/fixtures.js';
 
 export function inboxModelTests(): void {
     section('List (model)');

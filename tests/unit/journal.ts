@@ -5,7 +5,7 @@ import {
     journalStats, mergeActivity, newJournal, parseActivity, serializeActivity, type Activity,
 } from '../../src/markdown/journal.js';
 import { parseBoard } from '../../src/markdown/kanban.js';
-import { section, test, eq, ok } from '../framework.js';
+import { section, test, eq, ok } from '../core/framework.js';
 
 const EMPTY = newJournal('Thursday, October 8, 2026');
 const at = (h: number, m: number) => Math.floor(new Date(2026, 9, 8, h, m).getTime() / 1000);

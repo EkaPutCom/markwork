@@ -1,4 +1,4 @@
-// A scripted model for the Electron tests (tests/electron-assistant.mjs): the core loads it when MARKWORK_TEST_MODEL names
+// A scripted model for the Electron tests (tests/electron/assistant.mjs): the core loads it when MARKWORK_TEST_MODEL names
 // this file, so no test reaches the network. It echoes the question, except that "bump" proposes an edit of plan.md (and
 // answers once the proposal was decided), and "slow" waits until the turn is stopped.
 

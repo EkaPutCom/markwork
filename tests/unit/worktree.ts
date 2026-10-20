@@ -6,8 +6,8 @@ import { commentsReply, mergeWorktree, newLineNumbers, readReview, splitDiff } f
 import { parseDiff } from '../../src/gitlog.js';
 import { cardBranch, setCardBranch } from '../../src/markdown/kanban.js';
 import { runGit } from '../../src/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk, slash } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, contains, within, tmp, disk, slash } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
     const run = await within(runGit(cwd, args));

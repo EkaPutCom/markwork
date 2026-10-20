@@ -10,8 +10,8 @@ import { adoptRun, daemonGit, daemonSpawner } from '../../src/orchestratordaemon
 import { createWorktree, DEFAULT_ISOLATION, listWorktrees, removeWorktree } from '../../src/agent/worktree.js';
 import type { HarnessProcess, SpawnHandlers } from '../../src/orchestrator.js';
 import { platform } from '../../src/platform/index.js';
-import { DIM, RESET, ROOT, ok, eq, contains, section, within, test, tmp, disk, say, until } from '../framework.js';
-import { host } from '../host.js';
+import { DIM, RESET, ROOT, ok, eq, contains, section, within, test, tmp, disk, say, until } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 const AGENT = `#!/bin/sh
 echo ready

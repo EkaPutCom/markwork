@@ -4,8 +4,8 @@ import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasM
 import { ForgeError, type ForgeProvider } from '../../src/forge/types.js';
 import { repoChanges, runGit } from '../../src/git.js';
 import { platform } from '../../src/platform/index.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
     const run = await within(runGit(cwd, args));

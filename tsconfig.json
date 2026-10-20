@@ -13,5 +13,5 @@
     "noImplicitOverride": true
   },
   "include": ["src", "tests"],
-  "exclude": ["src/platform/node", "tests/host-node.ts", "tests/run-core-node.ts", "tests/unit/nodeplatform.ts", "tests/unit/crossos.ts", "tests/live.ts", "tests/live-forge.ts", "tests/bench.ts", "tests/bench-agentic.ts"]
+  "exclude": ["src/platform/node", "tests/core/host-node.ts", "tests/core/run-core-node.ts", "tests/unit/nodeplatform.ts", "tests/unit/crossos.ts", "tests/live", "tests/bench"]
 }

@@ -1,7 +1,7 @@
 // Conversation file format tests (agent/transcript.ts): pure, without GUI.
 
 import { chatFileName, parseChat, serializeChat, titleFrom, type SavedChat } from '../../src/agent/transcript.js';
-import { section, test, eq, ok, contains } from '../framework.js';
+import { section, test, eq, ok, contains } from '../core/framework.js';
 
 export function transcriptTests(): void {
     section('Conversation file');

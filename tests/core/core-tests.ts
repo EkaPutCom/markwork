@@ -1,0 +1,146 @@
+// The tests of the core (markdown/, agent/, forge/, the base modules, the orchestrator, the daemon client) and of the
+// application layer's pure parts. They reach the runtime only through the platform port and the test host; Node runs them
+// (run-core-node.ts). The Electron window has its own tests (tests/electron-*.mjs).
+
+import { inlineTests } from '../unit/inline.js';
+import { inlineHtmlTests } from '../unit/inlinehtml.js';
+import { highlightTests } from '../unit/highlight.js';
+import { appSessionTests } from '../unit/appsession.js';
+import { protocolTests } from '../unit/protocol.js';
+import { noteEditTests } from '../unit/noteedit.js';
+import { assistantTests } from '../unit/assistant.js';
+import { historyControllerTests } from '../unit/history.js';
+import { discardTests } from '../unit/discard.js';
+import { appSettingsTests } from '../unit/appsettings.js';
+import { wikiLinkTests } from '../unit/wikilink.js';
+import { searchFilterTests, searchTests } from '../unit/search.js';
+import { kanbanModelTests } from '../unit/kanban.js';
+import { inboxModelTests } from '../unit/inbox.js';
+import { fieldsModelTests } from '../unit/fields.js';
+import { layoutTests } from '../unit/layout.js';
+import { tableLayoutTests } from '../unit/tablelayout.js';
+import { editCommandTests } from '../unit/editcommands.js';
+import { sampleDocumentTests } from '../unit/samples.js';
+import { layoutsModelTests } from '../unit/layouts.js';
+import { homeModelTests } from '../unit/home.js';
+import { journalModelTests } from '../unit/journal.js';
+import { htmlTests } from '../unit/html.js';
+import { htmlViewTests } from '../unit/htmlview.js';
+import { csvTests } from '../unit/csv.js';
+import { pageTabTests } from '../unit/pagetabs.js';
+import { dbmlTests } from '../unit/dbml.js';
+import { gitLogTests } from '../unit/gitlog.js';
+import { fileWriteTests } from '../unit/files.js';
+import { fileOpsTests } from '../unit/fileops.js';
+import { filesControllerTests } from '../unit/filescontroller.js';
+import { searchControllerTests } from '../unit/searchcontroller.js';
+import { outlineTests } from '../unit/outline.js';
+import { preferencesTests } from '../unit/preferences.js';
+import { workspaceTests } from '../unit/workspace.js';
+import { chatControllerTests } from '../unit/chatcontroller.js';
+import { agentTests, apiKeyTests, toolTests } from '../unit/agent.js';
+import { transcriptTests } from '../unit/transcript.js';
+import { agenticTests } from '../unit/agentic.js';
+import { agentActionTests } from '../unit/agentactions.js';
+import { noteToolTests } from '../unit/notetools.js';
+import { workTests } from '../unit/work.js';
+import { traceTests } from '../unit/trace.js';
+import { changeTests } from '../unit/changes.js';
+import { deepseekTests } from '../unit/deepseek.js';
+import { forgeTests } from '../unit/forge.js';
+import { platformTests } from '../unit/platform.js';
+import { noteDiffTests } from '../unit/notediff.js';
+import { contributeTests } from '../unit/contribute.js';
+import { publishTests } from '../unit/publish.js';
+import { resolveTests } from '../unit/resolve.js';
+import { conflictTests } from '../unit/conflicts.js';
+import { clickTests } from '../unit/clicks.js';
+import { tableTests } from '../unit/table.js';
+import { commitMessageTests } from '../unit/commitmessage.js';
+import { harnessTests } from '../unit/harness.js';
+import { worktreeTests } from '../unit/worktree.js';
+import { daemonClientTests } from '../unit/daemon.js';
+import { daemonLiveTests, daemonSshTests } from '../unit/daemon-live.js';
+import { daemonAppTests } from '../unit/daemonapp.js';
+
+export type CoreFocus = 'all' | 'worktrees' | 'daemon';
+
+// Runs the tests one module after another; a module whose tests wait is awaited before the next starts.
+export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
+    if (focus === 'worktrees') {
+        harnessTests();
+        await worktreeTests();
+        return;
+    }
+    if (focus === 'daemon') {
+        await daemonClientTests();
+        await daemonAppTests();
+        await daemonLiveTests();
+        await daemonSshTests();
+        return;
+    }
+    inlineTests();
+    inlineHtmlTests();
+    highlightTests();
+    wikiLinkTests();
+    searchTests();
+    searchFilterTests();
+    kanbanModelTests();
+    inboxModelTests();
+    fieldsModelTests();
+    layoutTests();
+    tableTests();
+    tableLayoutTests();
+    clickTests();
+    editCommandTests();
+    layoutsModelTests();
+    sampleDocumentTests();
+    homeModelTests();
+    journalModelTests();
+    htmlTests();
+    htmlViewTests();
+    csvTests();
+    pageTabTests();
+    dbmlTests();
+    gitLogTests();
+    await fileWriteTests();
+    fileOpsTests();
+    await filesControllerTests();
+    await searchControllerTests();
+    await outlineTests();
+    await preferencesTests();
+    await workspaceTests();
+    await chatControllerTests();
+    await agentTests();
+    await apiKeyTests();
+    toolTests();
+    transcriptTests();
+    await workTests();
+    await traceTests();
+    await agenticTests();
+    noteToolTests();
+    await agentActionTests();
+    await changeTests();
+    await deepseekTests();
+    await forgeTests();
+    await platformTests();
+    await appSessionTests();
+    await protocolTests();
+    await noteEditTests();
+    await assistantTests();
+    await historyControllerTests();
+    await discardTests();
+    appSettingsTests();
+    noteDiffTests();
+    await contributeTests();
+    await publishTests();
+    await resolveTests();
+    conflictTests();
+    await commitMessageTests();
+    harnessTests();
+    await worktreeTests();
+    await daemonClientTests();
+    await daemonAppTests();
+    await daemonLiveTests();
+    await daemonSshTests();
+}

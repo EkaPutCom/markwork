@@ -4,7 +4,7 @@ import { verifyWork } from '../../src/agent/verification.js';
 import { planBatch, applyBatch } from '../../src/agent/batch.js';
 import { parseWork, workText } from '../../src/agent/work.js';
 import { parseChat, serializeChat } from '../../src/agent/transcript.js';
-import { section, test, eq, ok, contains, within } from '../framework.js';
+import { section, test, eq, ok, contains, within } from '../core/framework.js';
 
 export async function workTests(): Promise<void> {
     section('Agent: saved work');

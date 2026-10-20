@@ -1,6 +1,6 @@
 // Tests for search and replace across documents.
 
-import { section, test, eq, ok } from '../framework.js';
+import { section, test, eq, ok } from '../core/framework.js';
 import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, type SearchOptions } from '../../src/markdown/search.js';
 
 const plain: SearchOptions = { caseSensitive: false, wholeWord: false, regex: false };

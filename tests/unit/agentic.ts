@@ -8,8 +8,8 @@ import type { ToolCall, Provider, ChatResult } from '../../src/agent/provider.js
 import type { SourceFile } from '../../src/agent/context.js';
 import type { Change } from '../../src/agent/changes.js';
 import { platform } from '../../src/platform/index.js';
-import { section, test, eq, ok, contains, within, disk } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, contains, within, disk } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 const call = (name: string, args: unknown): ToolCall => ({ id: name, name, arguments: JSON.stringify(args) });
 const result = (toolCalls: ToolCall[] = []): ChatResult => ({ usage: null, cancelled: false, toolCalls, reasoning: '' });

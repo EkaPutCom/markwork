@@ -1,11 +1,11 @@
 // The Assistant and the journal (chat, context, journal) run against the Electron window with
-// Playwright: the real main process, core, and renderer, with a scripted model (tests/electron-model.mjs) in place of the
+// Playwright: the real main process, core, and renderer, with a scripted model (tests/electron/model.mjs) in place of the
 // network. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { testModule, scratchFolder, launchApp, waitFor, stepper } from './electron-support.mjs';
+import { testModule, scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('assistant');
 const read = name => readFileSync(join(notes, name), 'utf8');
@@ -16,7 +16,7 @@ writeFileSync(join(notes, 'other.md'), '# Other\n\nSecond note\n');
 
 const { steps, step } = stepper();
 
-const app = await launchApp({ scratch, notes, env: { DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('electron-model.mjs') } });
+const app = await launchApp({ scratch, notes, env: { DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('model.mjs') } });
 let failed = false;
 let page;
 try {

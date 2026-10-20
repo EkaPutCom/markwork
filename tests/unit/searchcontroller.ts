@@ -3,7 +3,7 @@
 
 import { AppSession } from '../../src/app/session.js';
 import type { SearchQuery, SearchResults, SearchView } from '../../src/app/search.js';
-import { section, test, eq, ok, tmp, disk, untilText } from '../framework.js';
+import { section, test, eq, ok, tmp, disk, untilText } from '../core/framework.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
 
 const QUERY: SearchQuery = { text: '', caseSensitive: false, wholeWord: false, regex: false, include: '', exclude: '' };

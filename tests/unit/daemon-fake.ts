@@ -3,7 +3,7 @@
 
 import type { Link, Timers } from '../../src/agent/daemon/client.js';
 import type { DaemonRecord, ExitInfo, RecordKind, RunState, SpawnSpec } from '../../src/agent/daemon/protocol.js';
-import { within } from '../framework.js';
+import { within } from '../core/framework.js';
 
 // Both ends of a connection. Delivery is synchronous, like a read loop that handles several lines in one go.
 class MemoryLink implements Link {

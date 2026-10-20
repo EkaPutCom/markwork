@@ -11,7 +11,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFi
 import { join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import gifenc from 'gifenc';
-import { repo, scratchFolder, launchApp } from '../tests/electron-support.mjs';
+import { repo, scratchFolder, launchApp } from '../tests/electron/support.mjs';
 import { LAUNCH, RESEARCH, SCHEDULE } from './capture/forge.mjs';
 
 const { GIFEncoder, applyPalette, quantize } = gifenc;   // a CommonJS package

@@ -2,7 +2,7 @@
 
 import { fileDiff, isBinaryDiff } from '../../src/forge/diff.js';
 import { countChanges, diffNote, MAX_DIFF_LINES } from '../../src/markdown/notediff.js';
-import { section, test, eq, ok } from '../framework.js';
+import { section, test, eq, ok } from '../core/framework.js';
 
 const DIFF = `diff --git a/agenda/rapat.md b/agenda/rapat.md
 index 111..222 100644

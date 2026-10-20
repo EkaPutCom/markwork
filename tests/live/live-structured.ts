@@ -2,19 +2,19 @@
 // real model. Each scenario writes fixtures into a temporary folder, lets the model work, approves every proposal like
 // the Apply button would, and then checks the files. Part of npm run test:live with --structured (or --structured-only).
 
-import type { Change } from '../src/agent/changes.js';
-import type { Provider } from '../src/agent/provider.js';
-import { applyBatch } from '../src/agent/batch.js';
-import { structuredIssues } from '../src/agent/notes.js';
-import { ChatSession } from '../src/agent/session.js';
-import { fileExists, readTextFile, writeTextFile } from '../src/files.js';
-import { parseSchema, readItem } from '../src/markdown/fields.js';
-import { layoutOf } from '../src/markdown/layout.js';
-import { WorkspaceRepository } from '../src/workspace.js';
-import { DIM, GREEN, RED, RESET, errorMessage } from './framework.js';
-import { disk, say } from './framework.js';
-import { host } from './host.js';
-import { platform } from '../src/platform/index.js';
+import type { Change } from '../../src/agent/changes.js';
+import type { Provider } from '../../src/agent/provider.js';
+import { applyBatch } from '../../src/agent/batch.js';
+import { structuredIssues } from '../../src/agent/notes.js';
+import { ChatSession } from '../../src/agent/session.js';
+import { fileExists, readTextFile, writeTextFile } from '../../src/files.js';
+import { parseSchema, readItem } from '../../src/markdown/fields.js';
+import { layoutOf } from '../../src/markdown/layout.js';
+import { WorkspaceRepository } from '../../src/workspace.js';
+import { DIM, GREEN, RED, RESET, errorMessage } from '../core/framework.js';
+import { disk, say } from '../core/framework.js';
+import { host } from '../core/host.js';
+import { platform } from '../../src/platform/index.js';
 
 const TASKS = `---
 layout: table

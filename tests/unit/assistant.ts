@@ -7,7 +7,7 @@ import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } fr
 import type { KeyStore } from '../../src/agent/apikey.js';
 import type { TraceUpdate } from '../../src/agent/tracefeed.js';
 import type { ChatResult, Provider } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within, until, untilText, tmp, disk } from '../framework.js';
+import { section, test, eq, ok, contains, within, until, untilText, tmp, disk } from '../core/framework.js';
 import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };

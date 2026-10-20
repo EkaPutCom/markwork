@@ -98,13 +98,13 @@ markwork/
 ├── markworkd/               Go module, standard library only. A supervisor daemon.
 ├── tests/
 │   ├── unit/                the core's tests (65 files, one per module)
-│   ├── electron-*.mjs       the app driven by Playwright (13 files)
-│   ├── core-tests.ts, run-core-node.ts
-│   └── live*.ts, bench*.ts  live tests and benchmarks (not in npm test)
+│   ├── electron/            the app driven by Playwright (13 files)
+│   ├── core/                core-tests.ts, run-core-node.ts, the framework and test host
+│   ├── live/                live tests against real services (not in npm test)
+│   └── bench/               benchmarks and their baseline
 ├── scripts/                 electron-build.mjs, layers.mjs (architecture guard), capture.mjs (docs screenshots)
 ├── resources/, electron-builder.yml   the app icon and packaging (AppImage, deb, dmg, NSIS)
 ├── docs/                    user docs (docs/docs/*.html), design docs, learn-*.html, this file
-├── bench/                   performance baselines
 └── po/                      translations
 ```
 
@@ -465,7 +465,7 @@ Facts to keep in mind:
 - Markwork **writes to a project folder only when the user confirms a merge.**
 - Git is always a `GitRunner` parameter: `runGit` locally, `daemonGit()` through markworkd on another machine. Keep it a parameter so the same code runs on both.
 - A run has statuses; `waiting` means the agent asked the user something and still holds its folder's queue slot.
-- The pure parts (prompt, `PiReader`, `RunQueue`) are in `agent/harness.ts` and have unit tests; the app test (`tests/electron-harness.mjs`) uses a fake agent.
+- The pure parts (prompt, `PiReader`, `RunQueue`) are in `agent/harness.ts` and have unit tests; the app test (`tests/electron/harness.mjs`) uses a fake agent.
 
 ---
 
@@ -537,7 +537,7 @@ flowchart LR
 | `npm run test:core:node` | the core's tests on Node, no display |
 | `npm run test:electron` | the app driven by Playwright under Xvfb |
 | `npm test` | both |
-| `npm run bench:compare` | the Markdown module's performance vs `bench/baseline.json` |
+| `npm run bench:compare` | the Markdown module's performance vs `tests/bench/baseline.json` |
 | `npm run docs` | retake the screenshots in `docs/assets/` |
 | `cd markworkd && go vet ./... && go test -race ./...` | the daemon |
 
@@ -545,9 +545,9 @@ The test pyramid:
 
 ```mermaid
 flowchart TB
-    el["tests/electron-*.mjs (13 files)<br/>the real app, Playwright, fakes for the model, forge, and agent"]
+    el["tests/electron/*.mjs (13 files)<br/>the real app, Playwright, fakes for the model, forge, and agent"]
     proto["tests/unit/protocol.ts<br/>ProtocolServer with a scripted frontend"]
-    core["tests/core-tests.ts (65 files)<br/>on Node, only via platform() and host()"]
+    core["tests/core/core-tests.ts (65 files)<br/>on Node, only via platform() and host()"]
     go["markworkd/ go test -race<br/>real processes + fake agent"]
     el --- proto --- core
     core --- go
@@ -555,7 +555,7 @@ flowchart TB
 
 Conventions that save time:
 
-- The Electron tests run the built app, so **rebuild** (`npm run electron:build`) before running one file with `node tests/electron-<name>.mjs`.
+- The Electron tests run the built app, so **rebuild** (`npm run electron:build`) before running one file with `node tests/electron/<name>.mjs`.
 - A test log must be **clean**, not just "0 failed" (see AGENT.md).
 - Tests use in-memory settings or their own settings folder, and temporary folders; never the user's.
 - Tests wait for what they expect, not a fixed time.
@@ -569,7 +569,7 @@ Conventions that save time:
 flowchart TD
     q{"What are you changing?"}
     q -->|"a Markdown syntax / format rule"| r1["src/markdown/<br/>+ tests/unit/<br/>+ example in tests/samples/all-formats.md"]
-    q -->|"how the editor looks while typing"| r2["electron/renderer/lib/editor.ts (+ markdown/highlight.ts for the parse)<br/>+ tests/electron-editor.mjs"]
+    q -->|"how the editor looks while typing"| r2["electron/renderer/lib/editor.ts (+ markdown/highlight.ts for the parse)<br/>+ tests/electron/editor.mjs"]
     q -->|"a new thing the user can do"| r3["a command in app/commands.ts<br/>+ a CommandHost method"]
     q -->|"behaviour of a feature"| r4["a controller in src/app/<br/>+ host interface + test in tests/unit/"]
     q -->|"what the window shows"| r5["a notice in app/protocol/ + a component in electron/renderer/<br/>+ tests/unit/protocol.ts + an Electron test"]
@@ -585,7 +585,7 @@ Worked example: **"Add a command that archives the done cards"**
 2. A `CommandHost` method (e.g. `archiveDone()`) in `app/commands.ts`, with the command entry (id, label via `_()`, default keys, scope).
 3. Implement it in `ViewController` (`app/views.ts`) using `currentBoard()` and `commitBoard()`, so it is one undo step.
 4. The window needs nothing: it takes the command from the table and the core tells it when it applies.
-5. A step in `tests/electron-structured.mjs`, the docs page (`docs/docs/kanban.html`), and the README shortcut table.
+5. A step in `tests/electron/structured.mjs`, the docs page (`docs/docs/kanban.html`), and the README shortcut table.
 
 Also required by AGENT.md when relevant: the matching `docs/learn-*.html` page, `po/POTFILES.in` for new translatable text, and one `type(module): description` commit per logical change.
 

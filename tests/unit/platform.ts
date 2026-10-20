@@ -6,8 +6,8 @@ import { clearCredential, readCredential, saveCredential, type Credential } from
 import { Cancellable } from '../../src/cancel.js';
 import { base64 } from '../../src/forge/contribute.js';
 import { platform, setPlatform, type Platform } from '../../src/platform/index.js';
-import { section, test, eq, ok, within, tmp } from '../framework.js';
-import { host } from '../host.js';
+import { section, test, eq, ok, within, tmp } from '../core/framework.js';
+import { host } from '../core/host.js';
 
 const CREDENTIAL: Credential = { envVar: 'TEST_KEY', schema: 'com.example.test', attributes: { provider: 'x' }, label: 'Test key', file: 'test.key' };
 
