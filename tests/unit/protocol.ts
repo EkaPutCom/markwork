@@ -1417,8 +1417,9 @@ export async function protocolTests(): Promise<void> {
         ok(!disk.exists(disk.join(repo, 'notes.md')), 'nothing merged on a no');
         merge = true;
         await ui.client.request('act.review.finish', { action: 'merge' });
-        await until(() => disk.exists(disk.join(repo, 'notes.md')), 8000);
-        eq(disk.read(disk.join(repo, 'notes.md')), '# Notes\n\nA line\n');
+        // git creates the file before it writes it: wait for the text, not only the file.
+        const merged = disk.join(repo, 'notes.md');
+        await until(() => disk.exists(merged) && disk.read(merged) === '# Notes\n\nA line\n', 8000);
         await until(() => ui.log.some(l => l.ev === 'doc.active') && !cardNow().includes('[branch::'), 8000);
         server.dispose();
     });
