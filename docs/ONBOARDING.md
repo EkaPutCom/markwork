@@ -307,7 +307,7 @@ A parser **never rejects or rewrites text it does not understand**. That is what
 
 ### 8.2 The editor: CodeMirror with Markwork's parser
 
-`electron/renderer/editor.ts` is CodeMirror 6. Markwork's own parser does the styling, so the editor shows exactly what the HTML export and the core understand:
+`electron/renderer/lib/editor.ts` is CodeMirror 6. Markwork's own parser does the styling, so the editor shows exactly what the HTML export and the core understand:
 
 | Piece | Concern |
 | --- | --- |
@@ -555,7 +555,7 @@ flowchart TB
 
 Conventions that save time:
 
-- The Electron tests run the built app, so **rebuild** (`npm run electron:build`) before running one file with `node tests/electron-<name>.mjs`.
+- The Electron tests run the built app, so **rebuild** (`npm run electron:build`) before running one file with `node tests/electron/<name>.mjs`.
 - A test log must be **clean**, not just "0 failed" (see AGENT.md).
 - Tests use in-memory settings or their own settings folder, and temporary folders; never the user's.
 - Tests wait for what they expect, not a fixed time.
@@ -569,13 +569,13 @@ Conventions that save time:
 flowchart TD
     q{"What are you changing?"}
     q -->|"a Markdown syntax / format rule"| r1["src/markdown/<br/>+ tests/unit/<br/>+ example in tests/samples/all-formats.md"]
-    q -->|"how the editor looks while typing"| r2["electron/renderer/editor.ts (+ markdown/highlight.ts for the parse)<br/>+ tests/electron/editor.mjs"]
+    q -->|"how the editor looks while typing"| r2["electron/renderer/lib/editor.ts (+ markdown/highlight.ts for the parse)<br/>+ tests/electron/editor.mjs"]
     q -->|"a new thing the user can do"| r3["a command in app/commands.ts<br/>+ a CommandHost method"]
     q -->|"behaviour of a feature"| r4["a controller in src/app/<br/>+ host interface + test in tests/unit/"]
     q -->|"what the window shows"| r5["a notice in app/protocol/ + a component in electron/renderer/<br/>+ tests/unit/protocol.ts + an Electron test"]
     q -->|"the assistant can READ more"| r6["agent/tools.ts<br/>register in TOOLS + runTool() + describeCall()"]
     q -->|"the assistant can WRITE more"| r7["agent/changes.ts CHANGE_TOOLS<br/>pure Change + approval + applyChange re-check<br/>tests/unit/changes.ts + tests/unit/assistant.ts"]
-    q -->|"a preference"| r8["src/settingskeys.ts + AppSettings<br/>+ the Preferences dialog (renderer/Modals.tsx)"]
+    q -->|"a preference"| r8["src/settingskeys.ts + AppSettings<br/>+ the Preferences dialog (renderer/components/Modals.tsx)"]
     q -->|"needs the OS (file, process, HTTP)"| r9["add it to platform/index.ts<br/>implement in platform/node/ + a test"]
 ```
 
@@ -635,7 +635,7 @@ The complete list, with reasons, is "Known pitfalls" in [AGENT.md](../AGENT.md).
 3. [`src/platform/index.ts`](../src/platform/index.ts): the port.
 4. [`src/app/session.ts`](../src/app/session.ts): how the controllers are wired; then one small controller (`app/autosave.ts`).
 5. [`src/markdown/kanban.ts`](../src/markdown/kanban.ts) and its test `tests/unit/kanban.ts`: the pure-model style.
-6. [`docs/design/protocol.md`](design/protocol.md), then [`src/app/protocol/server.ts`](../src/app/protocol/server.ts) and [`electron/renderer/client.ts`](../electron/renderer/client.ts): both ends of the wire.
+6. [`docs/design/protocol.md`](design/protocol.md), then [`src/app/protocol/server.ts`](../src/app/protocol/server.ts) and [`electron/renderer/lib/client.ts`](../electron/renderer/lib/client.ts): both ends of the wire.
 7. [`src/agent/session.ts`](../src/agent/session.ts) and [`src/agent/changes.ts`](../src/agent/changes.ts): the Assistant loop and the approval boundary.
 8. [`docs/design/markworkd.md`](design/markworkd.md) when you touch agents on other machines.
 9. Run `npm test`, then make a tiny change in `markdown/` with its test, to feel the loop.

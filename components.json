@@ -5,14 +5,14 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "electron/renderer/globals.css",
+    "css": "electron/renderer/styles/globals.css",
     "baseColor": "zinc",
     "cssVariables": true,
     "prefix": ""
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@/",
+    "components": "@/components",
     "ui": "@/ui",
     "utils": "@/lib/utils",
     "lib": "@/lib",

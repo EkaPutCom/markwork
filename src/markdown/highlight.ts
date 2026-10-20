@@ -1,5 +1,5 @@
 // The Markdown syntax of a document as data: what each line is styled as and what may be hidden, for every editor
-// (the Electron window's CodeMirror, electron/renderer/editor.ts). Parses only the edited range, until the
+// (the Electron window's CodeMirror, electron/renderer/lib/editor.ts). Parses only the edited range, until the
 // block boundary is stable again, and reuses the rest of the last parse. It collects:
 //
 //   markers   ranges of syntax that may be hidden, together with the lines where
@@ -340,7 +340,7 @@ class LineParser<T> {
         for (const img of images) {
             this.images.push({ line, url: img.url, alt: img.alt });
             // On an inactive line, the whole ![alt](url) is hidden
-            // and only the image is visible (see electron/renderer/images.ts).
+            // and only the image is visible (see electron/renderer/lib/images.ts).
             this.hide(base + img.start, base + img.end, line, line);
         }
     }
