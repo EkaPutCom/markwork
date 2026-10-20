@@ -16,6 +16,14 @@ mkdirSync(notes);
 writeFileSync(join(notes, 'plan.md'), '# Plan\n');
 const KEY = 'sk-test-vault-key-123';
 
+// On a macOS CI runner the login Keychain waits for a permission no one can give, so safeStorage never answers.
+if (process.platform === 'darwin' && process.env.CI) {
+    console.log('Electron secrets\n  – skipped: the Keychain of a macOS CI runner cannot be unlocked');
+    process.exit(0);
+}
+// Whatever else blocks, the run ends with a failure instead of holding the job.
+setTimeout(() => { console.log('Electron secrets\n  ✗ did not finish in 2 minutes'); process.exit(1); }, 120000).unref();
+
 const steps = [];
 async function step(name, run) {
     try {

@@ -239,7 +239,7 @@ try {
         assert.ok(existsSync(join(notes, 'renamed.md')) && !existsSync(join(notes, 'fresh.md')));
         // Drag it onto the folder.
         await row(/renamed\.md/).dragTo(row(/^projects$/));
-        await waitFor(() => existsSync(join(notes, 'projects', 'renamed.md')));
+        await waitFor(() => existsSync(join(notes, 'projects', 'renamed.md')), 15000);
         await row(/renamed\.md/).waitFor();
         // Delete goes to the Trash after the question.
         await row(/renamed\.md/).click({ button: 'right' });
@@ -249,7 +249,8 @@ try {
         await row(/renamed\.md/).focus();
         await page.keyboard.press('Delete');
         await dialog.getByRole('button', { name: 'Move to Trash' }).click();
-        await waitFor(() => !existsSync(join(notes, 'projects', 'renamed.md')));
+        // The Recycle Bin on Windows goes through a PowerShell that can take seconds to start on a cold runner.
+        await waitFor(() => !existsSync(join(notes, 'projects', 'renamed.md')), 20000);
         await row(/renamed\.md/).waitFor({ state: 'detached' });
         // A refusal is told, not swallowed.
         await page.locator('.tree').click({ button: 'right', position: { x: 100, y: 400 } });
