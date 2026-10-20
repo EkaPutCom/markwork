@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Markwork command palette, shadcn</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#18181b}a:hover{color:#52525b}
+button{font:inherit;cursor:pointer}
+input{font:inherit}
+</style>
+</helmet>
+<div style="position: relative; width: 100%; height: 800px; overflow: hidden; font-family: Geist, system-ui, sans-serif; font-size: 14px; color: #09090b;">
+  <dc-import name="Main" hint-size="100%,800px"></dc-import>
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0,0,0,0.5);"></div>
+
+  <div role="dialog" aria-modal="true" aria-label="Command palette" style="position: absolute; top: 120px; left: 50%; transform: translateX(-50%); width: 560px; max-width: calc(100% - 32px); background: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,0.24); overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; border-bottom: 1px solid #e4e4e7;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <label for="cmd" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Command</label>
+      <input id="cmd" type="text" value="lau" placeholder="Type a command or search…" style="flex: 1; border: 0; outline: none; background: transparent; font-size: 14px; color: #09090b;">
+      <kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #52525b; background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 4px; padding: 0 5px; line-height: 18px;">Esc</kbd>
+    </div>
+
+    <div role="listbox" aria-label="Results" style="padding: 6px; display: flex; flex-direction: column;">
+      <div style="padding: 6px 8px; font-size: 12px; font-weight: 500; color: #71717a;">Files</div>
+      <div role="option" aria-selected="true" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border-radius: 6px; background: #f4f4f5;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+        <span style="flex: 1;"><strong>lau</strong>nch.md</span>
+        <span style="font-size: 12px; color: #52525b;">plans</span>
+      </div>
+      <div role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border-radius: 6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+        <span style="flex: 1;"><strong>lau</strong>nch-plan.md</span>
+        <span style="font-size: 12px; color: #71717a;">root</span>
+      </div>
+
+      <div role="separator" style="height: 1px; background: #e4e4e7; margin: 6px -6px;"></div>
+      <div style="padding: 6px 8px; font-size: 12px; font-weight: 500; color: #71717a;">Commands</div>
+      <div role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border-radius: 6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <span style="flex: 1;">New note</span>
+        <kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #52525b; letter-spacing: 0.1em;">⌘N</kbd>
+      </div>
+      <div role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border-radius: 6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <span style="flex: 1;">Open today's journal</span>
+        <kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #52525b; letter-spacing: 0.1em;">⌘D</kbd>
+      </div>
+      <div role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border-radius: 6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+        <span style="flex: 1;">Ask the Assistant about “lau”</span>
+        <kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #52525b; letter-spacing: 0.1em;">⌘J</kbd>
+      </div>
+
+      <div role="separator" style="height: 1px; background: #e4e4e7; margin: 6px -6px;"></div>
+      <div style="padding: 6px 8px; font-size: 12px; font-weight: 500; color: #71717a;">Layout</div>
+      <div role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border-radius: 6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg>
+        <span style="flex: 1;">Show as Board</span>
+      </div>
+      <div role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border-radius: 6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+        <span style="flex: 1;">Show as Calendar</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 16px; height: 36px; padding: 0 14px; border-top: 1px solid #e4e4e7; background: #fafafa; font-size: 12px; color: #71717a;">
+      <span>↑↓ to move</span><span>↵ to open</span><span style="flex: 1;"></span><span>&gt; for commands only</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

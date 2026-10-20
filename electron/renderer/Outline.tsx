@@ -7,7 +7,7 @@ export function Outline() {
     const { outline } = useStore();
     return (
         <aside className="sidebar" aria-label="Outline">
-            <div className="side-title">OUTLINE</div>
+            <div className="side-title">Outline</div>
             {outline.length === 0 ? (
                 <div className="placeholder"><p>No headings</p></div>
             ) : (

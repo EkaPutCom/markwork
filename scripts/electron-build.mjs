@@ -2,7 +2,9 @@
 // ESM), and the renderer as one script next to its static files.
 import { build } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -21,7 +23,9 @@ await node('electron/core.ts', 'es', 'core.js', [/^node:/]);
 await node('electron/preload.ts', 'cjs', 'preload.cjs', ['electron']);
 await build({
     ...common,
-    plugins: [react()],
+    // Tailwind for the shadcn/ui components; `@/` is the renderer's folder, as components.json names it.
+    plugins: [react(), tailwindcss()],
+    resolve: { alias: { '@': fileURLToPath(new URL('../electron/renderer', import.meta.url)) } },
     define: { 'process.env.NODE_ENV': '"production"', __APP_VERSION__: JSON.stringify(JSON.parse(await readFile('package.json', 'utf8')).version) },
     build: {
         outDir: 'dist-electron/renderer', emptyOutDir: true, target: 'chrome130', minify: false, cssCodeSplit: false,

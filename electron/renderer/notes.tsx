@@ -10,7 +10,7 @@ import { fieldInputText, nearestOption, OPTION_COLORS, OPTION_TEXT, parseValue, 
 import { CREATED_FIELD, itemMeta } from '../../src/markdown/inbox.js';
 import { inlineRuns } from '../../src/markdown/inlineruns.js';
 import type { CardForm, CardRef } from '../../src/markdown/noteedit.js';
-import { Icon } from './Icons.js';
+import { Icon, type IconName } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useClient } from './useClient.js';
 
@@ -58,10 +58,11 @@ export function Inline({ text }: { text: string }) {
     );
 }
 
-export function Chip({ text, className, title, onClick }: { text: string; className?: string; title?: string; onClick?: (e: React.MouseEvent) => void }) {
+export function Chip({ text, icon, className, title, onClick }: { text: string; icon?: IconName; className?: string; title?: string; onClick?: (e: React.MouseEvent) => void }) {
+    const content = <>{icon && <Icon name={icon} size={12} />}{text}</>;
     return onClick
-        ? <button type="button" className={`chip ${className ?? ''}`} title={title} onClick={e => { e.stopPropagation(); onClick(e); }}>{text}</button>
-        : <span className={`chip ${className ?? ''}`} title={title}>{text}</span>;
+        ? <button type="button" className={`chip ${className ?? ''}`} title={title} onClick={e => { e.stopPropagation(); onClick(e); }}>{content}</button>
+        : <span className={`chip ${className ?? ''}`} title={title}>{content}</span>;
 }
 
 // The chip of a field: a select in the color of its option, a value that does not fit marked invalid. A click changes it.

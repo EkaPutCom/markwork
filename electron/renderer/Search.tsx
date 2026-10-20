@@ -35,7 +35,7 @@ export function Search() {
     return (
         <aside className="sidebar search" aria-label="Search">
             <div className="side-head">
-                <div className="side-title">SEARCH</div>
+                <div className="side-title">Search</div>
                 <button className="button flat" title="Search again" aria-label="Search again" onClick={() => client.setSearchForm({ form: { ...form, text } })}><Icon name="view-refresh" /></button>
             </div>
             <div className="search-form">

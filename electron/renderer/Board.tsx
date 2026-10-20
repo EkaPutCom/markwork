@@ -19,13 +19,12 @@ function dropAt(list: HTMLElement, y: number): number {
 }
 
 // The badge of an assigned card: what its run is doing.
-const RUN_ICON: Record<string, string> = { queued: '◌', working: '●', waiting: '⏸', done: '✓', failed: '✕', stopped: '■' };
 const RUN_LABEL: Record<string, string> = { queued: 'queued', working: 'working', waiting: 'waiting for an answer', done: 'done', failed: 'failed', stopped: 'stopped' };
 
 function AgentChip({ agent, status }: { agent: string; status: string | null }) {
     const title = status === 'waiting' ? `${agent} is waiting for your answer: right click the card → Answer ${agent}…`
         : status ? `${agent}: ${RUN_LABEL[status] ?? status} (right click the card for the log)` : `Assigned to ${agent}; right click the card → Work on it with ${agent}`;
-    return <Chip text={`${status ? RUN_ICON[status] ?? '●' : '◇'} ${agent}${status ? ` · ${RUN_LABEL[status] ?? status}` : ''}`} className={`agent run-${status ?? 'idle'}`} title={title} />;
+    return <Chip text={`${agent}${status ? ` · ${RUN_LABEL[status] ?? status}` : ''}`} className={`agent run-${status ?? 'idle'}`} title={title} />;
 }
 
 export function Board({ board, groupField, agents, runs }: { board: BoardData; groupField: string | null; agents: boolean; runs: Record<string, string> }) {
@@ -153,8 +152,8 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
                                                     {meta.agent && <AgentChip agent={meta.agent} status={agents ? runs[card.text] ?? null : null} />}
                                                     <FieldChips chips={cardFields(card.text, schema)} onEdit={(key, e) => openField(ref, card.text, key, { x: e.clientX, y: e.clientY })} />
                                                     <Tags tags={meta.tags} />
-                                                    {meta.due && <Chip text={`📅 ${formatDay(meta.due, today)}`} className={`due due-${dueStatus(meta.due, today)}`} title="Due date" onClick={e => openField(ref, card.text, 'due', { x: e.clientX, y: e.clientY })} />}
-                                                    {card.notes.length > 0 && <Chip text="≡" className="notes" title="Has notes" />}
+                                                    {meta.due && <Chip icon="x-office-calendar" text={formatDay(meta.due, today)} className={`due due-${dueStatus(meta.due, today)}`} title="Due date" onClick={e => openField(ref, card.text, 'due', { x: e.clientX, y: e.clientY })} />}
+                                                    {card.notes.length > 0 && <Chip icon="view-list" text="" className="notes" title="Has notes" />}
                                                 </div>
                                                 {links.map(l => {
                                                     const target = `${l.target}${l.heading ? `#${l.heading}` : ''}`;
@@ -167,7 +166,7 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
                             })}
                             {drag?.target?.column === c && drag.target.index >= others && mark}
                         </div>
-                        <button className="add" onClick={() => setAddingCard(c)}>+ Add card</button>
+                        <button className="add" onClick={() => setAddingCard(c)}><Icon name="list-add" />Add card</button>
                     </section>
                 );
             })}
@@ -184,7 +183,7 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
                         <input autoFocus value={drafts.list ?? ''} onChange={e => setDrafts(d => ({ ...d, list: e.target.value }))} placeholder="List name" aria-label="New list name"
                             onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setAdding(null); } }} onBlur={() => { if (!(drafts.list ?? '').trim()) setAdding(null); }} />
                     </form>
-                ) : <button className="add" onClick={() => setAdding('list')}>+ Add list</button>}
+                ) : <button className="add" onClick={() => setAdding('list')}><Icon name="list-add" />Add list</button>}
             </div>
             {menu && <PopupMenu at={menu.at} entries={menu.entries} onClose={closeMenu} />}
             {fieldPopover}

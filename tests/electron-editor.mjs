@@ -195,13 +195,18 @@ try {
     });
 
     // ---------- folder.ts, file.ts (the Files tab) ----------
+    // A right click on the empty part of the Files tree, under its last row: the menu of the folder itself.
+    const rightClickBelowTree = async () => {
+        const box = await page.locator('.tree').boundingBox();
+        await page.locator('.tree').click({ button: 'right', position: { x: 100, y: box.height - 12 } });
+    };
     await step('files: folders open when first shown, New File / Rename / Move work through the menu, keys and drag', async () => {
         await page.getByRole('button', { name: 'Files', exact: true }).waitFor();
         const row = name => page.getByRole('treeitem', { name });
         await row(/^projects$/).click();
         await row(/Meeting Notes\.md/).waitFor();
         // New File from the menu of the tree.
-        await page.locator('.tree').click({ button: 'right', position: { x: 100, y: 400 } });
+        await rightClickBelowTree();
         await page.getByRole('menuitem', { name: 'New File…' }).click();
         const dialog = page.getByRole('alertdialog');
         await dialog.getByRole('textbox').fill('fresh');
@@ -232,7 +237,7 @@ try {
         await waitFor(() => !existsSync(join(notes, 'projects', 'renamed.md')), 20000);
         await row(/renamed\.md/).waitFor({ state: 'detached' });
         // A refusal is told, not swallowed.
-        await page.locator('.tree').click({ button: 'right', position: { x: 100, y: 400 } });
+        await rightClickBelowTree();
         await page.getByRole('menuitem', { name: 'New Folder…' }).click();
         await dialog.getByRole('textbox').fill('projects');
         await dialog.getByRole('button', { name: 'OK' }).click();

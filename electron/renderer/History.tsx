@@ -94,7 +94,7 @@ export function History() {
     return (
         <aside className="sidebar history" aria-label="History">
             <div className="side-head">
-                <div className="side-title">HISTORY</div>
+                <div className="side-title">History</div>
                 <button className="button flat" title="Reload history" aria-label="Reload history" onClick={() => client.refreshHistory()}><Icon name="view-refresh" /></button>
             </div>
             <div className="history-body">

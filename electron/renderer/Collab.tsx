@@ -16,7 +16,7 @@ export function Collab() {
     return (
         <aside className="sidebar collab" aria-label="Pull requests">
             <div className="side-title">
-                <span>{pulls.length ? `PULL REQUESTS (${pulls.length})` : 'PULL REQUESTS'}</span>
+                <span>{pulls.length ? `Pull requests (${pulls.length})` : 'Pull requests'}</span>
                 <span className="actions">
                     <button className="button flat circular" title="Send changes as a pull request" aria-label="Send changes as a pull request" onClick={() => client.sendChanges()}><Icon name="go-up" /></button>
                     <button className="button flat circular" title="Reload pull requests" aria-label="Reload pull requests" onClick={() => client.refreshPulls()}><Icon name="view-refresh" /></button>

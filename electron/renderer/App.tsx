@@ -1,7 +1,7 @@
-// The window: a header bar, a rail of icons with its panel, the editor with its tabs, the
-// counts at the foot, and the command palette over all of it.
+// The window: the sidebar (or its rail), the header of the document, the editor with its tabs, the counts at the foot,
+// the Assistant beside them, and the command palette over all of it. The look is shadcn/ui's (docs/design/shadcn/).
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './EditorArea.js';
@@ -21,76 +21,92 @@ import { AgentAsks, PullRequestDialog } from './Harness.js';
 import { Tabs } from './Tabs.js';
 import { Icon, type IconName } from './Icons.js';
 import { label, matches } from './keys.js';
+import { Rail, SideShell } from './Sidebar.js';
+import { Button } from './ui/button.js';
+import {
+    DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
+} from './ui/dropdown-menu.js';
+import { cn } from './lib/utils.js';
 import { useClient, useStore } from './useClient.js';
 import { layoutOf } from './client.js';
 
-// The title of the header bar: the document's name over where it is. A document's title is the Document Menu button
-// (Save, Save As, Autosave, Export, the recent files); Home and an empty window have a plain title.
-function Title({ menu }: { menu: (onClose: () => void) => ReactNode }) {
+// The title of the header: where the document is, as a breadcrumb, and its name, which is the Document Menu button
+// (Save, Save As, Autosave, Export, the recent files). Home and an empty window have a plain title.
+function Title({ items }: { items: MenuItem[] }) {
     const s = useStore();
-    const [open, setOpen] = useState(false);
     const tab = s.tabs.find(t => t.id === s.active);
-    if (!tab) return <div className="title"><span className="name">Markwork</span></div>;
+    if (!tab) return <nav className="title" aria-label="Breadcrumb"><span className="name">Markwork</span></nav>;
     // Where the document is, as the core words it (~ for the home folder); a page (Home, an HTML file) is not saved.
     const place = tab.place ?? (tab.file ? tab.file.replace(/[\\/][^\\/]*$/, '') : null);
-    const saved = tab.file && tab.page !== 'home' && tab.page !== 'html' && !tab.mirror.modified ? ' · Saved' : '';
-    const words = (
-        <span className="title">
-            <span className="name">{tab.mirror.modified ? '• ' : ''}{tab.name}</span>
-            <span className="subtitle">{place ? `${place}${saved}` : 'Markwork'}</span>
-        </span>
-    );
-    if (tab.page === 'home') return <div className="title-box">{words}</div>;
+    const crumbs = place ? place.split(/[\\/]/).filter(Boolean).slice(-2) : [];
+    const separator = <Icon name="pan-end" size={14} />;
     return (
-        <div className="title-box">
-            <button className="button flat title-button" title="Document Menu" aria-label="Document Menu" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(v => !v)}>
-                {words}<Icon name="pan-down" />
-            </button>
-            {open && menu(() => setOpen(false))}
-        </div>
+        <nav className="title" aria-label="Breadcrumb" title={place ?? undefined}>
+            {crumbs.map((crumb, i) => <span key={i} className="contents">{<span className="crumb">{crumb}</span>}{separator}</span>)}
+            {tab.page === 'home' ? <span className="name">{tab.name}</span> : (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button className="title-button" title="Document Menu" aria-label="Document Menu">
+                            <span className="name">{tab.name}</span><Icon name="pan-down" size={14} />
+                        </button>
+                    </DropdownMenuTrigger>
+                    <MenuContent items={items} align="start" />
+                </DropdownMenu>
+            )}
+        </nav>
     );
+}
+
+// Whether the document has changes not saved yet: a badge with words, not only a dot.
+function SaveState() {
+    const s = useStore();
+    const tab = s.tabs.find(t => t.id === s.active);
+    if (!tab || tab.page === 'home' || tab.page === 'html') return null;
+    if (tab.mirror.modified) return <span className="state"><span className="dot" aria-hidden="true" />Unsaved</span>;
+    if (!tab.file) return null;
+    return <span className="state"><Icon name="emblem-ok" size={12} />Saved</span>;
 }
 
 // One line of a menu: a command (with the argument it runs with), a heading over what follows, or a separator. A line
 // with an icon can be the one chosen (`checked`, the layout shown); a `check` line is an on/off setting with its box.
 interface MenuItem { id: string; label?: string; keys?: string; arg?: string; heading?: boolean; icon?: IconName; checked?: boolean; check?: boolean; enabled?: boolean }
-// A button of the row at the top of the ☰ menu: an icon over its name.
+// A button of the row at the top of the main menu: an icon over its name.
 interface QuickAction { id: string; label: string; icon: IconName }
 
-function Menu({ items, onClose, align, quick, className }: { items: MenuItem[]; onClose: () => void; align?: 'right' | 'center'; quick?: QuickAction[]; className?: string }) {
+// The lines of a menu of the header, in shadcn's DropdownMenu. The focus is not given back to the menu's button when it
+// closes, since the command chosen may have moved it (to the editor, to a dialog).
+function MenuContent({ items, quick, align = 'end', className }: { items: MenuItem[]; quick?: QuickAction[]; align?: 'start' | 'center' | 'end'; className?: string }) {
     const client = useClient();
-    useEffect(() => {
-        const close = (e: Event) => { if (!(e.target as Element).closest('.popover')) onClose(); };
-        const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('mousedown', close);
-        document.addEventListener('keydown', key);
-        return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key); };
-    }, [onClose]);
-    const run = (item: { id: string; arg?: string }) => { onClose(); if (item.id === 'open-folder') void client.openFolder(); else client.run(item.id, item.arg); };
+    const run = (item: { id: string; arg?: string }) => { if (item.id === 'open-folder') void client.openFolder(); else client.run(item.id, item.arg); };
     return (
-        <div className={`popover${align ? ` ${align}` : ''}${className ? ` ${className}` : ''}`} role="menu">
+        <DropdownMenuContent align={align} className={cn('min-w-56', className)} onCloseAutoFocus={e => e.preventDefault()}>
             {quick && (
-                <div className="quick-actions">
+                <div className="mb-1 grid grid-cols-3 gap-1 border-b pb-1">
                     {quick.map(q => {
                         const command = COMMANDS.find(c => c.id === q.id);
                         return (
-                            <button key={q.id} role="menuitem" className="button" title={q.label} disabled={!command || !client.enabled(command)} onClick={() => run(q)}>
+                            <DropdownMenuItem key={q.id} title={q.label} disabled={!command || !client.enabled(command)} onSelect={() => run(q)}
+                                className="h-14 flex-col justify-center gap-1 text-xs">
                                 <Icon name={q.icon} /><span>{q.label}</span>
-                            </button>
+                            </DropdownMenuItem>
                         );
                     })}
                 </div>
             )}
-            {items.map((item, i) => item.id === '-' ? <hr key={i} /> : item.heading ? <div key={item.label} className="menu-heading">{item.label}</div> : item.check !== undefined && item.check !== false ? (
-                <button key={`${item.id}:${item.arg ?? ''}`} role="menuitemcheckbox" aria-checked={item.checked === true} className="check-item" disabled={item.enabled === false} onClick={() => run(item)}>
-                    <span className="box" aria-hidden="true">{item.checked && <Icon name="emblem-ok" size={14} />}</span><span className="label">{item.label}</span>{item.keys && <kbd>{label(item.keys)}</kbd>}
-                </button>
-            ) : (
-                <button key={`${item.id}:${item.arg ?? ''}`} role="menuitem" title={item.arg} className={`${item.icon ? 'icon-item' : ''}${item.checked ? ' checked' : ''}`} disabled={item.enabled === false} onClick={() => run(item)}>
-                    {item.icon && <Icon name={item.icon} />}<span className="label">{item.label}</span>{item.keys && <kbd>{label(item.keys)}</kbd>}
-                </button>
-            ))}
-        </div>
+            {items.map((item, i) => item.id === '-' ? <DropdownMenuSeparator key={i} />
+                : item.heading ? <DropdownMenuLabel key={item.label}>{item.label}</DropdownMenuLabel>
+                : item.check !== undefined && item.check !== false ? (
+                    <DropdownMenuCheckboxItem key={`${item.id}:${item.arg ?? ''}`} checked={item.checked === true} disabled={item.enabled === false}
+                        onSelect={() => run(item)}>
+                        {item.label}{item.keys && <DropdownMenuShortcut>{label(item.keys)}</DropdownMenuShortcut>}
+                    </DropdownMenuCheckboxItem>
+                ) : (
+                    <DropdownMenuItem key={`${item.id}:${item.arg ?? ''}`} title={item.arg} className={item.checked ? 'checked' : undefined} disabled={item.enabled === false}
+                        onSelect={() => run(item)}>
+                        {item.icon && <Icon name={item.icon} />}<span className="flex-1">{item.label}</span>{item.keys && <DropdownMenuShortcut>{label(item.keys)}</DropdownMenuShortcut>}
+                    </DropdownMenuItem>
+                ))}
+        </DropdownMenuContent>
     );
 }
 
@@ -119,9 +135,6 @@ function HeaderBar() {
     const client = useClient();
     const s = useStore();
     const panels = layoutOf(s);
-    const [menu, setMenu] = useState(false);
-    const [main, setMain] = useState(false);
-    const [layoutMenu, setLayoutMenu] = useState(false);
     const tab = s.tabs.find(t => t.id === s.active);
     const keyOf = (id: string) => COMMANDS.find(c => c.id === id)?.keys[0];
     // A command of the table as a menu line, left out when this window cannot carry it out.
@@ -159,60 +172,43 @@ function HeaderBar() {
     ];
     return (
         <header className={`headerbar${panels.compact ? ' compact' : ''}`}>
-            <div className="start">
-                <button className={`button flat${panels.sidebar.shown ? ' checked' : ''}`} title="Toggle Sidebar" aria-label="Toggle Sidebar" aria-pressed={panels.sidebar.shown} onClick={() => client.toggleSidebar()}>
-                    <Icon name="sidebar-show" />
-                </button>
-                <div className="split">
-                    <button className="button flat" title="New Document (Ctrl+N)" onClick={() => client.run('new')}><Icon name="document-new" /><span>New</span></button>
-                    <button className="button flat narrow" aria-label="More ways to create" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(v => !v)}><Icon name="pan-down" /></button>
-                    {menu && <Menu items={items} onClose={() => setMenu(false)} />}
-                </div>
+            <Button variant="ghost" size="icon-sm" title="Toggle Sidebar" aria-label="Toggle Sidebar" aria-pressed={panels.sidebar.shown} onClick={() => client.toggleSidebar()}>
+                <Icon name="sidebar-show" />
+            </Button>
+            <span className="vsep" aria-hidden="true" />
+            <Title items={documentItems} />
+            <SaveState />
+            <span className="spacer" />
+            {tab && s.layout.layout !== null && (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" aria-label="Layout" title="View">
+                            <Icon name={shown.icon} /><span className="label-text">{shown.name}</span><Icon name="pan-down" className="text-muted-foreground" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <MenuContent items={layoutItems} className="layout-menu min-w-52" />
+                </DropdownMenu>
+            )}
+            <div className="split-button">
+                <Button size="sm" title="New Document (Ctrl+N)" onClick={() => client.run('new')}><Icon name="document-new" /><span className="label-text">New</span></Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button size="sm" aria-label="More ways to create"><Icon name="pan-down" /></Button>
+                    </DropdownMenuTrigger>
+                    <MenuContent items={items} />
+                </DropdownMenu>
             </div>
-            <Title menu={close => <Menu items={documentItems} onClose={close} align="center" />} />
-            <div className="end">
-                {tab && s.layout.layout !== null && (
-                    <div className="split">
-                        <button className="button layout-button" aria-label="Layout" title="View" aria-haspopup="menu" aria-expanded={layoutMenu} onClick={() => setLayoutMenu(v => !v)}>
-                            <Icon name={shown.icon} /><span>{shown.name}</span><Icon name="pan-down" />
-                        </button>
-                        {layoutMenu && <Menu items={layoutItems} onClose={() => setLayoutMenu(false)} align="right" className="layout-menu" />}
-                    </div>
-                )}
-                <button className={`button flat${panels.chat.shown ? ' checked' : ''}`} title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={panels.chat.shown}
-                    onClick={() => client.run('chat')}><Icon name="chat-message-new" /></button>
-                <div className="split">
-                    <button className="button flat" title="Main Menu" aria-label="Main Menu" aria-haspopup="menu" aria-expanded={main} onClick={() => setMain(v => !v)}><Icon name="open-menu" /></button>
-                    {main && <Menu items={mainItems} onClose={() => setMain(false)} align="right" quick={QUICK} />}
-                </div>
-            </div>
+            <span className="vsep" aria-hidden="true" />
+            <Button variant="ghost" size="icon-sm" title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={panels.chat.shown} onClick={() => client.run('chat')}>
+                <Icon name="chat-message-new" />
+            </Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" title="Main Menu" aria-label="Main Menu"><Icon name="open-menu" /></Button>
+                </DropdownMenuTrigger>
+                <MenuContent items={mainItems} quick={QUICK} />
+            </DropdownMenu>
         </header>
-    );
-}
-
-// The rail of icons that picks the panel beside it.
-const PAGES: { page: string; label: string; icon: IconName }[] = [
-    { page: 'files', label: 'Files', icon: 'folder' },
-    { page: 'search', label: 'Search', icon: 'search' },
-    { page: 'outline', label: 'Outline', icon: 'outline' },
-    { page: 'history', label: 'History', icon: 'document-open-recent' },
-    { page: 'collab', label: 'Pull requests', icon: 'pull-request' },
-];
-
-function Rail() {
-    const client = useClient();
-    const state = useStore();
-    const sidebar = layoutOf(state).sidebar.shown;
-    const current = state.settings['sidebar-page'] ?? 'files';
-    return (
-        <nav className="rail" aria-label="Sidebar pages">
-            {PAGES.map(({ page, label, icon }) => (
-                <button key={page} className={`button flat${sidebar && current === page ? ' checked' : ''}`} title={label} aria-label={label}
-                    aria-pressed={sidebar && current === page} onClick={() => client.showSidebarPage(page)}>
-                    <Icon name={icon} />
-                </button>
-            ))}
-        </nav>
     );
 }
 
@@ -305,19 +301,27 @@ export function App() {
 
     return (
         <div className="workbench">
-            <HeaderBar />
-            <div className={`main${panels.sidebar.floats ? ' float-sidebar' : ''}${panels.chat.floats ? ' float-chat' : ''}`}>
-                <Rail />
-                {panels.sidebar.shown && (page === 'outline' ? <Outline /> : page === 'search' ? <Search /> : page === 'history' ? <History /> : page === 'collab' ? <Collab /> : <Explorer />)}
-                <div className="editor-group">
-                    <Tabs />
-                    <EditorArea />
-                    <StatusBar />
+            <div className={`shell${panels.sidebar.floats ? ' float-sidebar' : ''}`}>
+                {(!panels.sidebar.shown || panels.sidebar.floats) && <Rail />}
+                {panels.sidebar.shown && (
+                    <SideShell>
+                        {page === 'outline' ? <Outline /> : page === 'search' ? <Search /> : page === 'history' ? <History /> : page === 'collab' ? <Collab /> : <Explorer />}
+                    </SideShell>
+                )}
+                <div className="main">
+                    <HeaderBar />
+                    <div className={`content${panels.chat.floats ? ' float-chat' : ''}`}>
+                        <div className="editor-group">
+                            <Tabs />
+                            <EditorArea />
+                            <StatusBar />
+                        </div>
+                        {panels.chat.shown && <Chat />}
+                        {/* A floating panel closes when the content beside it is clicked; the header stays in reach. */}
+                        {((panels.sidebar.floats && panels.sidebar.shown) || (panels.chat.floats && panels.chat.shown)) &&
+                            <div className="float-backdrop" aria-hidden="true" onMouseDown={() => client.closeFloating()} />}
+                    </div>
                 </div>
-                {panels.chat.shown && <Chat />}
-                {/* A floating panel closes when the content beside it is clicked. */}
-                {((panels.sidebar.floats && panels.sidebar.shown) || (panels.chat.floats && panels.chat.shown)) &&
-                    <div className="float-backdrop" aria-hidden="true" onMouseDown={() => client.closeFloating()} />}
             </div>
             <Notification />
             <Palette />
