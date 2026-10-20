@@ -4,8 +4,8 @@
 import type { Link } from '../../src/agent/daemon/client.js';
 import { isRemoteMachine, isValidMachineName, isValidSshTarget, machineProjectKey } from '../../src/agent/daemon/machines.js';
 import { sshBridgeArgv } from '../../src/agent/daemon/streamlink.js';
-import { DaemonHub, LOCAL_MACHINE, localSocketPath, type Openers } from '../../src/daemonhub.js';
-import { Orchestrator, type AdoptInfo, type HarnessProcess, type SpawnHandlers } from '../../src/orchestrator.js';
+import { DaemonHub, LOCAL_MACHINE, localSocketPath, type Openers } from '../../src/orchestrator/hub.js';
+import { Orchestrator, type AdoptInfo, type HarnessProcess, type SpawnHandlers } from '../../src/orchestrator/index.js';
 import { parseBoard, type Board } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok, contains } from '../core/framework.js';
 import { FakeDaemon, ManualTimers, flush } from './daemon-fake.js';

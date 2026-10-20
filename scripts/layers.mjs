@@ -10,19 +10,17 @@ import { parseAst } from 'rolldown/parseAst';   // the oxc parser that Vite 8 al
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'src');
 
-const BASE = ['settings.ts', 'welcome.ts', 'files.ts', 'fileops.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'activity.ts', 'settingskeys.ts'];
-
 // The core: everything below the application layer. It reaches the runtime only through platform/index.ts, so it runs on
 // Node (platform/node/) and on a fake platform in the tests.
-const isCore = f => /^(markdown|agent|forge)\//.test(f) || BASE.includes(f)
-    || ['orchestrator.ts', 'orchestratordaemon.ts', 'daemonhub.ts', 'platform/index.ts'].includes(f);
+const isBase = f => f.startsWith('base/');
+const isCore = f => /^(markdown|agent|forge|base|orchestrator)\//.test(f) || f === 'platform/index.ts';
 
 // [files the rule applies to, what they may not import, why]. Targets are src-relative paths of local modules, or
 // `node:` specifiers.
 const rules = [
     [f => f.startsWith('markdown/'), t => !t.startsWith('markdown/'), 'markdown/ only holds string → data functions: nothing outside markdown/'],
     [f => f.startsWith('forge/'), t => t.startsWith('agent/'), 'forge/ talks to Git hosting services and knows nothing about the agent'],
-    [f => BASE.includes(f), t => t.startsWith('agent/'), 'base modules do not reach up into the agent'],
+    [isBase, t => t.startsWith('agent/'), 'base modules do not reach up into the agent'],
     [isCore, t => t.startsWith('app/'), 'the core does not know the application layer above it'],
     [f => f.startsWith('app/'), t => !(isCore(t) || t.startsWith('app/')), 'app/ is the application layer the frontend talks to: it imports only the core and app/'],
     [isCore, t => !isCore(t), 'the core imports only the core'],
@@ -69,13 +67,13 @@ for (const file of files.filter(f => (isCore(f) || f.startsWith('app/')) && !f.s
 
 // ---------- What reaches the runtime ----------
 //
-// A module "acts" when it reaches the runtime: it imports platform/index.ts, directly or through other modules (i18n.ts
+// A module "acts" when it reaches the runtime: it imports platform/index.ts, directly or through other modules (base/i18n.ts
 // does not count, it only translates text). The renderer may import such a module only for its types (below).
 const acting = new Map();
 const acts = file => {
     if (!acting.has(file)) {
         acting.set(file, false);   // a cycle does not act by itself
-        acting.set(file, file === 'platform/index.ts' || (valueImports.get(file) ?? []).some(t => t !== 'i18n.ts' && acts(t)));
+        acting.set(file, file === 'platform/index.ts' || (valueImports.get(file) ?? []).some(t => t !== 'base/i18n.ts' && acts(t)));
     }
     return acting.get(file);
 };
@@ -88,7 +86,7 @@ const acts = file => {
 // or a port, and nothing that reaches the runtime for its values (see "What reaches the runtime" above).
 const renderer = join(root, 'electron', 'renderer');
 const RENDERER_VALUES = t => t.startsWith('markdown/')
-    || ['app/protocol/messages.ts', 'app/protocol/wire.ts', 'app/protocol/mirror.ts', 'app/protocol/changes.ts', 'app/commands.ts', 'gitlog.ts',
+    || ['app/protocol/messages.ts', 'app/protocol/wire.ts', 'app/protocol/mirror.ts', 'app/protocol/changes.ts', 'app/commands.ts', 'base/gitlog.ts',
     'agent/trace.ts', 'agent/tracefeed.ts', 'agent/tracetree.ts', 'agent/logrows.ts', 'agent/daemon/machines.ts'].includes(t);
 const RENDERER_TYPES = t => RENDERER_VALUES(t) || ['app/protocol/screen.ts', 'app/protocol/search.ts', 'app/protocol/tree.ts', 'app/protocol/preferences.ts', 'app/protocol/schema.ts', 'app/protocol/chat.ts', 'app/protocol/history.ts', 'app/protocol/collab.ts', 'app/protocol/harness.ts', 'forge/types.ts', 'app/dialogs.ts', 'platform/index.ts'].includes(t);
 const rendererFiles = readdirSync(renderer, { recursive: true }).filter(f => /\.tsx?$/.test(f) && !f.endsWith('.d.ts')).map(f => f.split('\\').join('/'));

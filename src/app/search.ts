@@ -7,8 +7,8 @@
 import { projectPath } from '../agent/path.js';
 import type { Change } from '../agent/changes.js';
 import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, MAX_HITS, type FileHits, type SearchOptions } from '../markdown/search.js';
-import { _, fmt, ngettext } from '../i18n.js';
-import type { WorkspaceRepository } from '../workspace.js';
+import { _, fmt, ngettext } from '../base/i18n.js';
+import type { WorkspaceRepository } from '../base/workspace.js';
 import { applyChangeBatch, type AgentWriteHost } from './agentwrites.js';
 import type { TextEditor } from './document.js';
 

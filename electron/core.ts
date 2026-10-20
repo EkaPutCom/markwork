@@ -5,8 +5,8 @@
 import '../src/platform/node/install.js';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AppSettings } from '../src/settings.js';
-import { SETTING_KEYS } from '../src/settingskeys.js';
+import { AppSettings } from '../src/base/settings.js';
+import { SETTING_KEYS } from '../src/base/settingskeys.js';
 import { platform } from '../src/platform/index.js';
 import { JsonSettingsStore } from '../src/platform/node/settings.js';
 import { catalogTranslations, userCatalog } from '../src/platform/node/i18n.js';
@@ -15,7 +15,7 @@ import { ProtocolServer } from '../src/app/protocol/server.js';
 import type { Message } from '../src/app/protocol/messages.js';
 import type { Provider } from '../src/agent/provider.js';
 import type { CollabServices } from '../src/app/collab.js';
-import type { Spawner } from '../src/orchestrator.js';
+import type { Spawner } from '../src/orchestrator/index.js';
 
 // The platform as the Node port builds it, with what the packaged app does differently: its catalogs sit next to this
 // file (dist-electron/locale, from po/), and where Node has no keyring (macOS, Windows) the secrets go to the main

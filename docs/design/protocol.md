@@ -407,7 +407,7 @@ core → frontend   {"ev":"setting","key":"sidebar","value":false}
 frontend → core   {"ev":"setting","key":"sidebar","value":true}
 ```
 
-The core keeps the settings in a JSON file next to its configuration (`JsonSettingsStore`), with the keys, types, and defaults of `src/settingskeys.ts`, the one source of them.
+The core keeps the settings in a JSON file next to its configuration (`JsonSettingsStore`), with the keys, types, and defaults of `src/base/settingskeys.ts`, the one source of them.
 
 ### 9.3 Trust
 
@@ -504,7 +504,7 @@ The rows above are done. A pass over `src/window.ts`, `ui/`, and `editor/` (Octo
 
 The runtime a core on Node needs is there too:
 
-- **Settings.** `JsonSettingsStore` (`platform/node/settings.ts`) keeps the keys of `src/settingskeys.ts` in a JSON file, and a key or a value that does not fit them is refused (`tests/unit/nodeplatform.ts`). The entry point (`electron/core.ts`) hands the keys to the store.
+- **Settings.** `JsonSettingsStore` (`platform/node/settings.ts`) keeps the keys of `src/base/settingskeys.ts` in a JSON file, and a key or a value that does not fit them is refused (`tests/unit/nodeplatform.ts`). The entry point (`electron/core.ts`) hands the keys to the store.
 - **Translations.** `platform/node/i18n.ts` reads the same compiled catalogs gettext reads (`<locale>/<lang>/LC_MESSAGES/markwork.mo`), chooses the language from the environment as gettext does, and follows the catalog's plural rule and contexts.
 
 The editor commands (`EditCommands`: the markers, links, blocks, line prefixes, headings, Enter and Tab in lists and tables, the table menu) are text → edit functions in `markdown/editcommands.ts`: they take the text and the selection (UTF-16 offsets) and return the changes and the selection after them (`tests/unit/editcommands.ts`, on both runtimes). `editor/textedit.ts` reads a `Gtk.TextBuffer` into that shape and applies the edit as one undo step, converting code points at its edge; `editor/editing.ts`, `editor/lists.ts`, and `editor/tableedit.ts` are its thin callers. They stay in the frontend by design (`runs: "editor"`, section 8), so they block nothing; a CodeMirror frontend writes only an adapter like `textedit.ts`, and a frontend in another language can run them in the core instead (`runs: "core"`, answered with `doc.replace`). The `[[` suggestions and the menus the views build for themselves stay frontend code, as their rows above say.

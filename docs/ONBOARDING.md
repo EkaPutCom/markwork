@@ -53,7 +53,7 @@ flowchart TB
     subgraph CP["Core: a utility process (electron/core.ts)"]
         PS["ProtocolServer<br/>(src/app/protocol)"]
         S["AppSession + controllers<br/>(src/app)"]
-        CORE["markdown/ · agent/ · forge/ · base modules"]
+        CORE["markdown/ · agent/ · forge/ · base/ · orchestrator/"]
         PORT["platform/index.ts → platform/node/"]
     end
 
@@ -72,7 +72,7 @@ Read it as three bands:
 | --- | --- | --- |
 | The window | How does it look and feel? | `electron/renderer/`, `electron/main.ts` |
 | Application | What should happen when the user does X? | `src/app/` |
-| Core | What are the rules? | `src/markdown/`, `src/agent/`, `src/forge/`, base modules |
+| Core | What are the rules? | `src/markdown/`, `src/agent/`, `src/forge/`, `src/base/`, `src/orchestrator/` |
 
 The **port** is how the core touches the outside world (disk, processes, HTTP, keyring). The core only sees the port, so its tests run on Node with a fake or the real port, without a window.
 
@@ -94,7 +94,8 @@ markwork/
 │   │   └── daemon/          TypeScript client of markworkd
 │   ├── forge/               Forgejo/Gitea pull-request client ( 9 files, ~0.8k lines)
 │   ├── platform/            the port: index.ts (contract) and node/ (12 files, ~1.4k lines)
-│   └── files.ts, git.ts, workspace.ts, settings.ts, orchestrator.ts, ...   base modules of the core
+│   ├── base/                base modules of the core: files, git, workspace, settings, ...
+│   └── orchestrator/        runs harness processes (index.ts), through markworkd (daemon.ts, hub.ts)
 ├── markworkd/               Go module, standard library only. A supervisor daemon.
 ├── tests/
 │   ├── unit/                the core's tests (65 files, one per module)
@@ -118,7 +119,7 @@ markwork/
 flowchart BT
     P["platform/index.ts<br/>(imports nothing)"]
     M["markdown/<br/>imports only markdown/"]
-    A["agent/ · forge/ · base modules<br/>the core"]
+    A["agent/ · forge/ · base/ · orchestrator/<br/>the core"]
     APP["app/<br/>imports core + app/ only"]
     PROTO["app/protocol/<br/>the server side of the wire"]
     CORE["electron/core.ts<br/>the utility process"]
@@ -363,7 +364,7 @@ sequenceDiagram
     participant M as markdown/kanban.ts
     participant E as the editor (replica + CodeMirror)
     participant AS as Autosaver
-    participant FS as files.ts → platform().fs
+    participant FS as base/files.ts → platform().fs
     U->>B: drags a card to "Done"
     B->>V: act.notes.edit { kind: move, … }
     V->>M: moveCard(board, ...) → new Board
@@ -376,8 +377,8 @@ sequenceDiagram
 
 ### 9.3 Saving and watching the folder
 
-- Writes go through `files.ts`: a write first waits for older background writes to the same path, and every change is announced (`onDiskChange`). A synchronous write/move/delete must call `flushWrites()`.
-- `workspace.ts` (`WorkspaceRepository`) keeps a snapshot of the Markdown files (size + mtime), watches the folders, and caches contents. Unsaved documents are read from their editor, not from disk. Home, the chat context, `[[` suggestions, and harness prompts all read the folder through it.
+- Writes go through `base/files.ts`: a write first waits for older background writes to the same path, and every change is announced (`onDiskChange`). A synchronous write/move/delete must call `flushWrites()`.
+- `base/workspace.ts` (`WorkspaceRepository`) keeps a snapshot of the Markdown files (size + mtime), watches the folders, and caches contents. Unsaved documents are read from their editor, not from disk. Home, the chat context, `[[` suggestions, and harness prompts all read the folder through it.
 
 ---
 
@@ -390,7 +391,7 @@ There are **two different agent features**. They share a vocabulary but not code
 | What it is | A chat panel with a model (DeepSeek) | An external coding agent (pi) run on a kanban card |
 | Where it works | Reads your Markdown folder | In a **project folder**, in its own Git worktree |
 | Writes files? | Only proposals you Apply | Only in its worktree; you review and merge |
-| Code | `agent/session.ts`, `agent/chatcontroller.ts`, `app/assistant.ts` | `orchestrator.ts`, `agent/harness.ts`, `app/harness.ts` |
+| Code | `agent/session.ts`, `agent/chatcontroller.ts`, `app/assistant.ts` | `orchestrator/index.ts`, `agent/harness.ts`, `app/harness.ts` |
 
 ### 10.1 One Assistant turn
 
@@ -443,11 +444,11 @@ Rules worth memorising:
 ```mermaid
 flowchart TB
     card["Card with [agent:: pi]<br/>on a kanban board"] --> hc["HarnessController<br/>(app/harness.ts)"]
-    hc --> or["Orchestrator<br/>(orchestrator.ts)"]
+    hc --> or["Orchestrator<br/>(orchestrator/index.ts)"]
     or --> wt["worktree.ts<br/>git worktree + branch markwork/&lt;slug&gt;<br/>in .markwork-worktrees/ next to the project"]
     or --> sp{"Spawner"}
     sp -->|local child| sh["spawnHarness()<br/>platform().processes.spawn"]
-    sp -->|survives window close,<br/>or on another machine| ds["orchestratordaemon.ts<br/>DaemonSpawner"]
+    sp -->|survives window close,<br/>or on another machine| ds["orchestrator/daemon.ts<br/>DaemonSpawner"]
     ds --> conn["DaemonConnection<br/>(agent/daemon/connection.ts)<br/>reconnects, replays"]
     conn -->|unix socket| md[("markworkd")]
     conn -->|ssh -T host markworkd bridge| md
@@ -514,7 +515,7 @@ model  →  protocol, store, runner, config  →  supervisor  →  server  →  
 
 Principles: **protocol-agnostic** (the daemon moves lines and never parses an agent's output; all meaning is in `agent/harness.ts`), **the log is the single source of truth** (a run's state is a fold over its records), **no network listener** (OS permissions + SSH only).
 
-TypeScript side: `src/agent/daemon/` (protocol, client, reconnecting connection, `streamlink.ts`), `src/orchestratordaemon.ts` (the `Spawner` adapter), `src/daemonhub.ts` (which machines are connected), `src/app/harness.ts`. markworkd runs on Linux; on macOS and Windows agents run as children of the app. Details: [docs/design/markworkd.md](design/markworkd.md).
+TypeScript side: `src/agent/daemon/` (protocol, client, reconnecting connection, `streamlink.ts`), `src/orchestrator/daemon.ts` (the `Spawner` adapter), `src/orchestrator/hub.ts` (which machines are connected), `src/app/harness.ts`. markworkd runs on Linux; on macOS and Windows agents run as children of the app. Details: [docs/design/markworkd.md](design/markworkd.md).
 
 ---
 
@@ -575,7 +576,7 @@ flowchart TD
     q -->|"what the window shows"| r5["a notice in app/protocol/ + a component in electron/renderer/<br/>+ tests/unit/protocol.ts + an Electron test"]
     q -->|"the assistant can READ more"| r6["agent/tools.ts<br/>register in TOOLS + runTool() + describeCall()"]
     q -->|"the assistant can WRITE more"| r7["agent/changes.ts CHANGE_TOOLS<br/>pure Change + approval + applyChange re-check<br/>tests/unit/changes.ts + tests/unit/assistant.ts"]
-    q -->|"a preference"| r8["src/settingskeys.ts + AppSettings<br/>+ the Preferences dialog (renderer/components/Modals.tsx)"]
+    q -->|"a preference"| r8["src/base/settingskeys.ts + AppSettings<br/>+ the Preferences dialog (renderer/components/Modals.tsx)"]
     q -->|"needs the OS (file, process, HTTP)"| r9["add it to platform/index.ts<br/>implement in platform/node/ + a test"]
 ```
 
@@ -612,7 +613,7 @@ The complete list, with reasons, is "Known pitfalls" in [AGENT.md](../AGENT.md).
 | Term | Meaning |
 | --- | --- |
 | **Work folder** | The folder of Markdown files the user opened. The workspace. |
-| **Core** | Everything that is not interface: `markdown/`, `agent/`, `forge/`, base modules, orchestrator. |
+| **Core** | Everything that is not interface: `markdown/`, `agent/`, `forge/`, `base/`, `orchestrator/`. |
 | **Port** | `platform/index.ts`: the one contract between the core and the runtime. |
 | **AppSession** | The object that builds and owns all application controllers for one frontend. |
 | **Controller** | A class in `app/` that owns one feature's behaviour. |

@@ -3,7 +3,7 @@
 // gnome-keyring). A secret is never written to settings.json.
 
 import { fileExists, readTextFile, writeTextFile } from './files.js';
-import { platform } from './platform/index.js';
+import { platform } from '../platform/index.js';
 
 export type CredentialSource = 'env' | 'keyring' | 'file';
 

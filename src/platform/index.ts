@@ -12,7 +12,7 @@ export interface HttpRequest {
 export interface HttpResponse { status: number; body: string }
 export type Transport = (request: HttpRequest) => Promise<HttpResponse>;
 
-// A cancellation the port can listen to; cancel.ts's Cancellable is one.
+// A cancellation the port can listen to; base/cancel.ts's Cancellable is one.
 export interface CancelSignal {
     readonly cancelled: boolean;
     onCancel(listener: () => void): () => void;
@@ -46,7 +46,7 @@ export interface EntryInfo {
     stamp: string;
 }
 
-// Raw UTF-8 text files and folders: no queueing, no change notices (files.ts adds those for the app). Each call throws on
+// Raw UTF-8 text files and folders: no queueing, no change notices (base/files.ts adds those for the app). Each call throws on
 // failure; handling is up to the caller.
 export interface FileSystem {
     readText(path: string): string;
@@ -132,11 +132,11 @@ export interface Processes {
     hostName(): string;
 }
 
-// The app's stored preferences, by key. The values are the shapes AppSettings (settings.ts) reads and writes; which keys
-// exist and their defaults belong to the store (the list in settingskeys.ts).
+// The app's stored preferences, by key. The values are the shapes AppSettings (base/settings.ts) reads and writes; which keys
+// exist and their defaults belong to the store (the list in base/settingskeys.ts).
 export type SettingValue = boolean | number | string | [string, number][] | Record<string, string>;
 
-// One key: its type ('b', 's', 'i', 'u', 'x', 'a(si)', 'a(sx)', 'a{ss}'; see settingskeys.ts), its default, and for a
+// One key: its type ('b', 's', 'i', 'u', 'x', 'a(si)', 'a(sx)', 'a{ss}'; see base/settingskeys.ts), its default, and for a
 // string key that takes one of a few values, those values.
 export interface SettingSpec {
     type: string;
@@ -202,7 +202,7 @@ export function setPlatform(platform: Platform): void {
     current = platform;
 }
 
-// For i18n.ts: code that runs before an entry point installed a platform (or without one) shows the source text.
+// For base/i18n.ts: code that runs before an entry point installed a platform (or without one) shows the source text.
 export function installedPlatform(): Platform | null {
     return current;
 }

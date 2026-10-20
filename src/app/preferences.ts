@@ -6,9 +6,9 @@
 
 import { DEEPSEEK_MODELS } from '../agent/models.js';
 import { LOCAL_MACHINE, isValidMachineName, isValidSshTarget, machineProjectKey } from '../agent/daemon/machines.js';
-import type { AppSettings } from '../settings.js';
+import type { AppSettings } from '../base/settings.js';
 import type { Isolation } from '../agent/worktree.js';
-import { _ } from '../i18n.js';
+import { _ } from '../base/i18n.js';
 import type { Question } from './dialogs.js';
 import { ProjectsPages, type ProjectPage, type ProjectRow, type ProjectsAccess, type WorktreeList } from './projects.js';
 

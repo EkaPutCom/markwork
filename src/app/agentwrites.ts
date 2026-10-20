@@ -3,7 +3,7 @@
 // so the user's edits are not overwritten. Delete moves to the Trash; an open document stays in the editor as when it
 // is deleted from the tree.
 
-import { readTextFile, writeTextFile, flushWrites, fileExists, notifyDiskChange } from '../files.js';
+import { readTextFile, writeTextFile, flushWrites, fileExists, notifyDiskChange } from '../base/files.js';
 import { platform } from '../platform/index.js';
 import { projectPath } from '../agent/path.js';
 import { applyBatch } from '../agent/batch.js';

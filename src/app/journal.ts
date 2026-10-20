@@ -1,15 +1,15 @@
 // The daily journal and the activity log behind it: opening today's journal, quick capture, the end-of-day
 // summary through the Assistant, and recording work activity (cards, agent changes, harness runs).
 
-import { readTextFile, writeTextFile, flushWrites, fileExists, insideName } from '../files.js';
+import { readTextFile, writeTextFile, flushWrites, fileExists, insideName } from '../base/files.js';
 import { platform } from '../platform/index.js';
-import { commitsBetween } from '../git.js';
-import { readActivity, recordActivity } from '../activity.js';
+import { commitsBetween } from '../base/git.js';
+import { readActivity, recordActivity } from '../base/activity.js';
 import type { HomeJournal } from './home.js';
 import { localDate } from '../markdown/home.js';
 import { activityLines, addNote, boardEvents, clock, commitActivity, journalName, journalStats, mergeActivity, newJournal, type Activity, type ActivityKind } from '../markdown/journal.js';
 import type { Board } from '../markdown/kanban.js';
-import { _, fmt } from '../i18n.js';
+import { _, fmt } from '../base/i18n.js';
 import type { Prompt } from './dialogs.js';
 import { docFor, errorMessage, type Doc, type DocumentHost } from './document.js';
 

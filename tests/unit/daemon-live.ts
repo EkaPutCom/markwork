@@ -6,9 +6,9 @@
 import { DaemonConnection, type ConnectionOptions } from '../../src/agent/daemon/connection.js';
 import { openCommandLink, openSocketLink, sshBridgeArgv } from '../../src/agent/daemon/streamlink.js';
 import type { RunSummary, StateEvent } from '../../src/agent/daemon/protocol.js';
-import { adoptRun, daemonGit, daemonSpawner } from '../../src/orchestratordaemon.js';
+import { adoptRun, daemonGit, daemonSpawner } from '../../src/orchestrator/daemon.js';
 import { createWorktree, DEFAULT_ISOLATION, listWorktrees, removeWorktree } from '../../src/agent/worktree.js';
-import type { HarnessProcess, SpawnHandlers } from '../../src/orchestrator.js';
+import type { HarnessProcess, SpawnHandlers } from '../../src/orchestrator/index.js';
 import { platform } from '../../src/platform/index.js';
 import { DIM, RESET, ROOT, ok, eq, contains, section, within, test, tmp, disk, say, until } from '../core/framework.js';
 import { host } from '../core/host.js';

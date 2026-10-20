@@ -22,7 +22,7 @@ import { host } from '../core/host.js';
 import { base64 } from '../../src/forge/contribute.js';
 import { confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
 import type { PullRequest } from '../../src/forge/types.js';
-import { runGit } from '../../src/git.js';
+import { runGit } from '../../src/base/git.js';
 import { DIM, GREEN, RED, RESET, disk, errorMessage, opt, say } from '../core/framework.js';
 
 let passed = 0, failed = 0;

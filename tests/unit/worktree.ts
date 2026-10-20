@@ -3,9 +3,9 @@
 import { createWorktree, DEFAULT_ISOLATION, findWorktree, listWorktrees, parseIsolation, removeWorktree, repoInfo, slugFor, worktreeRoot, writeIsolation, type Isolation } from '../../src/agent/worktree.js';
 import { buildPrompt, RunQueue } from '../../src/agent/harness.js';
 import { commentsReply, mergeWorktree, newLineNumbers, readReview, splitDiff } from '../../src/agent/worktreereview.js';
-import { parseDiff } from '../../src/gitlog.js';
+import { parseDiff } from '../../src/base/gitlog.js';
 import { cardBranch, setCardBranch } from '../../src/markdown/kanban.js';
-import { runGit } from '../../src/git.js';
+import { runGit } from '../../src/base/git.js';
 import { section, test, eq, ok, contains, within, tmp, disk, slash } from '../core/framework.js';
 import { host } from '../core/host.js';
 

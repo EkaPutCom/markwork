@@ -19,7 +19,7 @@ import { liveStructured } from './live-structured.js';
 import { systemKeyStore } from '../../src/agent/apikey.js';
 import { DEEPSEEK_MODELS, DeepSeek } from '../../src/agent/deepseek.js';
 import { DEFAULT_BUDGET } from '../../src/agent/context.js';
-import { WorkspaceRepository } from '../../src/workspace.js';
+import { WorkspaceRepository } from '../../src/base/workspace.js';
 import { ChatSession } from '../../src/agent/session.js';
 import { DIM, GREEN, RED, RESET, ROOT, optVal, opt, setRoot } from '../core/framework.js';
 import { disk, say } from '../core/framework.js';

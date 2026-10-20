@@ -2,7 +2,7 @@
 
 import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasMarkers, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
 import { ForgeError, type ForgeProvider } from '../../src/forge/types.js';
-import { repoChanges, runGit } from '../../src/git.js';
+import { repoChanges, runGit } from '../../src/base/git.js';
 import { platform } from '../../src/platform/index.js';
 import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
 import { host } from '../core/host.js';

@@ -1,5 +1,5 @@
 // Files and folders on Node: node:fs for whole-file reads and atomic writes, listings, lookups, and folder watches; a
-// worker thread for background writes. Raw: the queueing per path and the app's change notices are in files.ts.
+// worker thread for background writes. Raw: the queueing per path and the app's change notices are in base/files.ts.
 
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, chmodSync, closeSync, cpSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmdirSync, rmSync, statSync, watch, writeSync, type Stats } from 'node:fs';

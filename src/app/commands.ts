@@ -2,7 +2,7 @@
 // keys, when it applies, and what it does. The Electron window maps this table onto its keys and menus; another
 // frontend maps it onto its own menus and keymap. A command acts only through CommandHost, so nothing here knows a widget.
 
-import { _ } from '../i18n.js';
+import { _ } from '../base/i18n.js';
 
 // The edits a command makes to the text of the active document; the frontend implements them on its editor.
 export type TableOperation =

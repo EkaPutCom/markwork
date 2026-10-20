@@ -20,7 +20,7 @@ src/app/pulls.ts
 src/app/search.ts
 src/app/session.ts
 src/app/views.ts
-src/daemonhub.ts
 src/markdown/html.ts
 src/markdown/syntax.ts
-src/orchestrator.ts
+src/orchestrator/hub.ts
+src/orchestrator/index.ts

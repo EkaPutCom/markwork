@@ -1,12 +1,12 @@
 // Read-only Git history tools for the model: list commits, the changes of one commit, and the contents of a file at an old commit.
 // This module is pure: it validates arguments into a GitRequest and tidies git output. Running git is done by the
-// caller (src/git.ts through ChatHost), which restricts the pathspec to non-hidden Markdown files in the work folder.
+// caller (src/base/git.ts through ChatHost), which restricts the pathspec to non-hidden Markdown files in the work folder.
 
 import { cleanNewName } from './changes.js';
 import { estimateTokens } from './context.js';
 import type { ToolSpec } from './provider.js';
 import { plural, type ToolOutcome } from './tools.js';
-import type { GitAnswer, GitRequest } from '../gitlog.js';
+import type { GitAnswer, GitRequest } from '../base/gitlog.js';
 
 export type { GitAnswer, GitRequest };
 

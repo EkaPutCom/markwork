@@ -1,16 +1,16 @@
 // The data behind the Home tab (recent files, due tasks, agent runs, inboxes, today's journal) and the actions
 // taken from it. Everything is recomputed from the files on every render.
 
-import { fileExists, insideName } from '../files.js';
+import { fileExists, insideName } from '../base/files.js';
 import { platform } from '../platform/index.js';
-import type { AppSettings } from '../settings.js';
-import type { WorkspaceRepository } from '../workspace.js';
+import type { AppSettings } from '../base/settings.js';
+import type { WorkspaceRepository } from '../base/workspace.js';
 import type { ConnectionState } from '../agent/daemon/connection.js';
 import { cardProject, isActive, type Run, type RunStatus } from '../agent/harness.js';
 import { dueTasks, localDate, openInboxes, splitRecent, type InboxCount, type RecentFile, type Task } from '../markdown/home.js';
 import { isStructured } from '../markdown/layout.js';
 import { updateCard, type Board } from '../markdown/kanban.js';
-import { _, fmt } from '../i18n.js';
+import { _, fmt } from '../base/i18n.js';
 import type { DocumentHost } from './document.js';
 
 // The Continue cards fill a full row in a wide window; in a narrow window the frontend folds them.

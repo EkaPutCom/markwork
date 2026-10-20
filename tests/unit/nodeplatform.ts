@@ -1,11 +1,11 @@
 // The parts of the Node runtime a core on Node needs besides the port's contract (tests/unit/platform.ts): its settings
-// store, with the keys and defaults of settingskeys.ts, and its translations, from the same catalogs gettext reads.
+// store, with the keys and defaults of base/settingskeys.ts, and its translations, from the same catalogs gettext reads.
 // Node only: these modules use Node built-ins, so run-core-node.ts runs them after the core's tests.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AppSettings } from '../../src/settings.js';
-import { SETTING_KEYS } from '../../src/settingskeys.js';
+import { AppSettings } from '../../src/base/settings.js';
+import { SETTING_KEYS } from '../../src/base/settingskeys.js';
 import { JsonSettingsStore } from '../../src/platform/node/settings.js';
 import { catalogTranslations, languages, parseMo, pluralRule, userCatalog } from '../../src/platform/node/i18n.js';
 import { SecretVault, answerSecret, remoteSecrets, type Cipher, type SecretRequest } from '../../src/platform/node/vault.js';

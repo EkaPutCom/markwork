@@ -8,7 +8,7 @@ import { GiteaProvider, isGiteaServer } from '../../src/forge/gitea.js';
 import { publishBranch, pushFailure, type PublishRequest } from '../../src/forge/publish.js';
 import { forgeKind } from '../../src/forge/remote.js';
 import { ForgeError, type ForgeProvider, type NewPull, type PullRequest, type RepoInfo } from '../../src/forge/types.js';
-import { runGit } from '../../src/git.js';
+import { runGit } from '../../src/base/git.js';
 import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
 import { host } from '../core/host.js';
 

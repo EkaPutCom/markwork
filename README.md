@@ -95,7 +95,7 @@ The live tests and the benchmarks are not part of `npm test`.
 
 ### Translations
 
-The source language of the interface is English. Text in `src/` is wrapped in `_()` (or `fmt(_('… {name} …'), { name })` for text that contains values, `pgettext()` when a context is needed) from `src/i18n.ts`. To add a language: `npm run pot`, copy `po/markwork.pot` to `po/<code>.po`, translate it, and add its code to `po/LINGUAS`. The build compiles each listed language with `msgfmt` (from gettext) into `dist-electron/locale/`, where the core reads it for the user's language. The window's own labels in `electron/renderer/` are not wrapped yet.
+The source language of the interface is English. Text in `src/` is wrapped in `_()` (or `fmt(_('… {name} …'), { name })` for text that contains values, `pgettext()` when a context is needed) from `src/base/i18n.ts`. To add a language: `npm run pot`, copy `po/markwork.pot` to `po/<code>.po`, translate it, and add its code to `po/LINGUAS`. The build compiles each listed language with `msgfmt` (from gettext) into `dist-electron/locale/`, where the core reads it for the user's language. The window's own labels in `electron/renderer/` are not wrapped yet.
 
 ## Features
 
@@ -283,8 +283,8 @@ src/
     daemon/               the markworkd client (protocol, connection, socket and SSH links)
   forge/                  Forgejo and Gitea: pull requests, sending changes, resolving conflicts
   platform/               the port to the runtime (index.ts) and its Node implementation (node/)
-  orchestrator.ts         runs harness processes for app/harness.ts; orchestratordaemon.ts through markworkd
-  settings.ts, files.ts, fileops.ts, workspace.ts, git.ts, gitlog.ts, credentials.ts, i18n.ts, …   base modules
+  orchestrator/           index.ts runs harness processes for app/harness.ts; daemon.ts through markworkd; hub.ts connects per machine
+  base/                   settings, files, fileops, workspace, git, gitlog, credentials, i18n, …   base modules
 tests/
   unit/                   the core's tests, one file per module
   core/                   core-tests.ts lists them, run-core-node.ts runs them; the framework, fixtures, and test host
@@ -312,13 +312,13 @@ docs/                     the site (index.html, docs/) and the design notes (des
 electron/renderer  ──(types, pure modules)──►  src/markdown, src/app/protocol messages, src/app/commands
 electron/core.ts   ──►  src/app/protocol (ProtocolServer)  ──►  src/app (AppSession, controllers)
                                                                      │
-                       src/agent, src/forge, orchestrator, base modules (the core)
+                       src/agent, src/forge, src/orchestrator, src/base (the core)
                                                                      │
                                          src/markdown (pure)   src/platform/index.ts (the port)
 ```
 
 - **`markdown/`** holds only string → data functions and imports nothing outside it, so it is the easiest to study and test.
-- **The core** (`markdown/`, `agent/`, `forge/`, the orchestrator, the base modules) imports only the core and reaches the runtime through `platform()`. It typechecks against the few web-standard globals it uses (`src/globals.d.ts`: timers, `TextEncoder`, `TextDecoder`), not Node's types, and only `platform/node/` may import `node:` modules.
+- **The core** (`markdown/`, `agent/`, `forge/`, `orchestrator/`, `base/`) imports only the core and reaches the runtime through `platform()`. It typechecks against the few web-standard globals it uses (`src/globals.d.ts`: timers, `TextEncoder`, `TextDecoder`), not Node's types, and only `platform/node/` may import `node:` modules.
 - **`app/`** is the application layer: controllers that reach the screen through interfaces they declare (a view that gets plain data and reports with `on*` callbacks, dialogs that answer with a value or a Promise). `AppSession` builds and owns them and connects them to each other; the frontend hands it one `AppFrontend`, which `app/protocol/frontend.ts` implements by sending messages. Commands are data (`app/commands.ts`): an id, a label, default keys in a neutral notation (`Ctrl+Shift+P`, `Ctrl` is `⌘` on macOS), where they apply, and where they run.
 - **The renderer** is a view. From `src/` it takes the pure Markdown modules, the protocol's messages, wire, mirror, and change math, the command list, and a few pure agent modules for the log; other modules only for their types, and nothing that reaches the runtime.
 - **`src/` imports nothing outside `src/`**: `electron/` uses it, never the other way round.
@@ -375,11 +375,11 @@ document text ──parseBoard()──► board (ViewController in the core) ─
 3. Undo and redo change the text. A change that does not come from the board is noticed when the text no longer matches what the board last wrote, and the board is read again.
 4. All operations on the model (`addCard`, `moveCard`, `moveColumn`, …) are pure and do not change the original board, so they are easy to test. `moveCard` uses the card's *final* position in the target list, so moving down within the same list needs no adjustment.
 
-### The markworkd daemon (`markworkd/`, `agent/daemon/`, `orchestratordaemon.ts`)
+### The markworkd daemon (`markworkd/`, `agent/daemon/`, `orchestrator/daemon.ts`)
 
-`markworkd/` is a separate Go program (standard library only) that owns agent processes so they keep running when Markwork is closed, or on another machine. The design and wire protocol are in [docs/design/markworkd.md](docs/design/markworkd.md). On the Markwork side, `agent/daemon/` is the client (pure protocol and client, a connection that reconnects and resumes without repeating or losing a record, and links over a Unix socket or the stdio of `ssh host markworkd bridge`), and `orchestratordaemon.ts` turns a daemon run into the `HarnessProcess` the orchestrator already drives, so the pi reader, the queue, and the board logic are unchanged. `Orchestrator.dispose()` lets go of such a process instead of stopping it, when the user chooses to keep it running. It is chosen in Preferences → Agents (this computer, or an SSH machine); `daemonhub.ts` holds the connections, `window/harness.ts` finds the runs of the board's cards again at startup, and Home shows whether the machine answers. A spawn may say how many runs of its lane go at once (`lane_slots`), which is how cards with their own worktrees run side by side; `daemonGit()` runs `git` as short runs in no lane, so the worktrees of a machine are made and read on that machine.
+`markworkd/` is a separate Go program (standard library only) that owns agent processes so they keep running when Markwork is closed, or on another machine. The design and wire protocol are in [docs/design/markworkd.md](docs/design/markworkd.md). On the Markwork side, `agent/daemon/` is the client (pure protocol and client, a connection that reconnects and resumes without repeating or losing a record, and links over a Unix socket or the stdio of `ssh host markworkd bridge`), and `orchestrator/daemon.ts` turns a daemon run into the `HarnessProcess` the orchestrator already drives, so the pi reader, the queue, and the board logic are unchanged. `Orchestrator.dispose()` lets go of such a process instead of stopping it, when the user chooses to keep it running. It is chosen in Preferences → Agents (this computer, or an SSH machine); `orchestrator/hub.ts` holds the connections, `window/harness.ts` finds the runs of the board's cards again at startup, and Home shows whether the machine answers. A spawn may say how many runs of its lane go at once (`lane_slots`), which is how cards with their own worktrees run side by side; `daemonGit()` runs `git` as short runs in no lane, so the worktrees of a machine are made and read on that machine.
 
-### How the harness orchestrator works (`agent/harness.ts`, `orchestrator.ts`)
+### How the harness orchestrator works (`agent/harness.ts`, `orchestrator/index.ts`)
 
 ```markdown
 ---
@@ -469,7 +469,7 @@ An example of adding a new format, such as `^superscript^`:
 
 ## Settings
 
-The settings are a JSON file, `markwork-electron/settings.json` in the config folder (`~/.config` on Linux, `~/Library/Application Support` on macOS, `%APPDATA%` on Windows; `XDG_CONFIG_HOME` wins on every system when it is set). Its keys, types, and defaults are those of `src/settingskeys.ts`, and a value that does not fit its key is read as the default: the color theme (`color-scheme`: follow the system, light, dark), the side panel and its page, the work folder, the tabs of the last session, Home, the Assistant (model, thinking mode, saving conversations), focus, typewriter, autosave, the projects and machines of the agents, and the window size. Keys and tokens are never written there.
+The settings are a JSON file, `markwork-electron/settings.json` in the config folder (`~/.config` on Linux, `~/Library/Application Support` on macOS, `%APPDATA%` on Windows; `XDG_CONFIG_HOME` wins on every system when it is set). Its keys, types, and defaults are those of `src/base/settingskeys.ts`, and a value that does not fit its key is read as the default: the color theme (`color-scheme`: follow the system, light, dark), the side panel and its page, the work folder, the tabs of the last session, Home, the Assistant (model, thinking mode, saving conversations), focus, typewriter, autosave, the projects and machines of the agents, and the window size. Keys and tokens are never written there.
 
 ## Limitations
 

@@ -2,10 +2,10 @@
 // HarnessProcess the orchestrator already uses, so a run keeps going when Markwork is closed, and can live on
 // another machine. The daemon moves lines and never understands them; the orchestrator's pi reader still does.
 
-import type { DaemonConnection, FollowHandlers, Follower } from './agent/daemon/connection.js';
-import { DaemonError, exitStatus, parseExit, type ExitInfo, type SpawnSpec } from './agent/daemon/protocol.js';
-import type { GitRun, GitRunner } from './forge/contribute.js';
-import type { HarnessProcess, SpawnHandlers, SpawnMeta, Spawner } from './orchestrator.js';
+import type { DaemonConnection, FollowHandlers, Follower } from '../agent/daemon/connection.js';
+import { DaemonError, exitStatus, parseExit, type ExitInfo, type SpawnSpec } from '../agent/daemon/protocol.js';
+import type { GitRun, GitRunner } from '../forge/contribute.js';
+import type { HarnessProcess, SpawnHandlers, SpawnMeta, Spawner } from './index.js';
 
 const STDERR_TAIL = 8000;
 const TRANSIENT = new Set(['connection_closed', 'timeout']);

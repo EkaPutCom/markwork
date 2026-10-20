@@ -1,4 +1,4 @@
-// The SettingsStore on Node: the keys of settingskeys.ts, kept in a JSON file next to the configuration
+// The SettingsStore on Node: the keys of base/settingskeys.ts, kept in a JSON file next to the configuration
 // (docs/design/protocol.md, section 9.2). The entry point hands the keys in, and a key that is not one of them is refused.
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';

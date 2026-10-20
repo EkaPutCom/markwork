@@ -4,9 +4,9 @@
 // traverse them; their contents reach the agent only through the Activity section of the journal file.
 
 import { fileExists, readTextFile, writeTextFile } from './files.js';
-import { platform } from './platform/index.js';
-import { parseActivity, serializeActivity, type Activity } from './markdown/journal.js';
-import { localDate } from './markdown/home.js';
+import { platform } from '../platform/index.js';
+import { parseActivity, serializeActivity, type Activity } from '../markdown/journal.js';
+import { localDate } from '../markdown/home.js';
 
 export const activityDir = (root: string): string => platform().paths.join(root, '.markwork', 'activity');
 const logPath = (root: string, date: string) => platform().paths.join(activityDir(root), `${date}.jsonl`);

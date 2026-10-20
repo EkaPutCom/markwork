@@ -1,11 +1,11 @@
 // External harnesses (@pi cards): the card menu, choosing the project folder, answering/steering/replying to a run,
 // and its log window. The runs themselves are managed by the Orchestrator this controller owns.
 
-import { fileExists, insideName, readTextFile } from '../files.js';
+import { fileExists, insideName, readTextFile } from '../base/files.js';
 import { platform } from '../platform/index.js';
-import type { AppSettings } from '../settings.js';
-import { findProgram, labelWorktree, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator.js';
-import { runGit } from '../git.js';
+import type { AppSettings } from '../base/settings.js';
+import { findProgram, labelWorktree, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator/index.js';
+import { runGit } from '../base/git.js';
 import { parseIsolation, type Isolation } from '../agent/worktree.js';
 import type { GitRunner } from '../forge/contribute.js';
 import { cardProject, checkProjectFolder, HARNESSES, isActive, locateCard as findCard, PROJECT_NAME, type HarnessAsk, type HarnessReply, type LinkedNote, type Run, type RunStatus } from '../agent/harness.js';
@@ -13,15 +13,15 @@ import { isRemoteMachine, LOCAL_MACHINE, machineProjectKey } from '../agent/daem
 import type { ConnectionState } from '../agent/daemon/connection.js';
 import type { RunSummary } from '../agent/daemon/protocol.js';
 import { openCommandLink, openSocketLink } from '../agent/daemon/streamlink.js';
-import { DaemonHub, type Openers } from '../daemonhub.js';
-import { adoptRun, daemonGit, daemonSpawner } from '../orchestratordaemon.js';
+import { DaemonHub, type Openers } from '../orchestrator/hub.js';
+import { adoptRun, daemonGit, daemonSpawner } from '../orchestrator/daemon.js';
 import type { MenuEntry } from './menu.js';
 import { TraceFeed, type TraceUpdate } from '../agent/tracefeed.js';
 import { harnessActivity, type ActivityKind } from '../markdown/journal.js';
 import { assignCard, cardBranch, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
 import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
-import type { WorkspaceRepository } from '../workspace.js';
-import { _, fmt } from '../i18n.js';
+import type { WorkspaceRepository } from '../base/workspace.js';
+import { _, fmt } from '../base/i18n.js';
 import type { Prompt } from './dialogs.js';
 import { docFor, type DocumentHost } from './document.js';
 
@@ -88,7 +88,7 @@ export interface AgentHostStatus {
     detail: string;                         // why it cannot connect, when it cannot
 }
 
-const LABEL_CARD_CHARS = 4000;   // see spawnMeta() in orchestrator.ts: a longer card is matched by its start
+const LABEL_CARD_CHARS = 4000;   // see spawnMeta() in orchestrator/index.ts: a longer card is matched by its start
 
 export class HarnessController {
     readonly orchestrator: Orchestrator;

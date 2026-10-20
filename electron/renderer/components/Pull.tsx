@@ -2,7 +2,7 @@
 // diff, the discussion, and the merge. The core reads the forge and decides; this draws what it sends and reports what the user did.
 
 import { useEffect, useState } from 'react';
-import { relativeTime } from '../../../src/gitlog.js';
+import { relativeTime } from '../../../src/base/gitlog.js';
 import type { FileStatus, MergeMethod, PullComment, PullRequest } from '../../../src/app/protocol/collab.js';
 import { DiffLines } from './Diff.js';
 import { Icon } from './Icons.js';

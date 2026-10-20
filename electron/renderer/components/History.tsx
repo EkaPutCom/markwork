@@ -3,7 +3,7 @@
 // runs git and the commit message writer; this draws what it sends and reports what the user did.
 
 import { useEffect, useMemo, useState } from 'react';
-import { relativeTime } from '../../../src/gitlog.js';
+import { relativeTime } from '../../../src/base/gitlog.js';
 import type { ChangeKind, ChangedFile, WriteResult } from '../../../src/app/protocol/history.js';
 import { DiffLines } from './Diff.js';
 import { Icon } from './Icons.js';

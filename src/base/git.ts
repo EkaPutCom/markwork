@@ -3,7 +3,7 @@
 // (platform().processes) so a long history does not block the editor.
 
 import { insideName, trashFile } from './files.js';
-import { platform } from './platform/index.js';
+import { platform } from '../platform/index.js';
 import { AGENT_LOG_FORMAT, LOG_FORMAT, parseLog, parseStatus, type Commit, type FileChange, type GitAnswer, type GitRequest } from './gitlog.js';
 
 export type GitFailure = 'no-git' | 'no-repo' | 'failed';

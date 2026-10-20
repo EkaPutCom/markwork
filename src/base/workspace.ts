@@ -14,8 +14,8 @@
 // - Unsaved documents are read from their editor (the `unsaved` overlay), not from disk.
 
 import { onDiskChange, readTextFile } from './files.js';
-import { platform } from './platform/index.js';
-import { atOrBelow } from './markdown/paths.js';
+import { platform } from '../platform/index.js';
+import { atOrBelow } from '../markdown/paths.js';
 
 export interface WorkspaceFile {
     name: string;   // relative to the folder, with '/'

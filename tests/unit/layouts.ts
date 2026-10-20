@@ -1,7 +1,7 @@
 // Tests of the calendar, timeline, gallery, chart, and grouped board layouts (markdown/calendar.ts, timeline.ts,
 // gallery.ts, chart.ts, boardgroup.ts, dates.ts).
 
-import { readTextFile } from '../../src/files.js';
+import { readTextFile } from '../../src/base/files.js';
 import { addDays, addMonths, dayNumber, daysBetween, monthWeeks, startOfWeek, weekday } from '../../src/markdown/dates.js';
 import { calendarData, dateField, moveToDate } from '../../src/markdown/calendar.js';
 import { barSpan, resizeRow, shiftRow, timelineRange, timelineRows, timelineTicks, timelineZoom } from '../../src/markdown/timeline.js';

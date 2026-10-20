@@ -2,15 +2,15 @@
 // when one is opened or updated. The forge layer does the talking; this controller connects it to the sidebar tab,
 // the token dialog, and desktop notifications.
 
-import { runGit } from '../git.js';
+import { runGit } from '../base/git.js';
 import { GiteaProvider } from '../forge/gitea.js';
 import { PullMonitor, type PullEvent } from '../forge/monitor.js';
 import { parseRemote } from '../forge/remote.js';
 import { systemTokenStore, type TokenSource, type TokenStore } from '../forge/token.js';
 import { ForgeError, type ForgeProvider, type PullRequest, type RepoRef, type Transport } from '../forge/types.js';
 import { platform } from '../platform/index.js';
-import type { AppSettings } from '../settings.js';
-import { _, fmt } from '../i18n.js';
+import type { AppSettings } from '../base/settings.js';
+import { _, fmt } from '../base/i18n.js';
 import type { DocumentHost } from './document.js';
 
 // The pull requests tab: it draws what it is given and reports the user's actions through the on* callbacks.

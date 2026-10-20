@@ -2,7 +2,7 @@
 // last commit and the repository's recent commit subjects. The message lands in the commit box, where the
 // user reviews it; nothing is committed here. Git and the key come in through CommitSources.
 
-import type { Cancellable } from '../cancel.js';
+import type { Cancellable } from '../base/cancel.js';
 import type { KeyStore } from './apikey.js';
 import type { ChatMessage, Provider } from './provider.js';
 

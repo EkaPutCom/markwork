@@ -3,7 +3,7 @@
 
 import { branchError, credentialEnv, sendChanges, slug, type SendContext, type SendRequest } from '../../src/forge/contribute.js';
 import type { ForgeProvider, NewPull, PullRequest, RepoInfo } from '../../src/forge/types.js';
-import { runGit } from '../../src/git.js';
+import { runGit } from '../../src/base/git.js';
 import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
 import { host } from '../core/host.js';
 

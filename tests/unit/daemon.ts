@@ -5,8 +5,8 @@
 import { DaemonClient } from '../../src/agent/daemon/client.js';
 import { DaemonConnection, type ConnectionState } from '../../src/agent/daemon/connection.js';
 import { DaemonError, encodeRequest, exitStatus, parseExit, parseFrame, type DaemonRecord, type RunSummary, type StateEvent } from '../../src/agent/daemon/protocol.js';
-import { adoptRun, daemonGit, daemonSpawner, newRunId } from '../../src/orchestratordaemon.js';
-import { Orchestrator, type HarnessProcess, type SpawnHandlers, type SpawnMeta, type Spawner } from '../../src/orchestrator.js';
+import { adoptRun, daemonGit, daemonSpawner, newRunId } from '../../src/orchestrator/daemon.js';
+import { Orchestrator, type HarnessProcess, type SpawnHandlers, type SpawnMeta, type Spawner } from '../../src/orchestrator/index.js';
 import { parseBoard, type Board } from '../../src/markdown/kanban.js';
 import { section, test, eq, ok, contains, within } from '../core/framework.js';
 import { host as testHost } from '../core/host.js';
