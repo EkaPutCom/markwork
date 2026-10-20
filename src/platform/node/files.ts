@@ -30,7 +30,7 @@ function writeAtomic(path: string, text: string): void {
 
 // The background writer: the same atomic write, in a worker so the fsync pause is not felt on the main thread. It
 // reports each finished write on a port the main thread reads synchronously (receiveMessageOnPort) and bumps a shared
-// counter, so pumpWrites(true) can block on Atomics.wait the way the GJS port blocks on its own main context.
+// counter, so pumpWrites(true) can block on Atomics.wait.
 const WORKER = `
 const { parentPort, workerData } = require('node:worker_threads');
 const fs = require('node:fs');
@@ -123,7 +123,7 @@ function kind(path: string): EntryKind {
     }
 }
 
-// A move across file systems is a copy and a delete, like Gio's fallback; something already at `to` is an error.
+// A move across file systems is a copy and a delete; something already at `to` is an error.
 function move(from: string, to: string): void {
     if (kind(to) !== 'missing') throw new Error(`${to} already exists`);
     try {
@@ -223,7 +223,7 @@ export const nodeFiles: FileSystem = {
     append: (path, text) => appendFileSync(path, text),
     startWrite,
     pumpWrites,
-    exists: path => existsSync(path),   // follows a symbolic link, like GLib.file_test(EXISTS)
+    exists: path => existsSync(path),   // follows a symbolic link
     remove: path => { if (lstatSync(path).isDirectory()) rmdirSync(path); else rmSync(path); },   // a file or an empty folder
     makeDirs: (path, mode) => { mkdirSync(path, { recursive: true, mode }); },
     setMode: (path, mode) => chmodSync(path, mode),

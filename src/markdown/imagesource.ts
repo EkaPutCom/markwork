@@ -1,5 +1,5 @@
 // Where the image in ![alt](url) comes from: a URL as written, or a file path resolved from the document folder. Pure; the
-// caller passes the path operations of its runtime (GLib in editor/images.ts, platform().paths elsewhere) and turns the
+// caller passes the path operations of its runtime (the renderer's own, platform().paths elsewhere) and turns the
 // result into what it loads (a GIO URI, an app:// URL).
 
 export interface PathOps {

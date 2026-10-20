@@ -1,5 +1,5 @@
 // Markdown → HTML conversion for the "Export HTML" feature.
-// Pure JavaScript, no GTK, so it is easy to test.
+// Pure JavaScript, so it is easy to test.
 //
 // The flow has two stages:
 //   1. blocksHtml()  splits the document line by line into blocks: headings, paragraphs,

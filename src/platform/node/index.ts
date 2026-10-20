@@ -1,5 +1,5 @@
 // The platform port on Node: node:fs, node:path, child_process, net, and fetch; the keyring through secret-tool. It shows
-// that the core runs on a runtime other than GJS, and it is what a frontend whose core runs in Node (an Electron main
+// that the core runs on Node, and it is what a frontend whose core runs in Node (an Electron main
 // process, or a sidecar next to Tauri or GPUI) starts from.
 
 import { execFile } from 'node:child_process';
@@ -15,8 +15,8 @@ import { fetchStreamTransport, fetchTransport } from './http.js';
 import { nodeLinks } from './links.js';
 import { nodeProcesses } from './process.js';
 
-// secret-tool (libsecret's command line) speaks to the same Secret Service the GJS port uses; libsecret stores a
-// schema's name as the xdg:schema attribute, so passing it keeps the items shared with the GTK app. Without
+// secret-tool (libsecret's command line) speaks to the Secret Service; libsecret stores a schema's name as the
+// xdg:schema attribute, so passing it keeps the items where libsecret programs look for them. Without
 // secret-tool or a keyring the answers are the ones the contract gives for a missing keyring.
 function secretTool(args: string[], input?: string): Promise<{ ok: boolean; out: string }> {
     return new Promise(resolveRun => {
@@ -70,7 +70,7 @@ const scheduler: Scheduler = {
 };
 
 
-// The full name from the passwd entry (the GECOS field up to the first comma), as GLib.get_real_name() reads it.
+// The full name from the passwd entry (the GECOS field up to the first comma).
 function realName(): string | null {
     if (os === 'win32') return null;
     try {

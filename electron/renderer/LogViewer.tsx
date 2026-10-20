@@ -1,4 +1,4 @@
-// The agent log (ui/logviewer.ts, logdetail.ts): the tree of each turn (model rounds, reasoning, tools) on the left and
+// The agent log: the tree of each turn (model rounds, reasoning, tools) on the left and
 // everything about the selected step on the right. It reads the copy of the core's log that the panel keeps (`chat.log`) and
 // follows the newest step until the user picks one.
 

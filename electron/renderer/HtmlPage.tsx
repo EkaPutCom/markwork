@@ -1,4 +1,4 @@
-// An HTML file in a tab (ui/htmlpage.ts). The page runs in a sandboxed frame and is served by the main process under the
+// An HTML file in a tab. The page runs in a sandboxed frame and is served by the main process under the
 // private scheme mwhtml://v<id>/, which answers from the page's folder and nowhere else, with a policy that keeps the page from
 // reaching the network (markdown/htmlview.ts). A link that leaves the page opens in the browser, never in the frame.
 

@@ -1,5 +1,5 @@
 // Structure checks of a Markdown document to verify agent output: tables whose cell count does not match,
-// empty or level-skipping headings, unclosed code blocks, and a list of local links. Pure, no GTK.
+// empty or level-skipping headings, unclosed code blocks, and a list of local links. Pure.
 // Each issue has a `key` without a line number, so an old issue that merely shifted lines is not treated as new.
 
 import { ESCAPE_OR_CODE, RE, startsTable } from './syntax.js';

@@ -10,7 +10,7 @@ For the rules you must follow when changing code, read [AGENT.md](../AGENT.md). 
 - [4. The layers and the one rule](#4-the-layers-and-the-one-rule)
 - [5. The platform port](#5-the-platform-port)
 - [6. The application layer: AppSession and controllers](#6-the-application-layer-appsession-and-controllers)
-- [7. The GTK frontend](#7-the-gtk-frontend)
+- [7. The protocol and the window](#7-the-protocol-and-the-window)
 - [8. The Markdown model and the editor](#8-the-markdown-model-and-the-editor)
 - [9. Flows, step by step](#9-flows-step-by-step)
 - [10. The AI side: Assistant and harness](#10-the-ai-side-assistant-and-harness)
@@ -24,15 +24,15 @@ For the rules you must follow when changing code, read [AGENT.md](../AGENT.md). 
 
 ## 1. What Markwork is
 
-A **Markdown workspace for humans and AI agents** on the Linux desktop. One folder of `.md` files is the whole database: notes, kanban boards, an inbox, a daily journal, a Home page, Git history, and an AI assistant that understands that folder.
+A **Markdown workspace for humans and AI agents** for Linux, macOS, and Windows. One folder of `.md` files is the whole database: notes, kanban boards, an inbox, a daily journal, a Home page, Git history, and an AI assistant that understands that folder.
 
 Three ideas explain most design decisions:
 
-1. **The Markdown text is the single source of truth.** A kanban board, an inbox, a table are *views* of text. Every change goes back to the buffer as text, so undo, Git, and the agent all see the same thing.
+1. **The Markdown text is the single source of truth.** A kanban board, an inbox, a table are *views* of text. Every change goes back to the text, so undo, Git, and the agent all see the same thing.
 2. **The agent proposes, the human applies.** The Assistant reads freely but never writes by itself. Every file action is a proposal the user reviews and applies (and can undo).
-3. **The core does not know the interface.** Everything that is a decision (what a tab does, when to save, what a proposal means) lives in code that has no GTK in it. GTK is one replaceable frontend on top.
+3. **The core does not know the interface.** Everything that is a decision (what a tab does, when to save, what a proposal means) lives in plain TypeScript that runs on Node. The window draws what it is told.
 
-Stack: **TypeScript** bundled by **Vite** into `dist/`, run by **GJS** (SpiderMonkey, not Node) with **GTK 4 + libadwaita + GtkSourceView 5**, WebKitGTK only for Mermaid diagrams. Node is for building and for running the core's tests. A separate **Go** daemon, `markworkd`, keeps agent processes alive.
+Stack: **TypeScript**, bundled by **Vite**. The app is **Electron**: the core (`src/`) runs in a Node utility process, the window (`electron/renderer/`) is **React** with **CodeMirror 6**, and they talk over the app protocol. A separate **Go** daemon, `markworkd`, keeps agent processes alive. (Until 20 October 2026 the window was GTK 4; the tag `v-gtk-final` keeps it.)
 
 ---
 
@@ -40,52 +40,41 @@ Stack: **TypeScript** bundled by **Vite** into `dist/`, run by **GJS** (SpiderMo
 
 ```mermaid
 flowchart TB
-    subgraph FE["Frontend: GTK 4 (the only one today)"]
-        direction LR
-        W["window.ts<br/>composes widgets"]
-        UI["ui/<br/>47 view components"]
-        ED["editor/<br/>MarkdownView engine"]
+    subgraph EL["Electron main process (electron/main.ts)"]
+        MAIN["window · dialogs · app:// and mwhtml:// · safeStorage · updates"]
     end
 
-    subgraph APP["Application layer: src/app/"]
-        S["AppSession<br/>builds and owns the controllers"]
-        C["Controllers<br/>documents, views, files, journal,<br/>assistant, harness, history, collab ..."]
-        CMD["commands.ts<br/>command registry"]
+    subgraph R["Renderer (electron/renderer/)"]
+        CL["client.ts<br/>protocol client + store"]
+        V["React views<br/>Board, Chat, History, Review ..."]
+        ED["editor.ts<br/>CodeMirror + Markwork's parser"]
     end
 
-    subgraph CORE["Core: no GTK, no gi://"]
-        MD["markdown/<br/>pure string → data"]
-        AG["agent/<br/>assistant + harness logic"]
-        FG["forge/<br/>Forgejo / Gitea PRs"]
-        BASE["base modules<br/>files, git, workspace,<br/>settings, orchestrator"]
-    end
-
-    PORT["platform/index.ts<br/>THE PORT (contract only)"]
-
-    subgraph IMPL["Port implementations"]
-        GJS["platform/gjs/<br/>GLib, Gio, libsoup, libsecret"]
-        NODE["platform/node/<br/>Node built-ins"]
+    subgraph CP["Core: a utility process (electron/core.ts)"]
+        PS["ProtocolServer<br/>(src/app/protocol)"]
+        S["AppSession + controllers<br/>(src/app)"]
+        CORE["markdown/ · agent/ · forge/ · base modules"]
+        PORT["platform/index.ts → platform/node/"]
     end
 
     DAEMON[("markworkd (Go)<br/>keeps agent processes alive")]
 
-    FE -->|implements views, dialogs, hosts| APP
-    APP --> CORE
-    CORE --> PORT
-    GJS -.fills.-> PORT
-    NODE -.fills.-> PORT
-    BASE -.unix socket / ssh.-> DAEMON
+    EL -.MessageChannel.- R
+    EL -.MessageChannel.- CP
+    CL <-->|"notices · actions · asks"| PS
+    PS --> S --> CORE --> PORT
+    CORE -.unix socket / ssh.-> DAEMON
 ```
 
 Read it as three bands:
 
-| Band | Question it answers | Can it import GTK? |
+| Band | Question it answers | Where |
 | --- | --- | --- |
-| Frontend (`window.ts`, `ui/`, `editor/`) | How does it look and feel? | Yes |
-| Application (`app/`) | What should happen when the user does X? | **No** |
-| Core (`markdown/`, `agent/`, `forge/`, base) | What are the rules? | **No** |
+| The window | How does it look and feel? | `electron/renderer/`, `electron/main.ts` |
+| Application | What should happen when the user does X? | `src/app/` |
+| Core | What are the rules? | `src/markdown/`, `src/agent/`, `src/forge/`, base modules |
 
-The **port** is how the core touches the outside world (disk, processes, HTTP, keyring). Because the core only sees the port, the same core runs under GJS in the app and under Node in `npm run test:core:node`. A second frontend (Electron is designed in [docs/design/electron.md](design/electron.md)) would reuse the application layer and the core unchanged.
+The **port** is how the core touches the outside world (disk, processes, HTTP, keyring). The core only sees the port, so its tests run on Node with a fake or the real port, without a window.
 
 ---
 
@@ -93,47 +82,32 @@ The **port** is how the core touches the outside world (disk, processes, HTTP, k
 
 ```
 markwork/
-├── src/                     TypeScript, ~36k lines. The app.
-│   ├── main.ts, app.ts      entry point → creates Adw.Application → MainWindow
-│   ├── window.ts            GTK frontend of AppSession (the only place widgets are wired together)
-│   ├── actions.ts           command registry → Gio.Actions + accelerators
-│   ├── markdown/            pure Markdown rules and models           (29 files, ~5.0k lines)
-│   ├── agent/               the AI assistant + harness logic         (34 files, ~5.7k lines)
+├── electron/                The app shell
+│   ├── main.ts              the main process: window, core process, dialogs, URL schemes, keychain
+│   ├── core.ts              the core's entry: Node platform + ProtocolServer
+│   ├── preload.ts, updater.ts
+│   └── renderer/            the page: client.ts, App.tsx, editor.ts, one component per view (43 files, ~6.6k lines)
+├── src/                     The application, plain TypeScript
+│   ├── app/                 application layer + app/protocol/ (57 files, ~8.0k lines)
+│   ├── markdown/            pure Markdown rules and models   (38 files, ~5.7k lines)
+│   ├── agent/               the AI assistant + harness logic (35 files, ~5.8k lines)
 │   │   └── daemon/          TypeScript client of markworkd
-│   ├── forge/               Forgejo/Gitea pull-request client        ( 8 files, ~0.7k lines)
-│   ├── editor/              the editor engine on GtkSourceView       (21 files, ~4.0k lines)
-│   ├── ui/                  standalone widgets + .ui templates       (47 files, ~10.3k lines)
-│   ├── app/                 application layer, shared by all frontends (24 files, ~5.4k lines)
-│   ├── platform/            the port: index.ts (contract), gjs/, node/ (18 files, ~2.0k lines)
-│   ├── window/              small GTK glue left over (Doc type, harness log windows)
+│   ├── forge/               Forgejo/Gitea pull-request client ( 9 files, ~0.8k lines)
+│   ├── platform/            the port: index.ts (contract) and node/ (12 files, ~1.4k lines)
 │   └── files.ts, git.ts, workspace.ts, settings.ts, orchestrator.ts, ...   base modules of the core
 ├── markworkd/               Go module, standard library only. A supervisor daemon.
 ├── tests/
-│   ├── unit/                tests without a window (62 files, one per module)
-│   ├── gui/                 tests with a real window on Xvfb (35 files)
-│   ├── core-tests.ts        the list that runs on GJS *and* Node
-│   └── run-tests.ts         the GJS runner (unit + GUI)
-├── scripts/                 layers.mjs (architecture guard), dev.mjs, capture.ts (docs screenshots)
-├── data/                    GSettings schema, .desktop, metainfo, icons
+│   ├── unit/                the core's tests (65 files, one per module)
+│   ├── electron-*.mjs       the app driven by Playwright (13 files)
+│   ├── core-tests.ts, run-core-node.ts
+│   └── live*.ts, bench*.ts  live tests and benchmarks (not in npm test)
+├── scripts/                 electron-build.mjs, layers.mjs (architecture guard), capture.mjs (docs screenshots)
+├── data/                    the settings schema and the app icon
+├── build/, electron-builder.yml   packaging (AppImage, deb, dmg, NSIS)
 ├── docs/                    user docs (docs/docs/*.html), design docs, learn-*.html, this file
 ├── bench/                   performance baselines
-└── build-aux/, po/, meson.build   Flatpak, translations, install
+└── po/                      translations
 ```
-
-Where the code is, by size:
-
-```mermaid
-pie showData title Lines of TypeScript in src/ by area
-    "ui/" : 10326
-    "agent/" : 5698
-    "app/" : 5355
-    "markdown/" : 5007
-    "editor/" : 3980
-    "platform/" : 1959
-    "forge/" : 720
-```
-
-(The rest is `window.ts`, `orchestrator.ts`, and the base modules. Numbers are from October 2026; they drift, the proportions do not.)
 
 ---
 
@@ -145,37 +119,35 @@ pie showData title Lines of TypeScript in src/ by area
 flowchart BT
     P["platform/index.ts<br/>(imports nothing)"]
     M["markdown/<br/>imports only markdown/"]
-    A["agent/ · forge/ · base modules<br/>core: no GTK"]
+    A["agent/ · forge/ · base modules<br/>the core"]
     APP["app/<br/>imports core + app/ only"]
-    E["editor/<br/>imports markdown/, agent/"]
-    U["ui/<br/>widgets; gets host interfaces"]
-    WIN["window.ts<br/>composes everything"]
+    PROTO["app/protocol/<br/>the server side of the wire"]
+    CORE["electron/core.ts<br/>the utility process"]
+    R["electron/renderer/<br/>the page: pure modules + types only"]
 
     M --> A
     P --> A
     A --> APP
-    M --> E
-    APP --> U
-    E --> WIN
-    U --> WIN
-    APP --> WIN
+    APP --> PROTO
+    PROTO --> CORE
+    M --> R
 ```
 
 (Arrows point from the lower layer to the layers allowed to depend on it.)
 
-This is **not a convention, it is a build step**. `scripts/layers.mjs` parses every file in `src/` and fails `npm run build` on a violation. The main rules:
+This is **not a convention, it is a build step**. `scripts/layers.mjs` parses every file in `src/` and `electron/renderer/` and fails `npm run build` on a violation. The main rules:
 
 | Folder | May not import | Why |
 | --- | --- | --- |
-| `markdown/` | `gi://`, anything outside `markdown/` | Only `string → data` functions: trivial to test |
-| `agent/`, `forge/` | GTK, `ui/`, `editor/`, `window` | The agent must not know about widgets |
-| the whole core | `gi://`, `gjs:` built-ins, `platform/gjs/`, `app/` | It reaches the runtime only through `platform()` |
-| `app/` | `gi://`, `ui/`, `window` | Shared by every frontend |
-| `editor/` | `ui/`, `window`, `agent/` | The editor reports through callbacks |
-| `ui/` | `window.ts`; core modules that *act* (touch disk/git) | A view draws and reports; work goes through `app/` |
+| `markdown/` | anything outside `markdown/` | Only `string → data` functions: trivial to test |
+| `forge/` | `agent/` | The forge knows nothing about the agent |
+| the whole core | `app/`, anything outside the core | It reaches the runtime only through `platform()` |
+| `app/` | anything but the core and `app/` | The application layer has no window of its own |
 | everything but `platform/node/` | `node:*` | Only the Node port may use Node |
+| everything in `src/` | anything outside `src/` | `electron/` uses `src/`, never the other way round |
+| `electron/renderer/` | `node:*`; from `src/` anything but the pure modules and types | The page is a view: it draws and reports |
 
-The same script enforces a **cyclomatic complexity limit of 15 per function**. The exception lists (`GI_ALLOWED`, `UI_ACTS_ALLOWED`, `COMPLEXITY_ALLOWED`) are all empty and may not grow.
+The same script enforces a **cyclomatic complexity limit of 15 per function**. Its exception list (`COMPLEXITY_ALLOWED`) is empty and may not grow. And the core typechecks against `src/globals.d.ts` only (timers, `TextEncoder`, `TextDecoder`), not Node's types, so a Node global in the core fails `npm run typecheck`.
 
 If `npm run build` says `imports X (… reason …)`, the message already tells you which rule you hit. Fix the design, do not add an exception.
 
@@ -198,26 +170,19 @@ flowchart LR
     P --- tr["translations: gettext"]
 ```
 
-Implementations:
+The implementation is `platform/node/`, built from Node built-ins only: files and atomic background writes, the Trash on each system, processes, sockets, `fetch`, `secret-tool` for the keyring on Linux, a JSON settings store checked against the schema in `data/`, and gettext catalogs. On macOS and Windows the keyring is Electron's `safeStorage`, which only the main process can call, so `electron/core.ts` installs secrets that ask the main process (`platform/node/vault.ts`).
 
-| Folder | Built from | Used by |
-| --- | --- | --- |
-| `platform/gjs/` | GLib, Gio, libsoup, libsecret, GSettings | The real app, the GUI tests |
-| `platform/node/` | Node built-ins only | `npm run test:core:node`, a future Electron core |
-
-Every entry point (`main.ts`, the test runner, benchmarks, `scripts/capture.ts`) starts with `import './platform/gjs/install.js'`, which calls `setPlatform(...)`. A test can replace the platform with a fake.
-
-`tests/unit/platform.ts` holds both implementations to the same contract, so "works on GJS, breaks on Node" is caught.
+Every entry point (`electron/core.ts`, the test runner, the live tests and benchmarks) starts with `import '…/platform/node/install.js'`, which calls `setPlatform(...)`. A test can replace the platform with a fake; `tests/unit/platform.ts` holds the installed platform to the contract, and `tests/unit/crossos.ts` runs what differs per system (folders, program names, terminals) for Linux, macOS, and Windows on one machine.
 
 ---
 
 ## 6. The application layer: AppSession and controllers
 
-`src/app/` is where decisions live. It is large because the GTK window used to do all of this; it was moved out so a second frontend could reuse it.
+`src/app/` is where decisions live. Every decision of the application is here; the window only draws and reports.
 
 ```mermaid
 flowchart TB
-    FE["Frontend object (MainWindow)<br/>implements AppFrontend"]
+    FE["ProtocolFrontend (app/protocol/frontend.ts)<br/>implements AppFrontend as messages"]
     S["AppSession&lt;E&gt;"]
     FE -- "settings, host, documents,<br/>createEditor, dialogs" --> S
 
@@ -250,8 +215,8 @@ export class Autosaver { constructor(host: AutosaveHost) { ... } }
 
 ```mermaid
 flowchart LR
-    subgraph Frontend["MainWindow (GTK)"]
-        W1["widgets, dialogs, toasts"]
+    subgraph Frontend["ProtocolFrontend"]
+        W1["notices, asks, the editor replica"]
     end
     subgraph Session["AppSession"]
         H["host = frontend.host<br/>+ members provided by controllers"]
@@ -274,46 +239,36 @@ Three kinds of things cross this boundary, and only these:
 | **Dialogs** (`AppDialogs`) | `confirm`, `chooseFile` | A function that returns a value or a `Promise` |
 | **Hosts** | `DocumentsHost`, `HarnessHost` | What the controller needs from the frontend |
 
-"Plain data" is checked by `tests/unit/plaindata.ts`: no `Set`, `Date`, callbacks, or live objects like `Doc` in `AppFrontend`/`AppDialogs`. Reason: each call must be serializable into a JSON message one day.
+"Plain data" is checked by `tests/unit/plaindata.ts`: no `Set`, `Date`, callbacks, or live objects like `Doc` in `AppFrontend`/`AppDialogs`. Reason: each call is a JSON message to the window.
 
 ### Commands
 
-[`app/commands.ts`](../src/app/commands.ts) is a table: `id`, palette label, default keys, scope, `run(host)`. [`actions.ts`](../src/actions.ts) turns that table into `Gio.Action`s and accelerators. A command acts only through `CommandHost`, so it never touches a widget.
+[`app/commands.ts`](../src/app/commands.ts) is a table: `id`, palette label, default keys (`Ctrl+Shift+P`; `Ctrl` is `⌘` on macOS), scope, where it runs (`runs`: the core, or the window's editor alone), and `run(host)`. The window takes its keys, menus, and palette from the same table and asks the core which commands apply now (`commands.state`). A command acts only through `CommandHost`, so it never touches the window.
 
 ---
 
-## 7. The GTK frontend
+## 7. The protocol and the window
+
+The core and the window are two processes. They talk over one `MessageChannel` that the main process hands to both ends; every message is one JSON object ([docs/design/protocol.md](design/protocol.md)).
 
 ```mermaid
-flowchart TB
-    main["main.ts<br/>install platform → main()"] --> app["app.ts<br/>Adw.Application"]
-    app --> mw["MainWindow (window.ts)"]
-    mw --> build["builds the widgets"]
-    mw --> impl["implements AppFrontend:<br/>frontendHost() · viewScreen() ·<br/>appDialogs() · documentsHost()"]
-    impl --> sess["new AppSession(this)"]
-    sess --> start["session.start() → restore tabs"]
+sequenceDiagram
+    participant R as renderer (client.ts)
+    participant C as core (ProtocolServer)
+    participant S as AppSession
+    R->>C: hello / start { path }
+    C->>S: open(path)
+    S-->>C: views, documents, dialogs (AppFrontend calls)
+    C-->>R: notices: view.*, doc.*, page.*, toast …
+    R->>C: actions: act.* (what the user did), edits of the text
+    C-->>R: asks: ask.* (a question) — the renderer answers
 ```
 
-Window anatomy (matches the layout block in `MainWindow`'s constructor):
-
-```
-┌ HeaderBar ──────────────────────────────────────────────────────┐
-│ Sidebar            │ TabBar (when ≥ 2 documents)                │
-│ ┌Files·Outline·    │ FindBar                                    │
-│ │ History·Search┐  │ ┌─────────────────────────┬──────────────┐ │
-│ │ FileTree /     │ │ │ content (Gtk.Stack):    │ Assistant    │ │
-│ │ Outline /      │ │ │  MarkdownView | Board | │ panel        │ │
-│ │ History        │ │ │  Inbox | Table | Home | │ (ChatPanel)  │ │
-│ └────────────────┘ │ │  Calendar | Pull | ...  │              │ │
-│                    │ └─────────────────────────┴──────────────┘ │
-│                    │ StatusBar                                  │
-└────────────────────┴────────────────────────────────────────────┘
-```
-
-- **One `MarkdownView` per tab.** Undo, cursor, scroll are kept per document. Never hold `w.editor` in a long-lived variable: it is a getter for the *active* document.
-- **`window.ts` (~930 lines) is only wiring.** If a feature adds more than a few methods there, make it a controller in `app/`.
-- **`ui/` components are views.** They draw plain data and report with `on*` callbacks. Static layout goes in a `.ui` template (`chat.ui`, `preferences.ui`, ...).
-- UI follows the **GNOME HIG and libadwaita**: `Adw.*` first, then GTK 4, then Adwaita style classes, then your own CSS in `ui/theme.ts`. Text goes through `_()` for translation.
+- **Three kinds of messages.** A *notice* (`view.tree`, `view.notes`, `doc.open`, …) tells the window what to show. An *action* (`act.tree.activate`, `act.notes.edit`, `command`, …) reports what the user did, and may get a reply. An *ask* (`ask.saveChanges`, `ask.proposal`, …) is the core asking the user; the window answers with the user's choice. `app/protocol/handlers/` has one file per controller for the actions.
+- **The text lives in the editor.** CodeMirror in the renderer holds each document; the window sends its edits (changes in code points, with a version), and the core keeps a replica (`app/protocol/replica.ts`). When the core writes (an applied proposal, a board change) it sends changes against a version, and a write that meets newer typing is made again from the newer text. `LaggingEditor` in the tests plays such an editor.
+- **The window is checked, not trusted.** A path, a card, a token, or an answer the window sends back must be one the core offered (`stale` otherwise), and a write it asks for goes through the same checks as one from the agent.
+- **The renderer** (`electron/renderer/`) is React. `client.ts` is the protocol client and the store; each view is a component (`Board.tsx`, `Chat.tsx`, `History.tsx`, `Review.tsx`, …); `editor.ts` is CodeMirror with Markwork's parser. Its look copies the former GTK window: a header bar, the icon rail with its panel, centered tabs, counts at the foot, and Adwaita colors and icons. Below 900 px the Assistant floats over the editor, below 600 px the side panel too (`layoutOf` in `client.ts`).
+- **The main process** (`electron/main.ts`) owns what only it can: the window, file dialogs, the `app://` scheme for pictures and the `mwhtml://` scheme for HTML pages, the keychain, and updates.
 
 ---
 
@@ -351,41 +306,32 @@ layout: board                  # makes this file a kanban board
 
 A parser **never rejects or rewrites text it does not understand**. That is what makes it safe to share a file with a human editing by hand.
 
-### 8.2 `editor/`: the engine on top of GtkSourceView
+### 8.2 The editor: CodeMirror with Markwork's parser
 
-`MarkdownView` ([`editor/view.ts`](../src/editor/view.ts)) is a `GtkSourceView` plus small layers, each owning one concern:
+`electron/renderer/editor.ts` is CodeMirror 6. Markwork's own parser does the styling, so the editor shows exactly what the HTML export and the core understand:
 
-| Module | Concern |
+| Piece | Concern |
 | --- | --- |
-| `tags.ts`, `highlighter.ts`, `tagsync.ts` | Styles: parse lines (`markdown/highlight.ts`), apply as text tags, only for changed lines (`LineTagger`) |
-| `decorations.ts` | Hide/show Markdown markers depending on the cursor line (`MarkerConcealer`) |
-| `lists.ts`, `listindent.ts`, `editing.ts` | Enter/Tab in lists, format commands |
-| `images.ts`, `tablelayer.ts`, `mermaid.ts`, `codelayer.ts` | **Overlay widgets** drawn above empty space (not buffer content) |
-| `wikicomplete.ts` | `[[` note-name suggestions |
-| `overlays.ts` | `OverlaySlots`: GTK 4 overlays cannot be detached, so slots are borrowed and released |
+| `syntaxField` (`editor.ts`) | Parses with `markdown/highlight.ts` (`HighlightCache` reuses unchanged lines) and builds every decoration in the transaction itself: styles, hidden markers away from the cursor, focus dimming |
+| `tables.ts`, `codecolor.ts`, `diagrams.ts`, `images.ts`, `conflicts.ts` | Block widgets: a table as a grid, a code box with colors, a Mermaid/DBML diagram, pictures, conflict buttons |
+| `markdown/editcommands.ts` | Enter/Tab in lists and tables, format commands: text and selection in, changes out |
+| `@codemirror/autocomplete` | `[[` note-name suggestions, from names the core sends |
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant B as GtkTextBuffer
-    participant V as MarkdownView
-    participant H as Highlighter
+    participant CM as CodeMirror (renderer)
     participant P as markdown/highlight.ts
-    participant T as LineTagger
-    U->>B: types a character
-    B->>V: changed
-    V->>V: queueHighlight() via GLib.idle_add
-    Note over V: never highlight directly in a handler
-    V->>H: run in idle
-    H->>P: lines that changed
-    P-->>H: spans (pure data)
-    H->>T: setTagRanges (only dirty lines)
-    V->>V: queueCursorUpdate() → MarkerConcealer
+    participant C as core replica
+    U->>CM: types a character
+    CM->>P: parse (only changed lines are parsed again)
+    P-->>CM: spans, markers, blocks (pure data)
+    CM->>CM: decorations rebuilt in the same transaction
+    CM->>C: the change (code points, version)
+    C->>C: outline, counts, autosave, views follow
 ```
 
-Key point: parsing is **pure** and testable without a window; only applying the result touches GTK.
-
----
+Key point: parsing is **pure** and testable without a window; the decorations only draw its result.
 
 ## 9. Flows, step by step
 
@@ -393,43 +339,40 @@ Key point: parsing is **pure** and testable without a window; only applying the 
 
 ```mermaid
 sequenceDiagram
-    participant M as main.ts
-    participant I as platform/gjs/install
-    participant A as app.ts
-    participant W as MainWindow
+    participant M as electron/main.ts
+    participant C as electron/core.ts
+    participant R as renderer
     participant S as AppSession
-    participant D as DocumentController
-    M->>I: import first (setPlatform, gettext domain)
-    M->>A: main(argv)
-    A->>W: new MainWindow(app, systemSettings(), path)
-    W->>W: build widgets, addBreakpoints()
-    W->>S: new AppSession(this) — builds all controllers
-    S->>D: start()
-    D-->>W: restore last session's tabs / open the file
+    M->>C: utilityProcess.fork(core.js)
+    M->>R: loadFile(index.html)
+    M->>C: one end of a MessageChannel
+    M->>R: the other end
+    R->>C: start { path from the command line }
+    C->>S: new AppSession(ProtocolFrontend) → open(path)
+    S-->>R: the folder, the restored tabs, Home or the welcome text
 ```
 
 ### 9.2 Editing a kanban card
 
-The buffer is the source of truth; the board is a view.
+The text is the source of truth; the board is a view.
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant K as ui/kanban.ts (view)
+    participant B as Board.tsx (view)
     participant V as ViewController (app/views.ts)
     participant M as markdown/kanban.ts
-    participant E as MarkdownView
+    participant E as the editor (replica + CodeMirror)
     participant AS as Autosaver
     participant FS as files.ts → platform().fs
-    U->>K: drags a card to "Done"
-    K->>V: onChange(board)
+    U->>B: drags a card to "Done"
+    B->>V: act.notes.edit { kind: move, … }
     V->>M: moveCard(board, ...) → new Board
     V->>M: serializeBoard(board) → text
-    V->>E: replaceText(text) / editor.update(edit)
+    V->>E: editor.update(edit) → changes to the window
     Note over E: one undo step
     E->>AS: content changed → queue()
     AS->>FS: writeTextFileAsync (atomic, background)
-    FS-->>FS: notifyDiskChange(path)
 ```
 
 ### 9.3 Saving and watching the folder
@@ -455,7 +398,7 @@ There are **two different agent features**. They share a vocabulary but not code
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant P as ui/chat.ts (view only)
+    participant P as Chat.tsx (view only)
     participant AC as AssistantController (app/)
     participant CC as ChatController (agent/)
     participant CS as ChatSession (agent/session.ts)
@@ -523,7 +466,7 @@ Facts to keep in mind:
 - Markwork **writes to a project folder only when the user confirms a merge.**
 - Git is always a `GitRunner` parameter: `runGit` locally, `daemonGit()` through markworkd on another machine. Keep it a parameter so the same code runs on both.
 - A run has statuses; `waiting` means the agent asked the user something and still holds its folder's queue slot.
-- The pure parts (prompt, `PiReader`, `RunQueue`) are in `agent/harness.ts` and have unit tests; the GUI test uses a fake pi shell script.
+- The pure parts (prompt, `PiReader`, `RunQueue`) are in `agent/harness.ts` and have unit tests; the app test (`tests/electron-harness.mjs`) uses a fake agent.
 
 ---
 
@@ -572,7 +515,7 @@ model  →  protocol, store, runner, config  →  supervisor  →  server  →  
 
 Principles: **protocol-agnostic** (the daemon moves lines and never parses an agent's output; all meaning is in `agent/harness.ts`), **the log is the single source of truth** (a run's state is a fold over its records), **no network listener** (OS permissions + SSH only).
 
-TypeScript side: `src/agent/daemon/` (protocol, client, reconnecting connection, `streamlink.ts`), `src/orchestratordaemon.ts` (the `Spawner` adapter), `src/daemonhub.ts` (which machines are connected), `src/window/harness.ts`. Details: [docs/design/markworkd.md](design/markworkd.md).
+TypeScript side: `src/agent/daemon/` (protocol, client, reconnecting connection, `streamlink.ts`), `src/orchestratordaemon.ts` (the `Spawner` adapter), `src/daemonhub.ts` (which machines are connected), `src/app/harness.ts`. markworkd runs on Linux; on macOS and Windows agents run as children of the app. Details: [docs/design/markworkd.md](design/markworkd.md).
 
 ---
 
@@ -580,43 +523,44 @@ TypeScript side: `src/agent/daemon/` (protocol, client, reconnecting connection,
 
 ```mermaid
 flowchart LR
-    ts["src/**/*.ts"] --> tsc["tsc --noEmit<br/>(two tsconfigs)"]
+    ts["src/ · electron/"] --> tsc["tsc --noEmit<br/>(three tsconfigs)"]
     tsc --> lay["scripts/layers.mjs<br/>layers + complexity"]
-    lay --> vite["vite build<br/>(target firefox115)"]
-    vite --> dist["dist/markwork.js<br/>+ schema, icons, mermaid.min.js"]
-    dist --> gjs["gjs -m dist/markwork.js"]
+    lay --> vite["scripts/electron-build.mjs<br/>(Vite: main, core, preload, renderer)"]
+    vite --> dist["dist-electron/<br/>+ mermaid.min.js, locale/"]
+    dist --> el["electron ."]
 ```
 
 | Command | Use it for |
 | --- | --- |
 | `npm install` | once |
-| `npm start` | build and run |
-| `npm run dev` | rebuild and relaunch on every save (GJS has no HMR) |
+| `npm start` | build and open the app (`npm start -- <folder>`) |
 | `npm run typecheck` | types + layer rules, fastest feedback |
-| `npm test` | everything on a virtual display (Xvfb): unit + GUI + mouse |
-| `npm run test:core:node` | the core's tests on **Node**, no display |
-| `npm run bench:compare` | performance vs `bench/baseline.json` |
+| `npm run test:core:node` | the core's tests on Node, no display |
+| `npm run test:electron` | the app driven by Playwright under Xvfb |
+| `npm test` | both |
+| `npm run bench:compare` | the Markdown module's performance vs `bench/baseline.json` |
+| `npm run docs` | retake the screenshots in `docs/assets/` |
 | `cd markworkd && go vet ./... && go test -race ./...` | the daemon |
 
 The test pyramid:
 
 ```mermaid
 flowchart TB
-    gui["tests/gui/ (35 files)<br/>real window on Xvfb, screenshots"]
-    unitgi["tests/unit/ needing GI<br/>(run-tests.ts, GJS only)"]
-    core["tests/core-tests.ts<br/>runs on GJS AND Node, only via platform()"]
+    el["tests/electron-*.mjs (13 files)<br/>the real app, Playwright, fakes for the model, forge, and agent"]
+    proto["tests/unit/protocol.ts<br/>ProtocolServer with a scripted frontend"]
+    core["tests/core-tests.ts (65 files)<br/>on Node, only via platform() and host()"]
     go["markworkd/ go test -race<br/>real processes + fake agent"]
-    gui --- unitgi --- core
+    el --- proto --- core
     core --- go
 ```
 
 Conventions that save time:
 
-- Tests run from `dist/`, so **rebuild before running** `gjs -m dist/run-tests.js`.
-- A test log must be **clean**, not just "0 failed": grep for `CRITICAL|WARNING|Traceback` (see AGENT.md).
-- Tests use `AppSettings.inMemory()` and temp folders; never the user's dconf or home.
-- A modal dialog returns a `Promise` and must be replaceable in tests (`w.session.*.dialogs`).
-- UI changes need a real screenshot (`widgetPixbuf()` in `tests/widgets.ts`); code changes need a benchmark.
+- The Electron tests run the built app, so **rebuild** (`npm run electron:build`) before running one file with `node tests/electron-<name>.mjs`.
+- A test log must be **clean**, not just "0 failed" (see AGENT.md).
+- Tests use in-memory settings or their own settings folder, and temporary folders; never the user's.
+- Tests wait for what they expect, not a fixed time.
+- UI changes need a real screenshot (Playwright on Xvfb); code changes need a benchmark.
 
 ---
 
@@ -626,14 +570,14 @@ Conventions that save time:
 flowchart TD
     q{"What are you changing?"}
     q -->|"a Markdown syntax / format rule"| r1["src/markdown/<br/>+ tests/unit/<br/>+ example in tests/samples/all-formats.md"]
-    q -->|"how the editor looks while typing"| r2["src/editor/ (+ markdown/highlight.ts for the parse)<br/>+ tests/gui/"]
-    q -->|"a new thing the user can do"| r3["a command in app/commands.ts<br/>+ a CommandHost method<br/>(actions.ts registers it automatically)"]
+    q -->|"how the editor looks while typing"| r2["electron/renderer/editor.ts (+ markdown/highlight.ts for the parse)<br/>+ tests/electron-editor.mjs"]
+    q -->|"a new thing the user can do"| r3["a command in app/commands.ts<br/>+ a CommandHost method"]
     q -->|"behaviour of a feature"| r4["a controller in src/app/<br/>+ host interface + test in tests/unit/"]
-    q -->|"a widget / dialog"| r5["src/ui/ (+ .ui template)<br/>view = plain data in, on* out"]
+    q -->|"what the window shows"| r5["a notice in app/protocol/ + a component in electron/renderer/<br/>+ tests/unit/protocol.ts + an Electron test"]
     q -->|"the assistant can READ more"| r6["agent/tools.ts<br/>register in TOOLS + runTool() + describeCall()"]
-    q -->|"the assistant can WRITE more"| r7["agent/changes.ts CHANGE_TOOLS<br/>pure Change + approval + applyChange re-check<br/>tests/unit/changes.ts + tests/gui/chat.ts"]
-    q -->|"a preference"| r8["data/*.gschema.xml + AppSettings<br/>+ ui/preferences.ui"]
-    q -->|"needs the OS (file, process, HTTP)"| r9["add it to platform/index.ts<br/>implement in gjs/ AND node/"]
+    q -->|"the assistant can WRITE more"| r7["agent/changes.ts CHANGE_TOOLS<br/>pure Change + approval + applyChange re-check<br/>tests/unit/changes.ts + tests/unit/assistant.ts"]
+    q -->|"a preference"| r8["data/*.gschema.xml + AppSettings<br/>+ the Preferences dialog (renderer/Modals.tsx)"]
+    q -->|"needs the OS (file, process, HTTP)"| r9["add it to platform/index.ts<br/>implement in platform/node/ + a test"]
 ```
 
 Worked example: **"Add a command that archives the done cards"**
@@ -641,8 +585,8 @@ Worked example: **"Add a command that archives the done cards"**
 1. Pure logic: `archiveDone(board): Board` in `src/markdown/kanban.ts`, plus a test in `tests/unit/kanban.ts`.
 2. A `CommandHost` method (e.g. `archiveDone()`) in `app/commands.ts`, with the command entry (id, label via `_()`, default keys, scope).
 3. Implement it in `ViewController` (`app/views.ts`) using `currentBoard()` and `commitBoard()`, so it is one undo step.
-4. `window.ts`/`actions.ts` need nothing: the table is mapped to actions automatically.
-5. Update the docs page (`docs/docs/kanban.html`) and the README shortcut table.
+4. The window needs nothing: it takes the command from the table and the core tells it when it applies.
+5. A step in `tests/electron-structured.mjs`, the docs page (`docs/docs/kanban.html`), and the README shortcut table.
 
 Also required by AGENT.md when relevant: the matching `docs/learn-*.html` page, `po/POTFILES.in` for new translatable text, and one `type(module): description` commit per logical change.
 
@@ -652,16 +596,13 @@ Also required by AGENT.md when relevant: the matching `docs/learn-*.html` page, 
 
 | Symptom | Cause | Rule |
 | --- | --- | --- |
-| Cursor/tag off by one with emoji | GtkTextBuffer counts code points; JS counts UTF-16 units | Convert with `makeCpMap()` (`markdown/offsets.ts`) |
-| Whole document re-lays out, typing lags | `remove_tag()` over the buffer, or margin changes at runtime | Use `setTagRanges()` / `LineTagger`; never touch margins |
-| Opening a 650 KB file freezes | Setting the whole text at once | Use `replaceAllText()`; highlighting is incremental (`queueFill()`) |
-| `Gjs-CRITICAL … already disposed` | An idle/timeout runs after the widget is destroyed | Check the `destroyed` flag; components provide `destroy()` |
-| Images/tables won't scroll or detach | They are overlays, not buffer content; GTK 4.14 can't detach them | Use `OverlaySlots`: `place()` / `release()` |
-| A lost async result (rare) | GJS blocks JS callbacks that arrive during GC | Give anything awaited an end that does not depend on the callback (see `runGit()` watchdog) |
-| Edits overwritten by autosave/agent | Reading text back after your own write | Use `editor.update(edit)`; `LaggingEditor` test catches it |
+| Cursor or change off by one with emoji | The protocol counts code points; JS and CodeMirror count UTF-16 units | Convert with `markdown/offsets.ts` at the editor's edge |
+| Edits overwritten by an agent or a board change | Reading text back after your own write, while typing is on its way | Use `editor.update(edit)`; the `LaggingEditor` test catches it |
+| A path compare fails on Windows or macOS | `/` assumed, or a symlinked temporary folder | Use `platform().paths` (`same`, `join`); git's top folder via `--show-cdup`; `markdown/paths.ts` for spellings |
+| A test passes here and fails on CI | A fixed wait, or another test's settings | Wait for the condition; every Electron test file has its own settings folder |
 | `npm run build` fails on imports | You crossed a layer | Read the message in `layers.mjs`; fix the design |
-| New dialog hangs a test | Real modal in a test | Dialogs return a Promise and must be replaceable |
-| Window widens by itself | `hexpand` propagates upward in GTK 4 | Panels get explicit `hexpand: false`; hscroll policy `EXTERNAL` |
+| The window shows something the core did not send | Logic in a component | Move the decision to `app/`; the component only draws |
+| A process wait never ends | The other side never answered | Give anything awaited an end of its own (see the `runGit()` watchdog) |
 
 The complete list, with reasons, is "Known pitfalls" in [AGENT.md](../AGENT.md).
 
@@ -678,7 +619,8 @@ The complete list, with reasons, is "Known pitfalls" in [AGENT.md](../AGENT.md).
 | **Controller** | A class in `app/` that owns one feature's behaviour. |
 | **Host** | The slice of the frontend a controller is allowed to call. |
 | **View** | A widget interface: plain data in, `on*` callbacks out. |
-| **Doc** | One open tab: file, editor, state. |
+| **Doc** | One open tab: file, editor (in the core, a replica of the window's), state. |
+| **Notice / action / ask** | A message from the core to the window / from the window to the core / a question the core asks the user. |
 | **Change / proposal** | A pure description of an agent's file edit; written only after Apply. |
 | **Harness** | An external agent program (pi) that works a kanban card. |
 | **Worktree** | A per-card Git worktree/branch where the harness works. |
@@ -694,9 +636,9 @@ The complete list, with reasons, is "Known pitfalls" in [AGENT.md](../AGENT.md).
 3. [`src/platform/index.ts`](../src/platform/index.ts): the port.
 4. [`src/app/session.ts`](../src/app/session.ts): how the controllers are wired; then one small controller (`app/autosave.ts`).
 5. [`src/markdown/kanban.ts`](../src/markdown/kanban.ts) and its test `tests/unit/kanban.ts`: the pure-model style.
-6. [`src/window.ts`](../src/window.ts): how a frontend fills the hosts (skim the constructor).
+6. [`docs/design/protocol.md`](design/protocol.md), then [`src/app/protocol/server.ts`](../src/app/protocol/server.ts) and [`electron/renderer/client.ts`](../electron/renderer/client.ts): both ends of the wire.
 7. [`src/agent/session.ts`](../src/agent/session.ts) and [`src/agent/changes.ts`](../src/agent/changes.ts): the Assistant loop and the approval boundary.
-8. [`docs/design/markworkd.md`](design/markworkd.md) and [`docs/design/protocol.md`](design/protocol.md) when you touch agents-on-other-machines or a second frontend.
+8. [`docs/design/markworkd.md`](design/markworkd.md) when you touch agents on other machines.
 9. Run `npm test`, then make a tiny change in `markdown/` with its test, to feel the loop.
 
 **Where the design documents are**
@@ -704,6 +646,6 @@ The complete list, with reasons, is "Known pitfalls" in [AGENT.md](../AGENT.md).
 | Document | About |
 | --- | --- |
 | [design/markworkd.md](design/markworkd.md) | The daemon: protocol, storage, failure behaviour, shims |
-| [design/protocol.md](design/protocol.md) | The (not yet implemented) app protocol for a frontend in another process |
-| [design/electron.md](design/electron.md) | The path to an Electron frontend (Indonesian) |
-| [learn-agent.html](learn-agent.html), [learn-gtk.html](learn-gtk.html), [learn-clean-code.html](learn-clean-code.html), [learn-performance.html](learn-performance.html) | Illustrated histories of how each area grew |
+| [design/protocol.md](design/protocol.md) | The app protocol between the core and the window |
+| [design/electron.md](design/electron.md), [design/electron-migrasi.md](design/electron-migrasi.md), [design/hapus-gtk.md](design/hapus-gtk.md) | How Markwork moved from GTK to Electron (Indonesian) |
+| [learn-agent.html](learn-agent.html), [learn-clean-code.html](learn-clean-code.html), [learn-performance.html](learn-performance.html) | Illustrated histories of how each area grew |

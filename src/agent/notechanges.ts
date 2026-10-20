@@ -3,7 +3,7 @@
 // it) and edit_schema changes how the document is set up (its fields, the options of a select, its layout and options).
 // Both check what the model wrote against the document's own schema, so an unknown field or a value that does not fit
 // comes back as an error the model can fix, never as text in the file. Like every change tool they only compute the
-// new contents (changes.ts turns that into a Change for the user to review). Pure TypeScript without GTK.
+// new contents (changes.ts turns that into a Change for the user to review). Pure TypeScript.
 
 import { countUses, fieldNameProblem, isOptionColor, optionProblem, parseSchema, parseValue, readItem, setField, writeField, writeSchema, type FieldDef, type FieldType, type OptionColor } from '../markdown/fields.js';
 import { chartItems, chartItemText } from '../markdown/chart.js';

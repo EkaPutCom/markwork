@@ -1,5 +1,5 @@
 // Cancelling work that is in flight (a model request, a proposal waiting for review, a commit message being written).
-// Plain TypeScript, so the core needs no Gio.Cancellable; the GJS platform links one to it where GIO does the work.
+// Plain TypeScript, so the core needs no runtime's own cancellation type; the platform links one to it where it does the work.
 
 import type { CancelSignal } from './platform/index.js';
 
@@ -18,7 +18,7 @@ export class Cancellable implements CancelSignal {
         for (const listener of listeners) listener();
     }
 
-    // Runs listener once when cancelled, or at once when it already is (like Gio.Cancellable.connect). Returns a function
+    // Runs listener once when cancelled, or at once when it already is . Returns a function
     // that removes it; that is safe to call from inside the listener.
     onCancel(listener: () => void): () => void {
         if (this.done) {

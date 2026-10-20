@@ -57,7 +57,7 @@
   <li>Create Pull Request works for Forgejo and Gitea only (GitHub and GitLab are not supported yet), and sends the whole branch: files unchecked in the review are still pushed. It does not push new commits to a pull request that is already open (reply to pi, then push by hand), never forces a push, and does not ask for a missing access token: add it in the <em>Pull Requests</em> tab of the project folder first. Through markworkd the access token is passed in the environment of the push call, which needs <code>GIT_CONFIG_*</code> in the daemon's <code>env_allow</code> and is kept in the daemon's run record (mode 0600) until Markwork forgets the run just after git ends; a crash in between leaves it there until the daemon's retention removes it.</li>
   <li>Taking only some files makes one commit and is refused for a file that also changed on the base branch since the worktree was made.</li>
   <li>The summary of what pi said and the commands it ran is only there while the run is known to this window (or found again on markworkd); after a restart without the daemon, the review still shows the changes.</li>
-  <li><em>Open Terminal</em> knows Console, Ptyxis, GNOME Terminal, and <code>xdg-terminal-exec</code>; inside the Flatpak it cannot start a terminal on the computer. There is no interactive terminal inside Markwork.</li>
+  <li><em>Open Terminal</em> knows Console, Ptyxis, GNOME Terminal, and <code>xdg-terminal-exec</code> on Linux, Terminal on macOS, and Windows Terminal (then a cmd window) on Windows. There is no interactive terminal inside Markwork.</li>
 </ul>
 
 <h2 id="kanban">The kanban board</h2>
@@ -71,7 +71,7 @@
 <ul>
   <li>Due dates and the inbox are only read from the open work folder (at most 300 Markdown files).</li>
   <li>Clicking a task opens its board without highlighting its card.</li>
-  <li>Recent files are recorded by Markwork itself, not through the GNOME recent files list, so they do not appear in other apps.</li>
+  <li>Recent files are recorded by Markwork itself, in its settings, so they do not appear in the recent lists of other apps.</li>
 </ul>
 
 <h2 id="journal">The daily journal</h2>
@@ -92,7 +92,6 @@
   <li>Only the first 250 pull requests and the first 250 changed files of a pull request are read.</li>
   <li>Resolving a conflict here merges the pull request into your base branch and pushes that branch. It cannot push to the branch of the pull request itself. Recording the pull request as merged needs the repository to allow manually merged pull requests; otherwise the pull request stays open on the server until you close it.</li>
   <li>Sending changes: the pull request goes to the default branch of the repository, you cannot pick another. Through a fork, the server may still be making the copy when the push comes (it has not been tried on a server that does this slowly). AGit needs the server to have it turned on, and sends a description of several lines as one line.</li>
-  <li>The desktop notification names the app <code>gjs</code> when Markwork is run from the source; an installed copy has its own name.</li>
 </ul>
 
 <h2 id="editor">The editor and export</h2>
@@ -104,13 +103,11 @@
   <li>HTML export does not embed local images and does not include the code block colors yet.</li>
   <li>CSV tables: a file of more than a million cells opens as text, and a long file takes about as long to open as a Markdown file of the same size. There is no sorting, filtering, column types, or formulas yet, the search in a table matches inside one cell at a time, and neither the assistant nor the search across the folder includes <code>.csv</code> files. Dragging a row or column to a place that is not on screen works only by holding the pointer near the edge of the table and moving it a little; there is no keyboard way to move a row or column yet.</li>
 </ul>
-<h2 id="gnome">GNOME integration</h2>
+<h2 id="system">The system</h2>
 <ul>
-  <li>The interface is in English; the translation infrastructure (gettext) is in place, but no other language is available yet.</li>
-  <li>It has not been tested in a Wayland session; the tests run on X11.</li>
-  <li>Installing through Meson and the Flatpak build have not been tested. In Flatpak, <code>git</code> and <code>pi</code> must be available inside the sandbox.</li>
-  <li>The system accent color and the <code>Adw.ShortcutsDialog</code> shortcuts dialog are only used on libadwaita 1.6/1.8 and newer; on older versions the default Adwaita color and a plain shortcut list are used.</li>
-  <li>A floating panel in a narrow window does not close when the editor is clicked; close it with its button.</li>
+  <li>The interface is in English; the translation infrastructure (gettext) is in place, but no other language is available yet, and the labels of the window itself are not wrapped for translation yet.</li>
+  <li>The window looks the same on Linux, macOS, and Windows; it does not take the system accent color.</li>
+  <li>The deb does not update itself: install the next one from the releases.</li>
 </ul>
 
 <p>The complete list is in the <em>Limitations</em> section of the <a href="https://github.com/EkaPutCom/markwork#limitations">README</a>.</p>

@@ -1,4 +1,4 @@
-// Preferences → Agents (ui/projectsettings.ts and the Agents page of ui/preferences.ts): where the agents run, the machines they
+// Preferences → Agents: where the agents run, the machines they
 // can run on, and the projects with how their cards are isolated. The values are the core's; a change is reported as a key and a
 // value, or for a project as a patch the core checks field by field.
 

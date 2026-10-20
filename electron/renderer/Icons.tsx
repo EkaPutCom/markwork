@@ -1,4 +1,4 @@
-// The Adwaita symbolic icons the GTK window uses, drawn inline so they take the text color.
+// The window's symbolic icons (from Adwaita), drawn inline so they take the text color.
 
 const PATHS = {
     'sidebar-show': ['m 3 1 c -1.644531 0 -3 1.355469 -3 3 v 8 c 0 1.644531 1.355469 3 3 3 h 10 c 1.644531 0 3 -1.355469 3 -3 v -8 c 0 -1.644531 -1.355469 -3 -3 -3 z m 0 2 h 10 c 0.570312 0 1 0.429688 1 1 v 8 c 0 0.570312 -0.429688 1 -1 1 h -10 c -0.570312 0 -1 -0.429688 -1 -1 v -8 c 0 -0.570312 0.429688 -1 1 -1 z', 'm 6 2 h 1 v 12 h -1 z'],

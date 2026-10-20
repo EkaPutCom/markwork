@@ -1,4 +1,4 @@
-// The window, laid out as the GTK one is: a header bar, a rail of icons with its panel, the editor with its tabs, the
+// The window: a header bar, a rail of icons with its panel, the editor with its tabs, the
 // counts at the foot, and the command palette over all of it.
 
 import { useEffect, useMemo, useState } from 'react';
@@ -24,16 +24,18 @@ import { label, matches } from './keys.js';
 import { useClient, useStore } from './useClient.js';
 import { layoutOf } from './client.js';
 
-// The title of the header bar: the document's name over where it is, as the GTK window shows them.
+// The title of the header bar: the document's name over where it is.
 function Title() {
     const s = useStore();
     const tab = s.tabs.find(t => t.id === s.active);
     if (!tab) return <div className="title"><span className="name">Markwork</span></div>;
-    const dir = tab.file ? tab.file.replace(/[\\/][^\\/]*$/, '') : null;
+    // Where the document is, as the core words it (~ for the home folder); a page (Home, an HTML file) is not saved.
+    const place = tab.place ?? (tab.file ? tab.file.replace(/[\\/][^\\/]*$/, '') : null);
+    const saved = tab.file && tab.page !== 'home' && tab.page !== 'html' && !tab.mirror.modified ? ' · Saved' : '';
     return (
         <div className="title">
             <span className="name">{tab.mirror.modified ? '• ' : ''}{tab.name}</span>
-            <span className="subtitle">{dir ? `${dir}${tab.mirror.modified ? '' : ' · Saved'}` : 'Markwork'}</span>
+            <span className="subtitle">{place ? `${place}${saved}` : 'Markwork'}</span>
         </div>
     );
 }
@@ -61,7 +63,7 @@ function Menu({ items, onClose, align }: { items: MenuItem[]; onClose: () => voi
     );
 }
 
-// The name on the layout button: the page shown, as the GTK header bar names it.
+// The name on the layout button: the page shown.
 const LAYOUT_NAMES: Record<string, string> = { board: 'Board', list: 'List', inbox: 'List', table: 'Table', calendar: 'Calendar', timeline: 'Timeline', gallery: 'Gallery', chart: 'Chart' };
 const layoutName = (layout: string, page: string): string => LAYOUT_NAMES[page] ?? (layout ? LAYOUT_NAMES[layout] ?? 'Text' : 'Text');
 
@@ -134,7 +136,7 @@ function HeaderBar() {
     );
 }
 
-// The rail of icons that picks the panel beside it, in the order of the GTK window.
+// The rail of icons that picks the panel beside it.
 const PAGES: { page: string; label: string; icon: IconName }[] = [
     { page: 'files', label: 'Files', icon: 'folder' },
     { page: 'search', label: 'Search', icon: 'search' },
@@ -160,7 +162,7 @@ function Rail() {
     );
 }
 
-// The counts at the foot of the editor: no bar, only the numbers, as the GTK window has them.
+// The counts at the foot of the editor: no bar, only the numbers.
 function StatusBar() {
     const s = useStore();
     const tab = s.tabs.find(t => t.id === s.active);
@@ -259,7 +261,7 @@ export function App() {
                     <StatusBar />
                 </div>
                 {panels.chat.shown && <Chat />}
-                {/* A floating panel closes when the content beside it is clicked, as a collapsed GTK split view does. */}
+                {/* A floating panel closes when the content beside it is clicked. */}
                 {((panels.sidebar.floats && panels.sidebar.shown) || (panels.chat.floats && panels.chat.shown)) &&
                     <div className="float-backdrop" aria-hidden="true" onMouseDown={() => client.closeFloating()} />}
             </div>

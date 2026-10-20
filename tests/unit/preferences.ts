@@ -1,6 +1,6 @@
-// Preferences without GTK: PreferencesController (app/preferences.ts) in an AppSession, with a view that records what it
+// Preferences: PreferencesController (app/preferences.ts) in an AppSession, with a view that records what it
 // is sent. The dialog only reports a key and a value; what may be written, and what goes with a removed machine, is the
-// core's. Runs on GJS and on Node.
+// core's.
 
 import { AppSession } from '../../src/app/session.js';
 import type { MachineDraft, PreferencesData, PreferencesView } from '../../src/app/preferences.js';
@@ -12,7 +12,7 @@ import { host as testHost } from '../host.js';
 import { fakeFrontend, memorySettings, quiet } from './appsession.js';
 
 export async function preferencesTests(): Promise<void> {
-    section('Preferences in the application session (no GTK)');
+    section('Preferences in the application session');
     const setup = (preset: (s: ReturnType<typeof memorySettings>) => void = () => {}) => {
         const settings = memorySettings();
         preset(settings);

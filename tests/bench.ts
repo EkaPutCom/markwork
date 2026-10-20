@@ -1,5 +1,5 @@
-// Performance of the Markdown module (markdown/), on Node. The GTK window's measurements went with the GTK frontend
-// (docs/design/hapus-gtk.md); the editor of the Electron window is measured by Chromium's own tools.
+// Performance of the Markdown module (markdown/), on Node. The editor of the Electron window is measured by Chromium's own
+// tools.
 //
 //   npm run bench                        build, then measure
 //   npm run bench -- --size=2000         document size (number of sample blocks), default 100

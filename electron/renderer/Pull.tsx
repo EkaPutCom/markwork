@@ -1,4 +1,4 @@
-// The review of one pull request (ui/pullview.ts), a page of the content area: the changed files, each one as a note or as a raw
+// The review of one pull request, a page of the content area: the changed files, each one as a note or as a raw
 // diff, the discussion, and the merge. The core reads the forge and decides; this draws what it sends and reports what the user did.
 
 import { useEffect, useState } from 'react';

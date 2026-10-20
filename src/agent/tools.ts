@@ -1,6 +1,6 @@
 // Tools the model may call to read documents in its own workspace (function calling). All are read-only and pure:
 // they work on the file list supplied by the caller (not the disk), so they are easy to test and cannot escape the project.
-// Pure TypeScript without GTK.
+// Pure TypeScript.
 
 import { estimateTokens, matchMention, projectMap, rankChunks, splitChunks, tokenize, type SourceFile } from './context.js';
 import type { ToolSpec } from './provider.js';

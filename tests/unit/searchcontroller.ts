@@ -1,5 +1,5 @@
-// Search and replace in all the notes without GTK: SearchController (app/search.ts) on a real temporary folder, with a
-// view that records what it is sent. The panel only reports the query and what the user did. Runs on GJS and on Node.
+// Search and replace in all the notes: SearchController (app/search.ts) on a real temporary folder, with a
+// view that records what it is sent. The panel only reports the query and what the user did.
 
 import { AppSession } from '../../src/app/session.js';
 import type { SearchQuery, SearchResults, SearchView } from '../../src/app/search.js';
@@ -9,7 +9,7 @@ import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from '
 const QUERY: SearchQuery = { text: '', caseSensitive: false, wholeWord: false, regex: false, include: '', exclude: '' };
 
 export async function searchControllerTests(): Promise<void> {
-    section('Search in the application session (no GTK)');
+    section('Search in the application session');
     let n = 0;
     const setup = (makeEditor: () => FakeEditor = () => new FakeEditor()) => {
         const dir = disk.join(tmp, `search-${++n}`);

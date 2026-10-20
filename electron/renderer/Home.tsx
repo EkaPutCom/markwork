@@ -1,4 +1,4 @@
-// The Home page (ui/home.ts): what can be continued today. It draws the data the core sends (view.home) and reports what
+// The Home page: what can be continued today. It draws the data the core sends (view.home) and reports what
 // the user chose; it reads no files itself.
 
 import { useState } from 'react';
@@ -9,7 +9,7 @@ import { useClient } from './useClient.js';
 
 const SHOWN_TASKS = 7;
 
-// "5 minutes ago", "2 days ago", else the date (ui/inbox.ts ageLabel).
+// "5 minutes ago", "2 days ago", else the date.
 function ageLabel(seconds: number, now: number): string {
     const diff = Math.max(0, now - seconds * 1000), minute = 60_000, hour = 60 * minute, day = 24 * hour;
     const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'} ago`;

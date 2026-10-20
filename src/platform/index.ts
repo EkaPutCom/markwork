@@ -133,7 +133,7 @@ export interface Processes {
 }
 
 // The app's stored preferences, by key. The values are the shapes AppSettings (settings.ts) reads and writes; which keys
-// exist and their defaults belong to the store (a GSettings schema under GJS).
+// exist and their defaults belong to the store (the schema in data/com.ekaput.Markwork.gschema.xml).
 export type SettingValue = boolean | number | string | [string, number][] | Record<string, string>;
 
 export interface SettingsStore {
@@ -163,7 +163,7 @@ export interface Links {
     command(argv: string[]): LineLink;
 }
 
-// The interface text in the user's language (gettext under GJS). Without a translation the source text comes back.
+// The interface text in the user's language (gettext catalogs). Without a translation the source text comes back.
 export interface Translations {
     text(text: string): string;
     plural(one: string, many: string, n: number): string;

@@ -1,4 +1,4 @@
-// History and pull requests of the GTK window (tests/gui/: history, collab, forgejo) run against the Electron window with
+// History and pull requests (history, collab, forgejo) run against the Electron window with
 // Playwright: the real main process, core, and renderer, a real git repository, and a fake forge (tests/electron-forge.mjs) in
 // place of the network. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
 

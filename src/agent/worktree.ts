@@ -1,4 +1,4 @@
-// A Git worktree per kanban card (pure, no GTK): a harness works on its own branch in its own folder next to the
+// A Git worktree per kanban card (pure): a harness works on its own branch in its own folder next to the
 // project, so cards of one project can run side by side and nothing reaches the project folder until the user merges.
 // Git is a function passed in: on this computer it is `git` as a child process, on another machine it is `git`
 // started through markworkd there, and in the tests it runs against temporary repositories.

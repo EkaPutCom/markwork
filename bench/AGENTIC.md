@@ -3,6 +3,9 @@
 The new features include the work plan, change batches, verification, the journal, checkpoints,
 retry, and history excerpts. The local measurements do not call a model provider.
 
+These numbers were measured on the GTK build (GJS), before it was removed. `npm run bench:agentic` now runs the
+same measurements on Node; their numbers are not comparable with the ones below.
+
 ## The cost of batches and checkpoints
 
 Command: `npm run bench:agentic`. Ten repetitions after three warm-ups,

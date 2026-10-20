@@ -1,4 +1,4 @@
-// The structured-view scenarios of the GTK window (tests/gui/: kanban*, inbox, layouts, tablelayout, csv*) run against the
+// The structured-view scenarios (kanban, inbox, layouts, table layout, csv) run against the
 // Electron window with Playwright: the real main process, core, and renderer. What the core decides is also in
 // tests/unit/protocol.ts. Run with `npm run test:electron`.
 

@@ -1,4 +1,4 @@
-// The Search panel (ui/searchpanel.ts): a query with its options, the results grouped by file, and Replace All. The core
+// The Search panel: a query with its options, the results grouped by file, and Replace All. The core
 // searches (app/search.ts); this draws what it sends and reports what the user did.
 
 import { useEffect, useRef, useState } from 'react';

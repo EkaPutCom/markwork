@@ -1,6 +1,6 @@
-// File changes proposed by the agent. Pure TypeScript without GTK: this module only validates proposals and
+// File changes proposed by the agent. Pure TypeScript: this module only validates proposals and
 // computes their results; it never writes anything. Applying them to disk or the editor is done by the window after
-// the user approves the diff (ui/chat.ts), so the model never changes files on its own.
+// the user approves the diff (the review of the Assistant panel), so the model never changes files on its own.
 
 import { matchMention, type SourceFile } from './context.js';
 import type { ToolSpec } from './provider.js';

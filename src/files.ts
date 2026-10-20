@@ -1,6 +1,6 @@
 // Read/write UTF-8 text files the way the app does: a write first waits for older background writes to the same
 // path, and every change is announced (onDiskChange). Throws on failure; handling is up to the caller. The disk itself
-// is the platform's (platform().fs; GLib and Gio under GJS).
+// is the platform's (platform().fs).
 
 import { platform } from './platform/index.js';
 import { atOrBelow, hasDrive, slashed } from './markdown/paths.js';

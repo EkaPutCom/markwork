@@ -1,5 +1,5 @@
 // Which steps of the agent log a viewer shows (pure, no widgets): the tree of tracetree.ts narrowed by a filter on the kind of
-// step and by the turns and rounds the user folded. Both log viewers (the GTK window and the Electron dialog) use it.
+// step and by the turns and rounds the user folded. The Electron log viewer uses it.
 
 import type { TraceKind } from './trace.js';
 import type { TraceNode } from './tracetree.js';

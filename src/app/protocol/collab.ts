@@ -53,7 +53,7 @@ export class ProtocolCollabPanel implements CollabView {
 
     setNote(text: string | null): void { this.state.note = text; this.queue.schedule(); }
     setServer(label: string | null): void { this.state.server = label; this.queue.schedule(); }
-    // A list replaces the note: the list itself, or the sentence that there is nothing in it (as the GTK tab does).
+    // A list replaces the note: the list itself, or the sentence that there is nothing in it 
     setPulls(pulls: readonly PullRequest[]): void {
         this.state.pulls = [...pulls];
         this.state.note = pulls.length ? null : _('No open pull requests');
@@ -106,7 +106,7 @@ export class ProtocolPullView implements PullReviewView {
     setCommenting(busy: boolean): void { this.state.commenting = busy; this.queue.schedule(); }
     clearComment(): void { this.state.cleared++; this.queue.schedule(); }
 
-    // The first file is shown as soon as the list arrives, as the list of the GTK page selects its first row.
+    // The first file is shown as soon as the list arrives.
     setFiles(files: readonly PullFile[]): void {
         this.state.files = [...files];
         this.state.selected = files[0]?.path ?? null;

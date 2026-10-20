@@ -1,4 +1,4 @@
-// Mermaid and DBML blocks drawn as pictures (the GTK editor's editor/mermaid.ts). Mermaid runs here, in the page: its script
+// Mermaid and DBML blocks drawn as pictures. Mermaid runs here, in the page: its script
 // (copied next to the renderer at build time, scripts/electron-build.mjs) is loaded the first time a diagram is on screen, so a
 // window without diagrams does not pay for it. DBML is translated to Mermaid first (markdown/dbml.ts). Like a table, a diagram
 // gives way to its source while the cursor is in the block.

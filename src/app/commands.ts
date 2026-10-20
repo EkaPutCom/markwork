@@ -1,5 +1,5 @@
 // The application's commands as data, shared by every frontend: an id, the label of the command palette, the default
-// keys, when it applies, and what it does. GTK maps this table onto Gio.Actions and accelerators in actions.ts; another
+// keys, when it applies, and what it does. The Electron window maps this table onto its keys and menus; another
 // frontend maps it onto its own menus and keymap. A command acts only through CommandHost, so nothing here knows a widget.
 
 import type { Awaitable } from '../awaitable.js';

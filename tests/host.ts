@@ -25,21 +25,17 @@ export interface FakeServer {
 }
 
 export interface TestHost {
-    readonly runtime: 'gjs' | 'node';
+    readonly runtime: 'node';
     readonly args: readonly string[];
     print(text: string): void;
     makeTempDir(): string;
     setenv(name: string, value: string | null): void;
     pathOfUrl(url: string): string;          // a file: URL (import.meta.url) as a path
-    gc(): void;                              // collect garbage now, where the runtime allows it
     // What the port does not offer because the app never needs it, but tests do to set up a case.
     symlink(target: string, path: string): void;
     modified(path: string): number;          // the modification time, in microseconds since the epoch
     setModified(path: string, us: number): void;
     serve(handler: (request: FakeRequest, reply: FakeReply) => void): Promise<FakeServer>;
-    // Waits for a Promise without returning to the caller (a nested main loop). Only the GJS host can; the Node host
-    // throws, so a test that runs on both awaits instead.
-    settle<T>(promise: Promise<T>, timeoutMs: number): T;
     exit(code: number): never;
 }
 

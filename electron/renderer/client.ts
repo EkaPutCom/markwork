@@ -38,6 +38,7 @@ export interface Tab {
     mirror: DocMirror;
     name: string;
     file: string | null;
+    place: string | null;         // where it is, as the core words it (doc.title): its folder, ~ for the home folder
     page: string;                 // 'text' or the structured page the core shows ('board', …); 'home' and 'html' for the pages that are tabs
     board: Board | null;
     groupField: string | null;    // a board grouped by a field: its name (view.notes)
@@ -165,7 +166,7 @@ const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 export const isAvailable = (command: Command): boolean =>
     command.runs === 'core' ? CORE_COMMANDS.has(command.id) : !EDITOR_COMMANDS_UNAVAILABLE.has(command.id);
 
-// The adaptive layout of the GTK window (window.ts addBreakpoints): below NARROW the Assistant panel no longer takes editor
+// The adaptive layout: below NARROW the Assistant panel no longer takes editor
 // width but floats over it, below PHONE the side panel does too and the header bar shows icons only. A floating panel is
 // opened on demand and closes when the content is clicked; the settings keep what the wide layout shows, so a panel closed
 // on purpose stays closed when the window widens again.
@@ -736,7 +737,7 @@ export class Client {
     };
 
     // Whether a command applies now: this window carries it out, and the core has not said it does not apply to what is
-    // shown (commands.state, from the same rules as the GTK window's actions).
+    // shown (commands.state).
     enabled(command: Command): boolean {
         if (!isAvailable(command) || this.snapshot.disabled.includes(command.id)) return false;
         return command.scope === 'always' || this.snapshot.tabs.length > 0;
@@ -766,7 +767,7 @@ export class Client {
         const argument = arg ?? this.toggled(command);
         // The core's table says where a command runs; the window's own copy is the fallback before `hello` arrives.
         const runs = this.snapshot.commands.find(c => c.id === id)?.runs ?? command.runs;
-        // A setting command is the setting of the same name (app/commands.ts): the frontend writes it, as GTK binds it.
+        // A setting command is the setting of the same name (app/commands.ts): the frontend writes it.
         const panels = layoutOf(this.snapshot);
         if ((id === 'chat' && panels.chat.floats) || (id === 'sidebar' && panels.sidebar.floats)) {
             this.float(id, arg === undefined ? !this.snapshot.floating[id] : arg === true);
@@ -913,12 +914,12 @@ export class Client {
         const tab = this.tab(id);
         switch (ev) {
             case 'doc.open':
-                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, page: 'text', board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0, home: null, html: null, runs: {} }] });
+                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, place: null, page: 'text', board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0, home: null, html: null, runs: {} }] });
                 break;
             case 'page.open': {
                 const page = p.page as number, kind = p.kind as string, file = p.file as string | null;
                 this.set({ tabs: [...this.snapshot.tabs, {
-                    id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, page: kind, board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0,
+                    id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, place: null, page: kind, board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0,
                     home: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null, runs: {},
                 }] });
                 break;
@@ -948,8 +949,8 @@ export class Client {
             case 'doc.select': this.reveal = { doc: id, line: p.line as number, select: [p.column as number, p.length as number] }; this.applyReveal(); break;
             case 'doc.reveal': this.reveal = { doc: id, line: p.line as number }; this.applyReveal(); break;
             case 'doc.title': {
-                const title = p.title as { name: string; file: string | null };
-                this.changeTab(id, { name: title.name, file: title.file });
+                const title = p.title as { name: string; file: string | null; place: string | null };
+                this.changeTab(id, { name: title.name, file: title.file, place: title.place ?? null });
                 if (id === this.snapshot.active) this.editor?.rebuild();
                 break;
             }

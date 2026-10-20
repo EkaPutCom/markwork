@@ -1,6 +1,6 @@
 // Reads a file's git history through the `git` command. The only changes to the repository
 // are commitFile()/commitFiles() and discardChanges(), and only at the user's request. Everything is async
-// (platform().processes, Gio.Subprocess under GJS) so a long history does not block the editor.
+// (platform().processes) so a long history does not block the editor.
 
 import { insideName, trashFile } from './files.js';
 import { platform } from './platform/index.js';

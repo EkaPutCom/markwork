@@ -1,5 +1,5 @@
 // DeepSeek API client (OpenAI-compatible: POST /chat/completions). The answer is read line by line from the SSE stream
-// through platform().httpStream (libsoup under GJS).
+// through platform().httpStream.
 
 import { TemporaryProviderError, requestWithRetry } from './recovery.js';
 import { RuntimeMissing, platform, type HttpStream } from '../platform/index.js';

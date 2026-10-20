@@ -38,7 +38,7 @@ function recordingView() {
 }
 
 export async function chatControllerTests(): Promise<void> {
-    section('Chat controller (no GTK)');
+    section('Chat controller');
     let n = 0;
     const folder = () => {
         const root = disk.join(tmp, `chatctl-${++n}`);

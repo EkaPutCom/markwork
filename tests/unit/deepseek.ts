@@ -8,9 +8,6 @@ import { Cancellable } from '../../src/cancel.js';
 
 export async function deepseekTests(): Promise<void> {
     section('DeepSeek client (fake server)');
-    // Earlier unit tests run without a main loop and can leave GC pending; a Soup callback that arrives
-    // at that time is blocked by GJS ("callback during garbage collection"). In the app the main loop always runs.
-    host().gc();
 
     let auth = '', requested = '';
     let mode: 'stream' | 'unauthorized' | 'tools' | 'busy' | 'truncated' | 'hold' = 'stream';

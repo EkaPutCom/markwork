@@ -1,6 +1,6 @@
-// The Assistant in the application session, without GTK: AppSession owns the conversation, a recording panel stands in
-// for ui/chat.ts, and a scripted provider proposes changes. The panel only sees plain data and reports; what is written,
-// and what the agent is told, is decided by the core. Runs on GJS and on Node.
+// The Assistant in the application session: AppSession owns the conversation, a recording panel stands in
+// for the Assistant panel, and a scripted provider proposes changes. The panel only sees plain data and reports; what is written,
+// and what the agent is told, is decided by the core.
 
 import { AppSession } from '../../src/app/session.js';
 import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } from '../../src/app/assistant.js';
@@ -45,7 +45,7 @@ function recordingPanel() {
 }
 
 export async function assistantTests(): Promise<void> {
-    section('Assistant in the application session (no GTK)');
+    section('Assistant in the application session');
     let n = 0;
     const setup = (makeEditor: () => FakeEditor = () => new FakeEditor()) => {
         const root = disk.join(tmp, `assistant-${++n}`);

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Learning Clean Code with Markwork</title>
-<meta name="description" content="Learning notes on keeping a GTK and GJS code base easy to change: layers checked by the build, small functions, cohesion, coupling, local reasoning, and proving that a refactor changed nothing, all taken from Markwork's own refactors.">
+<meta name="description" content="Learning notes on keeping the Markwork code base easy to change: layers checked by the build, small functions, cohesion, coupling, local reasoning, and proving that a refactor changed nothing, all taken from Markwork's own refactors.">
 <style>
 :root {
   color-scheme: light;
@@ -176,7 +176,6 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
       <a href="docs/">Documentation</a>
       <a href="learn-agent.html">Learn agents</a>
       <a href="learn-performance.html">Learn performance</a>
-      <a href="learn-gtk.html">Learn GTK</a>
       <button class="theme-toggle" id="theme" type="button" aria-label="Switch between light and dark">◐ Theme</button>
     </nav>
   </div>
@@ -187,7 +186,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
   <div class="hero">
     <div class="eyebrow">Learning notes · from Markwork's own refactors</div>
     <h1>Learning clean code with Markwork</h1>
-    <p class="lede">Clean code here means one practical thing: a change can be made by reading a small part of the code, and the build tells you when a change breaks a rule. Every chapter below starts from a real problem in Markwork (a GTK 4 + GJS workbench in TypeScript), shows the code before and after, and states how we checked that the behavior did not change.</p>
+    <p class="lede">Clean code here means one practical thing: a change can be made by reading a small part of the code, and the build tells you when a change breaks a rule. Every chapter below starts from a real problem in Markwork (once a GTK 4 + GJS workbench, now an Electron app, in TypeScript), shows the code before and after, and states how we checked that the behavior did not change.</p>
     <div class="kpis">
       <div class="kpi"><div class="what">Highest cyclomatic complexity of a function</div><div class="big">15</div><div class="from">from 132 (<code>ChatSession.ask</code>) · limit checked by the build</div></div>
       <div class="kpi"><div class="what">Functions in src/ and scripts/</div><div class="big">2,709</div><div class="from">median 1 · mean 2.44 · 90% at 5 or less</div></div>

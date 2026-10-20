@@ -446,7 +446,7 @@ export class ViewController<E extends TextEditor> {
     // Write the text of a view's change. With `again` (the user's operation, applied to whatever board the text holds then)
     // it goes through update(): over the app protocol the write may reach the editor after more typing, and is then made
     // again from that text, so neither the typing nor the change is lost. base = the text the view's board was read from:
-    // while the editor still holds it (always under GTK) `text` is written as it is. A change that no longer applies (its
+    // while the editor still holds it, `text` is written as it is. A change that no longer applies (its
     // card was edited away) is told, and the view reads the text.
     private writeThrough(base: string, text: string, again: Again): void {
         const doc = this.host.active();

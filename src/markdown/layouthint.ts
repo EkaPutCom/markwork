@@ -1,5 +1,5 @@
 // What a layout needs that a document may not have yet: a calendar and a timeline need a date field and a chart a select
-// field. Switching to such a layout offers to add it. Pure TypeScript without GTK.
+// field. Switching to such a layout offers to add it. Pure TypeScript.
 
 import type { FieldDef } from './fields.js';
 import { boardSchema, declaredFields, withSchema, type Board } from './kanban.js';

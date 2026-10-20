@@ -30,7 +30,7 @@
 <h1>Proposals and approval</h1>
 <p class="lead">The agent never writes by itself. Every action becomes a proposal with a diff that you review; files are only touched after you press <em>Apply</em>.</p>
 
-<figure><img src="../assets/proposal-diff.png" width="860" height="620" loading="lazy" alt="The review window of an agent proposal: a one-line diff of the release date with the Reject and Apply buttons"><figcaption>The review window: the release date changes from 15 to 22 November</figcaption></figure>
+<figure><img src="../assets/proposal-diff.png" width="980" height="332" loading="lazy" alt="The review window of an agent proposal: a one-line diff of the release date with the Reject and Apply buttons"><figcaption>The review window: the release date changes from 15 to 22 November</figcaption></figure>
 
 <h2 id="actions">Actions that can be proposed</h2>
 <div class="table-wrap"><table>
@@ -52,7 +52,7 @@
   <li>A compact status card remains in the panel with a <em>Review changes</em> button to open it again.</li>
   <li>The result of Apply, Reject, an error, or Stop is sent back to the agent, so the agent does not insist after a rejection.</li>
 </ul>
-<figure><img src="../assets/proposal-kanban.png" width="860" height="620" loading="lazy" alt="The review window of an agent proposal: a kanban card moves from the Plan list to In Progress"><figcaption>Moving a card only marks that card, not the whole board</figcaption></figure>
+<figure><img src="../assets/proposal-kanban.png" width="980" height="418" loading="lazy" alt="The review window of an agent proposal: a kanban card moves from the Plan list to In Progress"><figcaption>Moving a card only marks that card, not the whole board</figcaption></figure>
 
 <h2 id="batches">Batches and partial approval</h2>
 <p>For work that touches several files, the agent uses <code>propose_batch</code>. All the diffs appear in one window with a checkbox per file.</p>
@@ -63,7 +63,7 @@
   <li>A file that is deleted or moved may not be touched by another action in the same batch, so every file is safe to apply on its own.</li>
   <li>All the files are checked before any is written. If writing fails halfway, the files that were already written are restored where possible.</li>
 </ul>
-<figure><img src="../assets/proposal-batch.png" width="860" height="620" loading="lazy" alt="The review window of a three-file batch: one checkbox removed, a note for the agent filled in, the Apply 2 of 3 button"><figcaption>A three-file batch: one rejected through its checkbox, with a note for the agent</figcaption></figure>
+<figure><img src="../assets/proposal-batch.png" width="980" height="644" loading="lazy" alt="The review window of a three-file batch: one checkbox removed, a note for the agent filled in, the Apply 2 of 3 button"><figcaption>A three-file batch: one rejected through its checkbox, with a note for the agent</figcaption></figure>
 
 
 <h2 id="notes">Notes for the agent</h2>

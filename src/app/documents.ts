@@ -36,7 +36,7 @@ export function remapPath(path: string, source: string, target: string): string 
 export interface DocumentsHost<E extends TextEditor> {
     readonly settings: AppSettings;
     readonly dialogs: DocumentDialogs;
-    createEditor(id: number): E;                // the editor for a new document (a MarkdownView under GTK, a replica over the protocol)
+    createEditor(id: number): E;                // the editor for a new document (a replica of the frontend's, over the protocol)
     readonly autosaver: Autosaver;
     root(): string | null;
     toast(message: string, action?: ToastAction): void;

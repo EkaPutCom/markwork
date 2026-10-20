@@ -1,4 +1,4 @@
-// The Outline panel (ui/outline.ts): the headings of the active document, indented by level; a click jumps to one.
+// The Outline panel: the headings of the active document, indented by level; a click jumps to one.
 
 import { useClient, useStore } from './useClient.js';
 

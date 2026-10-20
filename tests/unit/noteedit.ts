@@ -1,5 +1,5 @@
 // The edits a view of a document's notes reports (markdown/noteedit.ts), and the view controller applying them to the
-// board it holds: no GTK, the same list on GJS and on Node.
+// board it holds.
 
 import { applyNoteEdit, cardText, findCard, type NoteEdit } from '../../src/markdown/noteedit.js';
 import { parseBoard, serializeBoard } from '../../src/markdown/kanban.js';
@@ -12,7 +12,7 @@ const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two #a\n\n
 const titles = (text: string, column = 0) => parseBoard(text).columns[column].cards.map(c => c.text);
 
 export async function noteEditTests(): Promise<void> {
-    section('Edits of a document\'s notes (no GTK)');
+    section('Edits of a document\'s notes');
 
     await test('every edit is plain data, and applies with the board functions it names', () => {
         const board = parseBoard(BOARD);

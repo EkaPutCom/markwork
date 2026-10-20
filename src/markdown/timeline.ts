@@ -12,7 +12,7 @@
 //   ---
 //
 // A note with only one of the two dates is a one-day marker; a note with neither has a row but no bar. Dragging a bar
-// shifts both dates, dragging an edge changes one. Pure TypeScript without GTK.
+// shifts both dates, dragging an edge changes one. Pure TypeScript.
 
 import type { FieldDef } from './fields.js';
 import { readItem } from './fields.js';

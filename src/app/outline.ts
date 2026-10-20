@@ -1,6 +1,6 @@
 // The Outline tab in the application layer: the headings of the active document, sent to the panel as plain data, and a
 // jump to the heading the user chose. A frontend tells the controller when a document became active and when its
-// headings changed (the editor's highlighter under GTK; over the app protocol the core computes them from its replica,
+// headings changed (over the app protocol the core computes them from its replica,
 // docs/design/protocol.md 5.1). The panel draws what it is sent and reports the place of the heading in that list, so a
 // jump lands on the line the list had, whatever the document did since.
 

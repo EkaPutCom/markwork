@@ -1,4 +1,4 @@
-// Git conflict markers as a choice (the GTK editor's editor/conflictlayer.ts): each side of a conflict gets a background, and a
+// Git conflict markers as a choice: each side of a conflict gets a background, and a
 // row of buttons above it keeps the current lines, the incoming lines, or both. Where the conflicts are and what a choice turns
 // one into is markdown/conflicts.ts; here is the drawing and the one transaction that applies a choice.
 

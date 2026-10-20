@@ -1,5 +1,5 @@
 // A mini test framework used by all test modules: the result recorder and assertion functions. It reaches the runtime
-// only through the test host (host.ts) and the platform port, so the core's tests run on GJS and on Node.
+// only through the test host (host.ts) and the platform port, so the core's tests run on Node and on a fake platform.
 
 import { platform } from '../src/platform/index.js';
 import { host } from './host.js';
@@ -41,12 +41,6 @@ export function section(name: string): void { say(`\n${name}`); }
 const pass = (name: string) => { passed++; say(`  ${GREEN}✓${RESET} ${name}`); };
 const fail = (name: string, e: unknown) => { failed++; say(`  ${RED}✗ ${name}${RESET}\n    ${errorMessage(e).split('\n').join('\n    ')}`); };
 
-// GJS collects garbage incrementally, and until a collection has finished sweeping it drops every signal callback into
-// JavaScript ("Attempting to call back into JSAPI during the sweeping phase of GC"). Such a sweep can outlast the test
-// that started it, and the next tests' buffer and window handlers then never run, so the GUI tests finish it first.
-let collectFirst = false;
-export function collectBeforeEachTest(on: boolean): void { collectFirst = on; }
-
 // A synchronous test is recorded before test() returns; an async one when the returned Promise settles, so a module
 // whose tests wait awaits each test() in turn.
 // A step inside a test, printed when MARKWORK_TRACE is set.
@@ -55,7 +49,6 @@ export function trace(step: string): void { if (platform().env('MARKWORK_TRACE')
 export function test(name: string, fn: () => void | Promise<void>): Promise<void> {
     let result: void | Promise<void>;
     if (platform().env('MARKWORK_TRACE')) host().print(`  … ${name}`);   // which test a stalled run is in (CI sets it)
-    if (collectFirst) host().gc();
     try {
         result = fn();
     } catch (e) {
@@ -88,8 +81,7 @@ export function contains(haystack: string, needle: string): void {
     if (!haystack.includes(needle)) throw new Error(`does not contain ${JSON.stringify(needle)}\n    in: ${JSON.stringify(haystack.slice(0, 300))}`);
 }
 
-// A Promise that rejects when the one given has not finished within timeoutMs; await it in a test that runs on every
-// runtime.
+// A Promise that rejects when the one given has not finished within timeoutMs; await it in a test.
 export function within<T>(promise: Promise<T>, timeoutMs = 10000): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const late = new Promise<never>((_resolve, reject) => {
@@ -98,16 +90,11 @@ export function within<T>(promise: Promise<T>, timeoutMs = 10000): Promise<T> {
     return Promise.race([promise, late]).finally(() => { if (timer) clearTimeout(timer); });
 }
 
-// Waits for a Promise to finish while running the main loop, so a synchronous (GUI) test can use its value. GJS only:
-// a test of the core awaits within() instead. Throws on an error or a timeout.
-export function settle<T>(promise: Promise<T>, timeoutMs = 10000): T {
-    return host().settle(promise, timeoutMs);
-}
 
 // Waits a little, letting timers and I/O run.
 export const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
-// The answer of a call that may answer later (Awaitable), when this process answers it at once (the GTK app's own core).
+// The answer of a call that may answer later (Awaitable), when the core answers it at once.
 export function sync<T>(value: T | Promise<T>): T {
     if (value instanceof Promise) throw new Error('expected an answer at once, got a Promise');
     return value;

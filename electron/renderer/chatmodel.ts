@@ -1,4 +1,4 @@
-// The Assistant panel's state (ui/chat.ts in the GTK window): the conversation as the core told it with `chat.*` notices, the
+// The Assistant panel's state: the conversation as the core told it with `chat.*` notices, the
 // change proposals it asked about (`ask.proposal`), and what the user did, sent as `act.chat.*`. It is a store of its own, apart
 // from the window's, because an answer streams in many small notices and only the panel should draw again for them.
 // It decides nothing: whether a key exists, what is sent, and what is written are the core's.

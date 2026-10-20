@@ -1,5 +1,5 @@
 # The core's tests on Node and the Electron app's tests on the three systems it ships for (docs/design/electron-migrasi.md,
-# Fase 7). The GTK app's own tests need GTK 4 and a display and are run on a developer machine (`npm test`).
+# Fase 7).
 name: CI
 
 on:

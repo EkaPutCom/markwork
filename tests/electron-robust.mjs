@@ -1,5 +1,4 @@
-// The broadest checks of the editor, carried over from the GTK window (tests/gui/sample.ts and tests/gui/robust.ts) to the
-// Electron window with Playwright: the sample document with every format (tests/samples/all-formats.md) is styled right
+// The broadest checks of the editor, in the Electron window with Playwright: the sample document with every format (tests/samples/all-formats.md) is styled right
 // and exports to HTML, and hunting for crashes — the cursor over every line, typing on every line, deleting everything,
 // random edits with undo — leaves the editor drawing exactly what a fresh tab draws for the same text. That the parse
 // cache equals a full parse is the core's own test (tests/unit/highlight.ts); here it is what reaches the screen.

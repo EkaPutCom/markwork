@@ -1,4 +1,4 @@
-// The Files tab (ui/filetree.ts): the work folder as a tree that reads a folder when it is first opened. The core sends the
+// The Files tab: the work folder as a tree that reads a folder when it is first opened. The core sends the
 // entries (view.tree.*) and does the work (create, rename, delete to the Trash, move, copy in); this draws and reports.
 // A right click opens a menu, F2 and Delete work on the focused row, a row can be dragged onto a folder, and files dropped from
 // a file manager are copied in.

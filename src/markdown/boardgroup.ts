@@ -12,7 +12,7 @@
 // when there are any). A change made on the derived board is written back to the notes (`ungroupBoard`): moving a note
 // to another column sets its field, an edited note keeps its edit, a new note gets the value of its column, a deleted
 // note is removed, and a new column adds an option. The order of the notes inside a column is the order of the
-// document, so dragging within a column does not change anything. Pure TypeScript without GTK.
+// document, so dragging within a column does not change anything. Pure TypeScript.
 
 import type { FieldDef } from './fields.js';
 import { OPTION_TEXT, readItem, writeField } from './fields.js';

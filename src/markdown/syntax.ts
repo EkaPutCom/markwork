@@ -1,5 +1,5 @@
 // Regex patterns for recognizing Markdown syntax.
-// Used together by the editor highlighter (editor/highlighter.ts) and the HTML export (markdown/html.ts).
+// Used together by the highlighter (highlight.ts) and the HTML export (markdown/html.ts).
 
 // Block-level patterns: tested against one whole line.
 export const RE = {

@@ -1,7 +1,7 @@
 // The application session: builds the feature controllers of app/ and owns them, given one frontend. The frontend (the
-// GTK window today) supplies what only it can: the views the controllers draw on, the dialogs they ask with, and the
+// Electron window, over the app protocol) supplies what only it can: the views the controllers draw on, the dialogs they ask with, and the
 // hooks for what must follow a document on screen. Everything that connects the controllers to each other lives here,
-// so a second frontend implements AppFrontend and gets the same application, not a copy of the wiring.
+// so a frontend implements AppFrontend and gets the application, not a copy of the wiring.
 
 import type { AppSettings, SidebarPage } from '../settings.js';
 import { WorkspaceRepository } from '../workspace.js';
@@ -89,7 +89,7 @@ export interface AppFrontend<E extends TextEditor> {
     readonly settings: AppSettings;
     readonly host: FrontendHost<E>;
     readonly documents: FrontendDocuments<E>;
-    // The editor of a new document. Over the protocol the core makes it itself (a replica of the text); under GTK it is the widget.
+    // The editor of a new document. Over the protocol the core makes it itself: a replica of the frontend's text.
     createEditor(id: number): E;
     readonly dialogs: AppDialogs;
     // How links to the agents' daemons are made; tests give a stand-in so no ssh is ever started.

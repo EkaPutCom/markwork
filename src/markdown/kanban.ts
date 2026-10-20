@@ -22,7 +22,7 @@
 //   %% kanban:settings
 //   ...                             ← the rest is kept as is
 //
-// Pure TypeScript without GTK. All operations return a new board; the original board
+// Pure TypeScript. All operations return a new board; the original board
 // is not changed, so it is easy to test.
 
 import { layoutOf } from './layout.js';

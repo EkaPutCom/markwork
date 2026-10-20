@@ -1,5 +1,5 @@
-// The colors inside a fenced code block, by its language (```js, ```python, ...). The GTK editor reads them from
-// GtkSourceView (editor/codehighlight.ts); here the grammars are CodeMirror's (@codemirror/language-data), loaded the first
+// The colors inside a fenced code block, by its language (```js, ```python, ...). The
+// grammars are CodeMirror's (@codemirror/language-data), loaded the first
 // time a block names the language, so the window starts without them. A block of a language that is not known, or not loaded
 // yet, keeps the plain code style.
 
@@ -59,7 +59,7 @@ export function codeColors(blocks: readonly CodeBlock[], offset: (block: CodeBlo
     return ranges;
 }
 
-// A code block while the cursor is elsewhere (the GTK editor's editor/codelayer.ts): a box with the colored code, which scrolls
+// A code block while the cursor is elsewhere: a box with the colored code, which scrolls
 // sideways instead of wrapping. A click puts the cursor on the first line of the code, which opens the block for editing.
 export class CodeBoxWidget extends WidgetType {
     private readonly key: string;

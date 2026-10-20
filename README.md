@@ -1,10 +1,10 @@
 # Markwork
 
-Markwork is a **Markdown workspace for humans and AI agents** on the Linux desktop: a personal workspace where you and an AI agent work on notes, documents, research, plans, and tasks with the same context. The agent does not stop at an answer: it browses your files, then proposes real actions (creating a file, changing text, moving a task card) as a diff that you review and approve first. Its foundation is a Markdown editor with a live formatted view, a kanban board, and Git history. Built with **GTK 4**, **GtkSourceView 5**, and **GJS** (JavaScript for GNOME). The code is written in **TypeScript** and bundled with **Vite**.
+Markwork is a **Markdown workspace for humans and AI agents** for Linux, macOS, and Windows: a personal workspace where you and an AI agent work on notes, documents, research, plans, and tasks with the same context. The agent does not stop at an answer: it browses your files, then proposes real actions (creating a file, changing text, moving a task card) as a diff that you review and approve first. Its foundation is a Markdown editor with a live formatted view, a kanban board, and Git history. Built with **Electron**, **React**, and **CodeMirror 6**; the application itself is plain **TypeScript** that runs on Node, and the window only draws what it is told. Everything is bundled with **Vite**.
 
 There is no separate preview panel: the text is shown formatted right away. Markdown syntax such as `#`, `**`, `` ` `` and `[](url)` is hidden, and appears again when the cursor is on that line.
 
-Its landing page is in [`docs/`](docs/index.html) and only shows the agent features; the complete feature documentation per topic is in [`docs/docs/`](docs/docs/index.html) (static HTML; enable GitHub Pages from the `/docs` folder of the `main` branch to publish it). The screenshots are made by [`scripts/capture.ts`](scripts/capture.ts).
+Its landing page is in [`docs/`](docs/index.html) and only shows the agent features; the complete feature documentation per topic is in [`docs/docs/`](docs/docs/index.html) (static HTML; enable GitHub Pages from the `/docs` folder of the `main` branch to publish it). The screenshots are made by [`scripts/capture.mjs`](scripts/capture.mjs) (`npm run docs`).
 
 ## Goal: Markdown workspace for humans and AI agents
 
@@ -41,146 +41,61 @@ At the end of the day, *Summarize Journal with Assistant* proposes a summary tha
 
 **Markwork** is *Markdown* plus *work*. The foundation is plain Markdown files, and the goal is to get work done: notes, plans, tasks, and results live as documents that are easy to read and edit, and the agent helps finish them with changes that you review first.
 
-## Requirements
+## Getting Markwork
 
-- Linux with an X11 or Wayland desktop
-- GJS (tested with version 1.80)
-- libadwaita 1 (tested with 1.5) for the native GNOME appearance: the header bar, a light/dark theme that follows the system Dark Style, an adaptive layout, and the About dialog. On a newer libadwaita Markwork uses its features if they exist: the system accent color (≥ 1.6) and `Adw.ShortcutsDialog` (≥ 1.8, GNOME 49+). That path has not been tested on the development machine (Ubuntu 24.04, libadwaita 1.5); to use it, run through Flatpak with the GNOME 50 runtime (see [Installing](#installing)).
-- GTK 4 (tested with 4.14) and GtkSourceView 5. The GTK 4 libraries are usually already on a modern desktop (also on XFCE, which itself uses GTK 3); only its GObject Introspection bindings need to be installed. GTK 3 and GTK 4 are installed side by side without replacing each other.
-- WebKitGTK 6.0 with the GObject Introspection bindings (`gir1.2-webkit-6.0` on Debian/Ubuntu), **only for Mermaid and DBML diagrams and for HTML pages**; without it the app keeps running, diagrams show an error message, and an HTML file does not open
-- Node.js 20.19+ on the 20 series, or 22.12+ (a requirement of Vite), **for the build** (tested with Node.js 24). The app itself is run by GJS, not Node.js; Node.js also runs the core's tests (`npm run test:core:node`), which proves the core needs nothing from GJS.
+The installers are attached to each [release](https://github.com/EkaPutCom/markwork/releases): an **AppImage** and a **deb** for Linux, a **dmg** for macOS, and an **exe** installer for Windows. The AppImage, the dmg, and the Windows installer update themselves from the releases; the deb is updated by installing the next one.
 
-On Ubuntu/Debian:
+Markwork reads and writes plain files, so it needs nothing else to edit notes. Some features use programs of their own:
 
-```bash
-sudo apt install gjs gir1.2-gtk-4.0 gir1.2-gtksource-5 gir1.2-adw-1
-```
+- **git**, for the History tab, pull requests, the agent's history tools, and a worktree per card
+- **[pi](https://pi.dev)**, for cards worked on by an external harness
+- a **DeepSeek API key**, for the Assistant (set `DEEPSEEK_API_KEY`, or paste it in the Assistant settings)
+- **markworkd** (`markworkd/`, Linux only), to keep agents running after the window closes or to run them on another machine
 
-For diagrams, add the optional dependency:
+## Building and running from the source
 
-```bash
-sudo apt install gir1.2-webkit-6.0
-```
-
-For the **assistant (chat with the AI)**, add libsoup 3 (almost certainly already there because WebKitGTK uses it) and, optionally, libsecret to store the API key in the keyring:
-
-```bash
-sudo apt install gir1.2-soup-3.0 gir1.2-secret-1
-```
-
-Without libsoup only the assistant does not work; without libsecret, the key is stored in a file with 0600 permissions.
-
-Images from the internet are loaded through GIO and need the GVfs HTTP/HTTPS backend that is available on the system.
-
-## Running
-
-Just once, install the development dependencies (Vite, TypeScript, and the GJS/GTK types):
+Node.js 22.12+ (tested with Node.js 24) and npm:
 
 ```bash
 npm install
-```
-
-Build and then run:
-
-```bash
 npm start
 ```
 
-After it is built, the app can be run directly without npm, including to open a specific file (a file that does not exist yet will be created when it is saved):
+`npm start` builds the app into `dist-electron/` and opens its window. A path after `--` opens that folder (or that file):
 
 ```bash
-gjs -m dist/markwork.js plan.md
+npm start -- ~/notes
 ```
 
-The app uses the first argument that is not an option as a file or folder path. Every invocation opens its own process and window; inside that window other files are opened as tabs. Without an argument, the tabs with files that were open when the last window was closed are opened again. On the first opening without a file, the editor shows a sample document; if there are no tabs to restore, the next openings start with an empty document.
-
-Or open a folder, whose contents appear in the Files tab:
-
-```bash
-gjs -m dist/markwork.js ~/notes
-```
+Without a path, the folder and the tabs of the last session come back. On the first launch the editor shows a sample document; after that, an empty one or Home.
 
 | Command | Function |
 | --- | --- |
-| `npm run build` | Check the types (`tsc --noEmit`), then bundle with Vite into `dist/` |
-| `npm run dev` | Development mode: rebuild, check the types, and reopen the app every time a file is saved |
-| `npm run watch` | Only rebuild automatically every time a file is saved, without opening the app and without the type check |
-| `npm run typecheck` | Only check the types |
-| `npm start` | Build, then run the app |
-| `npm test` | Build, then run all the unit, GUI, and kanban mouse tests on Xvfb |
-| `npm run test:ui` | Build, then run the same test suite on the X11 desktop |
-| `npm run test:core:node` | Build the core's tests for Node (`vite.node.config.ts`) and run them there with the Node platform (`src/platform/node/`): the same tests `npm test` runs under GJS, without GTK or a display |
-| `npm run test:live` | Build, then run live tests against the DeepSeek API on the sample manuscript (needs `DEEPSEEK_API_KEY` in `.env`, see `.env.example`; not part of `npm test`) |
-| `npm run test:live:forge` | Build, then run the forge layer against a real Forgejo or Gitea (needs `FORGEJO_TOKEN` in `.env`; add `FORGEJO_CONTRIBUTOR_TOKEN` and `-- --write` to also send, merge, and resolve; not part of `npm test`) |
-| `npm run test:live:forgejo` | Build, then run the Markwork window against a real Forgejo or Gitea on Xvfb, with nothing faked (needs both tokens in `.env`; not part of `npm test`) |
-| `scripts/forgejo.sh test [read\|write\|ui\|all]` | The two live Forgejo suites above against a throwaway Forgejo in a Podman (or Docker) container that the script starts, seeds (two users, tokens, the repository, a clean and a conflicting pull request), and tears down with `down`; the tokens go to `.env.forgejo`, not to your `.env`. Also `up`, `status`, `logs`, `reset` (not part of `npm test`) |
-| `npm run bench` | Build, then measure the performance of the Markdown module and the editor (setText, highlighting, typing) on Xvfb; options: `--size=`, `--runs=`, `--budget=`, `--no-gui` |
-| `npm run bench:save` | Run the benchmark and save the result to `bench/<date-time>.json` |
-| `npm run bench:compare` | Run the benchmark and show the difference against [`bench/baseline.json`](bench/baseline.json) (green = faster, red = slower, gray = a difference < 25%, measurement noise) |
-| `npm run docs` | Take screenshots of the real app (a window opens briefly), then update the PNGs and GIFs in `docs/assets/` for the landing page |
+| `npm start` | Build, then open the app |
+| `npm run build` | Check the types and the layer rules, then build the app into `dist-electron/` |
+| `npm run typecheck` | Only check the types (the core without Node's types, the core's tests and the Node port, the Electron app) and the layer rules |
+| `npm test` | The core's tests on Node, then the Electron app's tests (below) |
+| `npm run test:core:node` | The core's tests on Node (`tests/core-tests.ts` through `tests/run-core-node.ts`) |
+| `npm run test:electron` | Build, then drive the real app with Playwright under Xvfb (`tests/electron-*.mjs`) |
+| `npm run electron:dist` | Build the installers for the system it runs on into `release/` (electron-builder, `electron-builder.yml`) |
+| `npm run electron:pack` | The same, unpacked, to try the packaged app without installing it |
+| `npm run docs` | Take the screenshots and animations of `docs/assets/` from the real app (`scripts/capture.mjs`) |
+| `npm run test:live` | The Assistant against the real DeepSeek API on the sample manuscript (needs `DEEPSEEK_API_KEY` in `.env`, see `.env.example`) |
+| `npm run test:live:forge` | The forge layer against a real Forgejo or Gitea (needs `FORGEJO_TOKEN` in `.env`; add `FORGEJO_CONTRIBUTOR_TOKEN` and `-- --write` to also send, merge, and resolve) |
+| `scripts/forgejo.sh test [read\|write\|all]` | The live Forgejo suite against a throwaway Forgejo in a Podman (or Docker) container that the script starts, seeds, and tears down with `down`; the tokens go to `.env.forgejo` |
+| `npm run bench` | Measure the Markdown module on Node; `bench:save` and `bench:compare` keep and compare results (`bench/`) |
+| `npm run bench:agentic` | Measure the cost of batches, verification, and checkpoints |
 | `npm run pot` | Make the translation template `po/markwork.pot` from the files in `po/POTFILES.in` |
 
-The results of the optimizations and the limits of their coverage are recorded in the [performance report](bench/PERFORMANCE.md). The cost of batches, verification, and checkpoints is recorded in the [agentic performance check](bench/AGENTIC.md).
+The live tests and the benchmarks are not part of `npm test`.
 
-The benchmark uses 10 repetitions after warm-up. The results show the median, p95,
-and maximum in milliseconds; `--save=...` stores the raw samples, the commit, and the versions of
-GJS/GLib/GTK and the environment. `--compare=...` only compares an equivalent format, size,
-repetitions, kind of document, mode, and environment. A baseline in an old format needs to be made again.
+### Releases
 
-The GUI scenarios cover opening text (the total until the layout finishes and the longest main
-loop pause, which is what feels like "freezing"), re-highlighting, typing (the total of 20
-characters, the latency per character, and through the TextView keybinding signal at the end of a long
-paragraph), Enter, moving the cursor, a large paste with emoji and a long line,
-delete, undo, redo, and autosave (the synchronous write and the main thread part of the background autosave). Every edit is verified through the highlighting callback.
-`--budget=...` applies to the median of GUI operations; for typing, the budget applies per
-character. A failed measurement returns exit code 1 and prevents saving a
-partial result; a complete result that exceeds the budget can still be saved for diagnosis.
-Every GUI process is limited to 120 seconds (`--timeout=...`), using `timeout` from
-GNU coreutils, so that a callback blocked by GC does not make the runner wait without limit.
-The GUI sizes can be set with `--sizes=25,50,100`; `--size` sets the size of the Markdown
-module. `--fixture=long --size=2000 --sizes=2000` tests a document of 20,000 lines
-without table grids, and `--fixture=book --size=400 --sizes=50,200,400` tests a book manuscript
-(long wrapped paragraphs, dialogue, *italic*/**bold**, ±1.6 KB per block; 400 blocks ≈ 650 KB,
-about 100,000 words); the default kind of document is `mixed`. Asynchronous image/diagram rendering and kanban board interactions have not been measured;
-kanban currently covers the parsing and serialization of the model.
-
-### Installing
-
-`npm start` runs the app straight from `dist/` without installing it (the GSettings schema and the icons are read from the bundle folder). To install it on the system together with the desktop file, the AppStream metainfo, the icons, the schema, and the translations, use Meson after the build:
-
-```bash
-npm ci && npm run build
-meson setup _build --prefix=/usr
-meson install -C _build
-```
-
-The Flatpak manifest with the GNOME 50 runtime is in [`build-aux/flatpak/com.ekaput.Markwork.json`](build-aux/flatpak/com.ekaput.Markwork.json):
-
-```bash
-flatpak-builder --user --install --force-clean _flatpak build-aux/flatpak/com.ekaput.Markwork.json
-```
-
-This manifest downloads the npm dependencies during the build (`--share=network`), so it is suitable for a local build; Flathub needs generated npm sources (`flatpak-node-generator`). Meson and Flatpak have not been tested on the development machine (neither is installed); `desktop-file-validate` and `appstreamcli validate` have passed.
+`npm run electron:dist` makes the installers of the system it runs on; the [release workflow](.github/workflows/release.yml) runs it on Linux, macOS, and Windows when a `v*` tag is pushed and attaches the files to the release. Signing and notarizing take their secrets from the environment (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`) and are skipped without them. The app icon is `build/icon.png`, drawn from `data/icons/` by `npm run icon`.
 
 ### Translations
 
-The source language of the interface is English. Text in the code is wrapped in `_()` (or `fmt(_('… {name} …'), { name })` for text that contains values, `pgettext()` when a context is needed) from `src/i18n.ts`; text in `.ui` files is given `translatable="yes"`. To add a language: `npm run pot`, copy `po/markwork.pot` to `po/<code>.po`, translate it, and then add its code to `po/LINGUAS`. Meson compiles the translations into `<prefix>/share/locale`; from `dist/`, the catalogs are looked up in `locale/` at the root of the repo.
-
-### Development mode
-
-```bash
-npm run dev
-```
-
-Every time a file in `src/` or `tests/` is saved, `npm run dev` rebuilds and then closes and reopens the app. GJS cannot reload code that is running (there is no HMR like in a browser), so reopening the app is the way to see a change. At the same time, `tsc --watch` checks the types and reports its errors in the same terminal with the label `[types]`.
-
-- If the build fails (for example there is a syntax error), the old app keeps running until the error is fixed.
-- A type error is only reported, it does not stop the build. Vite can still build code whose types are wrong, so the app is still reopened. Watch the `[types]` lines in the terminal.
-- Arguments after `--` are passed on to the app, for example `npm run dev -- notes.md` or `npm run dev -- ~/notes`.
-- **Unsaved changes in the editor are lost** every time the app is reopened.
-- `Ctrl+C` stops everything (the build, the type check, and the app).
-
-The script is in [`scripts/dev.mjs`](scripts/dev.mjs). This script uses the `build()` API of Vite in watch mode, and then reopens the app on every `END` event, unless that build round failed.
+The source language of the interface is English. Text in `src/` is wrapped in `_()` (or `fmt(_('… {name} …'), { name })` for text that contains values, `pgettext()` when a context is needed) from `src/i18n.ts`. To add a language: `npm run pot`, copy `po/markwork.pot` to `po/<code>.po`, translate it, and add its code to `po/LINGUAS`. The build compiles each listed language with `msgfmt` (from gettext) into `dist-electron/locale/`, where the core reads it for the user's language. The window's own labels in `electron/renderer/` are not wrapped yet.
 
 ## Features
 
@@ -189,8 +104,8 @@ The script is in [`scripts/dev.mjs`](scripts/dev.mjs). This script uses the `bui
 - Code blocks, quotes, and horizontal rules are styled (nested quotes `>>` are indented further, up to three levels); the ```` ``` ```` fence lines are hidden outside the block
 - **Home.** A special tab (a house icon) that summarizes what you can continue: a greeting according to the time, *Continue* cards (the latest files from different folders), *Today's journal* (the number of notes and activities, with a quick capture button), *Agent* that is working, queued, or waiting for your answer (click to answer, see the log, or open its board), *Due dates* from all the kanban boards in the work folder (unfinished cards that are overdue or due today, tomorrow, or the day after, with the project name from `#project/…`; the checkbox writes `[x]` straight to its board), an *Inbox* that still has unprocessed items, and *Recent files*. Home opens when the app starts without saved tabs and when the last tab is closed (it can be turned off in Preferences), and through `Alt+Home` or the ☰ menu → *Home*. Its data is recalculated from the Markdown files every time Home is shown or the window becomes active again, without a database.
 - **The daily journal.** `Ctrl+Alt+J` (or the ☰ menu → *Today's Journal*, or the *Today's journal* row on Home) opens `journal/YYYY-MM-DD.md` in the work folder, made from a template (*Today's focus*, *Notes*, *Activity*, *Summary*) if it does not exist yet. `Ctrl+Shift+J` records one time-stamped line in the *Notes* section without leaving the document you are working on (through the editor if the journal is open, one undo step). Throughout the day Markwork records work activity to `.markwork/activity/YYYY-MM-DD.jsonl`: kanban cards that move to another list, are checked as done, or are added; agent changes that are applied; and harness results. When the journal is opened, that activity together with the Git commits of that day is merged into the *Activity* section as time-stamped items with `[[…]]` links; the merge only adds lines that are not there yet, so the user's edits are not overwritten. The command palette → *Summarize Journal with Assistant* asks the agent to propose an end-of-day summary through the normal review window
-- **HTML pages.** An `.html`, `.htm`, or `.xhtml` file in the Files tab opens in a tab of its own (`ui/htmlpage.ts`, a page tab: it is not a document, so it has no text, nothing to save, and closes without asking): the page runs its JavaScript, so a report, a chart, or a small tool is interactive. The page can read the work folder it is in (its own folder if it is outside it) and nothing else, and it can reach no network (see *How HTML pages work*). *Back* and *Reload* (`Ctrl+R`, `F5`) are in a strip above the page, and the page is shown again when its file changes on disk. An HTML tab is not remembered for the next launch (the file tabs and Home are). A link in the page that points to the web is not loaded: Markwork shows the whole address and opens it in your browser only if you agree.
-- **CSV tables.** A `.csv` file in the Files tab opens as a table you edit in place (`ui/csvpage.ts`, a view of the document text like a board, so Save, autosave, undo, and the file's Git history work as for any document). The rows are a `Gtk.ListView`, so only the rows on screen have widgets and a file of tens of thousands of rows opens like a small one. Each cell is a text widget that is written when you leave it or press `Enter`, so one edit is one undo step; `Enter` moves down (and adds a row at the end), `Tab` moves right (and adds a row after the last cell), `Esc` puts the old value back, `Ctrl+Enter` inserts a row below, and `Shift+F10` (or the row number and the ⋯ of a column header) opens the row and column menu: insert above/below or left/right, delete. Drag a row by its number, or a column by the grip in its header, and drop it between two others (a line shows where it will land; the table scrolls while the pointer is held near its edge, so a row or column can be taken further than the window shows; a column can be dropped anywhere in the table, a row only on the rows). One drop is one undo step, and only the lines that changed place are different in a diff (moving a column writes every row again). `Ctrl+F` opens the same search bar as the text editor (`ui/csvfindbar.ts`, the template of `ui/findbar.ui`) above the table, with *Match Case*, *Whole Words*, and *Regular Expression*: every cell that matches (header included) is marked, `Enter` and `Shift+Enter` go to the next and previous one with the table scrolling to it, a counter says which of how many, and `Esc` closes the bar and puts the cursor in the match you were at. `Ctrl+H` adds the Replace row: *Replace* changes every match in the current cell and goes on to the next match, *All* changes every cell (a regular expression may use `$1` and `$&`), and each is one undo step. The header row stays in view while the rows scroll, a column of numbers is aligned right, and the status bar counts rows and columns. *New CSV Table…* in the Files tab's menu (or ☰ → *New CSV Table*) asks for a name and creates `name.csv` with a header and one empty row. The file stays plain CSV: the delimiter (comma, semicolon, tab, or `|`, found from the first line), the line ending, a byte order mark, and the final line break are kept, and a row you did not touch is written exactly as it was, so a diff shows only the lines you changed. A file of more than a million cells opens as text, and the *Board/List/Table View* toggle (`Ctrl+Shift+B`) switches between the table and the text.
+- **HTML pages.** An `.html`, `.htm`, or `.xhtml` file in the Files tab opens in a tab of its own (a page tab: it is not a document, so it has no text, nothing to save, and closes without asking): the page runs its JavaScript, so a report, a chart, or a small tool is interactive. The page can read the work folder it is in (its own folder if it is outside it) and nothing else, and it can reach no network (see *How HTML pages work*). *Back* and *Reload* (`Ctrl+R`, `F5`) are in a strip above the page, and the page is shown again when its file changes on disk. An HTML tab is not remembered for the next launch (the file tabs and Home are). A link in the page that points to the web is not loaded: Markwork shows the whole address and opens it in your browser only if you agree.
+- **CSV tables.** A `.csv` file in the Files tab opens as a table you edit in place (a view of the document text like a board, so Save, autosave, undo, and the file's Git history work as for any document). Only the rows on screen are drawn, so a file of tens of thousands of rows opens like a small one. Each cell is an input that is written when you leave it or press `Enter`, so one edit is one undo step; `Enter` moves down (and adds a row at the end), `Tab` moves right (and adds a row after the last cell), `Esc` puts the old value back, `Ctrl+Enter` inserts a row below, and `Shift+F10` (or the row number and the ⋯ of a column header) opens the row and column menu: insert above/below or left/right, delete. Drag a row by its number, or a column by the grip in its header, and drop it between two others (a line shows where it will land; the table scrolls while the pointer is held near its edge, so a row or column can be taken further than the window shows; a column can be dropped anywhere in the table, a row only on the rows). One drop is one undo step, and only the lines that changed place are different in a diff (moving a column writes every row again). `Ctrl+F` opens a search bar above the table, with *Match Case*, *Whole Words*, and *Regular Expression*: every cell that matches (header included) is marked, `Enter` and `Shift+Enter` go to the next and previous one with the table scrolling to it, a counter says which of how many, and `Esc` closes the bar and puts the cursor in the match you were at. `Ctrl+H` adds the Replace row: *Replace* changes every match in the current cell and goes on to the next match, *All* changes every cell (a regular expression may use `$1` and `$&`), and each is one undo step. The header row stays in view while the rows scroll, a column of numbers is aligned right, and the status bar counts rows and columns. *New CSV Table…* in the Files tab's menu (or ☰ → *New CSV Table*) asks for a name and creates `name.csv` with a header and one empty row. The file stays plain CSV: the delimiter (comma, semicolon, tab, or `|`, found from the first line), the line ending, a byte order mark, and the final line break are kept, and a row you did not touch is written exactly as it was, so a diff shows only the lines you changed. A file of more than a million cells opens as text, and the *Board/List/Table View* toggle (`Ctrl+Shift+B`) switches between the table and the text.
 - **Inbox.** A Markdown file whose frontmatter contains `layout: list` opens as a list, for example an inbox, a place to capture ideas, links, and quick notes: the `#` heading and the paragraph before the first item become the title and the description, every list item becomes one note with `#tag` as a chip and `[created:: 2026-10-07 14:32]` as the capture time (the age label "10 minutes ago", "1 hour ago", "3 days ago"). Type in the topmost field and press Enter for a quick capture (the note goes in at the top), *New Note* opens a dialog with a title, tags, and notes, click a note to edit it (the capture time is kept), and ✕ removes it. Every change is written to the Markdown text (one undo step); `Ctrl+Shift+B` switches to the text view, the ☰ menu → *New Inbox* and right-click in the file tree → *New Inbox…* create an inbox. **Where a new note goes** is set in the frontmatter: `add: top` (the default) puts it at the top of the first group, `add: bottom` at the end of the last one, and `add-to: Name` picks the group of that name (at its top, or its end with `add: bottom`); it applies to quick capture and to the *New Note* dialog, and *New Inbox…* writes `add: top`. **A list and a board are two ways to show the same file**: a `##` heading is a section title in a list and a column on a board, and the notes before the first heading are an unnamed group (the first column, shown as *No list*). Changing `layout: list` to `layout: board` (or back) only changes the view; the text is not converted or rewritten.
   Inbox notes take the same fields: an inbox declares them in its frontmatter `fields:` block, a note shows them as chips (the capture time stays as its age), a click on a chip changes the field in place from the same popover, a note can be dragged by its row to another place in the list or onto another section (a line shows where it will go: before or after a note, the end of the section above a title, or the top of the section under it), and right-clicking a note opens a menu (*Edit…*, *Move to* another section or to a *New section…* made on the spot, *Move Up* / *Move Down* within its section, *Delete*), right-clicking a section title opens another (*Rename…*, *Move Up* / *Move Down* among the sections, *Delete Section…*, which asks whether to keep its notes in the section above or delete them too; an empty section goes without asking), and the *New Note* / edit dialog has one control per declared field (that is also where a field with no value yet is set).
 - **Table.** A Markdown file whose frontmatter contains `layout: table` opens as a table: one row per note (across every section), one column per field. `columns: [title, status, due]` picks and orders the columns (the default is the title and every declared field, and the section when a heading exists; `section` is a column too), and `sort: due` or `sort: -due` (descending) sorts the rows; notes without a value for the sort key go last. A click on a header sorts by that column (ascending, descending, back to the order of the document; this is kept in the view and does not rewrite the file). A click on a cell changes that field in place from the same popover as a chip (a select is a colored chip, a progress a bar, a date past its day is red unless the note is done, a missing value a dash); a click on a title edits the note, a checkbox column appears when any note has one, and ✕ deletes a row. The quick-add entry and *New Row* use `add:` and the defaults of the fields, like a list. ☰ menu → *New Table* (or right-click in the file tree → *New Table…*) makes one with a `status` field; *Fields…* works here too. The same text is a board, a list, or a table depending on its `layout:` line.
@@ -205,7 +120,7 @@ The script is in [`scripts/dev.mjs`](scripts/dev.mjs). This script uses the `bui
 - **Cards worked on by an external harness (pi).** Write `[agent:: pi]` in a card (or fill in *Assigned to* in the edit dialog), then right-click → *Work on it with pi*. The project is taken from the card tag `#project/name` or the board frontmatter `project: name`; the project folder is asked for once and then remembered in the settings (a card without a project is given a tag from the name of its folder). The card chip shows the status: ◇ assigned, ◌ queued, ● working, ⏸ waiting for an answer, ✓ done, ✕ failed, ■ stopped. When it starts, the card moves to the *In Progress* list; when it finishes, to *Review* with the note `↳ pi done …: summary` (failed: `↳ pi failed …: reason`, the card stays). **Answering pi:** if pi ends its turn with a question (the answer ends with `?`) or a pi extension asks for permission/input (e.g. a confirmation before `rm -rf`), the card becomes ⏸ *waiting for an answer* and stays in *In Progress*; right-click → *Answer pi…* opens its question with an answer box (permission: *Allow*/*Deny*; a choice; an input; or *End without replying*). *Later* leaves pi waiting. While pi works there is *Steer pi…* (received before the next step, without stopping the work), and after it finishes there is *Reply to pi…* which continues the same pi session so the card is worked on again. The card menu also has *View pi Log* (tools, reasoning, answers, your requests and answers, tokens, cost, and the session id for `pi --session <id>`), *Stop pi*/*Cancel Queue*, *Remove Assignment*, and *Change Project Folder…*. Pi itself does not ask for tool permission; permission requests come from the pi extensions you install. Markwork does not write to the project folder; its changes are reviewed in that repo itself (pi is asked not to commit)
 - **Tables are rendered as a grid** (cell lines, a bold header, left/center/right alignment, and **bold**/*italic*/`code`/links inside cells). When the cursor enters a table, its raw text appears for editing; click a cell in the grid to edit that cell right away. A table that is wider than the text column is narrowed and cut-off text is given "…" (its full contents appear as a tooltip)
 - Inside a table: `Tab` / `Shift+Tab` move between cells (in the last cell, `Tab` adds a row), `Enter` moves to the next row (on the last empty row, `Enter` leaves the table). The ☰ menu → **Edit Table** to add/delete rows and columns, align left/center/right, and tidy up the columns
-- The contents of a code block are colored according to its language (```` ```js ````, ```` ```python ````, ```` ```rust ````, and hundreds of other languages from GtkSourceView), with a color scheme that follows light/dark mode
+- The contents of a code block are colored according to its language (```` ```js ````, ```` ```python ````, ```` ```rust ````, and over a hundred other languages, from CodeMirror's language data, loaded the first time a language is used), with colors that follow light/dark mode
 - **Mermaid diagrams.** A ```` ```mermaid ```` block is rendered as a diagram (flowchart, sequence, class, state, ER, gantt, pie, and the other kinds that Mermaid supports). When the cursor is outside the block only the diagram is visible; when the cursor enters, the code appears and the diagram becomes a preview below it that changes as you type. Wrong code is not hidden, its error message appears below the block. A double click enlarges the diagram, and its colors follow light/dark mode. Diagrams are rendered locally (without the internet); the HTML export loads Mermaid from a CDN so the diagrams in the exported file need the internet
 - **DBML diagrams (dbdiagram).** A ```` ```dbml ```` block (the schema language of dbdiagram.io) is drawn as an ER diagram with the same behavior as Mermaid. Supported: `Table` (alias, `pk`, `unique`, `note`, `ref:` inside a column, `indexes`), `Ref` both as a single line and as a block with the relations `>` `<` `-` `<>`, and `Enum`/`TableGroup`/`Project`/`Note` that are skipped. The column on the "many" side of a relation is automatically marked FK. A syntax error appears immediately with its line number. The HTML export writes it as a Mermaid ER diagram
 - A `- [ ]` task list can be checked by clicking its box
@@ -219,7 +134,7 @@ The script is in [`scripts/dev.mjs`](scripts/dev.mjs). This script uses the `bui
 - **Many documents in one window (tabs).** The tab bar appears above the editor as soon as there are two or more documents. Clicking a file in the Files tree or choosing it in the *Open File* dialog opens a new tab (or switches to its tab if that file is already open; an empty unsaved document is reused), and *New* (`Ctrl+N`) makes an empty tab. Every tab has its own undo history, cursor, and scroll position; the Focus/Typewriter/Source modes and the theme apply to all tabs. The `•` mark on a tab title means it is not saved, `Ctrl+W` closes a tab (asking if there are changes; closing the last tab empties its document), and `Ctrl+Tab` / `Ctrl+Shift+Tab` (or `Ctrl+PgDn` / `Ctrl+PgUp`) switch tabs. With autosave on, leaving a tab saves it right away. The outline, the word count, the search, and the History tab follow the active tab, and the assistant reads the contents of other unsaved tabs, not the version on disk. **Tabs are restored**: when the app is opened again without arguments, the tabs with files of the last session are opened again with their order, the active tab, and their cursor positions; files that no longer exist are skipped (with a message in the status bar). Opening a file or folder from the command line does not restore tabs
 - A sidebar with five tabs:
   - **Files**: the tree of the opened folder (through the folder button in the header bar, `Ctrl+Shift+O`, or by choosing a folder in the Open File dialog), with subfolders and Markdown files (`.md`, `.markdown`, `.mdown`, `.mkd`). Click a file to open it; the file that is open is also highlighted. Hidden files/folders and `node_modules` are not shown. **Right-clicking** a folder, a file, or an empty area opens a menu with *New File…*, *New Folder…*, *New Kanban Board…*, and *New Inbox…* (for a folder/file, *Rename…* and *Delete* are added; delete asks for a confirmation and moves to the Trash, not a permanent delete; if the open document is deleted, its contents stay in the editor and are marked as unsaved; a renamed file keeps a Markdown extension, and the open document follows its new name): the item is created in the folder that was clicked (for a file: in its parent folder; for an empty area: in the root folder). A file name without a Markdown extension is given `.md`, a name that is empty, contains `/`, starts with a dot, or already exists is rejected with an error message; a new file is opened in the editor right away. *New Kanban Board…* makes a file with an empty board (`layout: board`, the lists *Plan*, *In Progress*, *Done*) that is saved right away and opened as a board. **Drag and drop** moves a file or a folder: drop it on a folder to put it there (a closed folder that is hovered over for a moment opens by itself), drop it on a file to move it to that file's folder, or drop it on the tree title/an empty area to move it out to the root folder. A folder cannot be moved into itself, and a conflicting name in the target folder is rejected without overwriting. If the open document (or its parent folder) is moved, the document stays open with its new path. The tree updates automatically when a file is added or deleted on disk, and the last folder is opened again when the app starts
-  - **Search** (`Ctrl+Shift+F`, or *Search in All Notes* in the command palette): search and replace in all the Markdown files of the work folder (`ui/searchpanel.ts`, `app/search.ts`, `markdown/search.ts`). Results appear as you type (after 250 ms) and are grouped per file, each hit as its line with the match marked; a click on a hit opens the file in a tab with the match selected, and a click on a file row folds its hits. The chips in the field are *Match Case*, *Whole Words*, and *Regular Expression* (an expression that does not compile marks the field red and the summary line says why). The *···* button shows *Files to include* and *Files to exclude*, comma separated globs (`*` stays inside a folder, `**` crosses folders, a plain name matches that folder or file anywhere; the button stays lit while a filter is set). The arrow at the left opens *Replace*; *All* (or `Enter` in that field) asks first and then replaces every hit in every listed file as one batch through the same preflight as the agent's changes: a document that is open changes through its editor, so `Ctrl+Z` undoes it, and the other files are written at once. Unsaved tabs are searched from their editor, at most 5000 files are read and 1000 hits listed (the summary says when it stops), and the refresh button searches again.
+  - **Search** (`Ctrl+Shift+F`, or *Search in All Notes* in the command palette): search and replace in all the Markdown files of the work folder (`app/search.ts`, `markdown/search.ts`). Results appear as you type (after 250 ms) and are grouped per file, each hit as its line with the match marked; a click on a hit opens the file in a tab with the match selected, and a click on a file row folds its hits. The chips in the field are *Match Case*, *Whole Words*, and *Regular Expression* (an expression that does not compile marks the field red and the summary line says why). The *···* button shows *Files to include* and *Files to exclude*, comma separated globs (`*` stays inside a folder, `**` crosses folders, a plain name matches that folder or file anywhere; the button stays lit while a filter is set). The arrow at the left opens *Replace*; *All* (or `Enter` in that field) asks first and then replaces every hit in every listed file as one batch through the same preflight as the agent's changes: a document that is open changes through its editor, so `Ctrl+Z` undoes it, and the other files are written at once. Unsaved tabs are searched from their editor, at most 5000 files are read and 1000 hits listed (the summary says when it stops), and the refresh button searches again.
   - **Outline**: the list of headings of the document; click to jump
   - **History**: the git commits that touched the open file, newest first (short hash, message, author, relative time; the history follows a file that is renamed). If the file differs from the last commit (or is untracked), the *Uncommitted changes* button appears above the list and opens the diff against HEAD (a new file is shown entirely as additions). Below it, the *Uncommitted (N)* list holds all the files in the repository that are changing (M modified, A newly staged, D deleted, R renamed, U untracked); click one to open its diff in the same window (it can also be committed from there). Every row has a checkbox (all checked at first); write a message and press *Commit N files* to commit several files at once (`git add --all` + `git commit --only` on the chosen files; open documents are saved first). This list is also shown when no file is open but a folder is open. Click a commit to open a reading window with two tabs: *Changes* (a diff against the previous commit, added/removed lines colored) and *Contents of this version* (the complete file at that commit). The window of uncommitted changes also has a message field and the *Commit this file* button: the document is saved first, and then only that file is committed (`git add` + `git commit --only`; other files are not included, git hooks are not run). Apart from that the app never changes the repository. The history is loaded when the tab is visible, 100 commits at a time (the *Load more* button), and reloaded when switching files, when the window becomes active again, or through the reload button. It needs `git` installed; a file outside a repository or one that is not committed yet shows a message in the tab
   - **Pull requests** (the last tab, an icon): the open pull requests of the repository behind the folder's `origin` remote; see *Collaboration* below
@@ -227,13 +142,14 @@ The script is in [`scripts/dev.mjs`](scripts/dev.mjs). This script uses the `bui
 - Typewriter mode: the active line is always in the middle of the screen
 - Source mode: all the Markdown syntax is shown; image widgets, table grids, and diagrams are hidden
 - Dark mode, automatically following the system theme the first time it is opened
+- **An adaptive layout.** Below 900 px of width the Assistant panel opens over the editor instead of beside it, and below 600 px the side panel does too and the header bar shows icons only; a floating panel closes with a click beside it or `Esc`, and widening the window brings the panels back as they were
 - The text column is centered with a comfortable reading width
 
 **Collaboration (Forgejo and Gitea)**
-- **Pull requests in the sidebar.** The last sidebar tab lists the open pull requests of the repository that the folder's `origin` remote points to (the server and `owner/repo` are read from the remote; an SSH remote is reached over `https` on the default port). Each row shows the title, `#number · author · time · comments`, and a dot: green can be merged, yellow conflicts, gray not worked out yet. Markwork asks the server on a timer (60 seconds by default, 30 seconds to an hour in Preferences → General → Collaboration) and when the refresh button is pressed, and tells you when a pull request is opened or updated: a toast if the window is in front, a desktop notification if not (also switchable in Preferences). The pull requests that were open when the folder was opened are not announced. It needs an access token for the server (an account setting there, allowed to read and write repositories): click the server line at the bottom of the tab, paste it, and *Test connection*. It is kept in the system keyring per server (or a 0600 file `~/.config/markwork/forge-<server>.token` without one), never in the settings; `MARKWORK_FORGE_TOKEN` is used first when set. More: [Collaboration](docs/docs/collaboration.html)
+- **Pull requests in the sidebar.** The last sidebar tab lists the open pull requests of the repository that the folder's `origin` remote points to (the server and `owner/repo` are read from the remote; an SSH remote is reached over `https` on the default port). Each row shows the title, `#number · author · time · comments`, and a dot: green can be merged, yellow conflicts, gray not worked out yet. Markwork asks the server on a timer (60 seconds by default, 30 seconds to an hour in Preferences → General → Collaboration) and when the refresh button is pressed, and tells you when a pull request is opened or updated: a toast if the window is in front, a desktop notification if not (also switchable in Preferences). The pull requests that were open when the folder was opened are not announced. It needs an access token for the server (an account setting there, allowed to read and write repositories): click the server line at the bottom of the tab, paste it, and *Test connection*. It is kept in the system keyring per server (the Secret Service on Linux; on macOS and Windows the OS keychain through Electron's `safeStorage`; a 0600 file in the config folder without one), never in the settings; `MARKWORK_FORGE_TOKEN` is used first when set. More: [Collaboration](docs/docs/collaboration.html)
 - **Reviewing.** A click opens the pull request in the area of the editor, with the changed files on the left and three tabs on the right: *Note* (a Markdown file as a note: the frontmatter fields that changed, then the text with the changed lines marked, a new note all added), *Diff* (the unified diff of the file), and *Discussion* (the description and the comments, with a box to write one). The text of both versions is asked from the server when a file is chosen.
 - **Merging.** *Merge* (with a menu: merge commit, squash and merge, rebase and merge) asks first, merges on the server, and, when the folder is on the base branch, brings it up to date with `git pull --ff-only`; a folder on another branch is left alone and the toast says why.
-- **A conflict, resolved here.** A pull request that conflicts offers *Resolve locally…*: the folder has to be on the base branch with nothing uncommitted; the base branch is brought up to date from the server (fast-forward only), the pull request is fetched (`refs/pull/N/head`) and merged into it, and the files that conflict open in tabs in source mode with git's markers. Every conflict is colored by side (current in green, incoming in blue) with *Accept Current*, *Accept Incoming*, and *Accept Both* above it (`editor/conflictlayer.ts`, one undo step; the same works in any file that has markers); to mix the sides, edit the text and delete the marker lines. *Finish and push* (on the banner of the pull request) refuses while a marker is left, commits the merge, pushes the base branch, and records the pull request as merged on the server (which needs the repository to allow manually merged pull requests, and says so when it does not); *Abort merge* undoes it.
+- **A conflict, resolved here.** A pull request that conflicts offers *Resolve locally…*: the folder has to be on the base branch with nothing uncommitted; the base branch is brought up to date from the server (fast-forward only), the pull request is fetched (`refs/pull/N/head`) and merged into it, and the files that conflict open in tabs in source mode with git's markers. Every conflict is colored by side (current in green, incoming in blue) with *Accept Current*, *Accept Incoming*, and *Accept Both* above it (one undo step; the same works in any file that has markers); to mix the sides, edit the text and delete the marker lines. *Finish and push* (on the banner of the pull request) refuses while a marker is left, commits the merge, pushes the base branch, and records the pull request as merged on the server (which needs the repository to allow manually merged pull requests, and says so when it does not); *Abort merge* undoes it.
 - **Sending your changes.** ☰ menu → *Send Changes as Pull Request…* (also the command palette and a button in the tab) saves the open documents, lists the changed files, and asks for a title, a description, and a branch (named from the title). It goes through your fork (created if missing), as a branch in the repository itself (when the token may push), or through AGit (`refs/for/`, no fork and no branch). The branch is created, the checked files committed, the branch pushed, and the pull request opened; the folder stays on the new branch. The token reaches git in the environment of the push, as a Basic header: not in the arguments, the remote address, or `.git/config`.
 - Only Forgejo and Gitea (the same API) are supported; GitHub and GitLab are not. It has been tried against Forgejo 16 only.
 
@@ -247,7 +163,7 @@ The script is in [`scripts/dev.mjs`](scripts/dev.mjs). This script uses the `bui
 - Every answer is given the details of the context that was sent and the token usage (including the part served from the cache, and the number of lookups). **The documents that are included are sent to the DeepSeek server**; turn off the *Other files in the folder* and *The currently open document* switches to ask without sending documents
 - **The agent log (monitoring).** The terminal button in the header of the Assistant panel opens the *Agent log* window, in two panes: on the left a tree of every turn (its model rounds, and in each round the reasoning, the tool calls, and the answer, with the duration of each step; rounds can be folded); on the right everything about the selected step, with metric cards (duration, result size, share of the turn's time, tokens in/cached/out) and the tabs *Summary*, *Arguments*, *Result*, and *Raw*, plus buttons to copy the arguments, the result, or the whole event. The detail follows the newest step while the agent works, until you pick one. The filters All/Tools/Reasoning/Model, *Copy all*, and *Clear*. The log keeps at most 2,000 events (the details cut at 20k characters) and is not sent to the model; for the assistant it is saved next to the conversation file (see below) and restored when you reopen the conversation, while the pi log only exists in memory; *New conversation* empties it
 - **Conversation history saved per folder.** Every conversation is written as one Markdown file in `<work folder>/.markwork/chats/` (e.g. `2026-10-04-is-there-a-meeting-decision-not-yet-in-the-plan.md`, holding the frontmatter `title`/`model`/`created` and then the turns `## You` and `## Assistant`), updated after every turn and at action checkpoints. The frontmatter `work` and `actions` store the goal, steps, verification, decisions, and the before/after snapshots to see the diff again. The agent log of the conversation is saved next to it as `<name>.log.jsonl` (one event per line) and comes back when you reopen the conversation; it goes to the Trash together with it. The thinking process shown in the answer is not part of the Markdown file. The clock button in the panel header opens the list of conversations in that folder (newest first): click to restore one and continue in the same file (its history is sent to the model too), or the trash icon to move it to the Trash. *New conversation* (the broom icon) starts a new file. The history holds quotes from the manuscript, so `.markwork/` is automatically given a `.gitignore` containing `*` (delete that file if you want to commit it); dot folders are not shown in the Files tree and are not read by the assistant as manuscript. The *Save conversation history in the folder* switch in the panel settings (the gear) turns it off; without an open folder nothing is saved
-- The API key is taken from the `DEEPSEEK_API_KEY` environment variable, or entered in the panel settings (the gear icon) and stored in the system keyring; if the keyring is not available, in `~/.config/markwork/deepseek.key` (mode 0600). The key is not written to the settings
+- The API key is taken from the `DEEPSEEK_API_KEY` environment variable, or entered in the panel settings (the gear icon) and stored in the system keyring (the Secret Service on Linux, the OS keychain through `safeStorage` on macOS and Windows); if no keyring is available, in a 0600 file in the config folder. The key is not written to the settings
 
 **Other**
 - Find text, undo/redo, the word and character count, the cursor position
@@ -256,6 +172,8 @@ The script is in [`scripts/dev.mjs`](scripts/dev.mjs). This script uses the `bui
 - A warning before closing, making a new document, or opening another file if there are unsaved changes (when autosave is off or the document does not have a file yet)
 
 ## Shortcuts
+
+On macOS, `Ctrl` in the table is `⌘`.
 
 | Shortcut | Function |
 | --- | --- |
@@ -303,481 +221,124 @@ The script is in [`scripts/dev.mjs`](scripts/dev.mjs). This script uses the `bui
 
 ## Tests
 
-Install the virtual display dependencies once (Debian/Ubuntu):
-
 ```bash
-sudo apt install xvfb xauth
+npm test
 ```
 
-There are two modes to run all the tests, including the five kanban mouse tests:
+runs both suites below. The Electron tests need a display; on Linux `npm run test:electron` starts Xvfb (`sudo apt install xvfb xauth`), and `npm run test:electron:run` runs them on the display you have. CI runs both suites on Linux, macOS, and Windows for every pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)); a pull request is merged only when all of them pass.
+
+**The core's tests** (`npm run test:core:node`, about 830) are TypeScript without a framework (`tests/framework.ts`), bundled by Vite (`vite.node.config.ts`) and run on Node. They test the Markdown module, the agent, the forge, git, the orchestrator and the daemon client, and the application layer (`AppSession` with recording views), and they drive `ProtocolServer` with a scripted frontend over an in-memory line (`tests/unit/protocol.ts`), so what the window is told and what it may ask is tested without a window. They reach the runtime only through the platform port and a test host (`tests/host.ts`), wait for what they expect (`until()`, `within()`) rather than a fixed time, and use a temporary folder for settings, data, and the Trash.
+
+**The Electron tests** (`npm run test:electron`) launch the real app (main process, core, and renderer) with Playwright and use it as a person would: the editor (`electron-smoke.mjs`, `electron-editor.mjs`), the sample document and a hunt for crashes that compares what the editor draws after random edits with a fresh tab (`electron-robust.mjs`), the structured views (`electron-structured.mjs`), the adaptive layout (`electron-layout.mjs`), the Assistant and the journal (`electron-assistant.mjs`), the History tab and pull requests (`electron-git.mjs`), agents and their worktrees (`electron-harness.mjs`), and the keyring through `safeStorage` (`electron-secrets.mjs`). The model, the forge, and the agent are scripted fakes the core loads in place of the real ones (`MARKWORK_TEST_MODEL`, `MARKWORK_TEST_FORGE`, `MARKWORK_TEST_HARNESS`), so no test reaches the network. Each test file gets its own settings and data folder (`tests/electron-support.mjs`).
+
+### The sample files
+
+[`tests/samples/all-formats.md`](tests/samples/all-formats.md) holds all the supported formats together with the tricky cases: nested emphasis, escapes, URLs with underscores, emoji and non-Latin text, a table without pipes at the edges, a four-backtick code block, and unclosed emphasis. `tests/electron-robust.mjs` checks how it is styled and exported; open it to look at it yourself:
 
 ```bash
-npm test          # without showing windows, using Xvfb
-npm run test:ui   # show the windows and the card drags on the desktop
+npm start -- tests/samples/all-formats.md
 ```
 
-`npm test` runs all the unit and GUI tests and the five kanban mouse input tests on a **separate Xvfb display**. It does not need a desktop session; the desktop pointer does not move. If Xvfb is not installed, the command fails and the mouse tests are not silently skipped. `npm run docs` still uses the desktop capture path as before.
-
-On Xvfb, the tests use Mesa software rendering (`LIBGL_ALWAYS_SOFTWARE=1`) and turn off GPU compositing and the DMA-BUF renderer of WebKitGTK (`WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1`) because a virtual display does not provide a DRI3 device. This avoids the libEGL warning during the Mermaid and DBML diagram tests; this setting only applies to `npm test`.
-
-`npm run test:ui` runs the same test suite on the **local X11** desktop (or XWayland that provides a local `DISPLAY`), so the test windows are visible. This mode does not need Xvfb. The desktop pointer will move during the drag tests; leave the mouse and keyboard alone until it finishes. The pointer is returned to its original position after the mouse part of the tests.
-
-The tests are written in TypeScript without an additional framework, bundled by Vite into `dist/run-tests.js`, and then run by GJS. The script exits with code `1` if anything fails. What it contains:
-
-- **Unit**: Markdown → HTML conversion, the inline format parser, saving/reading settings, the table and kanban models, code language aliases, DBML, file operations (create/rename/delete/move), the git output parser, and the assistant, without a GUI
-- **Editor**: opens a real window, and then checks hidden/shown syntax, Enter and Tab in lists, format shortcuts, undo, clicking a task box, and saving and opening files
-- **Tables**: the table recognition rules (a one-dash separator, no pipes at the edges, stopping at another block), splitting cells, alignment, tidying columns (including CJK and emoji widths), row/column operations, converting inline formats to Pango markup, the column width; and then in the editor: a grid that appears and disappears following the cursor, the position of a grid between paragraphs, clicking a cell, Tab/Shift+Tab/Enter, all the menu commands, one command = one undo step, source mode, and a table with emoji that does not make GTK fail to draw
-- **External harness**: `[agent:: name]` assignment (a bare `@name` or an email address is just text), the project from frontmatter or a tag, rejecting the work folder, the prompt (including the related `[[ ]]` notes: the heading section, the missing ones, and the length limit), RPC commands (prompt, steering, dialog answers, one line per command), the pi event reader (tools, reasoning, cost, the session from `get_state`, a rejected command, an extension request, errors), question detection, the result note, the queue per folder (including a run that waits for an answer); in the GUI with a real fake pi (a shell script that speaks RPC): cwd and the prompt, a card to *In Progress* and then *Review* with a note, the log, a queue in order, stop, failure, a project folder that is asked for and remembered, a board that is not open being updated on disk, a permission request that waits and is then answered (and *Later* that keeps waiting), a question that is answered or ended without replying, steering while working, and a reply that continues the same session; `[[note]]` on a card goes into the prompt and can be clicked without opening the edit dialog
-- **Kanban**: the model (recognizing a board, reading and writing with a stable result, card and list operations, tags and dates); in the editor: a document opens as a board, adding/checking/editing/moving through the menu, dragging a card (dropping at the indicated position, the ghost card and the drop marker are cleaned up, the original place changes nothing), automatic scrolling at the edge, undo/redo one step per change, switching to the text view and back, text editing actions rejected while the board is shown, and saving
-- **Mermaid diagrams**: a block is rendered as an image, the code is hidden outside the block and shown with a preview inside it, a syntax error is shown without hiding the code, re-rendering when the code changes, the widget is reused when lines shift, an empty/unclosed/non-mermaid block is ignored, source mode, and the dark theme (the image background color); and also its HTML export
-- **DBML diagrams**: the DBML → Mermaid translator (tables, columns, refs, aliases, schemas, errors with their line number), a dbml block is rendered and its error is shown without hiding the code, and also its HTML export
-- **Image zoom**: the full-size image from `imageAt()`, a single vs a double click (through a `GestureClick` triggered by the test) and the right image when one line holds several, the menu command; in the viewer: the initial zoom, multiples of 1.25 and the limit of 5%–800%, keys, zooming at the pointer, dragging to pan, a double click, and no GTK/cairo warning when drawing at a large zoom
-- **Code block colors**: language name aliases, keyword/string/comment colors, a block without a language or with an unknown language, re-coloring while typing, an emoji before the block, light/dark schemes, and focus mode that still dims code blocks
-- **Git history**: the log/diff parser and relative time (unit); the history controller without GTK against a real repository (`tests/unit/history.ts`: the log and the changed files as plain data, the viewers, committing only files that were shown, a discard that an open document follows a turn later, the commit message writer and its Stop); in the GUI, the list of commits of the active file, the uncommitted changes button, the *Uncommitted* list with checkboxes, committing one or several files at once in a temporary repository, and the commit reading window (the *Changes* and *Contents of this version* tabs)
-- **Folder**: the contents of the tree and their order, hidden and non-Markdown files being filtered, the contents of a subfolder being read when it is opened, opening a file with a click, highlighting the active file, automatic updates when a file is added/deleted on disk, and a folder from an argument and from the settings; the right-click menu *New File*/*New Folder*/*New Kanban Board*/*New Inbox* (at the root, in a folder, and next to a file), moving files/folders into and out of folders, rejecting invalid/conflicting names/moving into itself, an open document that follows its new path, and drag-and-drop with the real X11 mouse
-- **Live tests against the API** (`npm run test:live`, needs `DEEPSEEK_API_KEY` in `.env`, not part of `npm test`): four scenarios on the manuscript `tests/samples/sample-book` that deliberately holds contradictions, including one with a context budget of 900 tokens so that the model must use tools; `-- --thinking` for thinking mode and `-- --model=...` for another model
-- **The assistant**: building the context (splitting per heading, BM25, the token budget, a window around the cursor, @attachments, a stable `system` prefix, trimming the history), reading the SSE stream and the error messages, the answer markup, the DeepSeek client against a fake server, then the browsing tools (results, limits, errors), the agent loop (tools sent back, reasoning returned, the limit of rounds and the budget, cancellation), building the tool messages for the API, and then the panel: a message sent with the right document/selection/excerpts, the browsing steps shown, a formatted answer with tokens, history, `@name`, the context switches, errors and cancellation, Enter/Shift+Enter, and the key and model settings (all with a fake provider; no network)
-- **The complete sample document**: opens `tests/samples/all-formats.md`, and then checks the tag of every format, the tricky cases, and its HTML export result
-- **Window size**: opening a second file does not enlarge the window, the window can be enlarged and then shrunk, and images are limited to the width of the text column
-- **Robustness**: the cursor is swept over all the lines, typing on every line, and the document is deleted bit by bit to look for crashes
-
-An additional option, run after `npm run build`:
-
-```bash
-gjs -m dist/run-tests.js --mouse
-```
-
-The tests that drag a card through mouse input from the X11 server (press → gradual motion → release) are included in both modes: `npm test` and `npm run test:ui`.
-
-`npm test` uses Xvfb with the XTest extension; `npm run test:ui` uses the desktop display. All the test code and helpers are written in **TypeScript**, bundled by Vite and run by GJS; there is no dependency on Python or `xdotool`. The helper uses Gio to connect to the X11 socket and reads the authentication from `XAUTHORITY` (or `~/.Xauthority`). The pointer position is restored after the mouse tests, and the left button is released if a test fails. The settings and the test documents use temporary folders.
-
-Five scenarios check moving between lists together with notes/emoji, the order within one list, an empty target, dropping at the original position, and a click without a drag. The tests also check the press/motion/release events that GTK receives, the cleanup of the ghost and the drop marker, the Markdown, one undo/redo step, and the saved result. The input is sent directly through the **FakeInput** request in the [XTest protocol](https://xorg.freedesktop.org/archive/X11R7.6/doc/xextproto/xtest.html), not by calling the card handlers or making fake event objects. The input is still automatic; this does not prove manual testing with a physical mouse or a Wayland session. If the input is not received by GTK, the test **fails** (exit code `1`), it is not skipped or counted as passing.
-
-| Option | Function |
-| --- | --- |
-| `--no-gui` | All the unit tests, without opening a window |
-| `--mouse` | Add real mouse clicks through XTest (the pointer will move by itself). Skipped with a note if your environment does not pass the XTest mouse buttons on to GTK (this happens on the XFCE/X11 used to develop this); pointer motion alone does not count as a test |
-| `--with-kanban-mouse` | Add the five kanban mouse input tests to all the unit and GUI tests; used by `npm test` on Xvfb and `npm run test:ui` on the desktop. It cannot be combined with `--no-gui` |
-| `--screenshot=file.png` | Save a screenshot of the editor window |
-| `--shot-harness=prefix` | Save screenshots of the board with pi cards working/queued (light and dark), the pi log window, a card waiting for an answer, and the permission/question answer dialogs (`prefix-board.png`, `-board-dark.png`, `-log.png`, `-waiting.png`, `-answer-permission.png`, `-answer-question.png`) |
-
-The tests use a temporary settings folder, so your settings are not touched.
-
-### The sample file
-
-[`tests/samples/all-formats.md`](tests/samples/all-formats.md) holds all the supported formats together with the tricky cases: nested emphasis, escapes, URLs with underscores, emoji and non-Latin text, a table without pipes at the edges, a four-backtick code block, and unclosed emphasis. Open it in the editor to check its appearance manually:
-
-```bash
-gjs -m dist/markwork.js tests/samples/all-formats.md
-```
-
-The other samples show the board and list layouts with typed fields. A test keeps them valid (the layout is recognized, the schema reads without problems, every value fits its field, and saving changes nothing):
-
-```bash
-gjs -m dist/markwork.js tests/samples/kanban-board.md   # a board: colored select, progress, person, link, an agent card
-gjs -m dist/markwork.js tests/samples/inbox.md          # an inbox: quick capture at the top, capture time by default
-gjs -m dist/markwork.js tests/samples/reading-list.md   # a list with sections, new items at the bottom
-gjs -m dist/markwork.js tests/samples/sprint-table.md   # a table: columns, sort, colored selects, progress
-gjs -m dist/markwork.js tests/samples/calendar.md       # a calendar: notes by due date, the unscheduled ones aside
-gjs -m dist/markwork.js tests/samples/timeline.md       # a timeline: bars from start to due, progress, a marker, a note without dates
-gjs -m dist/markwork.js tests/samples/gallery.md        # a gallery: cover field, an image in a note, tag colors
-gjs -m dist/markwork.js tests/samples/chart.md          # a chart: counts per week, per status, per tag
-gjs -m dist/markwork.js tests/samples/board-by-field.md # a board whose columns are the values of the status field
-```
-
-This file is also used by the automatic tests, so if you add a new format, add its example here too.
+The other samples show the board and list layouts with typed fields, and a test keeps them valid (the layout is recognized, the schema reads without problems, every value fits its field, and saving changes nothing): `kanban-board.md`, `inbox.md`, `reading-list.md`, `sprint-table.md`, `calendar.md`, `timeline.md`, `gallery.md`, `chart.md`, and `board-by-field.md`. If you add a new format, add its example to `all-formats.md` too.
 
 ## Architecture
+
+Markwork is two programs talking over a wire: the **core**, which is the whole application (documents, views, the Assistant, git, agents) in plain TypeScript, and the **window**, which draws what the core tells it and reports what the user did.
+
+```
+┌ Electron main process (electron/main.ts) ─────────────────────────────────────────────┐
+│  the window, file dialogs, the app:// and mwhtml:// schemes, the keychain (safeStorage) │
+└───────┬─────────────────────────────────────────────────────────────┬─────────────────┘
+        │ MessageChannel: the app protocol (docs/design/protocol.md)  │
+┌───────▼───────────────────────────────┐            ┌────────────────▼────────────────────┐
+│ core: a utility process               │  notices ► │ renderer: the page                  │
+│ (electron/core.ts)                    │ ◄ actions, │ (electron/renderer/)                │
+│ ProtocolServer → AppSession (src/app) │   asks     │ React, CodeMirror 6, the editor's   │
+│ on the Node platform (src/platform)   │            │ own copy of the text                │
+└───────────────────────────────────────┘            └─────────────────────────────────────┘
+```
+
+- **The text lives in the editor.** The renderer's CodeMirror holds the document; the core keeps a replica of it (`app/protocol/replica.ts`) from the changes the window sends, and writes back through the same changes. A write of the core that meets typing on its way is made again from the newer text, so neither is lost (`protocol.md`, section 5).
+- **The window decides nothing.** It gets plain data (`view.*` notices), reports what happened (`act.*`), and answers questions (`ask.*`). What a file, a card, or a change is, and whether an action is allowed, is the core's: a path, a token, or a choice the window sends back is checked against what the core offered (`stale` otherwise).
+- **The core runs on Node** and reaches the runtime only through the platform port (`src/platform/index.ts`: files, paths, processes, HTTP, the keyring, settings, translations, idle work). `src/platform/node/` implements it; the tests swap in a fake with `setPlatform()`.
+
 ### Folder structure
+
 ```
-package.json              npm scripts and development dependencies
-tsconfig.json             TypeScript type-checking settings
-vite.config.ts            Vite build settings
-scripts/dev.mjs           npm run dev: rebuild + reopen the app + type check
-scripts/layers.mjs        npm run layers (also in build/typecheck): forbidden imports between layers, and cyclomatic complexity ≤ 15 per function
-scripts/capture.ts        capture the editor and make the PNG/GIF files for docs/assets/
-scripts/gifenc.d.ts       gifenc type declarations for the capture script
-scripts/pot.sh            npm run pot: the translation template po/markwork.pot
-docs/                     static landing page and screenshot assets
-meson.build               system/Flatpak install (installs the contents of dist/ after npm run build)
-build-aux/flatpak/        Flatpak manifest (GNOME 50 runtime)
-po/                       translations: POTFILES.in, LINGUAS, <language>.po
-data/                     GSettings schema (compiled into dist/ at build time), desktop and metainfo files (.in), app icon, the markwork.in launcher
-dist/                     build output (not in git)
+electron/
+  main.ts                 the main process: the window, the core's utility process, dialogs, the URL schemes, safeStorage
+  core.ts                 the core's entry: the Node platform, ProtocolServer, and the test fakes
+  preload.ts              what the page may call in the main process
+  updater.ts              updates of the packaged app (electron-updater)
+  renderer/               the page: client.ts (the protocol client and the store), App.tsx and its components,
+                          editor.ts (CodeMirror and the decorations), and the views of every feature
 src/
-├── main.ts               entry point: installs the GJS platform (and with it the gettext domain) first, then calls main() from app.ts
-├── env.d.ts              types for GJS and gi:// modules (from the @girs packages)
-├── gtkutil.ts            GTK 4 helpers for all layers: line iterators, widget children, click/key handlers, modal dialogs without a nested main loop (modal(), after()), pack(), pixbuf ↔ Gdk.Texture, icons from dist/
-├── i18n.ts               _(), fmt(), pgettext(), ngettext() over platform().translations (gettext under GJS, its domain bound by platform/gjs/install.js before the other modules are evaluated)
-├── app.ts                creates the Gtk.Application and the window
-├── window.ts             MainWindow: assembles the GTK widgets and is the GTK frontend of AppSession: it implements the views, dialogs, and hosts (AppFrontend) and CommandHost
-├── window/               what is left of the window's own GTK glue
-│   ├── doc.ts            Doc for the GTK window: app/document.ts's Doc with a MarkdownView as its editor
-│   └── harnesslogs.ts    the LogViewer window of each harness run (HarnessLogs)
-├── app/                  the application layer every frontend shares: feature controllers that see widgets only as interfaces (no GI, no ui/)
-│   ├── session.ts        AppSession: builds and owns the controllers below, and wires them to each other, from one AppFrontend (views, dialogs, hooks) supplied by the frontend
-│   ├── document.ts       Doc, TextEditor (what controllers may do with a document's text), DocumentHost
-│   ├── documents.ts      DocumentController: the open tabs: documents (the active one, open/save/Save As, asking before discarding) and pages (Home, HTML files, with the empty document that waits without a tab), restoring tabs
-│   ├── views.ts          ViewController: text, board, inbox, or Home for the active document through ViewScreen; board/inbox changes ↔ document text; updateBoardFile
-│   ├── journal.ts        today's journal, quick capture, end-of-day summary, the activity log
-│   ├── harness.ts        @pi cards: card menu, project folders, answer/steer/reply, run logs; owns the Orchestrator
-│   ├── harnessreview.ts  reviewing a card's worktree through ReviewView
-│   ├── home.ts           the data behind the Home tab (HomeData) and the actions taken from it
-│   ├── collab.ts         the pull requests tab and its notifications through CollabView
-│   ├── pulls.ts          reviewing and merging one pull request through PullReviewView
-│   ├── contribute.ts     sending changes as a pull request
-│   ├── assistant.ts      the Assistant: owns the ChatController, builds its host from the session, draws through ChatPanelView; a proposal is an ask, written only by the core
-│   ├── history.ts        the git history: the History tab and the viewer windows through HistoryTabView and HistoryViewersView; runs git (log, diffs, commit, discard) and the commit message writer
-│   ├── files.ts          the work folder and the Files tab through FileTreeView: lists and watches folders through the port, creates, renames, moves, copies in, and trashes with FilesDialogs
-│   ├── agentwrites.ts    applying approved Assistant changes (editor for open files, disk otherwise, rollback)
-│   ├── autosave.ts       autosave timers and quiet saves
-│   ├── notes.ts          NoteLinks: following [[note]] links and the note names for [[ suggestions
-│   ├── commands.ts       the commands as data (COMMANDS: id, palette label, default keys, scope, run through CommandHost); `commandEnabled()` says when one applies
-│   ├── menu.ts           MenuEntry: menus as data
-│   └── dialogs.ts        ChooseFileOptions: the file chooser as controllers ask for it
-├── actions.ts            maps COMMANDS onto Gio.Actions and GTK accelerators (`gtkAccelerators()`; setting toggles use Gio.Settings.create_action); sees the window only as `ActionHost`
-├── colors.ts             the document color palettes (pure data, shared by editor/ and ui/)
-├── config.ts             app name, ID, version, and fonts
-├── settings.ts           AppSettings: typed properties on top of a SettingsStore (GSettings under GJS, schema in data/com.ekaput.Markwork.gschema.xml); onChanged()
-├── awaitable.ts          Awaitable and after(): a value now (a test's dialog stand-in) or later (a real dialog)
-├── activity.ts           daily activity log for the journal at <work folder>/.markwork/activity (append-only JSONL)
-├── files.ts              read/write UTF-8 text files the app's way: background writes queued per path, flushWrites, trashFile, onDiskChange for the app's own changes (the disk through platform().fs)
-├── workspace.ts          WorkspaceRepository: the Markdown files of a work folder (snapshot watched through platform().fs.watchDir, LRU contents cache, unsaved overlay, background warming); used by chat, Home, [[ suggestions, harness (GLib/GIO)
-├── fileops.ts            create, rename, delete (to the trash), move, and copy in files/folders, through platform() (used by app/files.ts)
-├── orchestrator.ts       runs the external harness (pi) for kanban cards in the project folder: queue, board updates; the process through platform().processes.spawn
-├── orchestratordaemon.ts a Spawner for orchestrator.ts whose processes live in the markworkd daemon (they survive closing the window; the daemon can be on another machine)
-├── git.ts                the git history of a file and the list of uncommitted files through the `git` command (async, platform().processes.run; read-only, except committing selected files); also runs the agent's Git tools
-├── cancel.ts             Cancellable: cancelling a model request, a waiting proposal, or a commit message without Gio.Cancellable
-├── credentials.ts        a secret (API key, forge token): environment variable, keyring, or a 0600 file; through platform()
-├── gitlog.ts             git output parser: log, diff, relative time (pure, no GTK); also the agent's GitRequest/GitAnswer types
-├── welcome.ts            the sample document shown on first launch
-│
-├── platform/             the port between the core and the runtime
-│   ├── index.ts          the contract (FileSystem, Paths, Secrets, Transport, env) and platform()/setPlatform(); imports nothing
-│   ├── node/             the Node implementation, built from Node built-ins only: node:fs (atomic writes, background writes in a worker thread that pumpWrites(true) waits for with Atomics.wait, the freedesktop.org trash, fs.watch), child_process (git runs, harness children), net (the markworkd socket; a refused socket ends the link just after it opens, since Node connects asynchronously), fetch (requests and streams), secret-tool for the keyring, translations from the gettext catalogs (`i18n.ts`, a .mo reader), and a settings store with the GSettings schema's keys and defaults in a JSON file (`settings.ts`); what the core's tests run on in `npm run test:core:node`, and where a frontend whose core runs in Node starts
-│   └── gjs/              the GJS implementation: GLib/Gio, libsecret, libsoup 3 (http.ts: requests and streams, loaded on use), files (files.ts: whole-file reads, atomic and background writes, listings, folder monitors), daemon links (links.ts: Unix socket and command stdio over IOChannels), gettext (i18n.ts), processes (process.ts: git runs with a watchdog, harness children over IOChannels, findProgram), GSettings (settings.ts: GSettingsStore, gsettingsOf() for GTK bindings, inMemorySettings() for tests); install.ts is imported by every entry point
-│
-├── agent/                the AI assistant: manuscript context and model client (no GTK, except where noted)
-│   ├── tools.ts          pure: browsing tools for the model (list_files, search_documents, search_text, read_file)
-│   ├── schematools.ts    pure: read tools for structured documents (describe_schema, query_notes)
-│   ├── notes.ts          pure: the schema and notes of a document with `layout:`, finding notes, fields and groups, field/value checks
-│   ├── notechanges.ts    pure: the proposal tools edit_note and edit_schema, validated against the document's own fields
-│   ├── context.ts        pure: splitting the manuscript per heading, BM25 search, building the context within a token budget, trimming the history
-│   ├── session.ts        pure: one conversation (history) and the one-turn agent loop (model ↔ tools, including waiting for approval of proposals)
-│   ├── chatcontroller.ts the conversation life cycle without widgets: send/stop, folder-change guards, saving and reopening history, undo, context preview; owned by app/assistant.ts, which it draws through
-│   ├── changes.ts        pure: the proposal tools (create, edit, insert, delete, move, kanban, note, schema), validation into a `Change`, change inversion and preflight, diff preview; never writes
-│   ├── gittools.ts       pure: the agent's Git history tools (git_log, show_commit, file_at_commit): argument validation and output tidying
-│   ├── work.ts           pure: goal, plan, work status and the set_work tool
-│   ├── harness.ts        pure: the external harness for kanban cards: project, prompt, the pi JSON reader, queue per folder
-│   ├── trace.ts          pure: the agent activity log (rounds, reasoning, tools with separate arguments and result, tokens) for the Agent log window
-│   ├── tracetree.ts      pure: the log as a tree (turn → round → step), statistics, and short formats for durations and sizes
-│   ├── batch.ts          pure: batch planning, preflight of all files, and rollback through the host
-│   ├── verification.ts   pure: text checks (per file or the whole folder), a note's group and done status, the value of a note's field, and Markdown structure with no new problems in the actual content
-│   ├── journal.ts        pure: the action history and reconciliation of interruptions from the actual content
-│   ├── recovery.ts       pure: limited retries and excerpts of old history
-│   ├── path.ts           path validation and symlink rejection when writing (platform().fs.kind, which does not follow links)
-│   ├── transcript.ts     pure: conversation ↔ Markdown text (frontmatter + `## You` / `## Assistant`), titles and file names
-│   ├── chatstore.ts      save, list, load, and discard conversations in `<folder>/.markwork/chats` (through platform())
-│   ├── provider.ts       the Provider interface (used by the real client and the fake provider in tests)
-│   ├── sse.ts            pure: reads SSE stream lines (text, reasoning, tool-call chunks, usage) and HTTP error messages
-│   ├── deepseek.ts       DeepSeek client: the SSE answer read line by line through platform().httpStream
-│   └── apikey.ts         the DeepSeek API key as a credential (credentials.ts)
-│
-├── forge/                Git hosting services: the pull requests of a Forgejo/Gitea repository (no GI at all: the HTTP call is an injectable Transport, files and the keyring go through platform())
-│   ├── types.ts          RepoRef, PullRequest, PullFile, PullComment, ForgeProvider, Transport, ForgeError
-│   ├── remote.ts         pure: a git remote URL → server and `owner/repo`
-│   ├── gitea.ts          the Forgejo/Gitea REST client (pull requests, files, diff, content at a commit, comments, merge, fork, create)
-│   ├── token.ts          the access token per server as a credential (credentials.ts)
-│   ├── monitor.ts        polling the open pull requests (setInterval) and the events between two polls (the first poll is a silent baseline)
-│   ├── diff.ts           pure: one file's part of a pull request's unified diff
-│   ├── contribute.ts     sending changes as a pull request (branch, commit, push, pull request; fork, direct, or AGit); git is a parameter
-│   ├── publish.ts        publishing a branch that already exists as a pull request (push as it is, then the pull request; direct, fork, or AGit); git is a parameter
-│   └── resolve.ts        resolving a conflict here: merge the pull request into the base branch, finish and push, abort; git is a parameter
-│
-├── markdown/             understanding Markdown (pure TypeScript, no GTK)
-│   ├── syntax.ts         regexes for headings, lists, quotes, tables, emphasis
-│   ├── inline.ts         parseInline(): formatting within a single line
-│   ├── highlight.ts      the syntax of a document as data (styles per line, markers, headings, images, code blocks, tables), re-parsing only the edited range; generic over the editor's style
-│   ├── offsets.ts        UTF-16 ↔ code point position conversion, word count
-│   ├── table.ts          tables: recognizing blocks, splitting cells, tidying, adding/removing rows and columns
-│   ├── layout.ts         the `layout:` line of the frontmatter (board, list, or table) and one-line options such as `add:`
-│   ├── kanban.ts         the model of a board and of a list: reading/writing Markdown (groups of notes), card and group operations, tags, dates, and @harness assignment
-│   ├── inbox.ts          lists (`layout: list`): capturing a note, the capture time and age, chips and missing fields, on the board model
-│   ├── tablelayout.ts    tables (`layout: table`): the columns, the sort, and the rows (pure), on the board model
-│   ├── noteedit.ts       what a view of a document's notes reports (`NoteEdit`: add, move, a field, …), applied again to the board as it is, and the parts a card dialog answers (`CardForm`)
-│   ├── fields.ts         typed fields on an item (`[key:: value]`) and the `fields:` schema in the frontmatter: parsing, formatting, writing one field in place
-│   ├── home.ts           Home data: deadlines from boards, unprocessed inbox, recent files, greeting
-│   ├── journal.ts        daily journal: template, quick capture, merging Activity, board events, the JSONL activity log
-│   ├── inlineruns.ts     one line of inline Markdown → runs of visible text with merged styles (the base of pango.ts and inlinehtml.ts)
-│   ├── pango.ts          table cell contents (inline Markdown) → Pango markup for Gtk.Label
-│   ├── inlinehtml.ts     the same runs → safe HTML for a web renderer
-│   ├── chatblocks.ts     assistant answers → line blocks (headings, bullets, quotes, rules, code, text)
-│   ├── chatmarkup.ts     the blocks → Pango markup
-│   ├── chathtml.ts       the blocks → HTML for a web renderer
-│   ├── dbml.ts           DBML (dbdiagram.io) translator → Mermaid ER diagram
-│   ├── csv.ts            a CSV file as rows of cells: reading, writing (an untouched row is kept as it was), and the row and column operations
-│   ├── htmlview.ts       the HTML page's rules: its address scheme, the Content-Security-Policy, and the check that keeps a page inside its folder
-│   ├── html.ts           markdownToHtml(): for HTML export
-│   ├── notediff.ts       what changed in a note between two versions: the frontmatter fields and the text line by line
-│   └── wikilink.ts       [[note]] links: parsing, file lookup, name suggestions
-│
-├── editor/               the editor engine
-│   ├── view.ts           MarkdownView: the editor widget, ties together the modules below
-│   ├── tags.ts           text styles (GtkTextTag) and their colors
-│   ├── highlighter.ts    hands markdown/highlight.ts the buffer's lines and applies its spans as tags
-│   ├── decorations.ts    hides markers, dims text (focus mode)
-│   ├── editing.ts        formatting commands: bold, link, heading, quote
-│   ├── lists.ts          Enter and Tab in lists and quotes
-│   ├── clicks.ts         clicking task boxes, reading link URLs and [[note]] targets
-│   ├── wikicomplete.ts   note name suggestions when typing [[
-│   ├── images.ts         shows images below their lines, and handles clicks/double clicks
-│   ├── tablelayer.ts     renders tables as a grid that appears/disappears following the cursor
-│   ├── codelayer.ts      renders code blocks as boxes that scroll sideways (raw text when the cursor is inside)
-│   ├── conflicts.ts      finds git conflict markers in lines and what each choice turns a conflict into (pure)
-│   ├── conflictlayer.ts  colors the two sides of a conflict and puts Accept Current / Incoming / Both above it
-│   ├── mermaid.ts        shows ```mermaid and ```dbml blocks as diagrams (the same pattern as tables)
-│   ├── mermaidrender.ts  renders Mermaid code to a pixbuf through an invisible WebKitGTK
-│   ├── overlays.ts       overlay widget slots reused by images, tables, and diagrams
-│   ├── tableedit.ts      Tab/Enter in tables and the Edit Table menu commands
-│   ├── codehighlight.ts  colors the contents of code blocks according to their language
-│   └── tagsync.ts        applies tags by diff (only the ranges/lines that changed)
-│
-└── ui/                   interface components
-    ├── *.ui              declarative layouts (Gtk.Template) for the headerbar, statusbar, findbar, preferences, palette, and chat; bundled by Vite as text (`?raw`)
-    ├── headerbar.ts      buttons and the ☰ menu (headerbar.ui)
-    ├── preferences.ts    Adw.PreferencesDialog bound to GSettings (Ctrl+,)
-    ├── palette.ts        the Ctrl+Shift+P command palette: Gio.ListStore → FilterListModel → ListView on top of Gio.Action
-    ├── sidebar.ts        tabbed sidebar (Adw.OverlaySplitView): Files, Outline, and History
-    ├── filetree.ts       Files tab, the view of app/files.ts: a Gio.ListStore per folder → Gtk.TreeListModel → ListView + TreeExpander, right-click menu, drag and drop; the controller lists and watches the folders
-    ├── outline.ts        Outline tab: a Gio.ListStore of headings in a ListView
-    ├── history.ts        History tab: git commits for the active file (ListView), the uncommitted files, and the commit form (implements HistoryTabView of app/history.ts)
-    ├── historyviewer.ts  window for reading a single commit (the diff and the contents of that version) or a file's uncommitted changes; HistoryViewers implements HistoryViewersView
-    ├── chatturn.ts       the status card of a live answer and the action row under a finished one
-    ├── logviewer.ts      Agent log window: the tree of the agent's activity on the left, updated live
-    ├── logdetail.ts      the right pane of the Agent log: metrics, arguments, result, and raw text of the selected step
-    ├── pullrequestdialog.ts the confirmation before a card's branch is sent as a pull request (title, description, how it is sent)
-    ├── proposalviewer.ts window for reviewing the agent's change proposals: the same diff, a checkbox per file in a batch, a note for the agent, Reject/Apply buttons
-    ├── findbar.ts        search bar (its target follows the active tab)
-    ├── tabbar.ts         Adw.TabBar + Adw.TabView for document tabs (shown when there are ≥ 2 documents)
-    ├── statusbar.ts      word count and cursor position (short notifications through Adw.Toast in window.ts)
-    ├── dialogs.ts        file chooser, save confirmation, error, about (return a Promise)
-    ├── shortcuts.ts      keyboard shortcut dialog (Ctrl+?) from the accels of the installed actions: Adw.ShortcutsDialog if available, otherwise an Adw.Dialog with a list
-    ├── menu.ts           context menus as data (MenuEntry) → Gtk.PopoverMenu
-    ├── imageviewer.ts    image viewer with zoom (Adw.Window, texture scaled through a GSK snapshot)
-    ├── csvpage.ts        the CSV tab: a Gtk.ListView of rows bound to the table as you scroll, a header that stays, row and column menus, keyboard movement, dragging rows and columns
-    ├── htmlpage.ts       the contents of an HTML page tab (Gtk.Box with a small toolbar + WebKit.WebView): scripts run, the network and other files are blocked
-    ├── kanban.ts         kanban board view: lists, cards, menus, drag and drop
-    ├── inbox.ts          list view (`layout: list`): quick capture, notes under section titles, age, tags, fields
-    ├── table.ts          table view (`layout: table`): headers that sort, cells that change a field in place
-    ├── fieldpopover.ts    the popover that changes one field in place: select options, calendar, validated entry
-    ├── schemadialog.ts the Fields… dialog: add and reorder fields, edit the options of a select
-    ├── home.ts           Home tab: Continue card, agent, deadlines, inbox, recent files
-    ├── chat.ts           Assistant panel on the right: draws the messages and the input, reports actions (implements ChatPanelView of app/assistant.ts)
-    ├── chatsettings.ts   its settings popover: API key, model, thinking mode, saving conversations
-    ├── chathistory.ts    its history popover: saved conversations to reopen or delete
-    ├── chatcontext.ts    its Context button and popover: token estimate, parts, switches
-    ├── proposalcard.ts   change proposal cards, the review window they open, and Undo (the core applies; the card only asks)
-    └── theme.ts          fonts and CSS from the palette in colors.ts (named Adwaita colors for the interface, the system accent if available)
+  app/                    the application layer: AppSession and its controllers (documents, views, notes, the
+                          journal, Home, search, the Assistant, history, collaboration, harness, review, preferences)
+    protocol/             the app protocol: messages, the wire, the server and its handlers per controller, the replica
+  markdown/               string → data: the parser, inline formats, tables, boards and their layouts, fields, HTML
+                          export, diagrams, CSV, search, paths
+  agent/                  the Assistant (context, the DeepSeek client, tools, proposals, plans, the log) and the
+                          external harness (prompts, the pi stream reader, the run queue, worktrees, review)
+    daemon/               the markworkd client (protocol, connection, socket and SSH links)
+  forge/                  Forgejo and Gitea: pull requests, sending changes, resolving conflicts
+  platform/               the port to the runtime (index.ts) and its Node implementation (node/)
+  orchestrator.ts         runs harness processes for app/harness.ts; orchestratordaemon.ts through markworkd
+  settings.ts, files.ts, fileops.ts, workspace.ts, git.ts, gitlog.ts, credentials.ts, i18n.ts, …   base modules
 tests/
-├── run-tests.ts          entry point and registration of unit/GUI tests
-├── framework.ts          assertions, test results, CLI options, temporary folders
-├── fixtures.ts           shared kanban board data for model and GUI tests
-├── widgets.ts            GUI test helpers: widget screenshots, widget children, fake clicks through GestureClick, X11 screen positions
-├── unit/                 tests without a window: inline, HTML, settings, tables, kanban, code languages, DBML, file operations, the assistant (context, SSE, session), the conversation file format, the DeepSeek client (fake server)
-│   └── helpers.ts        helper for getting the body of the HTML result of a conversion
-├── gui/                  tests for the editor, files/folders, images, tables, diagrams, kanban, external harness, history, assistant, size, robustness
-│   ├── context.ts        window/editor context and GUI test helpers
-│   ├── kanban-mouse.ts   five drag/click tests through X11 mouse input
-│   └── mouse-input.ts    TypeScript X11/XTest client through Gio
-└── samples/
-    ├── all-formats.md    a document with all the formats, for tests and manual checks
-    ├── kanban-board.md   a sample board to try out: select fields with colors, progress, person, number, link, a default, an agent card
-    ├── inbox.md          a sample inbox to try out: `add: top`, a capture time by default, a colored select
-    ├── reading-list.md   a sample list with sections and `add: bottom`; change `layout: list` to `layout: board` to see it as a board
-    ├── sprint-table.md   a sample table: `columns:`, `sort:`, colored selects, progress, a date; change `layout: table` to `layout: board` to see it as a board
-    └── images/example.png  the local image referenced by that document
+  unit/                   the core's tests; core-tests.ts lists them, run-core-node.ts runs them
+  electron-*.mjs          the app's tests with Playwright; electron-support.mjs is what they share
+  live*.ts, bench*.ts     live tests against real services, and benchmarks
+  samples/                sample documents
+scripts/
+  electron-build.mjs      the build: main, core, preload, and renderer with Vite; the translations
+  layers.mjs              the layer rules and the complexity limit (run by build and typecheck)
+  capture.mjs, capture/   the screenshots of docs/assets/ and their scripted fakes
+  forgejo.sh, pot.sh, make-icon.cjs
+data/                     the settings schema (com.ekaput.Markwork.gschema.xml) and the app icon
+markworkd/                the agent daemon (Go)
+docs/                     the site (index.html, docs/) and the design notes (design/)
 ```
 
-### Build: TypeScript + Vite
+### Build
 
-Vite is used only as a **bundler** (library mode in [`vite.config.ts`](vite.config.ts)). Its dev server and HMR are not used, because this is a GTK app run by GJS, not a web page.
-
-```
-src/main.ts ─────────┐                        ┌─► dist/markwork.js         (the app)
-tests/run-tests.ts ──┼─► tsc --noEmit ─► vite ┼─► dist/run-tests.js      (tests)
-scripts/capture.ts ──┘   (type check)  (bundle)├─► dist/capture.js        (docs capture)
-                                             └─► dist/chunks/*.js       (shared code)
-node_modules/mermaid/dist/mermaid.min.js ────────► dist/mermaid.min.js     (copy of the browser script)
-```
-
-- **Two build steps.** Vite turns TypeScript into JavaScript without checking types. That is why `npm run build` runs `tsc --noEmit` first, and the build stops if there is a type error.
-- **GJS built-in modules are marked `external`**: `gi://...`, `system`, `gettext`, `cairo`, and `console`. These modules are provided by GJS at runtime, so they are not bundled and not looked up in `node_modules`.
-- **Target `firefox115`**, because GJS 1.80 uses the SpiderMonkey 115 JavaScript engine.
-- **Types for GTK, GLib, and the rest** come from the `@girs/*` packages (the ts-for-gir project). They are registered in [`src/env.d.ts`](src/env.d.ts), so `import Gtk from 'gi://Gtk?version=4.0'` is recognized by TypeScript. These packages are only used for type checking and do not go into `dist/`.
-- **Imports between modules still use the `.js` suffix** (for example `'./tags.js'`), even though the file is `.ts`. TypeScript and Vite both map it to the `.ts` file.
-- **Input through GTK 4 controllers.** The GTK 3 `key-press-event`/`button-press-event` signals no longer exist. Keys and clicks are captured by `Gtk.EventControllerKey` and `Gtk.GestureClick` through the `onKeyPress()`/`onClick()` helpers in [`src/gtkutil.ts`](src/gtkutil.ts). The handlers receive plain numbers (keyval, modifier, click count, position), not event objects, so tests can call them directly (`MarkdownView.onKey(keyval, state)`, `onClick(n, x, y, state)`).
+`scripts/electron-build.mjs` bundles four things with Vite: the main process and the core as ES modules for Node, the preload as CommonJS (a sandboxed preload cannot be an ES module), and the renderer as one script next to its HTML and CSS. `mermaid.min.js` is copied next to the renderer and loaded with the first diagram, and the translations are compiled into `dist-electron/locale/`. The types are checked first (`npm run typecheck`): Vite turns TypeScript into JavaScript without checking it. Imports between modules use the `.js` suffix (`'./tags.js'`) even though the file is `.ts`.
 
 ### Layers and the direction of dependencies
 
-The code is divided into layers. Each layer may only use the layers below it, never above:
-
 ```
- app.ts
-   └─ window.ts ── actions.ts
-        ├─ window/*        GTK glue left: the Doc type and the harness log windows
-        ├─ ui/*            interface components; implement the views that app/ controllers draw through
-        ├─ app/*           feature controllers (documents, views, note links, journal, harness, review, Home, collaboration, the Assistant, the git history, agent writes, autosave)
-        ├─ editor/*        the editor engine
-        │    └─ markdown/* Markdown rules (no GTK)
-        ├─ orchestrator.ts runs harness processes (pi) for app/harness.ts (no GI)
-        │    └─ agent/harness.ts  prompts, RPC, the pi stream reader, the run queue
-        ├─ orchestratordaemon.ts the same harnesses through the markworkd daemon
-        │    └─ agent/daemon/*    protocol, client, reconnecting connection, socket/ssh links (no GI; the descriptors are platform().links)
-        ├─ agent/*         manuscript context and model client (no GTK)
-        ├─ forge/*         Forgejo/Gitea: pull requests, sending changes, resolving conflicts (no GI)
-        ├─ settings.ts, files.ts, workspace.ts, git.ts, gitlog.ts, config.ts, colors.ts, credentials.ts
-        └─ platform/index.ts the port to the runtime (implemented by platform/gjs/ and platform/node/, installed by the entry point)
+electron/renderer  ──(types, pure modules)──►  src/markdown, src/app/protocol messages, src/app/commands
+electron/core.ts   ──►  src/app/protocol (ProtocolServer)  ──►  src/app (AppSession, controllers)
+                                                                     │
+                       src/agent, src/forge, orchestrator, base modules (the core)
+                                                                     │
+                                         src/markdown (pure)   src/platform/index.ts (the port)
 ```
 
-- **`agent/`** is also free of GTK and knows nothing about the editor or widgets. `agent/chatcontroller.ts` owns the conversation's life cycle (sending, stopping, a folder change mid-request, reopening a saved conversation, undo), tested without GTK in `tests/unit/chatcontroller.ts`. `AppSession` owns it through `app/assistant.ts`, which gives it the manuscript from the session (the active document and its selection, the workspace's files, the work folder, Git, and `app/agentwrites.ts` for approved changes) and draws through `ChatPanelView`: plain notices (`startTurn`, `turnText`, `turnEnd`, …) and `on*` actions (`onSend`, `onApply`, `onUndo`, …). `ui/chat.ts` implements that view and never imports the controller. A change proposal is an ask: the panel gets the changes as data, asks the core to write them with `onApply(ask, chosen)`, and answers with its note; the result the agent is told is what the core wrote. Tested without GTK in `tests/unit/assistant.ts`.
-- **The git history** lives in `app/history.ts` the same way. `AppSession` owns a `HistoryController` that runs git (`git.ts`: the file's log, the working state, the uncommitted files, diffs, the file at a commit, commit, discard) and the commit message writer (`agent/commitmessage.ts`, with the Assistant's key and model). The History tab (`ui/history.ts`) and the viewer windows (`ui/historyviewer.ts`, `HistoryViewers`) only draw: they implement `HistoryTabView` and `HistoryViewersView`, get the commits, the changed files, and the diffs as plain data, and report clicks through `on*` actions (`onOpen(hash)`, `onCommit(files, message)`, `onDiscard(path)`, `onWrite(files)`, …); a viewer is named by a number, and the discard question is `HistoryDialogs.discard`. A path the view sends back is only acted on if the controller showed it. Neither view imports `git.ts`. Tested without GTK, against real git, in `tests/unit/history.ts`.
-- **The Files tab** is the last piece moved the same way. `AppSession` owns a `FilesController` (`app/files.ts`) that holds the work folder (`root()` for every other controller), lists the folders the tree shows (`listFolder()`: folders first, Markdown files, HTML pages, and images, no dot files or `node_modules`) and watches them through `platform().fs.watchDir`, and runs `fileops.ts` (now on the port; copying in uses `fs.copy`) with the questions in `FilesDialogs`. `ui/filetree.ts` keeps the GTK model, drag and drop, and the menu, draws what `showRoot()` and `showFolder()` send, and reports through `onOpenFolder`, `onCreate`, `onRename`, `onRemove`, `onMove`, and `onCopy`. With it, no view in `ui/` imports a core module that reaches the runtime (`UI_ACTS_ALLOWED` is empty). Tested without GTK on a real folder in `tests/unit/filescontroller.ts`.
-- **`markdown/`** does not import GTK at all. It only contains string → data functions, so it is the easiest to study and test.
-- **`editor/`** knows nothing about files, menus, or the sidebar. `MarkdownView` only reports through callbacks (`onHighlighted`, `onCursorMoved`, `onMessage`).
-- **`ui/`** holds self-contained components. `Outline` does not know the editor; it only receives a list of headings and calls `onJump(line)` when clicked. `FileTree` is the same: it only displays folders and calls `onOpenFile(path)`; the window decides how to open the file (a new tab, switching to an existing tab, or reusing an empty document).
-- **`window.ts`** is the only place where components are connected to each other. For example: after highlighting, the editor calls `onHighlighted`, and then the window passes the headings to `Outline` and the text to `StatusBar`. The open documents (tabs, open/save, the Home tab, restoring tabs) are kept by `app/documents.ts`, which tells the window what must follow a document on screen through `DocumentsHost`. Features that span several components (the journal, harness runs, Home, applying agent changes, autosave) live in `app/*` controllers, which `AppSession` builds; each receives a narrow host interface the window fills from closures (`frontendHost()`, `documentsHost()`, `appDialogs()`), never `MainWindow` itself, so they do not import `window.ts`. The Electron frontend fills the same interfaces over the app protocol (`app/protocol/`). `actions.ts` likewise types the window as `ActionHost` (`CommandHost` plus the settings and the dark flag).
-- **`forge/`** is free of GTK and knows nothing about widgets, the editor, the window, or the agent. The window reaches it through `app/collab.ts` (the list and the notifications), `app/pulls.ts` (the review, merging, and resolving), and `app/contribute.ts` (sending); the HTTP call and git are parameters, so the same code runs against a fake server and local repositories in the tests and against a real Forgejo in `npm run test:live:forge` and `npm run test:live:forgejo`.
-- **`orchestrator.ts`** sits between `app/harness.ts` and `agent/harness.ts`: it spawns the harness process and moves cards, using the pure parts in `agent/` and translated strings, but no GTK and no widgets.
-- **The core reaches the runtime through `platform()`.** `markdown/`, `agent/`, `forge/`, the orchestrator, and the base modules are the core: everything that is not interface. They read files and folders (and watch folders), paths, the environment, the keyring, a monotonic clock, idle-time scheduling, stored settings, processes (run once, or spoken to line by line), links to markworkd, and HTTP (whole responses and line-by-line streams) through the interfaces in `platform/index.ts`, which every entry point (`main.ts`, the test runner, the benchmarks, `scripts/capture.ts`) fills by importing `platform/gjs/install.js` first. Tests can swap in a fake with `setPlatform()` (`tests/unit/platform.ts` runs the credential order with no keyring). Timers use `setTimeout`/`setInterval`, which GJS provides too, and cancelling uses `Cancellable` from `cancel.ts`, which the GJS stream transport links to a `Gio.Cancellable` for libsoup. A library that is not installed is reported as `RuntimeMissing`, which is never retried. The goal is a core that can also run on another runtime, and no core module imports `gi://` any more: `GI_ALLOWED` in `scripts/layers.mjs`, the list of modules that still did while they were moved, is empty and may not grow. The checker also makes this hold all the way down: a core module may import only core modules (no GJS built-ins such as `gettext`), so `platform/index.ts` is the whole contract a second runtime implements. `platform/node/` is that second runtime: `npm run test:core:node` runs the core's tests (`tests/core-tests.ts`, the same list `npm test` runs under GJS) on Node, and `tests/unit/platform.ts` holds every implementation to the same contract (files, idle work, processes). It also has what a core on Node needs besides the contract: a settings store with the keys, types, and defaults of the GSettings schema in a JSON file (`platform/node/settings.ts`), and translations from the same gettext catalogs (`platform/node/i18n.ts`); `tests/unit/nodeplatform.ts` tests them on Node. The tests reach the runtime only through the port and a test host (`tests/host.ts`, filled by `host-gjs.ts` or `host-node.ts`: arguments, output, environment, a fake HTTP server), and they `await` (`within()`, `until()`) instead of spinning a nested main loop; only the GUI tests use `settle()`. How a frontend in another process (Tauri, Electron, GPUI) is to drive `AppSession` over a wire, with the editor keeping the live text and the core a replica of it, is drafted in [docs/design/protocol.md](docs/design/protocol.md); the protocol is not implemented yet, but what it needs first (its section 13) is done. Interface text goes through `i18n.ts`, whose translating is `platform().translations` (gettext in `platform/gjs/i18n.ts`, bound by `install.js` before any module calls `_()`); the GTK layers stay with the GJS frontend.
-- **`app/` is the application layer every frontend shares.** Its controllers hold what a feature does (open and save, show a board as its text changes, merge a pull request, run a harness) and reach the screen only through interfaces they declare: a view (`ViewScreen`, `CollabView`, `PullReviewView`, `ReviewView`, `KanbanView`, …) that gets plain data and reports actions through `on*` callbacks, and dialogs (`DocumentDialogs`, `HarnessDialogs`, …) that answer with a value or a Promise. A document's editor is a `TextEditor` (`app/document.ts`): `getText`, `replaceText`, the modified flag, headings, the cursor, and the view mode, which `MarkdownView` implements; controllers that hand documents back to the window are generic over the editor type, so the GTK window gets `Doc<MarkdownView>` back. `AppSession` (`app/session.ts`) constructs and owns the controllers and connects them to each other; the frontend hands it one `AppFrontend` (the views and system services of `FrontendHost`, the tab hooks of `FrontendDocuments`, and `AppDialogs`), and `window.ts` only implements that on its widgets, so another frontend implements the same object and gets the same wiring. The session also decides what the window opens with (`open(path)`), whether it may close (`closeRequest()`), and what opening a folder, a file from the tree, or a link does (`openFolder`, `openLink`); it follows the active document itself (the outline, the view, the title, the tree, the history), and the frontend only reports what happened: an edit, new headings, the window's focus, the side panel's page (`edited`, `headingsChanged`, `windowFocused`, `sidebarShown`). A board, list, table, or layout view reports what the user did as a `NoteEdit` (`markdown/noteedit.ts`), not the board that resulted, and `ViewController` applies it to the board it holds; a card dialog answers a `CardForm`, composed into text where the edit is applied. A question a controller asks is written there (`Question`, `Prompt` in `app/dialogs.ts`), and a view callback that waits for an answer returns an `Awaitable`, so each could be a message to a separate process. Commands are data too (`app/commands.ts`): each has an id, a palette label, default keys in a neutral notation (`Ctrl+Shift+P`), the view it applies to, where it runs (`runs`: in the core, or in the frontend's editor alone), and a `run` that acts only through `CommandHost`, which `AppSession.commands()` builds from the core's part and the frontend's (`FrontendCommands`); `actions.ts` maps the table onto `Gio.Action`s and accelerators, and another frontend maps it onto its own menus and keymap. The interfaces only carry data and callbacks, so they could also become messages to a separate process later.
-- **Lower layers do not reach up.** `editor/` takes the `Palette` type from `colors.ts`, not from `ui/theme.ts`; `git.ts` takes the agent's Git request types from `gitlog.ts`, not from `agent/`.
-- **The rules are checked.** [`scripts/layers.mjs`](scripts/layers.mjs) runs in `npm run build` and `npm run typecheck` and fails on a forbidden import: GI or anything outside `markdown/` in `markdown/`, GTK or `ui/`/`editor/`/`window/` in `agent/`, `ui/`/`window/`/`agent/` in `editor/`, `window.ts` in `ui/`, `window/`, or `actions.ts`, any upper layer in the base modules, anything but the core and `app/` in `app/` (so no GI, no `ui/`, `editor/`, or `window/`), `app/` in the core, `gi://`, a GJS built-in module, `platform/gjs/`, or any module outside the core in the core (`GI_ALLOWED` is empty and may not grow), any import in `platform/index.ts`, and any layer above it in `platform/gjs/`; anything but `node:` modules and the contract in `platform/node/`, and a `node:` module anywhere else in `src/`. `tsconfig.node.json` typechecks the core and its tests without `src/env.d.ts`, so a GJS global or a `gi://` import that reaches the core fails there, and `vite.node.config.ts` leaves only `node:` modules external.
-- **Function complexity is checked too.** The same script parses `src/` and `scripts/` with the oxc parser that Vite already ships (`rolldown/parseAst`) and fails on a function whose cyclomatic complexity (counted like ESLint's `complexity` rule; nested functions on their own) is above 15 (lowered from 20 once every function met it). The functions that were above the limit have all been split, so `COMPLEXITY_ALLOWED` is empty; an exception listed there may not grow, and its entry has to go once the function is split.
+- **`markdown/`** holds only string → data functions and imports nothing outside it, so it is the easiest to study and test.
+- **The core** (`markdown/`, `agent/`, `forge/`, the orchestrator, the base modules) imports only the core and reaches the runtime through `platform()`. It typechecks against the few web-standard globals it uses (`src/globals.d.ts`: timers, `TextEncoder`, `TextDecoder`), not Node's types, and only `platform/node/` may import `node:` modules.
+- **`app/`** is the application layer: controllers that reach the screen through interfaces they declare (a view that gets plain data and reports with `on*` callbacks, dialogs that answer with a value or a Promise). `AppSession` builds and owns them and connects them to each other; the frontend hands it one `AppFrontend`, which `app/protocol/frontend.ts` implements by sending messages. Commands are data (`app/commands.ts`): an id, a label, default keys in a neutral notation (`Ctrl+Shift+P`, `Ctrl` is `⌘` on macOS), where they apply, and where they run.
+- **The renderer** is a view. From `src/` it takes the pure Markdown modules, the protocol's messages, wire, mirror, and change math, the command list, and a few pure agent modules for the log; other modules only for their types, and nothing that reaches the runtime.
+- **`src/` imports nothing outside `src/`**: `electron/` uses it, never the other way round.
+- **The rules are checked.** [`scripts/layers.mjs`](scripts/layers.mjs) runs in `npm run build` and `npm run typecheck` and fails on a forbidden import. It also parses `src/` and `scripts/` and fails on a function whose cyclomatic complexity (counted like ESLint's `complexity` rule) is above 15.
 
-### The editor workflow
+### The editor
 
-There are two main cycles in `editor/view.ts`:
+The renderer's editor (`electron/renderer/editor.ts`) is CodeMirror 6 with Markwork's own parser. The parse (`markdown/highlight.ts`, `HighlightCache`) is kept per document and reuses every line that did not change; from it one decoration field builds, in the same transaction as the edit:
 
-```
-Text changes ───► queueHighlight() ───► highlight()
-                                          ├─ highlighter.ts   apply style tags,
-                                          │                   collect markers + headings
-                                          ├─ tablelayer.ts    update table blocks
-                                          ├─ codehighlight.ts color code block contents
-                                          ├─ mermaid.ts       update Mermaid/DBML diagrams
-                                          ├─ images.ts        show the images found
-                                          ├─ onHighlighted()  → outline, status bar
-                                          └─ updateCursor(true)
+- the style of each part (`cm-md-bold`, `cm-md-h2-line`, …) and the markers to hide, outside the lines of the cursor or the selection (source mode hides none);
+- tables as a grid widget while the cursor is elsewhere (`tables.ts`; a click on a cell opens the raw text there);
+- code blocks as a box with colors from CodeMirror's language data, loaded the first time a language is used (`codecolor.ts`), and Mermaid and DBML blocks as diagrams (`diagrams.ts`; `markdown/dbml.ts` turns DBML into a Mermaid ER diagram);
+- pictures under their line (`images.ts`), loaded from the document's folder through the main process's `app://` scheme;
+- git conflict markers with *Accept Current / Incoming / Both* (`conflicts.ts`), and the dimming of focus mode.
 
-Cursor moves ──► queueCursorUpdate() ──► updateCursor()
-                                          ├─ decorations.ts   hide markers outside
-                                          │                   the active line, dim (focus)
-                                          ├─ tablelayer.ts   show the grid or raw text
-                                          ├─ mermaid.ts      show the diagram or code + preview
-                                          ├─ typewriter     scroll the active line to the middle
-                                          └─ onCursorMoved() → status bar
-```
+The editing commands (bold, links, headings, lists, tables, Enter and Tab) are `markdown/editcommands.ts`: text and a selection in, the changes and the new selection out, shared by every frontend. Positions on the wire are code points (an emoji is one), converted to CodeMirror's UTF-16 units at the editor's edge (`markdown/offsets.ts`).
 
-Both are deferred with `GLib.idle_add(PRIORITY_HIGH_IDLE)`. Several consecutive changes (for example when pasting text) are merged into one pass, and the pass finishes before GTK redraws the screen, so nothing flickers.
+### HTML pages (`markdown/htmlview.ts`, `electron/main.ts`)
 
-### How the hidden syntax effect works
+A page from the Files tab runs its JavaScript, so what it may reach is limited from the outside: it is served under a private scheme (`mwhtml://v<id>/<path>`, only from the folder it was opened from; a path or a link that leaves it is refused), every response carries a Content-Security-Policy that allows nothing but that scheme, `data:`, and `blob:`, the frame may not navigate anywhere else, and a link to the web opens in the browser.
 
-1. **`markdown/highlight.ts`** parses the whole document when it is first opened, and then only the edited range when the text changes; `editor/highlighter.ts` hands it the buffer's lines and applies what it returns. The parser knows no editor: the editor gives it one style per syntax name (a `Gtk.TextTag` here) and gets them back in the spans, so another editor (CodeMirror) can use the same parser with its own decorations. For each syntax it applies a style tag to the contents (for example `bold` on "bold" in `**bold**`) and records the position of its delimiters (`**`) as **markers**.
-2. Each marker stores the range of lines where it is "active": `[start, end, firstLine, lastLine, line]`. For inline formats the range is just its own line. For ```` ``` ```` fences the range is the whole code block, so the fences appear as long as the cursor is inside the block.
-3. **`decorations.ts`** applies the `hidden` tag to every marker whose line range does not contain the cursor. When the cursor changes line, only this step is repeated; the full highlight does not need to run again.
-
-**Tags are applied by diff (`editor/tagsync.ts`).** Removing the tags from the whole buffer and then applying them again makes GTK lay out the whole document again (the heading tags, `hidden`, and the table/image spacing change the line sizes), and that is the most expensive thing in a long document. So:
-
-- Highlighting reads only the buffer lines that changed, and then parses the range between safe code/table context boundaries. Results outside that range are reused with adjusted offsets. An edit inside code/tables re-parses the block concerned; a new code fence may extend parsing to the end of the document. A snapshot holds the current result of the document; the extra token cache is limited to 10,000 entries and 4 Mi UTF-16 units, without storing lines above 4,096 units.
-- The word/character count is updated from the edited range. The full text is only joined on request, so the status bar does not read and recount the whole document.
-- Syntax and `hidden` tags are applied through `LineTagger`, which remembers the last tags on each line. `MarkdownView` records the edited range (the `insert-text`/`delete-range` signals, stored as two `GtkTextMark`s), so when re-highlighting only the edited lines or those whose tags differ are touched. The other lines are simply left alone: the tags move along with the text.
-- When opening or pasting many lines, adjacent tag ranges are merged before being applied, so GTK receives fewer operations. A highlight called directly from `setText()` cancels the highlight callback that is still queued.
-- Unchanged tables and code block colors keep the tags that already moved along with the text in GTK. The outline keeps its labels when only the heading line numbers change; the click targets are still updated.
-- Tags with few ranges (`dim`, `tablehide`, `mermaidhide`, table/image/diagram spacing, code block colors) are applied with `setTagRanges()`: the ranges that are already applied are read from the buffer, and then only the difference is removed or added.
-- The test "incremental highlighting is the same as highlighting from scratch" (`tests/gui/robust.ts`) edits the sample document randomly and checks that the result is the same as highlighting from scratch.
-
-`parseInline()` in `markdown/inline.ts` makes a copy of the characters only when masking is needed, and reuses the masked string as long as nothing changes. It uses a **masking** technique: after a part is recognized (for example inline code), its characters are replaced with `\0` so that later patterns do not recognize them again. That is why `` `**not bold**` `` is still shown as code.
-
-### Technical things to know
-
-**Text positions (`markdown/offsets.ts`).** GtkTextBuffer counts positions per Unicode character, while JavaScript strings count per UTF-16 unit. The emoji 🎉 is 1 in GTK but 2 in JavaScript. The highlighter works with JavaScript positions, and converts them with `makeCpMap()` just before touching the buffer.
-
-**Hiding text without `invisible` (`editor/tags.ts`).** The `invisible` attribute of GtkTextView in GTK 3 could trigger the crash *"Byte index is off the end of the line"*. That is why the `hidden` tag makes the text very small and the same color as the background. The result on screen is the same, but the problematic GTK code path is not touched. This approach was kept after moving to GTK 4 because the whole layout of tables, diagrams, and markers depends on it.
-
-The size is **not 1** (a Pango unit, 1/1024 pt) but 256 (`TINY` in `editor/tags.ts`). The color emoji font is a bitmap font, and at size 1 its scale becomes zero so GTK fails to draw the whole window (*"invalid matrix (not invertible)"*). This was discovered when a table containing emoji was shrunk; there is a test that guards it.
-
-**The centered text column (`editor/view.ts`).** The left/right margins are calculated from the width of the visible area, which is the `page_size` of the horizontal adjustment that the TextView fills in when it is allocated (GTK 4 has no `size-allocate` signal). The ScrolledWindow uses `hscrollbar_policy: EXTERNAL`, not `NEVER`. The minimum width of a wrapped GtkTextView equals its current width plus the margins. With `NEVER`, that minimum width is passed on to the window, so the window cannot shrink and keeps growing every time the margins are recalculated.
-
-**Opening a long document without freezing (`replaceAllText()` in `editor/view.ts`).** GTK gives a height of 0 to lines that have not been laid out yet. If the first image after the text is replaced covers an area below the lines that have been laid out (the TextView pixel cache draws half a screen extra, and `bottom_margin` extends the canvas), GTK lays out *all* lines up to the end of the document at once on the main thread; a 650 KB manuscript used to freeze for ±0.6 seconds when opened. `replaceAllText()` zeroes the scroll position and then queues a scroll to the cursor, so GTK first lays out two screens around the cursor and the rest bit by bit in the background. Use this function whenever replacing the entire contents of a TextView that can be long (the editor, the history viewer). Do not change `bottom_margin` at runtime: every change makes GTK lay out the whole document again. The scroll to the cursor is only queued if the TextView already has a size: before that (the window is not shown yet, a new tab in a `Gtk.Stack`) GTK 4 stores the scroll and then runs it with empty geometry, so the document opens in the middle or at the end. The test `a long file in a new tab opens from the start, not scrolled to the middle` in `tests/gui/tabs.ts` guards this.
-
-**Incremental highlighting on open (`queueFill()` in `editor/view.ts`).** `setText()` still parses the whole document (the line structure, headings, and offsets are needed right away), but syntax tags and hidden markers are only applied for the first 200 lines. The rest are fed in by an idle with priority `HIGH_IDLE + 22` (≤8 ms per turn): above the GtkTextView background layout (125) so that lines are laid out once with their final tags, below drawing (120) so that the screen keeps updating. Each turn prioritizes the lines around the cursor and the visible ones (before GTK finishes the layout, the visible area cannot be trusted because lines not yet laid out are 0 high), so jumping to the end of the document still shows formatted text. `LineTagger.defer()`/`fill()` skip the deferred lines; edits during the feeding are still highlighted as usual. The outline is also built 50 lines per turn. Tests that check the tags of a long document wait for `MarkdownView.highlightComplete`.
-
-**Incremental hidden markers (`MarkerConcealer` in `editor/decorations.ts`).** Each keystroke and cursor move only checks the old and new active lines, the lines the highlighter re-parsed (`reparsed` in the `highlight()` result), and the lines whose tags are not yet known. A new ``` fence can change the markers of the lines below it without editing those lines, which is why the `reparsed` range must be passed on. The markers in the highlighter result are ordered by line (found by binary search), and the markers/headings/images are shifted in place after an edit because the old snapshot is no longer used.
-
-**Reading the work folder without walking it every time (`WorkspaceRepository` in `workspace.ts`).** Chat context, Home, `[[` suggestions, and harness prompts all read the Markdown files of the work folder. The repository keeps a snapshot per folder (names, sizes, modification times) and watches every folder in it with a `Gio.FileMonitor`, so the folder is only walked again after a change; a change to a file already listed (autosave) only refreshes that file's size and time. The app's own writes and file operations reach it at once through `onDiskChange()` in `files.ts`; outside changes arrive with the monitor events. Contents are cached by size and time up to a memory limit, least recently used first out, and unsaved documents are read from their editor. Opening a folder starts `warm()`, which walks and reads in 6 ms slices from an idle callback. A read states how current it must be: `cached` (Home, suggestions, the context preview), `current` (the start of a chat turn walks again, so a file changed outside the app a moment ago is seen), or `fresh` (verification reads every file from disk). A folder with more than 512 subfolders, or one that cannot be monitored, is walked on every request as before.
-
-**Background auto save (`writeTextFileAsync()` in `files.ts`).** Timer-driven auto save writes through Gio on a worker thread (a temporary file, fsync, then an atomic rename), so the fsync pause on a slow disk is not felt while the user keeps typing. Background writes to one path are queued: at most one runs, and a newer request replaces the one still waiting, so an older version can never finish last. All synchronous writes, moves, and deletions of files through `files.ts`/`fileops.ts` first flush the background writes to the same path (`flushWrites()`), so that old contents do not overwrite new ones. Background writes report back on their own `GLib.MainContext`, so a flush runs only write completions, never other application callbacks; their `done` callbacks follow later from the default main loop. The *modified* status is only reset if the text did not change while it was being written.
-
-### GTK 4 notes
-
-Markwork runs on GTK 4, GtkSourceView 5, and WebKitGTK 6.0. Some GTK 4 behaviors (through GJS) affect how the code is written:
-
-- **The `destroy` signal does not fire for widgets that JavaScript still holds.** A child widget is only *disposed* when its last reference is gone, and GJS holds a reference as long as its JavaScript object is alive. That is why cleanup is explicit: `MarkdownView.destroy()` (called when a tab is closed) stops the editor's idles/timers along with the image, table, and diagram layers; `MainWindow` calls `destroy()` on all its components when its window is *unrealized* (a signal that does fire when the window is destroyed). Small windows (history, image viewer) mark themselves closed through `unrealize` as well.
-- **GtkTextView overlay children cannot be removed.** In GTK 4.14, `gtk_text_view_remove()` does not recognize children added with `add_overlay()` (it ends with *"GtkBox is not a child of GtkSourceView"*). `editor/overlays.ts` lends out slots (a `Gtk.Box` that is already an overlay) to images, tables, and diagrams; a returned slot is emptied, hidden, and then used by the next block. Click receivers are attached to the contents of the slot, not to the slot itself.
-- **GtkTextView overlays do not scroll on their own.** Their position is in buffer coordinates, and the overlay container (`GtkTextViewChild`) subtracts the scroll offset from it when allocated. But in GTK 4.14 that offset is only updated in the TextView's `size_allocate`, and scrolling does not reallocate anything: images, tables, and diagrams stay at the old place (not visible or floating over the text). `OverlaySlots` therefore requests a reallocation of the TextView **and** its container every time an adjustment scrolls (GTK skips the allocation of a container whose size did not change). The cost per scroll step is not measurable (median ±0.22 ms with or without). The test `an image below a long document is shown in place after scrolling` and the table grid tests check the actual position of the widget, not the number stored by the layer.
-- **`ListBox.remove_all()` also removes the placeholder** in GTK 4.14; `removeChildren()` (`gtkutil.ts`) removes rows one by one.
-- **Modal dialogs without a nested main loop.** `gtk_dialog_run()` was deliberately removed in GTK 4: a main loop inside a handler makes other code run in the middle of that handler. The dialogs in `ui/dialogs.ts` return a Promise (`modal()` in `gtkutil.ts`), and callers continue through `after(value, continuation)`: plain values (paths that do not need to ask, or dialog fakes in tests) are processed immediately, Promises after they are answered. That is why `closeTab()`, `save()`, and `onClose()` stay synchronous when there is nothing to ask. Closing a window that needs confirmation is held back (`close-request` returns true), and then `close()` is called again once all the dialogs are answered with consent. Continuations that run after a dialog re-check the state (the tab still exists, the card is still the same) because the user may have changed it. The file chooser uses `Gtk.FileDialog` (it already asks before overwriting; on desktops with an xdg-desktop-portal, the dialog is opened by the portal). Messages and forms use `Adw.AlertDialog` and `Adw.Dialog` (`modalWindow()`), not `Gtk.AlertDialog` and without `destroy_with_parent`: both connect the dialog to the parent window's `destroy` signal, and when the process exits GJS may finalize the parent first, producing a GLib-GObject-CRITICAL.
-- **Images as `Gdk.Texture`.** `Gtk.Picture.new_for_pixbuf()` (deprecated since GTK 4.12), `Gdk.pixbuf_get_from_texture()` (4.12), and `Gdk.cairo_set_source_pixbuf()` (4.20) are not used. Pixbufs are still used for loading and shrinking images, and then `textureFromPixbuf()`/`pixbufFromTexture()` (`gtkutil.ts`) copy the pixels through `Gdk.MemoryTexture` and `Gdk.TextureDownloader`. The image viewer draws its texture with `Gtk.Snapshot.append_scaled_texture()`.
-- **Adaptive layout.** Two `Adw.Breakpoint`s on the window: below 900sp the Assistant panel folds into a floating panel, below 600sp the sidebar does too. The minimum window size is 360 × 294. The OverlaySplitView is set up with `pin_sidebar` so that libadwaita does not open a panel by itself when the window widens; `bindPanel()` closes the panel when folding and restores the previous setting when widening (also when the window is closed while narrow).
-- **`hexpand`/`vexpand` propagate upward.** In GTK 4, a widget with an expanding child expands too. The sidebar, the History tab, the Files tab, and the Assistant panel are given an explicit `hexpand: false`, so they are not also given a share of the window's remaining space (guarded by the test `the history tab does not make the sidebar expand`). `pack(box, child, expand)` in `gtkutil.ts` replaces `pack_start()` and sets the expansion according to the box orientation.
-- **The selection must not become empty in the middle of an edit.** On X11, a selection that was briefly empty releases the PRIMARY clipboard, and GTK 4 cancels the next selection as soon as the server confirms that release. `wrapSelection()` (`editor/editing.ts`) therefore only inserts/removes the delimiters at both ends, without first deleting the whole selection; without that, a second Ctrl+B does not remove the `**`.
-- **The file tree (TreeListModel + ListView) and drag and drop.** Each folder is a `Gio.ListStore<FileNode>`; `Gtk.TreeListModel` also calls the child-creating function just to check whether a row can be expanded, so folder contents are stored in `dirStores` and read once. Dragging uses `Gtk.DragSource`/`Gtk.DropTarget` on the ListView; the row at the cursor is found with `pick()` (rows are direct children of the ListView, with a `TreeExpander` inside). The drop target marker uses row selection. The drag icon is taken from the icon theme; a widget as the icon (`GtkDragIcon`) triggers a Gtk-CRITICAL when the drag ends.
-- **Gtk.Template without glib-compile-resources.** `.ui` files are imported as text (`import xml from './x.ui?raw'`) and given to `Template:` as a `Uint8Array` (`uiTemplate()` in `gtkutil.ts`); there is no GResource to compile. `Adw.HeaderBar` is a final class, so `HeaderBar` wraps it in an `Adw.Bin`.
-- **Settings in GSettings.** The schema is in `data/` and compiled into `dist/` by the Vite plugin; `platform/gjs/settings.ts` loads it from the bundle folder if present, otherwise from the system schema directory (the installed version). `AppSettings` itself only knows a `SettingsStore`; GTK code that binds to GSettings asks for it with `gsettingsOf(settings)`, and code that only reacts to a change uses `settings.onChanged(keys, …)`. The menu toggles (`sidebar`, `chat`, `focus`, `typewriter`, `autosave`) are `Gio.Settings.create_action`, the sidebar and the Assistant panel are bound with `Gio.Settings.bind` to `show-sidebar` (through `bindPanel()`, see the adaptive layout), and `MainWindow.onSettingChanged` applies the rest (including changes from the preferences dialog).
-- **Colors.** The interface (sidebar, Assistant panel, board, status colors) uses named Adwaita colors (`@accent_color`, `@card_bg_color`, `@error_bg_color`, ...), so it follows the system accent and the high contrast mode. Document surfaces (the editor, tables, text tags, diagrams) still use the `colors.ts` palette because `GtkTextTag` and diagram rendering need real color values and the `hidden` tag must be exactly the same as the editor background; the accent is taken from `Adw.StyleManager.get_accent_color_rgba()` if libadwaita ≥ 1.6.
-- **Context menus as data.** `Gtk.Menu` no longer exists. Right-click menus (the file tree, cards, lists) are built as `MenuEntry[]` (`ui/menu.ts`) and then turned into a `Gtk.PopoverMenu` with `menu.*` actions; tests only need to find an entry and call `run()`.
-- **Screenshots.** `gdk_pixbuf_get_from_window()` no longer exists. `tests/widgets.ts` draws a widget through `Gtk.WidgetPaintable` and then renders it into a texture with its window's renderer (used by `--screenshot` and `scripts/capture.ts`).
-
-### How images work (`editor/images.ts`)
-
-Images are not put in the text buffer. If `GtkTextChildAnchor` were used, every image would add a character to the document and to the undo history. Instead:
-
-1. `highlighter.ts` records every image with its line: `{ line, url, alt }`.
-2. `ImageLayer` loads the image asynchronously through GIO (a local file, or http/https through gvfs) and stores it in a cache per URI. Typing does not reload the same image.
-3. Below the image line, empty space is reserved with a `pixels_below_lines` tag as tall as the image.
-4. The image widget is placed over that space as a TextView overlay (a slot from `editor/overlays.ts`, positioned with `move_overlay()`). Its position is in buffer coordinates so that it scrolls along, and it is recalculated from `get_line_yrange()` every time the layout changes (a change visible through the vertical adjustment).
-5. Widgets are matched by URI, not by line number. If a new line appears above, the same widget is just moved, not recreated.
-
-Like the other formats, the whole `![alt](url)` is registered as a marker, so the syntax is hidden except on the active line.
-
-### How tables work (`editor/tablelayer.ts`, `tableedit.ts`, `markdown/table.ts`)
-
-Tables use the same approach as images: a widget is placed over an empty space inside the text, so the contents of the document do not change. The difference is that a table has two states that follow the cursor:
-
-| Cursor | Table text | Grid |
-| --- | --- | --- |
-| outside the table | shrunk to ~1 px per line (the `tablehide` tag) | shown, in the space reserved below the last line |
-| inside the table | shown as raw text, to be edited | gone |
-
-1. `markdown/table.ts` recognizes table blocks (`findTables()`), and it is the only place where the table rules are written: the highlighter, the edit commands, and the HTML export all use it.
-2. `highlighter.ts` passes the line range of each table on to `TableLayer`.
-3. When a table needs to be shown as a grid, `TableLayer` splits its contents (`parseTable()`), creates a `Gtk.Label` for every cell with Pango markup from `markdown/pango.ts` (bold, italic, code, links), and then arranges them in a `Gtk.Grid`. The table is measured with two reused GTK cells; the full grid is only created when the table is visible. The size is stored on the active table block; the shared cache is limited to 256 tables and 1,024 cells, each with a key of at most 1 Mi UTF-16 units. Typing inside a table does not build the grid.
-4. The empty space is reserved through a `pixels_below_lines` tag on the last line of the table as tall as the grid, and then the grid is placed over it as an overlay (a slot from `editor/overlays.ts`). When the cursor or the selection moves, only the tables whose state changed have their tags changed. The position is recalculated from `get_line_yrange()` only for visible grids; off-screen grids are hidden without removing their space, and positioned when scrolled onto the screen. This prevents cursor moves from forcing GTK to lay out the entire document. Changing the column width reuses the grid and resets the cell widths without tearing down the widgets; ellipsize keeps the table height the same.
-5. A column is as wide as its longest text. If the total exceeds the width of the text column, narrow columns are left alone and the remaining space is divided among the wide columns (`fitColumns()`), and then the text is cut with "…". The width has to be forced with `set_size_request`, because a TextView only gives child widgets their minimum size.
-6. Clicking a cell puts the cursor in that cell in the raw text (`cellStart()`), which automatically opens the table.
-7. `tableedit.ts` re-reads the document from the buffer every time it is used (not from the last highlight result), and then rewrites the table lines in a single undo step. Menu commands always produce a tidied table, because adding or removing columns changes the column widths.
-
-### How Mermaid diagrams work (`editor/mermaid.ts`, `mermaidrender.ts`)
-
-Mermaid only runs in a browser (it needs the DOM and text measurement), so it cannot be called directly from GJS.
-
-1. **The renderer (`mermaidrender.ts`).** A single `WebKitWebView` (WebKitGTK 6.0) that is never attached to a window loads `mermaid.min.js`. That script is copied from `node_modules/mermaid` to `dist/` by a small plugin in `vite.config.ts`. For each diagram, the page runs `mermaid.render()` and then sends its size back through a *script message handler*; a snapshot of the whole document (WebKit draws it even if the view is not shown, and its size follows the page contents) is cropped to the size of the diagram into a `GdkPixbuf`. A snapshot was chosen over SVG + librsvg because Mermaid labels use `<foreignObject>`, which librsvg does not support.
-2. WebKitGTK is loaded with `import()` and the WebView is only created when the first diagram is needed, so a document without diagrams does not pay for it (and the app still runs without WebKitGTK). Diagrams are rendered one at a time, and the results are stored in a cache per (theme, code).
-3. **The layer (`mermaid.ts`)** imitates `TableLayer`: the image is placed over the empty space below the closing line of the block (`pixels_below_lines`). When the cursor is outside the block, all its lines are shrunk with the `mermaidhide` tag; when inside, the code is shown and the diagram becomes a preview below it. Its tag is separate from `tablehide` because each layer removes its tags across the whole document when it syncs.
-4. Rendering is delayed 400 ms after the code changes; the old diagram stays visible while it re-renders. A block that fails to render (a syntax error) is never hidden.
-5. **DBML** uses the same path: `markdown/dbml.ts` (`dbmlToMermaid()`) parses DBML and writes it as an `erDiagram`, and then the result is rendered like ordinary Mermaid code. DBML errors are thrown as a `DbmlError` (containing the line number) and shown immediately by the layer without going through WebKit.
-
-### How the kanban board works (`markdown/kanban.ts`, `ui/kanban.ts`)
+### How the kanban board works (`markdown/kanban.ts`, `app/views.ts`, `renderer/Board.tsx`)
 
 **Format.** A board is an ordinary Markdown file:
 
@@ -799,22 +360,18 @@ layout: board
 
 The frontmatter `layout: board` (case-insensitive, may be quoted) marks a document as a board, and `layout: list` as a list of notes (an inbox, a reading list); the marker is looked for in the first 40 lines before the closing frontmatter delimiter (`markdown/layout.ts`). A document without a `layout:` line, or with any other value, is opened as ordinary text. Existing frontmatter is kept as it is when saving. A `##` heading is a list, a list item is a card (`[x]` = done, no box = an ordinary item), and lines indented under a card are its note. Anything not recognized (a board title at the top, ordinary lines inside a list such as `**Complete**` or `***`, and the `%% kanban:settings` block at the end) is kept as it is, so files from Obsidian are not broken.
 
-**Data flow.** The document text in the buffer is the single source of truth:
+**Data flow.** The document text is the single source of truth:
 
 ```
-text buffer ──parseBoard()──► KanbanBoard (model + view)
-     ▲                              │ commit(new board)
-     └──── replaceText() ◄── serializeBoard() ◄──┘   (one undo step)
+document text ──parseBoard()──► board (ViewController in the core) ──view.notes──► Board.tsx draws it
+      ▲                                                                              │ a NoteEdit (move, add, edit, …)
+      └──── one write to the text (one undo step) ◄── serializeBoard() ◄── applied ◄──┘
 ```
 
-1. When a kanban document is opened, `MainWindow.syncMode()` swaps the editor for the board (a `Gtk.Stack`) and reads its text with `parseBoard()`.
-2. Every change from the board goes through `commit()`: the new model is written with `serializeBoard()` and then put into the buffer through `MarkdownView.replaceText()`, which only replaces the middle part of the text that differs and makes it a single undo step.
-3. Undo/redo (the `undo`/`redo` actions, `Ctrl+Z`) change the buffer. Changes that do not come from the board itself are recognized by comparing the text with what the board last wrote, and then the board re-reads its text.
+1. When a document with `layout:` is shown, the core's `ViewController` (`app/views.ts`) reads its text with `parseBoard()` and sends the board to the window (`view.notes`).
+2. The window never sends a board back. It reports what the user did as a `NoteEdit` (`markdown/noteedit.ts`): move this card there, check it, edit it. The core applies it to the board it holds, writes the result with `serializeBoard()`, and changes the text through the editor in one undo step, so a write from an agent that arrived in between is not lost.
+3. Undo and redo change the text. A change that does not come from the board is noticed when the text no longer matches what the board last wrote, and the board is read again.
 4. All operations on the model (`addCard`, `moveCard`, `moveColumn`, …) are pure and do not change the original board, so they are easy to test. `moveCard` uses the card's *final* position in the target list, so moving down within the same list needs no adjustment.
-
-**Dragging.** This does not use GTK's built-in drag and drop, but its own pointer handling (a `Gtk.GestureDrag` on each card): press on a card, move more than 6 pixels, release. While dragging, a ghost card (a still image of the card from `Gtk.WidgetPaintable`, in a `Gtk.Overlay` layer above the board, because GTK 4 cannot move a popup window by itself) follows the pointer, the source card is dimmed, and a dashed marker shows the destination. The destination is calculated from the pointer position: the list that contains it (or the nearest one), and then `dropIndex()` counts how many other cards have their midpoint above the pointer. Near the edge, the board or the target list scrolls automatically. A movement under 6 pixels is treated as an ordinary click and opens the edit dialog. This approach was chosen so that the behavior is controlled and can be tested by calling `onCardPress()`/`onCardMotion()`/`onCardRelease()` directly (card coordinates).
-
-**Dialogs** (`editCardDialog`, `promptDialog`, `confirmDialog`) hold the program until they are closed, so `KanbanBoard.dialogs` can be replaced, and tests use a stand-in.
 
 ### The markworkd daemon (`markworkd/`, `agent/daemon/`, `orchestratordaemon.ts`)
 
@@ -846,16 +403,16 @@ card + [[note]] ──buildPrompt()──► pi --mode rpc --name <title> [--ses
 
 1. **A project, not a path.** The Markdown contents only mention the *name* of a project; the name is mapped to a folder in `settings.projects`, which is only filled in through the folder chooser dialog. So a card or an agent cannot point the harness to an arbitrary folder. `checkProjectFolder()` rejects Markwork's work folder, its contents, its parents, the root, and relative paths, because the harness writes freely without a review window.
 2. **Related notes.** `cardWikiLinks()` collects the `[[links]]` in the card's title and note (at most 10, without duplicates, inline code skipped). `OrchestratorHost.linkedNotes()` in the window looks them up with `resolveWikiLink()` in the work folder (the same rules as Ctrl+click), reads their contents from the editor if open or from disk, and takes only the `#heading` section with `noteSection()`. `buildPrompt()` copies them into the *Related notes from Markwork* section inside a fenced code block longer than any backtick run in the contents, at most 8,000 characters per note and 24,000 in total; links that are not found are mentioned as they are. The harness is not given the path of the work folder, only the contents of the notes, because the work folder is deliberately out of its reach.
-3. **Running.** `Orchestrator.start()` adds `[agent:: pi]` if it is not there yet, puts the run into the `RunQueue`, and then `launch()` looks for the program (PATH, then `~/.local/bin` and similar, because apps launched from the desktop menu often do not inherit the shell's PATH) and starts it through `spawnHarness()` in pi's RPC mode. The pipes are read and written with `GLib.IOChannel` (pi's JSONL framing: one command or event per line, separated by LF), not `Gio.Subprocess.get_stdout_pipe()`: after Gtk is loaded, GJS wraps that pipe as a `Gio.UnixInputStream` and prints a Gjs-WARNING. Commands are written as UTF-8 bytes with an explicit length (a string with length -1 is not guaranteed to be NUL-terminated and triggers a GLib-WARNING). Once the process is running, Markwork sends `get_state` (the session id) and then `prompt`.
+3. **Running.** `Orchestrator.start()` adds `[agent:: pi]` if it is not there yet, puts the run into the `RunQueue`, and then `launch()` looks for the program (PATH, then `~/.local/bin` and similar, because apps launched from the desktop menu often do not inherit the shell's PATH) and starts it through `spawnHarness()` in pi's RPC mode. The process is spoken to through `platform().processes.spawn()` in pi's JSONL framing: one command or event per line, separated by LF. Once the process is running, Markwork sends `get_state` (the session id) and then `prompt`.
 4. **The queue.** Runs take turns per lane, the project folder: at most `slots` of them are `working` or `waiting` at a time (a run waiting for an answer still holds its process), and the others are `queued` in order and start when a slot frees. A run in the folder itself has one slot, so it works alone; cards with their own worktrees have the project's "cards at the same time" (2 by default). Cancelling a queued run does not give anyone a turn.
 5. **Waiting for an answer.** `PiReader.line()` returns signals. An `extension_ui_request` with `select`/`confirm`/`input`/`editor` becomes a `HarnessAsk` and the run gets the status `waiting`; the answer is sent as an `extension_ui_response` with the same id (`confirmed`, `value`, or `cancelled`). If a request has a `timeout`, pi answers by itself with a default value after it, and Markwork returns the status to `working` at the same moment. `notify` is only recorded in the log; `setStatus`/`setWidget` are ignored (TUI only). On `agent_settled`, an answer that ends in `?` (`endsWithQuestion()`) makes the run wait; a reply is sent as the next `prompt` to the same process (`PiReader.restart()` discards the old turn state), while *End without replying* closes stdin. Other answers close stdin immediately, and pi exits in an orderly way. *Steer* sends `steer`; *Reply* after finishing runs pi again with `--session <id>` and the same log.
 6. **Reading the result.** `PiReader` maps events (the `response` of `get_state`/a rejected command, `turn_start`, `message_update` text/reasoning, `tool_execution_start/end`, the assistant's `message_end` with `stopReason`/`usage.cost`, `agent_settled`) to `AgentTrace`, so the agent's `LogViewer` is reused. It fails if `stopReason` is error/aborted, the exit code is not 0 (the message = the last stderr line), or there is no answer.
 7. **Finishing and stopping.** After the process exits, the remaining output gets a 1.5-second grace period: grandchild processes (commands from the harness's `bash` tool) can keep the pipe open. *Stop* sends SIGTERM, then SIGKILL after 5 seconds. Closing the window stops all running harnesses.
 8. **Writing the board.** The card is looked up again by its text on the current board (`locateCard()`, must be unique). A board that is open is changed through its editor (one undo step); one that is not open is written straight to disk. The destination lists are recognized by their titles (*In Progress*/*Doing*, *Review*, *Done*); if there is none, the card is not moved.
 9. **A worktree per card** (`agent/worktree.ts`). When the project folder is in a Git repository and the project's isolation (Preferences → Agents → Projects, `project-options`) has worktrees on, `start()` first runs `git worktree add -b markwork/<slug> <parent>/.markwork-worktrees/<project>/<slug> <base>` and the harness works there; the base is remembered in `branch.<name>.markworkBase`, and the card gets `[branch:: markwork/<slug>]`. Git is a `GitRunner`: `runGit` on this computer, `daemonGit()` on an SSH machine. A local folder without `.git` above it skips git altogether; a remote one that git says is not a repository falls back the same way.
-10. **The review** (`agent/worktreereview.ts`, `ui/harnessreview.ts`, `app/harnessreview.ts`). *Review Changes* finds the worktree from the card's branch (`findWorktree()`), marks untracked files intent-to-add in the worktree's own index, and diffs against the merge base; `git merge-tree` says beforehand whether a merge would conflict. Line comments become the reply (`continueInWorktree()`: the same session if the window still has it, otherwise a new one told what it did). Merging commits the leftovers on the branch, checks that the project folder is on the base and clean, merges (or squashes, or copies the chosen files when only some are taken, refused for files the base also changed), and puts the folder back with `merge --abort` / `reset --merge` when that fails; then the worktree is removed and the card moves to *Done*. **Create Pull Request…** (the arrow next to Merge) sends the branch to the project's `origin` instead of merging it here, for a Forgejo or Gitea server (GitHub and GitLab are not supported yet; the item says so). `HarnessReviewController.pullRequest()` reads the origin through the review's `GitRunner`, parses it (`forge/remote.ts`, `forgeKind()`), and only when the item is used asks the server, read-only: `isGiteaServer()` (the version endpoint), the token of the host from the keyring (`CollabController.services.tokens`), and `repoInfo()` for the right to push. Then the confirmation dialog (`ui/pullrequestdialog.ts`: the title from the card, the description from pi's summary and the commits, base = the review's base, branch = `markwork/<card>`, and the way: a branch in the repository, the user's fork, or AGit, as in *Send Changes as Pull Request*). Only after *Send* does anything change: `commitLeftovers()` commits what pi left, `forge/publish.ts` `publishBranch()` pushes the branch as it is (`refs/heads/<branch>` to the same name, no force) with the token only in the push's environment as a Basic header (`credentialEnv()`), and opens the pull request from here. When the push fails the commit is taken back (`uncommitLeftovers()`), and a branch that exists on the server with other commits, a pull request already open for the branch, a token without the right to push, or a server that cannot be reached from where the repository is are told in words. The worktree stays and the card stays in *Review* with the note `↳ pull request #N opened …: <url>` (found again from the notes when the review is reopened, where the item becomes *Open Pull Request #N*); reply to the review comments and the worktree is still there. Every git step goes through the `GitRunner`, so it runs where the repository is: through markworkd the push needs `env_allow` to contain `GIT_CONFIG_*` (the token travels in the spawn request's `env`, which the daemon keeps in the run's record, mode 0600, until Markwork forgets the run as soon as git ends; without that setting the push fails with a message that says what to add).
+10. **The review** (`agent/worktreereview.ts`, `app/harnessreview.ts`, `renderer/Review.tsx`). *Review Changes* finds the worktree from the card's branch (`findWorktree()`), marks untracked files intent-to-add in the worktree's own index, and diffs against the merge base; `git merge-tree` says beforehand whether a merge would conflict. Line comments become the reply (`continueInWorktree()`: the same session if the window still has it, otherwise a new one told what it did). Merging commits the leftovers on the branch, checks that the project folder is on the base and clean, merges (or squashes, or copies the chosen files when only some are taken, refused for files the base also changed), and puts the folder back with `merge --abort` / `reset --merge` when that fails; then the worktree is removed and the card moves to *Done*. **Create Pull Request…** (the arrow next to Merge) sends the branch to the project's `origin` instead of merging it here, for a Forgejo or Gitea server (GitHub and GitLab are not supported yet; the item says so). `HarnessReviewController.pullRequest()` reads the origin through the review's `GitRunner`, parses it (`forge/remote.ts`, `forgeKind()`), and only when the item is used asks the server, read-only: `isGiteaServer()` (the version endpoint), the token of the host from the keyring (`CollabController.services.tokens`), and `repoInfo()` for the right to push. Then the confirmation dialog (`ask.pullRequest`: the title from the card, the description from pi's summary and the commits, base = the review's base, branch = `markwork/<card>`, and the way: a branch in the repository, the user's fork, or AGit, as in *Send Changes as Pull Request*). Only after *Send* does anything change: `commitLeftovers()` commits what pi left, `forge/publish.ts` `publishBranch()` pushes the branch as it is (`refs/heads/<branch>` to the same name, no force) with the token only in the push's environment as a Basic header (`credentialEnv()`), and opens the pull request from here. When the push fails the commit is taken back (`uncommitLeftovers()`), and a branch that exists on the server with other commits, a pull request already open for the branch, a token without the right to push, or a server that cannot be reached from where the repository is are told in words. The worktree stays and the card stays in *Review* with the note `↳ pull request #N opened …: <url>` (found again from the notes when the review is reopened, where the item becomes *Open Pull Request #N*); reply to the review comments and the worktree is still there. Every git step goes through the `GitRunner`, so it runs where the repository is: through markworkd the push needs `env_allow` to contain `GIT_CONFIG_*` (the token travels in the spawn request's `env`, which the daemon keeps in the run's record, mode 0600, until Markwork forgets the run as soon as git ends; without that setting the push fails with a message that says what to add).
 
-### How the assistant works (`agent/*`, `ui/chat.ts`)
+### How the assistant works (`agent/*`, `app/assistant.ts`, `renderer/Chat.tsx`)
 
 The model only knows what is sent to it, so the quality of the answers is determined by `agent/context.ts`. Every question builds a fresh context (the manuscript may change between questions) within a token budget (`DEFAULT_BUDGET` = 48,000 tokens; 1 token ≈ 3 characters, deliberately wasteful). The context is split in two so that DeepSeek's prefix cache is used:
 
@@ -875,105 +432,64 @@ For multi-step work, the model uses `set_work` and then `verify_work`. Verificat
 
 The journal stores a proposal before review and the decision after applying, including before/after snapshots. `onState` saves a checkpoint while the process is running if the save switch is on. Opening a conversation restores the plan, the journal, the Continue work button, and the button to view the history diff without re-applying. A proposal whose process was interrupted is checked against the actual contents: a result that matches the proposal is recognized as applied, an old result as an interruption, and a mixed result as a failure that needs to be inspected. A checkpoint restores the work; unsaved buffer changes still follow the editor's save rules.
 
-The full history stays on disk. The model's context contains the latest turns and limited extractive excerpts from older turns; excerpts do not create new facts and can be cut off. The DeepSeek client retries connection failures, HTTP 429, and 5xx at most twice (300/900 ms pauses) only if no text or reasoning has been shown yet. Authentication failures are not retried. A stream that is cut off before `[DONE]` is treated as failed and does not run partial tool calls. Cancellation uses `Gio.Cancellable`, including during the retry pause.
+The full history stays on disk. The model's context contains the latest turns and limited extractive excerpts from older turns; excerpts do not create new facts and can be cut off. The DeepSeek client retries connection failures, HTTP 429, and 5xx at most twice (300/900 ms pauses) only if no text or reasoning has been shown yet. Authentication failures are not retried. A stream that is cut off before `[DONE]` is treated as failed and does not run partial tool calls. Cancellation uses `Cancellable` (`cancel.ts`), including during the retry pause.
 
 The deterministic evaluation in `tests/unit/agentic.ts` tests work through to a verified result, rejection, conflicts, incomplete verification, and recovery after failure; `tests/unit/agentactions.ts` tests the new edit tools, delete/move, extra kanban actions, change inversion, partial approval and notes, structure checks, and the Git tools (including a real git repository in a temporary folder). The GUI tests check batches, per-file checkboxes, notes, Undo (successful and rejected because the contents changed), moving open files, deleting to the Trash, and restoring the plan. The client tests use a local SSE server; all of them are part of `npm test` without a paid API. `npm run test:live -- --agentic` adds evaluation of a real model for approval, rejection, and conflicts, only on fixtures in a temporary folder (it uses API quota). `npm run bench:agentic` measures a 20-file batch, verification, a checkpoint along with its journal, and the history summary (median/p95/maximum; no network).
 
-### How image zoom works (`ui/imageviewer.ts`)
-
-1. Every image in the editor (`Gtk.Picture`) has its own `Gtk.GestureClick`, so a double click knows which image is meant when one line holds several images. A single click still opens its syntax (`onActivate`); a double click (the 2nd click of the gesture) calls `onZoom`, and the *Zoom Image* menu calls `MarkdownView.zoomImage()` for the cursor line.
-2. `ImageLayer.imageAt()` gives the **full-size pixbuf** from the cache (the image in the editor is only a shrunken copy), so the viewer shows the original resolution.
-3. `MarkdownView` does not open a window itself. It calls `onViewImage`, and `MainWindow` opens the `ImageViewer`, so the `editor/` layer remains independent of `ui/`.
-4. `ImageViewer` draws the image texture at the zoom scale in its own small widget (`ZoomArea`, `vfunc_snapshot` + `append_scaled_texture()`), instead of making an enlarged copy, so 800% zoom on a large photo does not use up memory. Zoom from 300% uses the `NEAREST` filter so that pixels are shown as they are; below 100% `TRILINEAR`.
-5. Zoom is limited to 5%–800%, in multiples of 1.25 (mouse wheel through `Gtk.EventControllerScroll`; panning through a `Gtk.GestureDrag` on the ScrolledWindow that does not move along). When the mouse wheel is turned over the image, the image point under the pointer is kept from shifting: that point is calculated in image coordinates, and then the scroll position is reset after the layout finishes.
-6. An image is opened in "fit the screen but never enlarge beyond 100%" mode, and follows the window size as long as the zoom has not been changed.
-
-### How HTML pages work (`ui/htmlpage.ts`, `markdown/htmlview.ts`)
-
-A page opened from the Files tab is meant to be interactive, so JavaScript is on. What it may reach is limited from the outside, in layers, so that one mistake in one layer does not open the page up:
-
-1. **Its own scheme, not `file://`.** The page is loaded as `mwhtml://v<id>/<path>`, where `<id>` names one open page and `<path>` is relative to the work folder that holds the HTML file (its own folder if it is not inside the work folder), so `../assets/x.png` works inside a project. `WebContext.register_uri_scheme()` calls `serve()`, which answers a request only from there. `resolveHtmlRequest()` (pure, tested on Node) resolves `..` and `.` without touching the disk, refuses a path that climbs out and the folder itself, and follows a symbolic link only while its target stays inside the folder (a link loop is refused after 32 hops). So a script cannot read another file, whether by a path, a link, or `file://`.
-2. **A Content-Security-Policy on every response** (`HTML_CSP`): scripts and inline styles are allowed, but nothing loads from or connects to anything except the private scheme, `data:`, and `blob:`; `form-action` is `'self'`, `object-src` is `'none'`. No script, image, font, stylesheet, frame, `fetch`, XHR, WebSocket, beacon, or form leaves for the network.
-3. **A second wall under the first.** The pages share one ephemeral `NetworkSession` whose proxy is set to an address that is not there, so even a request the policy missed fails; WebRTC and media devices are off (the policy does not cover them); downloads and permission requests are refused; a page cannot open windows (`window.open` gives `null`) or navigate to another origin by itself (`decide-policy` drops it). Storage (`localStorage`, cookies) is ephemeral and is separate for each page, because the page id is the origin.
-4. **A link is asked about, not followed.** WebKit cannot tell a user's click from a script's `a.click()` (a script run through the API counts as a user gesture too), so a clicked `http(s):` or `mailto:` link is only reported to the window (the `openUri` callback of `HtmlPage`), which shows the whole address in a dialog (`confirmOpenLink`) and opens it in the system's browser if the user agrees. A page can build an address that carries what it knows, so it never leaves silently.
-5. **Closing the tab ends the page.** `dispose()` also calls `terminate_web_process()` (the window calls it for every open page when it is destroyed): a page's timers and scripts must not keep running with no tab, and without it WebKit prints `Error releasing name …WebProcess` when the app exits.
-
-The page reloads when its file changes (`Gio.FileMonitor`, a 200 ms delay so two quick writes reload once); changes to the page's stylesheets or scripts are picked up with *Reload*. WebKitGTK is loaded with `import()` when the first page is opened. `tests/gui/htmlpage.ts` runs a page on a real WebKit against a local TCP listener that stands for the network: the page tries `fetch`, XHR, a WebSocket, an image, a script, a frame, a stylesheet, a beacon, a form, `window.open`, and navigation, and the test fails if the listener sees one connection; it also checks that a file outside the folder, a link that points out, and `file://` are unreadable. The same file opens pages in a real `MainWindow` for the tab behavior. `--only-html` runs it alone and `--shot-html=<prefix>` saves a screenshot.
-
 ### How tabs that are not documents work (`app/documents.ts`)
 
-A tab is a `Doc` (a text, with an editor, a file, and changes to save) or a `Page` (`app/document.ts`: Home, or an HTML file). Home used to be a `Doc` with a `home` flag and an editor that nothing used, so the flag had to be checked wherever a document's text was touched (35 places in 7 files). It is a page now, and `Doc` only describes documents.
+A tab is a `Doc` (a text, with an editor, a file, and changes to save) or a `Page` (`app/document.ts`: Home, or an HTML file). Home used to be a `Doc` with a `home` flag and an editor that nothing used, so the flag had to be checked wherever a document's text was touched (35 places). It is a page now, and `Doc` only describes documents.
 
 1. **One numbering, two lists.** `DocumentController` keeps `docs` and `pages`, with ids from one counter, so the tab row can name either. `shown` is the page that is shown, or null when a document is. `select(id)`, `closeById(id)`, and `switchTab()` work on ids.
 2. **A document is always there.** The rest of the application reads `documents.active`, so there is always one. While a page is shown it is the last active document (what the page leaves behind: search and the Assistant keep pointing at it). When only pages are open, the one empty document is *parked*: it has no tab (`listTab(id, false)`), and it comes back when a file is opened or a new document made.
 3. **Pages come and go.** Opening a page retires the empty document's tab (parks it if it is the only one). Closing the last document shows the page that is open, or Home if it is switched on. Closing a page shows its neighbor in the tab row; the last tab stays if it is Home; an HTML page that was the last tab gives way to Home. A folder switch closes the HTML pages that lie outside the new folder.
 4. **What follows a page.** `AppSession.pageActivated()` does for a page what `activated()` does for a document: the frontend's tab row and content follow, the outline is cleared, the view is chosen (`'home'` or `'html'` in `ViewController`, `pageMode` = a tab that is not a document, which turns the text and document actions off), the title is a *page* title (`DocumentTitle.page`), and the tree and history follow `shownFile()` (an HTML page's file, nothing for Home).
-5. **Restoring.** `rememberTabs()` records file tabs and Home in the tab row's order; an HTML page is not recorded. `tests/unit/pagetabs.ts` runs all of this without GTK against a fake tab row (`tabRow()` in `tests/unit/appsession.ts`).
-
-### How code block colors work (`editor/codehighlight.ts`)
-
-Markwork has no code colorer of its own. The work is handed over to GtkSourceView, which already has definitions for hundreds of languages and several color schemes:
-
-1. `highlighter.ts` records every code block: its language (the text after ```` ``` ````), the start position of its contents, and the contents.
-2. The language name is translated to a GtkSourceView id through `resolveLanguage()`. Common aliases are handled directly (`javascript` → `js`, `py` → `python3`, `bash` → `sh`); other names are tried as an id, and then as a file extension (`rs` → `rust`, `kt` → `kotlin`).
-3. The block contents are copied into a hidden `GtkSource.Buffer` (one per language), and then `ensure_highlight()` highlights it right away.
-4. The tags from the highlighting are read range by range. Color, bold, italic, underline, and strikethrough are copied into `syntax:…` tags in the editor buffer. The background is not copied, so code blocks keep using the background from the app theme.
-5. The result is stored in a cache per (scheme, language, block contents). Typing outside a code block, or in another block, does not make this block get highlighted again.
-
-The color scheme is `tango` for light mode and `cobalt` for dark mode (set in `codeScheme` in `colors.ts`). Because the code color tags are created later, their priority is automatically above `codeblock`. Every time a new color tag is created, `dim` (focus mode) and `hidden` are raised to the very top again, so that both still win over code colors.
+5. **Restoring.** `rememberTabs()` records file tabs and Home in the tab row's order; an HTML page is not recorded. `tests/unit/pagetabs.ts` runs all of this against a fake tab row (`tabRow()` in `tests/unit/appsession.ts`).
 
 ### Reading order
 
-To learn the code, the following order moves from the simplest:
-
-1. `src/markdown/syntax.ts` → `inline.ts` → `html.ts`: the Markdown rules, without GTK
-2. `src/editor/tags.ts` → `highlighter.ts` → `decorations.ts`: the core of the hidden syntax effect
-3. `src/editor/view.ts`: how it is all driven by GTK signals
-4. `src/editor/editing.ts`, `lists.ts`, `clicks.ts`: user interaction
-5. `src/editor/images.ts`, `codehighlight.ts`, and `tablelayer.ts`: images, code colors, and tables (`markdown/table.ts` first)
-6. `src/ui/*`: the interface components
-7. `src/window.ts` and `src/actions.ts`: how it all comes together
-8. `tests/run-tests.ts`: usage examples for every part
+1. `src/markdown/syntax.ts` → `inline.ts` → `highlight.ts` → `html.ts`: the Markdown rules
+2. `src/markdown/kanban.ts`, `fields.ts`, `layout.ts`: boards and the other layouts as data
+3. `src/app/session.ts` and the controllers it builds (`documents.ts`, `views.ts`, …): what the application does
+4. `docs/design/protocol.md`, then `src/app/protocol/`: how the window is told and asked
+5. `electron/renderer/client.ts`, `App.tsx`, and `editor.ts`: the window
+6. `tests/unit/protocol.ts` and `tests/electron-*.mjs`: examples of every part in use
 
 ### Adding a feature
 
 An example of adding a new format, such as `^superscript^`:
 
-1. Add a pattern to `EMPHASIS` (`src/markdown/syntax.ts`), for example `['sup', /(\^)(?=\S)([\s\S]*?\S)\^/g, 1]`, and then add `'sup'` to the `EmphasisTag` type in the same file
-2. Add a `sup` tag to `TAG_DEFS` (`src/editor/tags.ts`), for example `{ rise: 4000, scale: 0.8 }`
+1. Add a pattern to `EMPHASIS` (`src/markdown/syntax.ts`), for example `['sup', /(\^)(?=\S)([\s\S]*?\S)\^/g, 1]`, and add `'sup'` to the `EmphasisTag` type in the same file
+2. Give `cm-md-sup` a style in `electron/renderer/theme.css`
 3. Add its conversion in `emphHtml()` (`src/markdown/html.ts`)
-4. If a command is needed, add it to `COMMANDS` in `src/app/commands.ts` (`wrap('sup', _('Superscript'), ['Ctrl+Shift+p'], '^')`); `actions.ts` registers it as a Gio.Action with that accelerator
-5. Add an example to `tests/samples/all-formats.md`, a parsing/export test in `tests/unit/`, and a display/interaction test in `tests/gui/`. Register the new test module in `tests/run-tests.ts`
+4. If a command is needed, add it to `COMMANDS` in `src/app/commands.ts` (`wrap('sup', _('Superscript'), ['Ctrl+Shift+p'], '^')`); the window takes its keys and its place in the palette from there
+5. Add an example to `tests/samples/all-formats.md`, a parsing and export test in `tests/unit/`, and a step in `tests/electron-editor.mjs`
 
 ## Settings
 
-Stored in GSettings (schema `com.ekaput.Markwork`, path `/com/ekaput/Markwork/`; see `dconf-editor` or `gsettings list-recursively com.ekaput.Markwork` if the schema is installed): the color theme (`color-scheme`: follow the system, light, dark), the sidebar and the last selected tab (Files, Outline, or History), the last folder opened, the file tabs that were open when the window was closed (order, active tab, and cursor position; the Home tab is recorded as `markwork:home`), Home when no document is open (`home`), the last 30 files opened for Home (`recent-files`), focus mode, typewriter mode, auto save, the window size, the Assistant panel (open or not) along with its model and thinking mode, the project name → folder mapping for the external harness (`projects`), and a flag that the sample document has been shown.
-
-Defaults: the sidebar is open on the Outline tab, the Assistant panel is closed with the model `deepseek-flash` without thinking mode, focus/typewriter are off, the window size is 1100 × 760 pixels, and the color theme follows the system (`color-scheme = 'system'`). After a theme is chosen through the menu or Preferences (Ctrl+,), the choice is saved. The initial window size is limited to the monitor's work area. Source mode and the board/text view choice are not saved between processes.
+The settings are a JSON file, `markwork-electron/settings.json` in the config folder (`~/.config` on Linux, `~/Library/Application Support` on macOS, `%APPDATA%` on Windows; `XDG_CONFIG_HOME` wins on every system when it is set). Its keys, types, and defaults are those of `data/com.ekaput.Markwork.gschema.xml`, and a value that does not fit its key is read as the default: the color theme (`color-scheme`: follow the system, light, dark), the side panel and its page, the work folder, the tabs of the last session, Home, the Assistant (model, thinking mode, saving conversations), focus, typewriter, autosave, the projects and machines of the agents, and the window size. Keys and tokens are never written there.
 
 ## Limitations
 
 - The assistant: DeepSeek only, chat with approved change proposals (there is no automatic contradiction check yet; contradictions can be asked about in the chat and the model traces them itself). Change proposals: only Markdown files (not folders) in the work folder, with a single action or a batch of at most 20 actions; moving a file does not update links in other files (the agent has to propose that separately), and Undo restores a deleted file from the journal snapshot, not from the Trash; the Git tools only read what has been committed; board serialization can tidy blank space elsewhere, and that shows up as it is in the diff; the plan, decision journal, diff, and verification are saved if the save switch is on. The details of the full context, the full read results, the thinking process, and token usage are not saved. Journal snapshots can make a conversation file large; checkpoints are still written synchronously. The history cannot be searched from the panel (search through its file), and a conversation moved to another folder midway is continued as a new file in the destination folder. Search (`search_documents` and the automatic excerpts) is keyword-based (BM25), not meaning-based, so the quality of browsing depends on the keywords the model picks; `search_text` looks for exact text and does not recognize synonyms or different spellings. Browsing costs model rounds, so broad questions are slower and use more tokens. The model name follows the current DeepSeek documentation; if the API rejects a model name, the error is shown in the panel. The token estimate is rough (3 characters per token). Answers are shown as formatted text, not full Markdown (no tables and images)
 - Tabs: only file tabs are restored (documents that were never saved are not), and the list is recorded when the window is closed, so if the app stops suddenly the previous session is what is restored. With several windows, the last window closed decides. The undo history, the exact scroll position, and the text/board view are not restored (scrolling follows the cursor), and all tabs are fully opened when the app starts. There is no side-by-side view or tab reordering by dragging yet, and all tabs share a single kanban board view (the board scroll position is lost when switching tabs). The command line only opens a single file or folder
 - The journal: the `journal/` folder and the template are fixed. Activity is only recorded while Markwork is open for the work folder that is open, and merged when the journal is opened through `Ctrl+Alt+J` or Home (not from the file tree). Cards moved through the board text or outside Markwork are not recorded; an amended commit can appear twice; Undoing an agent change is recorded as an agent change too
-- Home: deadlines and the inbox are only read from the work folder that is currently open (at most 300 Markdown files, like the assistant context), not from code folders in `projects`. Clicking a task opens its board without highlighting the card. The agent status only exists while the app is open. Recent files are recorded by Markwork itself in GSettings, not through `Gtk.RecentManager` yet, so they do not appear in other apps' recent lists
+- Home: deadlines and the inbox are only read from the work folder that is currently open (at most 300 Markdown files, like the assistant context), not from code folders in `projects`. Clicking a task opens its board without highlighting the card. The agent status only exists while the app is open. Recent files are recorded by Markwork itself in its settings, so they do not appear in other apps' recent lists
 - Images changed on disk are not reloaded until the app is opened again (there is a cache per URI); animated GIFs only show the first frame, including in the zoom viewer
-- **Dragging cards has been tested through X11/XTest mouse input.** `npm test` and `npm run test:ui` check five scenarios through events that GTK really receives, including Markdown changes, undo/redo, and saving. This input path works in the development environment, while the old click helper `Gdk.test_simulate_button` does not pass buttons on reliably. Manual testing with a physical mouse and a Wayland session is still unverified
 - The board: only top-level list items become cards (nested lists are kept as card notes); ordinary lines between two cards are moved to the end of the list when saving. There is no archive or label editing through the interface yet (write `#tag` and `@{YYYY-MM-DD}` in the card title), and moving a card with the keyboard is only possible through the right-click menu
-- The external harness: only pi so far. The run status (queued, working, log) only exists while the app is open; what persists is the card position and the `↳` note. A card is recognized by its text, so editing the title of a card that is being worked on breaks its status: the chip and the log menu disappear from that card, and the card is not moved when the harness finishes. A question is recognized by a `?` at the end of the answer; a question without a `?` sends the card straight to *Review*, but it can still be answered through *Reply to pi…* while the app is open. Pi does not ask for tool permission by itself: without an extension such as `permission-gate`, all pi tools run immediately. The `custom()` extension dialog (TUI) is not supported by pi's RPC mode, and there is no interactive terminal yet. A pi waiting for an answer stays alive and holds its project's queue until it is answered, stopped, or the window is closed. Worktrees need a Git repository with a commit; each is a full checkout (dependencies are installed again), and its disk use is not shown. The review has no syntax colors or side-by-side view, binary files have no diff, the conflict check ignores what pi left uncommitted, and unsent comments are lost when the review closes. Taking only some files makes one commit and is refused for files the base also changed. *Open Terminal* knows Console, Ptyxis, GNOME Terminal, and `xdg-terminal-exec`, not a terminal from inside the Flatpak. `[[ ]]` notes on a card are copied into the prompt only when the run starts (*Reply to pi* does not copy them again), at most 10 notes, 8,000 characters per note and 24,000 in total; a link to a note that does not exist is shown on the board the same as an ordinary link.
+- The external harness: only pi so far. The run status (queued, working, log) only exists while the app is open; what persists is the card position and the `↳` note. A card is recognized by its text, so editing the title of a card that is being worked on breaks its status: the chip and the log menu disappear from that card, and the card is not moved when the harness finishes. A question is recognized by a `?` at the end of the answer; a question without a `?` sends the card straight to *Review*, but it can still be answered through *Reply to pi…* while the app is open. Pi does not ask for tool permission by itself: without an extension such as `permission-gate`, all pi tools run immediately. The `custom()` extension dialog (TUI) is not supported by pi's RPC mode, and there is no interactive terminal yet. A pi waiting for an answer stays alive and holds its project's queue until it is answered, stopped, or the window is closed. Worktrees need a Git repository with a commit; each is a full checkout (dependencies are installed again), and its disk use is not shown. The review has no syntax colors or side-by-side view, binary files have no diff, the conflict check ignores what pi left uncommitted, and unsent comments are lost when the review closes. Taking only some files makes one commit and is refused for files the base also changed. *Terminal* opens the system's terminal there (Console, Ptyxis, GNOME Terminal, or `xdg-terminal-exec` on Linux; Terminal on macOS; Windows Terminal or `cmd` on Windows); there is no terminal inside Markwork. `[[ ]]` notes on a card are copied into the prompt only when the run starts (*Reply to pi* does not copy them again), at most 10 notes, 8,000 characters per note and 24,000 in total; a link to a note that does not exist is shown on the board the same as an ordinary link.
 - In the text view, the board frontmatter is shown like ordinary Markdown (a `---` line and text)
 - Translations: the source language is English and no other language is shipped yet. Text from the `agent/` and `markdown/` layers (tool descriptions and error messages that the model also reads, board validation messages) and the sample document are not wrapped in gettext yet
-- GNOME compliance not yet verified: a Wayland session (the tests run on Xvfb/X11), the Meson install and the Flatpak build, and the libadwaita ≥ 1.6/1.8 paths (system accent, `Adw.ShortcutsDialog`). Inside Flatpak, `git` and `pi` must be available in the sandbox; the manifest does not include them. `AdwSidebar`/`AdwViewSwitcherSidebar` (libadwaita 1.9) and CSS media queries (GTK 4.20) are not used yet because they are not in the installed libadwaita/GTK. A panel that floats over a narrow window does not close when the content is clicked (an effect of `pin_sidebar`); close it with its button
-- The first click on an image opens its syntax, so the image shifts about one line down. A double click that lands in the thin strip at the top edge of an image can therefore miss and land on the text above it
 - Images inside table cells are not shown (only their alt text), and images inside lists or quotes are not indented along
 - Exporting a kanban board produces Markdown converted into HTML headings and lists, not a board view. Frontmatter is not processed specially; DBML with a syntax error is exported as an ordinary code block
 - HTML export does not copy or embed local images, and does not adjust relative paths if the exported result is saved in another folder
 - `[[note]]` links: there is no backlinks panel or graph yet, renaming/moving a file does not update the `[[ ]]` links that point to it, `![[ ]]` embeds and `^id` block references are not supported yet, `[[` suggestions are file names only (no headings yet), and the agent's structure verification does not check broken `[[ ]]` links yet
 - Code block colors are not carried over into the HTML export result yet; in HTML a code block only gets a `language-…` class
-- CSV tables: the whole file is kept in memory and written back as one text on every edit, so a file of more than a million cells opens as text; opening one costs about as much as opening a Markdown file of the same size, because the editor still reads the text (about 2 s for 20,000 rows of 3 columns on a loaded test machine); the list makes about 200 row widgets the first time it holds a long file (GTK measures ahead), which is slow with very many columns; there is no sorting, filtering, column types, or formulas, and neither the agent's tools nor the search and replace across the folder (sidebar) include `.csv` files yet. Only the first line decides the delimiter, and a column insert, delete, or move rewrites every row of the file (an edit of one cell rewrites one), and the table scrolls near its edge only while the pointer moves; a match is a whole cell, so a pattern cannot match across two cells
+- CSV tables: the whole file is kept in memory and written back as one text on every edit, so a file of more than a million cells opens as text; opening one costs about as much as opening a Markdown file of the same size, because the editor still reads the text (about 2 s for 20,000 rows of 3 columns on a loaded test machine); only the rows on screen are drawn, but a file with very many columns is slow; there is no sorting, filtering, column types, or formulas, and neither the agent's tools nor the search and replace across the folder (sidebar) include `.csv` files yet. Only the first line decides the delimiter, and a column insert, delete, or move rewrites every row of the file (an edit of one cell rewrites one), and the table scrolls near its edge only while the pointer moves; a match is a whole cell, so a pattern cannot match across two cells
 - Table cells are edited in their raw text (click a cell or move the cursor into the table), not directly in the grid
 - Cell text that is too long is cut with "…", not wrapped onto the next line, and cell contents are a single line
 - Tidying a table (`Ctrl+Shift+T` and all the commands in the Edit Table menu) removes cells beyond the header row, following the GFM rules
 - A table with the cursor inside it is shown raw; if the whole document only holds one table and the cursor is inside it, the grid only appears after the cursor leaves
 - A horizontal rule is shown as faded `---` text in the middle, not a line
-- Parsing edits is incremental, but adjusting the offset/metadata arrays is still proportional to the number of lines (one array copy per keystroke; ±0.4 ms on a 650 KB manuscript). Opening a document or changing the fence context to the end still parses the entire document synchronously (opening a 650 KB manuscript: the longest pause ±70 ms, namely GTK `set_text` ±30 ms and parsing ±30 ms; applying tags is fed in bit by bit); GUI comfort at tens of thousands of lines with many tables has not been verified because extreme benchmarks still run into GJS callbacks that are blocked during GC.
+- Parsing edits is incremental, but adjusting the offset/metadata arrays is still proportional to the number of lines (one array copy per keystroke; ±0.4 ms on a 650 KB manuscript). Opening a document or changing the fence context to the end still parses the entire document synchronously (parsing a 650 KB manuscript takes about 30 ms); how the editor feels at tens of thousands of lines with many tables has not been measured in the Electron window.
+

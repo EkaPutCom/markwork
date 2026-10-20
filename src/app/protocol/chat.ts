@@ -62,7 +62,7 @@ export function proposalChange(c: Change, inBatch: boolean): ProposalChange {
 
 // A conversation read from disk, as the panel is told of it: the turns and the plan as they were, and the actions of the
 // agent as they look (an action of the file has its changes as diff lines; the contents stay with the core). `actions` is
-// the same summary the GTK panel shows over them.
+// the summary the panel shows over them.
 export interface SavedChatView {
     title: string;
     turns: SavedChat['turns'];

@@ -31,35 +31,19 @@
 <p class="lead">Markwork is a Markdown workspace for humans and AI agents on the Linux desktop. You and the agent work in the same folder: the agent browses your notes, plans, and task boards, then proposes changes that are only written after you approve the diff.</p>
 
 <h2 id="install">Install</h2>
-<p>Markwork is run by GJS, not Node.js. Node.js is only needed once, to build the code. On Ubuntu or Debian:</p>
-<pre><span class="c"># required: GJS, GTK 4, libadwaita, and GtkSourceView 5</span>
-sudo apt install gjs gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gtksource-5
-
-<span class="c"># the AI agent: libsoup 3 and (optionally) a keyring for the API key</span>
-sudo apt install gir1.2-soup-3.0 gir1.2-secret-1
-
-<span class="c"># optional: Mermaid and DBML diagrams</span>
-sudo apt install gir1.2-webkit-6.0</pre>
-<p>Without libsoup only the agent does not work. Without libsecret, the API key is stored in a file with 0600 permissions. Without WebKitGTK, diagrams show an error message and the rest keeps running.</p>
+<p>The installers are attached to each <a href="https://github.com/EkaPutCom/markwork/releases">release</a>: an AppImage and a deb for Linux, a dmg for macOS, and an exe installer for Windows. The AppImage, the dmg, and the Windows installer update themselves from the releases; the deb is updated by installing the next one.</p>
+<p>Diagrams (Mermaid and DBML) and HTML pages need nothing extra: they are drawn by the window itself.</p>
 
 <h2 id="build">Get the code and run it</h2>
-<p>Node.js 20.19+ or 22.12+ is needed for the build.</p>
+<p>Node.js 20.19+ or 22.12+ is needed.</p>
 <pre>git clone https://github.com/EkaPutCom/markwork.git
 cd markwork
 npm install
 npm start</pre>
-<p>After it is built, the app can be opened directly with a file or a folder:</p>
-<pre>gjs -m dist/markwork.js ~/notes            <span class="c"># open a work folder</span>
-gjs -m dist/markwork.js plan.md            <span class="c"># open one file</span></pre>
-
-<h2 id="app-menu">Install into the application menu (optional)</h2>
-<p><code>npm start</code> runs Markwork straight from the <code>dist/</code> folder. To make it appear in the application menu with its icon and to open Markdown files from the file manager, install it with Meson after the build:</p>
-<pre>npm run build
-meson setup _build --prefix=/usr
-sudo meson install -C _build</pre>
-<p>To use the latest libadwaita without depending on the distro version, build it as a Flatpak with the GNOME 50 runtime:</p>
-<pre>flatpak-builder --user --install --force-clean _flatpak build-aux/flatpak/com.ekaput.Markwork.json</pre>
-<p>Installing through Meson and Flatpak has not been tested yet (see <a href="limitations.html#gnome">Limitations</a>).</p>
+<p>A file or a folder can be given after <code>--</code>:</p>
+<pre>npm start -- ~/notes            <span class="c"># open a work folder</span>
+npm start -- plan.md            <span class="c"># open one file</span></pre>
+<p><code>npm run electron:dist</code> builds the installers of the current system into <code>release/</code>.</p>
 
 <h2 id="api-key">Connect the agent</h2>
 <ol>

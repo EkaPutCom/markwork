@@ -2,6 +2,8 @@
 
 19 Oktober 2026 · Eka Putra · lanjutan dari [`electron.md`](electron.md) (arsitektur) dan [`protocol.md`](protocol.md) (pesan)
 
+> **Selesai.** Migrasi ke Electron rampung pada 20 Oktober 2026: Electron adalah satu-satunya frontend dan frontend GTK dihapus (lihat [`hapus-gtk.md`](hapus-gtk.md), tag `v-gtk-final`). Dokumen ini disimpan sebagai catatan rancangan.
+
 ## Ringkasan
 
 Fondasi Electron sudah jalan: protokol (`src/app/protocol/`), utility process yang menjalankan `AppSession` asli, dan renderer React dengan CodeMirror 6 yang meniru jendela GTK. Yang sudah tersambung baru irisan tipis: folder dan daftar file, tab dokumen, editor teks dengan highlight dan perintah bersama, find/replace di dokumen, board dasar, toast, `ask.saveChanges`, dan `ask.file` untuk folder.

@@ -1,5 +1,5 @@
 // The Markdown syntax of a document as data: what each line is styled as and what may be hidden, for every editor
-// (GtkTextBuffer under GTK through editor/highlighter.ts, CodeMirror later). Parses only the edited range, until the
+// (the Electron window's CodeMirror, electron/renderer/editor.ts). Parses only the edited range, until the
 // block boundary is stable again, and reuses the rest of the last parse. It collects:
 //
 //   markers   ranges of syntax that may be hidden, together with the lines where
@@ -16,7 +16,7 @@
 //   reparsed  line ranges that were re-parsed (other lines gave the same result as before)
 //   spans     styles per line
 //
-// A style is whatever the editor applies (a Gtk.TextTag, a CodeMirror decoration): the editor hands one per name
+// A style is whatever the editor applies (a CodeMirror decoration): the editor hands one per name
 // (Styles<T>), and the spans carry it as it is, so an editor can compare and apply them without a lookup.
 
 import { RE, isTableSeparator, type InlineTag } from './syntax.js';
@@ -41,7 +41,7 @@ export interface HangingIndent<T> {
 }
 
 // The editor's text, read by line. lines(first, last) is the text of lines first..last split at '\n'; when the editor
-// breaks lines elsewhere too (GTK also breaks at \r and U+2029), it gives a different count and the whole text is parsed.
+// breaks lines elsewhere too , it gives a different count and the whole text is parsed.
 export interface TextLines {
     readonly lineCount: number;
     all(): string;
@@ -340,7 +340,7 @@ class LineParser<T> {
         for (const img of images) {
             this.images.push({ line, url: img.url, alt: img.alt });
             // On an inactive line, the whole ![alt](url) is hidden
-            // and only the image is visible (see editor/images.ts).
+            // and only the image is visible (see electron/renderer/images.ts).
             this.hide(base + img.start, base + img.end, line, line);
         }
     }

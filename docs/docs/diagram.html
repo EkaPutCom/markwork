@@ -30,7 +30,7 @@
 <h1>Mermaid and DBML diagrams</h1>
 <p class="lead">The <code>```mermaid</code> and <code>```dbml</code> blocks are drawn as diagrams right in the document, rendered locally without the internet.</p>
 
-<figure><img src="../assets/diagram.gif" width="900" height="586" loading="lazy" alt="Animation of a Mermaid diagram that gains a box with every new line of code that is typed"><figcaption>Add a line of code and the diagram grows with it</figcaption></figure>
+<figure><img src="../assets/diagram.gif" width="900" height="548" loading="lazy" alt="Animation of a Mermaid diagram that gains a box with every new line of code that is typed"><figcaption>Add a line of code and the diagram grows with it</figcaption></figure>
 
 <h2 id="mermaid">Mermaid</h2>
 <pre><code>```mermaid
@@ -56,10 +56,9 @@ Table notes {
 }
 ```</code></pre>
 <p>A DBML schema is drawn as an ER diagram with the same behavior as Mermaid. Supported: <code>Table</code> (alias, <code>pk</code>, <code>unique</code>, <code>note</code>, <code>ref:</code> inside a column, <code>indexes</code>), and <code>Ref</code> both as a single line and as a block with the relations <code>&gt;</code> <code>&lt;</code> <code>-</code> <code>&lt;&gt;</code>. <code>Enum</code>, <code>TableGroup</code>, <code>Project</code>, and <code>Note</code> are skipped. The column on the “many” side of a relation is automatically marked FK.</p>
-<figure><img src="../assets/dbml.png" width="1332" height="867" loading="lazy" alt="A DBML schema drawn as an ER diagram with the projects and tasks tables"><figcaption>A DBML schema becomes an ER diagram</figcaption></figure>
+<figure><img src="../assets/dbml.png" width="1280" height="780" loading="lazy" alt="A DBML schema drawn as an ER diagram with the projects and tasks tables"><figcaption>A DBML schema becomes an ER diagram</figcaption></figure>
 
 <h2 id="requirements">Requirements</h2>
-<p>Diagrams need WebKitGTK 6.0 (<code>gir1.2-webkit-6.0</code>). Without it, a diagram block shows an error message and the rest of the app keeps running.</p>
 </main>
 <aside class="toc" id="toc" aria-label="Table of contents"></aside>
 </div>

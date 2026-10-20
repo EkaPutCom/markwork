@@ -1,5 +1,4 @@
-// The adaptive layout of the window (the GTK test in tests/gui/gnome.ts: "a narrow window collapses the Assistant panel,
-// then the sidebar becomes floating") with Playwright: below 900 px the Assistant panel floats over the editor, below
+// The adaptive layout of the window with Playwright: below 900 px the Assistant panel floats over the editor, below
 // 600 px the side panel does too and the header bar shows icons only, a click beside a floating panel closes it, and
 // widening the window brings back the panels as they were. Run with `npm run test:electron`.
 

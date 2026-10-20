@@ -1,6 +1,6 @@
 // What a click on a line of Markdown means: a task box to flip, a link URL, or a [[wikilink]] target. Pure functions over
-// the line's text and a column in code points (as GtkTextIter.get_line_offset() counts), so every frontend shares them;
-// editor/clicks.ts applies them to a GtkTextBuffer.
+// the line's text and a column in code points (the app protocol's unit, docs/design/protocol.md), so every frontend
+// shares them.
 
 import { cpToU16, cpLength } from './offsets.js';
 import { WIKILINK, parseWikiLink, type WikiLink } from './wikilink.js';

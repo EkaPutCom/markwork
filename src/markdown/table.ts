@@ -1,6 +1,6 @@
 // Markdown tables (GFM): recognizing table blocks, splitting lines into cells, and
 // table operations (add/delete rows and columns, align left/center/right,
-// tidying up). Pure TypeScript without GTK, so it is easy to test.
+// tidying up). Pure TypeScript, so it is easy to test.
 //
 // Table shape:
 //

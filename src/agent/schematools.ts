@@ -1,6 +1,6 @@
 // Read-only tools for structured documents (a board, list, table, calendar, timeline, gallery, or chart): describe_schema
 // tells the model what a document declares, and query_notes filters and counts its notes by field. Like the browsing
-// tools they work on the file list they are given and never throw. Pure TypeScript without GTK.
+// tools they work on the file list they are given and never throw. Pure TypeScript.
 
 import { describeDef, displayValue, parseSchema, parseValue, readItem, type FieldDef, type Item, type Scalar } from '../markdown/fields.js';
 import { matchMention, type SourceFile } from './context.js';

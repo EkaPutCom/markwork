@@ -1,6 +1,6 @@
-// The git history in the application session, without GTK: AppSession owns the history controller, recording views stand
-// in for ui/history.ts and ui/historyviewer.ts, and git runs for real in a temporary repository. The views only see plain
-// data and report; what is committed or thrown away is decided by the core. Runs on GJS and on Node.
+// The git history in the application session: AppSession owns the history controller, recording views stand
+// in for the History tab and its viewer, and git runs for real in a temporary repository. The views only see plain
+// data and report; what is committed or thrown away is decided by the core.
 
 import { AppSession } from '../../src/app/session.js';
 import type { HistoryChanges, HistoryLog, HistoryTabView, HistoryText, HistoryViewerSpec, HistoryViewersView } from '../../src/app/history.js';
@@ -46,7 +46,7 @@ function recordingViews() {
 }
 
 export async function historyControllerTests(): Promise<void> {
-    section('History in the application session (no GTK)');
+    section('History in the application session');
     for (const [name, value] of Object.entries({ GIT_AUTHOR_NAME: 'Tester', GIT_AUTHOR_EMAIL: 'tester@example.com', GIT_COMMITTER_NAME: 'Tester', GIT_COMMITTER_EMAIL: 'tester@example.com' })) host().setenv(name, value);
     let n = 0;
     // A repository with a.md in two commits, and a session whose History tab shows it.

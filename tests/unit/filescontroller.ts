@@ -1,5 +1,5 @@
-// The Files tab without GTK: FilesController (app/files.ts) on a real temporary folder, through the platform port, with
-// a view that records what it is sent. Runs on GJS and on Node.
+// The Files tab: FilesController (app/files.ts) on a real temporary folder, through the platform port, with
+// a view that records what it is sent.
 
 import { AppSession } from '../../src/app/session.js';
 import { listFolder, type FileTreeView, type FolderEntry } from '../../src/app/files.js';
@@ -24,7 +24,7 @@ function recordingTree() {
 }
 
 export async function filesControllerTests(): Promise<void> {
-    section('Files tab in the application session (no GTK)');
+    section('Files tab in the application session');
     let n = 0;
     const setup = () => {
         const dir = disk.join(tmp, `files-${++n}`);

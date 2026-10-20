@@ -1,4 +1,4 @@
-// The agent log as a stream of updates (pure, no GTK): the core keeps the AgentTrace and a viewer keeps a TraceReplica
+// The agent log as a stream of updates (pure): the core keeps the AgentTrace and a viewer keeps a TraceReplica
 // of it, fed by a TraceFeed. An update carries whole events (plain data), so it can cross a process boundary
 // (docs/design/protocol.md 6.4, chat.log and view.runlog). Updates are batched: reasoning and answers stream in a few
 // characters at a time, and one update per interval carries each event that changed in it once.

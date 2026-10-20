@@ -1,4 +1,4 @@
-// Shared by the tests that run against a real Forgejo or Gitea (tests/live-forge.ts and tests/gui/forgejo.ts): the server, the
+// Shared by the tests that run against a real Forgejo or Gitea (tests/live-forge.ts): the server, the
 // tokens, and the small helpers to talk to it with plain API calls and git. Tokens are never printed.
 
 import { base64, credentialEnv } from '../src/forge/contribute.js';

@@ -1,4 +1,4 @@
-// Page tabs (Home, an HTML file) next to the document tabs, without GTK: which tab is shown, what stays when a tab closes,
+// Page tabs (Home, an HTML file) next to the document tabs: which tab is shown, what stays when a tab closes,
 // the empty document that waits without a tab, and which tabs the next launch gets back.
 
 import { AppSession } from '../../src/app/session.js';

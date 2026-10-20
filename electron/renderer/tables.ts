@@ -1,4 +1,4 @@
-// A table as a grid, while the cursor is elsewhere (the GTK editor's editor/tablelayer.ts). The rows of the table are
+// A table as a grid, while the cursor is elsewhere. The rows of the table are
 // replaced by an HTML table drawn from markdown/table.ts; with the cursor in the table the raw text is back for editing
 // (Tab moves between cells, see markdown/editcommands.ts). A click on a cell puts the cursor in that cell of the raw text.
 
