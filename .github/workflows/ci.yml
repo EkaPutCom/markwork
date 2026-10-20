@@ -11,7 +11,7 @@ jobs:
   core:
     name: Core on Node (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 6
     strategy:
       fail-fast: false
       matrix:
