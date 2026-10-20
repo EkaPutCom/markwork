@@ -2,6 +2,8 @@
 
 21 Oktober 2026 · Eka Putra · lanjutan dari [`hapus-gtk.md`](hapus-gtk.md)
 
+**Status: selesai** (21 Oktober 2026). Kelima PR sudah masuk `main`: #77, #78, #80, #81, #79.
+
 ## Tujuan
 
 Setelah GTK dihapus, Electron jadi satu-satunya frontend. Tapi struktur folder masih menyimpan bentuk lama: folder ala GNOME (`data/`, `shots/`), file lepas di root `src/`, dan `tests/` yang mencampur empat jenis tes. Rancangan ini merapikannya tanpa mengubah perilaku apa pun.
@@ -124,11 +126,11 @@ export const SETTING_KEYS = {
 
 Setiap PR harus lolos `npm run typecheck` dan `npm test` sendiri-sendiri. Satu PR menyentuh satu area, jadi tidak ada konflik di antaranya:
 
-1. **Hapus sisa:** `shots/`, `symbolic/`, `journal/` (+ `.gitignore`), dan `docs/mockups/` → `docs/design/mockups/`.
-2. **Skema setting tanpa GSettings, lalu `resources/`:** XML diganti `settingskeys.ts`, kemudian `data/` dan `build/` digabung. Dua langkah ini satu PR karena sama-sama mengosongkan `data/`.
-3. **`tests/`** dipecah per jenis.
-4. **`src/base/` dan `src/orchestrator/`**, termasuk menyederhanakan `layers.mjs`.
-5. **Renderer:** `components/`, `lib/`, `styles/`.
+1. **Hapus sisa** (#77): `shots/`, `symbolic/`, `journal/` (+ `.gitignore`), dan `docs/mockups/` → `docs/design/mockups/`.
+2. **Skema setting tanpa GSettings, lalu `resources/`** (#78): XML diganti `settingskeys.ts`, kemudian `data/` dan `build/` digabung. Dua langkah ini satu PR karena sama-sama mengosongkan `data/`.
+3. **`tests/`** dipecah per jenis (#80).
+4. **`src/base/` dan `src/orchestrator/`**, termasuk menyederhanakan `layers.mjs` (#81).
+5. **Renderer:** `components/`, `lib/`, `styles/` (#79).
 
 PR 2 sampai 5 tidak saling bergantung. Hanya PR 4 yang perlu memindahkan `settingskeys.ts` ke `src/base/` kalau PR 2 sudah masuk lebih dulu. PR 4 dan 5 yang paling besar, karena berisi impor yang diubah secara mekanis.
 
