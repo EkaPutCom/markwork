@@ -31,7 +31,7 @@
     "test:electron": "npm run electron:build && xvfb-run -a -s '-screen 0 1280x800x24' npm run test:electron:run",
     "electron:dist": "npm run electron:build && electron-builder",
     "electron:pack": "npm run electron:build && electron-builder --dir",
-    "test:electron:run": "node tests/electron-smoke.mjs && node tests/electron-editor.mjs && node tests/electron-structured.mjs && node tests/electron-layout.mjs && node tests/electron-assistant.mjs && node tests/electron-git.mjs && node tests/electron-harness.mjs && node tests/electron-secrets.mjs",
+    "test:electron:run": "node tests/electron-smoke.mjs && node tests/electron-editor.mjs && node tests/electron-robust.mjs && node tests/electron-structured.mjs && node tests/electron-layout.mjs && node tests/electron-assistant.mjs && node tests/electron-git.mjs && node tests/electron-harness.mjs && node tests/electron-secrets.mjs",
     "icon": "xvfb-run -a electron scripts/make-icon.cjs"
   },
   "devDependencies": {
