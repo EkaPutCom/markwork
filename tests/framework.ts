@@ -41,6 +41,9 @@ export function collectBeforeEachTest(on: boolean): void { collectFirst = on; }
 
 // A synchronous test is recorded before test() returns; an async one when the returned Promise settles, so a module
 // whose tests wait awaits each test() in turn.
+// A step inside a test, printed when MARKWORK_TRACE is set.
+export function trace(step: string): void { if (platform().env('MARKWORK_TRACE')) host().print(`      · ${step}`); }
+
 export function test(name: string, fn: () => void | Promise<void>): Promise<void> {
     let result: void | Promise<void>;
     if (platform().env('MARKWORK_TRACE')) host().print(`  … ${name}`);   // which test a stalled run is in (CI sets it)
