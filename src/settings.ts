@@ -1,5 +1,5 @@
 // User settings with typed properties, on top of a SettingsStore (platform/index.ts). The app's store is a JSON file
-// checked against the keys of data/com.ekaput.Markwork.gschema.xml (platform/node/settings.ts).
+// checked against the keys of settingskeys.ts (platform/node/settings.ts).
 //
 // Other code writes `settings.autosave = true`; every write is saved immediately, there is no save(). Code that reacts to a
 // change listens with onChanged().
@@ -90,7 +90,7 @@ export class AppSettings {
     set recentFiles(value: RecentFile[]) { this.set('recent-files', value.map(r => [r.path, r.time] as [string, number])); }
 
     // Projects belong to the work folder: each folder is a world of its own. The three maps below keep every folder's entries in
-    // one GSettings map, under keys that start with the folder and SCOPE_SEPARATOR. Entries without a separator are the
+    // one settings map, under keys that start with the folder and SCOPE_SEPARATOR. Entries without a separator are the
     // ones from before projects were per folder (and what a window without a folder sees).
     workspace: string | null = null;
     get projects(): Record<string, string> { return this.scoped('projects'); }

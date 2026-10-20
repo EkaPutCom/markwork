@@ -1,6 +1,5 @@
 # Files containing translatable text (source language: English). Regenerate the list with:
 #   grep -rlE '\b(_|pgettext|ngettext)\(' src --include=*.ts | sort
-data/com.ekaput.Markwork.gschema.xml
 src/app/autosave.ts
 src/app/collab.ts
 src/app/commands.ts

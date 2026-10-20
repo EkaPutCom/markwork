@@ -91,7 +91,7 @@ The live tests and the benchmarks are not part of `npm test`.
 
 ### Releases
 
-`npm run electron:dist` makes the installers of the system it runs on; the [release workflow](.github/workflows/release.yml) runs it on Linux, macOS, and Windows when a `v*` tag is pushed and attaches the files to the release. Signing and notarizing take their secrets from the environment (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`) and are skipped without them. The app icon is `build/icon.png`, drawn from `data/icons/` by `npm run icon`.
+`npm run electron:dist` makes the installers of the system it runs on; the [release workflow](.github/workflows/release.yml) runs it on Linux, macOS, and Windows when a `v*` tag is pushed and attaches the files to the release. Signing and notarizing take their secrets from the environment (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`) and are skipped without them. The app icon is `resources/icon.png`, drawn from `resources/icon.svg` by `npm run icon`.
 
 ### Translations
 
@@ -295,7 +295,7 @@ scripts/
   layers.mjs              the layer rules and the complexity limit (run by build and typecheck)
   capture.mjs, capture/   the screenshots of docs/assets/ and their scripted fakes
   forgejo.sh, pot.sh, make-icon.cjs
-data/                     the settings schema (com.ekaput.Markwork.gschema.xml) and the app icon
+resources/                the app icon and the packaging files electron-builder reads
 markworkd/                the agent daemon (Go)
 docs/                     the site (index.html, docs/) and the design notes (design/)
 ```
@@ -467,7 +467,7 @@ An example of adding a new format, such as `^superscript^`:
 
 ## Settings
 
-The settings are a JSON file, `markwork-electron/settings.json` in the config folder (`~/.config` on Linux, `~/Library/Application Support` on macOS, `%APPDATA%` on Windows; `XDG_CONFIG_HOME` wins on every system when it is set). Its keys, types, and defaults are those of `data/com.ekaput.Markwork.gschema.xml`, and a value that does not fit its key is read as the default: the color theme (`color-scheme`: follow the system, light, dark), the side panel and its page, the work folder, the tabs of the last session, Home, the Assistant (model, thinking mode, saving conversations), focus, typewriter, autosave, the projects and machines of the agents, and the window size. Keys and tokens are never written there.
+The settings are a JSON file, `markwork-electron/settings.json` in the config folder (`~/.config` on Linux, `~/Library/Application Support` on macOS, `%APPDATA%` on Windows; `XDG_CONFIG_HOME` wins on every system when it is set). Its keys, types, and defaults are those of `src/settingskeys.ts`, and a value that does not fit its key is read as the default: the color theme (`color-scheme`: follow the system, light, dark), the side panel and its page, the work folder, the tabs of the last session, Home, the Assistant (model, thinking mode, saving conversations), focus, typewriter, autosave, the projects and machines of the agents, and the window size. Keys and tokens are never written there.
 
 ## Limitations
 

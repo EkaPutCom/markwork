@@ -33,7 +33,7 @@
 <h2 id="locations">File locations</h2>
 <div class="table-wrap"><table>
   <tr><th>File</th><th>Contents</th></tr>
-  <tr><td>GSettings (<code>com.ekaput.Markwork</code>)</td><td>The app settings, stored in dconf. A previous version used <code>id.eka.Markwork</code>; the old settings are not migrated</td></tr>
+  <tr><td><code>markwork-electron/settings.json</code> in the config folder</td><td>The app settings (<code>~/.config</code> on Linux, <code>~/Library/Application Support</code> on macOS, <code>%APPDATA%</code> on Windows)</td></tr>
   <tr><td>The system keyring</td><td>The DeepSeek API key, and the access token of each Forgejo/Gitea server</td></tr>
   <tr><td><code>~/.config/markwork/forge-&lt;server&gt;.token</code></td><td>The token of that server when the keyring is not available (mode 0600)</td></tr>
   <tr><td><code>~/.config/markwork/deepseek.key</code></td><td>The API key when the keyring is not available (mode 0600)</td></tr>

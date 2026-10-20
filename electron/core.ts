@@ -5,10 +5,10 @@
 import '../src/platform/node/install.js';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import schema from '../data/com.ekaput.Markwork.gschema.xml?raw';
 import { AppSettings } from '../src/settings.js';
+import { SETTING_KEYS } from '../src/settingskeys.js';
 import { platform } from '../src/platform/index.js';
-import { JsonSettingsStore, parseSchema } from '../src/platform/node/settings.js';
+import { JsonSettingsStore } from '../src/platform/node/settings.js';
 import { catalogTranslations, userCatalog } from '../src/platform/node/i18n.js';
 import { remoteSecrets, type SecretReply } from '../src/platform/node/vault.js';
 import { ProtocolServer } from '../src/app/protocol/server.js';
@@ -29,8 +29,7 @@ const vault = platform().os !== 'linux' || process.env.MARKWORK_SECRETS === 'vau
 if (vault) mutable.secrets = vault.secrets;
 
 const { paths } = platform();
-const specs = parseSchema(schema);
-const settings = new AppSettings(new JsonSettingsStore(paths.join(paths.configDir(), 'markwork-electron', 'settings.json'), specs));
+const settings = new AppSettings(new JsonSettingsStore(paths.join(paths.configDir(), 'markwork-electron', 'settings.json'), SETTING_KEYS));
 
 // For the Playwright tests only: a module that gives the Assistant a scripted model, so no test reaches the network.
 const testModel = process.env.MARKWORK_TEST_MODEL;
@@ -47,7 +46,7 @@ process.parentPort.on('message', async ({ data, ports: [port] }: { data: unknown
         return;
     }
     const provider = testModel ? ((await import(/* @vite-ignore */ testModel)) as { provider: Provider }).provider : null;
-    const server = new ProtocolServer(settings, message => port.postMessage(message), { settingKeys: Object.keys(specs) });
+    const server = new ProtocolServer(settings, message => port.postMessage(message), { settingKeys: Object.keys(SETTING_KEYS) });
     if (provider) server.session.assistant.chat.makeProvider = () => provider;
     if (testForge) Object.assign(server.session.collab.services, ((await import(/* @vite-ignore */ testForge)) as { services: Partial<CollabServices> }).services);
     if (testHarness) {
