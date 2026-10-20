@@ -52,6 +52,8 @@ async function step(name, run) {
     try {
         await run();
         steps.push(`  ✓ ${name}`);
+        // The tabs after each step, to compare a run on another system (CI sets MARKWORK_TRACE).
+        if (process.env.MARKWORK_TRACE) steps.push(`      tabs: ${JSON.stringify(await page.getByRole('tab').evaluateAll(els => els.map(e => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)))}`);
     } catch (e) {
         steps.push(`  ✗ ${name}\n    ${String(e?.message ?? e).split('\n').join('\n    ')}`);
         throw e;

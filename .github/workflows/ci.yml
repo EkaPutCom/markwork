@@ -56,5 +56,7 @@ jobs:
       - name: Smoke and feature tests
         if: runner.os != 'Linux'
         run: npm run test:electron:run
+        env:
+          MARKWORK_TRACE: '1'
       - name: Package without publishing
         run: npx electron-builder --dir
