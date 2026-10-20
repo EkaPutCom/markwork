@@ -35,7 +35,7 @@ export async function filesControllerTests(): Promise<void> {
         const errors: string[] = [];
         const answers: (string | null)[] = [];
         const session = new AppSession(fakeFrontend(memorySettings(), [], undefined, { fileTree: rec.tree }));
-        Object.assign(session.files.dialogs, { name: () => answers.shift() ?? null, confirm: () => false, error: (m: string) => { errors.push(m); } });
+        Object.assign(session.files.dialogs, { name: async () => answers.shift() ?? null, confirm: async () => false, error: (m: string) => { errors.push(m); } });
         session.start();
         // The files opened in tabs: a file chosen in the tree opens there (AppSession answers FilesHost.openFile).
         const opened = () => session.documents.all.map(d => d.file).filter(f => f !== null);
@@ -121,11 +121,11 @@ export async function filesControllerTests(): Promise<void> {
         files.setRoot(dir);
         ok(session.host.openInTab(disk.join(dir, 'b.md')), 'open b.md');
         session.host.fileTree.onOpenFolder(disk.join(dir, 'sub'));
-        ok(session.host.fileTree.onMove(disk.join(dir, 'b.md'), disk.join(dir, 'sub')), 'move');
+        ok(await session.host.fileTree.onMove(disk.join(dir, 'b.md'), disk.join(dir, 'sub')), 'move');
         eq([folders.get(dir), folders.get(disk.join(dir, 'sub'))], [['sub'], ['b.md', 'inner.md']]);
         eq(session.documents.active.file, disk.join(dir, 'sub', 'b.md'), 'the open document moved along');
         eq(expanded, [disk.join(dir, 'sub')], 'the folder it went into is opened');
-        eq(session.host.fileTree.onMove(disk.join(dir, 'sub'), disk.join(dir, 'sub')), false, 'a folder into itself is refused');
+        eq(await session.host.fileTree.onMove(disk.join(dir, 'sub'), disk.join(dir, 'sub')), false, 'a folder into itself is refused');
         answers.push('renamed');
         eq(await session.host.fileTree.onRename(disk.join(dir, 'sub')), disk.join(dir, 'renamed'));
         eq(session.documents.active.file, disk.join(dir, 'renamed', 'b.md'), 'the open document follows a renamed folder');
@@ -133,8 +133,8 @@ export async function filesControllerTests(): Promise<void> {
         disk.mkdirs(outside);
         disk.write(disk.join(outside, 'photo.png'), 'png bytes');
         disk.write(disk.join(outside, 'notes.txt'), 'x');
-        ok(session.host.fileTree.onCopy([disk.join(outside, 'photo.png')], dir), 'copy');
-        ok(session.host.fileTree.onCopy([disk.join(outside, 'photo.png'), disk.join(outside, 'notes.txt')], dir), 'second copy');
+        ok(await session.host.fileTree.onCopy([disk.join(outside, 'photo.png')], dir), 'copy');
+        ok(await session.host.fileTree.onCopy([disk.join(outside, 'photo.png'), disk.join(outside, 'notes.txt')], dir), 'second copy');
         eq(folders.get(dir), ['renamed', 'photo (2).png', 'photo.png'], 'a taken name gets a number');
         eq(disk.read(disk.join(dir, 'photo.png')), 'png bytes', 'copied as it is');
         session.dispose();

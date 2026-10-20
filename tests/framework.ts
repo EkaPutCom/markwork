@@ -94,12 +94,6 @@ export function within<T>(promise: Promise<T>, timeoutMs = 10000): Promise<T> {
 // Waits a little, letting timers and I/O run.
 export const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
-// The answer of a call that may answer later (Awaitable), when the core answers it at once.
-export function sync<T>(value: T | Promise<T>): T {
-    if (value instanceof Promise) throw new Error('expected an answer at once, got a Promise');
-    return value;
-}
-
 // Polls until cond() holds, letting timers and I/O run in between; fails after timeoutMs.
 // Wait for what a test expects to happen, never a fixed time: a fixed pause is too short on a slow runner and too long
 // everywhere else. A fixed pause is right only to show that something does NOT happen (nothing is sent, the file stays).

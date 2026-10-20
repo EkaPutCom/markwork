@@ -7,7 +7,6 @@
 import { projectPath } from '../agent/path.js';
 import type { Change } from '../agent/changes.js';
 import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, MAX_HITS, type FileHits, type SearchOptions } from '../markdown/search.js';
-import type { Awaitable } from '../awaitable.js';
 import { _, fmt, ngettext } from '../i18n.js';
 import type { WorkspaceRepository } from '../workspace.js';
 import { applyChangeBatch, type AgentWriteHost } from './agentwrites.js';
@@ -36,13 +35,13 @@ export interface SearchResults {
 export interface SearchView {
     onSearch: (query: SearchQuery) => void;                    // a field or an option changed, or the user asked again
     onOpenHit: (file: string, index: number) => void;          // a hit of a file's list was activated
-    onReplaceAll: (replacement: string) => Awaitable<void>;
+    onReplaceAll: (replacement: string) => Promise<void>;
     showResults(results: SearchResults): void;
 }
 
 // The question before replacing; a test replaces it with an immediate answer.
 export interface SearchDialogs {
-    confirm(message: string, detail: string, accept: string): Awaitable<boolean>;
+    confirm(message: string, detail: string, accept: string): Promise<boolean>;
 }
 
 export interface SearchHost<E extends TextEditor = TextEditor> extends AgentWriteHost<E> {

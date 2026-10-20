@@ -67,7 +67,7 @@ export async function historyControllerTests(): Promise<void> {
         session.files.root = root;   // the work folder without the Files tab: nothing is listed or watched
         session.start();
         const asked: string[] = [];
-        session.history.dialogs.discard = (kind, path, viewer) => { asked.push(`${kind} ${path.slice(root.length + 1)} ${viewer}`); return true; };
+        session.history.dialogs.discard = async (kind, path, viewer) => { asked.push(`${kind} ${path.slice(root.length + 1)} ${viewer}`); return true; };
         return { session, root, a, toasts, asked, history: session.history, ...rec };
     };
     const read = (path: string) => disk.read(path);
@@ -193,11 +193,11 @@ export async function historyControllerTests(): Promise<void> {
         history.show(a, root);
         await until(() => lastChanges().changed.length === 1);
         const tab = session.host.historyTab;
-        history.dialogs.discard = (kind, path, viewer) => { asked.push(`${kind} ${path.slice(root.length + 1)} ${viewer}`); return Promise.resolve(false); };
+        history.dialogs.discard = async (kind, path, viewer) => { asked.push(`${kind} ${path.slice(root.length + 1)} ${viewer}`); return false; };
         eq(await tab.onDiscard(a), 'declined');
         eq(read(a), V2 + 'junk\n', 'declining saved or restored the file');
         eq(editor.getText(), V2 + 'junk\ntyped\n', 'declining changed the document');
-        history.dialogs.discard = (kind, path, viewer) => { asked.push(`${kind} ${path.slice(root.length + 1)} ${viewer}`); return true; };
+        history.dialogs.discard = async (kind, path, viewer) => { asked.push(`${kind} ${path.slice(root.length + 1)} ${viewer}`); return true; };
         eq(await tab.onDiscard(a), 'done');
         eq(asked, ['modified a.md null', 'modified a.md null']);
         eq(read(a), V2, 'the file was not restored');

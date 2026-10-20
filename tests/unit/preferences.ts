@@ -22,7 +22,7 @@ export async function preferencesTests(): Promise<void> {
         const answers: (MachineDraft | null)[] = [];
         const taken: string[][] = [];
         const session = new AppSession(fakeFrontend(settings, [], undefined, { preferencesView: view }));
-        Object.assign(session.preferences.dialogs, { machine: (t: string[]) => { taken.push(t); return answers.shift() ?? null; } });
+        Object.assign(session.preferences.dialogs, { machine: async (t: string[]) => { taken.push(t); return answers.shift() ?? null; } });
         session.start();
         return { settings, session, view, opened, updates, answers, taken };
     };
@@ -134,7 +134,7 @@ export async function preferencesTests(): Promise<void> {
         const view = quiet<PreferencesView>({ showProject: p => { pages.push(p); }, showWorktrees: l => { lists.push(l); } });
         const session = new AppSession(fakeFrontend(settings, [], undefined, { preferencesView: view }));
         // The question is the core's: the branch is named in its sentence.
-        Object.assign(session.preferences.dialogs, { removeWorktree: (q: Question) => { removals.push(q.message.match(/of (\S+)\?$/)?.[1] ?? q.message); return answers.remove; } });
+        Object.assign(session.preferences.dialogs, { removeWorktree: async (q: Question) => { removals.push(q.message.match(/of (\S+)\?$/)?.[1] ?? q.message); return answers.remove; } });
         session.start();
         return { session, settings, view, pages, lists, removals, answers, repo, wt };
     };
@@ -156,16 +156,16 @@ export async function preferencesTests(): Promise<void> {
     await test('a change to a project is checked before it is written; a field that is not an isolation setting is left out', async () => {
         const { session, settings, view } = await projectSetup();
         const stored = () => JSON.parse(settings.projectOptions.shop ?? '{}');
-        eq(view.onSetProject('shop', { slots: 3 }), null);
+        eq(await view.onSetProject('shop', { slots: 3 }), null);
         eq(stored().slots, 3);
         for (const bad of [{ slots: 99 }, { slots: 1.5 }, { slots: 0 }, { dir: 'relative/path' }, { afterMerge: 'bogus' as never }, { worktrees: 'yes' as never }, { base: 3 as never }]) {
-            ok(view.onSetProject('shop', bad) !== null, JSON.stringify(bad));
+            ok(await view.onSetProject('shop', bad) !== null, JSON.stringify(bad));
         }
         eq(stored().slots, 3, 'nothing else was written');
-        ok(view.onSetProject('ghost', { slots: 2 }) !== null, 'an unknown project');
-        eq(view.onSetProject('shop', { base: 'main', evil: 1 } as never), null);
+        ok(await view.onSetProject('ghost', { slots: 2 }) !== null, 'an unknown project');
+        eq(await view.onSetProject('shop', { base: 'main', evil: 1 } as never), null);
         eq(Object.keys(stored()).sort(), ['afterMerge', 'base', 'dir', 'slots', 'worktrees'], 'only isolation settings');
-        eq(view.onSetProject('shop', { dir: '/srv/trees', worktrees: false }), null);
+        eq(await view.onSetProject('shop', { dir: '/srv/trees', worktrees: false }), null);
         eq([stored().dir, stored().worktrees], ['/srv/trees', false]);
         session.dispose();
     });

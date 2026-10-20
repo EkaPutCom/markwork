@@ -12,11 +12,11 @@ export type { MachineDraft, PreferencesData, ProjectPage, WorktreeList };
 
 export class ProtocolPreferences implements PreferencesView {
     onSet: PreferencesView['onSet'] = () => {};
-    onAddMachine: PreferencesView['onAddMachine'] = () => {};
+    onAddMachine: PreferencesView['onAddMachine'] = async () => {};
     onRemoveMachine: PreferencesView['onRemoveMachine'] = () => {};
     onOpenProject: PreferencesView['onOpenProject'] = () => {};
-    onSetProject: PreferencesView['onSetProject'] = () => null;
-    onRemoveWorktree: PreferencesView['onRemoveWorktree'] = () => null;
+    onSetProject: PreferencesView['onSetProject'] = async () => null;
+    onRemoveWorktree: PreferencesView['onRemoveWorktree'] = async () => null;
 
     constructor(private readonly wire: Wire) {}
 

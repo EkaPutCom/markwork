@@ -21,7 +21,7 @@ export async function searchControllerTests(): Promise<void> {
         const questions: string[] = [];
         const answer = { yes: true };
         const session = new AppSession(fakeFrontend(memorySettings(), [], makeEditor, { searchView: view }));
-        Object.assign(session.search.dialogs, { confirm: (message: string) => { questions.push(message); return answer.yes; } });
+        Object.assign(session.search.dialogs, { confirm: async (message: string) => { questions.push(message); return answer.yes; } });
         session.start();
         session.files.setRoot(dir);
         return { dir, session, view, shown, questions, answer, last: () => shown.at(-1)! };

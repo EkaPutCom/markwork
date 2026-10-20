@@ -10,7 +10,7 @@ import { parseAst } from 'rolldown/parseAst';   // the oxc parser that Vite 8 al
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'src');
 
-const BASE = ['settings.ts', 'welcome.ts', 'files.ts', 'fileops.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'awaitable.ts', 'activity.ts'];
+const BASE = ['settings.ts', 'welcome.ts', 'files.ts', 'fileops.ts', 'workspace.ts', 'git.ts', 'gitlog.ts', 'credentials.ts', 'cancel.ts', 'i18n.ts', 'activity.ts'];
 
 // The core: everything below the application layer. It reaches the runtime only through platform/index.ts, so it runs on
 // Node (platform/node/) and on a fake platform in the tests.

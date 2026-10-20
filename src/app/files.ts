@@ -10,7 +10,6 @@ import { copyEntry, createFile, createFolder, moveEntry, renameEntry, trashEntry
 import { newList } from '../markdown/inbox.js';
 import { newTable } from '../markdown/tablelayout.js';
 import { newBoard, serializeBoard } from '../markdown/kanban.js';
-import { after, type Awaitable } from '../awaitable.js';
 import { isHtmlFile } from '../markdown/htmlview.js';
 import { isCsvFile, newCsvText } from '../markdown/csv.js';
 import { _, fmt } from '../i18n.js';
@@ -70,11 +69,11 @@ export function listFolder(path: string): FolderEntry[] {
 export interface FileTreeView {
     onOpenFolder: (dir: string) => void;                          // a folder needs its contents (first opened)
     onActivate: (path: string) => void;                           // a file was clicked
-    onCreate: (kind: NewKind, dir: string) => Awaitable<string | null>;
-    onRename: (path: string) => Awaitable<string | null>;
-    onRemove: (path: string) => Awaitable<boolean>;
-    onMove: (source: string, dir: string) => Awaitable<boolean>;            // dragged inside the tree
-    onCopy: (sources: string[], dir: string) => Awaitable<boolean>;         // dropped in from a file manager
+    onCreate: (kind: NewKind, dir: string) => Promise<string | null>;
+    onRename: (path: string) => Promise<string | null>;
+    onRemove: (path: string) => Promise<boolean>;
+    onMove: (source: string, dir: string) => Promise<boolean>;            // dragged inside the tree
+    onCopy: (sources: string[], dir: string) => Promise<boolean>;         // dropped in from a file manager
     showRoot(root: string | null, entries: FolderEntry[]): void;  // the work folder (null = none) and its contents
     showFolder(dir: string, entries: FolderEntry[]): void;        // the contents of a folder the tree has open
     expand(dir: string): void;
@@ -83,8 +82,8 @@ export interface FileTreeView {
 
 // The questions about files; a test replaces them with immediate answers.
 export interface FilesDialogs {
-    name(title: string, label: string, value?: string): Awaitable<string | null>;
-    confirm(message: string, detail: string): Awaitable<boolean>;
+    name(title: string, label: string, value?: string): Promise<string | null>;
+    confirm(message: string, detail: string): Promise<boolean>;
     error(message: string): void;
 }
 
@@ -107,8 +106,8 @@ export class FilesController {
         tree.onCreate = (kind, dir) => this.create(kind, dir);
         tree.onRename = path => this.rename(path);
         tree.onRemove = path => this.remove(path);
-        tree.onMove = (source, dir) => this.move(source, dir);
-        tree.onCopy = (sources, dir) => this.copyInto(sources, dir);
+        tree.onMove = async (source, dir) => this.move(source, dir);
+        tree.onCopy = async (sources, dir) => this.copyInto(sources, dir);
     }
 
     // Show a folder as the work folder; null = no folder.
@@ -141,22 +140,22 @@ export class FilesController {
 
     // ---------- What the user does ----------
 
-    create(kind: NewKind, dir: string): Awaitable<string | null> {
+    create(kind: NewKind, dir: string): Promise<string | null> {
         const title = kind === 'file' ? _('New File') : kind === 'board' ? _('New Kanban Board') : kind === 'inbox' ? _('New Inbox') : kind === 'table' ? _('New Table') : kind === 'csv' ? _('New CSV Table') : _('New Folder');
-        return after(this.dialogs.name(title, kind === 'folder' ? _('Folder name') : _('File name')), name => this.createNamed(kind, dir, name));
+        return this.dialogs.name(title, kind === 'folder' ? _('Folder name') : _('File name')).then(name => this.createNamed(kind, dir, name));
     }
 
-    rename(path: string): Awaitable<string | null> {
+    rename(path: string): Promise<string | null> {
         const isDir = platform().fs.isDirectory(path);
-        return after(this.dialogs.name(_('Rename'), isDir ? _('Folder name') : _('File name'), platform().paths.basename(path)), name => this.renameTo(path, name));
+        return this.dialogs.name(_('Rename'), isDir ? _('Folder name') : _('File name'), platform().paths.basename(path)).then(name => this.renameTo(path, name));
     }
 
     // Move to the Trash after confirmation.
-    remove(path: string): Awaitable<boolean> {
+    remove(path: string): Promise<boolean> {
         const isDir = platform().fs.isDirectory(path);
         const name = platform().paths.basename(path);
         const detail = isDir ? _('The folder and everything in it will be moved to the Trash.') : _('The file will be moved to the Trash.');
-        return after(this.dialogs.confirm(fmt(_('Delete “{name}”?'), { name }), detail), yes => yes && this.trash(path));
+        return this.dialogs.confirm(fmt(_('Delete “{name}”?'), { name }), detail).then(yes => yes && this.trash(path));
     }
 
     // Move source into dir; open documents follow it.

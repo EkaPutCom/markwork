@@ -1,7 +1,6 @@
 // External harnesses (@pi cards): the card menu, choosing the project folder, answering/steering/replying to a run,
 // and its log window. The runs themselves are managed by the Orchestrator this controller owns.
 
-import { after, type Awaitable } from '../awaitable.js';
 import { fileExists, insideName, readTextFile } from '../files.js';
 import { platform } from '../platform/index.js';
 import type { AppSettings } from '../settings.js';
@@ -36,7 +35,7 @@ export interface CardRun {
 // when the user opens it, and answered with entries whose action stays here (a token).
 export interface HarnessBoard {
     setRuns(runs: readonly CardRun[]): void;   // the runs of the board's cards, when the board is shown and when one changes
-    onCardMenu: (card: Card, at: Position) => Awaitable<HarnessMenuEntry[]>;
+    onCardMenu: (card: Card, at: Position) => Promise<HarnessMenuEntry[]>;
     onRunMenu: (token: number) => void;
 }
 
@@ -61,12 +60,12 @@ export type CloseAgentsChoice = 'cancel' | 'stop' | 'keep';
 
 // The questions harness work asks the user; each answers null (or 'cancel') when dismissed.
 export interface HarnessDialogs {
-    chooseFolder(title: string): Awaitable<string | null>;
-    answer(ask: HarnessAsk, agent: string): Awaitable<HarnessReply | null>;
-    text(options: { title: string; label: string; context?: string; text?: string }): Awaitable<string | null>;
+    chooseFolder(title: string): Promise<string | null>;
+    answer(ask: HarnessAsk, agent: string): Promise<HarnessReply | null>;
+    text(options: { title: string; label: string; context?: string; text?: string }): Promise<string | null>;
     // The folder of a project on another machine, which cannot be browsed from here.
-    remoteFolder(prompt: Prompt): Awaitable<string | null>;   // the folder of a project on a remote machine (an absolute path)
-    closeAgents(activity: { children: number; detachable: number; queued: number }): Awaitable<CloseAgentsChoice>;
+    remoteFolder(prompt: Prompt): Promise<string | null>;   // the folder of a project on a remote machine (an absolute path)
+    closeAgents(activity: { children: number; detachable: number; queued: number }): Promise<CloseAgentsChoice>;
 }
 
 export interface HarnessHost extends DocumentHost {
@@ -111,7 +110,7 @@ export class HarnessController {
         this.openers = openers;
         host.logs.onClear = runId => this.orchestrator.queue.runs.find(r => r.id === runId)?.trace.clear();
         host.logs.onClosed = runId => this.stopLog(runId);
-        host.board.onCardMenu = (card, at) => this.menu(card, at);
+        host.board.onCardMenu = async (card, at) => this.menu(card, at);
         host.board.onRunMenu = token => this.runMenu(token);
         this.orchestrator = new Orchestrator({
             workspace: () => host.root(),
@@ -263,13 +262,12 @@ export class HarnessController {
     }
 
     // Asked when the window closes while agents work. false = the user cancelled.
-    confirmClose(): Awaitable<boolean> {
+    async confirmClose(): Promise<boolean> {
         const activity = this.orchestrator.activity();
         if (!activity.children && !activity.detachable) return true;
-        return after(this.dialogs.closeAgents(activity), choice => {
-            this.stopOnClose = choice === 'stop';
-            return choice !== 'cancel';
-        });
+        const choice = await this.dialogs.closeAgents(activity);
+        this.stopOnClose = choice === 'stop';
+        return choice !== 'cancel';
     }
 
     // The status of the run for a card on the board that is shown, for its badge.
@@ -383,7 +381,7 @@ export class HarnessController {
             this.start(file, at, agent, project);
             return;
         }
-        void after(this.chooseProjectFolder(project), folder => {
+        void this.chooseProjectFolder(project).then(folder => {
             if (!folder) return;
             // The folder dialog can stay open for a long time: the assigned card must still be on the same board.
             if (this.host.active().file !== file || this.host.boardNow().columns[at.column]?.cards[at.index]?.text !== card.text) {
@@ -411,7 +409,7 @@ export class HarnessController {
     }
 
     // Choose a folder for project `name` (or a new project if null) and save the mapping.
-    private chooseProjectFolder(name: string | null): Awaitable<{ name: string; path: string } | null> {
+    private chooseProjectFolder(name: string | null): Promise<{ name: string; path: string } | null> {
         const machine = this.machine;
         if (isRemoteMachine(machine)) {
             const prompt: Prompt = {
@@ -419,9 +417,9 @@ export class HarnessController {
                 label: fmt(_('The folder of the project on {machine} (an absolute path):'), { machine: this.machineLabel(machine) }),
                 value: name ? this.folderOf(name) ?? '' : '', accept: _('Save'),
             };
-            return after(this.dialogs.remoteFolder(prompt), path => this.mapProjectFolder(name, path));
+            return this.dialogs.remoteFolder(prompt).then(path => this.mapProjectFolder(name, path));
         }
-        return after(this.dialogs.chooseFolder(name ? fmt(_('Project folder “{name}”'), { name }) : _('Choose a project folder')), path => this.mapProjectFolder(name, path));
+        return this.dialogs.chooseFolder(name ? fmt(_('Project folder “{name}”'), { name }) : _('Choose a project folder')).then(path => this.mapProjectFolder(name, path));
     }
 
     private mapProjectFolder(name: string | null, path: string | null): { name: string; path: string } | null {
@@ -441,7 +439,7 @@ export class HarnessController {
 
     answer(run: Run): void {
         if (!run.ask) return;
-        void after(this.dialogs.answer(run.ask, run.agent), reply => {
+        void this.dialogs.answer(run.ask, run.agent).then(reply => {
             if (!reply) return;   // Later: the harness keeps waiting
             const error = this.orchestrator.answer(run, reply);
             if (error) this.host.toast(fmt(_('The answer was not sent: {error}'), { error }));
@@ -449,7 +447,7 @@ export class HarnessController {
     }
 
     private steer(run: Run): void {
-        void after(this.dialogs.text({ title: fmt(_('Steering for {agent}'), { agent: run.agent }), label: fmt(_('{agent} receives it before its next step, without stopping the work.'), { agent: run.agent }) }), text => {
+        void this.dialogs.text({ title: fmt(_('Steering for {agent}'), { agent: run.agent }), label: fmt(_('{agent} receives it before its next step, without stopping the work.'), { agent: run.agent }) }).then(text => {
             if (!text) return;
             const error = this.orchestrator.steer(run, text);
             this.host.toast(error ? fmt(_('The steering was not sent: {error}'), { error }) : fmt(_('Steering sent to {agent}'), { agent: run.agent }));
@@ -462,7 +460,7 @@ export class HarnessController {
     }
 
     private reply(run: Run): void {
-        void after(this.dialogs.text({ title: fmt(_('Reply to {agent}'), { agent: run.agent }), label: fmt(_('The {agent} session continues with this reply; the card goes back to being worked on.'), { agent: run.agent }), context: run.result?.summary || undefined }), text => {
+        void this.dialogs.text({ title: fmt(_('Reply to {agent}'), { agent: run.agent }), label: fmt(_('The {agent} session continues with this reply; the card goes back to being worked on.'), { agent: run.agent }), context: run.result?.summary || undefined }).then(text => {
             if (!text) return;
             const error = this.orchestrator.resume(run, text);
             if (error) this.host.toast(fmt(_('Cannot reply to {agent}: {error}'), { agent: run.agent, error }));

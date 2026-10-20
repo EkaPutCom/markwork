@@ -8,11 +8,11 @@ import type { Wire } from './messages.js';
 export class ProtocolTree implements FileTreeView {
     onOpenFolder: FileTreeView['onOpenFolder'] = () => {};
     onActivate: FileTreeView['onActivate'] = () => {};
-    onCreate: FileTreeView['onCreate'] = () => null;
-    onRename: FileTreeView['onRename'] = () => null;
-    onRemove: FileTreeView['onRemove'] = () => false;
-    onMove: FileTreeView['onMove'] = () => false;
-    onCopy: FileTreeView['onCopy'] = () => false;
+    onCreate: FileTreeView['onCreate'] = async () => null;
+    onRename: FileTreeView['onRename'] = async () => null;
+    onRemove: FileTreeView['onRemove'] = async () => false;
+    onMove: FileTreeView['onMove'] = async () => false;
+    onCopy: FileTreeView['onCopy'] = async () => false;
 
     constructor(private readonly wire: Wire) {}
 

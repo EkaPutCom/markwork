@@ -3,7 +3,6 @@
 // controller hooks for what must follow a document on screen (DocumentsHost), and keeps thin public methods that
 // pass through for the actions and tests.
 
-import { after, type Awaitable } from '../awaitable.js';
 import type { AppSettings } from '../settings.js';
 import { readTextFile, writeTextFile, fileExists, insideName } from '../files.js';
 import { platform } from '../platform/index.js';
@@ -157,7 +156,7 @@ export class DocumentController<E extends TextEditor> {
     }
 
     // The close button of a tab: a document asks about its changes, a page closes at once.
-    closeById(id: number): Awaitable<boolean> {
+    async closeById(id: number): Promise<boolean> {
         const doc = this.docs.find(d => d.id === id);
         if (doc) return this.closeTab(doc);
         const page = this.pages.find(p => p.id === id);
@@ -165,24 +164,22 @@ export class DocumentController<E extends TextEditor> {
     }
 
     // Close a tab (asks if there are changes); the shown tab if no document is named. Closing the only tab empties its document.
-    closeTab(doc?: Doc<E>): Awaitable<boolean> {
+    async closeTab(doc?: Doc<E>): Promise<boolean> {
         if (!doc && this.shown) return this.closePage(this.shown);
         const target = doc ?? this.current;
-        return after(this.confirmDiscard(target), yes => yes && this.docs.includes(target) && this.remove(target));
+        return await this.confirmDiscard(target) && this.docs.includes(target) && this.remove(target);
     }
 
     // Close the tabs whose file lies outside folder (asks about unsaved changes first).
     // false = the user cancelled, so the folder should not be switched.
-    closeOutside(folder: string): Awaitable<boolean> {
+    async closeOutside(folder: string): Promise<boolean> {
         const stale = this.docs.filter(d => d.file && insideName(folder, d.file) === null);
         const stalePages = this.pages.filter(p => p.file && insideName(folder, p.file) === null);
         if (stale.length === 0 && stalePages.length === 0) return true;
-        return after(this.confirmDiscardAll(stale), yes => {
-            if (!yes) return false;
-            for (const doc of stale) if (this.docs.includes(doc)) this.remove(doc);
-            for (const page of stalePages) if (this.pages.includes(page)) this.closePage(page);
-            return true;
-        });
+        if (!await this.confirmDiscardAll(stale)) return false;
+        for (const doc of stale) if (this.docs.includes(doc)) this.remove(doc);
+        for (const page of stalePages) if (this.pages.includes(page)) this.closePage(page);
+        return true;
     }
 
     private remove(doc: Doc<E>): boolean {
@@ -215,24 +212,18 @@ export class DocumentController<E extends TextEditor> {
     // ---------- Asking before discarding ----------
 
     // If there are changes, ask first. true = it is fine to go on and discard this document.
-    // Without changes that need asking about, the answer is immediate (without a Promise).
-    confirmDiscard(doc: Doc<E> = this.current): Awaitable<boolean> {
+    async confirmDiscard(doc: Doc<E> = this.current): Promise<boolean> {
         if (this.host.autosaver.now(doc)) return true;
         this.activate(doc);   // the user needs to see which document is being asked about
-        return this.host.dialogs.askSaveChanges(this.nameOf(doc)).then(answer => {
-            if (answer !== 'save') return answer === 'discard';
-            this.activate(doc);
-            return this.save();
-        });
+        const answer = await this.host.dialogs.askSaveChanges(this.nameOf(doc));
+        if (answer !== 'save') return answer === 'discard';
+        this.activate(doc);
+        return this.save();
     }
 
     // Ask about documents one by one; stop at the first Cancel answer.
-    confirmDiscardAll(docs: Doc<E>[] = [...this.docs]): Awaitable<boolean> {
-        for (let i = 0; i < docs.length; i++) {
-            const answer = this.confirmDiscard(docs[i]);
-            if (answer === false) return false;
-            if (answer !== true) return answer.then(yes => yes && this.confirmDiscardAll(docs.slice(i + 1)));
-        }
+    async confirmDiscardAll(docs: Doc<E>[] = [...this.docs]): Promise<boolean> {
+        for (const doc of docs) if (!await this.confirmDiscard(doc)) return false;
         return true;
     }
 
@@ -412,8 +403,8 @@ export class DocumentController<E extends TextEditor> {
         }
     }
 
-    // A file document is saved instantly (a boolean result); a new document waits for the Save As dialog.
-    save(): Awaitable<boolean> {
+    // A file document is written at once; a new document waits for the Save As dialog.
+    async save(): Promise<boolean> {
         const doc = this.current;
         if (this.shown) return true;
         if (!doc.file) return this.saveAs();
@@ -438,7 +429,7 @@ export class DocumentController<E extends TextEditor> {
         this.activate(doc);
         this.set(doc, { file: path });
         this.host.refreshTitle(doc.id);
-        if (!this.save()) return false;
+        if (!await this.save()) return false;
         this.host.fileSaved(path);
         return true;
     }
