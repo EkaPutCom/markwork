@@ -52,7 +52,7 @@ export class LaggingEditor extends FakeEditor {
     private pending: string | null = null;
     private readonly waiting: ((text: string) => string | null)[] = [];
     override getText(): string {
-        if (this.pending !== null) throw new Error('read the text while a write to it had not landed (docs/design/protocol.md 5.5)');
+        if (this.pending !== null) throw new Error(`read the text while a write to it had not landed (docs/design/protocol.md 5.5)\n${new Error().stack}`);
         return this.text;
     }
     // A whole text computed while a write is on its way would undo that write; update() is the way to follow one.

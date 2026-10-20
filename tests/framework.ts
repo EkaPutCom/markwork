@@ -43,6 +43,7 @@ export function collectBeforeEachTest(on: boolean): void { collectFirst = on; }
 // whose tests wait awaits each test() in turn.
 export function test(name: string, fn: () => void | Promise<void>): Promise<void> {
     let result: void | Promise<void>;
+    if (platform().env('MARKWORK_TRACE')) host().print(`  … ${name}`);   // which test a stalled run is in (CI sets it)
     if (collectFirst) host().gc();
     try {
         result = fn();

@@ -27,6 +27,8 @@ jobs:
       - run: npm ci
       # The type check, the layer rules, and every core test on Node, with the protocol server driven by a scripted frontend.
       - run: npm run test:core:node
+        env:
+          MARKWORK_TRACE: ${{ matrix.os == 'windows-latest' && '1' || '' }}
 
   electron:
     name: Electron app (${{ matrix.os }})
