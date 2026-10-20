@@ -1,5 +1,5 @@
-// User settings with typed properties, on top of a SettingsStore (platform/index.ts). Under GJS the store is GSettings
-// (platform/gjs/settings.ts, schema: data/com.ekaput.Markwork.gschema.xml).
+// User settings with typed properties, on top of a SettingsStore (platform/index.ts). The app's store is a JSON file
+// checked against the keys of data/com.ekaput.Markwork.gschema.xml (platform/node/settings.ts).
 //
 // Other code writes `settings.autosave = true`; every write is saved immediately, there is no save(). Code that reacts to a
 // change listens with onChanged(); the GTK preferences and actions also bind widgets straight to GSettings (gsettingsOf).

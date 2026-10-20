@@ -1,6 +1,5 @@
 // Markdown table model tests (markdown/table.ts).
 
-import { cellMarkup } from '../../src/markdown/pango.js';
 import { cellIndexAt, cellStart, deleteColumn, deleteRow, displayWidth, findTables, fitColumns, insertColumn, insertRow, parseTable, renderTable, setAlign, splitRow, tableEnd } from '../../src/markdown/table.js';
 import { section, test, eq, ok } from '../framework.js';
 
@@ -68,14 +67,6 @@ export function tableTests(): void {
         ];
         eq(findTables(lines), [{ start: 0, end: 2 }, { start: 8, end: 10 }, { start: 13, end: 14 }]);
         eq(tableEnd(['| a |', '| - |', '| 1 |', 'no pipe'], 0), 2, 'a line without a pipe ends the table');
-    });
-    test('cellMarkup: inline formatting, markup escaping, \\| becomes |', () => {
-        const colors = { code: '#c00', codeBg: '#eee', link: '#00c', mark: '#ff0' };
-        eq(cellMarkup('**bold** & <b>', colors), '<span font_weight="bold">bold</span> &amp; &lt;b&gt;');
-        eq(cellMarkup('[link](http://x.y)', colors), '<span foreground="#00c" underline="single">link</span>');
-        eq(cellMarkup('`k`', colors), '<span font_family="monospace" foreground="#c00" background="#eee">k</span>');
-        eq(cellMarkup('a \\| b', colors), 'a | b');
-        eq(cellMarkup('***two***', colors), '<span font_weight="bold" font_style="italic">two</span>');
     });
     test('fitColumns: left alone if it fits, only wide columns are narrowed', () => {
         eq(fitColumns([100, 80], 300), [100, 80], 'fits');

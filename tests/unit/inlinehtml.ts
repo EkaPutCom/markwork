@@ -4,7 +4,7 @@ import { inlineRuns } from '../../src/markdown/inlineruns.js';
 import { cellHtml } from '../../src/markdown/inlinehtml.js';
 import { chatBlocks } from '../../src/markdown/chatblocks.js';
 import { chatHtml } from '../../src/markdown/chathtml.js';
-import { NOTE_URI } from '../../src/markdown/pango.js';
+import { NOTE_URI } from '../../src/markdown/inlineruns.js';
 import { section, test, eq, ok, contains } from '../framework.js';
 
 export function inlineHtmlTests(): void {

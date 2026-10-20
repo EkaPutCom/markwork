@@ -19,7 +19,7 @@ export type TextResult =
 interface Run { status: number; out: string; err: string }
 
 // A run whose result the runtime lost, or a git that hangs (e.g. on a signing passphrase prompt), ends as a failure
-// instead of waiting forever (see platform/gjs/process.ts). Changeable by tests.
+// instead of waiting forever (see platform/node/process.ts). Changeable by tests.
 export const gitLimits = {
     lostMs: 5000,       // after git has exited without its output arriving
     runMs: 120000,      // for git to finish at all

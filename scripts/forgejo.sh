@@ -3,7 +3,7 @@
 # run them. Nothing is installed on this computer besides the image, and nothing leaves it: the server listens on 127.0.0.1 only.
 #
 #   scripts/forgejo.sh up          start a fresh Forgejo, make the two users and their tokens, seed the repository, write .env.forgejo
-#   scripts/forgejo.sh test [what] up (if needed), build, and run: read | write | ui | all (default)
+#   scripts/forgejo.sh test [what] up (if needed), build, and run: read | write | all (default)
 #   scripts/forgejo.sh status      is it running, and what does it hold
 #   scripts/forgejo.sh logs        follow the server log
 #   scripts/forgejo.sh down        remove the container and its data
@@ -87,26 +87,21 @@ status() {
     fi
 }
 
-# The live tests read their server and tokens from the environment. Sourcing .env.forgejo here, and calling gjs directly,
+# The live tests read their server and tokens from the environment. Sourcing .env.forgejo here, and calling node directly,
 # keeps the user's own .env (which the npm scripts source, and which may have these keys empty) out of it.
 runtests() {
     local what=${1:-all}
-    case "$what" in read|write|ui|all) ;; *) die "test what? read | write | ui | all" ;; esac
+    case "$what" in read|write|all) ;; *) die "test what? read | write | all" ;; esac
     up
     cd "$root"
-    npm run build >/dev/null
+    npx vite build -c vite.node.config.ts >/dev/null
     set -a; . "$envfile"; set +a
     local failed=0
     if [ "$what" = read ] || [ "$what" = all ]; then
-        echo; echo "== forge layer, read-only =="; gjs -m dist/live-forge.js || failed=1
+        echo; echo "== forge layer, read-only =="; node dist-node/live-forge.js || failed=1
     fi
     if [ "$what" = write ] || [ "$what" = all ]; then
-        echo; echo "== forge layer, writing (comment, fork, AGit, merge, conflict) =="; gjs -m dist/live-forge.js --write || failed=1
-    fi
-    if [ "$what" = ui ] || [ "$what" = all ]; then
-        echo; echo "== the window against the real server (Xvfb) =="
-        xvfb-run -a -s '-screen 0 1280x800x24' env GDK_BACKEND=x11 LIBGL_ALWAYS_SOFTWARE=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 \
-            WEBKIT_DISABLE_DMABUF_RENDERER=1 gjs -m dist/run-tests.js --only-forgejo || failed=1
+        echo; echo "== forge layer, writing (comment, fork, AGit, merge, conflict) =="; node dist-node/live-forge.js --write || failed=1
     fi
     echo; [ "$failed" = 0 ] && echo "all live Forgejo tests passed" || echo "some live Forgejo tests FAILED"
     return "$failed"

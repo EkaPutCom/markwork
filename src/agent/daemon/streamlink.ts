@@ -1,5 +1,5 @@
 // Links to a markworkd: a Unix socket (the daemon on this machine) or the stdio of a command (`ssh host markworkd
-// bridge`, or `markworkd bridge` itself). The descriptors are the platform's (platform/gjs/links.ts under GJS); what
+// bridge`, or `markworkd bridge` itself). The descriptors are the platform's (platform/node/links.ts); what
 // stays here is how the SSH bridge is reached.
 
 import { platform } from '../../platform/index.js';

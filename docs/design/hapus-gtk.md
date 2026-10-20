@@ -73,20 +73,24 @@ Lulus bila CI tiga OS hijau dan `gjs -m dist/run-tests.js` tidak gagal di tes se
 
 ### PR B — hapus GTK
 
-- Hapus `src/ui/`, `src/editor/`, `src/window.ts`, `src/window/`, `src/app.ts`, `src/main.ts`, `src/actions.ts`, `src/gtkutil.ts`, `src/platform/gjs/`, `src/env.d.ts`, `src/raw.d.ts`, `markdown/pango.ts`, dan `markdown/chatmarkup.ts` beserta tesnya. Cek dulu pemakai `config.ts` (`APP_ID`, `APP_NAME`) dan tipe `Palette` di `colors.ts`, lalu pindahkan yang masih dipakai.
-- Hapus `tests/gui/`, `tests/run-tests.ts`, `tests/host-gjs.ts`, `tests/widgets.ts`, dan tes unit yang ditandai "dihapus di PR B". Port tes live dan benchmark core ke Node.
-- `package.json`: jadikan skrip Electron sebagai `build`, `start`, dan `test`; buang skrip GJS dan `@girs/*`.
-- Hapus `vite.config.ts`, `meson.build`, `po/meson.build`, `build-aux/flatpak/`, `data/*.desktop.in`, `data/*.metainfo.xml.in`, `data/markwork.in`, `scripts/capture.ts`.
-- `tsconfig.json` tanpa global GJS. `scripts/layers.mjs` tanpa aturan `gi://` dan `ui/`, ditambah aturan bahwa `src/` tidak mengimpor `electron/`.
-- Beri tag `v-gtk-final` di commit terakhir `main` sebelum PR ini di-merge.
+- [x] Hapus `src/ui/`, `src/editor/`, `src/window.ts`, `src/window/`, `src/app.ts`, `src/main.ts`, `src/actions.ts`, `src/gtkutil.ts`, `src/platform/gjs/`, `src/env.d.ts`, `src/raw.d.ts`, `src/config.ts`, `src/colors.ts`, `markdown/pango.ts`, dan `markdown/chatmarkup.ts` beserta tesnya. `config.ts` dan `colors.ts` ternyata hanya dipakai GTK.
+- [x] Hapus `tests/gui/`, `tests/run-tests.ts`, `tests/host-gjs.ts`, `tests/widgets.ts`, dan tes unit yang ditandai "dihapus di PR B".
+- [x] Tes live (`live*.ts`, `forgejo-support.ts`) dan `bench-agentic.ts` di-port ke Node: helper tes menggantikan GLib, dibangun oleh `vite.node.config.ts` ke `dist-node/`. `bench.ts` ditulis ulang untuk modul Markdown saja (format simpanan versi 3; baseline lama dari GTK tidak dibandingkan).
+- [x] `package.json`: `build`, `start`, dan `test` menjalankan Electron dan Node; skrip GJS, `docs` (tangkapan layar GTK), dan `@girs/*` dibuang.
+- [x] Hapus `vite.config.ts`, `meson.build`, `po/meson.build`, `build-aux/`, `data/*.desktop.in`, `data/*.metainfo.xml.in`, `data/markwork.in`, `scripts/capture.ts`, `scripts/dev.mjs`, `scripts/gifenc.d.ts`.
+- [x] `tsconfig.json` tanpa global GJS: core hanya mengenal global standar yang dideklarasikan `src/globals.d.ts` (timer, `TextEncoder`, `TextDecoder`), jadi impor `node:` atau global Node di core tetap gagal typecheck. `scripts/layers.mjs` menolak impor dari `src/` ke luar `src/`.
+- [x] `po/POTFILES.in` dibangun ulang dari berkas yang memakai `_()`, dan `scripts/pot.sh` tanpa `.ui` dan berkas desktop. `scripts/forgejo.sh` menjalankan tes live Forgejo di Node, tanpa bagian UI GTK.
+- [x] Tag `v-gtk-final` di `3af78a3` (main sebelum PR ini).
 
 Lulus bila typecheck, tes core di Node, dan tes Electron hijau di tiga OS.
 
 ### PR C — rapikan
 
 - `platform/index.ts` tetap (fake platform di tes memakainya); buang komentar dan cabang khusus GJS.
+- `scripts/layers.mjs`: aturan untuk `ui/`, `editor/`, `window`, `gi://`, dan `platform/gjs/` tidak lagi berlaku; sederhanakan.
+- `tests/host.ts`: antarmuka tes yang dulu melayani GJS dan Node (`settle()` hanya untuk GJS).
 - Jalan pintas di `app/` yang ada demi dua frontend, misalnya `Awaitable` yang bisa sinkron.
-- Tulis ulang README, AGENT.md, dan `docs/ONBOARDING.md`; arsipkan `docs/audit-gtk4.md` dan `docs/learn-gtk.html`; tandai `electron.md` dan `electron-migrasi.md` selesai.
+- Tulis ulang README (cara build dan jalankan kini `npm start`), AGENT.md, dan `docs/ONBOARDING.md`; perbarui atau buang `bench/` (catatan performa GTK); arsipkan `docs/audit-gtk4.md` dan `docs/learn-gtk.html`; tandai `electron.md` dan `electron-migrasi.md` selesai.
 
 ## Risiko
 

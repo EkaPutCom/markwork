@@ -1,6 +1,6 @@
 // The platform port: what the core (markdown/, agent/, forge/, the orchestrator, and the base modules) needs from the
-// runtime, as plain interfaces. The core reaches the runtime only through platform(), never through gi:// imports, so
-// the same core can run under GJS (platform/gjs/, installed by every entry point) or another runtime later.
+// runtime, as plain interfaces. The core reaches the runtime only through platform(), so it runs on Node (platform/node/,
+// installed by every entry point) and, in the tests, on a fake platform.
 // This file imports nothing: it is the contract, not an implementation (RuntimeMissing is the one class it defines).
 
 export interface HttpRequest {
@@ -200,6 +200,6 @@ export function installedPlatform(): Platform | null {
 }
 
 export function platform(): Platform {
-    if (!current) throw new Error('No platform installed: the entry point must import platform/gjs/install.js first');
+    if (!current) throw new Error('No platform installed: the entry point must import platform/node/install.js first');
     return current;
 }

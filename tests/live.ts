@@ -11,19 +11,19 @@
 // white vs black ship) and runs ChatSession + DeepSeek + the same browsing tools as the app.
 // The key is never printed.
 
-import '../src/platform/gjs/install.js';   // the core reaches the runtime through platform()
-import './host-gjs.js';   // the tests reach the runtime through host(), installed before framework.ts
+import '../src/platform/node/install.js';   // the core reaches the runtime through platform()
+import './host-node.js';   // the tests reach the runtime through host(), installed before framework.ts
 import { liveAgentic } from './live-agentic.js';
 import { liveCommitMessage } from './live-commit.js';
 import { liveStructured } from './live-structured.js';
-import GLib from 'gi://GLib';
-import System from 'system';
 import { systemKeyStore } from '../src/agent/apikey.js';
 import { DEEPSEEK_MODELS, DeepSeek } from '../src/agent/deepseek.js';
 import { DEFAULT_BUDGET } from '../src/agent/context.js';
 import { WorkspaceRepository } from '../src/workspace.js';
 import { ChatSession } from '../src/agent/session.js';
 import { DIM, GREEN, RED, RESET, ROOT, optVal, opt, setRoot } from './framework.js';
+import { disk, say } from './framework.js';
+import { platform } from '../src/platform/index.js';
 
 setRoot(import.meta.url);
 
@@ -50,14 +50,14 @@ const SCENARIOS: Scenario[] = [
 async function main(): Promise<boolean> {
     const found = await systemKeyStore.get();
     if (!found?.key) {
-        print(`${RED}No API key. Set DEEPSEEK_API_KEY in .env (see .env.example), then run npm run test:live.${RESET}`);
+        say(`${RED}No API key. Set DEEPSEEK_API_KEY in .env (see .env.example), then run npm run test:live.${RESET}`);
         return false;
     }
 
-    const root = GLib.build_filenamev([ROOT, 'tests', 'samples', 'sample-book']);
+    const root = disk.join(ROOT, 'tests', 'samples', 'sample-book');
     const book = new WorkspaceRepository().files(root);
     if (!book.length) {
-        print(`${RED}The sample manuscript was not found in  ${root}${RESET}`);
+        say(`${RED}The sample manuscript was not found in  ${root}${RESET}`);
         return false;
     }
     const activeName = 'chapter-2.md';
@@ -67,29 +67,29 @@ async function main(): Promise<boolean> {
     const model = optVal('model') ?? DEEPSEEK_MODELS[0];
     const thinking = opt('thinking');
     const provider = new DeepSeek(found.key);
-    print(`${DIM}Model ${model}, thinking ${thinking ? 'on' : 'off'}, key from ${found.source}, ${book.length} files${RESET}`);
+    say(`${DIM}Model ${model}, thinking ${thinking ? 'on' : 'off'}, key from ${found.source}, ${book.length} files${RESET}`);
 
     let failures = 0;
     if (opt('commit-only')) return await liveCommitMessage(provider, model) === 0;
     if (opt('structured-only')) return await liveStructured(provider, model, thinking) === 0;
     for (const sc of SCENARIOS) {
-        print(`\n▶ ${sc.name}\n  Q: ${sc.question}`);
+        say(`\n▶ ${sc.name}\n  Q: ${sc.question}`);
         const session = new ChatSession();
         session.thinking = thinking;
-        const started = GLib.get_monotonic_time();
+        const started = (platform().monotonicMs() * 1000);
         try {
             const r = await session.ask({
                 question: sc.question, active: { name: activeName, text: activeText, cursorLine: 4 }, selection: '', files, mentions: [],
                 options: { activeDocument: true, selection: true, project: true }, budget: sc.budget ?? DEFAULT_BUDGET,
             }, provider, model, {
-                onContext: b => print(`  ${DIM}context ≈${b.tokens} tokens${RESET}`),
+                onContext: b => say(`  ${DIM}context ≈${b.tokens} tokens${RESET}`),
                 onText: () => {},
                 onReasoning: () => {},
-                onTool: s => { if (s.summary) print(`  ${DIM}• ${s.label} → ${s.summary}${RESET}`); },
+                onTool: s => { if (s.summary) say(`  ${DIM}• ${s.label} → ${s.summary}${RESET}`); },
             });
-            const secs = ((GLib.get_monotonic_time() - started) / 1e6).toFixed(1);
-            print(`  A: ${r.text.trim().split('\n').join('\n     ')}`);
-            print(`  ${DIM}${secs} s · ${r.toolCalls} lookups · ${r.usage ? `${r.usage.prompt} in (${r.usage.cached} cached) / ${r.usage.completion} out` : 'no usage'}${RESET}`);
+            const secs = (((platform().monotonicMs() * 1000) - started) / 1e6).toFixed(1);
+            say(`  A: ${r.text.trim().split('\n').join('\n     ')}`);
+            say(`  ${DIM}${secs} s · ${r.toolCalls} lookups · ${r.usage ? `${r.usage.prompt} in (${r.usage.cached} cached) / ${r.usage.completion} out` : 'no usage'}${RESET}`);
             const problems: string[] = [];
             if (!r.text.trim()) problems.push('empty answer');
             if (r.toolCalls < sc.minTools) problems.push(`tools called ${r.toolCalls}x, expected ≥ ${sc.minTools}`);
@@ -103,22 +103,20 @@ async function main(): Promise<boolean> {
                 }
                 if (!cites.length) problems.push('no line number citation');
             }
-            if (problems.length) { failures++; print(`  ${RED}✗ ${problems.join('; ')}${RESET}`); }
-            else print(`  ${GREEN}✓ passed${RESET}`);
+            if (problems.length) { failures++; say(`  ${RED}✗ ${problems.join('; ')}${RESET}`); }
+            else say(`  ${GREEN}✓ passed${RESET}`);
         } catch (e) {
             failures++;
-            print(`  ${RED}✗ error:  ${errorMessage(e)}${RESET}`);
+            say(`  ${RED}✗ error:  ${errorMessage(e)}${RESET}`);
         }
     }
-    print(`\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} scenarios passed${RESET}`);
+    say(`\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} scenarios passed${RESET}`);
     failures += await liveCommitMessage(provider, model);
     if (opt('agentic')) failures += await liveAgentic(provider, model, thinking);
     if (opt('structured')) failures += await liveStructured(provider, model, thinking);
     return failures === 0;
 }
 
-const loop = new GLib.MainLoop(null, false);
 let ok = false;
-main().then(r => { ok = r; }, e => { print(`${RED}${errorMessage(e)}${RESET}`); }).finally(() => loop.quit());
-loop.run();
-System.exit(ok ? 0 : 1);
+try { ok = await main(); } catch (e) { say(`${RED}${errorMessage(e)}${RESET}`); }
+process.exit(ok ? 0 : 1);
