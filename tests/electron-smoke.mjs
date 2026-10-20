@@ -226,6 +226,8 @@ try {
         await setDoc('plain', 5);
         await page.keyboard.press('Enter');
         assert.equal(await docText(), 'plain\n', 'Enter outside a table is a plain line break');
+        // Closing asks only once the core has the change, which the tab shows with its unsaved mark.
+        await page.getByRole('tab', { selected: true, name: /•/ }).waitFor();
         await page.keyboard.press('ControlOrMeta+w');
         const dialog = page.getByRole('alertdialog');
         await dialog.getByRole('button', { name: 'Discard' }).click();
