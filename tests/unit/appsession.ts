@@ -9,7 +9,7 @@ import { addCard, parseBoard } from '../../src/markdown/kanban.js';
 import { applyChangeBatch } from '../../src/app/agentwrites.js';
 import { platform, setPlatform } from '../../src/platform/index.js';
 import { fileUri } from '../../src/files.js';
-import { section, test, eq, ok, tmp, disk, pause } from '../framework.js';
+import { section, test, eq, ok, tmp, disk, pause, until } from '../framework.js';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
 export function memorySettings(): AppSettings {
@@ -410,7 +410,8 @@ export async function appSessionTests(): Promise<void> {
         // Two harness runs that end in the same turn, each moving its own card.
         eq(session.host.updateBoardFile(file, b => addCard(b, 0, 'Two')), null, 'first');
         eq(session.host.updateBoardFile(file, b => addCard(b, 0, 'Three')), null, 'second');
-        await pause(5);
+        // The editor lands its writes in a timer; Windows timers can take 15 ms.
+        await until(() => { try { session.documents.active.editor.getText(); return true; } catch { return false; } });
         const text = session.documents.active.editor.getText();
         ok(text.includes('- [ ] Two') && text.includes('- [ ] Three'), text);
         session.dispose();
