@@ -62,6 +62,7 @@ import { worktreeTests } from '../unit/worktree.js';
 import { daemonClientTests } from '../unit/daemon.js';
 import { daemonLiveTests, daemonSshTests } from '../unit/daemon-live.js';
 import { daemonAppTests } from '../unit/daemonapp.js';
+import { programsTests } from '../unit/programs.js';
 
 export type CoreFocus = 'all' | 'worktrees' | 'daemon';
 
@@ -75,6 +76,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     if (focus === 'daemon') {
         await daemonClientTests();
         await daemonAppTests();
+        await programsTests();
         await daemonLiveTests();
         await daemonSshTests();
         return;
@@ -141,6 +143,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await worktreeTests();
     await daemonClientTests();
     await daemonAppTests();
+    await programsTests();
     await daemonLiveTests();
     await daemonSshTests();
 }

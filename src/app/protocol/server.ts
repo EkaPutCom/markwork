@@ -24,6 +24,7 @@ import { chatHandlers } from './handlers/chat.js';
 import { historyHandlers } from './handlers/history.js';
 import { collabHandlers } from './handlers/collab.js';
 import { harnessHandlers } from './handlers/harness.js';
+import { programsHandlers } from './handlers/programs.js';
 
 export { PROTOCOL_VERSION } from './handlers/session.js';
 
@@ -56,7 +57,7 @@ export class ProtocolServer {
             sendFiles: () => this.sendFiles(),
             onDispose: stop => { this.stops.push(stop); },
         };
-        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, searchHandlers, treeHandlers, homeHandlers, preferencesHandlers, chatHandlers, historyHandlers, collabHandlers, harnessHandlers, commandHandlers]) handlers(context);
+        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, searchHandlers, treeHandlers, homeHandlers, programsHandlers, preferencesHandlers, chatHandlers, historyHandlers, collabHandlers, harnessHandlers, commandHandlers]) handlers(context);
         this.wire.onNotice((ev, payload) => this.notices.get(ev)?.(payload));
         this.stops.push(onDiskChange(() => this.queueFiles()));
     }

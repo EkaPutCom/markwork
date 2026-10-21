@@ -15,7 +15,7 @@ import type { MarkdownEditor } from './editor.js';
 import { appUrl } from './images.js';
 import type { SearchQuery, SearchResults } from '../../../src/app/protocol/search.js';
 import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree.js';
-import type { HomeData } from '../../../src/app/protocol/screen.js';
+import type { HomeData, ProgramsData } from '../../../src/app/protocol/screen.js';
 import type { PreferencesData } from '../../../src/app/protocol/preferences.js';
 import type { SchemaDialogOptions } from '../../../src/app/protocol/schema.js';
 import type { FieldDef } from '../../../src/markdown/fields.js';
@@ -39,7 +39,7 @@ export interface Tab {
     name: string;
     file: string | null;
     place: string | null;         // where it is, as the core words it (doc.title): its folder, ~ for the home folder
-    page: string;                 // 'text' or the structured page the core shows ('board', …); 'home' and 'html' for the pages that are tabs
+    page: string;                 // 'text' or the structured page the core shows ('board', …); 'home', 'programs', and 'html' for the pages that are tabs
     board: Board | null;
     groupField: string | null;    // a board grouped by a field: its name (view.notes)
     agents: boolean;              // a board lets agents be assigned to cards
@@ -47,6 +47,7 @@ export interface Tab {
     csv: string | null;           // a CSV tab: the text the core sent (view.csv)
     csvRev: number;               // how many times it sent it
     home: HomeData | null;        // a Home tab: what the page shows (view.home)
+    programs: ProgramsData | null;   // the Programs tab: what the page shows (view.programs)
     html: { file: string; root: string } | null;   // an HTML tab: the file, and the folder it may read
     runs: Record<string, string>;   // the runs of a board's cards by card text: the status of each (view.runs)
 }
@@ -134,6 +135,7 @@ export interface State {
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
     image: { src: string; title: string } | null;   // the picture shown large (view.image, or a double click)
     recent: string[];                // the Recent files of the menus (recent), latest first
+    programsMissing: number;         // needed programs that are missing (programs.missing): the mark on the sidebar's Programs
     prefs: PreferencesData | null;   // the Preferences dialog while it is open (view.prefs.open)
     info: 'shortcuts' | 'about' | null;   // the Keyboard Shortcuts or About dialog
     tree: FileTree;
@@ -159,7 +161,7 @@ export interface State {
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['send-changes', 'preferences', 'open-recent', 'home', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+const CORE_COMMANDS = new Set(['send-changes', 'preferences', 'open-recent', 'home', 'programs', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave', 'chat', 'journal', 'journal-capture', 'journal-summary']);
 const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
@@ -190,7 +192,7 @@ export function layoutOf(state: Pick<State, 'width' | 'sidebar' | 'settings' | '
 export class Client {
     private snapshot: State = {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, width: 1100, floating: { sidebar: false, chat: false }, settings: {}, commands: [], dialog: null, image: null, recent: [], prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
+        source: false, palette: false, sidebar: true, width: 1100, floating: { sidebar: false, chat: false }, settings: {}, commands: [], dialog: null, image: null, recent: [], programsMissing: 0, prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
         schema: null, csvFind: { n: 0, replace: false },
         history: { commits: [], more: false, note: '', changes: null, message: '', messageRev: 0 }, viewers: [],
@@ -423,6 +425,15 @@ export class Client {
     openWorkspaceFile(name: string): void { void this.ask('act.home.openWorkspaceFile', { name }); }
     openRun(id: number): void { void this.ask('act.home.openRun', { id }); }
     openJournal(): void { void this.ask('act.home.openJournal'); }
+
+    // ---------- Programs ----------
+
+    openPrograms(): void { void this.ask('act.programs.open'); }
+    checkPrograms(): void { void this.ask('act.programs.check'); }
+    hideSetup(): void { void this.ask('act.programs.hideSetup'); }
+    runAgentsHere(): void { void this.ask('act.programs.runHere'); }
+    openTerminalFor(machine: string | null): void { void this.ask('act.programs.openTerminal', { machine }); }
+    openProgramSite(name: string): void { void this.ask('act.programs.openSite', { name }); }
     // A task checked on Home: true = the core wrote it to its board, false = put the box back.
     async toggleTask(task: unknown, done: boolean): Promise<boolean> {
         const reply = await this.conn?.request('act.home.toggleTask', { task, done });
@@ -914,13 +925,13 @@ export class Client {
         const tab = this.tab(id);
         switch (ev) {
             case 'doc.open':
-                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, place: null, page: 'text', board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0, home: null, html: null, runs: {} }] });
+                this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, place: null, page: 'text', board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0, home: null, programs: null, html: null, runs: {} }] });
                 break;
             case 'page.open': {
                 const page = p.page as number, kind = p.kind as string, file = p.file as string | null;
                 this.set({ tabs: [...this.snapshot.tabs, {
-                    id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, place: null, page: kind, board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0,
-                    home: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null, runs: {},
+                    id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : kind === 'programs' ? 'Programs' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, place: null, page: kind, board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0,
+                    home: null, programs: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null, runs: {},
                 }] });
                 break;
             }
@@ -932,6 +943,13 @@ export class Client {
                 if (home) this.changeTab(home.id, { home: p.data as HomeData });
                 break;
             }
+            case 'view.programs': {
+                this.leaveReview();
+                const programs = this.snapshot.tabs.find(t => t.page === 'programs');
+                if (programs) this.changeTab(programs.id, { programs: p.data as ProgramsData });
+                break;
+            }
+            case 'programs.missing': this.set({ programsMissing: p.count as number }); break;
             case 'doc.reset':
                 if (!tab) break;
                 tab.mirror.reset(p.text as string, p.version as number);

@@ -49,6 +49,7 @@ export interface CoreCommands {
     closeTab(): Promise<boolean>;
     switchTab(step: number): void;
     openHome(): void;
+    openPrograms(): void;
     readonly journal: { open(): unknown; capture(): unknown; summarize(): unknown };
     open(): Promise<void>;
     load(path: string): boolean;
@@ -125,6 +126,7 @@ export const COMMANDS: readonly Command[] = [
     command('save-as', { label: _('Save As…'), keys: ['Ctrl+Shift+s'], scope: 'document', run: h => void h.saveAs() }),
     command('export-html', { label: _('Export HTML…'), keys: ['Ctrl+Shift+e'], scope: 'document', run: h => void h.exportHtml() }),
     command('home', { label: _('Home'), keys: ['Alt+Home'], run: h => h.openHome() }),
+    command('programs', { label: _('Programs'), run: h => h.openPrograms() }),
     command('journal', { label: _("Today's Journal"), keys: ['Ctrl+Alt+j'], run: h => void h.journal.open() }),
     command('journal-capture', { label: _('Add to Journal…'), keys: ['Ctrl+Shift+j'], run: h => void h.journal.capture() }),
     command('journal-summary', { label: _('Summarize Journal with Assistant'), run: h => void h.journal.summarize() }),

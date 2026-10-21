@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Home · Markwork Documentation</title>
-<meta name="description" content="The Markwork Home: a tab that summarizes recent files, today's journal, running agents, kanban due dates, and the unprocessed inbox.">
+<meta name="description" content="The Markwork Home: a tab that summarizes recent files, today's journal, running agents, kanban due dates, the unprocessed inbox, and the programs still to install.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="docs.css">
 </head>
@@ -42,6 +42,7 @@
 
 <h2 id="contents">What Home contains</h2>
 <ul>
+  <li><strong>Set up:</strong> shown at the top only while a program a feature needs is missing (see <a href="#programs">Programs</a> below), with <em>How to install</em> for each. <em>Hide</em> keeps it away until the list of missing programs changes; once everything is installed it is not there at all.</li>
   <li><strong>Continue:</strong> up to three cards of the latest files, one card per folder, so that every card represents a different place of work.</li>
   <li><strong>Journal:</strong> the <em>Today's journal</em> row with the number of notes and activities of today. Click it to open the <a href="journal.html">journal</a>, or the + button for a quick capture. It is shown when a work folder is open.</li>
   <li><strong>Agent:</strong> <code>[agent:: pi]</code> cards that are working, queued, or waiting for your answer. Click a waiting row to answer right away; a working one opens its log; a queued one opens its board. This section is only shown when an agent is running.</li>
@@ -52,6 +53,15 @@
 
 <h2 id="tasks">Finishing tasks</h2>
 <p>Check the box in front of a task to mark it done: Markwork writes <code>[x]</code> to the card on its board. If that board is open, the change goes through its editor as one undo step. The task stays visible until Home is redrawn, so a mistaken check can be undone right away. If the card has changed since Home was read, the check is rejected and the board is not touched. Click the task title to open its board.</p>
+
+<h2 id="programs">Programs</h2>
+<p>Markwork edits plain files on its own, but some features use programs it does not include. The <em>Programs</em> page (at the foot of the sidebar, or the ☰ menu → <em>Programs</em>) says for each whether it is installed, which version, and where it was found, and how to install it when it is not: a command for Linux, macOS, or Windows (the tab of your system opens first) with a copy button, <em>Open Terminal</em>, and a link to the full instructions. <em>Check again</em> looks once more; coming back to the window does too while something needed is missing. A dot on <em>Programs</em> in the sidebar shows while a needed program is missing.</p>
+<ul>
+  <li><strong>git</strong>, for the History tab, pull requests, the agent's history tools, and a worktree per card. Always needed.</li>
+  <li><strong>pi</strong>, for cards worked on by an agent (<a href="orchestrator.html">the pi orchestrator</a>).</li>
+  <li><strong>markworkd</strong>, optional: needed only when Preferences → Agents runs the agents through markworkd, on this computer or on an SSH machine. Then Home offers <em>Run in this window instead</em> when it is missing.</li>
+</ul>
+<p>Programs are looked for the way Markwork starts them: in <code>PATH</code>, then in <code>~/.local/bin</code> and the other per-user folders. When agents run on an SSH machine, pi and git are checked on that machine through its markworkd, in one of the project folders you chose there, so the check sees the same <code>PATH</code> and <code>programs</code> list the agent will; a program the daemon's <code>programs</code> list leaves out shows as <em>Not allowed by markworkd</em>. Without a project folder there, or while the machine does not answer, they show as <em>Unknown</em> rather than missing.</p>
 
 <h2 id="data">Where the data comes from</h2>
 <ul>

@@ -37,7 +37,7 @@ export async function nodePlatformTests(): Promise<void> {
 
     await test('the settings have their keys, types, and defaults', () => {
         const specs: Record<string, SettingSpec> = SETTING_KEYS;
-        eq(Object.keys(specs).length, 26, 'every key');
+        eq(Object.keys(specs).length, 27, 'every key');
         eq(specs['color-scheme'], { type: 's', default: 'system', choices: ['system', 'light', 'dark'] });
         eq([specs.autosave.default, specs.width.default, specs.tabs.default, specs.projects.default, specs['active-tab'].default], [true, 1100, [], {}, -1]);
     });

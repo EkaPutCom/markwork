@@ -3,8 +3,8 @@
 
 import {
     ArrowUp, BookOpen, Calendar, ChartColumn, ChartGantt, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, ChevronUp,
-    CircleAlert, Command, Copy, Ellipsis, EllipsisVertical, FileOutput, FileText, Folder, GitPullRequest, GripVertical, History, House,
-    Info, LayoutGrid, List, ListTree, MessageSquare, Minus, PanelLeft, Plus, RefreshCw, Search, Settings, SlidersHorizontal, Sparkles,
+    CircleAlert, CircleCheck, CircleMinus, Command, Copy, Ellipsis, EllipsisVertical, ExternalLink, FileOutput, FileText, Folder, GitPullRequest, GripVertical, History, House,
+    Info, LayoutGrid, List, ListTree, MessageSquare, Minus, Package, PanelLeft, Plus, RefreshCw, Search, Settings, SlidersHorizontal, Sparkles,
     Square, SquareKanban, SquareTerminal, Table, TextCursorInput, TextSearch, Trash2, TriangleAlert, Undo2, X, ZoomIn, ZoomOut,
     type IconNode,
 } from 'lucide';
@@ -63,6 +63,10 @@ const ICONS = {
     'sparkle': Sparkles,
     'home': House,
     'journal': BookOpen,
+    'programs': Package,
+    'program-ok': CircleCheck,
+    'program-optional': CircleMinus,
+    'external-link': ExternalLink,
 } satisfies Record<string, IconNode>;
 
 export type IconName = keyof typeof ICONS;

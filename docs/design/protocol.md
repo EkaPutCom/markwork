@@ -270,6 +270,7 @@ A snapshot replaces what the view showed before. Views here are small (a review'
 ```
 core → frontend   {"ev":"view.page","page":"board","doc":3}         showText / showPage / showHome
 core → frontend   {"ev":"view.home","data":{ ... HomeData ... }}
+core → frontend   {"ev":"view.programs","data":{ ... ProgramsData ... }}            showPrograms
 core → frontend   {"ev":"view.status","visible":true,"counts":"412 words","board":{"lists":3,"cards":17}}
 core → frontend   {"ev":"view.layout","layout":"board","structured":true}   showLayout + setStructuredState
 core → frontend   {"ev":"commands.state","enabled":["save","undo",…],"disabled":["board-add-card",…]}
@@ -315,7 +316,8 @@ A token is valid until the core replaces the view it belongs to. A token that ar
 
 | Interface (file) | Notices (core → frontend) | Actions (frontend → core) |
 | --- | --- | --- |
-| `ViewScreen` (app/views.ts) | `view.page`, `view.home`, `view.status`, `view.layout`, `commands.state`, `find.close` | none |
+| `ViewScreen` (app/views.ts) | `view.page`, `view.home`, `view.programs`, `view.status`, `view.layout`, `commands.state`, `find.close` | none |
+| `ProgramsController` (app/programs.ts) | `view.programs` (the Programs tab), `programs.missing` `{count}` (the sidebar's mark); Home's `setup` comes inside `view.home` | `act.programs.open`, `.check`, `.hideSetup`, `.runHere`, `.openTerminal` `{machine}` (null = this computer; a name not in the settings opens nothing), `.openSite` `{name}` |
 | `NotesView`, `KanbanView`, `CaptureView` (app/views.ts) | `view.notes`, `view.focusCapture` | `act.notes.edit` (6.3) |
 | `HarnessBoard`, `HarnessLogs` (app/harness.ts) | `view.runs` `{doc, runs}` (a run's status per card text), `view.runlog.open` `{run, title}`, `view.runlog.update` `{run, update}` | `act.card.menu`, `act.card.run`, `act.runlog.clear`, `act.runlog.closed` |
 | `CollabView` (app/collab.ts) | `view.collab` `{note, server, pulls}` | `act.collab.open`, `.refresh`, `.server`, `.send` |

@@ -10,6 +10,7 @@ browser to see it, the `support.js` it names is the canvas's and is not needed f
 | `Board.dc.html` | A kanban board with the sidebar closed to its rail, the layout switch, tags as badges with a colored dot, an overdue date in red |
 | `Assistant.dc.html` | The Assistant beside the editor in the dark theme: a proposal applied with its diff, the actions under an answer, the input with its context |
 | `Palette.dc.html` | The command palette (shadcn's Command) over the editor |
+| `Programs.dc.html` | Home's Set up section and the Programs page (git, pi, markworkd): agents in this window, on an SSH machine, and through markworkd on this computer (drawn 21 October 2026, plain HTML without the canvas) |
 
 The app follows it with a few differences where the app has more than the mockup draws: the sidebar's top menu has
 Home and Journal (Inbox is a kind of document, Search one of the pages at the foot), and the layout button is one menu

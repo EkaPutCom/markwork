@@ -445,6 +445,24 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('the Programs page is a tab of its own: view.programs, programs.missing, and Check again', async () => {
+        const { server, ui } = await start();
+        ok((await ui.client.request('act.programs.open', {})).ok, 'act.programs.open');
+        await until(() => ui.last('page.open')?.kind === 'programs');
+        // The check runs real lookups on this computer; whatever it finds, it ends with every program named once.
+        await until(() => (ui.last('view.programs')?.data as { checking: boolean } | undefined)?.checking === false, 15000);
+        const data = ui.last('view.programs')!.data as { machine: string; programs: { name: string; needed: boolean }[] };
+        eq(data.machine, '');
+        eq(data.programs.map(p => [p.name, p.needed]), [['git', true], ['pi', true], ['markworkd', false]]);
+        ok(typeof ui.last('programs.missing')?.count === 'number', 'the sidebar mark');
+        const before = ui.log.filter(l => l.ev === 'view.programs').length;
+        ok((await ui.client.request('act.programs.check', {})).ok, 'act.programs.check');
+        await until(() => ui.log.filter(l => l.ev === 'view.programs').length > before);
+        const bad = await ui.client.request('act.programs.openTerminal', { machine: 7 });
+        ok(!bad.ok && bad.error.code === 'bad_request', 'a machine that is not a name');
+        server.dispose();
+    });
+
     await test('Preferences: the command opens the dialog with the values, a change is written and sent again, a wrong one is refused', async () => {
         const { server, ui } = await start();
         ok((await ui.client.request('command', { name: 'preferences' })).ok, 'preferences');

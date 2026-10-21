@@ -16,6 +16,7 @@ import { below } from '../markdown/paths.js';
 
 export const UNTITLED = _('Untitled');
 export const HOME = _('Home');
+export const PROGRAMS = _('Programs');
 // The marker of the Home tab in the saved tab list (not a file path).
 const HOME_TAB = 'markwork:home';
 
@@ -128,7 +129,7 @@ export class DocumentController<E extends TextEditor> {
 
     // Tab name/title for a page.
     nameOfPage(page: Page): string {
-        return page.file ? platform().paths.basename(page.file) : HOME;
+        return page.file ? platform().paths.basename(page.file) : page.kind === 'programs' ? PROGRAMS : HOME;
     }
 
     // A document without a file and without changes has no contents that need to be kept,
@@ -313,6 +314,13 @@ export class DocumentController<E extends TextEditor> {
             return;
         }
         this.openPage({ kind: 'home', file: null, root: null });
+    }
+
+    // Switch to the Programs tab, or open it (Home's Set up section, the sidebar).
+    openPrograms(): void {
+        const open = this.pages.find(p => p.kind === 'programs');
+        if (open) this.activatePage(open);
+        else this.openPage({ kind: 'programs', file: null, root: null });
     }
 
     // Show an HTML file in its own tab, or switch to the tab it already has. root = the folder the page may read.

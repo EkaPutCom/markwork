@@ -37,6 +37,9 @@ export const SETTING_KEYS = {
     machines: { type: 'a{ss}', default: {} },           // machine name → SSH target (a host from ~/.ssh/config, or user@host)
     'machine-projects': { type: 'a{ss}', default: {} }, // "machine:project" → the project's folder on that machine
     'daemon-command': { type: 's', default: '' },       // markworkd on remote machines when not on the PATH; '' = markworkd
+    // The missing programs the user hid from Home's Set up section (ProgramsController.hideSetup); it shows again when
+    // that list changes.
+    'setup-hidden': { type: 's', default: '' },
 
     width: { type: 'i', default: 1100 },                // window size
     height: { type: 'i', default: 760 },

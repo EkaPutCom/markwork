@@ -47,6 +47,9 @@ export function Rail() {
                     <Icon name={icon} />
                 </button>
             ))}
+            <button className="button flat rail-programs" title="Programs" aria-label={state.programsMissing > 0 ? `Programs, ${state.programsMissing} missing` : 'Programs'} onClick={() => client.openPrograms()}>
+                <Icon name="programs" />{state.programsMissing > 0 && <span className="mark-dot" aria-hidden="true" />}
+            </button>
         </nav>
     );
 }
@@ -88,6 +91,9 @@ export function SideShell({ children }: { children: ReactNode }) {
                     {PAGES.map(({ page, label, icon }) => (
                         <Item key={page} icon={icon} label={label} pressed={current === page} onClick={() => client.showSidebarPage(page)} />
                     ))}
+                    <Item icon="programs" label="Programs" onClick={() => client.openPrograms()}>
+                        {state.programsMissing > 0 && <span className="mark-dot" role="img" aria-label={`${state.programsMissing} missing`} />}
+                    </Item>
                 </nav>
             )}
         </div>
