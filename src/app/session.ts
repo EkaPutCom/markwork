@@ -318,8 +318,8 @@ export class AppSession<E extends TextEditor> {
             showPreferences: () => this.preferences.open(),
         };
         return { ...core, edit: frontend.edit, openFind: replace => frontend.openFind(replace), showSearch: replace => frontend.showSearch(replace),
-            setSource: on => frontend.setSource(on), showPalette: () => frontend.showPalette(), showShortcuts: () => frontend.showShortcuts(),
-            showAbout: () => frontend.showAbout(), quit: () => frontend.quit() };
+            setSource: on => frontend.setSource(on), splitPane: side => frontend.splitPane(side), closePane: () => frontend.closePane(), moveToNextPane: () => frontend.moveToNextPane(),
+            showPalette: () => frontend.showPalette(), showShortcuts: () => frontend.showShortcuts(), showAbout: () => frontend.showAbout(), quit: () => frontend.quit() };
     }
 
     // ---------- What the frontend reports ----------

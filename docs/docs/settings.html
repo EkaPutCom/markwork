@@ -46,7 +46,7 @@
   <li>The color scheme (follow the system, light, or dark), and the sidebar and the sidebar tab that was last chosen</li>
   <li>The last folder and the tabs with files that are open (order, active tab, cursor position), including the Home tab</li>
   <li><code>home</code>: show <a href="home.html">Home</a> when no document is open; <code>recent-files</code>: the 30 files that were opened last</li>
-  <li>Focus mode, typewriter mode, and autosave; the window size</li>
+  <li><code>visual</code>: the visual editor (on), or the live view with the syntax on the cursor line (off); focus mode, typewriter mode, and autosave; the window size</li>
   <li>The Assistant panel: open or not, the model, and thinking mode</li>
   <li><code>projects</code> and <code>project-options</code>: the mapping of project name → folder for external harnesses, and its options. These (and <code>machine-projects</code>) are kept for each work folder separately: a folder opened for the first time starts with a copy of the lists of the folder before it, and Home, the Recent list, and the agents list only show what belongs to the open folder. The machines themselves are shared by every folder.</li>
   <li>Agents (Preferences → Agents): <code>harness-machine</code>, where harnesses run (in this window, on this computer through markworkd, or on a machine you added), <code>machines</code>, the SSH host of each machine, <code>machine-projects</code>, the project folders on those machines, and <code>daemon-command</code>, the markworkd command on them when it is not on the non-interactive PATH. See <a href="orchestrator.html#daemon">markworkd</a></li>
@@ -60,7 +60,7 @@
 <figure><img src="../assets/palette.png" width="1280" height="780" loading="lazy" alt="The command palette with "table" typed in, listing Insert Table and the table row and column commands"><figcaption>The command palette, filtered by a search</figcaption></figure>
 
 <h2 id="preferences">Preferences</h2>
-<p><kbd>Ctrl</kbd>+<kbd>,</kbd> opens Preferences with three pages: <em>General</em> (color scheme, focus and typewriter modes, Home, autosave, and how often to look for pull requests), <em>Assistant</em> (the model, thinking mode, and whether conversation history is saved), and <em>Agents</em> (where agents run, the machines, and the projects).</p>
+<p><kbd>Ctrl</kbd>+<kbd>,</kbd> opens Preferences with three pages: <em>General</em> (color scheme, the visual editor, focus and typewriter modes, Home, autosave, and how often to look for pull requests), <em>Assistant</em> (the model, thinking mode, and whether conversation history is saved), and <em>Agents</em> (where agents run, the machines, and the projects).</p>
 <figure><img src="../assets/preferences.png" width="1280" height="780" loading="lazy" alt="The Preferences dialog on the General page with the color scheme, focus mode, typewriter mode, Home, autosave, and collaboration settings"><figcaption>Preferences, General page</figcaption></figure><figure><img src="../assets/preferences-agents.png" width="1280" height="780" loading="lazy" alt="The Preferences dialog on the Agents page with where agents run, machines, and projects"><figcaption>Preferences, Agents page</figcaption></figure>
 <h2 id="defaults">Default values</h2>
 <div class="table-wrap"><table>
@@ -70,6 +70,7 @@
   <tr><td>Save conversation history</td><td>On (when a folder is open)</td></tr>
   <tr><td>Sidebar</td><td>Open on the Outline tab</td></tr>
   <tr><td>Dark mode</td><td>Follows the system theme</td></tr>
+  <tr><td>Visual editor</td><td>On</td></tr>
   <tr><td>Focus / typewriter</td><td>Off</td></tr>
   <tr><td>Autosave</td><td>On</td></tr>
   <tr><td>Home</td><td>On</td></tr>

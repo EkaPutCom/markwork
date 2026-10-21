@@ -145,17 +145,22 @@ export async function appSessionTests(): Promise<void> {
             wrap: marker => { calls.push(`wrap ${marker}`); },
             heading: level => { calls.push(`heading ${level}`); },
             table: op => { calls.push(`table ${op}`); },
+            lineKind: kind => { calls.push(`line ${kind}`); },
+            block: (before, after) => { calls.push(`block ${JSON.stringify(before + after)}`); },
         });
         const host = quiet<CommandHost>({ edit, switchTab: step => { calls.push(`tab ${step}`); }, setOption: (key, on) => { calls.push(`${key} ${on}`); }, setSource: on => { calls.push(`source ${on}`); } });
         const run = (id: string, arg?: boolean | string) => COMMANDS.find(c => c.id === id)!.run(host, arg);
         run('bold'); run('strike'); run('heading2'); run('table-align-center'); run('prev-tab'); run('dark', true); run('source', false);
         eq(calls, ['wrap **', 'wrap ~~', 'heading 2', 'table align-center', 'tab -1', 'dark true', 'source false']);
+        calls.length = 0;
+        run('ulist'); run('olist'); run('tasklist'); run('quote'); run('paragraph'); run('divider');
+        eq(calls, ['line bullet', 'line numbered', 'line task', 'line quote', 'line paragraph', 'block "\\n---\\n\\n"'], 'the visual editor\'s blocks');
     });
 
     await test('a command says where it runs: the editor\'s edits and the frontend\'s own windows there, the rest in the core', () => {
         const editor = COMMANDS.filter(c => c.runs === 'editor').map(c => c.id);
         for (const id of ['bold', 'undo', 'find', 'search-files', 'heading2', 'table-format', 'source', 'command-palette', 'quit']) ok(editor.includes(id), id);
-        for (const id of ['save', 'open', 'open-folder', 'image', 'layout', 'dark', 'sidebar', 'kanban-view', 'preferences']) ok(!editor.includes(id), id);
+        for (const id of ['save', 'open', 'open-folder', 'image', 'layout', 'dark', 'sidebar', 'kanban-view', 'visual', 'preferences']) ok(!editor.includes(id), id);
         const frontend: string[] = [];
         const settings = memorySettings();
         const session = new AppSession(fakeFrontend(settings, []));
@@ -166,6 +171,8 @@ export async function appSessionTests(): Promise<void> {
         run('kanban-new');
         run('quit');
         eq([settings.dark, frontend], [true, ['quit']], 'a setting is written by the core; quitting is the frontend\'s');
+        host.setOption('visual', false);
+        eq(settings.visual, false, 'the Visual Editor setting');
         ok(session.documents.active.editor.getText().includes('layout: board'), 'a new board, made by the core');
         session.dispose();
     });

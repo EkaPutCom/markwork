@@ -6,9 +6,11 @@
 import { useEffect, useState, type DragEvent } from 'react';
 import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree.js';
 import { Icon } from './Icons.js';
+import { FILE_DRAG } from './Tabs.js';
 import { useClient, useStore } from '../lib/useClient.js';
 
 const INTERNAL = 'application/x-markwork-path';
+
 
 const NEW_ITEMS: { kind: NewKind; label: string }[] = [
     { kind: 'file', label: 'New File…' }, { kind: 'folder', label: 'New Folder…' }, { kind: 'board', label: 'New Kanban Board…' },
@@ -63,7 +65,7 @@ function Row({ entry, depth, onMenu }: { entry: FolderEntry; depth: number; onMe
             <div
                 role="treeitem" tabIndex={0} aria-expanded={entry.isDir ? open : undefined} aria-selected={active}
                 className={`row${active ? ' active' : ''}${over ? ' drop' : ''}`} style={{ paddingLeft: 10 + depth * 20 }}
-                draggable onDragStart={e => { e.dataTransfer.setData(INTERNAL, entry.path); e.dataTransfer.effectAllowed = 'move'; }}
+                draggable onDragStart={e => { e.dataTransfer.setData(INTERNAL, entry.path); if (!entry.isDir) e.dataTransfer.setData(FILE_DRAG, entry.path); e.dataTransfer.effectAllowed = 'copyMove'; }}
                 onDragOver={e => { if (entry.isDir) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)} onDrop={drop}
                 onClick={activate} onContextMenu={e => onMenu(e, entry)}
                 onKeyDown={e => {

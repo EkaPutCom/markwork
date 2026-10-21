@@ -3,6 +3,7 @@
 // frontend maps it onto its own menus and keymap. A command acts only through CommandHost, so nothing here knows a widget.
 
 import { _ } from '../base/i18n.js';
+import type { LineKind } from '../markdown/editcommands.js';
 
 // The edits a command makes to the text of the active document; the frontend implements them on its editor.
 export type TableOperation =
@@ -17,12 +18,14 @@ export interface EditCommands {
     block(before: string, after: string): void;          // insert a block around the cursor or selection
     prefix(pattern: RegExp, text: string): void;         // toggle a line prefix (quote, list)
     heading(level: number): void;                        // 0 = plain paragraph
+    moveBlock(delta: -1 | 1): void;                      // move the block at the cursor up or down one place
+    lineKind(kind: LineKind): void;                      // make the selected lines a paragraph, heading, quote, or list
     table(operation: TableOperation): void;              // edit the table at the cursor
     zoomImage(): void;
 }
 
 // A view option the commands can change: the boolean settings and source mode.
-export type ViewOption = 'sidebar' | 'chat' | 'dark' | 'autosave' | 'focus' | 'typewriter' | 'source';
+export type ViewOption = 'sidebar' | 'chat' | 'dark' | 'autosave' | 'focus' | 'typewriter' | 'visual' | 'source';
 
 // What a command may ask of the frontend: its editor's edits and its own windows. These commands are carried out by the
 // frontend without asking the core (`runs: 'editor'`), so they stay instant over the app protocol.
@@ -30,7 +33,10 @@ export interface FrontendCommands {
     readonly edit: EditCommands;
     openFind(withReplace?: boolean): void;
     showSearch(withReplace?: boolean): void;   // the Search panel, with the selected text as the query
-    setSource(on: boolean): void;              // source mode, in every editor
+    setSource(on: boolean): void;              // source mode of the focused pane (the file as it is written)
+    splitPane(side: 'left' | 'right' | 'top' | 'bottom'): void;   // the focused pane's document opens in a new pane beside it
+    closePane(): void;                         // the focused pane's tabs join the pane before it
+    moveToNextPane(): void;                    // the focused pane's document moves to the next pane
     showPalette(): void;
     showShortcuts(): void;
     showAbout(): void;
@@ -153,9 +159,15 @@ export const COMMANDS: readonly Command[] = [
         label: _('Insert Table'), keys: ['Ctrl+t'], scope: 'text',
         editor: h => h.edit.block('| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| ', ' |  |  |\n'),
     }),
-    command('quote', { label: _('Quote'), keys: ['Ctrl+Shift+q'], scope: 'text', editor: h => h.edit.prefix(/^>\s?/, '> ') }),
-    command('ulist', { label: _('Bulleted List'), keys: ['Ctrl+Shift+]'], scope: 'text', editor: h => h.edit.prefix(/^[-*+]\s+/, '- ') }),
-    command('olist', { label: _('Numbered List'), keys: ['Ctrl+Shift+['], scope: 'text', editor: h => h.edit.prefix(/^\d+[.)]\s+/, '1. ') }),
+    command('quote', { label: _('Quote'), keys: ['Ctrl+Shift+q'], scope: 'text', editor: h => h.edit.lineKind('quote') }),
+    command('ulist', { label: _('Bulleted List'), keys: ['Ctrl+Shift+]'], scope: 'text', editor: h => h.edit.lineKind('bullet') }),
+    command('olist', { label: _('Numbered List'), keys: ['Ctrl+Shift+['], scope: 'text', editor: h => h.edit.lineKind('numbered') }),
+    command('tasklist', { label: _('To-do List'), keys: ['Ctrl+Shift+l'], scope: 'text', editor: h => h.edit.lineKind('task') }),
+    command('paragraph', { label: _('Normal Text'), scope: 'text', editor: h => h.edit.lineKind('paragraph') }),
+    // A blank line before the rule, so the line above never becomes a heading (text over "---" is one).
+    command('block-up', { label: _('Move Block Up'), keys: ['Ctrl+Shift+ArrowUp'], scope: 'text', editor: h => h.edit.moveBlock(-1) }),
+    command('block-down', { label: _('Move Block Down'), keys: ['Ctrl+Shift+ArrowDown'], scope: 'text', editor: h => h.edit.moveBlock(1) }),
+    command('divider', { label: _('Insert Divider'), scope: 'text', editor: h => h.edit.block('\n---\n\n', '') }),
     table('table-row-below', _('Table: Add Row Below'), 'row-below'),
     table('table-row-above', _('Table: Add Row Above'), 'row-above'),
     table('table-delete-row', _('Table: Delete Row'), 'delete-row'),
@@ -179,7 +191,12 @@ export const COMMANDS: readonly Command[] = [
     command('send-changes', { label: _('Send Changes as Pull Request…'), run: h => h.sendChanges() }),
     option('sidebar', _('Sidebar'), ['Ctrl+\\', 'Ctrl+Shift+1']),
     option('chat', _('Assistant'), ['Ctrl+Shift+a']),
+    command('split-right', { label: _('Split Editor Right'), keys: ['Ctrl+Alt+\\'], scope: 'document', editor: h => h.splitPane('right') }),
+    command('split-down', { label: _('Split Editor Down'), keys: ['Ctrl+Alt+Shift+\\'], scope: 'document', editor: h => h.splitPane('bottom') }),
+    command('move-to-next-pane', { label: _('Move Tab to Next Pane'), scope: 'document', editor: h => h.moveToNextPane() }),
+    command('close-pane', { label: _('Close Pane'), scope: 'document', editor: h => h.closePane() }),
     command('source', { label: _('Source Mode'), keys: ['Ctrl+/'], toggle: 'source', editor: (h, on) => h.setSource(asBoolean(on)) }),
+    option('visual', _('Visual Editor'), ['Ctrl+Shift+m']),
     option('focus', _('Focus Mode'), ['F8']),
     option('typewriter', _('Typewriter Mode'), ['F9']),
     command('dark', { label: _('Dark Mode'), keys: ['Ctrl+Shift+d'], toggle: 'dark', run: (h, on) => h.setOption('dark', asBoolean(on)) }),

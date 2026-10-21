@@ -47,6 +47,8 @@ export async function preferencesTests(): Promise<void> {
         view.onSet('colorScheme', 'dark');
         view.onSet('forgePollSeconds', 120);
         view.onSet('chatModel', 'deepseek-v4-pro');
+        view.onSet('visual', false);
+        eq(settings.visual, false, 'the visual editor');
         eq([settings.focus, settings.dark, settings.forgePollSeconds, settings.chatModel], [true, true, 120, 'deepseek-v4-pro']);
         eq([updates.at(-1)!.colorScheme, updates.at(-1)!.forgePollSeconds], ['dark', 120]);
         settings.typewriter = true;   // changed elsewhere: the menu, another window

@@ -11,6 +11,7 @@ export const SETTING_KEYS = {
     autosave: { type: 'b', default: true },             // autosave documents that already have a file
     typewriter: { type: 'b', default: false },
     focus: { type: 'b', default: false },
+    visual: { type: 'b', default: true },               // the editor hides Markdown syntax on the cursor line too
 
     sidebar: { type: 'b', default: true },              // sidebar open
     'sidebar-page': { type: 's', default: 'files', choices: ['files', 'search', 'outline', 'history', 'collab'] },

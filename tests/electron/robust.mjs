@@ -17,7 +17,8 @@ writeFileSync(join(notes, 'edited.md'), '');
 const exported = join(scratch, 'exported.html');
 const { steps, step } = stepper();
 
-const app = await launchApp({ scratch, notes, env: { MARKWORK_CHOOSE_FILE: exported } });
+// These scenarios are the live view's (the visual editor off): the syntax shows on the cursor line. tests/electron/visual.mjs has the visual editor's.
+const app = await launchApp({ scratch, notes, settings: { visual: false }, env: { MARKWORK_CHOOSE_FILE: exported } });
 let failed = false;
 let page;
 const errors = [];

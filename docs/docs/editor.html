@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Markdown editor · Markwork Documentation</title>
-<meta name="description" content="The Markwork Markdown editor that formats live: hidden syntax, tables as a grid, colored code blocks, images with zoom, focus, typewriter, and source modes, and HTML export.">
+<meta name="description" content="The Markwork Markdown editor that formats live: a visual editor with a toolbar and a / menu, hidden syntax, tables as a grid, colored code blocks, images with zoom, focus, typewriter, and source modes, and HTML export.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="docs.css">
 </head>
@@ -28,14 +28,29 @@
 <main class="doc">
 <p class="eyebrow">Workspace</p>
 <h1>The Markdown editor</h1>
-<p class="lead">There is no separate preview panel. The text is shown formatted right away, and the Markdown syntax appears only on the line where the cursor is.</p>
+<p class="lead">There is no separate preview panel. The text is shown formatted right away: in the visual editor, the way it looks everywhere; in the live view, with its syntax on the line where the cursor is. <em>Markdown</em> in the header bar shows the file exactly as it is written. The file is plain Markdown in every case.</p>
 
 <figure><img src="../assets/typing.gif" width="900" height="548" loading="lazy" alt="Animation of typing Markdown: a heading, bold and italic text, and a task list are shown formatted right away"><figcaption>Type Markdown and it is formatted at once</figcaption></figure>
+
+<h2 id="visual">The visual editor</h2>
+<p>For someone who does not know Markdown, or does not want to see it. It is on at first; the <em>Visual</em> / <em>Markdown</em> switch in the header bar (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>, or Preferences → General → <em>Visual editor</em>) changes it for every document (<em>Markdown</em> is the file as it is written: all the syntax, in a fixed-width font, with no grid, picture, or diagram, and <kbd>Ctrl</kbd>+<kbd>/</kbd> does the same); in a narrow window the switch makes room for the title, and the layout menu's <em>Visual Editor</em> does the same. What is written to the file is the same Markdown in each: Git, the Assistant, and other apps read it as before.</p>
+<ul>
+  <li><strong>No syntax, even on the cursor line.</strong> <code>#</code>, <code>**</code>, <code>[[ ]]</code>, and a link's address stay hidden; a list item starts with a bullet and a task with a checkbox you click.</li>
+  <li><strong>The toolbar</strong> over the text: undo and redo, the text style (normal text, headings 1–3, quote, code block), bold, italic, strikethrough, inline code, link, the three lists (bulleted, numbered, to-do), and table, image, and divider. A button is pressed when the text at the cursor has that format. With the cursor in a table, the last group adds and deletes rows and columns.</li>
+  <li><strong>The selection menu.</strong> Select text and a small menu appears over it: bold, italic, strikethrough, code, link, and <em>Ask</em>, which opens the Assistant with the selection in its context.</li>
+  <li><strong>The <kbd>/</kbd> menu.</strong> Type <kbd>/</kbd> at the start of a line or after a space to choose a block: text, headings, lists, quote, table, image, code block, divider, or link. Typing after the slash narrows the list (<code>/todo</code>), <kbd>Enter</kbd> takes the one chosen, <kbd>Esc</kbd> leaves the slash as it is.</li>
+  <li><strong>Blocks have a handle.</strong> Point at a paragraph, heading, list, quote, table, or code block and a <em>+</em> and a grip appear to its left. <em>+</em> adds an empty block after it and opens the <kbd>/</kbd> menu there; dragging the grip moves the whole block (a line shows where it will land, and the page scrolls near its top and bottom edge; <kbd>Esc</kbd> cancels). From the keyboard, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd> move the block the cursor is in. A move is one undo step, and the blank lines between blocks stay where they were.</li>
+  <li><strong>Tables are edited in the grid.</strong> A table stays a grid; click a cell and type. A cell that has the focus shows its Markdown (so <code>**bold**</code> can be changed) and shows formatted text again when you leave it. <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> move between cells and <kbd>Tab</kbd> in the last cell adds a row; <kbd>Enter</kbd> and the arrows <kbd>↑</kbd>/<kbd>↓</kbd> go to the cell below or above; <kbd>Esc</kbd> (or an arrow past the table) goes back to the text. With the cursor in a table the toolbar shows <em>Add Row Below</em>, <em>Add Column to the Right</em>, <em>Delete Row</em>, and <em>Delete Column</em>. What is typed changes only that cell of the text.</li>
+  <li><strong>Keys that act on what you see.</strong> <kbd>Home</kbd> goes to where the text of a heading or list item starts; <kbd>Backspace</kbd> there turns it back into a paragraph; <kbd>Backspace</kbd> and <kbd>Delete</kbd> next to a hidden <code>**</code> remove the letter beside it, not the marker.</li>
+  <li><strong>Markdown still works.</strong> <code>#</code>, <code>-</code>, <code>1.</code>, <code>[ ]</code>, and <code>&gt;</code> at the start of a line, and <code>**bold**</code> typed out, become what they mean as soon as they are complete; the shortcuts below are the same in both editors.</li>
+</ul>
+<p><strong>Every kind of document has the switch.</strong> For a board, a list or inbox, a table, a calendar, a timeline, a gallery, a chart, or a CSV file, <em>Visual</em> is the document drawn that way and <em>Markdown</em> is its text, as it is written, frontmatter and all. The layout menu next to it still picks which layout <em>Visual</em> shows.</p>
+<p>A code block shows its fences while the cursor is in it, and in the live view a table shows its text while the cursor is in it (see <a href="limitations.html#editor">Limitations</a>).</p>
 
 <h2 id="format">Live formatting</h2>
 <ul>
   <li>Headings, <strong>bold</strong>, <em>italic</em>, strikethrough (<code>~~</code>), highlight (<code>==</code>), inline code, links, and images are formatted right away.</li>
-  <li>Syntax such as <code>**</code>, <code>==</code>, or <code>[]()</code> appears again when the cursor enters its line.</li>
+  <li>In the live view (Preferences → General → <em>Visual editor</em> off, then leave source mode), syntax such as <code>**</code>, <code>==</code>, or <code>[]()</code> appears again when the cursor enters its line.</li>
   <li>Nested quotes <code>&gt;&gt;</code> are indented further, up to three levels.</li>
   <li>Links are opened with <kbd>Ctrl</kbd>+click; relative paths are computed from the folder of the file, and links to Markdown files open in a Markwork tab.</li>
 </ul>
@@ -63,7 +78,8 @@
 <ul>
   <li><kbd>Enter</kbd> continues a list, a numbered list, a task list, and a quote; <kbd>Enter</kbd> on an empty item ends it.</li>
   <li><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> set the indentation of an item.</li>
-  <li>A <code>- [ ]</code> box can be checked with a click.</li>
+  <li>A <code>- [ ]</code> box can be checked with a click (a checkbox in the visual editor).</li>
+  <li>The toolbar, the <kbd>/</kbd> menu, and their shortcuts turn a line into another kind of list or into a heading: its prefix is replaced, so a bulleted item becomes a numbered one rather than both.</li>
 </ul>
 
 <h2 id="tables">Tables as a grid</h2>
@@ -86,11 +102,22 @@
 <h2 id="modes">View modes</h2>
 <div class="table-wrap"><table>
   <tr><th>Mode</th><th>Function</th><th>Shortcut</th></tr>
+  <tr><td>Visual / Markdown</td><td>Edit the text as it looks, or with its syntax on the cursor line</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd></td></tr>
   <tr><td>Focus</td><td>Dim paragraphs other than the one being edited</td><td><kbd>F8</kbd></td></tr>
   <tr><td>Typewriter</td><td>The active line is always in the middle of the screen</td><td><kbd>F9</kbd></td></tr>
-  <tr><td>Source</td><td>Show all the syntax; images, table grids, and diagrams are hidden</td><td><kbd>Ctrl</kbd>+<kbd>/</kbd></td></tr>
+  <tr><td>Markdown (source)</td><td>The file as it is written: all the syntax in a fixed-width font; images, table grids, and diagrams are hidden</td><td><kbd>Ctrl</kbd>+<kbd>/</kbd></td></tr>
   <tr><td>Dark</td><td>Automatically follows the system theme the first time it is opened</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd></td></tr>
 </table></div>
+
+<h2 id="panes">Panes (split editor)</h2>
+<p>The editor can be split into panes side by side or one above the other, as in VS Code. Each pane has its own tabs, its own <em>Visual</em> / <em>Markdown</em> switch, and its own formatting toolbar, so the same file can be Visual on the left and Markdown on the right. With a single pane, the editor looks as it always did.</p>
+<ul>
+  <li><strong>Split</strong> with the button in the header or in a pane's bar, the pane's <em>⋯</em> menu, a tab's right-click menu, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>\</kbd> (to the right) and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>\</kbd> (down). The document of the pane opens in the new pane too.</li>
+  <li><strong>Drag a tab</strong> to the edge of a pane to make a new pane there (the area that would be taken is marked before you let go), onto the middle or the tab bar of another pane to move it there, or within its bar to reorder it. <strong>Drag a file from the Files view</strong> the same way to open it in a pane.</li>
+  <li><strong>One document in two panes is one document.</strong> A change in one pane is in the other at once, and there is one Saved / Unsaved state. Undo is per pane. Closing a tab in one pane keeps the document while another pane shows it.</li>
+  <li><strong>The pane that has the focus</strong> (marked on top) is the active one: the header, the status bar, the commands, and the Assistant's context follow it. <kbd>Ctrl</kbd>+<kbd>Tab</kbd> moves between the tabs of that pane.</li>
+  <li>The <em>⋯</em> menu also has <em>Move Tab to Next Pane</em>, <em>Join All Panes</em> (every tab in one pane), and <em>Close Pane</em> (its tabs join the pane before it). The line between two panes is dragged to resize them, and none gets smaller than a quarter of an equal share.</li>
+</ul>
 
 <h2 id="saving">Saving and exporting</h2>
 <ul>

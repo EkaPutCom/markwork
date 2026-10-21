@@ -42,7 +42,8 @@ writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
 const tabsNow = async () => `      tabs: ${JSON.stringify(await page.getByRole('tab').evaluateAll(els => els.map(e => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)))}`;
 const { steps, step } = stepper({ after: process.env.MARKWORK_TRACE ? tabsNow : undefined });
 
-const app = await launchApp({ scratch, notes });   // its data folder holds the Trash of this run only
+// These scenarios are the live view's (the visual editor off): the syntax shows on the cursor line. tests/electron/visual.mjs has the visual editor's.
+const app = await launchApp({ scratch, notes, settings: { visual: false } });   // its data folder holds the Trash of this run only
 let failed = false;
 let page;
 try {

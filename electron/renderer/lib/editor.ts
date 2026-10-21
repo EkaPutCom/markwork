@@ -7,8 +7,8 @@ import { Annotation, EditorSelection, EditorState, StateEffect, StateField, type
 import { Decoration, EditorView, drawSelection, keymap, type DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, redo, undo } from '@codemirror/commands';
 import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
-import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type Styles } from '../../../src/markdown/highlight.js';
-import { block, continueBlock, enterInTable, heading, indentListItem, isInCodeBlock, link, runTableCommand, tabInTable, togglePrefix, wrap,
+import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type HighlightResult, type Styles } from '../../../src/markdown/highlight.js';
+import { block, continueBlock, enterInTable, heading, indentListItem, isInCodeBlock, lineKindOf, link, runTableCommand, setLineKind, tabInTable, togglePrefix, wrap,
     type TableCommand, type TextEdit, type TextState } from '../../../src/markdown/editcommands.js';
 import { acceptCompletion, autocompletion, type CompletionContext } from '@codemirror/autocomplete';
 import { linkAt, taskToggleAt, wikiLinkAt } from '../../../src/markdown/clicks.js';
@@ -17,12 +17,14 @@ import { conflictDecorations } from './conflicts.js';
 import { createFindBar, findBarOf } from './findbar.js';
 import { DiagramWidget } from './diagrams.js';
 import { diagramKind } from '../../../src/markdown/diagram.js';
-import { TableWidget, tableOf } from './tables.js';
+import { TableWidget, focusCell, gridAt, tableOf } from './tables.js';
 import { CodeBoxWidget, codeColors, spansOf } from './codecolor.js';
 import { PicturesWidget, pictures, type PictureItem, type ZoomedImage } from './images.js';
 import { cpToU16, makeU16Map } from '../../../src/markdown/offsets.js';
 import type { EditCommands, TableOperation } from '../../../src/app/commands.js';
 import type { Change } from '../../../src/app/protocol/messages.js';
+import { blockHandle, moveCursorBlock } from './blockhandle.js';
+import { LIST_PREFIX_PX, listPrefix, selectionMenu, setVisual, slashGlyph, slashSource, visualEditing, visualMode, type Concealed } from './visual.js';
 
 // A change that comes from the core (or opens a text), not from the user: it is not reported back as an edit.
 const External = Annotation.define<boolean>();
@@ -101,19 +103,32 @@ function linesOf(doc: Text) {
 // decorations are rebuilt when the text, the cursor line, or source mode changes.
 // The pictures of each parsed text by line (from 0), for the Zoom Image command.
 const pictureLines = new WeakMap<Text, Map<number, PictureItem[]>>();
+// The parse of each text, for what the toolbar shows at the cursor.
+const parses = new WeakMap<Text, HighlightResult<string>>();
 
-function syntaxField(events: EditorEvents, languageLoaded: () => void): Extension {
+// The visual editor is on, and the editor does not show the source.
+const visualOn = (state: EditorState): boolean => state.field(visualMode) && !state.field(sourceMode);
+
+// What the decorations of a state draw, and what they hide (visual.ts).
+interface Drawn { decorations: DecorationSet; concealed: Concealed }
+
+function syntaxField(events: EditorEvents, languageLoaded: () => void): StateField<Drawn> {
     const cache = new HighlightCache<string>(styles, hanging);
     let parsed: { doc: Text; result: ReturnType<HighlightCache<string>['update']> } | null = null;
 
-    const build = (state: EditorState): DecorationSet => {
+    const build = (state: EditorState): Drawn => {
         const { doc } = state;
         if (parsed?.doc !== doc) parsed = { doc, result: cache.update(linesOf(doc)) };
         const { result } = parsed;
+        parses.set(doc, result);
+        const visual = visualOn(state);
+        const hiddenRanges: ReturnType<Decoration['range']>[] = [];
+        const prefixes = new Map<number, number>();
+        const prefixEnd = (lineFrom: number, end: number) => prefixes.set(lineFrom, Math.max(prefixes.get(lineFrom) ?? end, end));
         const text = doc.toString();
         const u16 = makeU16Map(text);
         const ranges: ReturnType<Decoration['range']>[] = [];
-        // A table is a grid unless the cursor is in it (or the editor shows the source).
+        // A table is a grid unless the cursor is in it (or the editor shows the source); the visual editor keeps the grid and edits its cells.
         const sel = state.selection.main;
         const selFirst = doc.lineAt(Math.min(sel.anchor, sel.head)).number - 1, selLast = doc.lineAt(Math.max(sel.anchor, sel.head)).number - 1;
         const conflicts = conflictDecorations(doc);
@@ -136,9 +151,9 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
         const dimmed = (first: number, last: number) => paragraph !== null && (last < paragraph[0] || first > paragraph[1]);
         if (!state.field(sourceMode)) {
             for (const t of result.tables) {
-                if (t.end >= doc.lines || (selLast >= t.start && selFirst <= t.end)) continue;
+                if (t.end >= doc.lines || (!visual && selLast >= t.start && selFirst <= t.end)) continue;
                 const lines = Array.from({ length: t.end - t.start + 1 }, (_, k) => doc.line(t.start + k + 1).text);
-                ranges.push(Decoration.replace({ widget: new TableWidget(lines, tableOf(lines), dimmed(t.start, t.end)), block: true }).range(doc.line(t.start + 1).from, doc.line(t.end + 1).to));
+                ranges.push(Decoration.replace({ widget: new TableWidget(lines, tableOf(lines), dimmed(t.start, t.end), visual), block: true }).range(doc.line(t.start + 1).from, doc.line(t.end + 1).to));
                 for (let k = t.start; k <= t.end; k++) grids.add(k);
             }
             // A code block is a box that scrolls sideways, with its colors inside.
@@ -161,10 +176,18 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
             if (i >= doc.lines || grids.has(i)) return;
             const line = doc.line(i + 1);
             for (const [name, a, b] of spans) {
-                if (name.startsWith(INDENT_PREFIX)) { ranges.push(indentDeco(Number(name.slice(INDENT_PREFIX.length))).range(line.from)); continue; }
+                // The visual editor gives a list item's lines the hanging indent of its own marker (below).
+                if (name.startsWith(INDENT_PREFIX)) { if (!visual) ranges.push(indentDeco(Number(name.slice(INDENT_PREFIX.length))).range(line.from)); continue; }
                 const from = u16(result.starts[i] + a), to = Math.min(u16(result.starts[i] + b), line.to);
                 if (LINE_STYLES.has(name.replace('cm-md-', ''))) ranges.push(lineDeco(`${name}-line`).range(line.from));
                 if (to > from) ranges.push(mark(name).range(from, to));
+                if (visual && name === 'cm-md-bullet' && to > from) {
+                    const item = listPrefix(ranges, line.text, line.from, from);
+                    if (!item) continue;
+                    prefixEnd(line.from, item.end);
+                    // Not in a quote, which has its own margin: the lines that wrap under the item start where its text does.
+                    if (from - line.from === item.indent.length) ranges.push(indentDeco(measurePrefix(item.indent, '', '', '', '') + LIST_PREFIX_PX).range(line.from));
+                }
             }
         });
         ranges.push(...codeColors(result.codeBlocks.filter(b => !boxed.has(b)), (block, i) => u16(block.start) + i, languageLoaded));
@@ -182,19 +205,25 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Extensio
             const first = doc.lineAt(Math.min(main.anchor, main.head)).number - 1, last = doc.lineAt(Math.max(main.anchor, main.head)).number - 1;
             for (const [a, b, r0, r1] of result.markers) {
                 if (grids.has(r0)) continue;
-                if (r1 < first || r0 > last) {
+                // The visual editor hides a one-line marker on the cursor line too; a code block's fences still show
+                // while the cursor is in the block.
+                if (r1 < first || r0 > last || (visual && r0 === r1)) {
                     const from = u16(a), to = u16(b);
-                    if (to > from) ranges.push(hidden.range(from, to));
+                    if (to <= from) continue;
+                    ranges.push(hidden.range(from, to));
+                    hiddenRanges.push(hidden.range(from, to));
+                    const line = doc.lineAt(from);
+                    if (visual && from === line.from) prefixEnd(line.from, to);
                 }
             }
         }
-        return Decoration.set(ranges, true);
+        return { decorations: Decoration.set(ranges, true), concealed: { hidden: Decoration.set(hiddenRanges, true), prefixes } };
     };
 
-    return StateField.define<DecorationSet>({
+    return StateField.define<Drawn>({
         create: build,
-        update: (value, tr) => tr.docChanged || tr.selection || tr.effects.some(e => e.is(setSource) || e.is(setFocus) || e.is(refresh)) ? build(tr.state) : value,
-        provide: f => EditorView.decorations.from(f),
+        update: (value, tr) => tr.docChanged || tr.selection || tr.effects.some(e => e.is(setSource) || e.is(setFocus) || e.is(setVisual) || e.is(refresh)) ? build(tr.state) : value,
+        provide: f => EditorView.decorations.from(f, drawn => drawn.decorations),
     });
 }
 
@@ -249,7 +278,8 @@ function clickPlace(view: EditorView, event: MouseEvent) {
 }
 
 // Note names after [[ (markdown/wikilink.ts decides what matches). Choosing one closes the link with ]] unless it is there.
-function wikiSuggestions(events: EditorEvents): Extension {
+// In the visual editor "/" offers the blocks too (visual.ts).
+function suggestions(events: EditorEvents): Extension {
     const source = async (context: CompletionContext) => {
         const line = context.state.doc.lineAt(context.pos);
         const query = wikiQuery(line.text.slice(0, context.pos - line.from));
@@ -273,7 +303,7 @@ function wikiSuggestions(events: EditorEvents): Extension {
         });
         return options.length ? { from: context.pos - query.length, options, filter: false } : null;
     };
-    return autocompletion({ override: [source], icons: false, defaultKeymap: true, interactionDelay: 0 });
+    return autocompletion({ override: [source, slashSource(events.run, visualOn)], icons: false, defaultKeymap: true, interactionDelay: 0, addToOptions: [slashGlyph] });
 }
 
 // A click on a task box flips it; Ctrl (or Cmd) + click on a link opens it.
@@ -314,6 +344,31 @@ export interface EditorEvents {
     zoomImage(image: ZoomedImage): void;     // a picture was double-clicked, or the Zoom Image command ran
     baseDir(): string | null;        // the folder of the document: where its relative picture paths start
     noteNames(): Promise<string[]>;  // the notes a [[ may link to, relative to the folder
+    run(id: string, arg?: boolean): void;    // run a command of the window (the visual editor's menus)
+    format(format: FormatAt): void;  // what the text at the cursor is changed: the toolbar shows it
+}
+
+// What the text at the cursor is: the kind of its line (markdown/editcommands.ts LineKind, or 'table' or 'code') and
+// the inline formats around it (bold, italic, strike, code, link, mark).
+export interface FormatAt { block: string; marks: string[] }
+
+const INLINE_FORMATS = new Set(['bold', 'italic', 'strike', 'code', 'link', 'mark']);
+
+function formatAt(state: EditorState): FormatAt {
+    const head = state.selection.main.head, line = state.doc.lineAt(head), i = line.number - 1;
+    const result = parses.get(state.doc);
+    if (!result) return { block: lineKindOf(line.text).kind, marks: [] };
+    if (result.tables.some(t => i >= t.start && i <= t.end)) return { block: 'table', marks: [] };
+    if (result.codeBlocks.some(b => i >= b.startLine && i <= b.endLine)) return { block: 'code', marks: [] };
+    const column = result.starts[i] + Array.from(line.text.slice(0, head - line.from)).length;
+    const marks = new Set<string>();
+    for (const [name, a, b] of result.spans[i] ?? []) {
+        const format = name.replace('cm-md-', '');
+        // A span covers the formatted text without its markers: a cursor at either end types into it.
+        if (column < result.starts[i] + a || column > result.starts[i] + b) continue;
+        if (format === 'bolditalic') { marks.add('bold'); marks.add('italic'); } else if (INLINE_FORMATS.has(format)) marks.add(format);
+    }
+    return { block: lineKindOf(line.text).kind, marks: [...marks].sort() };
 }
 
 export class MarkdownEditor {
@@ -326,12 +381,16 @@ export class MarkdownEditor {
     }
 
     private fresh(text: string): EditorState {
+        const drawn = syntaxField(this.events, () => this.rebuild());
         return EditorState.create({
             doc: text,
             extensions: [
-                history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, syntaxField(this.events, () => this.rebuild()), search({ top: true, createPanel: createFindBar }), highlightSelectionMatches(),
-                clicks(this.events), wikiSuggestions(this.events),
+                history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, visualMode, drawn, search({ top: true, createPanel: createFindBar }), highlightSelectionMatches(),
+                clicks(this.events), suggestions(this.events),
+                visualEditing(state => state.field(drawn).concealed, visualOn), selectionMenu(this.events.run, visualOn), blockHandle(visualOn),
                 EditorView.contentAttributes.of({ 'aria-label': 'Editor', spellcheck: 'false' }),
+                // Source mode is the file as it is written: plain text in a fixed-width font, every marker showing.
+                EditorView.editorAttributes.compute([sourceMode], state => ({ class: state.field(sourceMode) ? 'cm-source' : '' })),
                 keymap.of([
                     { key: 'Tab', run: acceptCompletion },
                     { key: 'Enter', run: v => !v.state.selection.main.empty ? false : run(v, s => enterInTable(s) ?? (inCode(v) ? null : continueBlock(s))) },
@@ -348,6 +407,8 @@ export class MarkdownEditor {
                     if (update.selectionSet || update.docChanged) {
                         const head = update.state.selection.main.head, line = update.state.doc.lineAt(head);
                         this.events.moved(line.number, head - line.from + 1);
+                        this.reportFormat(update.state);
+                        this.focusTableCell(update.state);
                     }
                 }),
             ],
@@ -364,8 +425,11 @@ export class MarkdownEditor {
         this.current = id;
         this.view.setState(saved && saved.doc.toString() === text ? saved : this.fresh(text));
         this.setFocusMode(this.focusOn);
+        this.setVisualMode(this.visualIsOn);
     }
     private current = 0;
+    // The document it shows now (0: none yet).
+    get shown(): number { return this.current; }
 
     forget(id: number): void { this.states.delete(id); }
 
@@ -373,6 +437,7 @@ export class MarkdownEditor {
     reset(text: string): void {
         this.view.setState(this.fresh(text));
         this.setFocusMode(this.focusOn);
+        this.setVisualMode(this.visualIsOn);
         this.states.delete(this.current);
     }
 
@@ -439,7 +504,40 @@ export class MarkdownEditor {
         requestAnimationFrame(() => this.view.dispatch({ effects: EditorView.scrollIntoView(this.view.state.selection.main.head, { y: 'center' }) }));
     }
 
-    setSourceMode(on: boolean): void { this.view.dispatch({ effects: setSource.of(on) }); }
+    setSourceMode(on: boolean): void { this.view.dispatch({ effects: setSource.of(on) }); this.reportFormat(this.view.state); }
+
+    // The visual editor: the syntax hidden on the cursor line too, bullets and checkboxes, the selection and / menus.
+    private visualIsOn = false;
+    setVisualMode(on: boolean): void {
+        this.visualIsOn = on;
+        if (this.view.state.field(visualMode) !== on) this.view.dispatch({ effects: setVisual.of(on) });
+        this.reportFormat(this.view.state);
+    }
+
+    // The cursor is in a table of the visual editor (a click on text above it, the Table button, an arrow key): the cell it
+    // is in takes the focus, since the text there is hidden behind the grid and typing would go nowhere.
+    private focusTableCell(state: EditorState): void {
+        const sel = state.selection.main;
+        if (!sel.empty || !visualOn(state) || !this.view.hasFocus) return;
+        const result = parses.get(state.doc);
+        const line = state.doc.lineAt(sel.head), i = line.number - 1;
+        const table = result?.tables.find(t => i >= t.start && i <= t.end);
+        if (!table) return;
+        requestAnimationFrame(() => {
+            if (this.view.state.doc !== state.doc || !this.view.hasFocus) return;
+            const grid = gridAt(this.view, table.start, i, line.text, sel.head - line.from);
+            if (grid) focusCell(grid.wrap, grid.place);
+        });
+    }
+
+    // Tell the toolbar what the text at the cursor is, when that changed.
+    private lastFormat = '';
+    private reportFormat(state: EditorState): void {
+        const format = formatAt(state), key = JSON.stringify(format);
+        if (key === this.lastFormat) return;
+        this.lastFormat = key;
+        this.events.format(format);
+    }
 
     // The commands the toolbar, the menu, and the keys run (markdown/editcommands.ts), on this editor.
     readonly edit: EditCommands = {
@@ -450,6 +548,8 @@ export class MarkdownEditor {
         block: (before, after) => { run(this.view, s => block(s, before, after)); },
         prefix: (pattern, text) => { run(this.view, s => togglePrefix(s, pattern, text)); },
         heading: level => { run(this.view, s => heading(s, level)); },
+        lineKind: kind => { run(this.view, s => setLineKind(s, kind)); },
+        moveBlock: delta => { moveCursorBlock(this.view, delta); },
         table: operation => {
             const result = runTableCommand(stateOf(this.view), TABLE_OPERATIONS[operation]);
             if (result.ok) applyEdit(this.view, result.edit);

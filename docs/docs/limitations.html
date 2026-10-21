@@ -96,9 +96,10 @@
 
 <h2 id="editor">The editor and export</h2>
 <ul>
+  <li>The visual editor: a code block shows its fences while the cursor is in it, a table is edited cell by cell (a cell is one line, and there is no alignment button for a column yet), and a numbered list keeps its numbers as typed. A link's address is hidden, so it is changed in Markdown (the header switch). A block is a paragraph, heading, list, quote, table, or code block, found from the blank lines between them, so a loose list (items with blank lines between them) is several blocks. Pasting HTML from a web page pastes its text, not its formatting.</li>
   <li>An animated GIF only shows its first frame; an image changed on disk is reloaded after the app is opened again.</li>
   <li>Long table cell text is cut with “…”, and the contents of a cell are only one line.</li>
-  <li>There is no side-by-side view or tab reordering by dragging yet.</li>
+  <li>Panes: the layout is not remembered when the app is closed, undo is per pane (an edit made in the other pane is not undone from this one), and a board, list, or table in a pane that does not have the focus needs a click to get it before it can be used.</li>
   <li><code>[[ ]]</code> links: there is no backlinks panel or graph yet; renaming or moving a file does not update the links that point to it; the <code>![[ ]]</code> embeds and the <code>^id</code> block references are not supported yet; the <code>[[</code> suggestions are only file names, not headings yet.</li>
   <li>HTML export does not embed local images and does not include the code block colors yet.</li>
   <li>CSV tables: a file of more than a million cells opens as text, and a long file takes about as long to open as a Markdown file of the same size. There is no sorting, filtering, column types, or formulas yet, the search in a table matches inside one cell at a time, and neither the assistant nor the search across the folder includes <code>.csv</code> files. Dragging a row or column to a place that is not on screen works only by holding the pointer near the edge of the table and moving it a little; there is no keyboard way to move a row or column yet.</li>

@@ -60,6 +60,8 @@ export class AppSettings {
     set chatSave(value: boolean) { this.set('chat-save', value); }
     get typewriter(): boolean { return this.bool('typewriter'); }
     set typewriter(value: boolean) { this.set('typewriter', value); }
+    get visual(): boolean { return this.bool('visual'); }
+    set visual(value: boolean) { this.set('visual', value); }
     get focus(): boolean { return this.bool('focus'); }
     set focus(value: boolean) { this.set('focus', value); }
     get autosave(): boolean { return this.bool('autosave'); }

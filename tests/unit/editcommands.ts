@@ -4,7 +4,7 @@
 
 import {
     applyChanges, block, continueBlock, enterInTable, heading, indentListItem, isInCodeBlock, link, mapPosition,
-    runTableCommand, tabInTable, togglePrefix, wrap, type TextEdit, type TextState,
+    lineKindOf, runTableCommand, setLineKind, tabInTable, togglePrefix, wrap, type TextEdit, type TextState,
 } from '../../src/markdown/editcommands.js';
 import { section, test, eq, ok } from '../core/framework.js';
 
@@ -64,12 +64,31 @@ export function editCommandTests(): void {
         eq(after('x\n- a‸\ny', s => togglePrefix(s, /^[-*+]\s+/, '- ')), 'x\na‸\ny', 'only the cursor line');
     });
 
+    test('lineKindOf: headings, quotes, the three lists, and plain text', () => {
+        eq(['## Two', '> said', '- item', '  3. third', '- [x] done', 'text', ''].map(l => lineKindOf(l).kind),
+            ['h2', 'quote', 'bullet', 'numbered', 'task', 'paragraph', 'paragraph']);
+        eq(lineKindOf('  - [ ] todo'), { kind: 'task', prefix: 8, indent: '  ' });
+    });
+
+    test('setLineKind: replaces the prefix a line has, and the same kind again makes a paragraph', () => {
+        eq(after('- it‸em', s => setLineKind(s, 'numbered')), '1. it‸em', 'not "1. - item"');
+        eq(after('## Ti‸tle', s => setLineKind(s, 'quote')), '> Ti‸tle');
+        eq(after('wo‸rk', s => setLineKind(s, 'task')), '- [ ] wo‸rk');
+        eq(after('- [x] wo‸rk', s => setLineKind(s, 'task')), 'wo‸rk');
+        eq(after('  - it‸em', s => setLineKind(s, 'task')), '  - [ ] it‸em', 'a list item keeps its indent');
+        eq(after('  - it‸em', s => setLineKind(s, 'h1')), '# it‸em');
+        eq(after('‸', s => setLineKind(s, 'bullet')), '- ‸', 'an empty line, as the / menu leaves it');
+        eq(after('·a\n- b\nc‸', s => setLineKind(s, 'numbered')), '1. ·a\n2. b\n3. c‸');
+        eq(after('> a‸', s => setLineKind(s, 'paragraph')), 'a‸');
+    });
+
     test('heading: set, change, and the same level back to a paragraph', () => {
         eq(after('Ti‸tle', s => heading(s, 2)), '## Ti‸tle');
         eq(after('## Ti‸tle', s => heading(s, 3)), '### Ti‸tle');
         eq(after('## Ti‸tle', s => heading(s, 2)), 'Ti‸tle');
         eq(after('‸Title', s => heading(s, 1)), '# ‸Title', 'a cursor at the line start moves past the marker');
         eq(after('Ti‸tle', s => heading(s, 0)), 'Ti‸tle');
+        eq(after('- [ ] Ti‸tle', s => heading(s, 2)), '## Ti‸tle', 'a list item\'s prefix is replaced');
     });
 
     test('Enter continues a list, a numbered list, a task, and a quote', () => {

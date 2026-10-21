@@ -18,7 +18,6 @@ import { Collab, SendChangesDialog, TokenDialog } from './components/Collab.js';
 import { History, HistoryViewers } from './components/History.js';
 import { LogViewer, RunLogs } from './components/LogViewer.js';
 import { AgentAsks, PullRequestDialog } from './components/Harness.js';
-import { Tabs } from './components/Tabs.js';
 import { Icon, type IconName } from './components/Icons.js';
 import { label, matches } from './lib/keys.js';
 import { Rail, SideShell } from './components/Sidebar.js';
@@ -29,6 +28,8 @@ import {
 import { cn } from './lib/utils.js';
 import { useClient, useStore } from './lib/useClient.js';
 import { layoutOf } from './lib/client.js';
+import { EditingMode, STRUCTURED_PAGES } from './components/EditingMode.js';
+import { currentPane, isSolo } from './lib/panes.js';
 
 // The title of the header: where the document is, as a breadcrumb, and its name, which is the Document Menu button
 // (Save, Save As, Autosave, Export, the recent files). Home and an empty window have a plain title.
@@ -161,6 +162,7 @@ function HeaderBar() {
     const layoutItems: MenuItem[] = [
         ...LAYOUTS.flatMap(({ layout, name, icon }): MenuItem[] => [...layout === '' ? [{ id: '-' }] : [], { id: 'layout', arg: layout, label: name, icon, checked: shown.layout === layout }]),
         { id: '-' },
+        ...named('visual', { check: true, checked: s.settings.visual !== false }),
         ...named('source', { check: true, checked: s.source }),
         ...named('focus', { check: true, checked: s.settings.focus === true }),
         ...named('typewriter', { check: true, checked: s.settings.typewriter === true }),
@@ -179,6 +181,7 @@ function HeaderBar() {
             <Title items={documentItems} />
             <SaveState />
             <span className="spacer" />
+            {tab && isSolo(s.panes) && !s.pullShown && !s.reviewShown && ['text', 'csv', ...STRUCTURED_PAGES].includes(tab.page) && <EditingMode tab={tab} pane={currentPane(s.panes)} />}
             {tab && s.layout.layout !== null && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -189,6 +192,9 @@ function HeaderBar() {
                     <MenuContent items={layoutItems} className="layout-menu min-w-52" />
                 </DropdownMenu>
             )}
+            <Button variant="ghost" size="icon-sm" title={`Split Editor Right (${label(keyOf('split-right') ?? '')})`} aria-label="Split Editor Right" onClick={() => client.run('split-right')}>
+                <Icon name="split-right" />
+            </Button>
             <div className="split-button">
                 <Button size="sm" title="New Document (Ctrl+N)" onClick={() => client.run('new')}><Icon name="document-new" /><span className="label-text">New</span></Button>
                 <DropdownMenu>
@@ -312,7 +318,6 @@ export function App() {
                     <HeaderBar />
                     <div className={`content${panels.chat.floats ? ' float-chat' : ''}`}>
                         <div className="editor-group">
-                            <Tabs />
                             <EditorArea />
                             <StatusBar />
                         </div>

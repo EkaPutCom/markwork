@@ -4,7 +4,7 @@
 import { _electron as electron } from 'playwright-core';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -28,7 +28,12 @@ export const gitIn = cwd => (...args) => execFileSync('git', args, { cwd, env: {
 
 // The app on `notes`. Its settings and data stay in the scratch folder: XDG_CONFIG_HOME and XDG_DATA_HOME are read on
 // macOS and Windows too (platform/node/dirs.ts), so one test file never sees what another left behind.
-export function launchApp({ scratch, notes, env = {} }) {
+// `settings` are written to the settings file first (the visual editor is on at first; a test of the live view turns it off).
+export function launchApp({ scratch, notes, env = {}, settings }) {
+    if (settings) {
+        mkdirSync(join(scratch, 'config', 'markwork-electron'), { recursive: true });
+        writeFileSync(join(scratch, 'config', 'markwork-electron', 'settings.json'), JSON.stringify(settings));
+    }
     return electron.launch({
         args: [repo, notes], cwd: repo,
         env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), XDG_DATA_HOME: join(scratch, 'data'), ...env },

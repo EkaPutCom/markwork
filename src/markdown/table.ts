@@ -122,6 +122,16 @@ export function cellStart(line: string, col: number): number {
     return cells[col]?.start ?? line.trimEnd().length;
 }
 
+// The text of a cell as it is written in a line: a pipe that is not already escaped becomes \|, and a line break a space.
+export const escapeCell = (text: string): string => text.replace(/\r?\n/g, ' ').replace(/(\\.)|\|/g, (m, escaped) => escaped ?? '\\|');
+
+// The change that makes cell `col` of a table line hold `text`, as a range of the line (UTF-16) and what replaces it; the
+// rest of the line, spaces and other cells, stays as it was. A column the line does not have gives null.
+export function setCellText(line: string, col: number, text: string): { from: number; to: number; insert: string } | null {
+    const cell = splitRow(line)[col];
+    return cell ? { from: cell.start, to: cell.end, insert: escapeCell(text) } : null;
+}
+
 // ---------- Reading and writing ----------
 
 const alignOf = (cell: string): Align => {
