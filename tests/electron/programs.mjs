@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { scratchFolder, launchApp, stepper } from './support.mjs';
 
@@ -86,7 +86,10 @@ try {
 } catch {
     failed = true;
 } finally {
-    await app.close();
+    // As the other files do: closing may not end the app on macOS, so it is given a moment and then stopped.
+    await Promise.race([app.close().catch(() => {}), new Promise(r => setTimeout(r, 5000))]);
+    try { app.process().kill(); } catch { /* already gone */ }
+    rmSync(scratch, { recursive: true, force: true });
 }
 console.log(`Programs: ${steps.length} steps`);
-if (failed) process.exit(1);
+process.exit(failed ? 1 : 0);
