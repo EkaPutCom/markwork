@@ -25,15 +25,15 @@ const installPi = () => {
 };
 
 const { steps, step } = stepper();
-// On Linux and macOS the app gets a PATH with git and the system's folders, and a home folder of its own (the lookup also
-// tries ~/.local/bin). Windows keeps its environment, since Electron does not start without its profile folders; only the
-// folders that hold a pi leave the PATH.
+// On Linux the app gets a PATH with git and the system's folders, and a home folder of its own (the lookup also tries
+// ~/.local/bin). macOS and Windows keep their environment: with another home Electron does not start on Windows, and on
+// macOS the keychain behind safeStorage waits for a dialog no one answers. There only the folders that hold a pi leave
+// the PATH (Windows spells the variable Path; the same name is replaced, so the app does not get two).
 const hasPi = dir => ['pi', 'pi.cmd', 'pi.exe', 'pi.bat'].some(name => existsSync(join(dir, name)));
-// Windows spells the variable Path; the same name is replaced, so the app does not get two.
 const pathKey = Object.keys(process.env).find(k => k.toUpperCase() === 'PATH') ?? 'PATH';
-const env = windows
-    ? { [pathKey]: [bin, ...(process.env[pathKey] ?? '').split(delimiter).filter(dir => dir && !hasPi(dir))].join(delimiter) }
-    : { HOME: home, PATH: [bin, dirname(git), '/usr/bin', '/bin'].join(delimiter) };
+const env = process.platform === 'linux'
+    ? { HOME: home, PATH: [bin, dirname(git), '/usr/bin', '/bin'].join(delimiter) }
+    : { [pathKey]: [bin, ...(process.env[pathKey] ?? '').split(delimiter).filter(dir => dir && !hasPi(dir))].join(delimiter) };
 const app = await launchApp({ scratch, notes, env });
 let failed = false;
 try {
