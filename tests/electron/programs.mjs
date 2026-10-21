@@ -1,10 +1,10 @@
 // Home's Set up section and the Programs page, in the real window: with pi missing Home says so and the sidebar's
 // Programs is marked; Hide keeps the section away; the page shows each program; pi installed meanwhile is found by Check
-// again. The app sees a PATH with git and nothing else of the machine's, and a home folder of its own.
+// again.
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { scratchFolder, launchApp, stepper } from './support.mjs';
 
@@ -25,8 +25,15 @@ const installPi = () => {
 };
 
 const { steps, step } = stepper();
-// HOME, USERPROFILE, and APPDATA too: the lookup also tries the user's own bin folders (~/.local/bin, %APPDATA%\npm).
-const env = { HOME: home, USERPROFILE: home, APPDATA: join(scratch, 'appdata'), PATH: [bin, dirname(git), ...windows ? [process.env.SystemRoot ? join(process.env.SystemRoot, 'System32') : ''] : ['/usr/bin', '/bin']].filter(Boolean).join(delimiter) };
+// On Linux and macOS the app gets a PATH with git and the system's folders, and a home folder of its own (the lookup also
+// tries ~/.local/bin). Windows keeps its environment, since Electron does not start without its profile folders; only the
+// folders that hold a pi leave the PATH.
+const hasPi = dir => ['pi', 'pi.cmd', 'pi.exe', 'pi.bat'].some(name => existsSync(join(dir, name)));
+// Windows spells the variable Path; the same name is replaced, so the app does not get two.
+const pathKey = Object.keys(process.env).find(k => k.toUpperCase() === 'PATH') ?? 'PATH';
+const env = windows
+    ? { [pathKey]: [bin, ...(process.env[pathKey] ?? '').split(delimiter).filter(dir => dir && !hasPi(dir))].join(delimiter) }
+    : { HOME: home, PATH: [bin, dirname(git), '/usr/bin', '/bin'].join(delimiter) };
 const app = await launchApp({ scratch, notes, env });
 let failed = false;
 try {
