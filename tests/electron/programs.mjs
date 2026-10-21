@@ -24,7 +24,9 @@ const installPi = () => {
     else { writeFileSync(join(bin, 'pi'), '#!/bin/sh\necho 1.0.3\n'); chmodSync(join(bin, 'pi'), 0o755); }
 };
 
-const { steps, step } = stepper();
+// Each step is printed as it ends, and a file that hangs ends itself, so the log says where.
+const { steps, step } = stepper({ echo: true });
+setTimeout(() => { console.log('  ✗ the Programs test did not end within 2 minutes'); process.exit(1); }, 120_000).unref();
 // On Linux the app gets a PATH with git and the system's folders, and a home folder of its own (the lookup also tries
 // ~/.local/bin). macOS and Windows keep their environment: with another home Electron does not start on Windows, and on
 // macOS the keychain behind safeStorage waits for a dialog no one answers. There only the folders that hold a pi leave
@@ -86,5 +88,5 @@ try {
 } finally {
     await app.close();
 }
-console.log(`Programs\n${steps.join('\n')}`);
+console.log(`Programs: ${steps.length} steps`);
 if (failed) process.exit(1);
