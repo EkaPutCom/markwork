@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Home } from './Home.js';
+import { Programs } from './Programs.js';
 import { HtmlPage } from './HtmlPage.js';
 import { Board } from './Board.js';
 import { Calendar } from './Calendar.js';
@@ -74,7 +75,7 @@ export function EditorArea() {
     const board = tab?.board ?? null;
     const structured = !!tab && !!board && ['board', 'inbox', 'table', 'calendar', 'timeline', 'gallery', 'chart'].includes(tab.page);
     const csv = tab?.page === 'csv' && tab.csv !== null;
-    const isPage = tab?.page === 'home' || tab?.page === 'html';
+    const isPage = tab?.page === 'home' || tab?.page === 'programs' || tab?.page === 'html';
     return (
         <div className="editor-area">
             <div ref={host} className="text-editor" hidden={!tab || structured || csv || isPage || pullShown} />
@@ -83,6 +84,7 @@ export function EditorArea() {
             {!pullShown && structured && tab && board && <StructuredPage key={`${tab.id}:${tab.page}`} tab={tab} board={board} />}
             {!pullShown && csv && tab && <Csv key={tab.id} text={tab.csv!} rev={tab.csvRev} find={csvFind} />}
             {!pullShown && tab?.page === 'home' && <Home data={tab.home} />}
+            {!pullShown && tab?.page === 'programs' && <Programs data={tab.programs} />}
             {!pullShown && tab?.page === 'html' && tab.html && <HtmlPage key={tab.id} id={tab.id} file={tab.html.file} root={tab.html.root} />}
             {!tab && !pullShown && <Welcome />}
         </div>

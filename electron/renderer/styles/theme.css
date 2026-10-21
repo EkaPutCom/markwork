@@ -373,6 +373,46 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .home-row .text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .home-row .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-row .subtitle, .home-row .suffix { font-size: 12px; color: var(--muted-foreground); }
+
+/* Home's Set up section and the Programs page (Programs.tsx): a program's state is said in words, the color only follows it. */
+.setup-head { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 2px; }
+.setup-head h2 { margin: 0; }
+.setup-list { border: 1px solid color-mix(in oklab, var(--warning) 45%, transparent); background: color-mix(in oklab, var(--warning) 8%, var(--background)); }
+.setup-list .home-row { border-bottom-color: color-mix(in oklab, var(--warning) 30%, transparent); }
+.setup-list .home-row:last-child .title { font-size: 12px; color: var(--muted-foreground); white-space: normal; }
+.setup-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.side-nav .item .mark-dot, .rail-programs .mark-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); }
+.rail-programs { position: relative; }
+.rail-programs .mark-dot { position: absolute; top: 4px; right: 4px; }
+.program-status { width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+.program-status.ok { color: var(--success); background: color-mix(in oklab, var(--success) 14%, transparent); }
+.program-status.warn { color: var(--warning); background: color-mix(in oklab, var(--warning) 16%, transparent); }
+.program-status.optional { color: var(--muted-foreground); background: var(--muted); }
+.programs-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+.programs-header > div { flex: 1; min-width: 0; }
+.programs-header h1 { margin: 0; font-size: 26px; color: var(--heading); }
+.programs-header p { margin: 4px 0 0; color: var(--muted-foreground); }
+.programs-checking { color: var(--muted-foreground); }
+.programs-group { font-size: 13px; font-weight: 600; color: var(--muted-foreground); margin: 24px 0 10px; display: flex; align-items: center; gap: 8px; }
+.programs-group .where { font-family: var(--font-mono); font-weight: 500; color: var(--foreground); background: var(--muted); border-radius: 6px; padding: 1px 7px; }
+.program { display: flex; gap: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.program.warn { border-color: color-mix(in oklab, var(--warning) 45%, transparent); }
+.program .body { flex: 1; min-width: 0; }
+.program .name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.program h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--heading); }
+.program-badge.ok { color: var(--success); background: color-mix(in oklab, var(--success) 14%, transparent); }
+.program-badge.warn { color: var(--warning); background: color-mix(in oklab, var(--warning) 16%, transparent); }
+.program .purpose { margin: 4px 0 0; color: var(--muted-foreground); }
+.program .meta { margin: 8px 0 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.program-install { margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--muted); }
+.program-install p { margin: 0 0 8px; font-size: 13px; color: var(--muted-foreground); }
+.program-install p.then { margin: 8px 0 0; }
+.program-tabs { display: inline-flex; gap: 2px; padding: 3px; margin-bottom: 8px; border-radius: 8px; background: var(--background); }
+.program-tabs button { font-size: 12px; padding: 3px 10px; border-radius: 6px; color: var(--muted-foreground); }
+.program-tabs button[aria-selected=true] { background: var(--muted); color: var(--foreground); }
+.program-command { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--muted-foreground); }
+.program-command code { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 12.5px; color: var(--foreground); }
+.program-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .resume { display: flex; gap: 12px; padding: 12px; flex-wrap: wrap; }
 .resume .card { flex: 1; min-width: 160px; text-align: left; padding: 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); box-shadow: 0 1px 2px rgb(0 0 0 / .05); display: flex; flex-direction: column; }
 .resume .card:hover { background: var(--row-hover); }

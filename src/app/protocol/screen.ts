@@ -7,6 +7,7 @@
 // that the counts are the text's.
 
 import type { HomeData } from '../home.js';
+import type { InstallWay, ProgramInfo, ProgramsData, SetupData } from '../programs.js';
 import type { Layout } from '../../markdown/layout.js';
 import type { StructuredPage, ViewScreen } from '../views.js';
 import type { Wire } from './messages.js';
@@ -18,7 +19,7 @@ export type StatusCounts =
     | { kind: 'inbox'; items: number }
     | { kind: 'csv'; rows: number; columns: number };
 
-type Screen = Pick<ViewScreen<ProtocolEditor>, 'showHome' | 'showPageTab' | 'showText' | 'showPage' | 'closeFind' | 'setStatusVisible' | 'setCounts' | 'setBoardCounts'
+type Screen = Pick<ViewScreen<ProtocolEditor>, 'showHome' | 'showPrograms' | 'showPageTab' | 'showText' | 'showPage' | 'closeFind' | 'setStatusVisible' | 'setCounts' | 'setBoardCounts'
     | 'setInboxCounts' | 'setCsvCounts' | 'showLayout' | 'setStructuredState' | 'enableActions'>;
 
 export class ProtocolScreen implements Screen {
@@ -35,6 +36,7 @@ export class ProtocolScreen implements Screen {
 
     // Home and an HTML file are tabs of their own (page.open); what a tab shows is told by its id.
     showHome(data: HomeData): void { this.wire.notify('view.home', { data }); }
+    showPrograms(data: ProgramsData): void { this.wire.notify('view.programs', { data }); }
     showPageTab(id: number): void { this.wire.notify('view.page', { page: 'html', doc: id }); }
     showText(doc: number): void { this.wire.notify('view.page', { page: 'text', doc }); }
     showPage(page: StructuredPage | 'csv'): void { this.wire.notify('view.page', { page, doc: this.active() }); }
@@ -84,5 +86,5 @@ export class ProtocolScreen implements Screen {
     }
 }
 
-// What Home shows, as it crosses the wire (the renderer takes the type from here).
-export type { HomeData };
+// What Home and the Programs page show, as it crosses the wire (the renderer takes the types from here).
+export type { HomeData, InstallWay, ProgramInfo, ProgramsData, SetupData };

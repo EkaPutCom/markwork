@@ -16,6 +16,7 @@ import { _, fmt } from '../base/i18n.js';
 import { missingField, withField } from '../markdown/layouthint.js';
 import { errorMessage, type Doc, type DocumentHost, type TextEditor } from './document.js';
 import type { HomeData } from './home.js';
+import type { ProgramsData } from './programs.js';
 import { commandIds } from './commands.js';
 
 // Which commands apply to which view is part of the registry (app/commands.ts).
@@ -48,8 +49,8 @@ export interface ViewDialogs {
 }
 
 export type LayoutPage = 'calendar' | 'timeline' | 'gallery' | 'chart';
-export type View = 'board' | 'inbox' | 'table' | LayoutPage | 'csv' | 'home' | 'html' | 'text';
-export type StructuredPage = Exclude<View, 'csv' | 'home' | 'html' | 'text'>;
+export type View = 'board' | 'inbox' | 'table' | LayoutPage | 'csv' | 'home' | 'programs' | 'html' | 'text';
+export type StructuredPage = Exclude<View, 'csv' | 'home' | 'programs' | 'html' | 'text'>;
 
 // The page that shows each layout.
 const PAGE_OF: Record<Layout, View> = { board: 'board', list: 'inbox', table: 'table', calendar: 'calendar', timeline: 'timeline', gallery: 'gallery', chart: 'chart' };
@@ -81,6 +82,7 @@ export interface CaptureView extends NotesView {
 // record of what it last showed, not something it asks the screen.
 export interface ViewScreen<E extends TextEditor> {
     showHome(data: HomeData): void;
+    showPrograms(data: ProgramsData): void;
     showPageTab(id: number): void;   // the content of an HTML page tab
     showText(id: number): void;      // the document's own editor page, with the cursor shown and focused
     showPage(page: StructuredPage | 'csv'): void;
@@ -103,6 +105,7 @@ export interface ViewHost<E extends TextEditor> extends DocumentHost<E> {
     readonly csv: CsvPage;
     readonly layouts: Record<LayoutPage, NotesView>;   // the calendar, timeline, gallery, and chart pages
     readonly homePage: { data(): HomeData };
+    readonly programsPage: { data(): ProgramsData };
     readonly journal: { recordBoard(file: string | null, before: Board, after: Board): void };
     newDocument(text: string): void;   // fill the active empty document, or a new tab, with text
     showRuns(file: string | null): void;   // the board view gets the runs of the cards of board `file` (none for null)
@@ -152,8 +155,9 @@ export class ViewController<E extends TextEditor> {
     get tableMode(): boolean { return this.page === 'table'; }
     get csvMode(): boolean { return this.page === 'csv'; }
     get homeMode(): boolean { return this.page === 'home'; }
-    // A page that is not a view of a document is shown (Home, an HTML file): no text, nothing to save.
-    get pageMode(): boolean { return this.page === 'home' || this.page === 'html'; }
+    get programsMode(): boolean { return this.page === 'programs'; }
+    // A page that is not a view of a document is shown (Home, Programs, an HTML file): no text, nothing to save.
+    get pageMode(): boolean { return this.page === 'home' || this.page === 'programs' || this.page === 'html'; }
     // A board, inbox, table, calendar, timeline, gallery, or chart is shown (a view of the text, not the text itself).
     get structuredMode(): boolean { return isStructuredPage(this.page); }
 
@@ -202,10 +206,13 @@ export class ViewController<E extends TextEditor> {
         const { screen } = this.host;
         const doc = this.host.active();
         this.page = view;
-        screen.setStatusVisible(view !== 'home' && view !== 'html');
+        screen.setStatusVisible(view !== 'home' && view !== 'programs' && view !== 'html');
         if (view === 'home') {
             screen.closeFind();
             screen.showHome(this.host.homePage.data());
+        } else if (view === 'programs') {
+            screen.closeFind();
+            screen.showPrograms(this.host.programsPage.data());
         } else if (view === 'html') {
             screen.closeFind();
             screen.showPageTab(this.host.page()!.id);
@@ -232,7 +239,7 @@ export class ViewController<E extends TextEditor> {
         }
         screen.setStructuredState(isStructuredPage(view) || view === 'csv');
         // The layout button and menu show the layout the document is in (Text for the text view, hidden for Home and a CSV table).
-        screen.showLayout(view === 'home' || view === 'html' || view === 'csv' ? null : view === 'text' ? '' : layoutOf(doc.editor.getText()) ?? '');
+        screen.showLayout(view === 'home' || view === 'programs' || view === 'html' || view === 'csv' ? null : view === 'text' ? '' : layoutOf(doc.editor.getText()) ?? '');
         this.syncActionsEnabled();
     }
 

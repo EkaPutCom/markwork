@@ -110,6 +110,7 @@ class FakeConn {
                 }
                 break;
             case 'ping': if (!d.silent) this.reply(req.id); break;
+            case 'info': this.reply(req.id, { daemon: 'markworkd 0.1.0', machine: 'fakebox', pid: 1, started_at: 1, state_dir: '/state', queued: 0, running: 0, exited: 0, max_active_runs: 4 }); break;
             case 'spawn': d.spawn(this, req as SpawnSpec & { id: string }); break;
             case 'write': this.write(req, run); break;
             case 'close_stdin': if (run) { run.stdinClosed = true; this.reply(req.id); } else this.fail(req.id, 'not_found'); break;
@@ -168,6 +169,9 @@ export class FakeDaemon {
     // What `git` answers when a run of it is spawned (Markwork asks git about worktrees on the daemon's machine); by
     // default the folder is not a repository, so cards work in the project folder as before.
     git: (args: string[], cwd: string) => { status: number; out?: string; err?: string } = () => ({ status: 128, err: 'fatal: not a git repository (or any of the parent directories): .git' });
+    // What another program run to its end answers (`pi --version`), or how the daemon refuses it; null leaves it running,
+    // like an agent.
+    answer: (program: string, args: string[]) => { status: number; out?: string; err?: string } | { refuse: string; message: string } | null = () => null;
     private opens = 0;
 
     get openCount(): number { return this.opens; }
@@ -182,6 +186,8 @@ export class FakeDaemon {
 
     spawn(c: FakeConn, req: SpawnSpec & { id: string }): void {
         if (this.failSpawnWith) { c.fail(req.id, this.failSpawnWith, `cannot start: ${this.failSpawnWith}`); return; }
+        const given = req.program === 'git' ? null : this.answer(req.program, req.args);
+        if (given && 'refuse' in given) { c.fail(req.id, given.refuse, given.message); return; }
         if (!this.runs.has(req.run)) {
             this.runs.set(req.run, { spec: req, state: 'running', records: [], exit: null, stderr: '', inputs: [], stdinClosed: false, stopped: false, forgotten: false });
             this.append(req.run, 'start', 'pid 1');
@@ -193,6 +199,10 @@ export class FakeDaemon {
             const answer = this.git(args, req.cwd);
             for (const line of (answer.out ?? '').split('\n').filter((l, i, all) => i < all.length - 1 || l)) this.out(req.run, line);
             this.finish(req.run, { reason: 'exited', code: answer.status }, answer.err ?? '');
+        }
+        if (given && !this.runs.get(req.run)!.exit) {
+            for (const line of (given.out ?? '').split('\n').filter(Boolean)) this.out(req.run, line);
+            this.finish(req.run, { reason: 'exited', code: given.status }, given.err ?? '');
         }
     }
 

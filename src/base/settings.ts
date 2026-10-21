@@ -137,6 +137,8 @@ export class AppSettings {
     set machines(value: Record<string, string>) { this.set('machines', value); }
     get daemonCommand(): string { return this.str('daemon-command'); }
     set daemonCommand(value: string) { this.set('daemon-command', value); }
+    get setupHidden(): string { return this.str('setup-hidden'); }
+    set setupHidden(value: string) { this.set('setup-hidden', value); }
 }
 
 // The properties a test or a screenshot may preset.

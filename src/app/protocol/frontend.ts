@@ -155,6 +155,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             showReview: () => wire.notify('view.review.show'),
             // The Recent list of the menus: the frontend draws it.
             setRecent: (paths: string[]) => wire.notify('recent', { paths }),
+            setProgramsMissing: (count: number) => wire.notify('programs.missing', { count }),
             toast: (message: string, action?: ToastButton) => wire.notify('toast', { text: message, action: action ?? null }),
             openUri: (uri: string) => wire.notify('open.uri', { uri }),
             // The frontend decides whether a desktop notification is right (protocol.md 9.1): it knows its window.

@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { dayPart } from '../../../src/markdown/home.js';
 import type { HomeData } from '../../../src/app/protocol/screen.js';
 import { Icon } from './Icons.js';
+import { StatusIcon } from './Programs.js';
+import { Button } from '@/ui/button';
 import { useClient } from '../lib/useClient.js';
 
 const SHOWN_TASKS = 7;
@@ -38,6 +40,27 @@ function Row({ title, subtitle, suffix, onClick, prefix, action }: { title: stri
             {suffix && <span className="suffix">{suffix}</span>}
             {action}
         </div>
+    );
+}
+
+// The needed programs that are missing, above everything else; gone once they are installed or hidden.
+function Setup({ setup }: { setup: NonNullable<HomeData['setup']> }) {
+    const client = useClient();
+    return (
+        <section className="home-section setup-section" aria-label="Set up">
+            <div className="setup-head"><h2>Set up</h2><Button variant="ghost" size="xs" title="Hide until something else is missing" onClick={() => client.hideSetup()}>Hide</Button></div>
+            <div className="home-list setup-list">
+                {setup.items.map(p => (
+                    <Row key={p.id} title={p.state === 'not-allowed' ? `${p.name} is not allowed by markworkd on ${p.machine}` : p.machine ? `${p.name} is not installed on ${p.machine}` : `${p.name} is not installed`}
+                        subtitle={p.purpose} prefix={<StatusIcon program={p} />}
+                        action={<span className="setup-actions">
+                            <Button variant="outline" size="xs" onClick={() => client.openPrograms()}>How to install</Button>
+                            {setup.runHere && p.name === 'markworkd' && <Button variant="ghost" size="xs" onClick={() => client.runAgentsHere()}>Run in this window instead</Button>}
+                        </span>} />
+                ))}
+                <Row title={setup.note || 'See every program and where it was found'} action={<Button variant="ghost" size="xs" onClick={() => client.openPrograms()}>All programs<Icon name="pan-end" size={14} /></Button>} />
+            </div>
+        </section>
     );
 }
 
@@ -81,6 +104,7 @@ export function Home({ data }: { data: HomeData | null }) {
                 <h1>{data.name ? `${part}, ${data.name}` : part}</h1>
                 <p>{now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </header>
+            {data.setup && <Setup setup={data.setup} />}
             {data.resume.length > 0 && (
                 <Section title="Continue">
                     <div className="resume">

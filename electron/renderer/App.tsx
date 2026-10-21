@@ -43,7 +43,7 @@ function Title({ items }: { items: MenuItem[] }) {
     return (
         <nav className="title" aria-label="Breadcrumb" title={place ?? undefined}>
             {crumbs.map((crumb, i) => <span key={i} className="contents">{<span className="crumb">{crumb}</span>}{separator}</span>)}
-            {tab.page === 'home' ? <span className="name">{tab.name}</span> : (
+            {tab.page === 'home' || tab.page === 'programs' ? <span className="name">{tab.name}</span> : (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button className="title-button" title="Document Menu" aria-label="Document Menu">
@@ -61,7 +61,7 @@ function Title({ items }: { items: MenuItem[] }) {
 function SaveState() {
     const s = useStore();
     const tab = s.tabs.find(t => t.id === s.active);
-    if (!tab || tab.page === 'home' || tab.page === 'html') return null;
+    if (!tab || tab.page === 'home' || tab.page === 'programs' || tab.page === 'html') return null;
     if (tab.mirror.modified) return <span className="state"><span className="dot" aria-hidden="true" />Unsaved</span>;
     if (!tab.file) return null;
     return <span className="state"><Icon name="emblem-ok" size={12} />Saved</span>;
@@ -166,7 +166,7 @@ function HeaderBar() {
         ...named('typewriter', { check: true, checked: s.settings.typewriter === true }),
     ];
     const mainItems: MenuItem[] = [
-        ...named('home'), ...named('journal'), ...named('journal-capture'), ...named('journal-summary'),
+        ...named('home'), ...named('programs'), ...named('journal'), ...named('journal-capture'), ...named('journal-summary'),
         { id: '-' }, ...named('kanban-view', { check: true, checked: s.layout.structured }), ...named('fields-edit'), ...named('send-changes'),
         { id: '-' }, ...named('dark', { check: true, checked: s.settings['color-scheme'] === 'dark' }), ...named('preferences'), ...named('shortcuts'), ...named('about'), ...named('quit'),
     ];

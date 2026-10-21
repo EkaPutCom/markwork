@@ -17,6 +17,7 @@ import { HarnessController, type HarnessDialogs, type HarnessHost } from './harn
 import type { Openers } from '../orchestrator/hub.js';
 import { HarnessReviewController, type ReviewDialogs, type ReviewHost } from './harnessreview.js';
 import { HomeController, existingRecent, type HomeHost } from './home.js';
+import { ProgramsController } from './programs.js';
 import { ViewController, type ViewDialogs, type ViewHost } from './views.js';
 import { NoteLinks, type NoteHost } from './notes.js';
 import { DocumentController, type DocumentsHost } from './documents.js';
@@ -37,7 +38,7 @@ export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & 
     & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost & SearchHost<E> & OutlineHost<E> & PreferencesHost;
 
 // What the session answers itself, from the controllers it owns.
-type SessionProvided = 'harness' | 'journal' | 'homePage' | 'workspace' | 'active' | 'page' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
+type SessionProvided = 'harness' | 'journal' | 'homePage' | 'programsPage' | 'setup' | 'workspace' | 'active' | 'page' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
     | 'fileBack' | 'newDocument' | 'showDocument' | 'saveAll' | 'showChat' | 'boardShown' | 'updateBoardFile' | 'record' | 'agentHost' | 'runs'
     | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted' | 'settings' | 'toast' | 'boardNow' | 'commitBoard'
     | 'openFile' | 'projectName' | 'isActive' | 'refreshTree' | 'filesMoved' | 'showPull' | 'showReview' | 'showRuns';
@@ -58,6 +59,7 @@ export type FrontendHost<E extends TextEditor> = Omit<ControllerHost<E>, Session
     showSidebar(page: SidebarPage): void;   // open the side panel at a page (a folder was opened: the Files tab)
     showImage(path: string): void;          // an image chosen in the Files tab: the frontend's viewer
     setRecent(paths: string[]): void;       // the Recent list of the menus: files that still exist, latest first
+    setProgramsMissing(count: number): void;   // how many needed programs are missing: the mark on the sidebar's Programs
     showPull(): void;                       // the content area shows the pull request page
     showReview(): void;                     // the content area shows the review page
 };
@@ -108,6 +110,7 @@ export class AppSession<E extends TextEditor> {
     readonly harness: HarnessController;
     readonly review: HarnessReviewController;
     readonly homePage: HomeController;
+    readonly programs: ProgramsController;
     readonly views: ViewController<E>;
     readonly notes: NoteLinks;
     readonly documents: DocumentController<E>;
@@ -143,6 +146,14 @@ export class AppSession<E extends TextEditor> {
             if (error) host.toast(error);
         };
         this.homePage = new HomeController(host);
+        this.programs = new ProgramsController({
+            settings: this.settings,
+            connection: machine => this.harness.hub.connection(machine),
+            machineState: machine => this.harness.hub.state(machine),
+            refresh: () => { this.refreshHome(); this.refreshPrograms(); frontend.host.setProgramsMissing(this.programs.missingCount); },
+            openUri: uri => frontend.host.openUri(uri),
+            toast: message => this.toast(message),
+        });
         this.views = new ViewController(host, dialogs.views);
         this.notes = new NoteLinks(host);
         this.assistant = new AssistantController(host, {
@@ -171,6 +182,10 @@ export class AppSession<E extends TextEditor> {
             openFolder: { value: (path: string) => void this.openFolder(path) },
             fileSaved: { value: (path: string) => this.fileSaved(path) },
         }) as DocumentsHost<E>);
+        // Where agents run decides what is needed, and on an SSH machine where pi and git are looked for.
+        this.stops.push(this.settings.onChanged(['harness-machine', 'machines', 'machine-projects'], () => {
+            if (this.programs.wasChecked) void this.programs.check();
+        }));
         this.stops.push(this.settings.onChanged(['autosave', 'recent-files'], key => {
             if (key === 'recent-files') this.refreshRecent();
             else if (this.settings.autosave) for (const doc of this.documents.all) this.autosaver.queue(doc);
@@ -186,6 +201,8 @@ export class AppSession<E extends TextEditor> {
             journal: get(() => this.journal),
             chat: get(() => this.assistant),
             homePage: get(() => this.homePage),
+            programsPage: get(() => this.programs),
+            setup: value(() => this.programs.setup()),
             workspace: get(() => this.workspace),
             active: value((): Doc<E> => this.documents.active),
             page: value((): Page | null => this.documents.page),
@@ -276,6 +293,7 @@ export class AppSession<E extends TextEditor> {
             closeTab: () => docs.closeTab(),
             switchTab: step => docs.switchTab(step),
             openHome: () => docs.openHome(),
+            openPrograms: () => docs.openPrograms(),
             journal: this.journal,
             open: async () => {
                 const path = await choose({ title: _('Open Markdown'), filters: ['markdown', 'all'] });
@@ -332,6 +350,7 @@ export class AppSession<E extends TextEditor> {
         this.views.sync();
         this.refreshTitle((this.documents.page ?? this.documents.active).id);
         this.refreshRecent();
+        if (!this.programs.wasChecked) void this.programs.check();   // the sidebar's mark, before Home or the page asks
         this.syncHistory();
         // Agents that kept working while Markwork was closed are found again once the window is up.
         this.stops.push(platform().scheduler.idle(() => { this.harness.reconnect(); return false; }));
@@ -384,6 +403,7 @@ export class AppSession<E extends TextEditor> {
         if (!focused) return;
         this.syncHistory(true);
         this.refreshHome();
+        this.programs.recheckMissing();
     }
 
     // The side panel opened at a page, switched pages, or closed (null).
@@ -547,6 +567,11 @@ export class AppSession<E extends TextEditor> {
     // Redraw Home if it is shown; the data is recomputed from the files every time.
     refreshHome(): void {
         if (this.documents.page?.kind === 'home' && this.views.homeMode) this.frontend.host.screen.showHome(this.homePage.data());
+    }
+
+    // Redraw the Programs page if it is shown.
+    refreshPrograms(): void {
+        if (this.documents.page?.kind === 'programs' && this.views.programsMode) this.frontend.host.screen.showPrograms(this.programs.data());
     }
 
     // Stop the timers and background work of the controllers (the frontend destroys its editors and widgets).

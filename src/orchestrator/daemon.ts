@@ -197,11 +197,17 @@ export function adoptRun(conn: DaemonConnection, run: string, fromSeq: number, h
 // when a call asks for them (pushing with an access token); the daemon allows none by default, and keeps them in the run's
 // record on its disk until the run is forgotten, which happens as soon as git has ended.
 export function daemonGit(conn: DaemonConnection, opts: DaemonSpawnerOptions = {}): GitRunner {
-    return (cwd, args, env) => new Promise<GitRun | null>(resolve => {
-        const spawn = daemonSpawner(conn, env && Object.keys(env).length ? { ...opts, env } : opts);
+    return (cwd, args, env) => daemonRun(conn, ['git', '-c', 'core.quotePath=false', ...args], cwd, env && Object.keys(env).length ? { ...opts, env } : opts);
+}
+
+// A program run to its end through the daemon (git, `pi --version`): its status, output, and stderr; null when it could not
+// be asked for. A program the daemon refuses ends with 127 and the daemon's reason as stderr.
+export function daemonRun(conn: DaemonConnection, argv: string[], cwd: string, opts: DaemonSpawnerOptions = {}): Promise<GitRun | null> {
+    return new Promise<GitRun | null>(resolve => {
+        const spawn = daemonSpawner(conn, opts);
         const out: string[] = [];
         try {
-            const proc = spawn(['git', '-c', 'core.quotePath=false', ...args], cwd, {
+            const proc = spawn(argv, cwd, {
                 line: text => { out.push(text); },
                 exit: (status, err) => resolve({ status, out: out.length ? `${out.join('\n')}\n` : '', err }),
             });
