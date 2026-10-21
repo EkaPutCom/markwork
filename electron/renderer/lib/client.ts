@@ -112,6 +112,13 @@ export function discardPrompt(kind: ChangeKind, path: string): { heading: string
     return { heading: `Discard the changes to “${name}”?`, detail: 'The file goes back to the last commit. This cannot be undone.', accept: 'Discard Changes' };
 }
 
+// The sections of the Files view, in order, and what each starts as.
+export type SectionId = 'editors' | 'folder' | 'outline' | 'timeline';
+export interface SectionState { open: boolean; hidden: boolean; size: number }
+export const SECTIONS: readonly SectionId[] = ['editors', 'folder', 'outline', 'timeline'];
+const SECTION_DEFAULTS: Record<SectionId, Pick<SectionState, 'open' | 'size'>> = { editors: { open: true, size: 1 }, folder: { open: true, size: 2 }, outline: { open: true, size: 1 }, timeline: { open: false, size: 1 } };
+export const SIDEBAR_WIDTH = { min: 200, max: 480, default: 280 };
+
 export interface Toast { text: string; action: { label: string; token: number } | null; at: number }
 
 export interface State {
@@ -478,6 +485,29 @@ export class Client {
         if (layoutOf(this.snapshot).sidebar.floats) this.float('sidebar', !this.snapshot.floating.sidebar);
         else this.setSetting('sidebar', !this.snapshot.sidebar);
     }
+
+    // The sections of the Files view: which are folded or hidden, and their shares of its height. The settings keep them as
+    // JSON the window writes (settingskeys 'sidebar-sections'); a missing or broken value is the defaults.
+    sidebarSections(): Record<SectionId, SectionState> {
+        let saved: Partial<Record<SectionId, Partial<SectionState>>> = {};
+        try { const parsed: unknown = JSON.parse(String(this.snapshot.settings['sidebar-sections'] || '{}')); if (parsed && typeof parsed === 'object') saved = parsed as typeof saved; } catch { /* the defaults */ }
+        const result = {} as Record<SectionId, SectionState>;
+        for (const id of SECTIONS) {
+            const was = saved[id], base = SECTION_DEFAULTS[id];
+            result[id] = { open: typeof was?.open === 'boolean' ? was.open : base.open, hidden: was?.hidden === true,
+                size: typeof was?.size === 'number' && was.size > 0 ? was.size : base.size };
+        }
+        return result;
+    }
+    setSection(id: SectionId, patch: Partial<SectionState>): void { this.writeSections({ ...this.sidebarSections(), [id]: { ...this.sidebarSections()[id], ...patch } }); }
+    writeSections(sections: Record<SectionId, SectionState>): void {
+        this.setSetting('sidebar-sections', JSON.stringify(sections));
+        this.timelineShown(sections.timeline.open && !sections.timeline.hidden);
+    }
+    // The core reads the history of the open file while the Timeline is shown.
+    timelineShown(on: boolean): void { if (this.snapshot.settings['timeline-open'] !== on) this.setSetting('timeline-open', on); }
+    collapseFolders(): void { this.set({ tree: { ...this.snapshot.tree, expanded: [] } }); }
+    setSidebarWidth(px: number): void { this.setSetting('sidebar-width', Math.round(Math.min(SIDEBAR_WIDTH.max, Math.max(SIDEBAR_WIDTH.min, px)))); }
 
     // A rail button: its page opens; the button of the page that is open closes the side panel.
     showSidebarPage(page: string): void {

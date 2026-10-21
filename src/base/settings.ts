@@ -13,7 +13,7 @@ export interface SavedTab {
     cursor: number;          // cursor position (code points)
 }
 
-export type SidebarPage = 'files' | 'search' | 'outline' | 'history' | 'collab';
+export type SidebarPage = 'files' | 'search' | 'history' | 'collab';
 
 // Between a folder and a project name in the keys of the project maps (a character no folder or project name has).
 const SCOPE_SEPARATOR = '\u001f';
@@ -42,6 +42,8 @@ export class AppSettings {
 
     get sidebar(): boolean { return this.bool('sidebar'); }
     set sidebar(value: boolean) { this.set('sidebar', value); }
+    get timelineOpen(): boolean { return this.bool('timeline-open'); }
+    set timelineOpen(value: boolean) { this.set('timeline-open', value); }
     get sidebarPage(): SidebarPage { return this.str('sidebar-page') as SidebarPage; }
     set sidebarPage(value: SidebarPage) { this.set('sidebar-page', value); }
 

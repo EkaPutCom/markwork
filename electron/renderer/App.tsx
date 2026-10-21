@@ -5,8 +5,7 @@ import { useEffect, useMemo } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './components/EditorArea.js';
-import { Explorer } from './components/Explorer.js';
-import { Outline } from './components/Outline.js';
+import { FilesView } from './components/FilesView.js';
 import { Search } from './components/Search.js';
 import { Palette } from './components/Palette.js';
 import { DialogLayer } from './components/Dialog.js';
@@ -20,7 +19,7 @@ import { LogViewer, RunLogs } from './components/LogViewer.js';
 import { AgentAsks, PullRequestDialog } from './components/Harness.js';
 import { Icon, type IconName } from './components/Icons.js';
 import { label, matches } from './lib/keys.js';
-import { Rail, SideShell } from './components/Sidebar.js';
+import { ActivityBar, SideShell } from './components/Sidebar.js';
 import { Button } from './ui/button.js';
 import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
@@ -308,10 +307,10 @@ export function App() {
     return (
         <div className="workbench">
             <div className={`shell${panels.sidebar.floats ? ' float-sidebar' : ''}`}>
-                {(!panels.sidebar.shown || panels.sidebar.floats) && <Rail />}
+                <ActivityBar />
                 {panels.sidebar.shown && (
                     <SideShell>
-                        {page === 'outline' ? <Outline /> : page === 'search' ? <Search /> : page === 'history' ? <History /> : page === 'collab' ? <Collab /> : <Explorer />}
+                        {page === 'search' ? <Search /> : page === 'history' ? <History /> : page === 'collab' ? <Collab /> : <FilesView />}
                     </SideShell>
                 )}
                 <div className="main">

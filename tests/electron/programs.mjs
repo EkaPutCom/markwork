@@ -42,8 +42,8 @@ try {
     const page = await app.firstWindow();
     const setup = page.getByRole('region', { name: 'Set up' });
 
-    await step('Home lists pi as not installed, and the sidebar marks Programs', async () => {
-        await page.getByRole('button', { name: 'Home', exact: true }).first().click();
+    await step('Home lists pi as not installed, and the activity bar marks Programs', async () => {
+        await page.keyboard.press('Alt+Home');
         await setup.waitFor({ timeout: 15000 });
         await setup.getByText('pi is not installed').waitFor();
         assert.equal(await setup.getByText('git is not installed').count(), 0, 'git was found');
@@ -79,7 +79,7 @@ try {
     });
 
     await step('Home has no Set up section once nothing needed is missing', async () => {
-        await page.getByRole('button', { name: 'Home', exact: true }).first().click();
+        await page.keyboard.press('Alt+Home');
         await page.getByRole('heading', { name: /Good (morning|afternoon|evening)/ }).waitFor();
         assert.equal(await setup.count(), 0);
     });

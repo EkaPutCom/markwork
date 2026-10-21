@@ -93,7 +93,7 @@
 .layout-menu [role=menuitem].checked { background: var(--accent); }
 
 /* The sidebar (shadcn's Sidebar): the workspace, the pages, the panel of the page shown; the rail when it is closed. */
-.side-shell { width: 264px; flex: none; min-width: 0; display: flex; flex-direction: column; background: var(--sidebar); color: var(--sidebar-foreground); border-right: 1px solid var(--sidebar-border); }
+.side-shell { position: relative; width: 280px; flex: none; min-width: 0; display: flex; flex-direction: column; background: var(--sidebar); color: var(--sidebar-foreground); border-right: 1px solid var(--sidebar-border); }
 .side-shell .workspace { display: flex; align-items: center; gap: 10px; margin: 8px; padding: 8px; border-radius: 8px; min-width: 0; }
 .side-shell .workspace .logo { width: 32px; height: 32px; flex: none; border-radius: 8px; background: var(--sidebar-primary); color: var(--sidebar-primary-foreground); display: grid; place-items: center; font-weight: 600; }
 .side-shell .workspace .text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
@@ -114,6 +114,43 @@
 .sidebar { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; padding-top: 8px; }
 .side-title { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 16px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
 .side-title .actions { display: flex; gap: 2px; } .side-title .button.circular { min-width: 24px; min-height: 24px; }
+.side-title { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; font-weight: 600; }
+.side-title .button { min-width: 24px; min-height: 24px; }
+/* The activity bar: the pressed page has a mark on its left edge; Programs and Preferences are at the foot. */
+.rail .button { position: relative; }
+.rail .button[aria-pressed=true]::before { content: ""; position: absolute; left: -8px; top: 8px; bottom: 8px; width: 2px; border-radius: 1px; background: var(--primary); }
+.rail .grow { flex: 1; }
+/* The edge of the sidebar is dragged to change its width. */
+.side-grip { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 5; }
+.side-grip:hover, .side-grip:active { background: color-mix(in oklab, var(--ring) 50%, transparent); }
+/* The Files view: sections that fold, share the height, and are resized by the lines between them. */
+.files-view .sections { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.files-view .sections > .empty { padding: 14px 16px; text-align: center; }
+.section { display: flex; flex-direction: column; min-height: 28px; border-top: 1px solid var(--sidebar-border); }
+.section.open { min-height: 90px; }
+.section-head { flex: none; height: 28px; display: flex; align-items: center; gap: 2px; padding: 0 6px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); cursor: pointer; user-select: none; outline: none; }
+.section-head:hover, .section-head:focus-visible { background: var(--sidebar-accent); }
+.section-head .chev { flex: none; transition: transform .1s; }
+.section.open > .section-head .chev { transform: rotate(90deg); }
+.section-head .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.section-head .count { font-weight: 500; letter-spacing: 0; font-size: 11px; padding: 0 6px; border-radius: 8px; background: var(--muted); margin-right: 2px; }
+.section-head .acts { display: none; }
+.section.open > .section-head:hover .acts, .section.open > .section-head:focus-within .acts { display: flex; }
+.section-head .acts .button { color: var(--muted-foreground); }
+.section-body { flex: 1; min-height: 0; overflow: auto; padding: 2px 4px 8px; display: flex; flex-direction: column; }
+.section-body > .tree { flex: 1; overflow: visible; padding: 0; }
+.section-body > .outline { flex: none; overflow: visible; padding: 0; }
+.section-body > .placeholder { padding: 14px 12px; }
+.section-body > .empty { padding: 14px 12px; text-align: center; }
+.section-sash { flex: none; height: 1px; position: relative; cursor: row-resize; z-index: 3; background: var(--sidebar-border); margin-top: -1px; }
+.section-sash::after { content: ""; position: absolute; inset: -3px 0; }
+.section-sash:hover, .section-sash.on { background: var(--ring); box-shadow: 0 0 0 1px var(--ring); }
+.editors .row { padding: 0 6px 0 10px; }
+.editors .row .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--warning); flex: none; }
+.editors .row .close { min-width: 20px; min-height: 20px; margin-left: auto; opacity: 0; }
+.editors .row:hover .close, .editors .row:focus-within .close { opacity: 1; }
+.editors .group-title { padding: 6px 10px 2px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.files-view .commits { padding: 0; }
 .sidebar .tree { flex: 1; overflow: auto; padding: 0 8px 8px; }
 .sidebar .row { height: 30px; display: flex; align-items: center; gap: 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; user-select: none; font-size: 14px; }
 .sidebar .row:hover { background: var(--sidebar-accent); }

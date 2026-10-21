@@ -90,7 +90,8 @@ function Folder({ dir, depth, onMenu }: { dir: string; depth: number; onMenu: (e
     return <>{entries.map(e => <Row key={e.path} entry={e} depth={depth} onMenu={onMenu} />)}</>;
 }
 
-export function Explorer() {
+// The work folder as a tree: the body of the Files view's folder section.
+export function FolderTree() {
     const client = useClient();
     const { tree } = useStore();
     const [menu, setMenu] = useState<MenuState | null>(null);
@@ -99,8 +100,7 @@ export function Explorer() {
     const show = (e: React.MouseEvent, target: FolderEntry | null) => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, target }); };
 
     return (
-        <aside className="sidebar" aria-label="Files">
-            <div className="side-title">Files</div>
+        <>
             {!root ? (
                 <div className="placeholder">
                     <p>No folder is open</p>
@@ -119,6 +119,6 @@ export function Explorer() {
                 </div>
             )}
             {menu && root && <ContextMenu menu={menu} root={root} close={() => setMenu(null)} />}
-        </aside>
+        </>
     );
 }

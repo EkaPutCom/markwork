@@ -181,16 +181,14 @@ try {
     });
 
     // ---------- outline.ts (the side panel) ----------
-    await step('outline: the rail opens the panel with the headings, and a click jumps to one', async () => {
+    await step('outline: the Files view lists the headings in its Outline section, and a click jumps to one', async () => {
         await open(/Idea\.md/);
-        await page.getByRole('button', { name: 'Outline' }).click();
         const rows = page.locator('.outline .row');
         await rows.first().waitFor();
         assert.deepEqual(await rows.allTextContents(), ['Idea', 'Section Two']);
         await rows.nth(1).click();
         await page.waitForFunction(() => document.querySelector('.cm-content').cmTile.view.state.selection.main.head > 10);
         assert.equal(await cursorLine(), 5);
-        await page.getByRole('button', { name: 'Files', exact: true }).click();
         await page.getByRole('tree').waitFor();
         await open(/Source\.md/);
     });

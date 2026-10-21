@@ -14,7 +14,7 @@
     "test": "npm run test:core:node && npm run test:electron",
     "test:core:node": "tsc --noEmit -p tsconfig.node.json && node scripts/layers.mjs && vite build -c vite.node.config.ts && node dist-node/run-core-node.js",
     "test:electron": "npm run electron:build && xvfb-run -a -s '-screen 0 1280x800x24' npm run test:electron:run",
-    "test:electron:run": "node tests/electron/smoke.mjs && node tests/electron/editor.mjs && node tests/electron/visual.mjs && node tests/electron/panes.mjs && node tests/electron/robust.mjs && node tests/electron/structured.mjs && node tests/electron/layout.mjs && node tests/electron/assistant.mjs && node tests/electron/git.mjs && node tests/electron/harness.mjs && node tests/electron/programs.mjs && node tests/electron/secrets.mjs",
+    "test:electron:run": "node tests/electron/smoke.mjs && node tests/electron/editor.mjs && node tests/electron/visual.mjs && node tests/electron/panes.mjs && node tests/electron/sidebar.mjs && node tests/electron/robust.mjs && node tests/electron/structured.mjs && node tests/electron/layout.mjs && node tests/electron/assistant.mjs && node tests/electron/git.mjs && node tests/electron/harness.mjs && node tests/electron/programs.mjs && node tests/electron/secrets.mjs",
     "test:forgejo": "bash scripts/forgejo.sh test",
     "test:live:forge": "vite build -c vite.node.config.ts && set -a && { [ ! -f ./.env ] || . ./.env; } && set +a && node dist-node/live-forge.js",
     "test:live": "vite build -c vite.node.config.ts && set -a && . ./.env && set +a && node dist-node/live.js",

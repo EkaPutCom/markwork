@@ -88,7 +88,6 @@ try {
 
     await step('sample: the file opens and every heading, and only those, is in the outline', async () => {
         await open('all-formats.md');
-        await page.getByRole('button', { name: 'Outline' }).click();
         const rows = page.locator('.outline .row');
         await rows.first().waitFor();
         const names = await rows.allTextContents();
@@ -218,7 +217,6 @@ try {
 
     await step('robust: the outline follows a heading that is edited, removed, and shifted, and a click lands on it', async () => {
         await setDoc('# One\n\n## Two\n\n# Three');
-        await page.getByRole('button', { name: 'Outline' }).click();
         const rows = page.locator('.outline .row');
         await waitFor(async () => (await rows.allTextContents()).join('|') === 'One|Two|Three');
         await edit(13, 13, ' new', 17);   // at the end of "## Two"

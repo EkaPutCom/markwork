@@ -31,14 +31,21 @@
 <p class="lead">Open a folder as a workspace, manage its files from the tree, and work on several documents at once as tabs.</p>
 
 <h2 id="sidebar">The sidebar</h2>
-<p><kbd>Ctrl</kbd>+<kbd>\</kbd> shows or hides the sidebar. It has five tabs:</p>
+<p>The <strong>activity bar</strong> at the left edge is always there, and has the views: Files, Search, History, and Pull requests, with <em>Programs</em> (marked while something is missing) and <em>Preferences</em> at the foot. A view's button opens the sidebar on it, and the button of the view that is shown closes the sidebar. <kbd>Ctrl</kbd>+<kbd>\</kbd> shows or hides the sidebar, and its edge is dragged to change its width (200 to 480 pixels; the width is kept).</p>
 <ul>
-  <li><strong>Files</strong>: the tree of the work folder with its subfolders, Markdown files, CSV tables, HTML pages, and images</li>
+  <li><strong>Files</strong>: made of sections (below)</li>
   <li><strong>Search</strong>: search and replace in all the Markdown files of the work folder (<a href="#search">Search in all notes</a>)</li>
-  <li><strong>Outline</strong>: the list of headings of the document; click to jump</li>
-  <li><strong>History</strong>: the Git commits of the open file (<a href="git.html">Git history</a>)</li>
-  <li><strong>Pull requests</strong> (the last tab): the open pull requests of the folder's repository (<a href="collaboration.html">Collaboration</a>)</li>
+  <li><strong>History</strong>: the Git commits of the open file and the files that are changing (<a href="git.html">Git history</a>)</li>
+  <li><strong>Pull requests</strong>: the open pull requests of the folder's repository (<a href="collaboration.html">Collaboration</a>)</li>
 </ul>
+<p>The <strong>Files</strong> view has four sections, each folded or unfolded by its header:</p>
+<ul>
+  <li><strong>Open Editors</strong>: the open documents, with the number open; a click shows one, and ✕ closes it. Once the editor is <a href="editor.html#panes">split</a> they are grouped by pane.</li>
+  <li><strong>The work folder</strong> (named after it): the tree of its subfolders, Markdown files, CSV tables, HTML pages, and images. While the pointer is on its header, <em>New File</em>, <em>New Folder</em>, and <em>Collapse Folders</em> appear.</li>
+  <li><strong>Outline</strong>: the headings of the open document; click to jump.</li>
+  <li><strong>Timeline</strong>: the Git commits of the open file (folded at first; it is read only while it is open).</li>
+</ul>
+<p>The open sections share the height of the view and are resized by the line between them. The <em>⋯</em> button in the view's title shows or hides each section, and <em>Collapse All Sections</em> folds them. Which are folded or hidden, and their sizes, are kept. <em>Home</em> and the journal are in the ☰ menu (<kbd>Alt</kbd>+<kbd>Home</kbd>, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd>).</p>
 <figure><img src="../assets/files.png" width="1280" height="780" loading="lazy" alt="The Files tab showing the tree of the work folder: notes, plans, and research"><figcaption>The file tree with folders and Markdown files</figcaption></figure>
 
 <h2 id="tree">The file tree</h2>

@@ -11,7 +11,7 @@ export function documentHandlers({ wire, session, frontend, notice, sendFiles }:
     wire.on('start', p => {
         session.start();
         // The side panel's page as the settings have it, so the history is read when its tab is the one that was open.
-        session.sidebarShown(session.settings.sidebar ? session.settings.sidebarPage : null);
+        session.sidebarShown(session.settings.sidebar ? session.settings.sidebarPage : null, session.settings.timelineOpen);
         session.open(typeof p.path === 'string' ? p.path : null);
         sendFiles();
     });

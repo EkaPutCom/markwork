@@ -321,6 +321,10 @@ export async function appSessionTests(): Promise<void> {
         session.windowFocused(false);
         session.windowFocused(true);
         eq(reads, [false, true], 'shown, then read again when the window gets the focus back');
+        session.sidebarShown('files', true);
+        eq(reads.length, 3, 'the Files view reads it while it shows its Timeline');
+        session.sidebarShown('files', false);
+        eq(reads.length, 3, 'and not without it');
         ok(session.host.isActive(), 'the focus as the frontend reported it');
         session.dispose();
     });
