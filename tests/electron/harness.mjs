@@ -118,7 +118,7 @@ try {
     });
 
     await step('Preferences → Agents lists the project, changes its isolation, and adds and removes a machine', async () => {
-        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'File', exact: true }).click();
         await page.getByRole('menuitem', { name: /Preferences/ }).click();
         const prefs = page.getByRole('dialog', { name: 'Preferences' });
         await prefs.getByRole('tab', { name: 'Agents' }).click();

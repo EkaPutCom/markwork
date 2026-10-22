@@ -116,7 +116,7 @@ try {
     });
 
     await step('Fields…: a field with colored options is added, and a card\'s chip changes it from a popover', async () => {
-        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'Edit', exact: true }).click();
         await page.getByRole('menuitem', { name: 'Fields…' }).click();
         await dialog.getByRole('button', { name: '+ Add field' }).click();
         await dialog.getByLabel('Field name').fill('prio');
