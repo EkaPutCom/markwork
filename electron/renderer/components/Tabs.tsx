@@ -8,15 +8,15 @@ import { useClient, useStore } from '../lib/useClient.js';
 export const TAB_DRAG = 'application/x-markwork-tab';
 export const FILE_DRAG = 'application/x-markwork-file';
 
-// The tabs of a pane, drawn as VS Code's: flat, from the left, a line of accent over the one shown. With a single pane they are centered over the editor and shown once there is more
-// than one document; with several, each pane's bar has its own. A document with changes not saved has a dot before its
+// The tabs of a pane, drawn as VS Code's: flat, from the left, a line of accent over the one shown. With a single pane they are drawn over the editor, even for one document; with several,
+// each pane's bar has its own. A document with changes not saved has a dot before its
 // name, and the tab says so to a screen reader. A tab is dragged to another place in the bar, or to another pane.
 export function PaneTabs({ pane, solo, label, onMenu }: { pane: Pane; solo: boolean; label: string; onMenu: (doc: number) => void }) {
     const client = useClient();
     const { tabs } = useStore();
     const [before, setBefore] = useState<number | null>(null);
     const docs = pane.tabs.map(id => tabs.find(t => t.id === id)).filter((t): t is Tab => !!t);
-    if (solo && docs.length < 2) return null;
+    if (docs.length === 0) return null;
     const dragOver = (e: DragEvent, doc: number) => {
         if (!e.dataTransfer.types.includes(TAB_DRAG)) return;
         e.preventDefault();

@@ -5,9 +5,10 @@
 // What a command does is markdown/editcommands.ts, run by name through the window's commands (app/commands.ts).
 
 import { EditorSelection, EditorState, StateEffect, StateField, findClusterBreak, type Extension, type RangeSet } from '@codemirror/state';
-import { Decoration, EditorView, WidgetType, keymap, showTooltip, type Tooltip } from '@codemirror/view';
-import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { Decoration, EditorView, WidgetType, keymap, showTooltip, type Tooltip, type TooltipView } from '@codemirror/view';
+import { startCompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { iconElement, type IconName } from '../components/Icons.js';
+import { cellSelectionRect } from './tables.js';
 
 export const setVisual = StateEffect.define<boolean>();
 export const visualMode = StateField.define<boolean>({
@@ -200,7 +201,11 @@ export function selectionMenu(run: RunCommand, on: (state: EditorState) => boole
     const tip = (state: EditorState): Tooltip | null => {
         const sel = state.selection.main;
         if (sel.empty || !on(state) || !state.sliceDoc(sel.from, sel.to).trim()) return null;
-        return { pos: sel.from, above: true, arrow: false, create: () => ({ dom: selectionMenuDom(run), offset: { x: 0, y: 8 } }) };
+        // A selection in a table cell is drawn by the cell, not at the text's places: the menu goes over the cell's.
+        return {
+            pos: sel.from, above: true, arrow: false,
+            create: view => ({ dom: selectionMenuDom(run), offset: { x: 0, y: 8 }, getCoords: pos => cellSelectionRect() ?? view.coordsAtPos(pos) ?? new DOMRect() }),
+        };
     };
     return StateField.define<Tooltip | null>({
         create: tip,
@@ -208,6 +213,100 @@ export function selectionMenu(run: RunCommand, on: (state: EditorState) => boole
         provide: f => showTooltip.from(f),
     });
 }
+
+// ---------- The link editor ----------
+
+// What the box under the cursor edits: the text it replaces (a selection, or a whole [text](url) link the cursor is in),
+// that link's text and address, whatever follows the address inside the brackets (a title), and whether the text is asked for.
+interface LinkEdit { from: number; to: number; text: string; url: string; rest: string; existing: boolean; askText: boolean }
+
+const setLinkEdit = StateEffect.define<LinkEdit | null>();
+const linkEdit = StateField.define<LinkEdit | null>({
+    create: () => null,
+    update: (value, tr) => {
+        for (const e of tr.effects) if (e.is(setLinkEdit)) return e.value;
+        return tr.docChanged || tr.selection ? null : value;
+    },
+    provide: f => showTooltip.from(f, edit => edit && { pos: edit.from, above: false, arrow: false, create: view => linkEditDom(view, edit) }),
+});
+
+function linkEditDom(view: EditorView, edit: LinkEdit): TooltipView {
+    const dom = document.createElement('form');
+    dom.className = 'cm-link-editor';
+    const input = (label: string, value: string, placeholder: string) => {
+        const row = document.createElement('label');
+        const name = document.createElement('span');
+        name.textContent = label;
+        const field = document.createElement('input');
+        field.type = 'text';
+        field.value = value;
+        field.placeholder = placeholder;
+        field.spellcheck = false;
+        row.append(name, field);
+        dom.append(row);
+        return field;
+    };
+    const text = edit.askText ? input('Text', edit.text, 'What the link says') : null;
+    const url = input('Link', edit.url, 'https://… or a file path');
+    const close = () => { view.dispatch({ effects: setLinkEdit.of(null) }); view.focus(); };
+    const replace = (insert: string) => {
+        view.dispatch({ changes: { from: edit.from, to: edit.to, insert }, selection: { anchor: edit.from + insert.length }, userEvent: 'input' });
+        view.focus();
+    };
+    const buttons = document.createElement('div');
+    buttons.className = 'actions';
+    const button = (label: string, type: 'submit' | 'button', onClick?: () => void) => {
+        const b = document.createElement('button');
+        b.type = type;
+        b.textContent = label;
+        if (onClick) b.addEventListener('click', onClick);
+        buttons.append(b);
+        return b;
+    };
+    if (edit.existing) button('Remove link', 'button', () => replace(edit.text)).classList.add('remove');
+    button('Apply', 'submit').classList.add('apply');
+    dom.append(buttons);
+    dom.addEventListener('submit', event => {
+        event.preventDefault();
+        const address = url.value.trim().replace(/\s/g, '%20');
+        if (!address) { close(); return; }
+        const label = ((text ? text.value : edit.text).trim()) || address;
+        replace(`[${label}](${address}${edit.rest})`);
+    });
+    dom.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+    });
+    return {
+        dom,
+        mount: () => {
+            (text && !edit.text ? text : url).focus();
+            if (edit.url) { url.select(); return; }
+            // A web address on the clipboard fills the empty field.
+            void navigator.clipboard?.readText().then(copied => {
+                if (/^(?:https?:\/\/|mailto:)\S+$/.test(copied.trim()) && !url.value) { url.value = copied.trim(); url.select(); }
+            }, () => undefined);
+        },
+    };
+}
+
+// Open the box for a link at the cursor: the link it is in is changed, a selection becomes a link, and with nothing
+// selected the box asks for the text as well.
+export function openLinkEditor(view: EditorView): void {
+    const { state } = view, sel = state.selection.main, line = state.doc.lineAt(sel.head);
+    const open = (edit: LinkEdit) => view.dispatch({ effects: setLinkEdit.of(edit) });
+    for (const m of line.text.matchAll(/(?<!!)\[([^\]]*)\]\(([^)\s]*)([^)]*)\)/g)) {
+        const from = line.from + m.index, to = from + m[0].length;
+        if (sel.from >= from && sel.to <= to) { open({ from, to, text: m[1], url: m[2], rest: m[3], existing: true, askText: true }); return; }
+    }
+    const picked = state.sliceDoc(sel.from, sel.to);
+    const isUrl = /^(?:https?:|mailto:)\S+$/.test(picked);
+    open({ from: sel.from, to: sel.to, text: isUrl ? '' : picked, url: isUrl ? picked : '', rest: '', existing: false, askText: sel.empty || isUrl });
+}
+
+export const linkEditor: Extension = linkEdit;
 
 // ---------- The / menu ----------
 
@@ -230,7 +329,8 @@ export const SLASH_ITEMS: readonly SlashItem[] = [
     { id: 'image', label: 'Image', detail: 'A picture from a file', glyph: '▣', section: 'Insert' },
     { id: 'codeblock', label: 'Code block', detail: 'Text in a fixed-width font', glyph: '{}', section: 'Insert' },
     { id: 'divider', label: 'Divider', detail: 'A line between sections', glyph: '—', section: 'Insert' },
-    { id: 'link', label: 'Link', detail: 'A web address', glyph: '↗', section: 'Insert' },
+    { id: 'link', label: 'Web link', detail: 'A web address', glyph: '↗', section: 'Insert' },
+    { id: 'doclink', label: 'Document link', detail: 'Link to another document', glyph: '[[', section: 'Insert' },
 ];
 
 const glyphs = new WeakMap<Completion, string>();
@@ -242,6 +342,11 @@ export function slashSource(run: RunCommand, on: (state: EditorState) => boolean
         const option: Completion = {
             label: item.label, detail: item.detail, boost: -i, section: SECTIONS[item.section],
             apply: (view, _c, from, to) => {
+                if (item.id === 'doclink') {   // [[ opens the note suggestions (editor.ts)
+                    view.dispatch({ changes: { from: from - 1, to, insert: '[[' }, selection: { anchor: from + 1 }, userEvent: 'input.complete' });
+                    startCompletion(view);
+                    return;
+                }
                 view.dispatch({ changes: { from: from - 1, to }, selection: { anchor: from - 1 }, userEvent: 'input.complete' });
                 run(item.id);
             },

@@ -1,5 +1,5 @@
-// The Visual / Markdown switch: for a pane, whether it shows the document as it looks or as it is written. One in the header
-// while there is a single pane, one in the bar of each pane once there are several.
+// The Visual / Markdown switch: for a pane, whether it shows the document as it looks or as it is written. One, in the header: it
+// shows and sets the mode of the pane that has the focus.
 
 import { Icon } from './Icons.js';
 import { layoutOf as declaredLayout } from '../../../src/markdown/layout.js';

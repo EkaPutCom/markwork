@@ -274,8 +274,9 @@ try {
     await step('menus: Recent in the New menu, Preferences, Keyboard Shortcuts, and About from the main menu', async () => {
         await open(/Idea\.md/);
         await open(/Source\.md/);
-        // The Recent list lives in the New menu; a line of it opens the file in a tab.
-        await page.getByRole('button', { name: 'More ways to create' }).click();
+        // The recent files are in File → Open Recent; a line of it opens the file in a tab.
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'File', exact: true }).click();
+        await page.getByRole('menuitem', { name: 'Open Recent' }).click();
         await page.getByRole('menuitem', { name: 'Plan.md' }).waitFor();
         await page.getByRole('menuitem', { name: 'Idea.md' }).click();
         await title.getByText('Idea.md').waitFor();

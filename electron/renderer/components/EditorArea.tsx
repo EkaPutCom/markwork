@@ -6,7 +6,7 @@ import { Board } from './Board.js';
 import { Calendar } from './Calendar.js';
 import { Chart } from './Chart.js';
 import { Csv } from './Csv.js';
-import { EditingMode, STRUCTURED_PAGES } from './EditingMode.js';
+import { STRUCTURED_PAGES } from './EditingMode.js';
 import { FormatBar } from './FormatBar.js';
 import { Gallery } from './Gallery.js';
 import { Icon } from './Icons.js';
@@ -104,7 +104,6 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
     const csv = tab?.page === 'csv' && tab.csv !== null;
     const isPage = tab?.page === 'home' || tab?.page === 'programs' || tab?.page === 'html';
     const textShown = !!tab && !structured && !csv && !isPage;
-    const editable = tab && ['text', 'csv', ...STRUCTURED_PAGES].includes(tab.page);
 
     const over = (e: DragEvent) => {
         if (!e.dataTransfer.types.includes(TAB_DRAG) && !e.dataTransfer.types.includes(FILE_DRAG)) return;
@@ -128,11 +127,10 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
             aria-label={solo ? undefined : `Pane ${index + 1}`}
             onMouseDownCapture={() => client.focusPane(pane.id)} onFocusCapture={() => client.focusPane(pane.id)}
             onDragOver={over} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setZone(null); }} onDrop={drop}>
-            {solo ? <PaneTabs pane={pane} solo label="Open documents" onMenu={() => {}} /> : (
+            {(!solo || pane.tabs.length > 0) && (
                 <div className="pane-bar">
-                    <PaneTabs pane={pane} solo={false} label={`Documents of pane ${index + 1}`} onMenu={() => setMenu(true)} />
+                    <PaneTabs pane={pane} solo={false} label={solo ? 'Open documents' : `Documents of pane ${index + 1}`} onMenu={() => setMenu(true)} />
                     <span className="spacer" />
-                    {tab && editable && <EditingMode tab={tab} pane={pane} />}
                     <Button variant="ghost" size="icon-sm" title={`Split Right (${keysOf('split-right')})`} aria-label="Split Right" onClick={() => client.splitPane('right', pane.id)}>
                         <Icon name="split-right" />
                     </Button>
@@ -143,11 +141,13 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
                         <DropdownMenuContent align="end" className="min-w-56" onCloseAutoFocus={e => { e.preventDefault(); client.focusEditor(); }}>
                             <DropdownMenuItem onSelect={() => client.splitPane('right', pane.id)}><Icon name="split-right" />Split Right<DropdownMenuShortcut>{keysOf('split-right')}</DropdownMenuShortcut></DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => client.splitPane('bottom', pane.id)}><Icon name="split-down" />Split Down<DropdownMenuShortcut>{keysOf('split-down')}</DropdownMenuShortcut></DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => { client.focusPane(pane.id); client.moveToNextPane(); }}>Move Tab to Next Pane</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => { client.focusPane(pane.id); client.joinPanes(); }}>Join All Panes</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => client.closePane(pane.id)}>Close Pane</DropdownMenuItem>
+                            {!solo && <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => { client.focusPane(pane.id); client.moveToNextPane(); }}>Move Tab to Next Pane</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => { client.focusPane(pane.id); client.joinPanes(); }}>Join All Panes</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => client.closePane(pane.id)}>Close Pane</DropdownMenuItem>
+                            </>}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

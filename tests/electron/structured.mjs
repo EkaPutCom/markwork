@@ -301,7 +301,7 @@ try {
     });
 
     await step('New → New Inbox opens a list with the cursor in its capture line', async () => {
-        await page.getByRole('button', { name: 'More ways to create' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'File', exact: true }).click();
         await page.getByRole('menuitem', { name: 'New Inbox' }).click();
         await page.locator('[data-page=inbox]').waitFor();
         await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Quick capture to the inbox');

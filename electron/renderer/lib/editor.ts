@@ -18,13 +18,13 @@ import { createFindBar, findBarOf } from './findbar.js';
 import { DiagramWidget } from './diagrams.js';
 import { diagramKind } from '../../../src/markdown/diagram.js';
 import { TableWidget, focusCell, gridAt, tableOf } from './tables.js';
-import { CodeBoxWidget, codeColors, spansOf } from './codecolor.js';
+import { CodeBoxWidget, codeColors, focusCode, spansOf } from './codecolor.js';
 import { PicturesWidget, pictures, type PictureItem, type ZoomedImage } from './images.js';
 import { cpToU16, makeU16Map } from '../../../src/markdown/offsets.js';
 import type { EditCommands, TableOperation } from '../../../src/app/commands.js';
 import type { Change } from '../../../src/app/protocol/messages.js';
 import { blockHandle, moveCursorBlock } from './blockhandle.js';
-import { LIST_PREFIX_PX, listPrefix, selectionMenu, setVisual, slashGlyph, slashSource, visualEditing, visualMode, type Concealed } from './visual.js';
+import { LIST_PREFIX_PX, linkEditor, listPrefix, openLinkEditor, selectionMenu, setVisual, slashGlyph, slashSource, visualEditing, visualMode, type Concealed } from './visual.js';
 
 // A change that comes from the core (or opens a text), not from the user: it is not reported back as an edit.
 const External = Annotation.define<boolean>();
@@ -156,10 +156,12 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): StateFie
                 ranges.push(Decoration.replace({ widget: new TableWidget(lines, tableOf(lines), dimmed(t.start, t.end), visual), block: true }).range(doc.line(t.start + 1).from, doc.line(t.end + 1).to));
                 for (let k = t.start; k <= t.end; k++) grids.add(k);
             }
-            // A code block is a box that scrolls sideways, with its colors inside.
+            // A code block is a box that scrolls sideways, with its colors inside. The visual editor keeps the box and edits the
+            // code in it; elsewhere the cursor in the block shows its lines.
             for (const block of result.codeBlocks) {
-                if (!block.closed || !block.text.trim() || diagramKind(block) || block.endLine >= doc.lines || (selLast >= block.startLine && selFirst <= block.endLine)) continue;
-                ranges.push(Decoration.replace({ widget: new CodeBoxWidget(block.text, spansOf(block, languageLoaded).spans, dimmed(block.startLine, block.endLine)), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
+                if (!block.closed || diagramKind(block) || block.endLine >= doc.lines) continue;
+                if (!visual && (!block.text.trim() || (selLast >= block.startLine && selFirst <= block.endLine))) continue;
+                ranges.push(Decoration.replace({ widget: new CodeBoxWidget(block.text, spansOf(block, languageLoaded).spans, dimmed(block.startLine, block.endLine), visual, block.endLine - block.startLine - 1), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
                 for (let k = block.startLine; k <= block.endLine; k++) grids.add(k);
                 boxed.add(block);
             }
@@ -306,14 +308,15 @@ function suggestions(events: EditorEvents): Extension {
     return autocompletion({ override: [source, slashSource(events.run, visualOn)], icons: false, defaultKeymap: true, interactionDelay: 0, addToOptions: [slashGlyph] });
 }
 
-// A click on a task box flips it; Ctrl (or Cmd) + click on a link opens it.
+// A click on a task box flips it; Ctrl (or Cmd) + click on a link opens it, and in the visual editor a plain click on a drawn link does too.
 function clicks(events: EditorEvents): Extension {
     return EditorView.domEventHandlers({
         mousedown(event, view) {
             if (event.button !== 0 || event.shiftKey || event.altKey) return false;
             const place = clickPlace(view, event);
             if (!place) return false;
-            if (event.ctrlKey || event.metaKey) {
+            const target = event.target as HTMLElement | null;
+            if (event.ctrlKey || event.metaKey || (visualOn(view.state) && target?.closest('.cm-md-link'))) {
                 const note = wikiLinkAt(place.text, place.column);
                 if (note) {
                     events.openNote(note.target + (note.heading ? `#${note.heading}` : '') + (note.alias ? `|${note.alias}` : ''));
@@ -324,7 +327,6 @@ function clicks(events: EditorEvents): Extension {
                 events.openLink(uri);
                 return true;
             }
-            const target = event.target as HTMLElement | null;
             if (!target?.closest('.cm-md-task, .cm-md-taskdone')) return false;
             const toggle = taskToggleAt(place.text, place.column);
             if (!toggle) return false;
@@ -387,7 +389,7 @@ export class MarkdownEditor {
             extensions: [
                 history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, visualMode, drawn, search({ top: true, createPanel: createFindBar }), highlightSelectionMatches(),
                 clicks(this.events), suggestions(this.events),
-                visualEditing(state => state.field(drawn).concealed, visualOn), selectionMenu(this.events.run, visualOn), blockHandle(visualOn),
+                visualEditing(state => state.field(drawn).concealed, visualOn), selectionMenu(this.events.run, visualOn), linkEditor, blockHandle(visualOn),
                 EditorView.contentAttributes.of({ 'aria-label': 'Editor', spellcheck: 'false' }),
                 // Source mode is the file as it is written: plain text in a fixed-width font, every marker showing.
                 EditorView.editorAttributes.compute([sourceMode], state => ({ class: state.field(sourceMode) ? 'cm-source' : '' })),
@@ -416,7 +418,13 @@ export class MarkdownEditor {
     }
 
     get text(): string { return this.view.state.doc.toString(); }
-    focus(): void { this.view.focus(); }
+    // A table cell or a code block that is being edited keeps the focus: a toolbar button gives it back to the editor after its command.
+    focus(): void {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && active.matches('.cm-md-cell, .cm-md-codeedit') && this.view.dom.contains(active)) return;
+        this.view.focus();
+        this.focusTableCell(this.view.state);   // a command that put the cursor in a table or a code block (the menu had the focus)
+    }
 
     // Show the text of a tab: its own state if the text is still what it was, else a new one.
     show(id: number, text: string): void {
@@ -522,6 +530,11 @@ export class MarkdownEditor {
         const result = parses.get(state.doc);
         const line = state.doc.lineAt(sel.head), i = line.number - 1;
         const table = result?.tables.find(t => i >= t.start && i <= t.end);
+        const code = result?.codeBlocks.find(b => b.closed && !diagramKind(b) && i >= b.startLine && i <= b.endLine);
+        if (code) {
+            requestAnimationFrame(() => { if (this.view.state.doc === state.doc && this.view.hasFocus) focusCode(this.view, sel.head); });
+            return;
+        }
         if (!table) return;
         requestAnimationFrame(() => {
             if (this.view.state.doc !== state.doc || !this.view.hasFocus) return;
@@ -544,7 +557,7 @@ export class MarkdownEditor {
         undo: () => { undo(this.view); },
         redo: () => { redo(this.view); },
         wrap: marker => { run(this.view, s => wrap(s, marker)); },
-        link: () => { run(this.view, link); },
+        link: () => { if (visualOn(this.view.state)) openLinkEditor(this.view); else run(this.view, link); },
         block: (before, after) => { run(this.view, s => block(s, before, after)); },
         prefix: (pattern, text) => { run(this.view, s => togglePrefix(s, pattern, text)); },
         heading: level => { run(this.view, s => heading(s, level)); },

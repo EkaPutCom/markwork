@@ -145,12 +145,36 @@ try {
         await menu.waitFor({ state: 'detached' });
     });
 
+    await step('Insert Link asks for the address in a box: a selection becomes a link, and Remove link undoes it', async () => {
+        await setDoc('see the docs', 8, 12);
+        await toolbar.getByRole('button', { name: 'Insert Link' }).click();
+        const box = page.locator('.cm-link-editor');
+        await box.waitFor();
+        assert.equal(await box.locator('input').count(), 1, 'a selection is the text: only the address is asked');
+        await box.getByPlaceholder('https://… or a file path').fill('https://example.com');
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), 'see the [docs](https://example.com)');
+        await box.waitFor({ state: 'detached' });
+        await setDoc('see the [docs](https://example.com)', 12);
+        await page.keyboard.press('Control+k');
+        await box.waitFor();
+        assert.equal(await box.getByPlaceholder('https://… or a file path').inputValue(), 'https://example.com');
+        await box.getByRole('button', { name: 'Remove link' }).click();
+        assert.equal(await docText(), 'see the docs');
+        await setDoc('');
+        await page.keyboard.press('Control+k');
+        await box.waitFor();
+        assert.equal(await box.locator('input').count(), 2, 'with nothing selected the text is asked too');
+        await page.keyboard.press('Escape');
+        await box.waitFor({ state: 'detached' });
+    });
+
     await step('a table stays a grid, its cells are typed in, and the toolbar adds to it', async () => {
         await setDoc('intro\n\n');
         await toolbar.getByRole('button', { name: 'Insert Table' }).click();
         const grid = editor.locator('.cm-md-table-grid.editable');
         await grid.waitFor();
-        const box = () => page.evaluate(() => document.activeElement?.matches('.cm-md-cell-input') ? document.activeElement.getAttribute('aria-label') : null);
+        const box = () => page.evaluate(() => document.activeElement?.matches('.cm-md-cell') ? document.activeElement.getAttribute('aria-label') : null);
         await waitFor(async () => (await box()) === 'Row 1, column 1');
         await page.keyboard.type('jadi');
         await page.keyboard.press('Tab');
@@ -174,6 +198,76 @@ try {
         assert.equal(await grid.locator('td strong').count(), 0);
     });
 
+
+    await step('a table cell is edited as the text around it: formats without markers, the caret where the click was, the selection for Bold', async () => {
+        const grid = editor.locator('.cm-md-table-grid.editable');
+        await setDoc('intro\n\n| A | B |\n| --- | --- |\n| `npm i` | make **this** loud |\n', 0);
+        await grid.waitFor();
+        const cell = grid.locator('td').nth(1);
+        assert.equal(await cell.textContent(), 'make this loud', 'no markers');
+        assert.equal(await grid.locator('td code').textContent(), 'npm i', 'code is drawn as code');
+        const before = await grid.boundingBox();
+        // A click on a letter puts the caret before it.
+        const at = await cell.evaluate(td => {
+            const text = td.querySelector('strong').firstChild, range = document.createRange();
+            range.setStart(text, 2); range.setEnd(text, 3);
+            const r = range.getBoundingClientRect(); return { x: r.left + 1, y: r.top + r.height / 2 };
+        });
+        await page.mouse.click(at.x, at.y);
+        const caret = () => page.evaluate(() => { const s = getSelection(), r = document.createRange(); r.selectNodeContents(document.activeElement); r.setEnd(s.focusNode, s.focusOffset); return r.toString().length; });
+        await waitFor(async () => (await caret()) === 7);
+        assert.deepEqual(await grid.boundingBox(), before, 'opening a cell moves nothing');
+        await page.keyboard.type('X');
+        assert.equal(await cell.textContent(), 'make thXis loud');
+        assert.match(await docText(), /make \*\*thXis\*\* loud/, 'a letter typed in a bold word is bold, and the markers stay');
+        await page.keyboard.press('Control+z');
+        await waitFor(async () => /make \*\*this\*\* loud/.test(await docText()));
+        // A selection in the cell is the text's: the menu shows, and Bold wraps it.
+        await cell.evaluate(td => { const t = td.lastChild; getSelection().setBaseAndExtent(t, 1, t, 4); });
+        await page.keyboard.press('Shift+ArrowRight');
+        await page.getByRole('toolbar', { name: 'Format the selection' }).waitFor();
+        await toolbar.getByRole('button', { name: /^Bold/ }).click();
+        await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
+        assert.equal(await page.evaluate(() => document.activeElement.matches('.cm-md-cell')), true, 'the cell keeps the focus');
+        assert.equal(await cell.textContent(), 'make this loud');
+        // A long text wraps in its cell; the table does not grow past the page.
+        await page.keyboard.press('End');
+        await page.keyboard.type(' ' + 'long text '.repeat(30));
+        assert.equal(await grid.evaluate(el => el.scrollWidth <= el.clientWidth), true, 'the grid does not scroll');
+        await page.keyboard.press('Escape');
+    });
+    await step('a code block is edited in its box: it scrolls sideways as one, and the arrows leave it', async () => {
+        await setDoc('Above\n\n```js\nconst a = 1;\nlet b = ' + '"the application layer" + '.repeat(8) + '"END";\n```\n\nBelow', 0);
+        const box = editor.locator('.cm-md-codebox');
+        await box.waitFor();
+        await box.locator('pre').click({ position: { x: 5, y: 5 } });
+        await waitFor(async () => await page.evaluate(() => document.activeElement?.matches('.cm-md-codeedit')));
+        assert.equal(await editor.locator('.cm-md-codeblock-line').count(), 0, 'the box stays; its lines are not shown');
+        await page.keyboard.press('Home');
+        await page.keyboard.type('X');
+        assert.match(await docText(), /```js\nXconst a = 1;\n/, 'what is typed is in the text');
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('End');
+        await waitFor(async () => (await box.evaluate(b => b.scrollLeft)) > 0);
+        await page.keyboard.type(' // end');
+        assert.match(await docText(), /"END"; \/\/ end\n```/);
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('next();');
+        assert.match(await docText(), /\/\/ end\nnext\(\);\n```\n\nBelow/, 'Enter makes a new line of code');
+        await page.keyboard.press('Control+z');
+        await waitFor(async () => !(await docText()).includes('next();'));
+        await page.keyboard.press('Escape');
+        await waitFor(async () => await editor.evaluate(el => document.activeElement === el));
+        assert.equal(await cursorInTable(), false);
+        // A new code block from the toolbar is a box with the caret in it.
+        await setDoc('intro\n\n', 7);
+        await toolbar.getByRole('button', { name: 'Text style' }).click();
+        await page.getByRole('menuitemradio', { name: 'Code block' }).click();
+        await waitFor(async () => await page.evaluate(() => document.activeElement?.matches('.cm-md-codeedit')));
+        await page.keyboard.type('print(1)');
+        assert.match(await docText(), /```\nprint\(1\)\n```/);
+        await page.keyboard.press('Escape');
+    });
     await step('a block has a handle: + adds a block with the / menu, the grip drags it, and the keyboard moves it', async () => {
         await setDoc('# Plan\n\nFirst\n\n- a\n- b\n\nLast', 0);
         await editor.locator('.cm-line', { hasText: 'First' }).hover();

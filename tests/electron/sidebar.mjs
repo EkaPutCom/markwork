@@ -145,7 +145,7 @@ try {
     });
 
     await step('with the editor split, Open Editors groups the documents by pane', async () => {
-        await page.getByRole('button', { name: 'Split Editor Right' }).click();
+        await page.getByRole('button', { name: 'Split Right' }).click();
         await page.locator('.pane').nth(1).waitFor();
         const list = page.getByRole('listbox', { name: 'Open Editors' });
         await waitFor(async () => (await page.locator('.editors .group-title').allTextContents()).join('|') === 'Pane 1|Pane 2');

@@ -29,7 +29,7 @@ import { cn } from './lib/utils.js';
 import { useClient, useStore } from './lib/useClient.js';
 import { layoutOf } from './lib/client.js';
 import { EditingMode, STRUCTURED_PAGES } from './components/EditingMode.js';
-import { currentPane, isSolo } from './lib/panes.js';
+import { currentPane } from './lib/panes.js';
 
 // The title of the header: where the document is, as a breadcrumb, and its name, which is the Document Menu button
 // (Save, Save As, Autosave, Export, the recent files). Home and an empty window have a plain title.
@@ -127,10 +127,6 @@ function HeaderBar() {
     const recent: MenuItem[] = s.recent.length
         ? [{ id: '-' }, { id: 'recent', label: 'Recent', heading: true }, ...s.recent.map(path => ({ id: 'open-recent', label: path.split(/[\\/]/).pop(), arg: path }))]
         : [];
-    const items: MenuItem[] = [
-        ...['new', 'kanban-new', 'table-new', 'inbox-new', 'csv-new'].flatMap(id => entry(id)),
-        { id: '-' }, ...named('open'), ...named('open-folder'), ...recent,
-    ];
     // The document's menu: what is done to the document itself.
     const documentItems: MenuItem[] = [
         ...named('save'), ...named('save-as'), ...named('autosave', { check: true, checked: s.settings.autosave === true }),
@@ -155,7 +151,7 @@ function HeaderBar() {
             <Title items={documentItems} />
             <SaveState />
             <span className="spacer" />
-            {tab && isSolo(s.panes) && !s.pullShown && !s.reviewShown && ['text', 'csv', ...STRUCTURED_PAGES].includes(tab.page) && <EditingMode tab={tab} pane={currentPane(s.panes)} />}
+            {tab && !s.pullShown && !s.reviewShown && ['text', 'csv', ...STRUCTURED_PAGES].includes(tab.page) && <EditingMode tab={tab} pane={currentPane(s.panes)} />}
             {tab && s.layout.layout !== null && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -166,18 +162,6 @@ function HeaderBar() {
                     <MenuContent items={layoutItems} className="layout-menu min-w-52" />
                 </DropdownMenu>
             )}
-            <Button variant="ghost" size="icon-sm" className="header-split" title={`Split Editor Right (${label(keyOf('split-right') ?? '')})`} aria-label="Split Editor Right" onClick={() => client.run('split-right')}>
-                <Icon name="split-right" />
-            </Button>
-            <div className="split-button">
-                <Button size="sm" title="New Document (Ctrl+N)" onClick={() => client.run('new')}><Icon name="document-new" /><span className="label-text">New</span></Button>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button size="sm" aria-label="More ways to create"><Icon name="pan-down" /></Button>
-                    </DropdownMenuTrigger>
-                    <MenuContent items={items} />
-                </DropdownMenu>
-            </div>
             <span className="vsep" aria-hidden="true" />
             <Button variant="ghost" size="icon-sm" title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={panels.chat.shown} onClick={() => client.run('chat')}>
                 <Icon name="chat-message-new" />
