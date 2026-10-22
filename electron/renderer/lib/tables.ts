@@ -9,7 +9,6 @@
 // on any text: the cell's selection is the text's).
 
 import { WidgetType, type EditorView } from '@codemirror/view';
-import { cellHtml } from '../../../src/markdown/inlinehtml.js';
 import { parseInline } from '../../../src/markdown/inline.js';
 import { runTableCommand } from '../../../src/markdown/editcommands.js';
 import { cellIndexAt, cellStart, escapeCell, parseTable, setCellText, type Table } from '../../../src/markdown/table.js';
@@ -34,13 +33,9 @@ const cellsIn = (wrap: HTMLElement) => [...wrap.querySelectorAll<HTMLElement>('[
 
 // ---------- What a cell shows ----------
 
-// The formats of a cell's letters, outermost first, and the element each is drawn with (as markdown/inlinehtml.ts does).
-const STYLES = ['bold', 'italic', 'strike', 'code', 'link', 'mark'] as const;
-type Style = typeof STYLES[number];
-const ELEMENT: Record<Style, string> = { bold: 'strong', italic: 'em', strike: 's', code: 'code', link: 'span', mark: 'mark' };
-const STYLES_OF: Record<string, Style[]> = {
-    bold: ['bold'], italic: ['italic'], bolditalic: ['bold', 'italic'], strike: ['strike'], mark: ['mark'], code: ['code'], link: ['link'], image: ['italic', 'link'],
-};
+// The formats of a cell's letters, outermost first: the parser's tags, drawn with the classes the editor gives the same
+// tags in the text around the table (editor.ts), so a cell looks as a line of text does.
+const STYLES = ['bold', 'italic', 'bolditalic', 'strike', 'mark', 'link', 'image', 'code'] as const;
 
 // The visible text of a cell's Markdown (the markers of its formats and escapes left out), and how the two map.
 interface Shown {
@@ -54,7 +49,7 @@ interface Shown {
 function showOf(raw: string): Shown {
     const hidden = new Uint8Array(raw.length), bits = new Uint8Array(raw.length);
     for (const [name, a, b] of parseInline(raw).tags) {
-        const mask = name === 'marker' ? 0 : STYLES_OF[name].reduce((m, st) => m | 1 << STYLES.indexOf(st), 0);
+        const mask = name === 'marker' ? 0 : 1 << STYLES.indexOf(name);
         for (let i = a; i < b; i++) { if (name === 'marker') hidden[i] = 1; else bits[i] |= mask; }
     }
     const toRaw: number[] = [], fromRaw: number[] = [], styles: number[] = [];
@@ -83,8 +78,8 @@ function draw(cell: HTMLElement, raw: string): void {
         let node: Node = document.createTextNode(s.visible.slice(i, j));
         for (let k = STYLES.length - 1; k >= 0; k--) {
             if (!(s.styles[i] & 1 << k)) continue;
-            const el = document.createElement(ELEMENT[STYLES[k]]);
-            if (STYLES[k] === 'link') el.className = 'md-link';
+            const el = document.createElement('span');
+            el.className = `cm-md-${STYLES[k]}`;
             el.append(node);
             node = el;
         }
@@ -175,8 +170,11 @@ export function cellSelectionRect(): DOMRect | null {
 }
 
 // The grids that are edited, by their element: how to give a cell of one the text's selection again after a command
-// (the toolbar's Bold) changed the text.
-const selectors = new WeakMap<HTMLElement, (cell: HTMLElement) => void>();
+// (the toolbar's Bold) changed the text. `left` is the cell's selection the redraw left (visible offsets).
+const selectors = new WeakMap<HTMLElement, (cell: HTMLElement, left: [number, number] | null) => void>();
+// The cells waiting for that: until then the cell shows only a caret, and its selection is not the text's (a key let go
+// right after Ctrl+B would otherwise make the text's selection that caret, and Ctrl+B again would add markers).
+const settling = new WeakSet<HTMLElement>();
 
 export class TableWidget extends WidgetType {
     private readonly key: string;
@@ -190,18 +188,19 @@ export class TableWidget extends WidgetType {
 
     raw(row: number, col: number): string { return row < 0 ? this.table.header[col] : this.table.rows[row][col]; }
 
-    // A cell shows its formatted text; in the visual editor it is edited where it is.
+    // A cell shows its formatted text, as the lines around the table do; in the visual editor it is edited where it is.
     private fill(cell: HTMLElement): void {
         const row = rowOf(cell), col = colOf(cell);
-        if (this.editable) draw(cell, this.raw(row, col));
-        else cell.innerHTML = cellHtml(this.raw(row, col));
+        draw(cell, this.raw(row, col));
         cell.style.textAlign = this.table.aligns[col] ?? '';
     }
 
-    // A cell takes the focus, with the caret at place `offset` of its Markdown.
+    // A cell takes the focus, with the caret at place `offset` of its Markdown. The page moves only for a cell that is not
+    // all in view (a row added below the last one shown).
     open(cell: HTMLElement, offset: number): void {
         cell.focus({ preventScroll: true });
         selectIn(cell, offset, offset);
+        cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
 
     override toDOM(view: EditorView): HTMLElement {
@@ -261,14 +260,18 @@ export class TableWidget extends WidgetType {
         const openCell = (cell: HTMLElement, offset?: number) => here().open(cell, offset ?? here().raw(rowOf(cell), colOf(cell)).length);
         // The text's selection follows the cell's, so the toolbar, the selection menu, and the commands act on it.
         const place = (cell: HTMLElement) => {
-            if (!isEdited(cell)) return;
+            if (!isEdited(cell) || settling.has(cell)) return;
             const line = lineOf(cell), start = line.from + cellStart(line.text, colOf(cell));
             const [anchor, head] = selectionIn(cell).map(at => start + at);
             const { main } = view.state.selection;
             if (main.anchor !== anchor || main.head !== head) view.dispatch({ selection: { anchor, head } });
         };
-        selectors.set(wrap, cell => {
+        selectors.set(wrap, (cell, left) => {
             if (!cell.isConnected || !isEdited(cell)) return;
+            // A selection made in the cell since the redraw (a double-click right after Bold) is the one that counts: the
+            // text takes it, rather than the cell taking back the text's older one.
+            const now = visibleSelection(cell);
+            if (now && (now[0] !== left?.[0] || now[1] !== left[1])) { place(cell); return; }
             const line = lineOf(cell), start = line.from + cellStart(line.text, colOf(cell)), { main } = view.state.selection;
             if (main.from >= start && main.to <= line.to) selectIn(cell, main.anchor - start, main.head - start);
         });
@@ -295,9 +298,12 @@ export class TableWidget extends WidgetType {
             const result = runTableCommand({ text: view.state.doc.toString(), anchor: main.anchor, head: main.head }, 'row-below');
             if (!result.ok) return;
             keep({ row: here().table.rows.length, col: 0, offset: 0 });
+            // The grid is drawn again for its new row: the page stays where it is (CodeMirror's own correction for a
+            // block that changed would move it), and the new cell shows itself when it takes the focus.
             view.dispatch({
                 changes: result.edit.changes.map(c => ({ from: c.from, to: c.to, insert: c.insert })),
                 selection: { anchor: result.edit.selection.anchor, head: result.edit.selection.head }, userEvent: 'input',
+                effects: view.scrollSnapshot(),
             });
         };
         // Leave the grid for the text above or below it.
@@ -368,7 +374,10 @@ export class TableWidget extends WidgetType {
             this.fill(cell);
             selectIn(cell, caret, caret);
             const select = selectors.get(dom);
-            if (select) requestAnimationFrame(() => select(cell));
+            if (!select) continue;
+            const left = visibleSelection(cell);
+            settling.add(cell);
+            requestAnimationFrame(() => { settling.delete(cell); select(cell, left); });
         }
         return true;
     }

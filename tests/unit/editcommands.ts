@@ -4,7 +4,7 @@
 
 import {
     applyChanges, block, continueBlock, enterInTable, heading, indentListItem, isInCodeBlock, link, mapPosition,
-    lineKindOf, runTableCommand, setLineKind, tabInTable, togglePrefix, wrap, type TextEdit, type TextState,
+    inlineFormatsAt, lineKindOf, runTableCommand, setLineKind, tabInTable, togglePrefix, wrap, type TextEdit, type TextState,
 } from '../../src/markdown/editcommands.js';
 import { section, test, eq, ok } from '../core/framework.js';
 
@@ -44,6 +44,32 @@ export function editCommandTests(): void {
         eq(after('a ‸**word**· b', s => wrap(s, '**')), 'a ‸word· b', 'the same marker again removes it');
         eq(after('a ‸ b', s => wrap(s, '`')), 'a `‸` b');
         eq(after('a ‸🎉· b', s => wrap(s, '*')), 'a ‸*🎉*· b', 'an emoji is two UTF-16 units');
+    });
+
+    test('wrap toggles what the line shows: a selection without its hidden markers, part of a span, and other formats', () => {
+        eq(after('make this **‸loud·**', s => wrap(s, '**')), 'make this ‸loud·', 'the text of a bold span without its ** (a table cell, the visual editor)');
+        eq(after('make this **‸loud**·', s => wrap(s, '**')), 'make this ‸loud·');
+        eq(after('make this __‸loud·__', s => wrap(s, '**')), 'make this ‸loud·', 'either marker of bold');
+        eq(after('**hello ‸world·**', s => wrap(s, '**')), '**hello** ‸world·', 'part of a span: the rest stays bold, the space outside');
+        eq(after('**one ‸two· three**', s => wrap(s, '**')), '**one** ‸two· **three**');
+        eq(after('***‸x·***', s => wrap(s, '**')), '*‸x·*', 'bold comes off bold italic, italic stays');
+        eq(after('***‸x·***', s => wrap(s, '*')), '**‸x·**');
+        eq(after('**‸loud·**', s => wrap(s, '*')), '**‸*loud*·**', 'italic on bold text: both');
+        eq(after('a ‸word ·b', s => wrap(s, '**')), 'a ‸**word**· b', 'the space at the end stays outside');
+        eq(after('‸this **lo·ud**', s => wrap(s, '**')), '‸**this loud**·', 'a bold span it touches joins it');
+        eq(after('| a | make ‸**loud**· |', s => wrap(s, '**')), '| a | make ‸loud· |', 'in a table row');
+        eq(after('- [ ] **‸task·**', s => wrap(s, '**')), '- [ ] ‸task·', 'after a list prefix');
+        eq(after('`‸x·`', s => wrap(s, '`')), '‸x·');
+        const round = (text: string) => { const s = state(text), e = wrap(s, '**'); return after(marked(applyChanges(s.text, e.changes), e.selection), t => wrap(t, '**')); };
+        eq(round('make ‸this· loud'), 'make ‸this· loud', 'Bold twice is where it started');
+    });
+
+    test('inlineFormatsAt: at a cursor, and over a selection with or without its markers', () => {
+        eq(inlineFormatsAt('a **b** c', 4, 4), ['bold']);
+        eq(inlineFormatsAt('a **b** c', 2, 7), ['bold'], 'the markers selected too');
+        eq(inlineFormatsAt('a **b** c', 0, 7), []);
+        eq(inlineFormatsAt('| ***x*** | [y](u) |', 5, 5), ['bold', 'italic']);
+        eq(inlineFormatsAt('| ***x*** | [y](u) |', 13, 14), ['link']);
     });
 
     test('link: selected text, a selected URL, and nothing selected', () => {

@@ -195,21 +195,27 @@ try {
         assert.equal(await cursorInTable(), false, 'Escape leaves the grid');
         await grid.locator('td', { hasText: 'apa dulu' }).click();
         assert.equal(await box(), 'Row 1, column 3', 'a click opens a cell (the new column is the second one)');
-        assert.equal(await grid.locator('td strong').count(), 0);
+        assert.equal(await grid.locator('td .cm-md-bold').count(), 0);
     });
 
 
-    await step('a table cell is edited as the text around it: formats without markers, the caret where the click was, the selection for Bold', async () => {
+    await step('a table cell is edited and drawn as the text around it: formats without markers, the caret where the click was, Bold on and off', async () => {
         const grid = editor.locator('.cm-md-table-grid.editable');
         await setDoc('intro\n\n| A | B |\n| --- | --- |\n| `npm i` | make **this** loud |\n', 0);
         await grid.waitFor();
         const cell = grid.locator('td').nth(1);
         assert.equal(await cell.textContent(), 'make this loud', 'no markers');
-        assert.equal(await grid.locator('td code').textContent(), 'npm i', 'code is drawn as code');
+        assert.equal(await grid.locator('td .cm-md-code').textContent(), 'npm i', 'code is drawn as code');
+        // A cell is drawn as a line of text is: the same classes, so the same look.
+        const look = sel => page.evaluate(s => { const st = getComputedStyle(document.querySelector(s)); return [st.fontWeight, st.fontFamily, st.backgroundColor]; }, sel);
+        await setDoc('make **this** loud `npm i`\n\n| A | B |\n| --- | --- |\n| `npm i` | make **this** loud |\n', 0);
+        assert.deepEqual(await look('.cm-md-table-grid td .cm-md-bold'), await look('.cm-line .cm-md-bold'), 'bold in a cell looks as bold text does');
+        assert.deepEqual(await look('.cm-md-table-grid td .cm-md-code'), await look('.cm-line .cm-md-code'), 'code in a cell looks as code in text does');
+        await setDoc('intro\n\n| A | B |\n| --- | --- |\n| `npm i` | make **this** loud |\n', 0);
         const before = await grid.boundingBox();
         // A click on a letter puts the caret before it.
         const at = await cell.evaluate(td => {
-            const text = td.querySelector('strong').firstChild, range = document.createRange();
+            const text = td.querySelector('.cm-md-bold').firstChild, range = document.createRange();
             range.setStart(text, 2); range.setEnd(text, 3);
             const r = range.getBoundingClientRect(); return { x: r.left + 1, y: r.top + r.height / 2 };
         });
@@ -230,12 +236,101 @@ try {
         await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
         assert.equal(await page.evaluate(() => document.activeElement.matches('.cm-md-cell')), true, 'the cell keeps the focus');
         assert.equal(await cell.textContent(), 'make this loud');
+        assert.equal(await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed'), 'true', 'Bold is pressed for a bold selection in a cell');
+        // Bold again takes it off: the selection is what the cell shows, without the hidden **.
+        await page.keyboard.press('Control+b');
+        await waitFor(async () => /make \*\*this\*\* loud \|/.test(await docText()));
+        await page.keyboard.press('Control+b');
+        await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
+        // A bold word chosen with the mouse right after a command, then Bold: no more bold, not ****this****. The text takes
+        // the cell's new selection (not "loud" back from the command); Bold being pressed says nothing, since loud is bold too.
+        await cell.locator('.cm-md-bold', { hasText: 'this' }).dblclick();
+        const selected = () => page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); });
+        await waitFor(async () => (await selected()) === 'this');
+        assert.equal(await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed'), 'true');
+        await toolbar.getByRole('button', { name: /^Bold/ }).click();
+        await waitFor(async () => /\| make this \*\*loud\*\* \|/.test(await docText()));
+        assert.equal(await cell.locator('.cm-md-bold').textContent(), 'loud');
         // A long text wraps in its cell; the table does not grow past the page.
         await page.keyboard.press('End');
         await page.keyboard.type(' ' + 'long text '.repeat(30));
         assert.equal(await grid.evaluate(el => el.scrollWidth <= el.clientWidth), true, 'the grid does not scroll');
         await page.keyboard.press('Escape');
     });
+    await step('a selection made in a cell right after a command is kept, though the cell takes the text\'s selection a frame late', async () => {
+        const grid = editor.locator('.cm-md-table-grid.editable');
+        await setDoc('intro\n\n| A | B |\n| --- | --- |\n| x | make **this** loud |\n', 0);
+        const cell = grid.locator('td').nth(1);
+        await cell.click();
+        await cell.evaluate(td => { const t = td.lastChild; getSelection().setBaseAndExtent(t, 1, t, 4); });
+        await page.keyboard.press('Shift+ArrowRight');
+        const selected = () => page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); });
+        await waitFor(async () => (await selected()) === 'loud');
+        // Frames come 150 ms late, so the double-click below lands before the frame that follows Ctrl+B.
+        await page.evaluate(() => { const raf = window.requestAnimationFrame; window.slowFrames = raf; window.requestAnimationFrame = cb => raf(() => setTimeout(() => cb(performance.now()), 150)); });
+        try {
+            await page.keyboard.press('Control+b');
+            await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
+            await cell.locator('.cm-md-bold', { hasText: 'this' }).dblclick();
+            await waitFor(async () => /^(\*\*)?this(\*\*)?$/.test(await selected()));
+            await page.waitForTimeout(400);   // to show that the late frame does not take the selection back to "loud"
+            assert.match(await selected(), /^(\*\*)?this(\*\*)?$/);
+        } finally {
+            await page.evaluate(() => { window.requestAnimationFrame = window.slowFrames; });
+        }
+        await toolbar.getByRole('button', { name: /^Bold/ }).click();
+        await waitFor(async () => /\| make this \*\*loud\*\* \|/.test(await docText()));
+        await page.keyboard.press('Escape');
+    });
+
+    await step('formatting a cell keeps the page where it is; a row added below the view comes into view', async () => {
+        const para = 'Some text above the table, long enough to wrap onto a second line in the editor at this width.\n\n';
+        const rows = Array.from({ length: 14 }, (_, i) => `| cmd ${i} | The dependencies of step ${i}, with a description that wraps in its cell |`).join('\n');
+        await setDoc('# Doc\n\n' + para.repeat(12) + '| Command | Function |\n| --- | --- |\n' + rows + '\n\n' + para.repeat(12), 0);
+        const scroller = page.locator('.cm-scroller'), grid = editor.locator('.cm-md-table-grid.editable');
+        await waitFor(async () => { if (await grid.count()) return true; await scroller.evaluate(s => { s.scrollTop += 300; }); return false; });
+        // The table's top a little way down the editor, its last rows out of view.
+        await scroller.evaluate((s, g) => { s.scrollTop += g.getBoundingClientRect().top - s.getBoundingClientRect().top - 150; }, await grid.elementHandle());
+        const top = () => scroller.evaluate(s => Math.round(s.scrollTop));
+        const cell = grid.locator('td').nth(1);
+        await cell.click();
+        const before = await top();
+        await cell.evaluate(td => { const t = td.firstChild; getSelection().setBaseAndExtent(t, 4, t, 16); });
+        await page.keyboard.press('Shift+ArrowRight');
+        const menu = page.getByRole('toolbar', { name: 'Format the selection' });
+        await menu.getByRole('button', { name: 'Bold' }).click();
+        await waitFor(async () => (await docText()).includes('| The **dependencies** of step 0'));
+        await page.keyboard.press('Control+i');
+        await waitFor(async () => (await docText()).includes('| The ***dependencies*** of step 0'));
+        await page.waitForTimeout(300);   // to show that nothing scrolls after the command either
+        assert.equal(await top(), before, 'Bold and Italic in a cell do not move the page');
+        await toolbar.getByRole('button', { name: 'Add Row Below' }).click();
+        await waitFor(async () => (await grid.locator('tbody tr').count()) === 15);
+        await waitFor(async () => (await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))) === 'Row 1, column 2');
+        assert.equal(await top(), before, 'a row added from the toolbar moves nothing; the cell keeps the focus');
+        // Tab from the last cell adds a row under the view: the page brings the new cell into view.
+        const inView = async cell => cell.evaluate((td, s) => { const r = td.getBoundingClientRect(), v = s.getBoundingClientRect(); return r.top >= v.top && r.bottom <= v.bottom; }, await scroller.elementHandle());
+        const tabFromLast = async (place, rows) => {
+            const lastRow = grid.locator('tbody tr').last();
+            await lastRow.locator('td').last().click();
+            await scroller.evaluate(place, await lastRow.elementHandle());
+            const was = await top();
+            await page.keyboard.press('Tab');
+            const added = grid.locator('tbody tr').nth(rows).locator('td').first();
+            await waitFor(async () => await added.evaluate(td => document.activeElement === td));
+            await waitFor(() => inView(added));
+            await page.waitForTimeout(300);   // to show that nothing scrolls after the new cell has the focus
+            return await top() - was;
+        };
+        // Tab in the last row adds one; with the table in the middle of the view the page does not move at all (the grid
+        // is drawn again, and CodeMirror's own correction for that moved it by hundreds of pixels).
+        assert.equal(await tabFromLast((s, tr) => { s.scrollTop += tr.getBoundingClientRect().top - s.getBoundingClientRect().top - s.clientHeight / 2; }, 15), 0);
+        // With the last row at the bottom of the view, the new one starts out of it: the page moves by about a row.
+        const moved = await tabFromLast((s, tr) => { s.scrollTop += tr.getBoundingClientRect().bottom - s.getBoundingClientRect().bottom + 2; }, 16);
+        assert.ok(moved > 0 && moved < 120, `the page moves by about a row to show it, not to the grid's top (moved ${moved})`);
+        await page.keyboard.press('Escape');
+    });
+
     await step('a code block is edited in its box: it scrolls sideways as one, and the arrows leave it', async () => {
         await setDoc('Above\n\n```js\nconst a = 1;\nlet b = ' + '"the application layer" + '.repeat(8) + '"END";\n```\n\nBelow', 0);
         const box = editor.locator('.cm-md-codebox');
