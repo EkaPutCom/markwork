@@ -29,6 +29,7 @@ export interface MachineChoice {
 // Everything the dialog shows.
 export interface PreferencesData {
     colorScheme: string;           // one of COLOR_SCHEMES
+    visual: boolean;
     focus: boolean;
     typewriter: boolean;
     home: boolean;
@@ -48,7 +49,7 @@ export interface PreferencesData {
 
 // The settings the dialog may change by key, with what each accepts.
 type Plain = string | number | boolean;
-export type PreferenceKey = 'colorScheme' | 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatModel' | 'chatThinking' | 'chatSave'
+export type PreferenceKey = 'colorScheme' | 'visual' | 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatModel' | 'chatThinking' | 'chatSave'
     | 'forgePollSeconds' | 'forgeNotify' | 'daemonCommand' | 'harnessMachine';
 
 export interface PreferencesView {
@@ -90,6 +91,7 @@ export class PreferencesController {
         const flag = (write: (v: boolean) => void) => (v: Plain) => isBool(v) && (write(v), true);
         this.writers = {
             colorScheme: v => (COLOR_SCHEMES as readonly Plain[]).includes(v) && (s.dark = v === 'system' ? null : v === 'dark', true),
+            visual: flag(v => { s.visual = v; }),
             focus: flag(v => { s.focus = v; }),
             typewriter: flag(v => { s.typewriter = v; }),
             home: flag(v => { s.home = v; }),
@@ -132,7 +134,7 @@ export class PreferencesController {
         const s = this.host.settings;
         return {
             colorScheme: s.dark === null ? 'system' : s.dark ? 'dark' : 'light',
-            focus: s.focus, typewriter: s.typewriter, home: s.home, autosave: s.autosave,
+            visual: s.visual, focus: s.focus, typewriter: s.typewriter, home: s.home, autosave: s.autosave,
             chatModel: s.chatModel, chatModels: [...DEEPSEEK_MODELS], chatThinking: s.chatThinking, chatSave: s.chatSave,
             forgePollSeconds: s.forgePollSeconds, forgeNotify: s.forgeNotify, daemonCommand: s.daemonCommand,
             harnessMachine: s.harnessMachine,

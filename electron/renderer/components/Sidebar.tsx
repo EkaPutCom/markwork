@@ -1,39 +1,26 @@
-// The sidebar, as shadcn's Sidebar: the workspace at the top, Home and the journal, the panel of the page shown, and the
-// pages at the foot. Closed, it is a rail of icons with the same pages; a page button opens the sidebar on that page and
-// the button of the page shown closes it (client.ts showSidebarPage).
+// The sidebar, as the sidebar of VS Code: an activity bar with the pages (Files, Search, History, Pull requests, and Programs
+// and Preferences at the foot) that stays when the sidebar is closed, and the panel of the page shown beside it.
 
-import type { ReactNode } from 'react';
-import { COMMANDS } from '../../../src/app/commands.js';
+import { useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icons.js';
 import { useClient, useStore } from '../lib/useClient.js';
-import { layoutOf } from '../lib/client.js';
+import { layoutOf, SIDEBAR_WIDTH } from '../lib/client.js';
 
 export const PAGES: { page: string; label: string; icon: IconName }[] = [
     { page: 'files', label: 'Files', icon: 'folder' },
     { page: 'search', label: 'Search', icon: 'search' },
-    { page: 'outline', label: 'Outline', icon: 'outline' },
     { page: 'history', label: 'History', icon: 'document-open-recent' },
     { page: 'collab', label: 'Pull requests', icon: 'pull-request' },
 ];
-
-// The home folder, as the core shows it: a tab's folder is its `place` with ~ for home, so the part of its path that ~
-// stands for is home. Null while no open file tells.
-function homeOf(tabs: { file: string | null; place: string | null }[]): string | null {
-    for (const { file, place } of tabs) {
-        if (!file || !place?.startsWith('~')) continue;
-        const dir = file.replace(/[\\/][^\\/]*$/, '');
-        if (dir.endsWith(place.slice(1))) return dir.slice(0, dir.length - (place.length - 1));
-    }
-    return null;
-}
 
 // The first letter of the workspace, as its mark.
 function initial(root: string | null): string {
     return (root?.split(/[\\/]/).filter(Boolean).pop() ?? 'Markwork').charAt(0).toUpperCase();
 }
 
-// The rail: the sidebar closed to its icons.
-export function Rail() {
+// The activity bar: always there, closed or open. A page button opens the sidebar on that page, and the button of the page
+// shown closes it (client.ts showSidebarPage); Programs is a tab of its own, with a mark while something is missing.
+export function ActivityBar() {
     const client = useClient();
     const state = useStore();
     const shown = layoutOf(state).sidebar.shown;
@@ -47,55 +34,40 @@ export function Rail() {
                     <Icon name={icon} />
                 </button>
             ))}
+            <span className="grow" />
             <button className="button flat rail-programs" title="Programs" aria-label={state.programsMissing > 0 ? `Programs, ${state.programsMissing} missing` : 'Programs'} onClick={() => client.openPrograms()}>
                 <Icon name="programs" />{state.programsMissing > 0 && <span className="mark-dot" aria-hidden="true" />}
+            </button>
+            <button className="button flat" title="Preferences" aria-label="Preferences" onClick={() => client.run('preferences')}>
+                <Icon name="preferences-system" />
             </button>
         </nav>
     );
 }
 
-// A line of the sidebar's menus: a page, or a command it runs.
-function Item({ icon, label, pressed, onClick, children }: { icon: IconName; label: string; pressed?: boolean; onClick: () => void; children?: ReactNode }) {
-    return (
-        <button className="item" aria-pressed={pressed} onClick={onClick}>
-            <Icon name={icon} /><span className="label">{label}</span>{children}
-        </button>
-    );
-}
-
-// The sidebar open, around the panel of its page. Floating (a narrow window), the rail beside it has the pages.
+// The sidebar open, around the panel of its page: its edge is dragged to change its width. Floating (a narrow window), it
+// lies over the editor beside the activity bar.
 export function SideShell({ children }: { children: ReactNode }) {
     const client = useClient();
     const state = useStore();
-    const floats = layoutOf(state).sidebar.floats;
-    const current = state.settings['sidebar-page'] ?? 'files';
-    const root = state.tree.root;
-    const name = root?.split(/[\\/]/).filter(Boolean).pop();
-    const home = homeOf(state.tabs);
-    const where = root && home && (root === home || /^[\\/]/.test(root.slice(home.length))) ? `~${root.slice(home.length)}` : root;
-    const command = (id: string) => COMMANDS.find(c => c.id === id);
-    const can = (id: string) => { const c = command(id); return c !== undefined && client.enabled(c); };
+    const saved = Number(state.settings['sidebar-width']);
+    const [dragging, setDragging] = useState<number | null>(null);
+    const width = dragging ?? (saved >= SIDEBAR_WIDTH.min ? Math.min(saved, SIDEBAR_WIDTH.max) : SIDEBAR_WIDTH.default);
     return (
-        <div className="side-shell">
-            <div className="workspace">
-                <span className="logo" aria-hidden="true">{initial(root)}</span>
-                <span className="text"><strong>{name ?? 'Markwork'}</strong><span title={root ?? undefined}>{where ?? 'No folder open'}</span></span>
-            </div>
-            <nav className="side-nav" aria-label="Workspace">
-                {can('home') && <Item icon="home" label="Home" onClick={() => client.run('home')} />}
-                {can('journal') && <Item icon="journal" label="Journal" onClick={() => client.run('journal')} />}
-            </nav>
+        <div className="side-shell" style={{ width }}>
             {children}
-            {!floats && (
-                <nav className="side-nav foot" aria-label="Sidebar pages">
-                    {PAGES.map(({ page, label, icon }) => (
-                        <Item key={page} icon={icon} label={label} pressed={current === page} onClick={() => client.showSidebarPage(page)} />
-                    ))}
-                    <Item icon="programs" label="Programs" onClick={() => client.openPrograms()}>
-                        {state.programsMissing > 0 && <span className="mark-dot" role="img" aria-label={`${state.programsMissing} missing`} />}
-                    </Item>
-                </nav>
-            )}
+            <div className="side-grip" role="separator" aria-orientation="vertical" aria-label="Resize the sidebar"
+                onPointerDown={e => {
+                    e.preventDefault();
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    const x0 = e.clientX, w0 = width;
+                    const grip = e.currentTarget;
+                    const clamp = (x: number) => Math.min(SIDEBAR_WIDTH.max, Math.max(SIDEBAR_WIDTH.min, w0 + x - x0));
+                    const move = (ev: PointerEvent) => setDragging(clamp(ev.clientX));
+                    const up = (ev: PointerEvent) => { grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); setDragging(null); client.setSidebarWidth(clamp(ev.clientX)); };
+                    grip.addEventListener('pointermove', move);
+                    grip.addEventListener('pointerup', up);
+                }} />
         </div>
     );
 }

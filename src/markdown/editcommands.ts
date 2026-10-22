@@ -162,14 +162,44 @@ export function togglePrefix(state: TextState, pattern: RegExp, prefix: string):
     return withSelection(state, changes);
 }
 
-// Make the cursor line a level 1–6 heading; level 0 or the same level = plain paragraph.
+// Make the selected lines a level 1–6 heading, whatever they were; level 0 or the same level = plain paragraph.
 export function heading(state: TextState, level: number): TextEdit {
-    const { line, start } = lineAround(state.text, state.head);
-    const m = /^#{1,6}[ \t]*/.exec(line);
-    const current = m ? m[0].replace(/\s/g, '').length : 0;
-    const insert = level > 0 && level !== current ? `${'#'.repeat(level)} ` : '';
-    const to = start + (m ? m[0].length : 0);
-    return withSelection(state, to === start && !insert ? [] : [{ from: start, to, insert }]);
+    return setLineKind(state, level > 0 ? `h${Math.min(level, 6)}` as LineKind : 'paragraph');
+}
+
+// What a line is, for the visual editor's style menu and its / menu: a paragraph, a heading, a quote, or a list item.
+export type LineKind = 'paragraph' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote' | 'bullet' | 'numbered' | 'task';
+
+// The kind of a line, the length of the prefix that makes it that kind, and the indent a list item keeps.
+export function lineKindOf(line: string): { kind: LineKind; prefix: number; indent: string } {
+    const h = RE.heading.exec(line);
+    if (h) return { kind: `h${h[1].length}` as LineKind, prefix: h[0].length, indent: '' };
+    const q = RE.quote.exec(line);
+    if (q) return { kind: 'quote', prefix: q[0].length, indent: '' };
+    const l = RE.list.exec(line);
+    if (l) return { kind: l[4] ? 'task' : /\d/.test(l[2]) ? 'numbered' : 'bullet', prefix: l[0].length, indent: l[1] };
+    return { kind: 'paragraph', prefix: 0, indent: '' };
+}
+
+// Make every selected line one kind, replacing the prefix it has ("- " becomes "1. ", not "1. - "). When all of them
+// are that kind already, they become paragraphs. A list item keeps its indent; a numbered list counts from 1.
+export function setLineKind(state: TextState, kind: LineKind): TextEdit {
+    const from = Math.min(state.anchor, state.head), to = Math.max(state.anchor, state.head);
+    const start = lineStart(state.text, from);
+    const lines = state.text.slice(start, lineEnd(state.text, to)).split('\n');
+    const now = lines.map(lineKindOf);
+    const target = now.every(k => k.kind === kind) ? 'paragraph' : kind;
+    const changes: TextChange[] = [];
+    let at = start;
+    lines.forEach((line, i) => {
+        const { prefix, indent } = now[i];
+        const insert = target === 'paragraph' ? '' : target === 'quote' ? '> '
+            : target.startsWith('h') ? `${'#'.repeat(Number(target[1]))} `
+            : indent + (target === 'numbered' ? `${i + 1}. ` : target === 'task' ? '- [ ] ' : '- ');
+        if (line.slice(0, prefix) !== insert) changes.push({ from: at, to: at + prefix, insert });
+        at += line.length + 1;
+    });
+    return withSelection(state, changes);
 }
 
 // ---------- Lists and quotes ----------

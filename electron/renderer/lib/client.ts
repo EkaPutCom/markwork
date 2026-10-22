@@ -11,7 +11,8 @@ import type { ChooseFileOptions, Prompt, Question } from '../../../src/app/dialo
 import type { CancelSignal } from '../../../src/platform/index.js';
 import type { Board } from '../../../src/markdown/kanban.js';
 import { applyNoteEdit, type NoteEdit } from '../../../src/markdown/noteedit.js';
-import type { MarkdownEditor } from './editor.js';
+import type { FormatAt, MarkdownEditor } from './editor.js';
+import * as P from './panes.js';
 import { appUrl } from './images.js';
 import type { SearchQuery, SearchResults } from '../../../src/app/protocol/search.js';
 import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree.js';
@@ -111,6 +112,13 @@ export function discardPrompt(kind: ChangeKind, path: string): { heading: string
     return { heading: `Discard the changes to “${name}”?`, detail: 'The file goes back to the last commit. This cannot be undone.', accept: 'Discard Changes' };
 }
 
+// The sections of the Files view, in order, and what each starts as.
+export type SectionId = 'editors' | 'folder' | 'outline' | 'timeline';
+export interface SectionState { open: boolean; hidden: boolean; size: number }
+export const SECTIONS: readonly SectionId[] = ['editors', 'folder', 'outline', 'timeline'];
+const SECTION_DEFAULTS: Record<SectionId, Pick<SectionState, 'open' | 'size'>> = { editors: { open: true, size: 1 }, folder: { open: true, size: 2 }, outline: { open: true, size: 1 }, timeline: { open: false, size: 1 } };
+export const SIDEBAR_WIDTH = { min: 200, max: 480, default: 280 };
+
 export interface Toast { text: string; action: { label: string; token: number } | null; at: number }
 
 export interface State {
@@ -123,7 +131,9 @@ export interface State {
     toast: Toast | null;
     line: number;                 // the cursor, from 1
     column: number;
-    source: boolean;              // source mode: no syntax is hidden
+    format: FormatAt;             // what the text at the cursor is, for the visual editor's toolbar
+    source: boolean;              // source mode of the focused pane: no syntax is hidden
+    panes: P.Layout;              // the panes of the editor area, and which has the focus
     palette: boolean;
     sidebar: boolean;             // the `sidebar` setting
     width: number;                // the window's width, which decides whether the side panels float (layoutOf)
@@ -161,7 +171,7 @@ export interface State {
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['send-changes', 'preferences', 'open-recent', 'home', 'programs', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+const CORE_COMMANDS = new Set(['send-changes', 'preferences', 'open-recent', 'home', 'programs', 'visual', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave', 'chat', 'journal', 'journal-capture', 'journal-summary']);
 const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
@@ -191,8 +201,8 @@ export function layoutOf(state: Pick<State, 'width' | 'sidebar' | 'settings' | '
 
 export class Client {
     private snapshot: State = {
-        ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1,
-        source: false, palette: false, sidebar: true, width: 1100, floating: { sidebar: false, chat: false }, settings: {}, commands: [], dialog: null, image: null, recent: [], programsMissing: 0, prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
+        ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1, format: { block: 'paragraph', marks: [] },
+        source: false, panes: P.initialLayout(), palette: false, sidebar: true, width: 1100, floating: { sidebar: false, chat: false }, settings: {}, commands: [], dialog: null, image: null, recent: [], programsMissing: 0, prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
         schema: null, csvFind: { n: 0, replace: false },
         history: { commits: [], more: false, note: '', changes: null, message: '', messageRev: 0 }, viewers: [],
@@ -212,7 +222,11 @@ export class Client {
     private pullAnswer: ((answer: PullRequestAnswer | null) => void) | null = null;
     private readonly listeners = new Set<() => void>();
     private conn: Connection | null = null;
-    private editor: MarkdownEditor | null = null;
+    // One editor for each pane; the focused pane's is the one the commands, the find bar, and the cursor go to.
+    private readonly editors = new Map<number, MarkdownEditor>();
+    private get editor(): MarkdownEditor | null { return this.editors.get(this.snapshot.panes.current) ?? null; }
+    // A pane a file is being opened into (dropped on it from the sidebar): the next document the core shows goes there.
+    private openInto: number | null = null;
     private cursorTimer: ReturnType<typeof setTimeout> | null = null;
 
     // ---------- Store ----------
@@ -244,29 +258,63 @@ export class Client {
         this.reveal = null;
     }
 
-    // Focus and typewriter mode are settings the core keeps; the editor draws them.
+    // Visual, focus, and typewriter mode are settings the core keeps; every editor draws them. Source mode is the pane's own.
     private applyModes(): void {
-        const { settings } = this.snapshot;
-        this.editor?.setFocusMode(settings.focus === true);
-        this.editor?.setTypewriterMode(settings.typewriter === true);
+        const { settings, panes } = this.snapshot;
+        for (const [id, editor] of this.editors) {
+            editor.setVisualMode(settings.visual !== false);
+            editor.setFocusMode(settings.focus === true);
+            editor.setTypewriterMode(settings.typewriter === true);
+            editor.setSourceMode(P.paneById(panes, id)?.source === true);
+        }
     }
 
-    attachEditor(editor: MarkdownEditor | null): void {
-        this.editor = editor;
-        const tab = this.tab();
-        if (editor && tab) editor.show(tab.id, tab.mirror.text);
+    // A pane's editor was made (or is gone): it shows the pane's document.
+    attachEditor(pane: number, editor: MarkdownEditor | null): void {
+        if (editor) this.editors.set(pane, editor); else this.editors.delete(pane);
+        this.syncEditors();
         this.applyModes();
     }
 
-    // The user typed: the editor reports its whole text, the mirror turns it into a small edit and the core gets it at once.
-    typed(text: string): void {
-        const tab = this.tab();
+    // Every editor shows the document of its pane.
+    private syncEditors(): void {
+        for (const [id, editor] of this.editors) {
+            const doc = P.paneById(this.snapshot.panes, id)?.active ?? 0;
+            const tab = this.tab(doc);
+            if (tab && editor.shown !== doc) editor.show(doc, tab.mirror.text);
+        }
+    }
+
+    // The panes changed: the focused pane's document is the active one, and its source mode is the one the window shows.
+    private setPanes(panes: P.Layout, extra: Partial<State> = {}): void {
+        const doc = P.activeDoc(panes);
+        this.set({ panes, source: P.currentPane(panes).source, ...(doc ? { active: doc } : {}), ...extra });
+        this.syncEditors();
+        this.applyModes();
+        this.applyReveal();
+    }
+
+    // The user typed in a pane: the editor reports its whole text, the mirror turns it into a small edit and the core gets it
+    // at once; another pane that shows the document gets the same edit.
+    typed(text: string, pane = this.snapshot.panes.current): void {
+        const doc = P.paneById(this.snapshot.panes, pane)?.active ?? 0;
+        const tab = this.tab(doc);
         const edit = tab?.mirror.typed(text);
-        if (tab && edit) this.conn?.notify('doc.edit', { ...edit });
+        if (tab && edit) {
+            this.conn?.notify('doc.edit', { ...edit });
+            for (const other of P.showing(this.snapshot.panes, doc)) if (other.id !== pane) this.editors.get(other.id)?.applyFromCore(edit.changes);
+        }
         if (tab) this.changeTab(tab.id, {});
     }
 
-    moved(line: number, column: number): void {
+    // The format at the cursor and the cursor itself are the focused pane's.
+    // The document a pane shows.
+    paneDoc(pane: number): number { return P.paneById(this.snapshot.panes, pane)?.active ?? this.snapshot.active; }
+
+    formatted(format: FormatAt, pane = this.snapshot.panes.current): void { if (pane === this.snapshot.panes.current) this.set({ format }); }
+
+    moved(line: number, column: number, pane = this.snapshot.panes.current): void {
+        if (pane !== this.snapshot.panes.current) return;
         this.set({ line, column });
         if (this.cursorTimer) clearTimeout(this.cursorTimer);
         this.cursorTimer = setTimeout(() => {
@@ -294,13 +342,80 @@ export class Client {
         if (path) await this.ask('open.folder', { path });
     }
     openFile = (name: string): void => { void this.ask('open.file', { name }); };
-    selectTab = (doc: number): void => {
+    // A tab pressed in a pane: the pane shows it and has the focus; the core makes it the active document.
+    selectTab = (doc: number, pane = this.snapshot.panes.current): void => {
         // A tab pressed while the review is shown brings the document back, even the one that is already the active tab.
         if (this.snapshot.pullShown) { this.set({ pullShown: false }); void this.ask('act.pull.close'); }
         if (this.snapshot.reviewShown) { this.set({ reviewShown: false }); void this.ask('act.review.close'); }
+        this.setPanes(P.select(this.snapshot.panes, pane, doc));
         void this.ask('tab.select', { doc });
     };
-    closeTab = (doc: number): void => { void this.ask('tab.close', { doc }); };
+
+    // A tab closed in a pane: the document closes with its last tab; while another pane shows it, only the tab goes.
+    closeTab = (doc: number, pane = this.snapshot.panes.current): void => {
+        const { layout, closesDocument } = P.closeTab(this.snapshot.panes, pane, doc);
+        if (closesDocument) void this.ask('tab.close', { doc });
+        else this.setPanes(layout);
+    };
+
+    // ---------- Panes ----------
+
+    // A pane got the focus (a click, the keyboard): the document it shows is the active one.
+    focusPane(pane: number): void {
+        const { panes, active } = this.snapshot;
+        if (panes.current === pane) return;
+        const next = P.focus(panes, pane), doc = P.activeDoc(next);
+        this.setPanes(next);
+        if (doc && doc !== active) void this.ask('tab.select', { doc });
+    }
+
+    splitPane(side: Exclude<P.Zone, 'center'>, pane = this.snapshot.panes.current): void { this.setPanes(P.split(this.snapshot.panes, pane, side)); }
+
+    // A tab dropped on a pane (`from` is the pane it came from, null for a file of the sidebar that is open already).
+    dropTab(from: number | null, doc: number, to: number, zone: P.Zone): void {
+        const before = this.snapshot.active;
+        this.setPanes(P.drop(this.snapshot.panes, from, doc, to, zone));
+        if (this.snapshot.active !== before) void this.ask('tab.select', { doc: this.snapshot.active });
+    }
+
+    // A file of the sidebar dropped on a pane: a document that is open is a tab there; one that is not is opened into it.
+    dropFile(name: string, to: number, zone: P.Zone): void {
+        const open = this.snapshot.tabs.find(t => t.file === name || (t.file && t.file.endsWith(`/${name}`)) || (t.file && t.file.endsWith(`\\${name}`)));
+        if (open) { this.dropTab(null, open.id, to, zone); return; }
+        const base = P.focus(this.snapshot.panes, to);
+        this.setPanes(zone === 'center' ? base : this.emptyBeside(base, to, zone));
+        this.openInto = this.snapshot.panes.current;
+        setTimeout(() => { this.openInto = null; }, 5000);
+        this.activateEntry(name);
+    }
+
+    // An empty pane beside `pane`, for the file about to open into it.
+    private emptyBeside(panes: P.Layout, pane: number, side: Exclude<P.Zone, 'center'>): P.Layout {
+        const made = P.split(panes, pane, side);
+        const fresh = P.currentPane(made);
+        // The split shows the same document in the new pane; the new document replaces it when the core opens it.
+        return { ...made, columns: made.columns.map(c => ({ ...c, panes: c.panes.map(p => p.id === fresh.id ? { ...p, tabs: [], active: 0 } : p) })) };
+    }
+
+    closePane(pane = this.snapshot.panes.current): void { this.setPanes(P.closePane(this.snapshot.panes, pane)); this.refocus(); }
+    joinPanes(): void { this.setPanes(P.joinAll(this.snapshot.panes)); this.refocus(); }
+    moveToNextPane(step = 1): void { this.setPanes(P.moveToNextPane(this.snapshot.panes, step)); this.refocus(); }
+    reorderTab(pane: number, doc: number, before: number | null): void { this.setPanes(P.reorder(this.snapshot.panes, pane, doc, before)); }
+    resizeColumns(index: number, delta: number): void { this.set({ panes: P.resizeColumns(this.snapshot.panes, index, delta) }); }
+    resizePanes(column: number, index: number, delta: number): void { this.set({ panes: P.resizePanes(this.snapshot.panes, column, index, delta) }); }
+
+    // After the focused pane changed on its own, the core is told which document is active.
+    private refocus(): void {
+        const doc = P.activeDoc(this.snapshot.panes);
+        if (doc) void this.ask('tab.select', { doc });
+        this.editor?.focus();
+    }
+
+    // The next (or previous) tab of the focused pane, when there are several panes (the core's order is all the tabs').
+    private stepTab(step: number): void {
+        const pane = P.currentPane(this.snapshot.panes), doc = P.neighbor(pane, step);
+        if (doc && doc !== pane.active) this.selectTab(doc, pane.id);
+    }
 
     // A change the user made on the board: shown at once with the function the core applies, then sent.
     editNotes(edit: NoteEdit): void {
@@ -346,21 +461,21 @@ export class Client {
     closeImage(): void { this.set({ image: null }); this.editor?.focus(); }
 
     // The folder of the active document, which its relative picture paths start from.
-    baseDir(): string | null {
-        const file = this.tab()?.file ?? null;
+    baseDir(doc = this.snapshot.active): string | null {
+        const file = this.tab(doc)?.file ?? null;
         const cut = file ? Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\')) : -1;   // C:\notes\a.md on Windows
         return file && cut >= 0 ? file.slice(0, cut) || '/' : null;
     }
 
     // A link Ctrl+clicked in the active document: the core decides (a note in a tab, a URL in the browser).
-    openLink(url: string): void { void this.ask('open.link', { doc: this.snapshot.active, url }); }
+    openLink(url: string, doc = this.snapshot.active): void { void this.ask('open.link', { doc, url }); }
 
     // [[link]] Ctrl+clicked in the active document: the core finds or makes the note and opens its tab.
-    openNote(link: string): void { void this.ask('open.note', { doc: this.snapshot.active, link }); }
+    openNote(link: string, doc = this.snapshot.active): void { void this.ask('open.note', { doc, link }); }
 
     // The notes a [[ suggestion offers for the active document.
-    async noteNames(): Promise<string[]> {
-        const reply = await this.conn?.request('ask.notes', { doc: this.snapshot.active });
+    async noteNames(doc = this.snapshot.active): Promise<string[]> {
+        const reply = await this.conn?.request('ask.notes', { doc });
         return reply?.ok ? (reply.names as string[]) : [];
     }
 
@@ -370,6 +485,29 @@ export class Client {
         if (layoutOf(this.snapshot).sidebar.floats) this.float('sidebar', !this.snapshot.floating.sidebar);
         else this.setSetting('sidebar', !this.snapshot.sidebar);
     }
+
+    // The sections of the Files view: which are folded or hidden, and their shares of its height. The settings keep them as
+    // JSON the window writes (settingskeys 'sidebar-sections'); a missing or broken value is the defaults.
+    sidebarSections(): Record<SectionId, SectionState> {
+        let saved: Partial<Record<SectionId, Partial<SectionState>>> = {};
+        try { const parsed: unknown = JSON.parse(String(this.snapshot.settings['sidebar-sections'] || '{}')); if (parsed && typeof parsed === 'object') saved = parsed as typeof saved; } catch { /* the defaults */ }
+        const result = {} as Record<SectionId, SectionState>;
+        for (const id of SECTIONS) {
+            const was = saved[id], base = SECTION_DEFAULTS[id];
+            result[id] = { open: typeof was?.open === 'boolean' ? was.open : base.open, hidden: was?.hidden === true,
+                size: typeof was?.size === 'number' && was.size > 0 ? was.size : base.size };
+        }
+        return result;
+    }
+    setSection(id: SectionId, patch: Partial<SectionState>): void { this.writeSections({ ...this.sidebarSections(), [id]: { ...this.sidebarSections()[id], ...patch } }); }
+    writeSections(sections: Record<SectionId, SectionState>): void {
+        this.setSetting('sidebar-sections', JSON.stringify(sections));
+        this.timelineShown(sections.timeline.open && !sections.timeline.hidden);
+    }
+    // The core reads the history of the open file while the Timeline is shown.
+    timelineShown(on: boolean): void { if (this.snapshot.settings['timeline-open'] !== on) this.setSetting('timeline-open', on); }
+    collapseFolders(): void { this.set({ tree: { ...this.snapshot.tree, expanded: [] } }); }
+    setSidebarWidth(px: number): void { this.setSetting('sidebar-width', Math.round(Math.min(SIDEBAR_WIDTH.max, Math.max(SIDEBAR_WIDTH.min, px)))); }
 
     // A rail button: its page opens; the button of the page that is open closes the side panel.
     showSidebarPage(page: string): void {
@@ -759,13 +897,16 @@ export class Client {
         const editor = this.editor;
         const none = () => this.say('This is not available in this window yet');
         return {
-            edit: editor?.edit ?? ({ undo: none, redo: none, wrap: none, link: none, block: none, prefix: none, heading: none, table: none, zoomImage: none }),
+            edit: editor?.edit ?? ({ undo: none, redo: none, wrap: none, link: none, block: none, prefix: none, heading: none, lineKind: none, moveBlock: none, table: none, zoomImage: none }),
             openFind: replace => {
                 if (this.tab()?.page === 'csv') this.set({ csvFind: { n: this.snapshot.csvFind.n + 1, replace: replace === true } });
                 else if (editor) editor.openFind(replace === true); else none();
             },
             showSearch: replace => this.showSearch(replace === true),
-            setSource: on => { editor?.setSourceMode(on); this.set({ source: on }); },
+            setSource: on => this.setPanes(P.setSource(this.snapshot.panes, this.snapshot.panes.current, on)),
+            splitPane: side => this.splitPane(side),
+            closePane: () => this.closePane(),
+            moveToNextPane: () => this.moveToNextPane(),
             showPalette: () => this.openPalette(),
             showShortcuts: () => this.showInfo('shortcuts'), showAbout: () => this.showInfo('about'),
             quit: () => window.close(),
@@ -775,6 +916,7 @@ export class Client {
     run(id: string, arg?: boolean | string): void {
         const command = COMMANDS.find(c => c.id === id);
         if (!command || !this.enabled(command)) return;
+        if ((id === 'next-tab' || id === 'prev-tab') && !P.isSolo(this.snapshot.panes)) { this.stepTab(id === 'next-tab' ? 1 : -1); return; }
         const argument = arg ?? this.toggled(command);
         // The core's table says where a command runs; the window's own copy is the fallback before `hello` arrives.
         const runs = this.snapshot.commands.find(c => c.id === id)?.runs ?? command.runs;
@@ -785,6 +927,8 @@ export class Client {
             return;
         }
         if (command.kind === 'setting') {
+            // The visual editor and source mode exclude each other: turning the visual editor on leaves source mode.
+            if (id === 'visual' && argument === true && this.snapshot.source) this.run('source', false);
             this.setSetting(id, argument === true);
             if (id === 'chat' && argument === true) this.chat.focusInput();
             return;
@@ -810,14 +954,11 @@ export class Client {
             if (!tab) throw new RequestError('stale', 'that document is closed');
             const result = tab.mirror.replace(p.base as number, p.changes as Change[]);
             if (!result.ok) throw new RequestError('conflict', 'text changed', { version: result.version });
-            if (tab.id === this.snapshot.active) this.editor?.applyFromCore(result.applied);
+            for (const pane of P.showing(this.snapshot.panes, tab.id)) this.editors.get(pane.id)?.applyFromCore(result.applied);
             this.changeTab(tab.id, {});
             return result;
         });
-        c.on('doc.close', p => {
-            this.editor?.forget(p.doc as number);
-            this.set({ tabs: this.snapshot.tabs.filter(t => t.id !== p.doc) });
-        });
+        c.on('doc.close', p => { this.dropDoc(p.doc as number); });
         c.on('doc.resync', p => {
             const tab = this.tab(p.doc as number);
             if (!tab) throw new RequestError('stale', 'that document is closed');
@@ -919,6 +1060,27 @@ export class Client {
     // The review is a page of the content area; the next page the core shows (a document, Home) takes its place.
     private leaveReview(): void { if (this.snapshot.pullShown || this.snapshot.reviewShown) this.set({ pullShown: false, reviewShown: false }); }
 
+    // A document or a page was opened: a tab of the focused pane (or of the pane a file was dropped on).
+    private addTab(id: number): void {
+        const into = this.openInto;
+        this.openInto = null;
+        this.setPanes(P.open(into !== null ? P.focus(this.snapshot.panes, into) : this.snapshot.panes, id));
+    }
+
+    // The core made a document the active one: the pane that has it shows it (see panes.ts show); a file dropped on a pane opens there.
+    private showDoc(id: number): void {
+        const into = this.openInto;
+        this.openInto = null;
+        const panes = into !== null && P.paneById(this.snapshot.panes, into) ? P.open(P.focus(this.snapshot.panes, into), id) : P.show(this.snapshot.panes, id);
+        this.setPanes(panes);
+    }
+
+    // A document or a page was closed: its tab goes from every pane.
+    private dropDoc(id: number): void {
+        for (const editor of this.editors.values()) editor.forget(id);
+        this.setPanes(P.close(this.snapshot.panes, id), { tabs: this.snapshot.tabs.filter(t => t.id !== id) });
+    }
+
     private notice(ev: string, p: Record<string, unknown>): void {
         if (ev.startsWith('chat.') && this.chat.notice(ev, p)) return;
         const id = p.doc as number;
@@ -926,6 +1088,7 @@ export class Client {
         switch (ev) {
             case 'doc.open':
                 this.set({ tabs: [...this.snapshot.tabs, { id, mirror: new DocMirror(id, p.text as string, p.version as number), name: 'Untitled', file: null, place: null, page: 'text', board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0, home: null, programs: null, html: null, runs: {} }] });
+                this.addTab(id);
                 break;
             case 'page.open': {
                 const page = p.page as number, kind = p.kind as string, file = p.file as string | null;
@@ -933,10 +1096,11 @@ export class Client {
                     id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : kind === 'programs' ? 'Programs' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, place: null, page: kind, board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0,
                     home: null, programs: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null, runs: {},
                 }] });
+                this.addTab(page);
                 break;
             }
-            case 'page.close': this.set({ tabs: this.snapshot.tabs.filter(t => t.id !== p.page) }); break;
-            case 'page.active': this.leaveReview(); this.set({ active: p.page as number }); break;
+            case 'page.close': this.dropDoc(p.page as number); break;
+            case 'page.active': this.leaveReview(); this.showDoc(p.page as number); break;
             case 'view.home': {
                 this.leaveReview();
                 const home = this.snapshot.tabs.find(t => t.page === 'home');
@@ -954,22 +1118,15 @@ export class Client {
                 if (!tab) break;
                 tab.mirror.reset(p.text as string, p.version as number);
                 this.changeTab(id, { board: null });
-                if (id === this.snapshot.active) this.editor?.reset(p.text as string);
+                for (const pane of P.showing(this.snapshot.panes, id)) this.editors.get(pane.id)?.reset(p.text as string);
                 break;
-            case 'doc.active': {
-                this.leaveReview();
-                this.set({ active: id });
-                const shown = this.tab(id);
-                if (shown) this.editor?.show(id, shown.mirror.text);
-                this.applyReveal();
-                break;
-            }
+            case 'doc.active': this.leaveReview(); this.showDoc(id); break;
             case 'doc.select': this.reveal = { doc: id, line: p.line as number, select: [p.column as number, p.length as number] }; this.applyReveal(); break;
             case 'doc.reveal': this.reveal = { doc: id, line: p.line as number }; this.applyReveal(); break;
             case 'doc.title': {
                 const title = p.title as { name: string; file: string | null; place: string | null };
                 this.changeTab(id, { name: title.name, file: title.file, place: title.place ?? null });
-                if (id === this.snapshot.active) this.editor?.rebuild();
+                for (const pane of P.showing(this.snapshot.panes, id)) this.editors.get(pane.id)?.rebuild();
                 break;
             }
             case 'doc.saved': tab?.mirror.savedAt(p.version as number); this.changeTab(id, {}); break;

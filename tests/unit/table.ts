@@ -1,6 +1,6 @@
 // Markdown table model tests (markdown/table.ts).
 
-import { cellIndexAt, cellStart, deleteColumn, deleteRow, displayWidth, findTables, fitColumns, insertColumn, insertRow, parseTable, renderTable, setAlign, splitRow, tableEnd } from '../../src/markdown/table.js';
+import { cellIndexAt, cellStart, deleteColumn, deleteRow, displayWidth, escapeCell, findTables, fitColumns, insertColumn, insertRow, parseTable, renderTable, setAlign, setCellText, splitRow, tableEnd } from '../../src/markdown/table.js';
 import { section, test, eq, ok } from '../core/framework.js';
 
 export function tableTests(): void {
@@ -18,6 +18,19 @@ export function tableTests(): void {
         eq([cellIndexAt(line, 2), cellIndexAt(line, 7), cellIndexAt(line, 12)], [0, 1, 2], 'column at position');
         eq([cellStart(line, 0), cellStart(line, 2), cellStart(line, 9)], [2, 12, line.length], 'cell start; out of range = end of line');
     });
+    test('setCellText: only the cell changes, and a pipe or a line break cannot split it', () => {
+        const edit = (line: string, col: number, text: string) => {
+            const c = setCellText(line, col, text);
+            return c && line.slice(0, c.from) + c.insert + line.slice(c.to);
+        };
+        eq(edit('| a | b |', 1, 'new'), '| a | new |', 'the spaces and the other cells stay');
+        eq(edit('|  | b |', 0, 'x'), '| x | b |', 'an empty cell');
+        eq(edit('| a | b |', 0, ''), '|  | b |', 'emptied');
+        eq(edit('a | b', 1, 'z'), 'a | z', 'no edge pipes');
+        eq(edit('| a | b |', 5, 'z'), null, 'a column the line does not have');
+        eq([escapeCell('a|b'), escapeCell('a\\|b'), escapeCell('a\nb')], ['a\\|b', 'a\\|b', 'a b'], 'an escaped pipe is kept, a bare one escaped');
+    });
+
     test('parseTable: alignment, missing and extra cells', () => {
         const t = parseTable(['| a | b | c | d |', '| :--- | :-: | ---: | --- |', '| 1 |', '| 1 | 2 | 3 | 4 | 5 |']);
         eq(t.aligns, ['left', 'center', 'right', null], 'alignment');

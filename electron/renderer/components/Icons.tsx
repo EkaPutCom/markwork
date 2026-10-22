@@ -2,10 +2,10 @@
 // the window's own (what an icon stands for), so a component never names a Lucide export.
 
 import {
-    ArrowUp, BookOpen, Calendar, ChartColumn, ChartGantt, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, ChevronUp,
-    CircleAlert, CircleCheck, CircleMinus, Command, Copy, Ellipsis, EllipsisVertical, ExternalLink, FileOutput, FileText, Folder, GitPullRequest, GripVertical, History, House,
-    Info, LayoutGrid, List, ListTree, MessageSquare, Minus, Package, PanelLeft, Plus, RefreshCw, Search, Settings, SlidersHorizontal, Sparkles,
-    Square, SquareKanban, SquareTerminal, Table, TextCursorInput, TextSearch, Trash2, TriangleAlert, Undo2, X, ZoomIn, ZoomOut,
+    ArrowUp, BetweenHorizontalEnd, BetweenVerticalEnd, Bold, BookOpen, Calendar, ChartColumn, ChartGantt, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, ChevronUp,
+    CircleAlert, CircleCheck, CircleMinus, Code, CodeXml, Columns2, Command, Copy, Ellipsis, EllipsisVertical, ExternalLink, FileOutput, FileText, Folder, GitPullRequest, GripVertical, Heading1, Heading2, Heading3, History, House,
+    Image, Info, Italic, LayoutGrid, Link, List, ListOrdered, ListTodo, ListTree, MessageSquare, Minus, Package, PanelLeft, Pencil, Plus, Redo2, RefreshCw, Rows2, Search, Settings, SlidersHorizontal, Sparkles,
+    Square, SquareCode, SquareKanban, SquareTerminal, Strikethrough, Table, TextCursorInput, TextQuote, TextSearch, Trash2, TriangleAlert, Type, Undo2, X, ZoomIn, ZoomOut,
     type IconNode,
 } from 'lucide';
 
@@ -67,6 +67,29 @@ const ICONS = {
     'program-ok': CircleCheck,
     'program-optional': CircleMinus,
     'external-link': ExternalLink,
+    'edit-redo': Redo2,
+    'split-right': Columns2,
+    'split-down': Rows2,
+    'format-bold': Bold,
+    'format-italic': Italic,
+    'format-strike': Strikethrough,
+    'format-code': Code,
+    'format-link': Link,
+    'format-text': Type,
+    'format-h1': Heading1,
+    'format-h2': Heading2,
+    'format-h3': Heading3,
+    'format-quote': TextQuote,
+    'format-codeblock': SquareCode,
+    'list-bullet': List,
+    'list-numbered': ListOrdered,
+    'list-todo': ListTodo,
+    'insert-image': Image,
+    'insert-divider': Minus,
+    'table-row': BetweenHorizontalEnd,
+    'table-column': BetweenVerticalEnd,
+    'mode-visual': Pencil,
+    'mode-markdown': CodeXml,
 } satisfies Record<string, IconNode>;
 
 export type IconName = keyof typeof ICONS;

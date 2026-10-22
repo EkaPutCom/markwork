@@ -17,7 +17,8 @@ writeFileSync(join(notes, 'edited.md'), '');
 const exported = join(scratch, 'exported.html');
 const { steps, step } = stepper();
 
-const app = await launchApp({ scratch, notes, env: { MARKWORK_CHOOSE_FILE: exported } });
+// These scenarios are the live view's (the visual editor off): the syntax shows on the cursor line. tests/electron/visual.mjs has the visual editor's.
+const app = await launchApp({ scratch, notes, settings: { visual: false }, env: { MARKWORK_CHOOSE_FILE: exported } });
 let failed = false;
 let page;
 const errors = [];
@@ -87,7 +88,6 @@ try {
 
     await step('sample: the file opens and every heading, and only those, is in the outline', async () => {
         await open('all-formats.md');
-        await page.getByRole('button', { name: 'Outline' }).click();
         const rows = page.locator('.outline .row');
         await rows.first().waitFor();
         const names = await rows.allTextContents();
@@ -217,7 +217,6 @@ try {
 
     await step('robust: the outline follows a heading that is edited, removed, and shifted, and a click lands on it', async () => {
         await setDoc('# One\n\n## Two\n\n# Three');
-        await page.getByRole('button', { name: 'Outline' }).click();
         const rows = page.locator('.outline .row');
         await waitFor(async () => (await rows.allTextContents()).join('|') === 'One|Two|Three');
         await edit(13, 13, ' new', 17);   // at the end of "## Two"

@@ -11,9 +11,13 @@ export const SETTING_KEYS = {
     autosave: { type: 'b', default: true },             // autosave documents that already have a file
     typewriter: { type: 'b', default: false },
     focus: { type: 'b', default: false },
+    visual: { type: 'b', default: true },               // the editor hides Markdown syntax on the cursor line too
 
     sidebar: { type: 'b', default: true },              // sidebar open
-    'sidebar-page': { type: 's', default: 'files', choices: ['files', 'search', 'outline', 'history', 'collab'] },
+    'sidebar-page': { type: 's', default: 'files', choices: ['files', 'search', 'history', 'collab'] },
+    'sidebar-width': { type: 'u', default: 280 },       // the side panel's width in pixels (the window keeps it between 200 and 480)
+    'sidebar-sections': { type: 's', default: '' },     // the sections of the Files view that are folded or hidden, and their sizes (JSON the window writes)
+    'timeline-open': { type: 'b', default: false },     // the Files view shows its Timeline section: the history of the open file is read
     chat: { type: 'b', default: false },                // assistant panel open
     'chat-model': { type: 's', default: 'deepseek-flash' },
     'chat-thinking': { type: 'b', default: false },     // model thinking mode (more thorough, slower)

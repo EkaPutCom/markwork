@@ -42,7 +42,8 @@ writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
 const tabsNow = async () => `      tabs: ${JSON.stringify(await page.getByRole('tab').evaluateAll(els => els.map(e => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)))}`;
 const { steps, step } = stepper({ after: process.env.MARKWORK_TRACE ? tabsNow : undefined });
 
-const app = await launchApp({ scratch, notes });   // its data folder holds the Trash of this run only
+// These scenarios are the live view's (the visual editor off): the syntax shows on the cursor line. tests/electron/visual.mjs has the visual editor's.
+const app = await launchApp({ scratch, notes, settings: { visual: false } });   // its data folder holds the Trash of this run only
 let failed = false;
 let page;
 try {
@@ -180,16 +181,14 @@ try {
     });
 
     // ---------- outline.ts (the side panel) ----------
-    await step('outline: the rail opens the panel with the headings, and a click jumps to one', async () => {
+    await step('outline: the Files view lists the headings in its Outline section, and a click jumps to one', async () => {
         await open(/Idea\.md/);
-        await page.getByRole('button', { name: 'Outline' }).click();
         const rows = page.locator('.outline .row');
         await rows.first().waitFor();
         assert.deepEqual(await rows.allTextContents(), ['Idea', 'Section Two']);
         await rows.nth(1).click();
         await page.waitForFunction(() => document.querySelector('.cm-content').cmTile.view.state.selection.main.head > 10);
         assert.equal(await cursorLine(), 5);
-        await page.getByRole('button', { name: 'Files', exact: true }).click();
         await page.getByRole('tree').waitFor();
         await open(/Source\.md/);
     });

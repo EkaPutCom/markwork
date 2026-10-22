@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markwork split editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff; --fg: #09090b; --muted: #71717a; --dim: #52525b; --border: #e4e4e7; --sidebar: #fafafa; --accent: #f4f4f5;
+  --ok: #16a34a; --warn: #d97706; --primary: #18181b; --primary-fg: #fafafa; --ring: #a1a1aa; --drop: rgb(24 24 27 / 10%);
+}
+body { margin: 0; background: #e4e4e7; font-family: Geist, system-ui, sans-serif; font-size: 14px; color: var(--fg); }
+.label { font: 600 13px Geist, sans-serif; color: #3f3f46; margin: 32px 32px 8px; }
+.label span { font-weight: 400; color: var(--muted); }
+.label button { font: 500 12px Geist, sans-serif; margin-left: 8px; height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.board { position: relative; width: 1280px; height: 800px; margin: 0 32px 16px; display: flex; background: var(--bg); overflow: hidden; border-radius: 10px; box-shadow: 0 1px 3px rgb(0 0 0 / 10%); }
+button { font: inherit; cursor: pointer; color: inherit; }
+svg { flex-shrink: 0; }
+kbd { font: 11px 'Geist Mono', monospace; color: var(--dim); background: var(--accent); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; line-height: 18px; }
+
+/* Sidebar and header, as in Main.dc.html */
+aside { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--border); }
+.ws { display: flex; align-items: center; gap: 10px; padding: 16px; }
+.ws .logo { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--primary-fg); display: flex; align-items: center; justify-content: center; font-weight: 600; }
+.ws b { display: block; font-weight: 600; }
+.ws small { font-size: 12px; color: var(--muted); }
+.nav { padding: 0 8px; display: flex; flex-direction: column; gap: 2px; }
+.nav button { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; text-align: left; }
+.section { font-size: 12px; font-weight: 500; color: var(--muted); padding: 16px 16px 6px; }
+.tree { list-style: none; margin: 0; padding: 0 8px; }
+.tree li { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: 6px; cursor: grab; }
+.tree li:hover { background: var(--accent); }
+.side-hint { margin: 10px 16px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+header { height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+.crumb { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.crumb b { color: var(--fg); font-weight: 500; }
+.saved { margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--dim); border: 1px solid var(--border); border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px; }
+.saved i { width: 6px; height: 6px; border-radius: 3px; background: var(--ok); }
+.icon-btn { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: var(--dim); }
+.icon-btn:hover, .icon-btn[aria-expanded="true"] { background: var(--accent); color: var(--fg); }
+.new { display: flex; height: 32px; border-radius: 6px; background: var(--primary); color: var(--primary-fg); }
+.new button { display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; border: 0; background: transparent; font-weight: 500; }
+
+/* The groups: columns of rows, each a tab bar over a document */
+.groups { flex: 1; min-height: 0; display: flex; position: relative; }
+.col { min-width: 0; display: flex; flex-direction: column; }
+.group { position: relative; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
+.sash-v { width: 1px; flex-shrink: 0; background: var(--border); position: relative; cursor: col-resize; z-index: 3; }
+.sash-h { height: 1px; flex-shrink: 0; background: var(--border); position: relative; cursor: row-resize; z-index: 3; }
+.sash-v::after { content: ""; position: absolute; inset: 0 -4px; }
+.sash-h::after { content: ""; position: absolute; inset: -4px 0; }
+.sash-v:hover, .sash-h:hover, .sash-v.on, .sash-h.on { background: var(--ring); box-shadow: 0 0 0 1px var(--ring); }
+.gbar { height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid var(--border); background: var(--sidebar); }
+.tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 8px; background: var(--accent); min-width: 0; overflow: hidden; }
+.tab { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--dim); font-weight: 500; white-space: nowrap; cursor: grab; }
+.tab.active { background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+.group:not(.current) .tab.active { color: var(--dim); }
+.tab .x { width: 18px; height: 18px; border: 0; border-radius: 4px; background: transparent; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: var(--muted); opacity: 0; }
+.tab:hover .x, .tab.active .x { opacity: 1; }
+.tab .x:hover { background: var(--accent); color: var(--fg); }
+.tab .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--warn); }
+.tab.dragging { opacity: .4; }
+.gbar .sp { flex: 1; }
+.seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--accent); }
+.seg button { height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--dim); font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+.seg button[aria-pressed="true"] { background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+.group.narrow .seg span { display: none; }
+.group.current { box-shadow: inset 0 2px 0 var(--primary); }
+.gbody { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted); text-align: center; padding: 24px; }
+.empty b { color: var(--fg); font-size: 16px; }
+
+/* The formatting toolbar of a Visual text pane, and the block handle */
+.fbar { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.fbar .sep { width: 1px; height: 18px; background: var(--border); margin: 0 5px; }
+.tb { height: 28px; min-width: 28px; padding: 0 5px; border: 0; border-radius: 6px; background: transparent; display: inline-flex; align-items: center; justify-content: center; color: var(--fg); }
+.tb:hover { background: var(--accent); }
+.tb[aria-pressed="true"] { background: #e4e4e7; }
+.tb.select { width: 128px; justify-content: space-between; padding: 0 6px 0 9px; border: 1px solid var(--border); background: var(--bg); font-size: 13px; font-weight: 500; box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
+.handle { position: absolute; left: 6px; display: none; height: 24px; align-items: center; z-index: 4; }
+.handle button { width: 20px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: #a1a1aa; display: flex; align-items: center; justify-content: center; padding: 0; }
+.handle button:hover { background: var(--accent); color: var(--fg); }
+.handle button:last-child { cursor: grab; }
+.slash { position: absolute; z-index: 20; width: 250px; padding: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 10%); }
+.slash .grp { font-size: 12px; font-weight: 500; color: var(--muted); padding: 6px 8px 2px; }
+.slash button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 4px 8px; border: 0; border-radius: 6px; background: transparent; text-align: left; }
+.slash button:hover { background: var(--accent); }
+.slash .ic { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; background: var(--bg); }
+.slash .nm { flex: 1; font-weight: 500; }
+.slash .ds { font-size: 12px; color: var(--muted); }
+
+/* The documents */
+.page { position: relative; max-width: 640px; margin: 0 auto; padding: 28px 36px 80px 52px; font-size: 15px; line-height: 1.7; }
+.page h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.025em; margin: 0 0 14px; }
+.page h2 { font-size: 21px; letter-spacing: -0.02em; margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.page p { margin: 0 0 12px; }
+.page ul { padding-left: 22px; margin: 0 0 12px; }
+.page ul.tasks { list-style: none; padding-left: 2px; }
+.page ul.tasks li { display: flex; gap: 10px; align-items: baseline; }
+.page ul.tasks li > span { min-width: 0; }
+.page ul.tasks input { accent-color: var(--primary); transform: translateY(2px); }
+.page ul.tasks li.done { color: var(--muted); text-decoration: line-through; }
+.page blockquote { margin: 0 0 12px; padding-left: 16px; border-left: 2px solid var(--border); font-style: italic; color: #3f3f46; }
+.page code { font: 13px 'Geist Mono', monospace; background: var(--accent); border-radius: 4px; padding: 1px 5px; }
+.page table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 0 0 12px; }
+.page th, .page td { border: 1px solid var(--border); padding: 5px 10px; text-align: left; }
+.page th { background: var(--sidebar); }
+.page a.chip { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 6px; background: var(--accent); text-decoration: none; font-size: 14px; }
+.raw { margin: 0; padding: 28px 36px 80px; font: 13.5px/1.7 'Geist Mono', monospace; color: #3f3f46; white-space: pre-wrap; word-break: break-word; }
+.kanban { display: flex; gap: 12px; padding: 20px; align-items: flex-start; }
+.kanban .column { flex: 1; min-width: 150px; background: var(--sidebar); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+.kanban .column h3 { margin: 0 0 8px; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.kanban .column h3 small { font-weight: 500; color: var(--muted); background: var(--accent); border-radius: 6px; padding: 0 6px; }
+.kanban .card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; display: flex; gap: 8px; align-items: center; }
+.kanban .card.done { color: var(--muted); text-decoration: line-through; }
+
+/* Dropping a tab: the zones and the one that is hot */
+.zones { position: absolute; inset: 44px 0 0; z-index: 6; display: none; pointer-events: none; }
+.group.over .zones { display: block; }
+.zone { position: absolute; background: var(--drop); border: 2px solid var(--primary); border-radius: 6px; transition: all .08s; display: none; }
+.zone.show { display: block; }
+.zone span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--primary); color: var(--primary-fg); font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+
+/* The group's menu */
+.menu { position: absolute; z-index: 30; min-width: 220px; padding: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 10%); }
+.menu button { width: 100%; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; text-align: left; }
+.menu button:hover { background: var(--accent); }
+.menu button kbd { margin-left: auto; }
+.menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px -4px; }
+.menu button:disabled { color: var(--muted); cursor: default; background: transparent; }
+
+footer { height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 0 16px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); }
+footer .hint { margin-right: auto; display: flex; align-items: center; gap: 6px; }
+
+.notes { width: 1280px; margin: 0 32px 48px; box-sizing: border-box; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.notes div { background: var(--bg); border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 3px rgb(0 0 0 / 10%); line-height: 1.6; color: #3f3f46; }
+.notes b { color: var(--fg); }
+.notes div > b:first-child { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<p class="label">Split editor <span>— interactive: <b>drag a tab</b> to the edge of a pane (or onto another tab bar), use the pane's <b>⋯</b> menu or the split buttons, drag the thin line between panes to resize, and drag a file from the sidebar into a pane, and point at a block for its <b>+</b></span><button id="reset" type="button">Reset</button></p>
+
+<div class="board" id="board">
+  <aside aria-label="Sidebar">
+    <div class="ws"><span class="logo">M</span><span><b>markwork-launch</b><small>~/markwork-launch</small></span></div>
+    <nav class="nav" aria-label="Workspace">
+      <button type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Home</button>
+      <button type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Journal</button>
+    </nav>
+    <div class="section">Files</div>
+    <ul class="tree" id="tree" aria-label="Files"></ul>
+    <p class="side-hint">Drag a file into a pane to open it there, or onto an edge to split.</p>
+  </aside>
+
+  <main>
+    <header>
+      <nav class="crumb" aria-label="Breadcrumb">markwork-launch
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg><b id="crumb">launch.md</b></nav>
+      <span class="saved"><i></i>Saved</span>
+      <span style="flex: 1;"></span>
+      <button type="button" class="icon-btn" id="hSplit" title="Split Right (Ctrl+Alt+\)" aria-label="Split Right">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/></svg></button>
+      <span style="width: 1px; height: 16px; background: var(--border); margin: 0 4px;"></span>
+      <div class="new"><button type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New</button></div>
+      <button type="button" class="icon-btn" aria-label="Assistant"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg></button>
+    </header>
+
+    <div class="groups" id="groups"></div>
+
+    <footer>
+      <span class="hint" id="tip"></span>
+      <span id="count"></span>
+    </footer>
+  </main>
+</div>
+
+<div class="notes">
+  <div><b>Several ways in, like VS Code</b>The split button in the header or a pane's <b>⋯</b> menu (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>\</kbd>; <kbd>Ctrl</kbd>+<kbd>\</kbd> stays the sidebar), dragging a tab or a file to the edge of a pane, or the tab's right-click menu. A drag shows where the tab will land before you let go.</div>
+  <div><b>Every pane has its own tabs, view, and toolbar</b>The header's Visual / Markdown switch moves into each pane's bar once there is more than one, so the same file can be Visual on the left and Markdown on the right. The formatting toolbar belongs to a Visual text pane (it wraps in a narrow one); a Markdown pane is plain text and a board, list, or table has its own page, so neither has it. Point at a block in a Visual pane for its <b>+</b> (the <kbd>/</kbd> menu) and its grip.</div>
+  <div><b>One file in two panes is still one document</b>Both panes show the same text, so a change in one is in the other at once, and there is one Saved / Unsaved state and one undo history. Closing the last tab of a pane closes the pane. The sizes and which panes were open would be remembered per folder, like the tabs are.</div>
+</div>
+
+<script>
+const DOCS = {
+  'launch.md': { type: 'text', md: `# Markwork 1.0 Launch Plan
+
+## Goal
+
+Release Markwork 1.0 for **Linux users**, complete with *folder syncing*. Decisions come from [[meeting-1-oct]].
+
+## Schedule
+
+- Closed beta: **20 October**
+- Public release: **22 November**
+- Evaluation: 30 November
+
+## Before the release
+
+- [x] Write the release notes
+- [ ] Record the demo video
+- [ ] Send the newsletter
+
+## Budget
+
+| Item | Cost | Owner |
+| --- | --- | --- |
+| Redesign | $2,200 | Rani |
+| Test server | $800 | Budi |
+
+> Total $3,000, including the redesign and a test server.
+` },
+  'meeting-1-oct.md': { type: 'text', md: `# Meeting, 1 October
+
+## Decisions
+
+- The release moves from 15 November to **22 November**
+- The redesign is finished before the closed beta
+- Budi owns the *test server*
+
+## Next
+
+- [ ] Update [[launch]] with the new date
+- [ ] Ask Rani for the redesign files
+
+> We would rather ship a week late than ship the sync half done.
+` },
+  'roadmap.md': { type: 'text', md: `# Roadmap
+
+## Q4
+
+- Folder syncing
+- Visual editor
+- Split editor
+
+## Q1
+
+- Mobile reader
+- Plugins
+` },
+  'tasks.md': { type: 'board', md: `---
+layout: board
+---
+
+## Todo
+
+- [ ] Write the release notes
+- [ ] Record the demo video
+
+## Doing
+
+- [ ] Fix the sync bug
+
+## Done
+
+- [x] Design the home page
+` },
+};
+const ICON = {
+  text: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>',
+  board: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg>',
+  x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+  more: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
+  right: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/></svg>',
+  down: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/></svg>',
+  visual: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838.838-2.872a2 2 0 0 1 .506-.855z"/></svg>',
+  md: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+};
+
+// ---- State: columns of groups; each group has tabs (file names), an active tab, and a view ----
+let nextId = 1, cols, current, dragging = null;
+const group = (tabs, mode = 'visual') => ({ id: nextId++, tabs, active: 0, mode, h: 1 });
+function reset() {
+  nextId = 1;
+  const a = group(['launch.md', 'roadmap.md']), b = group(['meeting-1-oct.md', 'tasks.md']);
+  cols = [{ w: 1, groups: [a] }, { w: 1, groups: [b] }];
+  current = a.id;
+}
+const all = () => cols.flatMap(c => c.groups);
+const find = id => { for (const c of cols) { const g = c.groups.find(x => x.id === id); if (g) return { col: c, g }; } return null; };
+
+// ---- Markdown → HTML for the visual view (the few shapes these documents use) ----
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const inline = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  .replace(/\[\[([^\]]+)\]\]/g, '<a class="chip" href="#">' + ICON.text.replace(/width="16" height="16"/, 'width="12" height="12"') + '$1</a>');
+function toHtml(md) {
+  const lines = md.split('\n'); let out = '', i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (!l.trim()) { i++; continue; }
+    let m;
+    if ((m = /^(#{1,3}) (.*)/.exec(l))) { out += `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`; i++; }
+    else if (l.startsWith('|')) { const rows = []; while (i < lines.length && lines[i].startsWith('|')) rows.push(lines[i++]); const cells = r => r.split('|').slice(1, -1).map(c => c.trim());
+      out += '<table><thead><tr>' + cells(rows[0]).map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>' + rows.slice(2).map(r => '<tr>' + cells(r).map(c => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table>'; }
+    else if (/^- /.test(l)) { const items = []; while (i < lines.length && /^- /.test(lines[i])) items.push(lines[i++].slice(2)); const task = items.some(t => /^\[[ x]\] /.test(t));
+      out += `<ul${task ? ' class="tasks"' : ''}>` + items.map(t => { const k = /^\[([ x])\] (.*)/.exec(t); return k ? `<li class="${k[1] === 'x' ? 'done' : ''}"><input type="checkbox" disabled ${k[1] === 'x' ? 'checked' : ''}><span>${inline(k[2])}</span></li>` : `<li>${inline(t)}</li>`; }).join('') + '</ul>'; }
+    else if (l.startsWith('> ')) { out += `<blockquote>${inline(l.slice(2))}</blockquote>`; i++; }
+    else { const p = []; while (i < lines.length && lines[i].trim() && !/^(#|- |> |\|)/.test(lines[i])) p.push(lines[i++]); out += `<p>${inline(p.join(' '))}</p>`; }
+  }
+  return `<div class="page">${out}</div>`;
+}
+function board(md) {
+  const cols = []; for (const l of md.split('\n')) { let m; if ((m = /^## (.*)/.exec(l))) cols.push({ t: m[1], cards: [] }); else if ((m = /^- \[([ x])\] (.*)/.exec(l)) && cols.length) cols.at(-1).cards.push({ done: m[1] === 'x', t: m[2] }); }
+  return '<div class="kanban">' + cols.map(c => `<div class="column"><h3>${c.t}<small>${c.cards.length}</small></h3>${c.cards.map(k => `<div class="card ${k.done ? 'done' : ''}"><input type="checkbox" disabled ${k.done ? 'checked' : ''}>${esc(k.t)}</div>`).join('')}</div>`).join('') + '</div>';
+}
+const RAW = {"Undo": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 0 11H11\"/></svg>", "Redo": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m15 14 5-5-5-5\"/><path d=\"M20 9H9.5a5.5 5.5 0 0 0 0 11H13\"/></svg>", "Strikethrough": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 4H9a3 3 0 0 0-2.83 4\"/><path d=\"M14 12a4 4 0 0 1 0 8H6\"/><line x1=\"4\" x2=\"20\" y1=\"12\" y2=\"12\"/></svg>", "Code": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"16 18 22 12 16 6\"/><polyline points=\"8 6 2 12 8 18\"/></svg>", "Link": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/></svg>", "Bulleted list": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"8\" x2=\"21\" y1=\"6\" y2=\"6\"/><line x1=\"8\" x2=\"21\" y1=\"12\" y2=\"12\"/><line x1=\"8\" x2=\"21\" y1=\"18\" y2=\"18\"/><line x1=\"3\" x2=\"3.01\" y1=\"6\" y2=\"6\"/><line x1=\"3\" x2=\"3.01\" y1=\"12\" y2=\"12\"/><line x1=\"3\" x2=\"3.01\" y1=\"18\" y2=\"18\"/></svg>", "Numbered list": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"10\" x2=\"21\" y1=\"6\" y2=\"6\"/><line x1=\"10\" x2=\"21\" y1=\"12\" y2=\"12\"/><line x1=\"10\" x2=\"21\" y1=\"18\" y2=\"18\"/><path d=\"M4 6h1v4\"/><path d=\"M4 10h2\"/><path d=\"M6 18H4c0-1 2-2 2-3s-1-1.5-2-1\"/></svg>", "To-do list": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"5\" width=\"6\" height=\"6\" rx=\"1\"/><path d=\"m3 17 2 2 4-4\"/><path d=\"M13 6h8\"/><path d=\"M13 12h8\"/><path d=\"M13 18h8\"/></svg>", "Insert table": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3v18\"/><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M3 9h18\"/><path d=\"M3 15h18\"/></svg>", "Insert image": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" ry=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\"/></svg>", "Divider": "svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/></svg>"};
+const I = Object.fromEntries(Object.entries(RAW).map(([k, v]) => [k, '<' + v]));
+const tbn = (label, svg, on) => `<button type="button" class="tb" title="${label}" aria-label="${label}"${on ? ' aria-pressed="true"' : ''}>${svg}</button>`;
+const FBAR = `<div class="fbar" role="toolbar" aria-label="Formatting">${tbn('Undo', I.Undo)}${tbn('Redo', I.Redo)}<span class="sep"></span>
+  <button type="button" class="tb select" aria-label="Text style"><span>Normal text</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button><span class="sep"></span>
+  ${tbn('Bold', '<b style="font-size:15px">B</b>')}${tbn('Italic', '<i style="font-family:Georgia,serif;font-size:15px">I</i>')}${tbn('Strikethrough', I.Strikethrough)}${tbn('Code', I.Code)}${tbn('Link', I.Link)}<span class="sep"></span>
+  ${tbn('Bulleted list', I['Bulleted list'])}${tbn('Numbered list', I['Numbered list'])}${tbn('To-do list', I['To-do list'])}<span class="sep"></span>
+  ${tbn('Table', I['Insert table'])}${tbn('Image', I['Insert image'])}${tbn('Divider', I.Divider)}</div>`;
+const HANDLE = `<div class="handle"><button type="button" title="Add a block below" aria-label="Add a block below"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button><button type="button" title="Drag to move the block" aria-label="Drag to move the block"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></button></div>`;
+const BLOCKS = [['Text', 'T', 'Text', 'Plain paragraph'], ['Text', 'H1', 'Heading 1', 'Big section title'], ['Text', 'H2', 'Heading 2', 'Medium section title'], ['Lists', '•', 'Bulleted list', 'A simple list'], ['Lists', '☑', 'To-do list', 'Tasks with checkboxes'], ['Insert', '▦', 'Table', 'Rows and columns'], ['Insert', '▣', 'Image', 'A picture from a file']];
+// Text documents in the visual editor have the toolbar; a board has its own page and no toolbar, and Markdown is plain text.
+const hasToolbar = g => g.mode === 'visual' && DOCS[g.tabs[g.active]]?.type === 'text';
+function bodyOf(g) {
+  const name = g.tabs[g.active]; if (!name) return `<div class="empty"><b>No file open</b>Drag a file here, or close this pane.</div>`;
+  const d = DOCS[name];
+  return g.mode === 'markdown' ? `<pre class="raw">${esc(d.md)}</pre>` : d.type === 'board' ? board(d.md) : toHtml(d.md);
+}
+
+// ---- Drawing ----
+const root = document.getElementById('groups');
+function render() {
+  root.innerHTML = '';
+  cols.forEach((c, ci) => {
+    if (ci) root.append(sash('v', ci - 1));
+    const col = document.createElement('div'); col.className = 'col'; col.style.flex = `${c.w} 1 0`;
+    c.groups.forEach((g, gi) => { if (gi) col.append(sash('h', gi - 1, c)); col.append(groupEl(g, c)); });
+    root.append(col);
+  });
+  if (!all().length) root.innerHTML = '<div class="empty" style="flex:1"><b>No files open</b>Drag a file from the sidebar to start.</div>';
+  const cur = find(current)?.g; document.getElementById('crumb').textContent = cur?.tabs[cur.active] ?? '—';
+  document.getElementById('count').textContent = `${all().length} ${all().length === 1 ? 'pane' : 'panes'}`;
+  document.getElementById('tip').innerHTML = `<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>\\</kbd> splits the pane to the right`;
+}
+function groupEl(g, c) {
+  const el = document.createElement('section'); el.className = 'group' + (g.id === current ? ' current' : ''); el.dataset.g = g.id; el.style.flex = `${g.h} 1 0`;
+  el.innerHTML = `<div class="gbar"><div class="tabs" role="tablist"></div><span class="sp"></span>
+      <div class="seg" role="group" aria-label="Editing mode"><button type="button" data-m="visual" aria-pressed="${g.mode === 'visual'}">${ICON.visual}<span>Visual</span></button><button type="button" data-m="markdown" aria-pressed="${g.mode === 'markdown'}">${ICON.md}<span>Markdown</span></button></div>
+      <button type="button" class="icon-btn" data-a="right" title="Split Right (Ctrl+Alt+\\)" aria-label="Split Right">${ICON.right}</button>
+      <button type="button" class="icon-btn" data-a="more" aria-label="More pane actions">${ICON.more}</button></div>
+    ${hasToolbar(g) ? FBAR : ''}<div class="gbody">${bodyOf(g)}</div>
+    <div class="zones">${['left', 'right', 'top', 'bottom', 'center'].map(z => `<div class="zone" data-z="${z}"><span>${{ left: 'Split left', right: 'Split right', top: 'Split up', bottom: 'Split down', center: 'Open here' }[z]}</span></div>`).join('')}</div>`;
+  const tabs = el.querySelector('.tabs');
+  g.tabs.forEach((name, i) => {
+    const t = document.createElement('div'); t.className = 'tab' + (i === g.active ? ' active' : ''); t.setAttribute('role', 'tab'); t.draggable = true; t.title = name;
+    t.innerHTML = `${name === 'launch.md' ? '<span class="dot" aria-label="Unsaved"></span>' : ''}<span>${name}</span><button type="button" class="x" aria-label="Close ${name}">${ICON.x}</button>`;
+    t.addEventListener('click', e => { if (e.target.closest('.x')) { closeTab(g.id, i); return; } g.active = i; current = g.id; render(); });
+    t.addEventListener('contextmenu', e => { e.preventDefault(); g.active = i; current = g.id; render(); menu(e.clientX, e.clientY, g.id); });
+    t.addEventListener('dragstart', e => { dragging = { from: g.id, name: name }; e.dataTransfer.setData('text/plain', name); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => t.classList.add('dragging'), 0); });
+    t.addEventListener('dragend', () => { dragging = null; clearZones(); render(); });
+    tabs.append(t);
+  });
+  el.addEventListener('mousedown', () => { if (current !== g.id) { current = g.id; el.parentNode && document.querySelectorAll('.group').forEach(x => x.classList.toggle('current', +x.dataset.g === g.id)); document.getElementById('crumb').textContent = g.tabs[g.active] ?? '—'; } });
+  el.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { g.mode = b.dataset.m; render(); }));
+  el.querySelector('[data-a=right]').addEventListener('click', () => { current = g.id; splitRight(g.id); });
+  el.querySelector('[data-a=more]').addEventListener('click', e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); menu(r.right - 220, r.bottom + 4, g.id); });
+  el.addEventListener('dragover', e => { if (!dragging) return; e.preventDefault(); const z = zoneAt(el, e); showZone(el, z); });
+  el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) clearZones(); });
+  el.addEventListener('drop', e => { if (!dragging) return; e.preventDefault(); const z = zoneAt(el, e); const d = dragging; dragging = null; clearZones(); drop(d, g.id, z); });
+  const body = el.querySelector('.gbody'), page = body.querySelector('.page');
+  if (page) {
+    page.insertAdjacentHTML('afterbegin', HANDLE); const handle = page.querySelector('.handle');
+    body.addEventListener('mousemove', e => { const blk = e.target.closest('.page > :not(.handle)'); if (!blk) return; handle.style.display = 'flex'; handle.style.top = (blk.offsetTop + Math.max(0, (Math.min(blk.offsetHeight, 34) - 24) / 2)) + 'px'; handle.blk = blk; });
+    body.addEventListener('mouseleave', () => { handle.style.display = 'none'; });
+    handle.querySelector('button').addEventListener('click', e => { e.stopPropagation(); slash(e.currentTarget, page, handle.blk); });
+  }
+  requestAnimationFrame(() => el.classList.toggle('narrow', el.getBoundingClientRect().width < 430));
+  return el;
+}
+
+// ---- Dropping ----
+function zoneAt(el, e) {
+  const r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top - 44) / (r.height - 44);
+  if (y < 0) return 'center';   // over the tab bar: join this pane's tabs
+  if (x < .25) return 'left'; if (x > .75) return 'right'; if (y < .25) return 'top'; if (y > .75) return 'bottom'; return 'center';
+}
+function showZone(el, z) {
+  el.classList.add('over');
+  const box = { left: [0, 0, 50, 100], right: [50, 0, 50, 100], top: [0, 0, 100, 50], bottom: [0, 50, 100, 50], center: [0, 0, 100, 100] }[z];
+  el.querySelectorAll('.zone').forEach(n => { const on = n.dataset.z === z; n.classList.toggle('show', on); if (on) { n.style.left = box[0] + '%'; n.style.top = box[1] + '%'; n.style.width = box[2] + '%'; n.style.height = box[3] + '%'; } });
+}
+function clearZones() { document.querySelectorAll('.group.over').forEach(g => { g.classList.remove('over'); g.querySelectorAll('.zone').forEach(n => n.classList.remove('show')); }); }
+function takeTab(from, name) {
+  const f = find(from); if (!f) return; const i = f.g.tabs.indexOf(name); if (i < 0) return;
+  f.g.tabs.splice(i, 1); f.g.active = Math.min(f.g.active, Math.max(f.g.tabs.length - 1, 0));
+  prune();
+}
+function prune() {
+  for (const c of cols) c.groups = c.groups.filter(g => g.tabs.length);
+  cols = cols.filter(c => c.groups.length);
+  if (!find(current)) current = all()[0]?.id;
+}
+function drop(d, target, z) {
+  const t = find(target); if (!t) return;
+  const fromGroup = find(d.from)?.g, sole = fromGroup && fromGroup.tabs.length === 1 && d.from === target;
+  if (z === 'center' || sole) {
+    if (d.from === target) { render(); return; }   // a tab onto its own pane: nothing moves
+    takeTab(d.from, d.name); const g = find(target)?.g; if (!g) { render(); return; }
+    if (!g.tabs.includes(d.name)) g.tabs.push(d.name); g.active = g.tabs.indexOf(d.name); current = g.id; render(); return;
+  }
+  if (d.from === 'tree') { /* a file from the sidebar */ } else takeTab(d.from, d.name);
+  const g = group([d.name], t.g.mode), still = find(target);
+  if (!still) { cols.push({ w: 1, groups: [g] }); }
+  else {
+    const ci = cols.indexOf(still.col);
+    if (z === 'left' || z === 'right') cols.splice(z === 'left' ? ci : ci + 1, 0, { w: 1, groups: [g] });
+    else { const gi = still.col.groups.indexOf(still.g); still.col.groups.splice(z === 'top' ? gi : gi + 1, 0, g); }
+  }
+  current = g.id; render();
+}
+function splitRight(id, name) {
+  const f = find(id); if (!f) return; const n = name ?? f.g.tabs[f.g.active]; if (!n) return;
+  const g = group([n], f.g.mode); cols.splice(cols.indexOf(f.col) + 1, 0, { w: 1, groups: [g] }); current = g.id; render();
+}
+function splitDown(id) {
+  const f = find(id); if (!f) return; const n = f.g.tabs[f.g.active]; if (!n) return;
+  const g = group([n], f.g.mode); f.col.groups.splice(f.col.groups.indexOf(f.g) + 1, 0, g); current = g.id; render();
+}
+function closeTab(id, i) { const f = find(id); if (!f) return; f.g.tabs.splice(i, 1); f.g.active = Math.min(f.g.active, Math.max(f.g.tabs.length - 1, 0)); prune(); render(); }
+function closeGroup(id) { const f = find(id); if (!f) return; f.g.tabs = []; prune(); render(); }
+
+// ---- The / menu opened by a block's + ----
+function slash(button, page, blk) {
+  closeMenu(); const m = document.createElement('div'); m.className = 'slash'; let last = '';
+  m.innerHTML = BLOCKS.map(([g, ic, nm, ds]) => (g !== last ? `<div class="grp">${last = g}</div>` : '') + `<button type="button"><span class="ic">${ic}</span><span class="nm">${nm}</span><span class="ds">${ds}</span></button>`).join('');
+  const r = button.getBoundingClientRect(), b = document.getElementById('board').getBoundingClientRect();
+  m.style.left = Math.min(r.left - b.left, b.width - 270) + 'px'; m.style.top = Math.min(r.bottom - b.top + 4, b.height - 270) + 'px';
+  document.getElementById('board').append(m); openMenu = m; m.addEventListener('click', () => closeMenu());
+}
+
+// ---- The pane menu ----
+let openMenu = null;
+function menu(x, y, id) {
+  closeMenu(); const m = document.createElement('div'); m.className = 'menu'; const b = document.getElementById('board').getBoundingClientRect();
+  const multi = all().length > 1;
+  m.innerHTML = `<button data-a="r">${ICON.right}Split Right<kbd>Ctrl+Alt+\\</kbd></button><button data-a="d">${ICON.down}Split Down<kbd>Ctrl+Alt+Shift+\\</kbd></button><hr>
+    <button data-a="m" ${multi ? '' : 'disabled'}>Move Tab to Next Pane<kbd>Ctrl+Alt+→</kbd></button><button data-a="j" ${multi ? '' : 'disabled'}>Join All Panes</button><hr><button data-a="c">Close Pane</button>`;
+  m.style.left = Math.min(x - b.left, b.width - 240) + 'px'; m.style.top = (y - b.top) + 'px'; document.getElementById('board').append(m); openMenu = m;
+  m.addEventListener('click', e => { const a = e.target.closest('button')?.dataset.a; if (!a) return; closeMenu();
+    if (a === 'r') splitRight(id); if (a === 'd') splitDown(id); if (a === 'c') closeGroup(id);
+    if (a === 'm') { const f = find(id), list = all(), next = list[(list.indexOf(f.g) + 1) % list.length]; if (next !== f.g) drop({ from: id, name: f.g.tabs[f.g.active] }, next.id, 'center'); }
+    if (a === 'j') { const first = all()[0]; for (const g of all().slice(1)) for (const t of g.tabs) if (!first.tabs.includes(t)) first.tabs.push(t); cols = [{ w: 1, groups: [first] }]; current = first.id; render(); } });
+}
+function closeMenu() { openMenu?.remove(); openMenu = null; }
+document.addEventListener('mousedown', e => { if (openMenu && !openMenu.contains(e.target) && !e.target.closest('[data-a=more], .handle')) closeMenu(); });
+
+// ---- Sashes: drag the line between two panes (the sizes are changed in place, not drawn again, so the drag goes on) ----
+function sash(dir, i, col) {
+  const s = document.createElement('div'); s.className = dir === 'v' ? 'sash-v' : 'sash-h'; s.setAttribute('role', 'separator'); s.setAttribute('aria-orientation', dir === 'v' ? 'vertical' : 'horizontal');
+  s.addEventListener('pointerdown', e => {
+    e.preventDefault(); s.setPointerCapture(e.pointerId); s.classList.add('on');
+    const list = dir === 'v' ? cols : col.groups, key = dir === 'v' ? 'w' : 'h', a = list[i], b = list[i + 1], sum = a[key] + b[key], a0 = a[key];
+    const box = (dir === 'v' ? root : s.parentNode).getBoundingClientRect(), px = (dir === 'v' ? box.width : box.height) / list.reduce((n, x) => n + x[key], 0);
+    const els = [...(dir === 'v' ? root : s.parentNode).children].filter(c => c.classList.contains(dir === 'v' ? 'col' : 'group')), start = dir === 'v' ? e.clientX : e.clientY;
+    const move = ev => {
+      a[key] = Math.min(sum - .25, Math.max(.25, a0 + ((dir === 'v' ? ev.clientX : ev.clientY) - start) / px)); b[key] = sum - a[key];
+      els[i].style.flex = `${a[key]} 1 0`; els[i + 1].style.flex = `${b[key]} 1 0`;
+      els.forEach(el => el.classList.toggle('narrow', el.classList.contains('group') && el.getBoundingClientRect().width < 430));
+      if (dir === 'v') els.forEach(c => c.querySelectorAll('.group').forEach(g => g.classList.toggle('narrow', g.getBoundingClientRect().width < 430)));
+    };
+    const up = () => { s.classList.remove('on'); s.removeEventListener('pointermove', move); s.removeEventListener('pointerup', up); };
+    s.addEventListener('pointermove', move); s.addEventListener('pointerup', up);
+  });
+  return s;
+}
+
+// ---- The sidebar: files can be dragged into a pane ----
+const tree = document.getElementById('tree');
+for (const name of Object.keys(DOCS)) {
+  const li = document.createElement('li'); li.draggable = true; li.innerHTML = ICON[DOCS[name].type] + name;
+  li.addEventListener('dragstart', e => { dragging = { from: 'tree', name }; e.dataTransfer.setData('text/plain', name); e.dataTransfer.effectAllowed = 'copy'; });
+  li.addEventListener('dragend', () => { dragging = null; clearZones(); });
+  li.addEventListener('dblclick', () => { const g = find(current)?.g; if (g) { if (!g.tabs.includes(name)) g.tabs.push(name); g.active = g.tabs.indexOf(name); render(); } });
+  tree.append(li);
+}
+// A file from the sidebar is not taken from a pane: the "center" drop only adds it.
+const dropOrig = drop;
+drop = function (d, target, z) { if (d.from === 'tree') { const t = find(target); if (!t) return; if (z === 'center') { if (!t.g.tabs.includes(d.name)) t.g.tabs.push(d.name); t.g.active = t.g.tabs.indexOf(d.name); current = t.g.id; render(); return; } } return dropOrig(d, target, z); };
+
+document.getElementById('hSplit').addEventListener('click', () => splitRight(current));
+document.getElementById('reset').addEventListener('click', () => { reset(); render(); });
+document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && e.key === '\\') { e.preventDefault(); e.shiftKey ? splitDown(current) : splitRight(current); } if (e.key === 'Escape') closeMenu(); });
+window.addEventListener('resize', render);
+reset(); render();
+</script>
+</body>
+</html>

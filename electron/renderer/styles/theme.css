@@ -57,12 +57,12 @@
 
 /* The header of the document: the sidebar trigger, the breadcrumb (the Document Menu), the state, then the actions. */
 .headerbar { height: 48px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--background); }
-.headerbar .title { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted-foreground); font-size: 14px; }
+.headerbar .title { display: flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 12ch; color: var(--muted-foreground); font-size: 14px; }
 .headerbar .title .crumb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 18ch; }
 .headerbar .title .name { color: var(--foreground); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .headerbar .title-button { display: inline-flex; align-items: center; gap: 6px; min-width: 0; height: 32px; padding: 0 8px; margin-left: -8px; border-radius: 6px; }
 .headerbar .title-button:hover, .headerbar .title-button[aria-expanded=true] { background: var(--accent); }
-.headerbar .state { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 22px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.headerbar .state { position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; height: 22px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
 .headerbar .state .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--warning); }
 .headerbar .state svg { color: var(--success); }
 .headerbar .spacer { flex: 1; }
@@ -93,7 +93,7 @@
 .layout-menu [role=menuitem].checked { background: var(--accent); }
 
 /* The sidebar (shadcn's Sidebar): the workspace, the pages, the panel of the page shown; the rail when it is closed. */
-.side-shell { width: 264px; flex: none; min-width: 0; display: flex; flex-direction: column; background: var(--sidebar); color: var(--sidebar-foreground); border-right: 1px solid var(--sidebar-border); }
+.side-shell { position: relative; width: 280px; flex: none; min-width: 0; display: flex; flex-direction: column; background: var(--sidebar); color: var(--sidebar-foreground); border-right: 1px solid var(--sidebar-border); }
 .side-shell .workspace { display: flex; align-items: center; gap: 10px; margin: 8px; padding: 8px; border-radius: 8px; min-width: 0; }
 .side-shell .workspace .logo { width: 32px; height: 32px; flex: none; border-radius: 8px; background: var(--sidebar-primary); color: var(--sidebar-primary-foreground); display: grid; place-items: center; font-weight: 600; }
 .side-shell .workspace .text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
@@ -114,6 +114,43 @@
 .sidebar { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; padding-top: 8px; }
 .side-title { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 16px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
 .side-title .actions { display: flex; gap: 2px; } .side-title .button.circular { min-width: 24px; min-height: 24px; }
+.side-title { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; font-weight: 600; }
+.side-title .button { min-width: 24px; min-height: 24px; }
+/* The activity bar: the pressed page has a mark on its left edge; Programs and Preferences are at the foot. */
+.rail .button { position: relative; }
+.rail .button[aria-pressed=true]::before { content: ""; position: absolute; left: -8px; top: 8px; bottom: 8px; width: 2px; border-radius: 1px; background: var(--primary); }
+.rail .grow { flex: 1; }
+/* The edge of the sidebar is dragged to change its width. */
+.side-grip { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 5; }
+.side-grip:hover, .side-grip:active { background: color-mix(in oklab, var(--ring) 50%, transparent); }
+/* The Files view: sections that fold, share the height, and are resized by the lines between them. */
+.files-view .sections { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.files-view .sections > .empty { padding: 14px 16px; text-align: center; }
+.section { display: flex; flex-direction: column; min-height: 28px; border-top: 1px solid var(--sidebar-border); }
+.section.open { min-height: 90px; }
+.section-head { flex: none; height: 28px; display: flex; align-items: center; gap: 2px; padding: 0 6px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); cursor: pointer; user-select: none; outline: none; }
+.section-head:hover, .section-head:focus-visible { background: var(--sidebar-accent); }
+.section-head .chev { flex: none; transition: transform .1s; }
+.section.open > .section-head .chev { transform: rotate(90deg); }
+.section-head .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.section-head .count { font-weight: 500; letter-spacing: 0; font-size: 11px; padding: 0 6px; border-radius: 8px; background: var(--muted); margin-right: 2px; }
+.section-head .acts { display: none; }
+.section.open > .section-head:hover .acts, .section.open > .section-head:focus-within .acts { display: flex; }
+.section-head .acts .button { color: var(--muted-foreground); }
+.section-body { flex: 1; min-height: 0; overflow: auto; padding: 2px 4px 8px; display: flex; flex-direction: column; }
+.section-body > .tree { flex: 1; overflow: visible; padding: 0; }
+.section-body > .outline { flex: none; overflow: visible; padding: 0; }
+.section-body > .placeholder { padding: 14px 12px; }
+.section-body > .empty { padding: 14px 12px; text-align: center; }
+.section-sash { flex: none; height: 1px; position: relative; cursor: row-resize; z-index: 3; background: var(--sidebar-border); margin-top: -1px; }
+.section-sash::after { content: ""; position: absolute; inset: -3px 0; }
+.section-sash:hover, .section-sash.on { background: var(--ring); box-shadow: 0 0 0 1px var(--ring); }
+.editors .row { padding: 0 6px 0 10px; }
+.editors .row .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--warning); flex: none; }
+.editors .row .close { min-width: 20px; min-height: 20px; margin-left: auto; opacity: 0; }
+.editors .row:hover .close, .editors .row:focus-within .close { opacity: 1; }
+.editors .group-title { padding: 6px 10px 2px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.files-view .commits { padding: 0; }
 .sidebar .tree { flex: 1; overflow: auto; padding: 0 8px 8px; }
 .sidebar .row { height: 30px; display: flex; align-items: center; gap: 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; user-select: none; font-size: 14px; }
 .sidebar .row:hover { background: var(--sidebar-accent); }
@@ -141,6 +178,33 @@
 .tab:not(.active):not(:hover) .close:not(:focus-visible) { opacity: 0; }
 
 .editor-area { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+.pane-grid { flex: 1; min-height: 0; display: flex; }
+.pane-grid[hidden] { display: none; }
+.pane-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.pane { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; container: pane / inline-size; background: var(--background); }
+.pane-body { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+.pane:not(.solo).current { box-shadow: inset 0 2px 0 var(--primary); }
+.pane:not(.solo):not(.current) .tab.active { color: var(--muted-foreground); }
+/* The bar of a pane when there are several: its tabs, its Visual / Markdown switch, and its actions. */
+.pane-bar { flex: none; height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 40%, var(--background)); }
+.pane-bar .spacer { flex: 1; }
+.pane-tabs { min-width: 0; display: flex; }
+.pane-tabs .tab-list { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 8px; background: var(--muted); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.tab.drop-before { box-shadow: inset 2px 0 0 var(--primary); }
+@container pane (max-width: 430px) { .pane-bar .mode-switch .label-text { display: none; } .pane-bar .mode-switch button { padding: 0 7px; } }
+.pane-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 24px; text-align: center; color: var(--muted-foreground); }
+.pane-empty b { color: var(--foreground); font-size: 16px; }
+/* The line between two columns or two panes. */
+.sash { flex: none; position: relative; z-index: 3; background: var(--border); }
+.sash.vertical { width: 1px; cursor: col-resize; }
+.sash.horizontal { height: 1px; cursor: row-resize; }
+.sash::after { content: ""; position: absolute; }
+.sash.vertical::after { inset: 0 -4px; }
+.sash.horizontal::after { inset: -4px 0; }
+.sash:hover, .sash.on { background: var(--ring); box-shadow: 0 0 0 1px var(--ring); }
+/* Where a dragged tab or file would land on a pane. */
+.pane-zone { position: absolute; z-index: 6; pointer-events: none; border: 2px solid var(--primary); border-radius: 6px; background: color-mix(in oklab, var(--primary) 10%, transparent); transition: left .08s, top .08s, width .08s, height .08s; }
+.pane-zone span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 3px 10px; border-radius: 6px; background: var(--primary); color: var(--primary-foreground); font-size: 12px; font-weight: 500; white-space: nowrap; }
 .text-editor { flex: 1; min-height: 0; }
 .text-editor[hidden] { display: none; }
 .cm-editor { height: 100%; background: var(--background); color: var(--foreground); }
@@ -171,6 +235,58 @@
 .cm-md-bullet, .cm-md-task { color: var(--muted-foreground); font-weight: 600; }
 .cm-md-taskdone, .cm-md-done { color: var(--muted-foreground); text-decoration: line-through; }
 .cm-md-tablehead { font-weight: 600; }
+
+/* Source mode (the header's Markdown): the file as it is written, plain text in the fixed-width font, every marker showing. */
+.cm-source .cm-scroller { font-family: var(--font-mono); font-size: 14px; line-height: 1.7; }
+.cm-source .cm-line[class*="cm-md-"] { margin: 0 !important; padding: 2px 0 !important; border: 0 !important; background: none !important; font-style: normal !important; }
+.cm-source [class*="cm-md-"] { font-size: inherit; font-weight: 400; font-style: normal; letter-spacing: normal; line-height: inherit; color: inherit; background: none; border-radius: 0; padding: 0; text-decoration: none; font-family: inherit; }
+.cm-source .cm-content { color: var(--foreground); }
+
+/* The block handle: a "+" and a grip beside the block the pointer is over, and the line a dragged block lands on. */
+.cm-block-handle { position: absolute; z-index: 5; display: none; align-items: center; height: 24px; }
+.cm-block-handle button { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--faint); cursor: pointer; }
+.cm-block-handle button:hover, .cm-block-handle button:focus-visible { background: var(--accent); color: var(--accent-foreground); }
+.cm-block-handle button:last-child { cursor: grab; }
+.cm-block-dragging, .cm-block-dragging * { cursor: grabbing !important; user-select: none; }
+.cm-block-drop { position: absolute; z-index: 5; display: none; height: 2px; border-radius: 1px; background: var(--primary); pointer-events: none; }
+
+/* The visual editor: bullets and checkboxes for list markers, the toolbar over the text, the selection and / menus. */
+.cm-md-listmark { display: inline-block; text-indent: 0; white-space: nowrap; vertical-align: baseline; }
+.cm-md-listmark.bullet { padding-left: 6px; box-sizing: border-box; color: var(--muted-foreground); font-weight: 700; }
+.cm-md-listmark.number { color: var(--muted-foreground); font-weight: 600; }
+.cm-md-checkbox { width: 16px; height: 16px; margin: 0 0 0 2px; vertical-align: -2px; accent-color: var(--primary); cursor: pointer; }
+.format-bar { flex: none; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--background); }
+.format-bar .sep { width: 1px; height: 20px; margin: 0 6px; background: var(--border); }
+.format-bar .style-button { width: 148px; justify-content: space-between; font-weight: 500; }
+.format-bar [role=menuitemradio][aria-checked=true] { font-weight: 600; }
+.mode-switch { display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 8px; background: var(--muted); }
+.mode-switch button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.mode-switch button[aria-pressed=true] { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+.mode-switch button:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+/* The switch gives way before the title does: icons only in a narrower header, and none in a narrow one (the layout
+   menu and Ctrl+Shift+M still switch). */
+.headerbar { container: headerbar / inline-size; }
+/* The header gives way in this order, so the name of the document stays readable: the folders above it, the labels of the
+   switch and the buttons, the Saved badge and the split button, and at last the switch itself. */
+@container headerbar (max-width: 1000px) { .headerbar .title .contents { display: none; } }
+@container headerbar (max-width: 820px) { .mode-switch .label-text { display: none; } .mode-switch button { padding: 0 7px; } .headerbar .label-text { display: none; } }
+/* The badge keeps its mark and loses its word (still read by a screen reader). */
+@container headerbar (max-width: 700px) { .headerbar .header-split { display: none; } .headerbar .state { padding: 0 6px; } .headerbar .state .word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+@container headerbar (max-width: 660px) { .mode-switch { display: none; } }
+/* The menu is the tooltip itself, so it outranks CodeMirror's own tooltip colors. */
+.cm-editor .cm-tooltip.cm-selection-menu { display: flex; align-items: center; gap: 2px; padding: 4px; background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%); font-family: var(--font-sans); }
+.cm-editor .cm-selection-menu button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 28px; height: 28px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.cm-editor .cm-selection-menu button:hover { background: var(--accent); color: var(--accent-foreground); }
+.cm-selection-menu .sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
+.cm-slash-glyph { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-right: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--foreground); font-size: 12px; font-weight: 600; vertical-align: middle; }
+/* The / menu as shadcn's Command: CodeMirror's own look (monospace, a blue row) is replaced. */
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete:has(.cm-slash-glyph) { background: var(--popover); color: var(--popover-foreground); box-shadow: 0 4px 12px rgb(0 0 0 / 8%); }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete:has(.cm-slash-glyph) > ul { font-family: var(--font-sans); font-size: 14px; max-height: 340px; min-width: 280px; padding: 4px; }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete:has(.cm-slash-glyph) > ul > li { display: flex; align-items: center; padding: 4px 8px; border-radius: 6px; line-height: 1.4; }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete:has(.cm-slash-glyph) > ul > li[aria-selected] { background: var(--accent); color: var(--accent-foreground); }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete:has(.cm-slash-glyph) .cm-completionLabel { font-weight: 500; }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete:has(.cm-slash-glyph) .cm-completionDetail { margin-left: auto; padding-left: 16px; font-style: normal; color: var(--muted-foreground); opacity: 1; }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete:has(.cm-slash-glyph) completion-section { display: block; padding: 8px 8px 4px; border: 0; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
 .cm-md-tablesep, .cm-md-table { color: var(--muted-foreground); }
 
 
@@ -293,6 +409,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .cm-md-table-grid table { border-collapse: collapse; max-width: 100%; }
 .cm-md-table-grid th, .cm-md-table-grid td { border: 1px solid var(--border); padding: 4px 10px; vertical-align: top; overflow-wrap: anywhere; }
 .cm-md-table-grid th { font-weight: 600; background: color-mix(in oklab, var(--muted) 60%, transparent); text-align: left; }
+/* In the visual editor a cell is edited where it is: a ring while it has the focus, and room for an empty one. */
+.cm-md-table-grid.editable th, .cm-md-table-grid.editable td { min-width: 72px; height: 2.25em; }
+.cm-md-table-grid.editable :is(th, td):has(input) { outline: 2px solid var(--ring); outline-offset: -2px; background: color-mix(in oklab, var(--accent) 50%, transparent); }
+.cm-editor .cm-md-table-grid .cm-md-cell-input { field-sizing: content; appearance: none; min-width: 4ch; max-width: 100%; height: auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; outline: 0; box-shadow: none; background: transparent; color: inherit; font: inherit; text-align: inherit; }
 
 /* Mermaid and DBML drawn as pictures. */
 .cm-md-diagram { contain: inline-size; min-width: 0; max-width: 100%; padding: 12px 0; display: flex; justify-content: center; overflow-x: auto; cursor: text; color: var(--muted-foreground); }

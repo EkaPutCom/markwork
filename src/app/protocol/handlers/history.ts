@@ -14,8 +14,8 @@ export function historyHandlers({ wire, session, frontend, onDispose }: HandlerC
 
     // The history is read only while its tab is shown (AppSession.sidebarShown): the panel's page is a setting the core keeps.
     const { settings } = session;
-    const shown = () => session.sidebarShown(settings.sidebar ? settings.sidebarPage : null);
-    onDispose(settings.onChanged(['sidebar', 'sidebar-page'], shown));
+    const shown = () => session.sidebarShown(settings.sidebar ? settings.sidebarPage : null, settings.timelineOpen);
+    onDispose(settings.onChanged(['sidebar', 'sidebar-page', 'timeline-open'], shown));
 
     wire.on('act.history.refresh', () => { tab.onRefresh(); });
     wire.on('act.history.more', () => { tab.onMore(); });

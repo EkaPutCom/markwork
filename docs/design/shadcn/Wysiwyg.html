@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markwork visual editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff; --fg: #09090b; --muted: #71717a; --dim: #52525b; --border: #e4e4e7; --sidebar: #fafafa; --accent: #f4f4f5;
+  --ok: #16a34a; --warn: #d97706; --primary: #18181b; --primary-fg: #fafafa; --ring: #a1a1aa; --link: #2563eb;
+}
+body { margin: 0; background: #e4e4e7; font-family: Geist, system-ui, sans-serif; font-size: 14px; color: var(--fg); }
+.label { font: 600 13px Geist, sans-serif; color: #3f3f46; margin: 32px 32px 8px; }
+.label span { font-weight: 400; color: var(--muted); }
+.board { position: relative; width: 1280px; height: 800px; margin: 0 32px 16px; display: flex; background: var(--bg); overflow: hidden; border-radius: 10px; box-shadow: 0 1px 3px rgb(0 0 0 / 10%); }
+button { font: inherit; cursor: pointer; color: inherit; }
+svg { flex-shrink: 0; }
+kbd { font: 11px 'Geist Mono', monospace; color: var(--dim); background: var(--accent); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; line-height: 18px; }
+
+/* Sidebar, as in Main.dc.html */
+aside { width: 256px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--border); }
+.ws { display: flex; align-items: center; gap: 10px; padding: 16px; }
+.ws .logo { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--primary-fg); display: flex; align-items: center; justify-content: center; font-weight: 600; }
+.ws b { display: block; font-weight: 600; }
+.ws small { font-size: 12px; color: var(--muted); }
+.nav { padding: 0 8px; display: flex; flex-direction: column; gap: 2px; }
+.nav button, .tree li { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; text-align: left; }
+.section { font-size: 12px; font-weight: 500; color: var(--muted); padding: 16px 16px 6px; }
+.tree { list-style: none; margin: 0; padding: 0 8px; }
+.tree li { height: 28px; gap: 6px; color: var(--fg); }
+.tree li.in { padding-left: 34px; }
+.tree li.sel { background: var(--accent); font-weight: 500; }
+
+/* Header, tabs */
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+header { height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+.crumb { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.crumb b { color: var(--fg); font-weight: 500; }
+.saved { margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--dim); border: 1px solid var(--border); border-radius: 6px; padding: 0 8px; line-height: 20px; display: flex; align-items: center; gap: 6px; }
+.saved i { width: 6px; height: 6px; border-radius: 3px; background: var(--ok); }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 8px; background: var(--accent); }
+.seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--dim); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.seg button[aria-pressed="true"] { background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+.icon-btn { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
+.icon-btn:hover { background: var(--accent); }
+
+/* Toolbar */
+.toolbar { flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 2px; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+.toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 6px; }
+.tb { height: 32px; min-width: 32px; padding: 0 7px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--fg); }
+.tb:hover { background: var(--accent); }
+.tb[aria-pressed="true"] { background: #e4e4e7; }
+.tb .t { font-size: 13px; font-weight: 500; }
+.select { height: 32px; width: 148px; justify-content: space-between; padding: 0 8px 0 10px; border: 1px solid var(--border); background: var(--bg); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
+.select:hover { background: var(--bg); }
+
+/* The document */
+.scroll { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.page { max-width: 680px; margin: 0 auto; padding: 36px 48px 120px; position: relative; }
+.meta { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+#ed { outline: none; font-size: 16px; line-height: 1.75; }
+#ed > * { margin: 0 0 14px; }
+#ed h1 { font-size: 36px; line-height: 1.15; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 8px; }
+#ed h2 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-top: 28px; }
+#ed h3 { font-size: 19px; font-weight: 600; margin-top: 20px; }
+#ed ul, #ed ol { padding-left: 24px; }
+#ed ul.tasks { list-style: none; padding-left: 2px; }
+#ed ul.tasks li { display: flex; align-items: baseline; gap: 10px; }
+#ed ul.tasks input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); transform: translateY(2px); cursor: pointer; }
+#ed ul.tasks li.done { color: var(--muted); text-decoration: line-through; }
+#ed blockquote { padding-left: 20px; border-left: 2px solid var(--border); color: #3f3f46; font-style: italic; }
+#ed code { font: 14px 'Geist Mono', monospace; background: var(--accent); border-radius: 4px; padding: 1px 5px; }
+#ed pre { font: 13.5px/1.6 'Geist Mono', monospace; background: #fafafa; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; white-space: pre-wrap; }
+#ed a { color: var(--fg); text-decoration: underline; text-underline-offset: 4px; font-weight: 500; }
+#ed a.page-link { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 0 6px; background: var(--accent); font-size: 15px; }
+#ed a.page-link::before { content: ""; width: 12px; height: 12px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3C/svg%3E") center/contain no-repeat; }
+#ed hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
+#ed table { border-collapse: collapse; width: 100%; font-size: 15px; }
+#ed th, #ed td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+#ed th { background: #fafafa; font-weight: 600; }
+#ed figure { margin: 0 0 18px; }
+#ed figure img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
+#ed figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; text-align: center; }
+#ed p:empty::before, #ed p.ph::before { content: attr(data-ph); color: #a1a1aa; pointer-events: none; }
+
+/* Floating pieces */
+.pop { position: absolute; z-index: 20; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%); }
+.bubble { display: none; padding: 4px; gap: 2px; align-items: center; }
+.bubble .tb { height: 28px; min-width: 28px; }
+.bubble input { height: 28px; width: 220px; border: 0; outline: none; font: inherit; padding: 0 8px; }
+.ask { color: #7c3aed !important; }
+.slash { display: none; width: 280px; padding: 4px; max-height: 340px; overflow: auto; }
+.slash .grp { font-size: 12px; font-weight: 500; color: var(--muted); padding: 8px 8px 4px; }
+.slash button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; text-align: left; }
+.slash button.on { background: var(--accent); }
+.slash .ic { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; background: var(--bg); }
+.slash .nm { font-weight: 500; display: block; }
+.slash .ds { font-size: 12px; color: var(--muted); }
+.slash .empty { padding: 10px; color: var(--muted); }
+.handle { position: absolute; z-index: 10; display: none; gap: 0; left: 0; }
+.handle button { width: 22px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: #a1a1aa; display: flex; align-items: center; justify-content: center; padding: 0; }
+.handle button:hover { background: var(--accent); color: var(--fg); }
+.handle .grip { cursor: grab; }
+.tablebar { display: none; padding: 4px; gap: 2px; }
+.tablebar .tb { height: 28px; font-size: 13px; font-weight: 500; }
+
+/* Markdown view */
+#md { display: none; width: 100%; box-sizing: border-box; min-height: 560px; border: 0; outline: none; resize: none; font: 14px/1.7 'Geist Mono', monospace; color: #3f3f46; background: transparent; }
+.mdnote { display: none; align-items: center; gap: 8px; margin-bottom: 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fafafa; color: var(--dim); font-size: 13px; }
+
+footer { height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 0 16px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); }
+footer .hint { margin-right: auto; display: flex; align-items: center; gap: 6px; }
+
+.notes { width: 1280px; margin: 0 32px 48px; box-sizing: border-box; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.notes div { background: var(--bg); border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 3px rgb(0 0 0 / 10%); line-height: 1.6; color: #3f3f46; }
+.notes b { display: block; color: var(--fg); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<p class="label">Visual editor <span>— interactive: select text for the selection menu, type <kbd>/</kbd> on an empty line, hover a block for <b>+</b>, click inside the table, or switch the header to <b>Markdown</b> to see the file on disk (drawn 21 October 2026)</span></p>
+
+<div class="board" id="board">
+  <aside aria-label="Sidebar">
+    <div class="ws"><span class="logo">M</span><span><b>markwork-launch</b><small>~/markwork-launch</small></span></div>
+    <nav class="nav" aria-label="Workspace">
+      <button type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Home</button>
+      <button type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Journal</button>
+    </nav>
+    <div class="section">Files</div>
+    <ul class="tree" aria-label="Files">
+      <li>📁 notes</li>
+      <li>📂 plans</li>
+      <li class="in sel">📄 launch.md</li>
+      <li class="in">📄 roadmap.md</li>
+      <li>📁 research</li>
+      <li>📋 tasks.md</li>
+    </ul>
+  </aside>
+
+  <main>
+    <header>
+      <nav class="crumb" aria-label="Breadcrumb">markwork-launch
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>plans
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg><b>launch.md</b></nav>
+      <span class="saved"><i></i>Saved</span>
+      <span style="flex: 1;"></span>
+      <div class="seg" role="group" aria-label="Editing mode">
+        <button type="button" id="mVisual" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838.838-2.872a2 2 0 0 1 .506-.855z"/></svg>Visual</button>
+        <button type="button" id="mMd" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Markdown</button>
+      </div>
+      <span style="width: 1px; height: 16px; background: var(--border); margin: 0 4px;"></span>
+      <button type="button" class="icon-btn" aria-label="Assistant"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg></button>
+      <button type="button" class="icon-btn" aria-label="Main menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+    </header>
+
+    <div class="toolbar" id="toolbar" role="toolbar" aria-label="Formatting">
+      <button type="button" class="tb" data-c="undo" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+      <button type="button" class="tb" data-c="redo" title="Redo (Ctrl+Shift+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+      <span class="sep"></span>
+      <button type="button" class="tb select" id="styleBtn" title="Text style"><span class="t" id="styleName">Normal text</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <span class="sep"></span>
+      <button type="button" class="tb" data-c="bold" title="Bold (Ctrl+B)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/></svg></button>
+      <button type="button" class="tb" data-c="italic" title="Italic (Ctrl+I)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg></button>
+      <button type="button" class="tb" data-c="strikeThrough" title="Strikethrough"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" x2="20" y1="12" y2="12"/></svg></button>
+      <button type="button" class="tb" data-c="code" title="Code"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+      <button type="button" class="tb" data-c="link" title="Link (Ctrl+K)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+      <span class="sep"></span>
+      <button type="button" class="tb" data-c="ul" title="Bulleted list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg></button>
+      <button type="button" class="tb" data-c="ol" title="Numbered list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="21" y1="6" y2="6"/><line x1="10" x2="21" y1="12" y2="12"/><line x1="10" x2="21" y1="18" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></button>
+      <button type="button" class="tb" data-c="task" title="To-do list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></button>
+      <button type="button" class="tb" data-c="quote" title="Quote"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6H3"/><path d="M21 12H8"/><path d="M21 18H8"/><path d="M3 12v6"/></svg></button>
+      <span class="sep"></span>
+      <button type="button" class="tb" data-c="table" title="Insert table"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg></button>
+      <button type="button" class="tb" data-c="image" title="Insert image"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button>
+      <button type="button" class="tb" data-c="hr" title="Divider"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
+      <button type="button" class="tb" data-c="slash" title="More blocks"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span class="t">Insert</span></button>
+    </div>
+
+    <div class="scroll" id="scroll">
+      <div class="page" id="page">
+        <p class="meta">plans · edited just now · 3 backlinks</p>
+        <div class="mdnote" id="mdnote"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>This is the plain Markdown that Markwork saves to <b>launch.md</b>. Nothing here is extra: no hidden format, no lock-in.</div>
+        <textarea id="md" readonly spellcheck="false" aria-label="Markdown source"></textarea>
+        <div id="ed" contenteditable="true" spellcheck="false">
+          <h1>Markwork 1.0 Launch Plan</h1>
+          <h2>Goal</h2>
+          <p>Release Markwork 1.0 for <strong>Linux users</strong>, complete with <em>folder syncing</em>. Decisions come from <a class="page-link" href="#" data-page="meeting-1-oct">meeting-1-oct</a>.</p>
+          <h2>Schedule</h2>
+          <ul>
+            <li>Closed beta: <strong>20 October</strong></li>
+            <li>Public release: <strong>22 November</strong></li>
+            <li>Evaluation: 30 November, see <a href="https://example.com/eval">the evaluation form</a></li>
+          </ul>
+          <h2>Before the release</h2>
+          <ul class="tasks">
+            <li class="done"><input type="checkbox" checked contenteditable="false">Write the release notes</li>
+            <li><input type="checkbox" contenteditable="false">Record the demo video</li>
+            <li><input type="checkbox" contenteditable="false">Send the newsletter</li>
+          </ul>
+          <h2>Budget</h2>
+          <table>
+            <thead><tr><th>Item</th><th>Cost</th><th>Owner</th></tr></thead>
+            <tbody>
+              <tr><td>Redesign</td><td>$2,200</td><td>Rani</td></tr>
+              <tr><td>Test server</td><td>$800</td><td>Budi</td></tr>
+            </tbody>
+          </table>
+          <blockquote>Total $3,000, including the redesign and a test server.</blockquote>
+          <p class="ph" data-ph="Type / for blocks, or just start writing"></p>
+        </div>
+      </div>
+
+      <div class="handle" id="handle">
+        <button type="button" id="hPlus" title="Add a block below"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+        <button type="button" class="grip" title="Drag to move"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></button>
+      </div>
+    </div>
+
+    <div class="pop bubble" id="bubble" role="toolbar" aria-label="Selection">
+      <span id="bubbleBtns" style="display: contents;">
+        <button type="button" class="tb" data-c="bold" title="Bold"><b>B</b></button>
+        <button type="button" class="tb" data-c="italic" title="Italic"><i style="font-family: Georgia, serif;">I</i></button>
+        <button type="button" class="tb" data-c="strikeThrough" title="Strikethrough"><s>S</s></button>
+        <button type="button" class="tb" data-c="code" title="Code"><span style="font: 12px 'Geist Mono', monospace;">&lt;/&gt;</span></button>
+        <button type="button" class="tb" data-c="link" title="Link"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+        <span style="width: 1px; height: 18px; background: var(--border); margin: 0 4px;"></span>
+        <button type="button" class="tb ask" title="Ask the Assistant about the selection"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg><span class="t">Ask</span></button>
+      </span>
+      <span id="linkForm" style="display: none; align-items: center;">
+        <input id="linkInput" placeholder="Paste a link, or type a page name">
+        <button type="button" class="tb" id="linkOk"><span class="t">Apply</span></button>
+      </span>
+    </div>
+
+    <div class="pop slash" id="slash" role="listbox" aria-label="Insert block"></div>
+    <div class="pop slash" id="styles" role="listbox" aria-label="Text style" style="width: 220px;"></div>
+
+    <div class="pop tablebar" id="tablebar" role="toolbar" aria-label="Table">
+      <button type="button" class="tb" data-t="row">+ Row</button>
+      <button type="button" class="tb" data-t="col">+ Column</button>
+      <button type="button" class="tb" data-t="delrow">− Row</button>
+      <button type="button" class="tb" data-t="delcol">− Column</button>
+      <span style="width: 1px; height: 18px; background: var(--border); margin: 0 4px; align-self: center;"></span>
+      <button type="button" class="tb" data-t="del" style="color: #dc2626;">Delete table</button>
+    </div>
+
+    <footer>
+      <span class="hint">Tip: <kbd>/</kbd> inserts a block · <kbd>#</kbd> <kbd>-</kbd> <kbd>[]</kbd> <kbd>&gt;</kbd> then space still work</span>
+      <span id="words">0 words</span>
+    </footer>
+  </main>
+</div>
+
+<div class="notes">
+  <div><b>Markdown stays the file, not the screen</b>The text is edited as it looks: headings, bold, lists, checkboxes and tables, with no <code>#</code> or <code>**</code> in sight. Markwork still saves plain Markdown, so Git, the Assistant and other apps read the same file.</div>
+  <div><b>Three ways in, one result</b>The toolbar for people who look for buttons, the selection menu and <kbd>/</kbd> menu for people who type, and the Markdown shortcuts for people who already know them. Page links (<code>[[page]]</code>) show as chips.</div>
+  <div><b>Markdown is one click away</b>The Visual / Markdown switch replaces today's view with the hidden syntax. It could be a setting per workspace: Visual by default for new users, Markdown kept for those who prefer it.</div>
+</div>
+
+<script>
+const ed = document.getElementById('ed');
+const board = document.getElementById('board');
+const scroll = document.getElementById('scroll');
+const bubble = document.getElementById('bubble');
+const slash = document.getElementById('slash');
+const styles = document.getElementById('styles');
+const tablebar = document.getElementById('tablebar');
+const handle = document.getElementById('handle');
+const md = document.getElementById('md');
+
+const IMG = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="680" height="240"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#f4f4f5"/><stop offset="1" stop-color="#d4d4d8"/></linearGradient></defs><rect width="680" height="240" fill="url(#g)"/><text x="340" y="128" text-anchor="middle" font-family="Geist,sans-serif" font-size="20" fill="#52525b">launch-banner.png</text></svg>');
+
+// ---- Blocks the / menu and toolbar can insert ----
+const BLOCKS = [
+  { g: 'Text', k: 'p', n: 'Text', d: 'Plain paragraph', i: 'T' },
+  { g: 'Text', k: 'h1', n: 'Heading 1', d: 'Big section title', i: 'H1' },
+  { g: 'Text', k: 'h2', n: 'Heading 2', d: 'Medium section title', i: 'H2' },
+  { g: 'Text', k: 'h3', n: 'Heading 3', d: 'Small section title', i: 'H3' },
+  { g: 'Lists', k: 'ul', n: 'Bulleted list', d: 'A simple list', i: '•' },
+  { g: 'Lists', k: 'ol', n: 'Numbered list', d: 'A list with numbers', i: '1.' },
+  { g: 'Lists', k: 'task', n: 'To-do list', d: 'Tasks with checkboxes', i: '☑' },
+  { g: 'Insert', k: 'quote', n: 'Quote', d: 'Highlight a passage', i: '❝' },
+  { g: 'Insert', k: 'table', n: 'Table', d: 'Rows and columns', i: '▦' },
+  { g: 'Insert', k: 'image', n: 'Image', d: 'Upload or paste a picture', i: '🖼' },
+  { g: 'Insert', k: 'pre', n: 'Code block', d: 'Text in a fixed-width font', i: '{}' },
+  { g: 'Insert', k: 'hr', n: 'Divider', d: 'A line between sections', i: '—' },
+  { g: 'Insert', k: 'page', n: 'Link to page', d: 'Another note in this folder', i: '↗' },
+];
+const STYLE_NAMES = { P: 'Normal text', H1: 'Heading 1', H2: 'Heading 2', H3: 'Heading 3', BLOCKQUOTE: 'Quote', PRE: 'Code block' };
+
+function exec(c, v) { ed.focus(); document.execCommand(c, false, v); after(); }
+function topBlock(node) {
+  while (node && node.parentNode !== ed) node = node.parentNode;
+  return node && node.parentNode === ed ? node : null;
+}
+function caretBlock() { const s = getSelection(); return s.rangeCount ? topBlock(s.anchorNode) : null; }
+function placeCaret(el, atEnd = true) {
+  const r = document.createRange(); r.selectNodeContents(el); r.collapse(!atEnd);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function replaceBlock(block, html) {
+  const t = document.createElement('div'); t.innerHTML = html;
+  const nodes = [...t.childNodes]; nodes.forEach(n => block.parentNode.insertBefore(n, block)); block.remove();
+  return nodes;
+}
+function emptyP() { const p = document.createElement('p'); p.innerHTML = '<br>'; return p; }
+function ensureTrailingP() { if (!ed.lastElementChild || ed.lastElementChild.tagName !== 'P') ed.appendChild(emptyP()); }
+
+function applyBlock(k, block) {
+  block = block || caretBlock();
+  if (!block) { block = emptyP(); ed.appendChild(block); }
+  const text = block.textContent.trim() ? block.innerHTML : '<br>';
+  let target = null;
+  switch (k) {
+    case 'p': case 'h1': case 'h2': case 'h3': case 'pre':
+      if (/^(UL|OL|TABLE|FIGURE|HR)$/.test(block.tagName)) { target = emptyP(); block.after(target); placeCaret(target); exec('formatBlock', k); return; }
+      placeCaret(block); exec('formatBlock', k); return;
+    case 'quote': placeCaret(block); exec('formatBlock', 'blockquote'); return;
+    case 'ul': case 'ol': [target] = replaceBlock(block, `<${k}><li>${text}</li></${k}>`); target = target.firstChild; break;
+    case 'task': [target] = replaceBlock(block, `<ul class="tasks"><li><input type="checkbox" contenteditable="false">${text}</li></ul>`); target = target.firstChild; break;
+    case 'table': {
+      const nodes = replaceBlock(block, '<table><thead><tr><th>Column 1</th><th>Column 2</th><th>Column 3</th></tr></thead><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table>');
+      target = nodes[0].querySelector('td'); break;
+    }
+    case 'image': {
+      const nodes = replaceBlock(block, `<figure contenteditable="false"><img src="${IMG}" alt="launch-banner"><figcaption>launch-banner.png · saved to <b>assets/</b></figcaption></figure>`);
+      target = emptyP(); nodes[0].after(target); break;
+    }
+    case 'hr': { const nodes = replaceBlock(block, '<hr>'); target = emptyP(); nodes[0].after(target); break; }
+    case 'page': {
+      block.innerHTML = (block.textContent.trim() ? block.innerHTML + ' ' : '') + '<a class="page-link" href="#" data-page="roadmap" contenteditable="false">roadmap</a>&nbsp;';
+      target = block; break;
+    }
+  }
+  ensureTrailingP();
+  if (target) placeCaret(target);
+  after();
+}
+
+// ---- Toolbar ----
+function runCommand(c) {
+  if (c === 'undo' || c === 'redo' || c === 'bold' || c === 'italic' || c === 'strikeThrough') return exec(c);
+  if (c === 'code') {
+    const s = getSelection(); if (s.isCollapsed) return;
+    const code = s.anchorNode.parentElement.closest('code');
+    if (code) { code.replaceWith(...code.childNodes); after(); return; }
+    return exec('insertHTML', `<code>${escapeHtml(s.toString())}</code>`);
+  }
+  if (c === 'link') return openLink();
+  if (c === 'slash') { const b = caretBlock() || ed.lastElementChild; return openSlash(b, true); }
+  const b = caretBlock();
+  if (c === 'ul' || c === 'ol') {
+    if (b && b.tagName === (c === 'ul' ? 'UL' : 'OL') && !b.classList.contains('tasks')) return exec(c === 'ul' ? 'insertUnorderedList' : 'insertOrderedList');
+  }
+  applyBlock(c);
+}
+document.querySelectorAll('[data-c]').forEach(btn => {
+  btn.addEventListener('mousedown', e => e.preventDefault());
+  btn.addEventListener('click', () => runCommand(btn.dataset.c));
+});
+function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// ---- Text style dropdown ----
+document.getElementById('styleBtn').addEventListener('mousedown', e => e.preventDefault());
+document.getElementById('styleBtn').addEventListener('click', e => {
+  if (styles.style.display === 'block') return hide(styles);
+  const items = BLOCKS.filter(b => ['p', 'h1', 'h2', 'h3', 'quote', 'pre'].includes(b.k));
+  styles.innerHTML = items.map((b, i) => `<button type="button" data-k="${b.k}" class="${i ? '' : 'on'}"><span class="ic">${b.i}</span><span class="nm">${b.n}</span></button>`).join('');
+  styles.querySelectorAll('button').forEach(x => { x.onmousedown = ev => ev.preventDefault(); x.onclick = () => { hide(styles); applyBlock(x.dataset.k); }; });
+  const r = e.currentTarget.getBoundingClientRect(), br = board.getBoundingClientRect();
+  styles.style.left = (r.left - br.left) + 'px'; styles.style.top = (r.bottom - br.top + 4) + 'px'; styles.style.display = 'block';
+});
+
+// ---- Selection menu and link ----
+let savedRange = null;
+function openLink() {
+  const s = getSelection(); if (!s.rangeCount) return;
+  savedRange = s.getRangeAt(0).cloneRange();
+  if (savedRange.collapsed) { const b = caretBlock(); if (b) { savedRange.selectNodeContents(b); } }
+  showBubble(savedRange);
+  document.getElementById('bubbleBtns').style.display = 'none';
+  document.getElementById('linkForm').style.display = 'flex';
+  const a = s.anchorNode.parentElement && s.anchorNode.parentElement.closest('a');
+  const inp = document.getElementById('linkInput'); inp.value = a ? a.getAttribute('href') : ''; inp.focus();
+}
+function applyLink() {
+  const v = document.getElementById('linkInput').value.trim();
+  const s = getSelection(); s.removeAllRanges(); s.addRange(savedRange);
+  if (!v) exec('unlink');
+  else if (/^(https?:|mailto:|\.|\/)/.test(v)) exec('createLink', v);
+  else exec('insertHTML', `<a class="page-link" href="#" data-page="${escapeHtml(v)}" contenteditable="false">${escapeHtml(v)}</a>&nbsp;`);
+  closeLink();
+}
+function closeLink() {
+  document.getElementById('bubbleBtns').style.display = 'contents';
+  document.getElementById('linkForm').style.display = 'none';
+  hide(bubble);
+}
+document.getElementById('linkOk').onclick = applyLink;
+document.getElementById('linkInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyLink(); } if (e.key === 'Escape') closeLink(); });
+
+function showBubble(range) {
+  const r = range.getBoundingClientRect(), br = board.getBoundingClientRect();
+  bubble.style.display = 'flex';
+  const w = bubble.offsetWidth;
+  bubble.style.left = Math.max(270, r.left - br.left + r.width / 2 - w / 2) + 'px';
+  bubble.style.top = (r.top - br.top - bubble.offsetHeight - 8) + 'px';
+}
+function hide(el) { el.style.display = 'none'; }
+
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement && document.activeElement.id === 'linkInput') return;
+  const s = getSelection();
+  const inEd = s.rangeCount && ed.contains(s.anchorNode);
+  if (inEd && !s.isCollapsed && s.toString().trim()) showBubble(s.getRangeAt(0)); else hide(bubble);
+  if (inEd) updateState();
+});
+
+function updateState() {
+  const b = caretBlock();
+  let name = 'Normal text';
+  if (b) name = b.tagName === 'UL' ? (b.classList.contains('tasks') ? 'To-do list' : 'Bulleted list') : b.tagName === 'OL' ? 'Numbered list' : b.tagName === 'TABLE' ? 'Table' : (STYLE_NAMES[b.tagName] || 'Normal text');
+  document.getElementById('styleName').textContent = name;
+  ['bold', 'italic', 'strikeThrough'].forEach(c => document.querySelectorAll(`#toolbar [data-c="${c}"]`).forEach(x => x.setAttribute('aria-pressed', document.queryCommandState(c))));
+  const pressed = { ul: b && b.tagName === 'UL' && !b.classList.contains('tasks'), ol: b && b.tagName === 'OL', task: b && b.classList.contains('tasks'), quote: b && b.tagName === 'BLOCKQUOTE' };
+  for (const k in pressed) document.querySelector(`#toolbar [data-c="${k}"]`).setAttribute('aria-pressed', !!pressed[k]);
+  const s = getSelection();
+  const cell = s.anchorNode && s.anchorNode.nodeType && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement).closest('td,th');
+  if (cell && ed.contains(cell)) {
+    const t = cell.closest('table'), r = t.getBoundingClientRect(), br = board.getBoundingClientRect();
+    tablebar.style.display = 'flex'; tablebar.style.left = (r.left - br.left) + 'px'; tablebar.style.top = (r.top - br.top - tablebar.offsetHeight - 6) + 'px';
+    tablebar.cell = cell;
+  } else hide(tablebar);
+}
+
+// ---- Table controls ----
+tablebar.querySelectorAll('[data-t]').forEach(btn => {
+  btn.onmousedown = e => e.preventDefault();
+  btn.onclick = () => {
+    const cell = tablebar.cell; if (!cell) return;
+    const row = cell.parentElement, t = cell.closest('table'), idx = [...row.children].indexOf(cell);
+    const op = btn.dataset.t;
+    if (op === 'row') { const nr = document.createElement('tr'); nr.innerHTML = [...row.children].map(() => '<td><br></td>').join(''); (row.parentElement.tagName === 'THEAD' ? t.tBodies[0].prepend(nr) : row.after(nr)); placeCaret(nr.children[idx]); }
+    if (op === 'col') t.querySelectorAll('tr').forEach(tr => { const c = document.createElement(tr.parentElement.tagName === 'THEAD' ? 'th' : 'td'); c.innerHTML = tr.parentElement.tagName === 'THEAD' ? 'Column' : '<br>'; tr.children[idx].after(c); });
+    if (op === 'delrow' && row.parentElement.tagName === 'TBODY' && t.tBodies[0].rows.length > 1) { row.remove(); placeCaret(t.tBodies[0].rows[0].cells[0]); }
+    if (op === 'delcol' && row.children.length > 1) t.querySelectorAll('tr').forEach(tr => tr.children[idx].remove());
+    if (op === 'del') { const p = emptyP(); t.replaceWith(p); placeCaret(p); hide(tablebar); }
+    after();
+  };
+});
+
+// ---- The / menu ----
+let slashState = null;
+function openSlash(block, fromButton) {
+  slashState = { block, fromButton, q: '', i: 0 };
+  renderSlash();
+  block.scrollIntoView({ block: 'nearest' });
+  const s = getSelection();
+  let r = s.rangeCount ? s.getRangeAt(0).getBoundingClientRect() : null;
+  if (!r || (!r.width && !r.height)) r = block.getBoundingClientRect();
+  const br = board.getBoundingClientRect();
+  slash.style.display = 'block';
+  let top = r.bottom - br.top + 6;
+  if (top + slash.offsetHeight > 760) top = Math.max(64, r.top - br.top - slash.offsetHeight - 6);
+  slash.style.left = (r.left - br.left) + 'px'; slash.style.top = top + 'px';
+}
+function slashItems() {
+  const q = slashState.q.toLowerCase();
+  return BLOCKS.filter(b => !q || b.n.toLowerCase().includes(q) || b.k.includes(q));
+}
+function renderSlash() {
+  const items = slashItems(); let g = '';
+  slash.innerHTML = items.length ? items.map((b, i) => (b.g !== g ? `<div class="grp">${g = b.g}</div>` : '') +
+    `<button type="button" role="option" data-i="${i}" class="${i === slashState.i ? 'on' : ''}"><span class="ic">${b.i}</span><span><span class="nm">${b.n}</span><span class="ds">${b.d}</span></span></button>`).join('')
+    : '<div class="empty">No matching block</div>';
+  slash.querySelectorAll('button').forEach(x => { x.onmousedown = e => e.preventDefault(); x.onclick = () => chooseSlash(+x.dataset.i); });
+  const on = slash.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+}
+function chooseSlash(i) {
+  const b = slashItems()[i]; const { block, fromButton } = slashState; closeSlash();
+  if (!b) return;
+  if (!fromButton) { // remove the "/query" that was typed
+    const s = getSelection(), n = s.anchorNode;
+    if (n && n.nodeType === 3) { const at = n.textContent.lastIndexOf('/', s.anchorOffset); if (at >= 0) { n.textContent = n.textContent.slice(0, at) + n.textContent.slice(s.anchorOffset); } }
+    if (!block.textContent.trim()) block.innerHTML = '<br>';
+    placeCaret(block);
+  } else if (block.textContent.trim() || block.tagName !== 'P') {
+    const p = emptyP(); block.after(p); return applyBlock(b.k, p);
+  }
+  applyBlock(b.k, block);
+}
+function closeSlash() { slashState = null; hide(slash); }
+
+ed.addEventListener('keydown', e => {
+  if (slashState) {
+    const n = slashItems().length;
+    if (e.key === 'ArrowDown') { e.preventDefault(); slashState.i = (slashState.i + 1) % Math.max(n, 1); renderSlash(); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); slashState.i = (slashState.i - 1 + n) % Math.max(n, 1); renderSlash(); return; }
+    if (e.key === 'Enter') { e.preventDefault(); chooseSlash(slashState.i); return; }
+    if (e.key === 'Escape') { closeSlash(); return; }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openLink(); }
+});
+
+ed.addEventListener('input', () => {
+  const s = getSelection(), n = s.anchorNode, block = caretBlock();
+  if (!block) return after();
+  if (block.classList.contains('ph') && block.textContent) block.classList.remove('ph'); // before measuring the caret
+  const before = n && n.nodeType === 3 ? n.textContent.slice(0, s.anchorOffset) : '';
+  const m = before.match(/(?:^|\s)\/([\w ]{0,20})$/);
+  if (m && !block.closest('pre')) {
+    if (!slashState) openSlash(block, false);
+    slashState.q = m[1]; slashState.i = 0; renderSlash();
+  } else if (slashState && !slashState.fromButton) closeSlash();
+
+  // Markdown shortcuts at the start of a paragraph
+  if (block.tagName === 'P') {
+    const t = block.textContent.replace(/ /g, ' ');
+    const rules = [[/^# $/, 'h1'], [/^## $/, 'h2'], [/^### $/, 'h3'], [/^[-*] $/, 'ul'], [/^1\. $/, 'ol'], [/^\[ ?\] $/, 'task'], [/^> $/, 'quote'], [/^---$/, 'hr'], [/^```$/, 'pre']];
+    for (const [re, k] of rules) if (re.test(t)) { block.innerHTML = '<br>'; placeCaret(block); applyBlock(k, block); break; }
+  }
+  // Every to-do item keeps its checkbox after Enter
+  ed.querySelectorAll('ul.tasks > li').forEach(li => {
+    if (!li.querySelector('input')) { const c = document.createElement('input'); c.type = 'checkbox'; c.contentEditable = 'false'; li.prepend(c); li.classList.remove('done'); }
+  });
+  after();
+});
+
+ed.addEventListener('change', e => { if (e.target.type === 'checkbox') { e.target.closest('li').classList.toggle('done', e.target.checked); e.target.toggleAttribute('checked', e.target.checked); after(); } });
+ed.addEventListener('click', e => { const a = e.target.closest('a'); if (a) e.preventDefault(); });
+document.addEventListener('mousedown', e => {
+  if (!slash.contains(e.target)) closeSlash();
+  if (!styles.contains(e.target) && e.target.closest('#styleBtn') === null) hide(styles);
+  if (!bubble.contains(e.target) && document.getElementById('linkForm').style.display === 'flex') closeLink();
+});
+
+// ---- Block handle (+ and drag grip) ----
+let hoverBlock = null;
+scroll.addEventListener('mousemove', e => {
+  if (e.target.closest('#handle')) return;
+  const b = topBlock(e.target);
+  if (!b) return;
+  hoverBlock = b;
+  const r = b.getBoundingClientRect(), sr = scroll.getBoundingClientRect(), pr = document.getElementById('page').getBoundingClientRect();
+  const line = parseFloat(getComputedStyle(b).lineHeight) || 28;
+  handle.style.display = 'flex';
+  handle.style.left = (pr.left - sr.left + 48 - 50) + 'px';
+  handle.style.top = (r.top - sr.top + scroll.scrollTop + Math.min(line, r.height) / 2 - 12) + 'px';
+});
+scroll.addEventListener('mouseleave', () => hide(handle));
+document.getElementById('hPlus').addEventListener('mousedown', e => e.preventDefault());
+document.getElementById('hPlus').addEventListener('click', () => {
+  if (!hoverBlock) return;
+  let p = hoverBlock;
+  if (p.tagName !== 'P' || p.textContent.trim()) { p = emptyP(); hoverBlock.after(p); }
+  ed.focus(); placeCaret(p); openSlash(p, true);
+});
+
+// ---- Markdown, the file as saved ----
+function inline(node) {
+  let out = '';
+  node.childNodes.forEach(c => {
+    if (c.nodeType === 3) { out += c.textContent.replace(/ /g, ' ').replace(/\s*\n\s*/g, ' '); return; }
+    if (c.nodeType !== 1) return;
+    const t = c.tagName, inner = () => inline(c);
+    if (t === 'INPUT') return;
+    if (t === 'BR') { out += c.nextSibling ? '\\\n' : ''; return; }
+    if (t === 'STRONG' || t === 'B') out += `**${inner()}**`;
+    else if (t === 'EM' || t === 'I') out += `*${inner()}*`;
+    else if (t === 'S' || t === 'STRIKE' || t === 'DEL') out += `~~${inner()}~~`;
+    else if (t === 'CODE') out += '`' + c.textContent + '`';
+    else if (t === 'A') out += c.dataset.page ? `[[${c.dataset.page}]]` : `[${inner()}](${c.getAttribute('href')})`;
+    else out += inner();
+  });
+  return out;
+}
+function list(el, depth) {
+  const ordered = el.tagName === 'OL', tasks = el.classList.contains('tasks');
+  return [...el.children].map((li, i) => {
+    const sub = [...li.children].filter(x => x.tagName === 'UL' || x.tagName === 'OL');
+    const clone = li.cloneNode(true); clone.querySelectorAll('ul,ol').forEach(x => x.remove());
+    const box = li.querySelector(':scope > input');
+    const mark = ordered ? `${i + 1}.` : tasks ? `- [${box && box.checked ? 'x' : ' '}]` : '-';
+    return '  '.repeat(depth) + `${mark} ${inline(clone).trim()}` + sub.map(s => '\n' + list(s, depth + 1)).join('');
+  }).join('\n');
+}
+function toMarkdown() {
+  const out = [];
+  [...ed.children].forEach(b => {
+    const t = b.tagName;
+    if (t === 'H1' || t === 'H2' || t === 'H3') out.push('#'.repeat(+t[1]) + ' ' + inline(b).trim());
+    else if (t === 'UL' || t === 'OL') out.push(list(b, 0));
+    else if (t === 'BLOCKQUOTE') out.push(inline(b).trim().split('\n').map(l => '> ' + l).join('\n'));
+    else if (t === 'PRE') out.push('```\n' + b.textContent.replace(/\n$/, '') + '\n```');
+    else if (t === 'HR') out.push('---');
+    else if (t === 'FIGURE') out.push('![launch-banner](assets/launch-banner.png)');
+    else if (t === 'TABLE') {
+      const rows = [...b.rows].map(r => '| ' + [...r.cells].map(c => inline(c).trim() || ' ').join(' | ') + ' |');
+      rows.splice(1, 0, '| ' + [...b.rows[0].cells].map(() => '---').join(' | ') + ' |');
+      out.push(rows.join('\n'));
+    } else { const s = inline(b).trim(); if (s) out.push(s); }
+  });
+  return out.join('\n\n') + '\n';
+}
+
+function setMode(markdown) {
+  document.getElementById('mVisual').setAttribute('aria-pressed', !markdown);
+  document.getElementById('mMd').setAttribute('aria-pressed', markdown);
+  document.getElementById('toolbar').style.visibility = markdown ? 'hidden' : 'visible';
+  ed.style.display = markdown ? 'none' : 'block';
+  md.style.display = markdown ? 'block' : 'none';
+  document.getElementById('mdnote').style.display = markdown ? 'flex' : 'none';
+  [bubble, slash, tablebar, handle, styles].forEach(hide);
+  if (markdown) { md.value = toMarkdown(); md.style.height = 'auto'; md.style.height = md.scrollHeight + 'px'; }
+}
+document.getElementById('mVisual').onclick = () => setMode(false);
+document.getElementById('mMd').onclick = () => setMode(true);
+
+function after() {
+  ensureTrailingP();
+  ed.querySelectorAll('p.ph').forEach(p => { if (p !== ed.lastElementChild || p.textContent.trim()) { p.classList.remove('ph'); p.removeAttribute('data-ph'); } });
+  const last = ed.lastElementChild;
+  if (last.tagName === 'P' && !last.textContent.trim()) { last.classList.add('ph'); last.dataset.ph = 'Type / for blocks, or just start writing'; }
+  const n = (ed.innerText.match(/\S+/g) || []).length;
+  document.getElementById('words').textContent = `${n} words`;
+  updateState();
+}
+after();
+</script>
+</body>
+</html>

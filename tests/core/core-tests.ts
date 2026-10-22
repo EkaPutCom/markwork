@@ -56,6 +56,8 @@ import { resolveTests } from '../unit/resolve.js';
 import { conflictTests } from '../unit/conflicts.js';
 import { clickTests } from '../unit/clicks.js';
 import { tableTests } from '../unit/table.js';
+import { blockTests } from '../unit/blocks.js';
+import { paneTests } from '../unit/panes.js';
 import { commitMessageTests } from '../unit/commitmessage.js';
 import { harnessTests } from '../unit/harness.js';
 import { worktreeTests } from '../unit/worktree.js';
@@ -92,6 +94,8 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     fieldsModelTests();
     layoutTests();
     tableTests();
+    blockTests();
+    paneTests();
     tableLayoutTests();
     clickTests();
     editCommandTests();

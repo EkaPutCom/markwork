@@ -26,7 +26,8 @@ writeFileSync(join(notes, 'conflict.md'), '# Conflict\n\n<<<<<<< HEAD\nours\n===
 
 const { steps, step } = stepper();
 
-const app = await launchApp({ scratch, notes, env: { MARKWORK_CHOOSE_FILE: join(notes, 'saved-as') } });   // the answer of the file chooser
+// These scenarios are the live view's (the visual editor off): the syntax shows on the cursor line. tests/electron/visual.mjs has the visual editor's.
+const app = await launchApp({ scratch, notes, settings: { visual: false }, env: { MARKWORK_CHOOSE_FILE: join(notes, 'saved-as') } });   // the answer of the file chooser
 let failed = false;
 try {
     const page = await app.firstWindow();

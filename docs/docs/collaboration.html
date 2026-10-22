@@ -37,7 +37,7 @@
 <p>Only an access token is needed:</p>
 <ol>
   <li>On the server, create an access token in your account settings (<em>Applications</em>) that may read and write repositories.</li>
-  <li>Open the fourth tab of the sidebar (the icon with the two connected people) and click the server line at the bottom of the tab.</li>
+  <li>Open the Pull requests view (the icon with the two connected lines in the activity bar) and click the server line at the bottom of the tab.</li>
   <li>Paste the token, press <em>Test connection</em> (it says how many pull requests it can see, or why the server refused), and press <em>Save</em>.</li>
 </ol>
 <p>The token is stored in the system keyring, one per server, and in a file with 0600 permissions (<code>~/.config/markwork/forge-&lt;server&gt;.token</code>) when there is no keyring. It is never written to the settings. The <code>MARKWORK_FORGE_TOKEN</code> environment variable is used first when it is set; the dialog then says so, because a token saved there would not be used. Saving the dialog with the field empty removes a saved token.</p>

@@ -318,14 +318,15 @@ export class AppSession<E extends TextEditor> {
             showPreferences: () => this.preferences.open(),
         };
         return { ...core, edit: frontend.edit, openFind: replace => frontend.openFind(replace), showSearch: replace => frontend.showSearch(replace),
-            setSource: on => frontend.setSource(on), showPalette: () => frontend.showPalette(), showShortcuts: () => frontend.showShortcuts(),
-            showAbout: () => frontend.showAbout(), quit: () => frontend.quit() };
+            setSource: on => frontend.setSource(on), splitPane: side => frontend.splitPane(side), closePane: () => frontend.closePane(), moveToNextPane: () => frontend.moveToNextPane(),
+            showPalette: () => frontend.showPalette(), showShortcuts: () => frontend.showShortcuts(), showAbout: () => frontend.showAbout(), quit: () => frontend.quit() };
     }
 
     // ---------- What the frontend reports ----------
 
     private focused = false;                       // the window has the focus, as the frontend last reported
     private sidebarPage: SidebarPage | null = null;  // the side panel's page while it is open, null while it is closed
+    private timeline = false;                        // the Files view shows its Timeline section (the history of the open file)
     private readonly stops: (() => void)[] = [];
 
     // What the window opens with: the folder from the command line or the last folder, then the file from the command line,
@@ -406,9 +407,10 @@ export class AppSession<E extends TextEditor> {
         this.programs.recheckMissing();
     }
 
-    // The side panel opened at a page, switched pages, or closed (null).
-    sidebarShown(page: SidebarPage | null): void {
+    // The side panel opened at a page, switched pages, or closed (null); `timeline` says its Files view shows the Timeline.
+    sidebarShown(page: SidebarPage | null, timeline = false): void {
         this.sidebarPage = page;
+        this.timeline = timeline;
         this.syncHistory();
     }
 
@@ -463,9 +465,10 @@ export class AppSession<E extends TextEditor> {
         return this.documents.all.find(d => d.id === id);
     }
 
-    // The history is read only while its tab is shown, so git is not run needlessly. force = read again for the same file.
+    // The history is read only while it is shown (its page, or the Files view's Timeline), so git is not run needlessly.
+    // force = read again for the same file.
     private syncHistory(force = false): void {
-        if (this.sidebarPage === 'history') this.history.show(this.shownFile(), this.files.root, force);
+        if (this.sidebarPage === 'history' || (this.sidebarPage === 'files' && this.timeline)) this.history.show(this.shownFile(), this.files.root, force);
     }
 
     // The file the active tab is about: the document's, an HTML page's, none for Home. The tree and the history follow it.

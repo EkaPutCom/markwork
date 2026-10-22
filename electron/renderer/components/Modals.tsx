@@ -70,7 +70,7 @@ export function PreferencesDialog() {
     const [page, setPage] = useState<'general' | 'assistant' | 'agents'>('general');
     if (!prefs) return null;
     const set = (key: string) => (value: string | number | boolean) => client.setPreference(key, value);
-    const toggle = (key: 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatThinking' | 'chatSave' | 'forgeNotify', title: string, subtitle?: string) => (
+    const toggle = (key: 'visual' | 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatThinking' | 'chatSave' | 'forgeNotify', title: string, subtitle?: string) => (
         <Row title={title} subtitle={subtitle}><input type="checkbox" role="switch" checked={prefs[key]} onChange={e => set(key)(e.target.checked)} /></Row>
     );
     const tabs = (
@@ -90,6 +90,7 @@ export function PreferencesDialog() {
                                 <option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option>
                             </select>
                         </Row>
+                        {toggle('visual', 'Visual editor', 'Edit text as it looks. Off: the live view, which shows syntax on the cursor line')}
                         {toggle('focus', 'Focus mode', 'Dim all paragraphs except the one being edited')}
                         {toggle('typewriter', 'Typewriter mode', 'Keep the line being typed in the middle')}
                     </Group>
@@ -129,9 +130,10 @@ const SECTIONS: [string, string[]][] = [
     ['Tab', ['home', 'next-tab', 'prev-tab', 'close-tab']],
     ['Journal', ['journal', 'journal-capture']],
     ['Editing', ['undo', 'redo', 'find', 'replace', 'search-files', 'replace-files']],
-    ['Format', ['bold', 'italic', 'strike', 'inline-code', 'highlight', 'link', 'image', 'codeblock', 'table', 'quote', 'ulist', 'olist']],
+    ['Format', ['bold', 'italic', 'strike', 'inline-code', 'highlight', 'link', 'image', 'codeblock', 'table', 'divider', 'quote', 'ulist', 'olist', 'tasklist', 'block-up', 'block-down']],
+    ['Panes', ['split-right', 'split-down', 'move-to-next-pane', 'close-pane']],
     ['Table', ['table-row-below', 'table-row-above', 'table-delete-row', 'table-col-right', 'table-col-left', 'table-delete-col', 'table-format']],
-    ['View', ['sidebar', 'chat', 'kanban-view', 'source', 'focus', 'typewriter', 'dark']],
+    ['View', ['sidebar', 'chat', 'kanban-view', 'visual', 'source', 'focus', 'typewriter', 'dark']],
     ['General', ['command-palette', 'preferences', 'shortcuts', 'quit']],
 ];
 
