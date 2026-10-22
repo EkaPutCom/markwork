@@ -8,7 +8,7 @@ import { useClient, useStore } from '../lib/useClient.js';
 export const TAB_DRAG = 'application/x-markwork-tab';
 export const FILE_DRAG = 'application/x-markwork-file';
 
-// The tabs of a pane: shadcn's Tabs. With a single pane they are centered over the editor and shown once there is more
+// The tabs of a pane, drawn as VS Code's: flat, from the left, a line of accent over the one shown. With a single pane they are centered over the editor and shown once there is more
 // than one document; with several, each pane's bar has its own. A document with changes not saved has a dot before its
 // name, and the tab says so to a screen reader. A tab is dragged to another place in the bar, or to another pane.
 export function PaneTabs({ pane, solo, label, onMenu }: { pane: Pane; solo: boolean; label: string; onMenu: (doc: number) => void }) {
@@ -43,8 +43,9 @@ export function PaneTabs({ pane, solo, label, onMenu }: { pane: Pane; solo: bool
                         onDragOver={e => { e.stopPropagation(); dragOver(e, t.id); }} onDrop={e => drop(e, t.id)}
                         onClick={() => client.selectTab(t.id, pane.id)} onAuxClick={e => { if (e.button === 1) client.closeTab(t.id, pane.id); }}
                         onContextMenu={e => { e.preventDefault(); client.selectTab(t.id, pane.id); onMenu(t.id); }}>
-                        {t.mirror.modified && <span className="dot" role="img" aria-label="Unsaved" />}
+                        <Icon name="text-x-generic" size={14} className="file" />
                         <span className="label">{t.name}</span>
+                        {t.mirror.modified && <span className="dot" role="img" aria-label="Unsaved" />}
                         <button className="button flat circular close" aria-label={`Close ${t.name}`} onClick={e => { e.stopPropagation(); client.closeTab(t.id, pane.id); }}>
                             <Icon name="window-close" size={14} />
                         </button>
