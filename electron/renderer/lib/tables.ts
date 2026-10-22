@@ -2,12 +2,15 @@
 // replaced by an HTML table drawn from markdown/table.ts; with the cursor in the table the raw text is back for editing
 // (Tab moves between cells, see markdown/editcommands.ts). A click on a cell puts the cursor in that cell of the raw text.
 //
-// In the visual editor the grid stays, and its cells are edited where they are: a cell holds its formatted text, and the
-// one that is being edited holds its Markdown in a box. What is typed changes that one cell of the text, so the document
-// is always what the grid shows (autosave, undo, and the toolbar's row and column buttons work on it as on any text).
+// In the visual editor the grid stays, and its cells are edited where they are, as the text around the table is: each cell
+// is an editable element that shows what the cell says (bold, code, links, without their markers), and a click puts the
+// caret where it was. What is typed changes that one cell of the text, written into its Markdown at the place the visible
+// text maps to, so the document is always what the grid shows (autosave, undo, and the toolbar's commands work on it as
+// on any text: the cell's selection is the text's).
 
 import { WidgetType, type EditorView } from '@codemirror/view';
 import { cellHtml } from '../../../src/markdown/inlinehtml.js';
+import { parseInline } from '../../../src/markdown/inline.js';
 import { runTableCommand } from '../../../src/markdown/editcommands.js';
 import { cellIndexAt, cellStart, escapeCell, parseTable, setCellText, type Table } from '../../../src/markdown/table.js';
 
@@ -29,19 +32,151 @@ const rowOf = (cell: HTMLElement) => Number(cell.dataset.row);
 const colOf = (cell: HTMLElement) => Number(cell.dataset.col);
 const cellsIn = (wrap: HTMLElement) => [...wrap.querySelectorAll<HTMLElement>('[data-row]')];
 
-// The box a cell holds while it is edited: its text is the cell's Markdown. (A box, not an editable element: the editor
-// takes the focus back from a contenteditable inside its own.)
-const inputOf = (cell: HTMLElement): HTMLInputElement | null => cell.querySelector('input');
+// ---------- What a cell shows ----------
 
-// Where the caret is in a cell, in UTF-16 units of its text.
-const caretIn = (cell: HTMLElement): number => inputOf(cell)?.selectionStart ?? 0;
+// The formats of a cell's letters, outermost first, and the element each is drawn with (as markdown/inlinehtml.ts does).
+const STYLES = ['bold', 'italic', 'strike', 'code', 'link', 'mark'] as const;
+type Style = typeof STYLES[number];
+const ELEMENT: Record<Style, string> = { bold: 'strong', italic: 'em', strike: 's', code: 'code', link: 'span', mark: 'mark' };
+const STYLES_OF: Record<string, Style[]> = {
+    bold: ['bold'], italic: ['italic'], bolditalic: ['bold', 'italic'], strike: ['strike'], mark: ['mark'], code: ['code'], link: ['link'], image: ['italic', 'link'],
+};
 
-const textIn = (cell: HTMLElement): string => inputOf(cell)?.value ?? '';
-
-function setCaret(input: HTMLInputElement, offset: number): void {
-    const at = Math.min(Math.max(offset, 0), input.value.length);
-    input.setSelectionRange(at, at);
+// The visible text of a cell's Markdown (the markers of its formats and escapes left out), and how the two map.
+interface Shown {
+    raw: string;
+    visible: string;
+    toRaw: number[];       // the place in the Markdown of each visible letter
+    fromRaw: number[];     // how many visible letters stand before each place of the Markdown (one more than its length)
+    styles: number[];      // the formats of each visible letter, as bits of STYLES
 }
+
+function showOf(raw: string): Shown {
+    const hidden = new Uint8Array(raw.length), bits = new Uint8Array(raw.length);
+    for (const [name, a, b] of parseInline(raw).tags) {
+        const mask = name === 'marker' ? 0 : STYLES_OF[name].reduce((m, st) => m | 1 << STYLES.indexOf(st), 0);
+        for (let i = a; i < b; i++) { if (name === 'marker') hidden[i] = 1; else bits[i] |= mask; }
+    }
+    const toRaw: number[] = [], fromRaw: number[] = [], styles: number[] = [];
+    let visible = '';
+    for (let i = 0; i < raw.length; i++) {
+        fromRaw[i] = toRaw.length;
+        if (hidden[i]) continue;
+        toRaw.push(i);
+        styles.push(bits[i]);
+        visible += raw[i];
+    }
+    fromRaw[raw.length] = toRaw.length;
+    return { raw, visible, toRaw, fromRaw, styles };
+}
+
+const shown = new WeakMap<HTMLElement, Shown>();
+
+// Draw a cell's visible text with its formats.
+function draw(cell: HTMLElement, raw: string): void {
+    const s = showOf(raw);
+    shown.set(cell, s);
+    cell.replaceChildren();
+    for (let i = 0; i < s.visible.length;) {
+        let j = i + 1;
+        while (j < s.visible.length && s.styles[j] === s.styles[i]) j++;
+        let node: Node = document.createTextNode(s.visible.slice(i, j));
+        for (let k = STYLES.length - 1; k >= 0; k--) {
+            if (!(s.styles[i] & 1 << k)) continue;
+            const el = document.createElement(ELEMENT[STYLES[k]]);
+            if (STYLES[k] === 'link') el.className = 'md-link';
+            el.append(node);
+            node = el;
+        }
+        cell.append(node);
+        i = j;
+    }
+}
+
+// The Markdown that was typed, from what the cell shows now: the letters that went and came replace the same stretch of
+// the Markdown. Letters go with the markers between them; text typed right after a word takes its format.
+function typed(s: Shown, now: string): { raw: string; caret: number } {
+    const old = s.visible;
+    let p = 0;
+    while (p < old.length && p < now.length && old[p] === now[p]) p++;
+    let q = 0;
+    while (q < old.length - p && q < now.length - p && old[old.length - 1 - q] === now[now.length - 1 - q]) q++;
+    const removed = old.length - p - q, added = now.slice(p, now.length - q).replace(/\r?\n/g, ' ');
+    let raw = s.raw, from: number, to: number;
+    if (removed > 0) { from = s.toRaw[p]; to = s.toRaw[p + removed - 1] + 1; }
+    else from = to = p === 0 ? 0 : p >= old.length ? raw.length : s.toRaw[p - 1] + 1;
+    raw = raw.slice(0, from) + added + raw.slice(to);
+    // Markers left with nothing between them (** **, ``) go with the last letter.
+    if (removed > 0 && !added) {
+        for (let k = 3; k >= 1;) {
+            const open = raw.slice(from - k, from);
+            if (from - k >= 0 && /^([*_~=`])\1*$/.test(open) && raw.slice(from, from + k) === open) { raw = raw.slice(0, from - k) + raw.slice(from + k); from -= k; k = 3; } else k--;
+        }
+    }
+    return { raw, caret: from + added.length };
+}
+
+// ---------- The selection in a cell ----------
+
+// The visible offsets of the selection in a cell, [anchor, head]; null when it is not in the cell.
+function visibleSelection(cell: HTMLElement): [number, number] | null {
+    const sel = window.getSelection();
+    if (!sel?.anchorNode || !sel.focusNode || !cell.contains(sel.anchorNode) || !cell.contains(sel.focusNode)) return null;
+    const offset = (node: Node, at: number) => { const r = document.createRange(); r.selectNodeContents(cell); r.setEnd(node, at); return r.toString().length; };
+    return [offset(sel.anchorNode, sel.anchorOffset), offset(sel.focusNode, sel.focusOffset)];
+}
+
+function setVisibleSelection(cell: HTMLElement, anchor: number, head: number): void {
+    const point = (at: number): [Node, number] => {
+        const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+        let last: Text | null = null;
+        for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+            if (at <= node.length) return [node, at];
+            at -= node.length;
+            last = node;
+        }
+        return last ? [last, last.length] : [cell, 0];
+    };
+    const [an, ao] = point(anchor), [hn, ho] = point(head);
+    window.getSelection()?.setBaseAndExtent(an, ao, hn, ho);
+}
+
+// The selection in a cell as places in its Markdown, [anchor, head]: a collapsed one before the letter it stands at, the
+// ends of a range around the letters it holds.
+function selectionIn(cell: HTMLElement): [number, number] {
+    const s = shown.get(cell), sel = visibleSelection(cell);
+    if (!s || !sel) return [0, 0];
+    const [a, h] = sel, from = Math.min(a, h), to = Math.max(a, h);
+    const start = from >= s.visible.length ? s.raw.length : s.toRaw[from];
+    const end = to === from ? start : s.toRaw[to - 1] + 1;
+    return a <= h ? [start, end] : [end, start];
+}
+
+// Select places `anchor`–`head` of a cell's Markdown.
+function selectIn(cell: HTMLElement, anchor: number, head: number): void {
+    const s = shown.get(cell);
+    if (!s) return;
+    const at = (raw: number) => s.fromRaw[Math.min(Math.max(raw, 0), s.raw.length)];
+    setVisibleSelection(cell, at(anchor), at(head));
+}
+
+const caretIn = (cell: HTMLElement): number => selectionIn(cell)[1];
+const textIn = (cell: HTMLElement): string => shown.get(cell)?.raw ?? '';
+const isEdited = (cell: HTMLElement): boolean => document.activeElement === cell;
+
+// Where the selection of the cell that has the focus is on the screen, for a menu over it; null when no cell has it.
+export function cellSelectionRect(): DOMRect | null {
+    const cell = document.activeElement;
+    if (!(cell instanceof HTMLElement) || !cell.classList.contains('cm-md-cell')) return null;
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return null;
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    return rect.width || rect.height ? rect : cell.getBoundingClientRect();
+}
+
+// The grids that are edited, by their element: how to give a cell of one the text's selection again after a command
+// (the toolbar's Bold) changed the text.
+const selectors = new WeakMap<HTMLElement, (cell: HTMLElement) => void>();
 
 export class TableWidget extends WidgetType {
     private readonly key: string;
@@ -55,40 +190,36 @@ export class TableWidget extends WidgetType {
 
     raw(row: number, col: number): string { return row < 0 ? this.table.header[col] : this.table.rows[row][col]; }
 
-    // A cell shows its formatted text.
+    // A cell shows its formatted text; in the visual editor it is edited where it is.
     private fill(cell: HTMLElement): void {
         const row = rowOf(cell), col = colOf(cell);
-        cell.innerHTML = cellHtml(this.raw(row, col));
+        if (this.editable) draw(cell, this.raw(row, col));
+        else cell.innerHTML = cellHtml(this.raw(row, col));
         cell.style.textAlign = this.table.aligns[col] ?? '';
-        delete cell.dataset.raw;
     }
 
-    // A cell opens: its Markdown in a box that has the focus, with the caret at `offset`.
+    // A cell takes the focus, with the caret at place `offset` of its Markdown.
     open(cell: HTMLElement, offset: number): void {
-        let input = inputOf(cell);
-        if (!input) {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'cm-md-cell-input';
-            input.spellcheck = false;
-            input.setAttribute('aria-label', rowOf(cell) < 0 ? `Heading of column ${colOf(cell) + 1}` : `Row ${rowOf(cell) + 1}, column ${colOf(cell) + 1}`);
-            input.value = this.raw(rowOf(cell), colOf(cell));
-            cell.replaceChildren(input);
-            cell.dataset.raw = '1';
-        }
-        input.focus();
-        setCaret(input, offset);
+        cell.focus({ preventScroll: true });
+        selectIn(cell, offset, offset);
     }
 
     override toDOM(view: EditorView): HTMLElement {
         const wrap = document.createElement('div');
         wrap.className = 'cm-md-table-grid' + (this.dim ? ' cm-md-dim' : '') + (this.editable ? ' editable' : '');
+        wrap.contentEditable = 'false';   // each cell of the visual editor is an editing place of its own
         drawn.set(wrap, this);
         const grid = document.createElement('table');
         const cell = (tag: 'th' | 'td', col: number, row: number) => {
             const el = document.createElement(tag);
             el.dataset.row = String(row);
             el.dataset.col = String(col);
+            if (this.editable) {
+                el.className = 'cm-md-cell';
+                el.contentEditable = 'plaintext-only';
+                el.spellcheck = false;
+                el.setAttribute('aria-label', row < 0 ? `Heading of column ${col + 1}` : `Row ${row + 1}, column ${col + 1}`);
+            }
             this.fill(el);
             return el;
         };
@@ -127,26 +258,35 @@ export class TableWidget extends WidgetType {
         // The line of the text a cell is in, and the table's first and last line (from 1).
         const firstLine = () => view.state.doc.lineAt(view.posAtDOM(wrap)).number;
         const lineOf = (cell: HTMLElement) => view.state.doc.line(Math.min(view.state.doc.lines, firstLine() + (rowOf(cell) < 0 ? 0 : rowOf(cell) + 2)));
-        const openCell = (cell: HTMLElement, offset = here().raw(rowOf(cell), colOf(cell)).length) => here().open(cell, offset);
-        // The text's cursor goes where the caret is in the cell, so the toolbar and the commands act there.
+        const openCell = (cell: HTMLElement, offset?: number) => here().open(cell, offset ?? here().raw(rowOf(cell), colOf(cell)).length);
+        // The text's selection follows the cell's, so the toolbar, the selection menu, and the commands act on it.
         const place = (cell: HTMLElement) => {
-            const line = lineOf(cell), at = line.from + cellStart(line.text, colOf(cell)) + caretIn(cell);
+            if (!isEdited(cell)) return;
+            const line = lineOf(cell), start = line.from + cellStart(line.text, colOf(cell));
+            const [anchor, head] = selectionIn(cell).map(at => start + at);
             const { main } = view.state.selection;
-            if (!main.empty || main.head !== at) view.dispatch({ selection: { anchor: at } });
+            if (main.anchor !== anchor || main.head !== head) view.dispatch({ selection: { anchor, head } });
         };
+        selectors.set(wrap, cell => {
+            if (!cell.isConnected || !isEdited(cell)) return;
+            const line = lineOf(cell), start = line.from + cellStart(line.text, colOf(cell)), { main } = view.state.selection;
+            if (main.from >= start && main.to <= line.to) selectIn(cell, main.anchor - start, main.head - start);
+        });
         // What was typed in a cell is written into the text: that cell only.
         const commit = (cell: HTMLElement) => {
-            const input = inputOf(cell);
-            if (!input) return;
-            const line = lineOf(cell), typed = input.value, caret = caretIn(cell);
-            // A pipe is escaped on its way into the text, so the box says what the text says.
-            const escaped = escapeCell(typed);
-            if (escaped !== typed) { input.value = escaped; setCaret(input, caret + escaped.length - typed.length); }
-            // The text of a cell has no space around it, but the box keeps the ones just typed, or a word could not be followed by another.
+            const before = shown.get(cell);
+            if (!before) return;
+            const line = lineOf(cell);
+            const edit = typed(before, (cell.textContent ?? '').replace(/\u200b/g, ''));
+            // A pipe is escaped on its way into the text.
+            const escaped = escapeCell(edit.raw), caret = edit.caret + escaped.length - edit.raw.length;
+            draw(cell, escaped);
+            selectIn(cell, caret, caret);
+            // The text of a cell has no space around it, but the cell keeps the ones just typed, or a word could not be followed by another.
             const change = setCellText(line.text, colOf(cell), escaped.trim());
             if (!change || change.insert === here().raw(rowOf(cell), colOf(cell))) return;
             const from = line.from + change.from;
-            view.dispatch({ changes: { from, to: line.from + change.to, insert: change.insert }, selection: { anchor: from + Math.min(caretIn(cell), change.insert.length) }, userEvent: 'input.type' });
+            view.dispatch({ changes: { from, to: line.from + change.to, insert: change.insert }, selection: { anchor: from + Math.min(caret, change.insert.length) }, userEvent: 'input.type' });
         };
         // Add a row below the last one (the toolbar's command), and go to its first cell.
         const addRow = (cell: HTMLElement) => {
@@ -178,25 +318,22 @@ export class TableWidget extends WidgetType {
             else leave(false);
         };
 
-        // A click opens the cell it is on; one on the box that is open is the box's own (the caret goes there).
-        wrap.addEventListener('mousedown', event => {
-            const target = event.target as Element, cell = cellOf(target);
-            if (!cell || target.closest('input') || target.closest('a') && (event.ctrlKey || event.metaKey)) return;
-            event.preventDefault();
-            openCell(cell);
-        });
-        wrap.addEventListener('focusin', event => { const cell = cellOf(event.target as Element); if (cell && inputOf(cell)) place(cell); });
+        wrap.addEventListener('focusin', event => { const cell = cellOf(event.target as Element); if (cell) place(cell); });
         wrap.addEventListener('focusout', event => {
             const cell = cellOf(event.target as Element);
-            if (cell?.isConnected && inputOf(cell)) here().fill(cell);
+            if (cell?.isConnected) here().fill(cell);
+        });
+        // The cell's own history and line breaks stay out: undo is the text's, and a cell is one line.
+        wrap.addEventListener('beforeinput', event => {
+            if (/^(historyUndo|historyRedo|insertParagraph|insertLineBreak|format)/.test(event.inputType)) event.preventDefault();
         });
         wrap.addEventListener('input', event => {
             const cell = cellOf(event.target as Element);
             if (cell && !(event as InputEvent).isComposing) commit(cell);
         });
         wrap.addEventListener('compositionend', event => { const cell = cellOf(event.target as Element); if (cell) commit(cell); });
-        wrap.addEventListener('keyup', event => { const cell = cellOf(event.target as Element); if (cell && event.key.startsWith('Arrow')) place(cell); });
-        wrap.addEventListener('mouseup', event => { const cell = cellOf(event.target as Element); if (cell && inputOf(cell)) place(cell); });
+        wrap.addEventListener('keyup', event => { const cell = cellOf(event.target as Element); if (cell) place(cell); });
+        wrap.addEventListener('mouseup', event => { const cell = cellOf(event.target as Element); if (cell) requestAnimationFrame(() => place(cell)); });
         wrap.addEventListener('keydown', event => {
             const cell = cellOf(event.target as Element);
             if (!cell || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -205,7 +342,8 @@ export class TableWidget extends WidgetType {
             // Enter on a last row that is empty leaves the grid instead of adding another row.
             const emptyLast = event.key === 'Enter' && rowOf(cell) === here().table.rows.length - 1 && cellsIn(wrap).filter(x => rowOf(x) === rowOf(cell)).every(x => !textIn(x));
             if (emptyLast) { event.preventDefault(); leave(true); }
-            else if (move && !(event.key === 'Enter' && event.shiftKey)) { event.preventDefault(); step(cell, move[0], move[1]); }
+            else if (event.key === 'Enter' && event.shiftKey) event.preventDefault();
+            else if (move) { event.preventDefault(); step(cell, move[0], move[1]); }
             else if (event.key === 'Escape') { event.preventDefault(); leave(true); }
         });
     }
@@ -216,17 +354,21 @@ export class TableWidget extends WidgetType {
         const same = this.editable && from.editable && from.table.header.length === this.table.header.length && from.table.rows.length === this.table.rows.length;
         const active = cellOf(document.activeElement);
         if (!same) {
-            const box = active && dom.contains(active) ? inputOf(active) : null;
             // A place that was asked for (a row added with Tab) wins over the cell that had the focus.
-            if (active && box && this.editable && !pending) keep({ row: rowOf(active), col: colOf(active), offset: box.selectionStart ?? 0 });
+            if (active && dom.contains(active) && isEdited(active) && this.editable && !pending) keep({ row: rowOf(active), col: colOf(active), offset: caretIn(active) });
             return false;
         }
         drawn.set(dom, this);
         dom.classList.toggle('cm-md-dim', this.dim);
         for (const cell of cellsIn(dom)) {
-            const box = inputOf(cell);
-            if (cell === active && box) { if (box.value.trim() !== this.raw(rowOf(cell), colOf(cell))) box.value = this.raw(rowOf(cell), colOf(cell)); }
-            else this.fill(cell);
+            if (cell !== active || !isEdited(cell)) { this.fill(cell); continue; }
+            if (textIn(cell).trim() === this.raw(rowOf(cell), colOf(cell))) continue;
+            // Changed from outside the cell (a command): it takes the text's selection once the update is done.
+            const caret = caretIn(cell);
+            this.fill(cell);
+            selectIn(cell, caret, caret);
+            const select = selectors.get(dom);
+            if (select) requestAnimationFrame(() => select(cell));
         }
         return true;
     }

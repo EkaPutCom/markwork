@@ -68,9 +68,6 @@
 .headerbar .state svg { color: var(--success); }
 .headerbar .spacer { flex: 1; }
 .headerbar .vsep { width: 1px; height: 16px; background: var(--border); flex: none; }
-.split-button { display: inline-flex; align-items: stretch; height: 32px; border-radius: 6px; flex: none; }
-.split-button > :first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.split-button > :last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; width: 28px; min-width: 28px; padding: 0; border-left: 1px solid color-mix(in oklab, var(--primary-foreground) 25%, transparent); }
 
 /* A menu: shadcn's DropdownMenu, for the menus drawn by hand too (a right click, a field's options). */
 .popover { position: absolute; top: 40px; left: 0; z-index: 50; min-width: 220px; background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); box-shadow: 0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1); padding: 4px; display: flex; flex-direction: column; }
@@ -190,7 +187,7 @@
 .pane:not(.solo).current { box-shadow: inset 0 2px 0 var(--primary); }
 .pane:not(.solo):not(.current) .tab.active { color: var(--muted-foreground); }
 .pane:not(.solo) .tab.active::before { display: none; }
-/* The bar of a pane when there are several: its tabs, its Visual / Markdown switch, and its actions. */
+/* The bar of a pane: its tabs, its Visual / Markdown switch, and its actions. */
 .pane-bar { flex: none; height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 0; border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 40%, var(--background)); }
 .pane-bar .spacer { flex: 1; }
 .pane-tabs { min-width: 0; align-self: stretch; display: flex; }
@@ -235,6 +232,11 @@
 .cm-md-marker, .cm-md-fence { color: var(--faint); font-weight: 400; }
 .cm-md-quote, .cm-md-quote2, .cm-md-quote3 { color: var(--quote-fg); }
 .cm-md-codeblock-line, .cm-md-fence-line { background: var(--code-bg); font-family: var(--font-mono); font-size: 14px; padding-left: 12px; padding-right: 12px; }
+/* An open code block looks as the closed one does (.cm-md-codebox): the same inset, line height, and round corners. */
+.cm-editor .cm-line.cm-md-codeblock-line { padding: 0 12px; line-height: 1.5; }
+.cm-editor .cm-line.cm-md-fence-line { padding-top: 6px; padding-bottom: 6px; font-size: 12px; }
+.cm-editor .cm-line.cm-md-fence-line:is(:first-child, .cm-line:not(.cm-md-codeblock-line) + *) { border-radius: 8px 8px 0 0; margin-top: 8px; }
+.cm-editor .cm-line.cm-md-fence-line:has(+ .cm-line:not(.cm-md-codeblock-line)), .cm-editor .cm-line.cm-md-fence-line:last-child { border-radius: 0 0 8px 8px; margin-bottom: 8px; }
 .cm-md-hr-line { border-bottom: 1px solid var(--border); }
 .cm-md-bullet, .cm-md-task { color: var(--muted-foreground); font-weight: 600; }
 .cm-md-taskdone, .cm-md-done { color: var(--muted-foreground); text-decoration: line-through; }
@@ -275,13 +277,24 @@
 @container headerbar (max-width: 1000px) { .headerbar .title .contents { display: none; } }
 @container headerbar (max-width: 820px) { .mode-switch .label-text { display: none; } .mode-switch button { padding: 0 7px; } .headerbar .label-text { display: none; } }
 /* The badge keeps its mark and loses its word (still read by a screen reader). */
-@container headerbar (max-width: 700px) { .headerbar .header-split { display: none; } .headerbar .state { padding: 0 6px; } .headerbar .state .word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+@container headerbar (max-width: 700px) { .headerbar .state { padding: 0 6px; } .headerbar .state .word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 @container headerbar (max-width: 660px) { .mode-switch { display: none; } }
 /* The menu is the tooltip itself, so it outranks CodeMirror's own tooltip colors. */
 .cm-editor .cm-tooltip.cm-selection-menu { display: flex; align-items: center; gap: 2px; padding: 4px; background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%); font-family: var(--font-sans); }
 .cm-editor .cm-selection-menu button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 28px; height: 28px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
 .cm-editor .cm-selection-menu button:hover { background: var(--accent); color: var(--accent-foreground); }
 .cm-selection-menu .sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
+.cm-editor .cm-tooltip.cm-link-editor { background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%); font-family: var(--font-sans); }
+.cm-editor .cm-tooltip.cm-link-editor { display: flex; margin-top: 6px; flex-direction: column; gap: 8px; width: 320px; padding: 10px; font-size: 13px; }
+.cm-editor .cm-link-editor label { display: flex; flex-direction: column; gap: 4px; color: var(--muted-foreground); font-weight: 500; }
+.cm-editor .cm-link-editor input { height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--foreground); font: inherit; outline: none; }
+.cm-editor .cm-link-editor input:focus { border-color: var(--ring, var(--primary)); }
+.cm-editor .cm-link-editor .actions { display: flex; justify-content: flex-end; gap: 6px; }
+.cm-editor .cm-link-editor .actions button { height: 28px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 500; cursor: pointer; }
+.cm-editor .cm-link-editor .actions button:hover { background: var(--accent); color: var(--accent-foreground); }
+.cm-editor .cm-link-editor .actions .apply { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.cm-editor .cm-link-editor .actions .apply:hover { background: var(--primary); color: var(--primary-foreground); opacity: 0.9; }
+.cm-editor .cm-link-editor .actions .remove { margin-right: auto; }
 .cm-slash-glyph { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-right: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--foreground); font-size: 12px; font-weight: 600; vertical-align: middle; }
 /* The / menu as shadcn's Command: CodeMirror's own look (monospace, a blue row) is replaced. */
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete:has(.cm-slash-glyph) { background: var(--popover); color: var(--popover-foreground); box-shadow: 0 4px 12px rgb(0 0 0 / 8%); }
@@ -415,8 +428,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .cm-md-table-grid th { font-weight: 600; background: color-mix(in oklab, var(--muted) 60%, transparent); text-align: left; }
 /* In the visual editor a cell is edited where it is: a ring while it has the focus, and room for an empty one. */
 .cm-md-table-grid.editable th, .cm-md-table-grid.editable td { min-width: 72px; height: 2.25em; }
-.cm-md-table-grid.editable :is(th, td):has(input) { outline: 2px solid var(--ring); outline-offset: -2px; background: color-mix(in oklab, var(--accent) 50%, transparent); }
-.cm-editor .cm-md-table-grid .cm-md-cell-input { field-sizing: content; appearance: none; min-width: 4ch; max-width: 100%; height: auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; outline: 0; box-shadow: none; background: transparent; color: inherit; font: inherit; text-align: inherit; }
+.cm-md-table-grid .cm-md-cell { outline: none; white-space: pre-wrap; }
+.cm-editor .cm-content .cm-md-table-grid .cm-md-cell:focus ::selection, .cm-editor .cm-content .cm-md-table-grid .cm-md-cell:focus::selection { background: var(--sel) !important; }   /* CodeMirror draws its own selection and hides the browser's */
 
 /* Mermaid and DBML drawn as pictures. */
 .cm-md-diagram { contain: inline-size; min-width: 0; max-width: 100%; padding: 12px 0; display: flex; justify-content: center; overflow-x: auto; cursor: text; color: var(--muted-foreground); }
@@ -441,6 +454,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 /* A code block as a box that scrolls sideways. */
 .cm-md-codebox { contain: inline-size; min-width: 0; max-width: 100%; box-sizing: border-box; margin: 8px 0; padding: 8px 12px; background: var(--code-bg); border-radius: 8px; overflow-x: auto; cursor: text; }
 .cm-md-codebox pre { margin: 0; font-family: var(--font-mono); font-size: 14px; line-height: 1.5; white-space: pre; }
+.cm-md-codebox pre.cm-md-codeedit { min-height: 1.5em; outline: none; }
+.cm-editor .cm-content .cm-md-codeedit:focus ::selection, .cm-editor .cm-content .cm-md-codeedit:focus::selection { background: var(--sel) !important; }
 
 /* The Outline panel. */
 .sidebar .outline { list-style: none; margin: 0; padding: 4px 6px; overflow: auto; flex: 1; }

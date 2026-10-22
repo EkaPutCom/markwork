@@ -34,12 +34,13 @@ try {
 
     await step('one pane looks as before; the header split button makes a second with the same document', async () => {
         assert.equal(await panes.count(), 1);
-        assert.equal(await page.locator('.pane-bar').count(), 0, 'no pane bar while there is one pane');
-        await page.getByRole('button', { name: 'Split Editor Right' }).click();
+        assert.equal(await page.locator('.pane-bar').count(), 1, 'one pane has its bar, with Split Right');
+        await page.getByRole('button', { name: 'Split Right' }).click();
         await waitFor(async () => (await panes.count()) === 2);
         assert.equal(await page.locator('.pane-bar').count(), 2, 'each pane has its own bar');
         assert.deepEqual([await shown(0), await shown(1)].map(t => t.trim()), ['b.md', 'b.md']);
-        assert.equal(await page.locator('.headerbar .mode-switch').count(), 0, 'the Visual / Markdown switch is in the panes now');
+        assert.equal(await page.locator('.headerbar .mode-switch').count(), 1, 'the Visual / Markdown switch stays in the header, for the focused pane');
+        assert.equal(await page.locator('.pane-bar .mode-switch').count(), 0);
         assert.equal(await page.locator('.pane.current').count(), 1);
     });
 
@@ -97,19 +98,20 @@ try {
         await waitFor(async () => (await textOf(0)) === '# Gamma\n\nthird text\n');
     });
 
-    await step('a pane has its own Visual / Markdown, and a board is drawn in its pane', async () => {
-        const mode = n => panes.nth(n).getByRole('group', { name: 'Editing mode' });
-        await mode(0).getByRole('button', { name: 'Markdown' }).click();
+    await step('a pane has its own Visual / Markdown, set by the header switch for the focused pane, and a board is drawn in its pane', async () => {
+        const header = page.locator('.headerbar').getByRole('group', { name: 'Editing mode' });
+        const mode = async n => { await panes.nth(n).locator('.pane-body').click({ position: { x: 20, y: 20 } }); return header; };
+        await (await mode(0)).getByRole('button', { name: 'Markdown' }).click();
         await waitFor(async () => (await panes.nth(0).locator('.cm-editor.cm-source').count()) === 1);
         assert.equal(await panes.nth(1).locator('.cm-editor.cm-source').count(), 0, 'the other pane is still visual');
         assert.equal(await panes.nth(0).getByRole('toolbar', { name: 'Formatting' }).count(), 0, 'raw text has no toolbar');
         assert.equal(await panes.nth(1).getByRole('toolbar', { name: 'Formatting' }).count(), 1, 'the visual pane keeps its own');
-        await mode(0).getByRole('button', { name: 'Visual' }).click();
+        await (await mode(0)).getByRole('button', { name: 'Visual' }).click();
         await waitFor(async () => (await panes.nth(0).locator('.cm-editor.cm-source').count()) === 0);
         await page.getByRole('treeitem', { name: /board\.md/ }).dragTo(panes.nth(1).locator('.pane-body'), { targetPosition: { x: 200, y: 200 } });
         await panes.nth(1).locator('.board').waitFor();
         assert.equal(await panes.nth(0).locator('.board').count(), 0);
-        assert.equal(await panes.nth(1).getByRole('group', { name: 'Editing mode' }).getByRole('button', { name: 'Visual' }).getAttribute('aria-pressed'), 'true');
+        assert.equal(await header.getByRole('button', { name: 'Visual' }).getAttribute('aria-pressed'), 'true');
     });
 
     await step('the line between two panes is dragged to resize them', async () => {
@@ -137,7 +139,7 @@ try {
         await panes.nth(0).getByRole('button', { name: 'Pane actions' }).click();
         await page.getByRole('menuitem', { name: 'Join All Panes' }).click();
         await waitFor(async () => (await panes.count()) === 1);
-        assert.equal(await page.locator('.pane-bar').count(), 0, 'back to the single-pane look');
+        assert.equal(await page.locator('.pane-bar').count(), 1, 'back to the single-pane look');
         await page.locator('.headerbar .mode-switch').waitFor();
         assert.ok((await page.getByRole('tab').count()) >= 3, 'every tab is in the one pane');
     });
