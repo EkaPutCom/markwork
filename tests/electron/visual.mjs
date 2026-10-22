@@ -275,6 +275,8 @@ try {
             await page.keyboard.press('Control+b');
             await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
             await cell.locator('.cm-md-bold', { hasText: 'this' }).dblclick();
+            await waitFor(async () => /^(\*\*)?this(\*\*)? ?$/.test(await selected()));
+            if ((await selected()).endsWith(' ')) await page.keyboard.press('Shift+ArrowLeft');   // Windows selects the space too
             await waitFor(async () => /^(\*\*)?this(\*\*)?$/.test(await selected()));
             await page.waitForTimeout(400);   // to show that the late frame does not take the selection back to "loud"
             assert.match(await selected(), /^(\*\*)?this(\*\*)?$/);
