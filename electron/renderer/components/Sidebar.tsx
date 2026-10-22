@@ -13,11 +13,6 @@ export const PAGES: { page: string; label: string; icon: IconName }[] = [
     { page: 'collab', label: 'Pull requests', icon: 'pull-request' },
 ];
 
-// The first letter of the workspace, as its mark.
-function initial(root: string | null): string {
-    return (root?.split(/[\\/]/).filter(Boolean).pop() ?? 'Markwork').charAt(0).toUpperCase();
-}
-
 // The activity bar: always there, closed or open. A page button opens the sidebar on that page, and the button of the page
 // shown closes it (client.ts showSidebarPage); Programs is a tab of its own, with a mark while something is missing.
 export function ActivityBar() {
@@ -27,7 +22,6 @@ export function ActivityBar() {
     const current = state.settings['sidebar-page'] ?? 'files';
     return (
         <nav className="rail" aria-label="Sidebar pages">
-            <span className="logo" aria-hidden="true">{initial(state.tree.root)}</span>
             {PAGES.map(({ page, label, icon }) => (
                 <button key={page} className="button flat" title={label} aria-label={label}
                     aria-pressed={shown && current === page} onClick={() => client.showSidebarPage(page)}>

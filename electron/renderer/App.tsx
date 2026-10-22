@@ -20,6 +20,7 @@ import { AgentAsks, PullRequestDialog } from './components/Harness.js';
 import { Icon, type IconName } from './components/Icons.js';
 import { label, matches } from './lib/keys.js';
 import { ActivityBar, SideShell } from './components/Sidebar.js';
+import { MenuBar } from './components/MenuBar.js';
 import { Button } from './ui/button.js';
 import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
@@ -70,29 +71,14 @@ function SaveState() {
 // One line of a menu: a command (with the argument it runs with), a heading over what follows, or a separator. A line
 // with an icon can be the one chosen (`checked`, the layout shown); a `check` line is an on/off setting with its box.
 interface MenuItem { id: string; label?: string; keys?: string; arg?: string; heading?: boolean; icon?: IconName; checked?: boolean; check?: boolean; enabled?: boolean }
-// A button of the row at the top of the main menu: an icon over its name.
-interface QuickAction { id: string; label: string; icon: IconName }
 
 // The lines of a menu of the header, in shadcn's DropdownMenu. The focus is not given back to the menu's button when it
 // closes, since the command chosen may have moved it (to the editor, to a dialog).
-function MenuContent({ items, quick, align = 'end', className }: { items: MenuItem[]; quick?: QuickAction[]; align?: 'start' | 'center' | 'end'; className?: string }) {
+function MenuContent({ items, align = 'end', className }: { items: MenuItem[]; align?: 'start' | 'center' | 'end'; className?: string }) {
     const client = useClient();
     const run = (item: { id: string; arg?: string }) => { if (item.id === 'open-folder') void client.openFolder(); else client.run(item.id, item.arg); };
     return (
         <DropdownMenuContent align={align} className={cn('min-w-56', className)} onCloseAutoFocus={e => e.preventDefault()}>
-            {quick && (
-                <div className="mb-1 grid grid-cols-3 gap-1 border-b pb-1">
-                    {quick.map(q => {
-                        const command = COMMANDS.find(c => c.id === q.id);
-                        return (
-                            <DropdownMenuItem key={q.id} title={q.label} disabled={!command || !client.enabled(command)} onSelect={() => run(q)}
-                                className="h-14 flex-col justify-center gap-1 text-xs">
-                                <Icon name={q.icon} /><span>{q.label}</span>
-                            </DropdownMenuItem>
-                        );
-                    })}
-                </div>
-            )}
             {items.map((item, i) => item.id === '-' ? <DropdownMenuSeparator key={i} />
                 : item.heading ? <DropdownMenuLabel key={item.label}>{item.label}</DropdownMenuLabel>
                 : item.check !== undefined && item.check !== false ? (
@@ -124,12 +110,6 @@ const LAYOUTS: { layout: string; name: string; icon: IconName }[] = [
 // What the layout button shows: the page on screen (an inbox is drawn as a list).
 const PAGE_LAYOUT: Record<string, string> = { board: 'board', list: 'list', inbox: 'list', table: 'table', calendar: 'calendar', timeline: 'timeline', gallery: 'gallery', chart: 'chart' };
 const shownLayout = (layout: string, page: string, structured: boolean) => LAYOUTS.find(l => l.layout === (PAGE_LAYOUT[page] ?? (structured ? layout : ''))) ?? LAYOUTS[LAYOUTS.length - 1];
-
-const QUICK: QuickAction[] = [
-    { id: 'command-palette', label: 'Commands', icon: 'system-run' },
-    { id: 'find', label: 'Find', icon: 'edit-find' },
-    { id: 'export-html', label: 'Export', icon: 'document-send' },
-];
 
 function HeaderBar() {
     const client = useClient();
@@ -165,11 +145,6 @@ function HeaderBar() {
         ...named('source', { check: true, checked: s.source }),
         ...named('focus', { check: true, checked: s.settings.focus === true }),
         ...named('typewriter', { check: true, checked: s.settings.typewriter === true }),
-    ];
-    const mainItems: MenuItem[] = [
-        ...named('home'), ...named('programs'), ...named('journal'), ...named('journal-capture'), ...named('journal-summary'),
-        { id: '-' }, ...named('kanban-view', { check: true, checked: s.layout.structured }), ...named('fields-edit'), ...named('send-changes'),
-        { id: '-' }, ...named('dark', { check: true, checked: s.settings['color-scheme'] === 'dark' }), ...named('preferences'), ...named('shortcuts'), ...named('about'), ...named('quit'),
     ];
     return (
         <header className={`headerbar${panels.compact ? ' compact' : ''}`}>
@@ -207,12 +182,6 @@ function HeaderBar() {
             <Button variant="ghost" size="icon-sm" title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={panels.chat.shown} onClick={() => client.run('chat')}>
                 <Icon name="chat-message-new" />
             </Button>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" title="Main Menu" aria-label="Main Menu"><Icon name="open-menu" /></Button>
-                </DropdownMenuTrigger>
-                <MenuContent items={mainItems} quick={QUICK} />
-            </DropdownMenu>
         </header>
     );
 }
@@ -306,6 +275,7 @@ export function App() {
 
     return (
         <div className="workbench">
+            <div className="titlebar"><MenuBar /></div>
             <div className={`shell${panels.sidebar.floats ? ' float-sidebar' : ''}`}>
                 <ActivityBar />
                 {panels.sidebar.shown && (

@@ -44,6 +44,7 @@
 .button.suggested.destructive { @apply bg-destructive text-white hover:bg-destructive/90 hover:text-white dark:bg-destructive/70; }
 
 .workbench { height: 100%; display: flex; flex-direction: column; }
+.titlebar { height: 30px; flex: none; display: flex; align-items: center; padding: 0 8px; border-bottom: 1px solid var(--border); background: var(--background); }
 .shell { flex: 1; min-height: 0; display: flex; position: relative; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
 .content { flex: 1; min-height: 0; display: flex; position: relative; }
@@ -107,7 +108,6 @@
 .side-nav .item .label { flex: 1; }
 .side-nav .item kbd { height: 20px; padding: 0 5px; border-radius: 4px; background: var(--muted); line-height: 20px; }
 .rail { width: 48px; flex: none; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; }
-.rail .logo { width: 32px; height: 32px; margin-bottom: 8px; border-radius: 8px; background: var(--sidebar-primary); color: var(--sidebar-primary-foreground); display: grid; place-items: center; font-weight: 600; }
 .rail .button { min-width: 32px; min-height: 32px; padding: 0; }
 .rail .button[aria-pressed=true] { background: var(--sidebar-accent); }
 /* The panel of a page, inside the sidebar. */

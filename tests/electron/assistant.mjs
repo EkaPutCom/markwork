@@ -192,7 +192,7 @@ try {
     });
 
     await step('Add to Journal asks for a line and records it in today\'s journal', async () => {
-        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
         await page.getByRole('menuitem', { name: /Add to Journal/ }).click();
         const dialog = page.getByRole('alertdialog');
         await dialog.getByText('Add to Journal').first().waitFor();
@@ -206,17 +206,17 @@ try {
     });
 
     await step('Today\'s Journal opens the day, and Summarize Journal asks the Assistant about it', async () => {
-        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
         await page.getByRole('menuitem', { name: /Today's Journal/ }).click();
         await page.getByText('printer met at ten').first().waitFor();
-        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
         await page.getByRole('menuitem', { name: /Summarize Journal/ }).click();
         await panel.locator('.chat-user', { hasText: 'Close the day' }).waitFor();
         await panel.locator('.chat-assistant').last().waitFor();
     });
 
     await step('Home has a button for Add to Journal', async () => {
-        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
         await page.getByRole('menuitem', { name: /^Home/ }).click();
         await page.getByText("Today's journal", { exact: true }).waitFor();
         await page.getByRole('button', { name: 'Add to Journal…', exact: true }).click();

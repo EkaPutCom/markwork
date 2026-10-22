@@ -280,7 +280,7 @@ try {
         await page.getByRole('menuitem', { name: 'Idea.md' }).click();
         await title.getByText('Idea.md').waitFor();
         // Preferences: a switch is written by the core, and the dialog follows the setting.
-        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'File', exact: true }).click();
         await page.getByRole('menuitem', { name: 'Preferences' }).click();
         const prefs = page.getByRole('dialog', { name: 'Preferences' });
         await prefs.waitFor();
@@ -301,7 +301,7 @@ try {
         await shortcuts.getByText('Save As').waitFor();
         await page.keyboard.press('Escape');
         await shortcuts.waitFor({ state: 'detached' });
-        await page.getByRole('button', { name: 'Main Menu' }).click();
+        await page.getByRole('menubar').getByRole('menuitem', { name: 'Help', exact: true }).click();
         await page.getByRole('menuitem', { name: 'About Markwork' }).click();
         await page.getByRole('dialog', { name: 'About Markwork' }).getByText(/Version \d/).waitFor();
         await page.keyboard.press('Escape');
