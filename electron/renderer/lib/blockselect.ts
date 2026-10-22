@@ -204,7 +204,10 @@ function drawnElement(view: EditorView, block: PickedBlock): HTMLElement | null 
 const pickedLook = ViewPlugin.fromClass(class {
     constructor(readonly view: EditorView) { this.draw(); }
     update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged || update.startState.field(pickedBlock) !== update.state.field(pickedBlock)) this.draw();
+        if (!(update.docChanged || update.viewportChanged || update.startState.field(pickedBlock) !== update.state.field(pickedBlock))) return;
+        // Letting go shows at once; the ring goes on after the drawing, where the picked element is.
+        if (!update.state.field(pickedBlock)) this.view.contentDOM.querySelectorAll('.picked').forEach(el => el.classList.remove('picked'));
+        else this.draw();
     }
     draw() {
         this.view.requestMeasure({

@@ -173,7 +173,7 @@ try {
         await pictures.last().click();
         await page.keyboard.type('hi');
         assert.equal(await docText(), 'Two: ![one](pic.png) ![two](pic.png)\nhi\nnext', 'typing starts a new line after the picture');
-        assert.equal(await picked(), 0, 'and lets it go');
+        await waitFor(async () => await picked() === 0);   // and lets it go
         await undo();
         await pictures.first().click();
         await page.keyboard.press('ControlOrMeta+c');
@@ -182,7 +182,7 @@ try {
         assert.equal(await docText(), 'Two: ![two](pic.png)\nnext', 'Backspace deletes it with its space');
         await pictures.first().click();
         await page.keyboard.press('Escape');
-        assert.equal(await picked(), 0, 'Esc lets it go');
+        await waitFor(async () => await picked() === 0);   // Esc lets it go
         assert.equal(await docText(), 'Two: ![two](pic.png)\nnext');
     });
 
