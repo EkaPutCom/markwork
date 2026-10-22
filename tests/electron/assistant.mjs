@@ -92,7 +92,9 @@ try {
         assert.equal(await settings.getByRole('button', { name: 'Forget' }).count(), 0, 'a key from the environment is not forgotten here');
         await settings.getByLabel('Thinking mode').check();
         await settings.getByLabel('Thinking mode').uncheck();
-        assert.ok((await settings.getByLabel('Model').locator('option').count()) >= 1);
+        await settings.getByLabel('Model').click();
+        assert.ok((await page.getByRole('option').count()) >= 1);
+        await page.keyboard.press('Escape');
         await page.keyboard.press('Escape');
     });
 

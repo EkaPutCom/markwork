@@ -1,9 +1,10 @@
 // A picture shown large, in a window of its own over the window: the title and the picture's size in pixels in its header,
-// the picture on a dark canvas, and the zoom under it (− the zoom +, Fit, 100%). The window is as large as the picture,
+// the picture on a dark canvas, and the zoom under it (− the zoom +). The window is as large as the picture,
 // at most the window it is over; a small picture opens at 100%, a large one fitted. Keys: + and − zoom by 1.25 (5% to
 // 800%), 0 is 100%, F fits, Escape closes. The wheel zooms at the pointer, dragging moves the picture, a double click
-// alternates between fit and 100%, a click outside the window closes.
+// alternates between fit and 100%, a click outside the window closes. The header moves the window and its edges and corner resize it.
 
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from './Icons.js';
 import { useClient, useStore } from '../lib/useClient.js';
@@ -11,6 +12,9 @@ import { useClient, useStore } from '../lib/useClient.js';
 const STEP = 1.25, MIN = 0.05, MAX = 8;
 const PAD = 20, HEAD = 50, BAR = 50, MARGIN = 32;   // the canvas around the picture, the header, the zoom bar, the room left around the window
 const clamp = (scale: number) => Math.min(MAX, Math.max(MIN, scale));
+
+interface Box { x: number; y: number; w: number; h: number }   // the window, once the user has moved or resized it
+const MIN_W = 320, MIN_H = 220;
 
 interface View { scale: number; x: number; y: number }   // x, y: where the picture's centre is from the canvas's centre
 
@@ -21,7 +25,9 @@ export function ImageViewer() {
     const [natural, setNatural] = useState({ w: 0, h: 0 });
     const [view, setView] = useState<View>({ scale: 1, x: 0, y: 0 });
     const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
-    useEffect(() => { setNatural({ w: 0, h: 0 }); }, [image?.src]);
+    const [box, setBox] = useState<Box | null>(null);
+    useEffect(() => { setBox(null); }, [image?.src, image?.svg]);
+    useEffect(() => { setNatural(image?.svg ? { w: image.width ?? 0, h: image.height ?? 0 } : { w: 0, h: 0 }); }, [image?.src, image?.svg, image?.width, image?.height]);
 
     const fitScale = useCallback((): number => {
         const box = area.current?.getBoundingClientRect(), { w, h } = natural;
@@ -60,18 +66,36 @@ export function ImageViewer() {
     };
     const width = natural.w ? Math.min(window.innerWidth - MARGIN * 2, Math.max(420, natural.w + PAD * 2)) : 480;
     const height = natural.h ? Math.min(window.innerHeight - MARGIN * 2, Math.max(260, natural.h + PAD * 2 + HEAD + BAR)) : 360;
+    const fitted: Box = { w: width, h: height, x: (window.innerWidth - width) / 2, y: (window.innerHeight - height) / 2 };
+    const frame = box ?? fitted;
+    // Move or resize the window while the pointer is down: edges says which sides follow it (none = the whole window moves).
+    const reshape = (event: ReactPointerEvent, edges: { left?: boolean; right?: boolean; bottom?: boolean; top?: boolean } | null) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        const start = { px: event.clientX, py: event.clientY, x0: frame.x, y0: frame.y, w: frame.w, h: frame.h };
+        const move = (e: PointerEvent) => {
+            const dx = e.clientX - start.px, dy = e.clientY - start.py;
+            if (!edges) { setBox({ x: start.x0 + dx, y: start.y0 + dy, w: start.w, h: start.h }); return; }
+            const w = Math.max(MIN_W, start.w + (edges.right ? dx : edges.left ? -dx : 0));
+            const h = Math.max(MIN_H, start.h + (edges.bottom ? dy : edges.top ? -dy : 0));
+            setBox({ x: edges.left ? start.x0 + start.w - w : start.x0, y: edges.top ? start.y0 + start.h - h : start.y0, w, h });
+        };
+        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+    };
     return (
         <div className="image-viewer" role="dialog" aria-label={image.title}
             onClick={event => { if (event.target === event.currentTarget) client.closeImage(); }}>
-            <div className="viewer-window" style={{ width, height }}>
-                <header className="viewer-head">
+            <div className="viewer-window" style={{ width: frame.w, height: frame.h, left: frame.x, top: frame.y }}>
+                <header className="viewer-head" onPointerDown={event => { if (!(event.target as HTMLElement).closest('button')) reshape(event, null); }}>
                     <span className="titles">
                         <span className="name">{image.title}</span>
                         {natural.w > 0 && <span className="size">{natural.w} × {natural.h} px</span>}
                     </span>
                     <button className="button circular" aria-label="Close" title="Close" onClick={() => client.closeImage()}><Icon name="window-close" /></button>
                 </header>
-                <div className="area" ref={area}
+                <div className={`area${image.svg ? ' diagram' : ''}`} ref={area}
                     onWheel={event => { const [px, py] = centre(event); zoomTo(view.scale * (event.deltaY < 0 ? STEP : 1 / STEP), px, py); }}
                     onMouseDown={event => { if (event.button === 0 && event.target instanceof HTMLImageElement) drag.current = { x: event.clientX, y: event.clientY, moved: false }; }}
                     onMouseMove={event => {
@@ -83,21 +107,31 @@ export function ImageViewer() {
                     }}
                     onMouseUp={() => { drag.current = null; }}
                     onMouseLeave={() => { drag.current = null; }}>
-                    <img src={image.src} alt={image.title} draggable={false}
-                        style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}
-                        onLoad={event => { const img = event.currentTarget; setNatural({ w: img.naturalWidth, h: img.naturalHeight }); }}
-                        onDoubleClick={() => {
+                    {image.svg
+                        ? <div className="cm-md-diagram viewer-diagram" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }} dangerouslySetInnerHTML={{ __html: image.svg }}
+                            onMouseDown={event => { if (event.button === 0) drag.current = { x: event.clientX, y: event.clientY, moved: false }; }}
+                            onDoubleClick={() => {
                             const fitted = clamp(fitScale());
                             setView(v => ({ scale: Math.abs(v.scale - fitted) < 0.01 ? 1 : fitted, x: 0, y: 0 }));
                         }} />
+                        : <img src={image.src} alt={image.title} draggable={false}
+                      style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}
+                      onLoad={event => { const img = event.currentTarget; setNatural({ w: img.naturalWidth, h: img.naturalHeight }); }}
+                      onDoubleClick={() => {
+                          const fitted = clamp(fitScale());
+                          setView(v => ({ scale: Math.abs(v.scale - fitted) < 0.01 ? 1 : fitted, x: 0, y: 0 }));
+                      }} />}
                 </div>
                 <div className="zoom-bar">
                     <button className="button" aria-label="Zoom out" title="Zoom out (−)" onClick={() => zoomTo(view.scale / STEP)}>−</button>
                     <span className="zoom-level" aria-live="polite">{Math.round(view.scale * 100)}%</span>
                     <button className="button" aria-label="Zoom in" title="Zoom in (+)" onClick={() => zoomTo(view.scale * STEP)}>+</button>
-                    <button className="button" title="Fit to the window (F)" onClick={fit}>Fit</button>
-                    <button className="button" title="Actual size (0)" onClick={() => setView({ scale: 1, x: 0, y: 0 })}>100%</button>
                 </div>
+                <div className="resize right" onPointerDown={event => reshape(event, { right: true })} />
+                <div className="resize bottom" onPointerDown={event => reshape(event, { bottom: true })} />
+                <div className="resize left" onPointerDown={event => reshape(event, { left: true })} />
+                <div className="resize top" onPointerDown={event => reshape(event, { top: true })} />
+                <div className="resize corner" onPointerDown={event => reshape(event, { right: true, bottom: true })} />
             </div>
         </div>
     );

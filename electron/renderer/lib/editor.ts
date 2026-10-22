@@ -170,7 +170,7 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): StateFie
                 const kind = diagramKind(block);
                 if (!kind || block.endLine >= doc.lines || (selLast >= block.startLine && selFirst <= block.endLine)) continue;
                 const open = (view: EditorView, element: HTMLElement) => view.dispatch({ selection: { anchor: view.state.doc.lineAt(view.posAtDOM(element)).to + 1 }, scrollIntoView: true });
-                ranges.push(Decoration.replace({ widget: new DiagramWidget(kind, block.text, open, dimmed(block.startLine, block.endLine)), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
+                ranges.push(Decoration.replace({ widget: new DiagramWidget(kind, block.text, open, events.zoomImage, dimmed(block.startLine, block.endLine)), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
                 for (let k = block.startLine; k <= block.endLine; k++) grids.add(k);
             }
         }

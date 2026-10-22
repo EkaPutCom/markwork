@@ -10,6 +10,7 @@ import { DiffLines } from './Diff.js';
 import { Icon, type IconName } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useChat, useClient } from '../lib/useClient.js';
+import { Select } from '../ui/select.js';
 
 const SUGGESTIONS = [
     'Summarize this document in a few points',
@@ -315,9 +316,9 @@ function SettingsButton({ forceOpen }: { forceOpen: number }) {
                     </div>
                     <hr />
                     <label className="check"><span>Model</span>
-                        <select value={settings.model} aria-label="Model" onChange={e => client.chat.setModel(e.target.value)}>
+                        <Select value={settings.model} aria-label="Model" onChange={e => client.chat.setModel(e.target.value)}>
                             {(models.length ? models : [settings.model]).map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
+                        </Select>
                     </label>
                     <label className="check"><input type="checkbox" checked={settings.thinking} onChange={e => client.chat.setThinking(e.target.checked)} />Thinking mode</label>
                     <label className="check"><input type="checkbox" checked={settings.saveChats} onChange={e => client.chat.setSaveChats(e.target.checked)} />Save conversation history</label>

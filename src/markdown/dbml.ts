@@ -1,7 +1,7 @@
 // DBML (dbdiagram.io schema language) to Mermaid ER diagram converter.
 //
-// The diagram is drawn by Mermaid (see electron/renderer/lib/diagrams.ts), so here there is only
-// DBML parsing and rewriting as `erDiagram`. Supported: Table
+// The diagram is drawn by electron/renderer/lib/dbmldiagram.ts; the rewriting as a Mermaid `erDiagram` is for the HTML export.
+// Here there is DBML parsing and that rewriting. Supported: Table
 // (alias, column settings pk/unique/not null/note/ref, indexes, Note), Ref (single line
 // and block, relations > < - <>), and Enum/TableGroup/Project which are skipped.
 //
@@ -118,9 +118,9 @@ class Lexer {
 
 // ---------- Model ----------
 
-interface Column { name: string; type: string; pk: boolean; unique: boolean; fk: boolean; note: string }
-interface Table { name: string; alias: string | null; columns: Column[] }
-interface Relation { from: string; fromCol: string; op: string; to: string; toCol: string }
+export interface Column { name: string; type: string; pk: boolean; unique: boolean; fk: boolean; note: string }
+export interface Table { name: string; alias: string | null; columns: Column[] }
+export interface Relation { from: string; fromCol: string; op: string; to: string; toCol: string }
 
 export interface Schema { tables: Table[]; relations: Relation[] }
 
@@ -348,16 +348,22 @@ const quote = (s: string): string => `"${s.replace(/"/g, "'")}"`;
 // Attribute and type names in Mermaid must not contain spaces or commas.
 const ident = (s: string): string => s.replace(/[^\w\-[\]()]/g, '_') || '_';
 
-export function dbmlToMermaid(src: string): string {
+// The parsed schema with table aliases replaced by names in the relations and the foreign keys marked.
+export function resolveDbml(src: string): Schema {
     const schema = parseDbml(src);
     const alias = new Map<string, string>();
     for (const t of schema.tables) if (t.alias) alias.set(t.alias, t.name);
     const resolve = (name: string): string => alias.get(name) ?? name;
     markForeignKeys(schema, resolve);
+    return { tables: schema.tables, relations: schema.relations.map(r => ({ ...r, from: resolve(r.from), to: resolve(r.to) })) };
+}
+
+export function dbmlToMermaid(src: string): string {
+    const schema = resolveDbml(src);
     return [
         'erDiagram',
         ...schema.tables.flatMap(tableLines),
-        ...schema.relations.map(r => `    ${quote(resolve(r.from))} ${CARDINALITY[r.op]} ${quote(resolve(r.to))} : ${quote((r.op === '<' ? r.toCol : r.fromCol) || ' ')}`),
+        ...schema.relations.map(r => `    ${quote(r.from)} ${CARDINALITY[r.op]} ${quote(r.to)} : ${quote((r.op === '<' ? r.toCol : r.fromCol) || ' ')}`),
     ].join('\n');
 }
 

@@ -409,9 +409,9 @@ try {
     await step('Markdown is the file as it is written: every marker, plain text in a fixed-width font, and Visual comes back', async () => {
         const raw = '# Plan\n\nsome **bold** and [a link](https://x.org)\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n- [ ] task\n\n![pic](pic.png)';
         await setDoc(raw, raw.length);
-        await mode.getByRole('button', { name: 'Markdown' }).click();
+        await mode.getByRole('button', { name: 'Code' }).click();
         await toolbar.waitFor({ state: 'detached' });
-        assert.equal(await mode.getByRole('button', { name: 'Markdown' }).getAttribute('aria-pressed'), 'true');
+        assert.equal(await mode.getByRole('button', { name: 'Code' }).getAttribute('aria-pressed'), 'true');
         assert.equal(await mode.getByRole('button', { name: 'Visual' }).getAttribute('aria-pressed'), 'false');
         // The cursor is on the last line, so only a mode that shows everything has these lines as they are written.
         await waitFor(async () => (await lineTexts()).join('\n') === raw);
@@ -429,7 +429,7 @@ try {
 
     await step('a document with another form (a board, a list, a CSV table) has the switch too: Visual is that form, Markdown its text', async () => {
         const text = () => editor.evaluate(() => document.querySelector('.cm-content').cmTile.view.state.doc.toString());
-        const visual = mode.getByRole('button', { name: 'Visual' }), markdown = mode.getByRole('button', { name: 'Markdown' });
+        const visual = mode.getByRole('button', { name: 'Visual' }), markdown = mode.getByRole('button', { name: 'Code' });
         const pages = [['board.md', '.board', /^---\nlayout: board/], ['inbox.md', '.inbox-page', /^---\nlayout: list/], ['data.csv', '.csv-page', /^name,qty\napple,3/]];
         for (const [file, page, raw] of pages) {
             await openFile(file);

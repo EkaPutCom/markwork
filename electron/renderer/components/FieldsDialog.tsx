@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { fieldNameProblem, OPTION_COLORS, optionProblem, type FieldDef, type FieldType, type NameProblem, type OptionColor } from '../../../src/markdown/fields.js';
 import { Modal } from './Modals.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Select } from '../ui/select.js';
 
 const TYPES: readonly FieldType[] = ['text', 'number', 'select', 'date', 'progress', 'person', 'agent', 'link'];
 const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', number: 'Number', select: 'Choice', date: 'Date', progress: 'Progress', person: 'Person', agent: 'Agent', link: 'Link' };
@@ -65,9 +66,9 @@ function Form({ id, options }: { id: number; options: NonNullable<ReturnType<typ
                                         onChange={e => set(i, f => ({ ...f, def: { ...f.def, key: e.target.value } }))} />
                                         : <strong className="name">{d.def.key}</strong>}
                                     {d.fresh ? (
-                                        <select aria-label="Field type" value={d.def.type} onChange={e => set(i, f => ({ ...f, def: { ...f.def, type: e.target.value as FieldType }, options: e.target.value === 'select' ? f.options : [] }))}>
+                                        <Select aria-label="Field type" value={d.def.type} onChange={e => set(i, f => ({ ...f, def: { ...f.def, type: e.target.value as FieldType }, options: e.target.value === 'select' ? f.options : [] }))}>
                                             {TYPES.map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-                                        </select>
+                                        </Select>
                                     ) : <span className="dim">{TYPE_LABEL[d.def.type]}{d.def.multiple ? ' ×' : ''}</span>}
                                     {d.fresh && <button type="button" className="icon-button" aria-label="Remove this field" title="Remove this field" onClick={() => setDraft(l => l.filter((_x, j) => j !== i))}>×</button>}
                                 </div>

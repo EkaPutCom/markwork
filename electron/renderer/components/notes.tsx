@@ -13,6 +13,7 @@ import type { CardForm, CardRef } from '../../../src/markdown/noteedit.js';
 import { Icon, type IconName } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useClient } from '../lib/useClient.js';
+import { Select } from '../ui/select.js';
 
 export const refOf = (at: Position, card: Card): CardRef => ({ at, card: card.text });
 
@@ -255,9 +256,9 @@ export function CardDialog({ heading, kind, text, notes, schema, agents = false,
                 {shown.map(f => (
                     <label key={f.key}><span>{f.key}</span>
                         {f.type === 'select' && !f.multiple && f.options.length ? (
-                            <select value={values[f.key]} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}>
+                            <Select value={values[f.key]} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}>
                                 <option value="" />{[...new Set([...f.options, ...(values[f.key] ? [values[f.key]] : [])])].map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
+                            </Select>
                         ) : <input value={values[f.key]} onChange={e => { setValues(v => ({ ...v, [f.key]: e.target.value })); setProblem(null); }} />}
                     </label>
                 ))}

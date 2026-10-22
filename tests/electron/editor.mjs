@@ -285,9 +285,11 @@ try {
         await page.getByRole('menuitem', { name: 'Preferences' }).click();
         const prefs = page.getByRole('dialog', { name: 'Preferences' });
         await prefs.waitFor();
-        await prefs.getByLabel('Color scheme').selectOption('dark');
+        await prefs.getByLabel('Color scheme').click();
+        await page.getByRole('option', { name: 'Dark' }).click();
         await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
-        await prefs.getByLabel('Color scheme').selectOption('light');
+        await prefs.getByLabel('Color scheme').click();
+        await page.getByRole('option', { name: 'Light' }).click();
         await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
         const focus = prefs.getByRole('switch', { name: /Focus mode/ });
         await focus.check();
@@ -440,6 +442,35 @@ try {
         await page.keyboard.press('Escape');
     });
 
+    await step('imagezoom: the window moves by its header and resizes by its corner', async () => {
+        await setDoc('![A small one](images/small.png)', 0);
+        await page.waitForFunction(() => [...document.querySelectorAll('.cm-md-pictures img')].some(i => i.naturalWidth > 0));
+        const win = page.locator('.image-viewer .viewer-window');
+        // The picture may still be settling after the text was set: a double click that lands before it is ready opens nothing.
+        for (let tries = 0; tries < 4 && !(await win.isVisible()); tries++) {
+            await editor.locator('.cm-md-pictures img').first().dblclick();
+            await win.waitFor({ timeout: 3000 }).catch(() => {});
+        }
+        await win.waitFor();
+        const rect = () => win.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+        const before = await rect();
+        await page.mouse.move(before.x + before.w / 2, before.y + 20);
+        await page.mouse.down();
+        await page.mouse.move(before.x + before.w / 2 + 40, before.y + 50, { steps: 4 });
+        await page.mouse.up();
+        const moved = await rect();
+        assert.ok(Math.abs(moved.x - before.x - 40) < 2 && Math.abs(moved.y - before.y - 30) < 2, 'the header drags the window');
+        assert.ok(Math.abs(moved.w - before.w) < 1, 'moving keeps the size');
+        await page.mouse.move(moved.x + moved.w - 4, moved.y + moved.h - 4);
+        await page.mouse.down();
+        await page.mouse.move(moved.x + moved.w + 26, moved.y + moved.h + 16, { steps: 4 });
+        await page.mouse.up();
+        const grown = await rect();
+        assert.ok(grown.w > moved.w + 20 && grown.h > moved.h + 10, 'the corner resizes the window');
+        await page.keyboard.press('Escape');
+        await page.locator('.image-viewer').waitFor({ state: 'detached' });
+    });
+
     await step('imagezoom: the Zoom Image command uses the cursor line, and says when there is no image', async () => {
         await setDoc('![A small one](images/small.png)\ntext', 0);
         await page.waitForFunction(() => document.querySelectorAll('.cm-md-pictures img').length === 1);
@@ -455,6 +486,21 @@ try {
         await page.locator('.palette input').fill('zoom image');
         await page.keyboard.press('Enter');
         await page.getByText('There is no image on this line').waitFor();
+    });
+
+    await step('imagezoom: a diagram opens the viewer on a double click, a single click opens its source', async () => {
+        await setDoc('a\n```dbml\nTable t { id int [pk] }\n```\nb', 0);
+        await editor.locator('.cm-md-diagram .er-diagram').waitFor();
+        await editor.locator('.cm-md-diagram').dblclick();
+        await page.locator('.image-viewer .viewer-diagram svg').waitFor();
+        assert.match(await caption(), /DBML diagram/, 'the viewer is titled by the diagram');
+        await page.keyboard.press('+');
+        assert.ok(await percent() > 0, 'the zoom bar works on a diagram');
+        await page.keyboard.press('Escape');
+        await page.locator('.image-viewer').waitFor({ state: 'detached' });
+        assert.equal(await editor.locator('.cm-md-diagram').count(), 1, 'a double click leaves the diagram drawn');
+        await editor.locator('.cm-md-diagram').click();
+        await editor.locator('.cm-md-diagram').waitFor({ state: 'detached' });
     });
 
     // ---------- codeblock.ts, codecolor.ts ----------
