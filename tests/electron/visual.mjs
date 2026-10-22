@@ -375,6 +375,8 @@ try {
         // Bold again takes it off: the selection is what the cell shows, without the hidden **.
         await page.keyboard.press('Control+b');
         await waitFor(async () => /make \*\*this\*\* loud \|/.test(await docText()));
+        // The cell takes its selection back from the command before the next one (a slow runner can be a frame behind).
+        await waitFor(async () => await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed') === 'false');
         await page.keyboard.press('Control+b');
         await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
         // A bold word chosen with the mouse right after a command, then Bold: no more bold, not ****this****. The text takes
