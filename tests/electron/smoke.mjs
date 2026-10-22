@@ -124,7 +124,7 @@ try {
         const grid = editor.locator('.cm-md-table-grid');
         await grid.waitFor();
         assert.equal(await grid.locator('tbody tr').count(), 2);
-        assert.equal(await grid.locator('td strong').textContent(), '3');
+        assert.equal(await grid.locator('td .cm-md-bold').textContent(), '3', 'a cell is drawn as a line of text is');
         await grid.getByText('pear').click();
         await grid.waitFor({ state: 'detached' });
         await editor.getByText('| pear').waitFor();

@@ -4,7 +4,8 @@
 // frontend edits the same way. Offsets are UTF-16 units of the given text, the unit of JavaScript strings; an editor that
 // counts otherwise converts at its edge.
 
-import { RE } from './syntax.js';
+import { RE, type InlineTag } from './syntax.js';
+import { parseInline } from './inline.js';
 import {
     cellIndexAt, cellStart, deleteColumn, deleteRow, findTables, insertColumn, insertRow,
     parseTable, renderRow, renderTable, setAlign, splitRow, type Align, type Table, type TableRange,
@@ -106,12 +107,129 @@ function lineNumberAt(text: string, pos: number): number {
 
 // ---------- Formatting ----------
 
+// ---------- Inline formats ----------
+
+// The format each marker stands for, and the formats of the parser's tags (a bold italic span is both).
+type Format = 'bold' | 'italic' | 'strike' | 'mark' | 'code';
+const FORMAT_OF: Record<string, Format> = { '**': 'bold', '__': 'bold', '*': 'italic', '_': 'italic', '~~': 'strike', '==': 'mark', '`': 'code' };
+const FORMATS_OF: Partial<Record<InlineTag, readonly Format[]>> = {
+    bold: ['bold'], italic: ['italic'], bolditalic: ['bold', 'italic'], strike: ['strike'], mark: ['mark'], code: ['code'],
+};
+
+// A formatted span of a line: its text is a–b, its markers open–a and b–close.
+interface Span { tag: InlineTag; open: number; a: number; b: number; close: number }
+
+// The inline formats of a line (offsets in the line). A heading's, quote's, or list item's prefix is not inline text.
+function inlineOf(line: string): { tags: [InlineTag, number, number][]; spans: Span[] } {
+    const prefix = lineKindOf(line).prefix;
+    const tags = parseInline(line.slice(prefix)).tags.map(([tag, a, b]): [InlineTag, number, number] => [tag, a + prefix, b + prefix]);
+    const opens = new Map<number, number>(), closes = new Map<number, number>();
+    for (const [tag, a, b] of tags) if (tag === 'marker') { opens.set(b, a); closes.set(a, b); }
+    const spans: Span[] = [];
+    for (const [tag, a, b] of tags) {
+        const open = opens.get(a), close = closes.get(b);
+        if (FORMATS_OF[tag] && open !== undefined && close !== undefined) spans.push({ tag, open, a, b, close });
+    }
+    return { tags, spans };
+}
+
+// A selection taken in to what it shows: past the markers of formats at its ends, then past spaces (a format ends at a
+// letter). The visual editor hides the markers, so "the word" and "the word with its ** around it" are the same selection.
+function shownPart(line: string, spans: readonly Span[], from: number, to: number): [number, number] {
+    // The start past a marker that begins there, the end before one that ends there.
+    const past = (s: Span, at: number, end: number) => s.open === at && s.a <= end ? s.a : s.b === at && s.close <= end ? s.close : at;
+    const before = (s: Span, at: number, start: number) => s.close === at && s.b >= start ? s.b : s.a === at && s.open >= start ? s.open : at;
+    for (let moved = true; moved && from < to;) {
+        const was = [from, to];
+        for (const s of spans) { from = past(s, from, to); to = before(s, to, from); }
+        moved = from !== was[0] || to !== was[1];
+    }
+    while (from < to && /\s/.test(line[from])) from++;
+    while (to > from && /\s/.test(line[to - 1])) to--;
+    return [from, to];
+}
+
+const hasFormat = (tag: InlineTag, format: Format): boolean => FORMATS_OF[tag]?.includes(format) ?? false;
+
+// The inline formats (bold, italic, strike, code, link, mark) of what is shown at a cursor or a selection on one line
+// (offsets in the line): a cursor at either end of a span types into it; a selection has a format when all it shows has it.
+export function inlineFormatsAt(line: string, from: number, to: number): string[] {
+    const { tags, spans } = inlineOf(line);
+    const [f, t] = from === to ? [from, to] : shownPart(line, spans, from, to);
+    const found = new Set<string>();
+    for (const [tag, a, b] of tags) {
+        if (tag === 'marker' || f < a || t > b) continue;
+        for (const format of FORMATS_OF[tag] ?? [tag === 'link' ? 'link' : '']) if (format) found.add(format);
+    }
+    return [...found].sort();
+}
+
+// A marker's text without the format taken off: `***` without bold is `*`.
+const without = (marker: string, length: number, opening: boolean): string => opening ? marker.slice(length) : marker.slice(0, marker.length - length);
+
+// Text with a format around it, the spaces at its ends left outside (`**a **` would not be bold).
+function around(text: string, open: string, close: string): string {
+    if (!open || !text.trim()) return text;
+    const lead = /^\s*/.exec(text)![0], trail = /\s*$/.exec(text)![0];
+    return lead + open + text.slice(lead.length, text.length - trail.length) + close + trail;
+}
+
+// Toggle a format on what a one-line selection shows, as a word processor does: when all of it has the format, the
+// format comes off it (a span split around it when the selection is part of it); otherwise all of it gets the format,
+// joined with the spans of that format it touches. null: not a format the line's parser knows, or nothing is shown.
+function toggleFormat(line: string, from: number, to: number, marker: string): { from: number; to: number; insert: string; text: [number, number]; added: boolean } | null {
+    const format = FORMAT_OF[marker];
+    if (!format) return null;
+    const { spans } = inlineOf(line);
+    const [f, t] = shownPart(line, spans, from, to);
+    if (f >= t) return null;
+    const mine = spans.filter(s => hasFormat(s.tag, format)).sort((x, y) => x.open - y.open);
+    const inside = mine.find(s => s.a <= f && t <= s.b);
+    if (inside) {
+        // The span becomes up to three: before the selection and after it with the format, the selection without.
+        const open = line.slice(inside.open, inside.a), close = line.slice(inside.b, inside.close);
+        const before = around(line.slice(inside.a, f), open, close);
+        const middle = around(line.slice(f, t), without(open, marker.length, true), without(close, marker.length, false));
+        const lead = middle.length - middle.trimStart().length;
+        const start = inside.open + before.length + lead + without(open, marker.length, true).length;
+        return {
+            from: inside.open, to: inside.close, insert: before + middle + around(line.slice(t, inside.b), open, close),
+            text: [start, start + (t - f)], added: false,
+        };
+    }
+    // Spans of the format the selection overlaps join it: their markers go, and one pair goes around all of it.
+    let a = f, b = t;
+    for (let grown = true; grown;) {
+        grown = false;
+        for (const s of mine) if (s.a < b && s.b > a && (s.open < a || s.close > b)) { a = Math.min(a, s.open); b = Math.max(b, s.close); grown = true; }
+    }
+    let inner = '', at = a;
+    for (const s of mine) {
+        if (s.open < a || s.close > b) continue;
+        const open = line.slice(s.open, s.a), close = line.slice(s.b, s.close);
+        inner += line.slice(at, s.open) + without(open, marker.length, true) + line.slice(s.a, s.b) + without(close, marker.length, false);
+        at = s.close;
+    }
+    inner += line.slice(at, b);
+    return { from: a, to: b, insert: marker + inner + marker, text: [a, a + marker.length * 2 + inner.length], added: true };
+}
+
 // Wrap the selection with a marker, e.g. ** for bold. If the selection is already wrapped, the marker is removed.
 // Without a selection: insert a pair of markers and put the cursor in between. The selected text stays selected, with
 // the cursor at its start; the selection is never empty in between (on X11 an empty one would clear the primary selection).
+// On one line the formats are what the line shows (toggleFormat): the same selection with or without its hidden markers.
 export function wrap(state: TextState, left: string, right = left): TextEdit {
     const from = Math.min(state.anchor, state.head), to = Math.max(state.anchor, state.head);
     if (from === to) return { changes: [{ from, to, insert: left + right }], selection: cursorAt(from + left.length) };
+    const { line, start, end } = lineAround(state.text, from);
+    const toggled = left === right && to <= end ? toggleFormat(line, from - start, to - start, left) : null;
+    if (toggled) {
+        const [a, b] = toggled.text;
+        return {
+            changes: [{ from: start + toggled.from, to: start + toggled.to, insert: toggled.insert }],
+            selection: { anchor: start + b, head: start + a },
+        };
+    }
     const txt = state.text.slice(from, to);
     if (txt.length >= left.length + right.length && txt.startsWith(left) && txt.endsWith(right)) {
         return {

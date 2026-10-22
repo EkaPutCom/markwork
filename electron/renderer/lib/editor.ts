@@ -8,7 +8,7 @@ import { Decoration, EditorView, drawSelection, keymap, type DecorationSet } fro
 import { defaultKeymap, history, redo, undo } from '@codemirror/commands';
 import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
 import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type HighlightResult, type Styles } from '../../../src/markdown/highlight.js';
-import { block, continueBlock, enterInTable, heading, indentListItem, isInCodeBlock, lineKindOf, link, runTableCommand, setLineKind, tabInTable, togglePrefix, wrap,
+import { block, continueBlock, enterInTable, heading, indentListItem, inlineFormatsAt, isInCodeBlock, lineKindOf, link, runTableCommand, setLineKind, tabInTable, togglePrefix, wrap,
     type TableCommand, type TextEdit, type TextState } from '../../../src/markdown/editcommands.js';
 import { acceptCompletion, autocompletion, type CompletionContext } from '@codemirror/autocomplete';
 import { linkAt, taskToggleAt, wikiLinkAt } from '../../../src/markdown/clicks.js';
@@ -234,12 +234,22 @@ const stateOf = (view: EditorView): TextState => {
     return { text: view.state.doc.toString(), anchor: main.anchor, head: main.head };
 };
 
-// Apply a command's edit as one undo step: the changes against the old text, the selection in the new one.
+// A table cell or a code block of the visual editor is being edited where it is: the text's cursor is behind it.
+const editingInPlace = (view: EditorView): boolean => {
+    const active = document.activeElement;
+    return active instanceof HTMLElement && active.matches('.cm-md-cell, .cm-md-codeedit') && view.dom.contains(active);
+};
+
+// Apply a command's edit as one undo step: the changes against the old text, the selection in the new one. The cursor
+// is brought into view, unless a cell or code block is being edited in place: then the page stays where it is (scrolling
+// to the text behind a grid would bring the grid's top to the edge, and CodeMirror's own correction for a grid drawn
+// again with a new row would move it too), and the cell that takes the focus shows itself.
 function applyEdit(view: EditorView, edit: TextEdit): void {
+    const inPlace = editingInPlace(view);
     view.dispatch({
         changes: edit.changes.map(c => ({ from: c.from, to: c.to, insert: c.insert })),
         selection: EditorSelection.single(edit.selection.anchor, edit.selection.head),
-        scrollIntoView: true,
+        scrollIntoView: !inPlace, effects: inPlace ? view.scrollSnapshot() : [],
         userEvent: 'input',
     });
 }
@@ -356,12 +366,15 @@ export interface FormatAt { block: string; marks: string[] }
 
 const INLINE_FORMATS = new Set(['bold', 'italic', 'strike', 'code', 'link', 'mark']);
 
+// A table cell's formats are read as a line's are: Bold is pressed in a bold word of a cell too.
 function formatAt(state: EditorState): FormatAt {
-    const head = state.selection.main.head, line = state.doc.lineAt(head), i = line.number - 1;
+    const sel = state.selection.main, head = sel.head, line = state.doc.lineAt(head), i = line.number - 1;
     const result = parses.get(state.doc);
-    if (!result) return { block: lineKindOf(line.text).kind, marks: [] };
-    if (result.tables.some(t => i >= t.start && i <= t.end)) return { block: 'table', marks: [] };
+    const kind = result?.tables.some(t => i >= t.start && i <= t.end) ? 'table' : lineKindOf(line.text).kind;
+    if (!result) return { block: kind, marks: [] };
     if (result.codeBlocks.some(b => i >= b.startLine && i <= b.endLine)) return { block: 'code', marks: [] };
+    // A selection has a format when all it shows has it (the hidden markers at its ends or not).
+    if (!sel.empty) return { block: kind, marks: sel.from >= line.from && sel.to <= line.to ? inlineFormatsAt(line.text, sel.from - line.from, sel.to - line.from) : [] };
     const column = result.starts[i] + Array.from(line.text.slice(0, head - line.from)).length;
     const marks = new Set<string>();
     for (const [name, a, b] of result.spans[i] ?? []) {
@@ -370,7 +383,7 @@ function formatAt(state: EditorState): FormatAt {
         if (column < result.starts[i] + a || column > result.starts[i] + b) continue;
         if (format === 'bolditalic') { marks.add('bold'); marks.add('italic'); } else if (INLINE_FORMATS.has(format)) marks.add(format);
     }
-    return { block: lineKindOf(line.text).kind, marks: [...marks].sort() };
+    return { block: kind, marks: [...marks].sort() };
 }
 
 export class MarkdownEditor {
@@ -420,8 +433,7 @@ export class MarkdownEditor {
     get text(): string { return this.view.state.doc.toString(); }
     // A table cell or a code block that is being edited keeps the focus: a toolbar button gives it back to the editor after its command.
     focus(): void {
-        const active = document.activeElement;
-        if (active instanceof HTMLElement && active.matches('.cm-md-cell, .cm-md-codeedit') && this.view.dom.contains(active)) return;
+        if (editingInPlace(this.view)) return;
         this.view.focus();
         this.focusTableCell(this.view.state);   // a command that put the cursor in a table or a code block (the menu had the focus)
     }

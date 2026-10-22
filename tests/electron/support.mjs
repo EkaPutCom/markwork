@@ -42,8 +42,9 @@ export function launchApp({ scratch, notes, env = {}, settings }) {
 
 // Waits until `condition` (which may return a Promise) holds; fails after `ms`.
 export async function waitFor(condition, ms = 10000) {
+    const caller = new Error().stack?.split('\n')[2]?.trim().replace(/^at (?:async )?/, '');   // which wait, when a step has several
     for (const end = Date.now() + ms; Date.now() < end;) { if (await condition()) return; await new Promise(r => setTimeout(r, 50)); }
-    assert.fail('timed out');
+    assert.fail(caller ? `timed out at ${caller}` : 'timed out');
 }
 
 // The steps of a test file: each is reported with ✓ or ✗ and its error, and a failed one stops the file. `echo` prints
