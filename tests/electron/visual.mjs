@@ -3,11 +3,12 @@
 // checkboxes, the / menu, and the selection menu. What the commands do to the text is tests/unit/editcommands.ts.
 
 import assert from 'node:assert/strict';
-import { rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('visual');
+copyFileSync(new URL('../samples/images/example.png', import.meta.url), join(notes, 'pic.png'));
 writeFileSync(join(notes, 'plan.md'), '# Plan\n\nsome **bold** text\n');
 const boardText = '---\nlayout: board\n---\n\n## Todo\n\n- [ ] One\n- [ ] Two\n\n## Done\n\n- [x] Old\n';
 writeFileSync(join(notes, 'board.md'), boardText);
@@ -91,6 +92,140 @@ try {
         await setDoc('first\n- second', 5);
         await page.keyboard.press('Delete');
         assert.equal(await docText(), 'firstsecond', 'Delete at a line end joins the next line\'s text without its "- "');
+    });
+
+    await step('Enter after text that hidden pictures end breaks the line before the pictures', async () => {
+        const text = 'A title: ![pic](images/x.png "t")\nnext';
+        await setDoc(text, text.indexOf('\n'));
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), 'A title:\n![pic](images/x.png "t")\nnext', 'the new line comes under the text, the picture with it');
+        const two = 'Two: ![a](images/x.png) ![b](images/y.png)\nnext';
+        await setDoc(two, two.indexOf(') ![b]') + 2);
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), 'Two:\n![a](images/x.png) ![b](images/y.png)\nnext', 'on the space between two pictures, the line still breaks before them all');
+        await setDoc('![pic](images/x.png)\nnext', 20);
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), '![pic](images/x.png)\n\nnext', 'a line of pictures only gets its new line after them');
+    });
+
+    await step('a code block: Enter on its empty last line leaves it, Ctrl+Enter too, and its toolbar deletes it', async () => {
+        await setDoc('Before\n```js\nconst a = 1;\n```\nAfter', 0);
+        const pre = page.locator('.cm-md-codebox pre');
+        await pre.click();
+        await pre.evaluate(el => { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); getSelection().removeAllRanges(); getSelection().addRange(r); });
+        await page.keyboard.press('Enter');
+        await page.locator('.cm-md-codebox.exit-hint').waitFor();
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('next');
+        assert.equal(await docText(), 'Before\n```js\nconst a = 1;\n```\nnext\nAfter', 'the empty code line goes, and a paragraph comes under the block');
+        await pre.click();
+        await page.keyboard.press('ControlOrMeta+Enter');
+        await page.keyboard.type('x');
+        assert.equal(await docText(), 'Before\n```js\nconst a = 1;\n```\nx\nnext\nAfter', 'Ctrl+Enter opens a line under the block');
+        await page.locator('.cm-md-codebox').hover();
+        await page.locator('.cm-md-codebox .cm-md-block-tool[title="Delete"]').click();
+        assert.equal(await docText(), 'Before\nx\nnext\nAfter', 'Delete removes the block with its fences');
+    });
+
+    // ---------- Objects (blockselect.ts), driven the way a person does it: clicks at what is seen, then keys ----------
+    // Where a line's visible text starts and ends on the screen.
+    const textEdges = startsWith => page.evaluate(start => {
+        const line = [...document.querySelectorAll('.cm-content > .cm-line')].find(l => l.textContent.startsWith(start));
+        const range = document.createRange();
+        range.selectNodeContents(line);
+        const r = range.getBoundingClientRect();
+        return { left: r.left, right: r.right, y: r.top + r.height / 2 };
+    }, startsWith);
+    const clickAfterText = async start => { const e = await textEdges(start); await page.mouse.click(e.right + 30, e.y); };
+    const clickBeforeText = async start => { const e = await textEdges(start); await page.mouse.click(e.left + 1, e.y); };
+    const picturesLoaded = n => page.waitForFunction(k => [...document.querySelectorAll('.cm-md-picture img')].filter(i => i.naturalWidth > 0).length === k, n);
+    const picked = () => editor.locator('.picked').count();
+    const undo = () => page.keyboard.press('ControlOrMeta+z');
+    const cursorLineNumber = () => page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view; return v.state.doc.lineAt(v.state.selection.main.head).number; });
+
+    await step('pictures: a click after a line\'s text puts the cursor before its hidden pictures, where Enter and typing go', async () => {
+        const two = 'Two: ![one](pic.png) ![two](pic.png)\nnext';
+        await setDoc(two, two.length);
+        await picturesLoaded(2);
+        await clickAfterText('Two:');
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), 'Two:\n![one](pic.png) ![two](pic.png)\nnext', 'the line breaks before the pictures, not between them');
+        await undo();
+        await clickAfterText('Two:');
+        await page.keyboard.type('x');
+        assert.equal(await docText(), 'Two: x![one](pic.png) ![two](pic.png)\nnext', 'typing goes at the end of the text, not into a picture');
+        await undo();
+        await clickAfterText('Two:');
+        await page.keyboard.press('ArrowRight');
+        assert.equal(await cursorLineNumber(), 2, 'moving right from there goes to the next line, over the pictures');
+    });
+
+    await step('a picture: a click picks it with a ring and a hint, and Enter, typing, Copy, Backspace, Esc act on it whole', async () => {
+        await setDoc('Two: ![one](pic.png) ![two](pic.png)\nnext', 0);
+        await picturesLoaded(2);
+        const pictures = editor.locator('.cm-md-picture img');
+        await pictures.first().click();
+        await editor.locator('.cm-md-picture.picked').waitFor();
+        await page.locator('.cm-block-hint').waitFor();
+        await page.keyboard.press('Enter');
+        assert.equal(await docText(), 'Two: ![one](pic.png)\n![two](pic.png)\nnext', 'Enter after the first picture puts the second on a line of its own');
+        await undo();
+        await pictures.last().click();
+        await page.keyboard.type('hi');
+        assert.equal(await docText(), 'Two: ![one](pic.png) ![two](pic.png)\nhi\nnext', 'typing starts a new line after the picture');
+        await waitFor(async () => await picked() === 0);   // and lets it go
+        await undo();
+        await pictures.first().click();
+        await page.keyboard.press('ControlOrMeta+c');
+        assert.equal(await page.evaluate(() => navigator.clipboard.readText()), '![one](pic.png)', 'Copy copies its Markdown');
+        await page.keyboard.press('Backspace');
+        assert.equal(await docText(), 'Two: ![two](pic.png)\nnext', 'Backspace deletes it with its space');
+        await pictures.first().click();
+        await page.keyboard.press('Escape');
+        await waitFor(async () => await picked() === 0);   // Esc lets it go
+        assert.equal(await docText(), 'Two: ![two](pic.png)\nnext');
+    });
+
+    await step('Backspace at the start of the line after a picture picks the picture, and a second one deletes it', async () => {
+        await setDoc('![one](pic.png)\nnext', 0);
+        await picturesLoaded(1);
+        await clickBeforeText('next');
+        await page.keyboard.press('Backspace');
+        await editor.locator('.cm-md-picture.picked').waitFor();
+        assert.equal(await docText(), '![one](pic.png)\nnext', 'the first Backspace only picks it');
+        await page.keyboard.press('Backspace');
+        assert.equal(await docText(), 'next', 'the second deletes it with its line');
+    });
+
+    await step('a code block: Esc in it picks it, Enter opens a line under it, and Backspace on the line after picks it before deleting', async () => {
+        await setDoc('Before\n```js\nconst a = 1;\n```\nAfter', 0);
+        await editor.locator('.cm-md-codebox pre').click();
+        await page.keyboard.press('Escape');
+        await editor.locator('.cm-md-codebox.picked').waitFor();
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('x');
+        assert.equal(await docText(), 'Before\n```js\nconst a = 1;\n```\nx\nAfter', 'Enter opens a line under the block');
+        await clickBeforeText('x');
+        await page.keyboard.press('Backspace');
+        await editor.locator('.cm-md-codebox.picked').waitFor();
+        assert.equal(await docText(), 'Before\n```js\nconst a = 1;\n```\nx\nAfter', 'at the start of the line after the block, Backspace picks the block instead of joining the line to its fence');
+        await page.keyboard.press('Backspace');
+        assert.equal(await docText(), 'Before\nx\nAfter', 'a second Backspace deletes it');
+    });
+
+    await step('a diagram: a click picks it, Enter opens a line under it, Delete deletes it', async () => {
+        await setDoc('Before\n```dbml\nTable t { id int [pk] }\n```\nAfter', 0);
+        const diagram = editor.locator('.cm-md-diagram');
+        await diagram.locator('.er-diagram').waitFor();
+        await diagram.click();
+        await editor.locator('.cm-md-diagram.picked').waitFor();
+        assert.equal(await diagram.count(), 1, 'a click leaves the diagram drawn');
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('x');
+        assert.equal(await docText(), 'Before\n```dbml\nTable t { id int [pk] }\n```\nx\nAfter');
+        await diagram.click();
+        await page.keyboard.press('Delete');
+        assert.equal(await docText(), 'Before\nx\nAfter');
     });
 
     await step('a task is a checkbox, and a click writes the other state', async () => {
@@ -240,6 +375,8 @@ try {
         // Bold again takes it off: the selection is what the cell shows, without the hidden **.
         await page.keyboard.press('Control+b');
         await waitFor(async () => /make \*\*this\*\* loud \|/.test(await docText()));
+        // The cell takes its selection back from the command before the next one (a slow runner can be a frame behind).
+        await waitFor(async () => await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed') === 'false');
         await page.keyboard.press('Control+b');
         await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
         // A bold word chosen with the mouse right after a command, then Bold: no more bold, not ****this****. The text takes

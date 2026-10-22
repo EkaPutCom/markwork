@@ -4,7 +4,7 @@
 // core. CodeMirror counts UTF-16 units, as the commands do; the protocol's code points are converted at this edge.
 
 import { Annotation, EditorSelection, EditorState, StateEffect, StateField, type Extension, type Text } from '@codemirror/state';
-import { Decoration, EditorView, drawSelection, keymap, type DecorationSet } from '@codemirror/view';
+import { Decoration, EditorView, drawSelection, keymap, showTooltip, type DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, redo, undo } from '@codemirror/commands';
 import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
 import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type HighlightResult, type Styles } from '../../../src/markdown/highlight.js';
@@ -19,12 +19,13 @@ import { DiagramWidget } from './diagrams.js';
 import { diagramKind } from '../../../src/markdown/diagram.js';
 import { TableWidget, focusCell, gridAt, tableOf } from './tables.js';
 import { CodeBoxWidget, codeColors, focusCode, spansOf } from './codecolor.js';
-import { PicturesWidget, pictures, type PictureItem, type ZoomedImage } from './images.js';
+import { PicturesWidget, pictureRange, pictures, type PictureItem, type ZoomedImage } from './images.js';
 import { cpToU16, makeU16Map } from '../../../src/markdown/offsets.js';
 import type { EditCommands, TableOperation } from '../../../src/app/commands.js';
 import type { Change } from '../../../src/app/protocol/messages.js';
 import { blockHandle, moveCursorBlock } from './blockhandle.js';
-import { LIST_PREFIX_PX, linkEditor, listPrefix, openLinkEditor, selectionMenu, setVisual, slashGlyph, slashSource, visualEditing, visualMode, type Concealed } from './visual.js';
+import { blockSelection, pick, removeBlock, type BlockSource, type PickedBlock } from './blockselect.js';
+import { LIST_PREFIX_PX, linkEditor, listPrefix, openImageEditor, openLinkEditor, selectionMenu, setVisual, slashGlyph, slashSource, visualEditing, visualMode, type Concealed } from './visual.js';
 
 // A change that comes from the core (or opens a text), not from the user: it is not reported back as an edit.
 const External = Annotation.define<boolean>();
@@ -169,7 +170,7 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): StateFie
             for (const block of result.codeBlocks) {
                 const kind = diagramKind(block);
                 if (!kind || block.endLine >= doc.lines || (selLast >= block.startLine && selFirst <= block.endLine)) continue;
-                const open = (view: EditorView, element: HTMLElement) => view.dispatch({ selection: { anchor: view.state.doc.lineAt(view.posAtDOM(element)).to + 1 }, scrollIntoView: true });
+                const open = (view: EditorView, element: HTMLElement) => { view.dispatch({ selection: { anchor: view.state.doc.lineAt(view.posAtDOM(element)).to + 1 }, scrollIntoView: true }); view.focus(); };
                 ranges.push(Decoration.replace({ widget: new DiagramWidget(kind, block.text, open, events.zoomImage, dimmed(block.startLine, block.endLine)), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
                 for (let k = block.startLine; k <= block.endLine; k++) grids.add(k);
             }
@@ -195,9 +196,16 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): StateFie
         ranges.push(...codeColors(result.codeBlocks.filter(b => !boxed.has(b)), (block, i) => u16(block.start) + i, languageLoaded));
         const found = state.field(sourceMode) ? new Map<number, PictureItem[]>() : pictures(result.images, events.baseDir());
         pictureLines.set(doc, found);
+        const pictureAt = (view: EditorView, element: HTMLElement, item: PictureItem): PickedBlock | null => {
+            const line = view.state.doc.lineAt(view.posAtDOM(element));
+            const range = pictureRange(line.text, item);
+            return range && { kind: 'picture', from: line.from + range[0], to: line.from + range[1] };
+        };
         const widgetEvents = {
-            activate: (view: EditorView, element: HTMLElement) => view.dispatch({ selection: { anchor: view.state.doc.lineAt(view.posAtDOM(element)).to }, scrollIntoView: true }),
+            activate: (view: EditorView, element: HTMLElement, item: PictureItem) => { const p = pictureAt(view, element, item); if (p) pick(view, p); },
             zoom: events.zoomImage,
+            edit: (view: EditorView, element: HTMLElement, item: PictureItem) => openImageEditor(view, view.posAtDOM(element), item.url, item.nth),
+            remove: (view: EditorView, element: HTMLElement, item: PictureItem) => { const p = pictureAt(view, element, item); if (p) removeBlock(view, p); },
         };
         for (const [i, items] of found) {
             if (i < doc.lines) ranges.push(Decoration.widget({ widget: new PicturesWidget(items, widgetEvents, dimmed(i, i)), block: true, side: 1 }).range(doc.line(i + 1).to));
@@ -219,6 +227,18 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): StateFie
                 }
             }
         }
+        // The space between two pictures is hidden with them: it would be a place for the cursor that shows as one more space
+        // after the line's text, while it stands between two pictures.
+        if (visual) {
+            for (const [i, items] of found) {
+                if (i >= doc.lines || grids.has(i)) continue;
+                const line = doc.line(i + 1), marks = items.map(item => pictureRange(line.text, item)).filter(r => r !== null).sort((a, b) => a[0] - b[0]);
+                for (let k = 1; k < marks.length; k++) {
+                    const from = line.from + marks[k - 1][1], to = line.from + marks[k][0];
+                    if (to > from && !doc.sliceString(from, to).trim()) { ranges.push(hidden.range(from, to)); hiddenRanges.push(hidden.range(from, to)); }
+                }
+            }
+        }
         return { decorations: Decoration.set(ranges, true), concealed: { hidden: Decoration.set(hiddenRanges, true), prefixes } };
     };
 
@@ -228,6 +248,21 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): StateFie
         provide: f => EditorView.decorations.from(f, drawn => drawn.decorations),
     });
 }
+
+// The objects blockselect.ts picks, from the last drawing of the text: its closed fenced blocks (code and diagrams) and the
+// pictures each line shows.
+const blockSource: BlockSource = {
+    blocks: state => {
+        const { doc } = state, parse = parses.get(doc);
+        return (parse?.codeBlocks ?? []).filter(b => b.closed && b.endLine < doc.lines).map(b => ({
+            kind: diagramKind(b) ? 'diagram' : 'code', from: doc.line(b.startLine + 1).from, to: doc.line(b.endLine + 1).to,
+        }));
+    },
+    pictures: (state, line) => (pictureLines.get(state.doc)?.get(line.number - 1) ?? []).flatMap(item => {
+        const range = pictureRange(line.text, item);
+        return range ? [{ kind: 'picture' as const, from: line.from + range[0], to: line.from + range[1] }] : [];
+    }).sort((a, b) => a.from - b.from),
+};
 
 const stateOf = (view: EditorView): TextState => {
     const { main } = view.state.selection;
@@ -262,6 +297,24 @@ const run = (view: EditorView, command: (state: TextState) => TextEdit | null): 
 };
 
 // The cursor's line is inside a fenced code block: Enter there is a plain line break, not a list or quote continuing.
+// In the visual editor a picture's ![alt](url) is hidden and the picture is drawn under its line, so a cursor before pictures that end
+// the line (where blockselect.ts keeps it) looks as if it were at the end of the text. Enter there breaks the line before them: the
+// new line comes right under the text, with the pictures, instead of under the pictures.
+const PICTURES_TO_END = /^\s*(?:!\[[^\]]*\]\([^)]*\)\s*)+$/;
+function enterBeforePictures(view: EditorView): boolean {
+    const sel = view.state.selection.main;
+    if (!sel.empty || !visualOn(view.state) || inCode(view)) return false;
+    const line = view.state.doc.lineAt(sel.head);
+    // A cursor among the pictures that end the line (blockselect.ts keeps a moved cursor out of them) stands before them.
+    const run = /(?:!\[[^\]]*\]\([^)]*\)\s*)+$/.exec(line.text);
+    const col = run ? Math.min(sel.head - line.from, run.index) : sel.head - line.from;
+    const before = line.text.slice(0, col), after = line.text.slice(col);
+    if (!before.trim() || !PICTURES_TO_END.test(after)) return false;
+    const from = line.from + before.trimEnd().length, to = line.from + col + after.length - after.trimStart().length;
+    view.dispatch({ changes: { from, to, insert: '\n' }, selection: { anchor: from + 1 }, scrollIntoView: true, userEvent: 'input' });
+    return true;
+}
+
 const inCode = (view: EditorView): boolean => {
     const { doc, selection } = view.state;
     const line = doc.lineAt(selection.main.head).number - 1;
@@ -318,7 +371,8 @@ function suggestions(events: EditorEvents): Extension {
     return autocompletion({ override: [source, slashSource(events.run, visualOn)], icons: false, defaultKeymap: true, interactionDelay: 0, addToOptions: [slashGlyph] });
 }
 
-// A click on a task box flips it; Ctrl (or Cmd) + click on a link opens it, and in the visual editor a plain click on a drawn link does too.
+// A click on a task box flips it; Ctrl (or Cmd) + click on a link opens it. A plain click only puts the cursor there, so the link can be
+// edited; the tooltip over a link (linkTooltip) has the button that opens it.
 function clicks(events: EditorEvents): Extension {
     return EditorView.domEventHandlers({
         mousedown(event, view) {
@@ -326,7 +380,7 @@ function clicks(events: EditorEvents): Extension {
             const place = clickPlace(view, event);
             if (!place) return false;
             const target = event.target as HTMLElement | null;
-            if (event.ctrlKey || event.metaKey || (visualOn(view.state) && target?.closest('.cm-md-link'))) {
+            if (event.ctrlKey || event.metaKey) {
                 const note = wikiLinkAt(place.text, place.column);
                 if (note) {
                     events.openNote(note.target + (note.heading ? `#${note.heading}` : '') + (note.alias ? `|${note.alias}` : ''));
@@ -344,6 +398,60 @@ function clicks(events: EditorEvents): Extension {
             view.dispatch({ changes: { from: at, to: at + 1, insert: toggle.text }, userEvent: 'input' });
             return true;
         },
+    });
+}
+
+const OPEN_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>';
+const SOURCE_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>';
+const GO_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+
+// The tooltip of the link the cursor is in: a button to open it, a web address in the browser or a note in its own tab. A click on a
+// link puts the cursor there, so the tooltip shows at once.
+interface LinkTarget { pos: number; note: string | null; uri: string | null; editable: boolean }   // editable: a [text](url) link, which the link box edits
+
+function linkTargetAt(state: EditorState): LinkTarget | null {
+    const sel = state.selection.main;
+    if (!sel.empty) return null;
+    const line = state.doc.lineAt(sel.head);
+    const column = Array.from(line.text.slice(0, sel.head - line.from)).length;
+    const wiki = wikiLinkAt(line.text, column);
+    const note = wiki && wiki.target + (wiki.heading ? `#${wiki.heading}` : '') + (wiki.alias ? `|${wiki.alias}` : '');
+    const uri = note ? null : linkAt(line.text, column);
+    if (!note && !uri) return null;
+    const inImage = [...line.text.matchAll(/!\[[^\]]*\]\([^)]*\)/g)].some(m => sel.head - line.from >= m.index && sel.head - line.from <= m.index + m[0].length);
+    if (inImage) return null;
+    const editable = !note && [...line.text.matchAll(/(?<!!)\[[^\]]*\]\([^)]*\)/g)].some(m => sel.head - line.from >= m.index && sel.head - line.from <= m.index + m[0].length);
+    return { pos: sel.head, note, uri, editable };
+}
+
+function linkTooltip(events: EditorEvents): Extension {
+    const button = (label: string, icon: string, run: () => void) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.innerHTML = icon;
+        b.title = label;
+        b.setAttribute('aria-label', label);
+        b.addEventListener('mousedown', event => event.preventDefault());
+        b.addEventListener('click', run);
+        return b;
+    };
+    const create = (view: EditorView, target: LinkTarget) => {
+        const dom = document.createElement('div');
+        dom.className = 'cm-link-open';
+        dom.append(target.note
+            ? button(`Go to ${target.note}`, GO_ICON, () => events.openNote(target.note!))
+            : button(`Open ${target.uri}`, OPEN_ICON, () => events.openLink(target.uri!)));
+        if (target.editable) dom.append(button('Edit link', SOURCE_ICON, () => openLinkEditor(view)));
+        return { dom };
+    };
+    return StateField.define<LinkTarget | null>({
+        create: linkTargetAt,
+        update(value, tr) {
+            if (!tr.docChanged && !tr.selection) return value;
+            const next = linkTargetAt(tr.state);
+            return next && value && next.note === value.note && next.uri === value.uri ? { ...value, pos: tr.changes.mapPos(value.pos) } : next;
+        },
+        provide: f => showTooltip.from(f, target => target && { pos: target.pos, above: true, create: view => create(view, target) }),
     });
 }
 
@@ -402,12 +510,13 @@ export class MarkdownEditor {
             extensions: [
                 history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, visualMode, drawn, search({ top: true, createPanel: createFindBar }), highlightSelectionMatches(),
                 clicks(this.events), suggestions(this.events),
-                visualEditing(state => state.field(drawn).concealed, visualOn), selectionMenu(this.events.run, visualOn), linkEditor, blockHandle(visualOn),
+                visualEditing(state => state.field(drawn).concealed, visualOn), selectionMenu(this.events.run, visualOn), linkEditor, blockHandle(visualOn), linkTooltip(this.events), blockSelection(blockSource, visualOn),
                 EditorView.contentAttributes.of({ 'aria-label': 'Editor', spellcheck: 'false' }),
                 // Source mode is the file as it is written: plain text in a fixed-width font, every marker showing.
                 EditorView.editorAttributes.compute([sourceMode], state => ({ class: state.field(sourceMode) ? 'cm-source' : '' })),
                 keymap.of([
                     { key: 'Tab', run: acceptCompletion },
+                    { key: 'Enter', run: enterBeforePictures },
                     { key: 'Enter', run: v => !v.state.selection.main.empty ? false : run(v, s => enterInTable(s) ?? (inCode(v) ? null : continueBlock(s))) },
                     { key: 'Tab', run: v => !v.state.selection.main.empty ? false : run(v, s => tabInTable(s, false) ?? indentListItem(s, false)) },
                     { key: 'F3', run: findNext, preventDefault: true },

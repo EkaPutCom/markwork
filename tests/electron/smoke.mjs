@@ -132,14 +132,17 @@ try {
         await grid.waitFor();
     });
 
-    await step('Mermaid and DBML blocks are drawn, a broken one says why, and a click opens the source', async () => {
+    await step('Mermaid and DBML blocks are drawn, a broken one says why, a click picks one, and its Edit source opens the source', async () => {
         await page.getByRole('treeitem', { name: /diagram\.md/ }).click();
         await title.getByText('diagram.md').waitFor();
-        const drawn = editor.locator('.cm-md-diagram svg');
+        const drawn = editor.locator('.cm-md-diagram > svg');
         await drawn.first().waitFor({ timeout: 20000 });
         await editor.locator('.cm-md-diagram.error').waitFor({ timeout: 20000 });
         assert.equal(await drawn.count(), 2);
-        await editor.locator('.cm-md-diagram').first().click();
+        const first = editor.locator('.cm-md-diagram').first();
+        await first.click();
+        await editor.locator('.cm-md-diagram.picked').waitFor();
+        await first.locator('.cm-md-block-tool[title="Edit source"]').click();
         await editor.getByText('flowchart LR').waitFor();
         await page.keyboard.press('ControlOrMeta+End');
     });

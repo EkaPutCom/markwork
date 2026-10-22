@@ -6,9 +6,11 @@ import { WidgetType } from '@codemirror/view';
 import type { EditorView } from '@codemirror/view';
 import type { ImageRef } from '../../../src/markdown/highlight.js';
 import { imageSource, type PathOps } from '../../../src/markdown/imagesource.js';
+import { DELETE_ICON, SOURCE_ICON, ZOOM_ICON, blockTools } from './blocktools.js';
 import { isAbsolutePath, slashed } from '../../../src/markdown/paths.js';
 
 const MAX_HEIGHT = 480, MAX_WIDTH = 700;
+const TOOLS_MIN_WIDTH = 120, TOOLS_MIN_HEIGHT = 60;
 
 // A picture shown large: a file (src), or a drawn diagram (svg, with its size in pixels) which the viewer puts in the page so that
 // the theme's colors reach it.
@@ -33,7 +35,14 @@ export function imageUrl(url: string, baseDir: string | null): string | null {
     return baseDir === null && !PATHS.isAbsolute(url) ? null : appUrl(source.path);
 }
 
-export interface PictureItem { src: string; alt: string }
+// url: the address as written; nth: how many pictures before it on its line have the same address (it tells two copies apart)
+export interface PictureItem { src: string; alt: string; url: string; nth: number }
+
+// Where a picture's ![alt](url) is in its line's text: [start, end), or null.
+export function pictureRange(text: string, item: Pick<PictureItem, 'url' | 'nth'>): [number, number] | null {
+    const m = [...text.matchAll(/!\[[^\]]*\]\(([^)\s]*)[^)]*\)/g)].filter(m => m[1] === item.url)[item.nth];
+    return m ? [m.index, m.index + m[0].length] : null;
+}
 
 export function pictures(refs: readonly ImageRef[], baseDir: string | null): Map<number, PictureItem[]> {
     const byLine = new Map<number, PictureItem[]>();
@@ -41,15 +50,17 @@ export function pictures(refs: readonly ImageRef[], baseDir: string | null): Map
         const src = imageUrl(ref.url, baseDir);
         if (!src) continue;
         const list = byLine.get(ref.line) ?? [];
-        list.push({ src, alt: ref.alt });
+        list.push({ src, alt: ref.alt, url: ref.url, nth: list.filter(it => it.url === ref.url).length });
         byLine.set(ref.line, list);
     }
     return byLine;
 }
 
 export interface PictureEvents {
-    activate(view: EditorView, element: HTMLElement): void;       // one click: the cursor goes to the picture's line
+    activate(view: EditorView, element: HTMLElement, item: PictureItem): void;   // one click: the picture is picked (blockselect.ts)
     zoom(image: ZoomedImage): void;                               // double click
+    edit(view: EditorView, element: HTMLElement, item: PictureItem): void;     // the Edit tool: the box that changes its alt text and address
+    remove(view: EditorView, element: HTMLElement, item: PictureItem): void;   // the Delete tool: the picture's markup leaves the text
 }
 
 // The pictures of one line.
@@ -57,28 +68,40 @@ export class PicturesWidget extends WidgetType {
     constructor(readonly items: readonly PictureItem[], private readonly events: PictureEvents, private readonly dim = false) { super(); }
 
     override eq(other: PicturesWidget): boolean {
-        return other.dim === this.dim && other.items.length === this.items.length && other.items.every((it, i) => it.src === this.items[i].src && it.alt === this.items[i].alt);
+        return other.dim === this.dim && other.items.length === this.items.length && other.items.every((it, i) => it.src === this.items[i].src && it.url === this.items[i].url && it.nth === this.items[i].nth && it.alt === this.items[i].alt);
     }
 
     override toDOM(view: EditorView): HTMLElement {
         const box = document.createElement('div');
         box.className = 'cm-md-pictures' + (this.dim ? ' cm-md-dim' : '');
         for (const item of this.items) {
+            const frame = document.createElement('div');
+            frame.className = 'cm-md-picture';
+            frame.dataset.url = item.url;   // which markup it is (blockselect.ts finds a picked picture by it)
+            frame.dataset.nth = String(item.nth);
+            const zoom = () => this.events.zoom({ src: item.src, title: item.alt || decodeURIComponent(item.src.split('/').pop() ?? '') });
             const img = document.createElement('img');
             img.src = item.src;
             img.alt = item.alt;
             img.draggable = false;
             img.style.maxHeight = `${MAX_HEIGHT}px`;
             img.style.maxWidth = `min(100%, ${MAX_WIDTH}px)`;
+            // A picture too small to carry the toolbar keeps the double click only.
+            img.addEventListener('load', () => frame.classList.toggle('small', img.width < TOOLS_MIN_WIDTH || img.height < TOOLS_MIN_HEIGHT));
             img.addEventListener('error', () => {
                 const missing = document.createElement('span');
                 missing.className = 'cm-md-picture-missing';
                 missing.textContent = item.alt || 'Image not found';
-                img.replaceWith(missing);
+                frame.replaceChildren(missing);
             });
-            img.addEventListener('click', event => { if (event.detail === 1) this.events.activate(view, box); });
-            img.addEventListener('dblclick', () => this.events.zoom({ src: item.src, title: item.alt || decodeURIComponent(item.src.split('/').pop() ?? '') }));
-            box.append(img);
+            img.addEventListener('click', event => { if (event.detail === 1) this.events.activate(view, frame, item); });
+            img.addEventListener('dblclick', zoom);
+            frame.append(img, blockTools([
+                { label: 'Zoom', icon: ZOOM_ICON, run: zoom },
+                { label: 'Edit source', icon: SOURCE_ICON, run: () => this.events.edit(view, box, item) },
+                { label: 'Delete', icon: DELETE_ICON, run: () => this.events.remove(view, box, item) },
+            ]));
+            box.append(frame);
         }
         return box;
     }
