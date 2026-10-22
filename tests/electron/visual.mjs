@@ -246,6 +246,9 @@ try {
         // the cell's new selection (not "loud" back from the command); Bold being pressed says nothing, since loud is bold too.
         await cell.locator('.cm-md-bold', { hasText: 'this' }).dblclick();
         const selected = () => page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); });
+        // Windows takes the space after a double-clicked word along; Shift+Left gives the word back.
+        await waitFor(async () => /^this\b/.test(await selected()));
+        if ((await selected()) !== 'this') await page.keyboard.press('Shift+ArrowLeft');
         await waitFor(async () => (await selected()) === 'this');
         assert.equal(await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed'), 'true');
         await toolbar.getByRole('button', { name: /^Bold/ }).click();
