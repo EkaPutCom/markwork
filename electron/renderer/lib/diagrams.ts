@@ -1,10 +1,12 @@
 // Mermaid and DBML blocks drawn as pictures. Mermaid runs here, in the page: its script
 // (copied next to the renderer at build time, scripts/electron-build.mjs) is loaded the first time a diagram is on screen, so a
-// window without diagrams does not pay for it. DBML is translated to Mermaid first (markdown/dbml.ts). Like a table, a diagram
+// window without diagrams does not pay for it. DBML is drawn by dbmldiagram.ts, without Mermaid. Like a table, a diagram
 // gives way to its source while the cursor is in the block.
 
 import { WidgetType, type EditorView } from '@codemirror/view';
-import { DbmlError, dbmlToMermaid } from '../../../src/markdown/dbml.js';
+import { DbmlError } from '../../../src/markdown/dbml.js';
+import { dbmlToSvg } from './dbmldiagram.js';
+import type { ZoomedImage } from './images.js';
 import type { Kind } from '../../../src/markdown/diagram.js';
 
 interface MermaidApi {
@@ -26,6 +28,36 @@ const isDark = (): boolean => {
     return set ? set === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
+// Mermaid wants plain colors, not the oklch() or color-mix() of the tokens, so each token is read back through a canvas as #rrggbb.
+const swatch = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+const token = (name: string, fallback: string): string => {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    swatch.clearRect(0, 0, 1, 1);
+    swatch.fillStyle = '#000';
+    swatch.fillStyle = value || fallback;
+    swatch.fillRect(0, 0, 1, 1);
+    const [r, g, b] = swatch.getImageData(0, 0, 1, 1).data;
+    return '#' + [r, g, b].map(n => n.toString(16).padStart(2, '0')).join('');
+};
+
+// The shadcn look: flat cards on the page background, thin borders, muted lines, the interface's own font.
+function themeVariables(): Record<string, string> {
+    const background = token('--background', '#fff'), card = token('--card', '#fff'), muted = token('--muted', '#f4f4f5');
+    const foreground = token('--foreground', '#000'), dim = token('--muted-foreground', '#71717a'), border = token('--border', '#e4e4e7');
+    return {
+        fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-sans').trim() || 'sans-serif', fontSize: '13px',
+        background, mainBkg: card, primaryColor: card, primaryTextColor: foreground, primaryBorderColor: border,
+        secondaryColor: muted, secondaryTextColor: foreground, secondaryBorderColor: border,
+        tertiaryColor: background, tertiaryTextColor: foreground, tertiaryBorderColor: border,
+        nodeBorder: border, nodeTextColor: foreground, textColor: foreground, titleColor: foreground,
+        lineColor: dim, arrowheadColor: dim, edgeLabelBackground: background,
+        clusterBkg: muted, clusterBorder: border, noteBkg: muted, noteTextColor: foreground, noteBorderColor: border,
+        rowOdd: card, rowEven: muted, attributeBackgroundColorOdd: card, attributeBackgroundColorEven: muted,
+        actorBkg: card, actorBorder: border, actorTextColor: foreground, actorLineColor: dim, signalColor: dim, signalTextColor: foreground,
+        labelBoxBkgColor: muted, labelBoxBorderColor: border, labelTextColor: foreground, loopTextColor: foreground,
+    };
+}
+
 type Result = { ok: true; svg: string } | { ok: false; error: string };
 const cache = new Map<string, Result>();
 let queue: Promise<unknown> = Promise.resolve();
@@ -38,10 +70,10 @@ function render(kind: Kind, source: string, dark: boolean): Promise<Result> {
     if (hit) return Promise.resolve(hit);
     const run = async (): Promise<Result> => {
         try {
-            const code = kind === 'dbml' ? dbmlToMermaid(source) : source;
+            if (kind === 'dbml') return { ok: true, svg: dbmlToSvg(source) };
             const mermaid = await loadMermaid();
-            mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
-            const { svg } = await mermaid.render(`mw-diagram-${++counter}`, code);
+            mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: themeVariables(), look: 'classic', securityLevel: 'strict' });
+            const { svg } = await mermaid.render(`mw-diagram-${++counter}`, source);
             return { ok: true, svg };
         } catch (e) {
             const error = e instanceof DbmlError || e instanceof Error ? e.message : String(e);
@@ -54,8 +86,23 @@ function render(kind: Kind, source: string, dark: boolean): Promise<Result> {
     return result.then(r => { if (cache.size > 100) cache.clear(); cache.set(key, r); return r; });
 }
 
+// The drawn diagram as a picture of its own size, for the viewer: the page gave Mermaid's SVG a fluid width.
+function zoomed(box: HTMLElement, title: string): ZoomedImage | null {
+    const svg = box.querySelector('svg');
+    if (!svg) return null;
+    const { width, height } = svg.viewBox.baseVal.width ? svg.viewBox.baseVal : svg.getBoundingClientRect();
+    const copy = svg.cloneNode(true) as SVGElement;
+    copy.removeAttribute('style');
+    copy.setAttribute('width', String(width));
+    copy.setAttribute('height', String(height));
+    return { src: '', title, svg: copy.outerHTML, width, height };
+}
+
+// A click opens the source, a double click zooms: the click waits a moment to see if a second one follows.
+const DOUBLE_CLICK_MS = 250;
+
 export class DiagramWidget extends WidgetType {
-    constructor(private readonly kind: Kind, private readonly source: string, private readonly onOpen: (view: EditorView, element: HTMLElement) => void, private readonly dim = false) { super(); }
+    constructor(private readonly kind: Kind, private readonly source: string, private readonly onOpen: (view: EditorView, element: HTMLElement) => void, private readonly onZoom: (image: ZoomedImage) => void, private readonly dim = false) { super(); }
 
     override eq(other: DiagramWidget): boolean { return other.kind === this.kind && other.source === this.source && other.dim === this.dim; }
 
@@ -72,7 +119,14 @@ export class DiagramWidget extends WidgetType {
             }
             view.requestMeasure();
         });
-        box.addEventListener('mousedown', event => { event.preventDefault(); this.onOpen(view, box); });
+        let pending: ReturnType<typeof setTimeout> | undefined;
+        box.addEventListener('mousedown', event => {
+            event.preventDefault();
+            clearTimeout(pending);
+            if (event.detail < 2) { pending = setTimeout(() => this.onOpen(view, box), DOUBLE_CLICK_MS); return; }
+            const image = zoomed(box, this.kind === 'dbml' ? 'DBML diagram' : 'Mermaid diagram');
+            if (image) this.onZoom(image); else this.onOpen(view, box);
+        });
         return box;
     }
 

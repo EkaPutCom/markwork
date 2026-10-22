@@ -136,10 +136,11 @@ try {
         await add.getByLabel('SSH target').fill('me@box.example.org');
         await add.getByRole('button', { name: 'Add', exact: true }).click();
         await prefs.getByRole('button', { name: 'Remove box' }).waitFor();
-        await prefs.getByRole('combobox', { name: 'Run agents' }).selectOption('box');
+        await prefs.getByRole('combobox', { name: 'Run agents' }).click();
+        await page.getByRole('option', { name: /box/ }).click();
         await prefs.getByRole('button', { name: 'Remove box' }).click();
         await prefs.getByRole('button', { name: 'Remove box' }).waitFor({ state: 'detached' });
-        assert.equal(await prefs.getByRole('combobox', { name: 'Run agents' }).inputValue(), '', 'the choice goes with the machine');
+        assert.equal(await prefs.getByRole('combobox', { name: 'Run agents' }).textContent(), 'In this window', 'the choice goes with the machine');
     });
 } catch (e) {
     failed = true;

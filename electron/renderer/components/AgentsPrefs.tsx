@@ -5,6 +5,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { PreferencesData, ProjectPage, WorktreeList } from '../../../src/app/protocol/preferences.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Select } from '../ui/select.js';
 
 function Row({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
     return <div className="pref-row"><span className="text"><span className="title">{title}</span>{subtitle && <span className="subtitle">{subtitle}</span>}</span>{children}</div>;
@@ -70,9 +71,9 @@ function ProjectPageView({ page }: { page: ProjectPage }) {
                     <Row title="Base branch" subtitle="Empty: the branch the project folder is on"><CommitText label="Base branch" value={iso.base} onCommit={base => change({ base })} /></Row>
                     <Row title="Worktree folder" subtitle={`Empty: ${page.defaultDir}`}><CommitText label="Worktree folder" value={iso.dir} placeholder={page.defaultDir} onCommit={dir => change({ dir })} /></Row>
                     <Row title="After merging">
-                        <select aria-label="After merging" value={iso.afterMerge} onChange={e => change({ afterMerge: e.target.value })}>
+                        <Select aria-label="After merging" value={iso.afterMerge} onChange={e => change({ afterMerge: e.target.value })}>
                             <option value="remove">Remove the branch</option><option value="keep-branch">Keep the branch</option>
-                        </select>
+                        </Select>
                     </Row>
                 </>
             )}
@@ -93,9 +94,9 @@ export function AgentsPage({ prefs }: { prefs: PreferencesData }) {
         <div className="pref-page">
             <h3>Run agents</h3>
             <Row title="Where" subtitle="Agents run as children of this window, or on a machine that goes on without it">
-                <select aria-label="Run agents" value={prefs.harnessMachine} onChange={e => client.setPreference('harnessMachine', e.target.value)}>
+                <Select aria-label="Run agents" value={prefs.harnessMachine} onChange={e => client.setPreference('harnessMachine', e.target.value)}>
                     {choices.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
+                </Select>
             </Row>
             {daemonHere() && <Row title="markworkd command" subtitle="Empty: the one that came with Markwork"><CommitText label="markworkd command" value={prefs.daemonCommand} onCommit={v => client.setPreference('daemonCommand', v)} /></Row>}
             <h3>Machines</h3>

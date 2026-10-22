@@ -13,7 +13,7 @@ import type { Board } from '../../../src/markdown/kanban.js';
 import { applyNoteEdit, type NoteEdit } from '../../../src/markdown/noteedit.js';
 import type { FormatAt, MarkdownEditor } from './editor.js';
 import * as P from './panes.js';
-import { appUrl } from './images.js';
+import { appUrl, type ZoomedImage } from './images.js';
 import type { SearchQuery, SearchResults } from '../../../src/app/protocol/search.js';
 import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree.js';
 import type { HomeData, ProgramsData } from '../../../src/app/protocol/screen.js';
@@ -143,7 +143,7 @@ export interface State {
     dialog: Dialog | null;        // the dialog shown; others wait behind it
     disabled: string[];           // the commands the core says do not apply now (commands.state)
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
-    image: { src: string; title: string } | null;   // the picture shown large (view.image, or a double click)
+    image: ZoomedImage | null;   // the picture shown large (view.image, or a double click)
     recent: string[];                // the Recent files of the menus (recent), latest first
     programsMissing: number;         // needed programs that are missing (programs.missing): the mark on the sidebar's Programs
     prefs: PreferencesData | null;   // the Preferences dialog while it is open (view.prefs.open)
@@ -457,7 +457,7 @@ export class Client {
         this.editor?.focus();
     }
 
-    zoomImage(image: { src: string; title: string }): void { this.set({ image }); }
+    zoomImage(image: ZoomedImage): void { this.set({ image }); }
     closeImage(): void { this.set({ image: null }); this.editor?.focus(); }
 
     // The folder of the active document, which its relative picture paths start from.

@@ -101,7 +101,7 @@ try {
     await step('a pane has its own Visual / Markdown, set by the header switch for the focused pane, and a board is drawn in its pane', async () => {
         const header = page.locator('.headerbar').getByRole('group', { name: 'Editing mode' });
         const mode = async n => { await panes.nth(n).locator('.pane-body').click({ position: { x: 20, y: 20 } }); return header; };
-        await (await mode(0)).getByRole('button', { name: 'Markdown' }).click();
+        await (await mode(0)).getByRole('button', { name: 'Code' }).click();
         await waitFor(async () => (await panes.nth(0).locator('.cm-editor.cm-source').count()) === 1);
         assert.equal(await panes.nth(1).locator('.cm-editor.cm-source').count(), 0, 'the other pane is still visual');
         assert.equal(await panes.nth(0).getByRole('toolbar', { name: 'Formatting' }).count(), 0, 'raw text has no toolbar');

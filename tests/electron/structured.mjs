@@ -120,7 +120,8 @@ try {
         await page.getByRole('menuitem', { name: 'Fields…' }).click();
         await dialog.getByRole('button', { name: '+ Add field' }).click();
         await dialog.getByLabel('Field name').fill('prio');
-        await dialog.getByLabel('Field type').selectOption('select');
+        await dialog.getByLabel('Field type').click();
+        await page.getByRole('option', { name: 'Choice' }).click();
         await dialog.getByLabel('Add an option').fill('high');
         await dialog.getByLabel('Add an option').press('Enter');
         await dialog.getByLabel('Add an option').fill('low');
@@ -132,7 +133,8 @@ try {
         assert.match(await saved('board.md', /fields:\n {2}prio: select\(high:red, low\)/), /fields:\n {2}prio: select\(high:red, low\)/);
         // The field is on the card dialog and set from there; the chip then opens the popover.
         await page.locator('.board .card', { hasText: 'One' }).click();
-        await dialog.getByLabel('prio').selectOption('high');
+        await dialog.getByLabel('prio').click();
+        await page.getByRole('option', { name: 'high' }).click();
         await dialog.getByRole('button', { name: 'Save' }).click();
         const chip = page.locator('.board .card', { hasText: 'One' }).locator('.chip.opt-red', { hasText: 'high' });
         await chip.waitFor();

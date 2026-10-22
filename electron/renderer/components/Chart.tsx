@@ -8,6 +8,7 @@ import { boardSchema, type Board } from '../../../src/markdown/kanban.js';
 import { Icon } from './Icons.js';
 import { dayMonth, formatDate, PageHeader, todayString } from './notes.js';
 import { useClient } from '../lib/useClient.js';
+import { Select } from '../ui/select.js';
 
 const SLICE_COLORS: Record<string, string> = { red: '#e5484d', amber: '#e9a23b', green: '#3fa66b', blue: '#3b7dd8', purple: '#8e5bd6', teal: '#2f8f99', pink: '#c2417a', gray: '#8a8f98' };
 const FALLBACK = ['#4c9a6a', '#3b7dd8', '#8e5bd6', '#d6602e', '#c2417a', '#2f8f99', '#8a7a1c', '#5e6c84'];
@@ -121,12 +122,12 @@ export function Chart({ board }: { board: Board }) {
                                 <span className="name">{PANEL_NAMES[item.kind]}</span>
                                 {item.kind === 'bar' && bars && (
                                     <>
-                                        {dateFields(schema).length > 0 && <select aria-label="Date field" value={bars.field ?? ''} onChange={e => change(at, { ...item, field: e.target.value })}>{dateFields(schema).map(f => <option key={f.key}>{f.key}</option>)}</select>}
-                                        <select aria-label="Period" value={bars.period} onChange={e => change(at, { ...item, field: bars.field, period: e.target.value as Period })}><option value="week">Week</option><option value="month">Month</option></select>
+                                        {dateFields(schema).length > 0 && <Select aria-label="Date field" value={bars.field ?? ''} onChange={e => change(at, { ...item, field: e.target.value })}>{dateFields(schema).map(f => <option key={f.key}>{f.key}</option>)}</Select>}
+                                        <Select aria-label="Period" value={bars.period} onChange={e => change(at, { ...item, field: bars.field, period: e.target.value as Period })}><option value="week">Week</option><option value="month">Month</option></Select>
                                     </>
                                 )}
                                 {item.kind === 'donut' && donut && selectFields(schema).length > 0 && (
-                                    <select aria-label="Select field" value={donut.field ?? ''} onChange={e => change(at, { ...item, field: e.target.value })}>{selectFields(schema).map(f => <option key={f.key}>{f.key}</option>)}</select>
+                                    <Select aria-label="Select field" value={donut.field ?? ''} onChange={e => change(at, { ...item, field: e.target.value })}>{selectFields(schema).map(f => <option key={f.key}>{f.key}</option>)}</Select>
                                 )}
                                 <button className="icon-button" aria-label="Move up" title="Move up" disabled={at === 0} onClick={() => move(at, -1)}>↑</button>
                                 <button className="icon-button" aria-label="Move down" title="Move down" disabled={at === items.length - 1} onClick={() => move(at, 1)}>↓</button>

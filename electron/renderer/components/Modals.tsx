@@ -7,6 +7,7 @@ import { AgentsPage } from './AgentsPrefs.js';
 import { Icon } from './Icons.js';
 import { label } from '../lib/keys.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Select } from '../ui/select.js';
 
 // A dialog with its header bar: the title in the middle (or what `header` puts there, as the tabs of Preferences) and Close.
 export function Modal({ title, onClose, children, wide, header, className }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; header?: ReactNode; className?: string }) {
@@ -86,9 +87,9 @@ export function PreferencesDialog() {
                 <div className="pref-page">
                     <Group title="View">
                         <Row title="Color scheme">
-                            <select value={prefs.colorScheme} onChange={e => set('colorScheme')(e.target.value)}>
+                            <Select value={prefs.colorScheme} onChange={e => set('colorScheme')(e.target.value)}>
                                 <option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option>
-                            </select>
+                            </Select>
                         </Row>
                         {toggle('visual', 'Visual editor', 'Edit text as it looks. Off: the live view, which shows syntax on the cursor line')}
                         {toggle('focus', 'Focus mode', 'Dim all paragraphs except the one being edited')}
@@ -109,9 +110,9 @@ export function PreferencesDialog() {
                 <div className="pref-page">
                     <Group title="Assistant">
                         <Row title="Model">
-                            <select value={prefs.chatModel} onChange={e => set('chatModel')(e.target.value)}>
+                            <Select value={prefs.chatModel} onChange={e => set('chatModel')(e.target.value)}>
                                 {prefs.chatModels.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
+                            </Select>
                         </Row>
                         {toggle('chatThinking', 'Thinking mode', 'More thorough, but slower')}
                         {toggle('chatSave', 'Save conversation history', 'Saved in the work folder, in .markwork/chats')}

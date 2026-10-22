@@ -37,8 +37,8 @@ export function EditingMode({ tab, pane }: { tab: Tab; pane: Pane }) {
             <button type="button" aria-pressed={visual} title="Visual: the document as it looks" onClick={() => choose(false)}>
                 <Icon name="mode-visual" /><span className="label-text">Visual</span>
             </button>
-            <button type="button" aria-pressed={markdown} title="Markdown: the file as it is written, with all its syntax (Ctrl+/)" onClick={() => choose(true)}>
-                <Icon name="mode-markdown" /><span className="label-text">Markdown</span>
+            <button type="button" aria-pressed={markdown} title="Code: the file as it is written, with all its syntax (Ctrl+/)" onClick={() => choose(true)}>
+                <Icon name="mode-markdown" /><span className="label-text">Code</span>
             </button>
         </div>
     );

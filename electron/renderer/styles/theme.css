@@ -21,6 +21,8 @@
     button { cursor: pointer; }
     button:disabled { cursor: default; }
     button:focus-visible, [tabindex]:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }
+    /* The list of a select is drawn by the system from these colors; the select itself is transparent. */
+    select option, select optgroup { background-color: var(--popover); color: var(--popover-foreground); }
     kbd { font: 500 11px var(--font-sans); color: var(--muted-foreground); letter-spacing: .5px; }
     h1, h2, h3 { font-weight: 600; }
     ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -396,13 +398,24 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .cm-md-picture-missing { color: var(--muted-foreground); font-style: italic; }
 /* The image viewer: a window of its own, as GTK's — the title and the size in its header, a dark canvas, the zoom bar. */
 .image-viewer { position: fixed; inset: 0; z-index: 35; background: #00000052; display: flex; align-items: center; justify-content: center; }
-.image-viewer .viewer-window { display: flex; flex-direction: column; background: var(--window-bg); border-radius: var(--radius); box-shadow: 0 4px 24px var(--shadow); overflow: hidden; }
+.image-viewer .viewer-window { position: absolute; display: flex; flex-direction: column; background: var(--window-bg); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: 0 10px 38px -10px var(--shadow), 0 4px 12px -4px var(--shadow); overflow: hidden; box-sizing: border-box; }
+.image-viewer .viewer-head { cursor: move; user-select: none; touch-action: none; }
+.image-viewer .viewer-head button { cursor: pointer; }
+.image-viewer .resize { position: absolute; touch-action: none; z-index: 1; }
+.image-viewer .resize.right { top: 8px; bottom: 8px; right: 0; width: 6px; cursor: ew-resize; }
+.image-viewer .resize.left { top: 8px; bottom: 8px; left: 0; width: 6px; cursor: ew-resize; }
+.image-viewer .resize.bottom { left: 8px; right: 8px; bottom: 0; height: 6px; cursor: ns-resize; }
+.image-viewer .resize.top { left: 8px; right: 8px; top: 0; height: 6px; cursor: ns-resize; }
+.image-viewer .resize.corner { right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; }
 .image-viewer .viewer-head { flex: none; height: 50px; display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; padding: 0 8px; }
 .image-viewer .viewer-head .titles { grid-column: 2; display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.25; }
 .image-viewer .viewer-head .name { font-weight: 600; font-size: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .image-viewer .viewer-head .size { font-size: 11px; color: var(--muted-foreground); }
 .image-viewer .viewer-head .button.circular { grid-column: 3; min-width: 24px; min-height: 24px; }
 .image-viewer .area { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #1c1d20; }
+.image-viewer .area.diagram { background: var(--background); }
+.image-viewer .viewer-diagram { flex: none; padding: 0; contain: none; max-width: none; overflow: visible; cursor: grab; user-select: none; transform-origin: center; }
+.image-viewer .viewer-diagram svg { max-width: none; }
 .image-viewer img { max-width: none; transform-origin: center; cursor: grab; user-select: none; }
 .image-viewer .zoom-bar { flex: none; height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .image-viewer .zoom-bar .button { min-width: 50px; }
@@ -433,7 +446,31 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 
 /* Mermaid and DBML drawn as pictures. */
 .cm-md-diagram { contain: inline-size; min-width: 0; max-width: 100%; padding: 12px 0; display: flex; justify-content: center; overflow-x: auto; cursor: text; color: var(--muted-foreground); }
-.cm-md-diagram svg { max-width: 100%; height: auto; }
+.cm-md-diagram svg { max-width: 100%; height: auto; font-family: var(--font-sans); }
+.cm-md-diagram svg .node rect, .cm-md-diagram svg .node polygon, .cm-md-diagram svg .node path, .cm-md-diagram svg .node circle, .cm-md-diagram svg .cluster rect { stroke-width: 1px; filter: none; }
+.cm-md-diagram svg .node rect, .cm-md-diagram svg .cluster rect { rx: 8px; ry: 8px; }
+.cm-md-diagram svg .node polygon { stroke-linejoin: round; }
+.cm-md-diagram svg .edgePath .path, .cm-md-diagram svg .flowchart-link { stroke-width: 1px; }
+.cm-md-diagram svg .nodeLabel, .cm-md-diagram svg .label text, .cm-md-diagram svg .label span { fill: var(--foreground); color: var(--foreground); font-size: 13px; font-weight: 500; }
+/* The label on an arrow: muted text on the page's color. Mermaid sizes the label before this CSS applies, so it gets no padding or border. */
+.cm-md-diagram svg .edgeLabel, .cm-md-diagram svg .edgeLabel .labelBkg, .cm-md-diagram svg .edgeLabel p, .cm-md-diagram svg .edgeLabel span { background-color: var(--background); color: var(--muted-foreground); font-size: 12px; font-weight: 400; opacity: 1; }
+.cm-md-diagram svg .edgeLabel p { margin: 0; }
+.cm-md-diagram svg .edgeLabel rect { fill: var(--background); opacity: 1; }
+/* A DBML table (lib/dbmldiagram.ts): the card of shadcn's table with a muted header and PK/FK badges. */
+.er-diagram { font-family: var(--font-sans); font-size: 13px; }
+.er-diagram text { dominant-baseline: central; }
+.er-diagram .er-card { fill: var(--card); stroke: none; }
+.er-diagram .er-head { fill: var(--muted); }
+.er-diagram .er-outline { fill: none; stroke: var(--border); }
+.er-diagram .er-divider, .er-diagram .er-line { fill: none; stroke: var(--border); stroke-width: 1px; }
+.er-diagram .er-line { stroke: var(--muted-foreground); }
+.er-diagram .er-title { fill: var(--foreground); font-weight: 500; }
+.er-diagram .er-name { fill: var(--foreground); }
+.er-diagram .er-type { fill: var(--muted-foreground); font: 12px var(--font-mono); }
+.er-diagram .er-badge { fill: none; stroke: var(--border); }
+.er-diagram .er-badge.pk { fill: var(--secondary); stroke: none; }
+.er-diagram .er-badge-text { fill: var(--muted-foreground); font-size: 11px; font-weight: 500; text-anchor: middle; }
+.er-diagram .er-badge-text.pk { fill: var(--secondary-foreground); }
 .cm-md-diagram.error { justify-content: flex-start; color: var(--destructive); font-family: var(--font-mono); font-size: 13px; white-space: pre-wrap; }
 
 /* Git conflicts: a color for each side, and the buttons above. */
@@ -580,8 +617,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .pref-row .subtitle { font-size: 13px; color: var(--muted-foreground); }
 .pref-row select, .pref-row input[type=number] { background: transparent; color: var(--foreground); border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px); padding: 6px 10px; font: inherit; box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
 .dialog.modal.preferences { width: 680px; height: min(680px, calc(100% - 64px)); padding: 0 24px 24px; }
-.dialog.modal.preferences header { margin: 0 -8px 8px 0; grid-template-columns: auto 1fr 28px; gap: 12px; }
-.dialog.modal.preferences header .pref-tabs { grid-column: 2; justify-self: start; margin: 0; }
+.dialog.modal.preferences header { margin: 0 -8px 8px 0; padding: 12px 0; min-height: 64px; grid-template-columns: 28px 1fr 28px; gap: 12px; }
+.dialog.modal.preferences header .pref-tabs { grid-column: 2; justify-self: center; align-self: center; margin: 0; }
 .pref-page h3 { margin: 24px 0 8px; font-size: 14px; font-weight: 600; color: var(--foreground); }
 .pref-page .pref-group:first-child h3, .pref-page > h3:first-child { margin-top: 4px; }
 .pref-group .description { margin: -4px 0 10px; color: var(--muted-foreground); font-size: 13px; }
@@ -785,9 +822,9 @@ input[type=checkbox]:not([role=switch]):disabled { opacity: .5; cursor: default;
 .gallery-card .cover .delete { position: absolute; top: 4px; right: 4px; min-width: 34px; min-height: 34px; background: #000000a6; color: #fff; border-radius: 50%; }
 .gallery-card .cover .delete:hover { background: #000000cc; }
 .gallery-card .text { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; } .gallery-card h3 { margin: 0; font-size: 15px; } .gallery-card p { margin: 0; }
-/* The chips of a gallery card are stacked, each as wide as the card, as the GTK gallery had them. */
-.gallery-card .badges { display: flex; flex-direction: column; gap: 6px; padding: 0 2px; } .gallery-card .badges:empty { display: none; }
-.gallery-card .badges .chip { justify-content: center; max-width: none; }
+/* The chips of a gallery card are as wide as their text and wrap onto the next line, as the badges of a shadcn card. */
+.gallery-card .badges { display: flex; flex-wrap: wrap; gap: 6px; } .gallery-card .badges:empty { display: none; }
+.gallery-card .badges .chip { justify-content: flex-start; max-width: 100%; }
 /* The covers: solid, in the eight colors of the tags. */
 .cover-0 { background: #4c9a6a !important; } .cover-1 { background: #3b7dd8 !important; } .cover-2 { background: #8e5bd6 !important; } .cover-3 { background: #d6602e !important; }
 .cover-4 { background: #c2417a !important; } .cover-5 { background: #2f8f99 !important; } .cover-6 { background: #8a7a1c !important; } .cover-7 { background: #5e6c84 !important; }

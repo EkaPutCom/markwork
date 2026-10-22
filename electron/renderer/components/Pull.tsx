@@ -7,6 +7,7 @@ import type { FileStatus, MergeMethod, PullComment, PullRequest } from '../../..
 import { DiffLines } from './Diff.js';
 import { Icon } from './Icons.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Select } from '../ui/select.js';
 
 const METHOD_NAME: Record<MergeMethod, string> = { merge: 'Merge commit', squash: 'Squash and merge', rebase: 'Rebase and merge' };
 const MARK: Record<FileStatus, string> = { added: 'A', modified: 'M', deleted: 'D', renamed: 'R' };
@@ -83,9 +84,9 @@ export function PullPage() {
                     {resolving !== null && <button className="button" onClick={() => client.abortPull()}>Abort merge</button>}
                     {open && (
                         <div className="merge-split">
-                            <select aria-label="Merge method" value={method} disabled={busy || resolving !== null} onChange={e => setMethod(e.target.value as MergeMethod)}>
+                            <Select aria-label="Merge method" value={method} disabled={busy || resolving !== null} onChange={e => setMethod(e.target.value as MergeMethod)}>
                                 {(Object.keys(METHOD_NAME) as MergeMethod[]).map(m => <option key={m} value={m}>{METHOD_NAME[m]}</option>)}
-                            </select>
+                            </Select>
                             <button className="button suggested" disabled={busy || resolving !== null || pull.mergeable === false} onClick={() => client.mergePull(method)}>{busy ? 'Merging…' : 'Merge'}</button>
                         </div>
                     )}

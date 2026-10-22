@@ -10,7 +10,9 @@ import { isAbsolutePath, slashed } from '../../../src/markdown/paths.js';
 
 const MAX_HEIGHT = 480, MAX_WIDTH = 700;
 
-export interface ZoomedImage { src: string; title: string }
+// A picture shown large: a file (src), or a drawn diagram (svg, with its size in pixels) which the viewer puts in the page so that
+// the theme's colors reach it.
+export interface ZoomedImage { src: string; title: string; svg?: string; width?: number; height?: number }
 
 const PATHS: PathOps = {
     isAbsolute: isAbsolutePath,
