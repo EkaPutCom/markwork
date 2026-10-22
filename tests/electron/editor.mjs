@@ -445,8 +445,12 @@ try {
     await step('imagezoom: the window moves by its header and resizes by its corner', async () => {
         await setDoc('![A small one](images/small.png)', 0);
         await page.waitForFunction(() => [...document.querySelectorAll('.cm-md-pictures img')].some(i => i.naturalWidth > 0));
-        await editor.locator('.cm-md-pictures img').first().dblclick();
         const win = page.locator('.image-viewer .viewer-window');
+        // The picture may still be settling after the text was set: a double click that lands before it is ready opens nothing.
+        for (let tries = 0; tries < 4 && !(await win.isVisible()); tries++) {
+            await editor.locator('.cm-md-pictures img').first().dblclick();
+            await win.waitFor({ timeout: 3000 }).catch(() => {});
+        }
         await win.waitFor();
         const rect = () => win.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
         const before = await rect();
