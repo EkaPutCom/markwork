@@ -78,8 +78,12 @@ try {
         await page.mouse.down();
         await page.mouse.move(t.x + 60, t.y + 40, { steps: 4 });
         await page.mouse.move(target.x + target.width - 40, target.y + 300, { steps: 10 });
-        await page.locator('.pane-zone').waitFor();
-        assert.equal(await page.locator('.pane-zone span').textContent(), 'Split right');
+        // A dragover comes only now and then, so the pointer keeps moving at the edge until the zone is the one asked for.
+        await waitFor(async () => {
+            await page.mouse.move(target.x + target.width - 40, target.y + 300, { steps: 2 });
+            await page.mouse.move(target.x + target.width - 38, target.y + 302, { steps: 2 });
+            return (await page.locator('.pane-zone span').textContent().catch(() => null)) === 'Split right';
+        });
         await page.mouse.up();
         await waitFor(async () => (await panes.count()) === 3);
         assert.equal((await shown(2)).trim(), 'b.md');

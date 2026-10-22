@@ -166,14 +166,18 @@
 
 /* The document: tabs over the editor, the counts under it */
 .editor-group { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--background); }
-.tabs { flex: none; display: flex; justify-content: center; padding: 10px 16px 2px; min-width: 0; }
-.tabs .tab-list { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 8px; background: var(--muted); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-.tab { flex: 0 1 auto; min-width: 0; max-width: 240px; height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 12px; border-radius: 6px; cursor: pointer; user-select: none; font-size: 14px; font-weight: 500; color: var(--muted-foreground); }
+.tabs { flex: none; display: flex; min-width: 0; background: color-mix(in oklab, var(--muted) 40%, var(--background)); border-bottom: 1px solid var(--border); }
+.tabs .tab-list, .pane-tabs .tab-list { display: flex; align-items: stretch; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.tab { position: relative; flex: 0 1 auto; min-width: 0; max-width: 220px; height: 35px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-right: 1px solid var(--border); cursor: pointer; user-select: none; font-size: 13px; color: var(--muted-foreground); }
 .tab:hover { color: var(--foreground); }
-.tab.active { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
-.tab .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--warning); flex: none; }
+.tab.active { background: var(--background); color: var(--foreground); }
+.tab.active::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--primary); }
+.tab.active::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--background); }
+.tab .file { flex: none; color: var(--primary); }
+.tab .dot { width: 8px; height: 8px; border-radius: 4px; background: var(--foreground); flex: none; margin-left: auto; }
 .tab .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tab .close { min-width: 20px !important; min-height: 20px !important; color: var(--muted-foreground); }
+.tab .close { flex: none; min-width: 20px !important; min-height: 20px !important; width: 20px; height: 20px; border-radius: 4px; color: var(--muted-foreground); }
+.tab .dot + .close { margin-left: -2px; }
 /* The close button of a tab not shown is there (for the keyboard and a screen reader) but seen only on hover. */
 .tab:not(.active):not(:hover) .close:not(:focus-visible) { opacity: 0; }
 
@@ -185,11 +189,11 @@
 .pane-body { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
 .pane:not(.solo).current { box-shadow: inset 0 2px 0 var(--primary); }
 .pane:not(.solo):not(.current) .tab.active { color: var(--muted-foreground); }
+.pane:not(.solo) .tab.active::before { display: none; }
 /* The bar of a pane when there are several: its tabs, its Visual / Markdown switch, and its actions. */
-.pane-bar { flex: none; height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 40%, var(--background)); }
+.pane-bar { flex: none; height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 0; border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 40%, var(--background)); }
 .pane-bar .spacer { flex: 1; }
-.pane-tabs { min-width: 0; display: flex; }
-.pane-tabs .tab-list { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 8px; background: var(--muted); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.pane-tabs { min-width: 0; align-self: stretch; display: flex; }
 .tab.drop-before { box-shadow: inset 2px 0 0 var(--primary); }
 @container pane (max-width: 430px) { .pane-bar .mode-switch .label-text { display: none; } .pane-bar .mode-switch button { padding: 0 7px; } }
 .pane-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 24px; text-align: center; color: var(--muted-foreground); }
