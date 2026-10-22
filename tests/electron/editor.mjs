@@ -488,7 +488,7 @@ try {
         await page.getByText('There is no image on this line').waitFor();
     });
 
-    await step('imagezoom: a diagram opens the viewer on a double click, a single click opens its source', async () => {
+    await step('imagezoom: a diagram opens the viewer on a double click, a single click picks it, and Edit source opens its source', async () => {
         await setDoc('a\n```dbml\nTable t { id int [pk] }\n```\nb', 0);
         await editor.locator('.cm-md-diagram .er-diagram').waitFor();
         await editor.locator('.cm-md-diagram').dblclick();
@@ -500,6 +500,8 @@ try {
         await page.locator('.image-viewer').waitFor({ state: 'detached' });
         assert.equal(await editor.locator('.cm-md-diagram').count(), 1, 'a double click leaves the diagram drawn');
         await editor.locator('.cm-md-diagram').click();
+        await editor.locator('.cm-md-diagram.picked').waitFor();
+        await editor.locator('.cm-md-diagram .cm-md-block-tool[title="Edit source"]').click();
         await editor.locator('.cm-md-diagram').waitFor({ state: 'detached' });
     });
 

@@ -6,6 +6,8 @@
 import { WidgetType, type EditorView } from '@codemirror/view';
 import { DbmlError } from '../../../src/markdown/dbml.js';
 import { dbmlToSvg } from './dbmldiagram.js';
+import { DELETE_ICON, SOURCE_ICON, ZOOM_ICON, blockTools, copyTool } from './blocktools.js';
+import { fencedBlockAt, pick, removeBlock } from './blockselect.js';
 import type { ZoomedImage } from './images.js';
 import type { Kind } from '../../../src/markdown/diagram.js';
 
@@ -98,9 +100,6 @@ function zoomed(box: HTMLElement, title: string): ZoomedImage | null {
     return { src: '', title, svg: copy.outerHTML, width, height };
 }
 
-// A click opens the source, a double click zooms: the click waits a moment to see if a second one follows.
-const DOUBLE_CLICK_MS = 250;
-
 export class DiagramWidget extends WidgetType {
     constructor(private readonly kind: Kind, private readonly source: string, private readonly onOpen: (view: EditorView, element: HTMLElement) => void, private readonly onZoom: (image: ZoomedImage) => void, private readonly dim = false) { super(); }
 
@@ -110,21 +109,29 @@ export class DiagramWidget extends WidgetType {
         const box = document.createElement('div');
         box.className = 'cm-md-diagram' + (this.dim ? ' cm-md-dim' : '');
         box.textContent = 'Drawing the diagram…';
+        const title = this.kind === 'dbml' ? 'DBML diagram' : 'Mermaid diagram';
+        const zoom = () => { const image = zoomed(box, title); if (image) this.onZoom(image); };
         void render(this.kind, this.source, isDark()).then(result => {
             if (result.ok) {
                 box.innerHTML = result.svg;
+                box.append(blockTools([
+                    { label: 'Zoom', icon: ZOOM_ICON, run: zoom },
+                    { label: 'Edit source', icon: SOURCE_ICON, run: () => this.onOpen(view, box) },
+                    copyTool(() => this.source),
+                    { label: 'Delete', icon: DELETE_ICON, run: () => { const b = fencedBlockAt(view, box, 'diagram'); if (b) removeBlock(view, b); } },
+                ]));
             } else {
                 box.classList.add('error');
                 box.textContent = result.error;
             }
             view.requestMeasure();
         });
-        let pending: ReturnType<typeof setTimeout> | undefined;
+        // A click picks the diagram as one object (blockselect.ts); a double click zooms. Its source opens from the toolbar.
         box.addEventListener('mousedown', event => {
             event.preventDefault();
-            clearTimeout(pending);
-            if (event.detail < 2) { pending = setTimeout(() => this.onOpen(view, box), DOUBLE_CLICK_MS); return; }
-            const image = zoomed(box, this.kind === 'dbml' ? 'DBML diagram' : 'Mermaid diagram');
+            const block = fencedBlockAt(view, box, 'diagram');
+            if (event.detail < 2) { if (block) pick(view, block); return; }
+            const image = zoomed(box, title);
             if (image) this.onZoom(image); else this.onOpen(view, box);
         });
         return box;

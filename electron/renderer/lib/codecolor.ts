@@ -9,6 +9,8 @@ import { classHighlighter, highlightTree } from '@lezer/highlight';
 import { Decoration, WidgetType, type EditorView } from '@codemirror/view';
 import type { CodeBlock } from '../../../src/markdown/highlight.js';
 import { diagramKind } from '../../../src/markdown/diagram.js';
+import { DELETE_ICON, blockTools, copyTool } from './blocktools.js';
+import { fencedBlockAt, pick, removeBlock } from './blockselect.js';
 
 const loaded = new Map<string, LanguageSupport | null>();   // null = no such language, or it failed to load
 const loading = new Set<string>();
@@ -127,7 +129,7 @@ export class CodeBoxWidget extends WidgetType {
         box.className = 'cm-md-codebox' + (this.dim ? ' cm-md-dim' : '');
         const pre = document.createElement('pre');
         paint(pre, this.text, this.spans);
-        box.append(pre);
+        box.append(pre, blockTools([copyTool(() => boxes.get(box)?.text ?? this.text), { label: 'Delete', icon: DELETE_ICON, run: () => { const b = fencedBlockAt(view, box, 'code'); if (b) removeBlock(view, b); } }]));
         boxes.set(box, this);
         if (this.editable) this.edit(view, box, pre);
         else box.addEventListener('mousedown', event => {
@@ -178,6 +180,27 @@ export class CodeBoxWidget extends WidgetType {
             view.dispatch({ selection: { anchor: below ? line.from : line.to }, scrollIntoView: true });
             view.focus();
         };
+        // Out of the box onto a new line under it. `dropEmptyLine`: the code's last line is the empty one Enter just made; it goes.
+        const exitBelow = (dropEmptyLine: boolean) => {
+            const { doc } = view.state, { closing } = codeRange(view, box, here().lines), end = doc.line(closing);
+            const list: { from: number; to?: number; insert: string }[] = [{ from: end.to, insert: '\n' }];
+            if (dropEmptyLine && closing - 1 > 0) { const last = doc.line(closing - 1); list.unshift({ from: last.from - 1, to: last.to, insert: '' }); }
+            const changes = view.state.changes(list);
+            view.dispatch({ changes, selection: { anchor: changes.mapPos(end.to, -1) + 1 }, scrollIntoView: true, userEvent: 'input' });
+            view.focus();
+        };
+        // Esc, or a click on the box around the code, picks the block as one object (blockselect.ts).
+        const pickBox = () => { const b = fencedBlockAt(view, box, 'code'); if (b) pick(view, b); };
+        box.addEventListener('mousedown', event => { if (event.target === box) { event.preventDefault(); pickBox(); } });
+        // On an empty last line Enter leaves the block; the box says so while the caret is there.
+        const atEmptyEnd = () => {
+            const sel = selectionIn(pre), code = pre.textContent ?? '';
+            return !!sel && sel[0] === sel[1] && sel[1] === code.length && /\n[ \t]*$/.test(code);
+        };
+        const hint = () => box.classList.toggle('exit-hint', document.activeElement === pre && atEmptyEnd());
+        pre.addEventListener('keyup', hint);
+        pre.addEventListener('mouseup', () => requestAnimationFrame(hint));
+        pre.addEventListener('focusout', () => box.classList.remove('exit-hint'));
         pre.addEventListener('beforeinput', event => { if (/^(historyUndo|historyRedo|format)/.test(event.inputType)) event.preventDefault(); });
         pre.addEventListener('input', event => { if (!(event as InputEvent).isComposing) commit(); });
         pre.addEventListener('compositionend', commit);
@@ -185,7 +208,10 @@ export class CodeBoxWidget extends WidgetType {
         pre.addEventListener('keyup', place);
         pre.addEventListener('mouseup', () => requestAnimationFrame(place));
         pre.addEventListener('keydown', event => {
-            if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
+            if (event.isComposing) return;
+            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); exitBelow(false); return; }
+            if (event.ctrlKey || event.metaKey || event.altKey) return;
+            if (event.key === 'Enter' && !event.shiftKey && atEmptyEnd()) { event.preventDefault(); exitBelow(true); return; }
             const sel = selectionIn(pre), code = pre.textContent ?? '';
             // Tab indents; Enter starts a line of code with the indent of the one it is on. (The browser's own line break
             // in an editable element is not always a plain one.)
@@ -199,7 +225,7 @@ export class CodeBoxWidget extends WidgetType {
             };
             if (event.key === 'Tab' && !event.shiftKey) insert('  ');
             else if (event.key === 'Enter') insert('\n' + /^[ \t]*/.exec(code.slice(code.lastIndexOf('\n', Math.min(...(sel ?? [0])) - 1) + 1))![0]);
-            else if (event.key === 'Escape') { event.preventDefault(); leave(true); }
+            else if (event.key === 'Escape') { event.preventDefault(); pickBox(); }
             else if (event.key === 'ArrowUp' && sel && sel[0] === sel[1] && !code.slice(0, sel[1]).includes('\n')) { event.preventDefault(); leave(false); }
             else if (event.key === 'ArrowDown' && sel && sel[0] === sel[1] && !code.slice(sel[1]).includes('\n')) { event.preventDefault(); leave(true); }
         });

@@ -218,7 +218,8 @@ export function selectionMenu(run: RunCommand, on: (state: EditorState) => boole
 
 // What the box under the cursor edits: the text it replaces (a selection, or a whole [text](url) link the cursor is in),
 // that link's text and address, whatever follows the address inside the brackets (a title), and whether the text is asked for.
-interface LinkEdit { from: number; to: number; text: string; url: string; rest: string; existing: boolean; askText: boolean }
+// An image (![alt](url)) is edited by the same box, its alt text in place of the text.
+interface LinkEdit { from: number; to: number; text: string; url: string; rest: string; existing: boolean; askText: boolean; image?: boolean }
 
 const setLinkEdit = StateEffect.define<LinkEdit | null>();
 const linkEdit = StateField.define<LinkEdit | null>({
@@ -246,8 +247,9 @@ function linkEditDom(view: EditorView, edit: LinkEdit): TooltipView {
         dom.append(row);
         return field;
     };
-    const text = edit.askText ? input('Text', edit.text, 'What the link says') : null;
-    const url = input('Link', edit.url, 'https://… or a file path');
+    const text = edit.image ? input('Alt text', edit.text, 'What the image shows')
+        : edit.askText ? input('Text', edit.text, 'What the link says') : null;
+    const url = edit.image ? input('Image', edit.url, 'https://… or a file path') : input('Link', edit.url, 'https://… or a file path');
     const close = () => { view.dispatch({ effects: setLinkEdit.of(null) }); view.focus(); };
     const replace = (insert: string) => {
         view.dispatch({ changes: { from: edit.from, to: edit.to, insert }, selection: { anchor: edit.from + insert.length }, userEvent: 'input' });
@@ -263,13 +265,15 @@ function linkEditDom(view: EditorView, edit: LinkEdit): TooltipView {
         buttons.append(b);
         return b;
     };
-    if (edit.existing) button('Remove link', 'button', () => replace(edit.text)).classList.add('remove');
+    if (edit.image) button('Remove image', 'button', () => replace('')).classList.add('remove');
+    else if (edit.existing) button('Remove link', 'button', () => replace(edit.text)).classList.add('remove');
     button('Apply', 'submit').classList.add('apply');
     dom.append(buttons);
     dom.addEventListener('submit', event => {
         event.preventDefault();
         const address = url.value.trim().replace(/\s/g, '%20');
         if (!address) { close(); return; }
+        if (edit.image) { replace(`![${text!.value.trim()}](${address}${edit.rest})`); return; }
         const label = ((text ? text.value : edit.text).trim()) || address;
         replace(`[${label}](${address}${edit.rest})`);
     });
@@ -304,6 +308,17 @@ export function openLinkEditor(view: EditorView): void {
     const picked = state.sliceDoc(sel.from, sel.to);
     const isUrl = /^(?:https?:|mailto:)\S+$/.test(picked);
     open({ from: sel.from, to: sel.to, text: isUrl ? '' : picked, url: isUrl ? picked : '', rest: '', existing: false, askText: sel.empty || isUrl });
+}
+
+// Open the box for the image at `url` (as written) on the line at `pos`; nth tells copies of one address apart.
+export function openImageEditor(view: EditorView, pos: number, url: string, nth = 0): void {
+    const line = view.state.doc.lineAt(pos);
+    for (const m of line.text.matchAll(/!\[([^\]]*)\]\(([^)\s]*)([^)]*)\)/g)) {
+        if (m[2] !== url || nth-- > 0) continue;
+        const from = line.from + m.index;
+        view.dispatch({ effects: setLinkEdit.of({ from, to: from + m[0].length, text: m[1], url: m[2], rest: m[3], existing: true, askText: true, image: true }) });
+        return;
+    }
 }
 
 export const linkEditor: Extension = linkEdit;

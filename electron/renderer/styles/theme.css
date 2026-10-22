@@ -286,6 +286,9 @@
 .cm-editor .cm-selection-menu button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 28px; height: 28px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
 .cm-editor .cm-selection-menu button:hover { background: var(--accent); color: var(--accent-foreground); }
 .cm-selection-menu .sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
+.cm-editor .cm-tooltip.cm-link-open { display: flex; gap: 2px; background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%); font-family: var(--font-sans); padding: 3px; }
+.cm-link-open button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; font: 500 12px var(--font-sans); cursor: pointer; }
+.cm-link-open button:hover { background: var(--accent); color: var(--accent-foreground); }
 .cm-editor .cm-tooltip.cm-link-editor { background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%); font-family: var(--font-sans); }
 .cm-editor .cm-tooltip.cm-link-editor { display: flex; margin-top: 6px; flex-direction: column; gap: 8px; width: 320px; padding: 10px; font-size: 13px; }
 .cm-editor .cm-link-editor label { display: flex; flex-direction: column; gap: 4px; color: var(--muted-foreground); font-weight: 500; }
@@ -394,7 +397,26 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 
 /* Pictures under the text, and the large view. */
 .cm-md-pictures { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; }
-.cm-md-pictures img { border-radius: 6px; cursor: zoom-in; object-fit: contain; }
+.cm-md-picture { position: relative; display: inline-flex; }
+.cm-md-picture.small .cm-md-block-tools { display: none; }
+/* A picked object (blockselect.ts): a ring, its toolbar, and a hint of the keys; the editor's own cursor is hidden meanwhile,
+   and a picture shows the cursor on its right, where Enter and typing go. */
+.cm-md-picture.picked img, .cm-md-codebox.picked, .cm-md-diagram.picked { outline: 2px solid var(--ring); outline-offset: 2px; }
+.cm-md-diagram.picked { border-radius: 8px; }
+.cm-md-picture.picked .cm-md-block-tools, .cm-md-codebox.picked .cm-md-block-tools, .cm-md-diagram.picked .cm-md-block-tools { opacity: 1; }
+.cm-md-picture.picked::after { content: ''; position: absolute; top: 0; bottom: 0; right: -7px; width: 2px; background: var(--foreground); animation: picture-caret 1.1s steps(1) infinite; }
+.cm-editor:not(.cm-focused) .cm-md-picture.picked::after { display: none; }
+.cm-editor .cm-tooltip.cm-block-hint { display: flex; gap: 12px; padding: 4px 8px; background: var(--popover); color: var(--muted-foreground); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 8px rgb(0 0 0 / 8%); font: 12px var(--font-sans); }
+.cm-editor:not(.cm-focused) .cm-tooltip.cm-block-hint { display: none; }
+.cm-editor .cm-tooltip.cm-block-hint { z-index: 30; }   /* under a dialog over the editor (the image viewer, 35) */
+.cm-block-hint kbd { padding: 0 4px; border: 1px solid var(--border); border-radius: 3px; background: var(--muted); color: var(--foreground); font: 500 11px var(--font-sans); }
+.cm-editor.cm-block-picked .cm-cursor { display: none !important; }
+@keyframes picture-caret { 50% { opacity: 0; } }
+.cm-md-block-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; padding: 3px; border-radius: 6px; background: color-mix(in oklab, var(--foreground) 80%, transparent); opacity: 0; transition: opacity .12s; z-index: 1; }
+.cm-md-picture:hover .cm-md-block-tools, .cm-md-diagram:hover .cm-md-block-tools, .cm-md-codebox:hover .cm-md-block-tools, .cm-md-block-tools:focus-within { opacity: 1; }
+.cm-md-block-tool { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: var(--background); cursor: pointer; }
+.cm-md-block-tool:hover { background: color-mix(in oklab, var(--background) 22%, transparent); }
+.cm-md-pictures img { border-radius: 6px; cursor: default; object-fit: contain; }
 .cm-md-picture-missing { color: var(--muted-foreground); font-style: italic; }
 /* The image viewer: a window of its own, as GTK's — the title and the size in its header, a dark canvas, the zoom bar. */
 .image-viewer { position: fixed; inset: 0; z-index: 35; background: #00000052; display: flex; align-items: center; justify-content: center; }
@@ -445,7 +467,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .cm-editor .cm-content .cm-md-table-grid .cm-md-cell:focus ::selection, .cm-editor .cm-content .cm-md-table-grid .cm-md-cell:focus::selection { background: var(--sel) !important; }   /* CodeMirror draws its own selection and hides the browser's */
 
 /* Mermaid and DBML drawn as pictures. */
-.cm-md-diagram { contain: inline-size; min-width: 0; max-width: 100%; padding: 12px 0; display: flex; justify-content: center; overflow-x: auto; cursor: text; color: var(--muted-foreground); }
+.cm-md-diagram { position: relative; contain: inline-size; min-width: 0; max-width: 100%; padding: 12px 0; display: flex; justify-content: center; overflow-x: auto; cursor: default; color: var(--muted-foreground); }
 .cm-md-diagram svg { max-width: 100%; height: auto; font-family: var(--font-sans); }
 .cm-md-diagram svg .node rect, .cm-md-diagram svg .node polygon, .cm-md-diagram svg .node path, .cm-md-diagram svg .node circle, .cm-md-diagram svg .cluster rect { stroke-width: 1px; filter: none; }
 .cm-md-diagram svg .node rect, .cm-md-diagram svg .cluster rect { rx: 8px; ry: 8px; }
@@ -489,9 +511,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .cm-md-dim { opacity: .35; }
 
 /* A code block as a box that scrolls sideways. */
-.cm-md-codebox { contain: inline-size; min-width: 0; max-width: 100%; box-sizing: border-box; margin: 8px 0; padding: 8px 12px; background: var(--code-bg); border-radius: 8px; overflow-x: auto; cursor: text; }
+.cm-md-codebox { position: relative; contain: inline-size; min-width: 0; max-width: 100%; box-sizing: border-box; margin: 8px 0; padding: 8px 12px; background: var(--code-bg); border-radius: 8px; overflow-x: auto; cursor: text; }
 .cm-md-codebox pre { margin: 0; font-family: var(--font-mono); font-size: 14px; line-height: 1.5; white-space: pre; }
 .cm-md-codebox pre.cm-md-codeedit { min-height: 1.5em; outline: none; }
+.cm-md-codebox.exit-hint::after { content: 'Press Enter again to leave the code block'; position: absolute; right: 12px; bottom: 8px; font: 12px var(--font-sans); color: var(--muted-foreground); pointer-events: none; }
 .cm-editor .cm-content .cm-md-codeedit:focus ::selection, .cm-editor .cm-content .cm-md-codeedit:focus::selection { background: var(--sel) !important; }
 
 /* The Outline panel. */
