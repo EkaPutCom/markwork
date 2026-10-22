@@ -62,7 +62,7 @@
 .headerbar .title .name { color: var(--foreground); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .headerbar .title-button { display: inline-flex; align-items: center; gap: 6px; min-width: 0; height: 32px; padding: 0 8px; margin-left: -8px; border-radius: 6px; }
 .headerbar .title-button:hover, .headerbar .title-button[aria-expanded=true] { background: var(--accent); }
-.headerbar .state { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 22px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.headerbar .state { position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; height: 22px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
 .headerbar .state .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--warning); }
 .headerbar .state svg { color: var(--success); }
 .headerbar .spacer { flex: 1; }
@@ -270,7 +270,8 @@
    switch and the buttons, the Saved badge and the split button, and at last the switch itself. */
 @container headerbar (max-width: 1000px) { .headerbar .title .contents { display: none; } }
 @container headerbar (max-width: 820px) { .mode-switch .label-text { display: none; } .mode-switch button { padding: 0 7px; } .headerbar .label-text { display: none; } }
-@container headerbar (max-width: 700px) { .headerbar .state, .headerbar .header-split { display: none; } }
+/* The badge keeps its mark and loses its word (still read by a screen reader). */
+@container headerbar (max-width: 700px) { .headerbar .header-split { display: none; } .headerbar .state { padding: 0 6px; } .headerbar .state .word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 @container headerbar (max-width: 660px) { .mode-switch { display: none; } }
 /* The menu is the tooltip itself, so it outranks CodeMirror's own tooltip colors. */
 .cm-editor .cm-tooltip.cm-selection-menu { display: flex; align-items: center; gap: 2px; padding: 4px; background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%); font-family: var(--font-sans); }

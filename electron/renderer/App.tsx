@@ -62,9 +62,9 @@ function SaveState() {
     const s = useStore();
     const tab = s.tabs.find(t => t.id === s.active);
     if (!tab || tab.page === 'home' || tab.page === 'programs' || tab.page === 'html') return null;
-    if (tab.mirror.modified) return <span className="state"><span className="dot" aria-hidden="true" />Unsaved</span>;
+    if (tab.mirror.modified) return <span className="state"><span className="dot" aria-hidden="true" /><span className="word">Unsaved</span></span>;
     if (!tab.file) return null;
-    return <span className="state"><Icon name="emblem-ok" size={12} />Saved</span>;
+    return <span className="state"><Icon name="emblem-ok" size={12} /><span className="word">Saved</span></span>;
 }
 
 // One line of a menu: a command (with the argument it runs with), a heading over what follows, or a separator. A line
