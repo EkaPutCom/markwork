@@ -30,7 +30,8 @@ try {
     page = await app.firstWindow();
     await page.setViewportSize({ width: 1400, height: 900 });
     const activity = page.getByRole('navigation', { name: 'Sidebar pages' });
-    const view = name => activity.getByRole('button', { name, exact: true });
+    // Programs says how many are missing in its name, which depends on what the machine has installed.
+    const view = name => activity.getByRole('button', name === 'Programs' ? { name: /^Programs/ } : { name, exact: true });
     const files = page.getByRole('complementary', { name: 'Files' });
     const section = id => page.locator(`.section[data-section="${id}"]`);
     const head = id => section(id).locator('.section-head');

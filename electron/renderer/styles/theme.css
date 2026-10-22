@@ -57,7 +57,7 @@
 
 /* The header of the document: the sidebar trigger, the breadcrumb (the Document Menu), the state, then the actions. */
 .headerbar { height: 48px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--background); }
-.headerbar .title { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted-foreground); font-size: 14px; }
+.headerbar .title { display: flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 12ch; color: var(--muted-foreground); font-size: 14px; }
 .headerbar .title .crumb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 18ch; }
 .headerbar .title .name { color: var(--foreground); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .headerbar .title-button { display: inline-flex; align-items: center; gap: 6px; min-width: 0; height: 32px; padding: 0 8px; margin-left: -8px; border-radius: 6px; }
@@ -266,7 +266,11 @@
 /* The switch gives way before the title does: icons only in a narrower header, and none in a narrow one (the layout
    menu and Ctrl+Shift+M still switch). */
 .headerbar { container: headerbar / inline-size; }
-@container headerbar (max-width: 820px) { .mode-switch .label-text { display: none; } .mode-switch button { padding: 0 7px; } }
+/* The header gives way in this order, so the name of the document stays readable: the folders above it, the labels of the
+   switch and the buttons, the Saved badge and the split button, and at last the switch itself. */
+@container headerbar (max-width: 1000px) { .headerbar .title .contents { display: none; } }
+@container headerbar (max-width: 820px) { .mode-switch .label-text { display: none; } .mode-switch button { padding: 0 7px; } .headerbar .label-text { display: none; } }
+@container headerbar (max-width: 700px) { .headerbar .state, .headerbar .header-split { display: none; } }
 @container headerbar (max-width: 660px) { .mode-switch { display: none; } }
 /* The menu is the tooltip itself, so it outranks CodeMirror's own tooltip colors. */
 .cm-editor .cm-tooltip.cm-selection-menu { display: flex; align-items: center; gap: 2px; padding: 4px; background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%); font-family: var(--font-sans); }

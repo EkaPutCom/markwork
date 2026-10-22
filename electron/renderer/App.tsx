@@ -191,7 +191,7 @@ function HeaderBar() {
                     <MenuContent items={layoutItems} className="layout-menu min-w-52" />
                 </DropdownMenu>
             )}
-            <Button variant="ghost" size="icon-sm" title={`Split Editor Right (${label(keyOf('split-right') ?? '')})`} aria-label="Split Editor Right" onClick={() => client.run('split-right')}>
+            <Button variant="ghost" size="icon-sm" className="header-split" title={`Split Editor Right (${label(keyOf('split-right') ?? '')})`} aria-label="Split Editor Right" onClick={() => client.run('split-right')}>
                 <Icon name="split-right" />
             </Button>
             <div className="split-button">

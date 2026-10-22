@@ -19,6 +19,7 @@ const app = await launchApp({ scratch, notes });
 let failed = false;
 try {
     const page = await app.firstWindow();
+    await page.setViewportSize({ width: 1400, height: 900 });   // the switch gives way in a narrow header
     const editor = page.locator('.cm-content');
     const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
     const mode = page.getByRole('group', { name: 'Editing mode' });
