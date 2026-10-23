@@ -169,7 +169,7 @@ export function visualEditing(conceal: (state: EditorState) => Concealed, on: (s
 
 const SELECTION_BUTTONS: [id: string, label: string, icon: IconName][] = [
     ['bold', 'Bold', 'format-bold'], ['italic', 'Italic', 'format-italic'], ['strike', 'Strikethrough', 'format-strike'],
-    ['inline-code', 'Inline Code', 'format-code'], ['link', 'Insert Link', 'format-link'],
+    ['highlight', 'Highlight', 'format-highlight'], ['inline-code', 'Inline Code', 'format-code'], ['link', 'Insert Link', 'format-link'],
 ];
 
 function selectionMenuDom(run: RunCommand): HTMLElement {

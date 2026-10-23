@@ -280,6 +280,20 @@ try {
         await menu.waitFor({ state: 'detached' });
     });
 
+    await step('Highlight is in the toolbar and the selection menu, pressed in ==highlighted== text, and on Ctrl+Alt+H', async () => {
+        await setDoc('mark this', 5, 9);
+        await page.getByRole('toolbar', { name: 'Format the selection' }).getByRole('button', { name: 'Highlight' }).click();
+        assert.equal(await docText(), 'mark ==this==');
+        await setDoc('mark ==this==', 9);
+        await waitFor(async () => await toolbar.getByRole('button', { name: 'Highlight' }).getAttribute('aria-pressed') === 'true');
+        await setDoc('one two', 0, 3);
+        await toolbar.getByRole('button', { name: 'Highlight' }).click();
+        assert.equal(await docText(), '==one== two');
+        await setDoc('one two', 4, 7);
+        await page.keyboard.press('Control+Alt+h');
+        assert.equal(await docText(), 'one ==two==');
+    });
+
     await step('Insert Link asks for the address in a box: a selection becomes a link, and Remove link undoes it', async () => {
         await setDoc('see the docs', 8, 12);
         await toolbar.getByRole('button', { name: 'Insert Link' }).click();

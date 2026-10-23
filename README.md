@@ -191,7 +191,7 @@ On macOS, `Ctrl` in the table is `⌘`.
 | Ctrl+S / Ctrl+Shift+S | Save / save as |
 | Ctrl+Shift+E | Export HTML |
 | Ctrl+F / Ctrl+H | Find / find and replace (in a CSV table: in its cells) |
-| Ctrl+Shift+F | Search in all notes (the Search tab) |
+| Ctrl+Shift+F / Ctrl+Shift+H | Search / replace in all notes (the Search tab) |
 | Ctrl+R / F5 | Reload, in an HTML page tab |
 | Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y | Undo / redo (also for changes on a kanban board) |
 | Ctrl+Shift+B | Kanban board or inbox: switch between the board/inbox view and the text |
@@ -199,7 +199,7 @@ On macOS, `Ctrl` in the table is `⌘`.
 | Ctrl+B | Bold |
 | Ctrl+I | Italic |
 | Ctrl+Shift+X or Alt+Shift+5 | Strikethrough |
-| Ctrl+Shift+H | Highlight |
+| Ctrl+Alt+H | Highlight |
 | Ctrl+` | Inline code |
 | Ctrl+K | Link |
 | Ctrl+Shift+I | Insert an image |
