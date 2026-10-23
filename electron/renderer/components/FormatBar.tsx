@@ -74,6 +74,7 @@ export function FormatBar({ pane }: { pane: Pane }) {
             {tool('bold', 'Bold', 'format-bold', marks.has('bold'))}
             {tool('italic', 'Italic', 'format-italic', marks.has('italic'))}
             {tool('strike', 'Strikethrough', 'format-strike', marks.has('strike'))}
+            {tool('highlight', 'Highlight', 'format-highlight', marks.has('mark'))}
             {tool('inline-code', 'Inline Code', 'format-code', marks.has('code'))}
             {tool('link', 'Insert Link', 'format-link', marks.has('link'))}
             <span className="sep" aria-hidden="true" />

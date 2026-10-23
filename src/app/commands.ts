@@ -150,7 +150,7 @@ export const COMMANDS: readonly Command[] = [
     wrap('italic', _('Italic'), ['Ctrl+i'], '*'),
     wrap('strike', _('Strikethrough'), ['Alt+Shift+5', 'Ctrl+Shift+x'], '~~'),
     wrap('inline-code', _('Inline Code'), ['Ctrl+`'], '`'),
-    wrap('highlight', _('Highlight'), ['Ctrl+Shift+h'], '=='),
+    wrap('highlight', _('Highlight'), ['Ctrl+Alt+h'], '=='),
     command('link', { label: _('Insert Link'), keys: ['Ctrl+k'], scope: 'text', editor: h => h.edit.link() }),
     command('image', { label: _('Insert Image…'), keys: ['Ctrl+Shift+i'], scope: 'text', run: h => void h.insertImage() }),
     command('zoom-image', { label: _('Zoom Image'), scope: 'text', editor: h => h.edit.zoomImage() }),

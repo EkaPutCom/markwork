@@ -123,6 +123,8 @@ export async function appSessionTests(): Promise<void> {
     section('Command registry');
     await test('ids are unique, keys are well formed, and the palette order is kept', () => {
         eq(new Set(COMMANDS.map(c => c.id)).size, COMMANDS.length, 'duplicate command id');
+        const keys = COMMANDS.flatMap(c => c.keys);
+        eq(keys.filter((k, i) => keys.indexOf(k) !== i), [], 'a key that runs two commands runs only the first');
         for (const c of COMMANDS) for (const key of c.keys) ok(/^((Ctrl|Alt|Shift)\+)*(\S|[A-Z][A-Za-z0-9]+)$/.test(key), `${c.id}: ${key}`);
         eq(Object.keys(COMMAND_LABELS).slice(0, 3), ['new', 'open', 'open-folder']);
         eq(Object.keys(COMMAND_LABELS).at(-1), 'command-palette');

@@ -3,7 +3,7 @@
 
 import {
     ArrowUp, BetweenHorizontalEnd, BetweenVerticalEnd, Bold, BookOpen, Calendar, ChartColumn, ChartGantt, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, ChevronUp,
-    CircleAlert, CircleCheck, CircleMinus, Code, CodeXml, Columns2, Command, Copy, Ellipsis, EllipsisVertical, ExternalLink, FileOutput, FileText, Folder, GitPullRequest, GripVertical, Heading1, Heading2, Heading3, History, House,
+    CircleAlert, CircleCheck, CircleMinus, Code, CodeXml, Columns2, Command, Copy, Ellipsis, EllipsisVertical, ExternalLink, FileOutput, FileText, Folder, GitPullRequest, GripVertical, Heading1, Heading2, Heading3, Highlighter, History, House,
     Image, Info, Italic, LayoutGrid, Link, List, ListOrdered, ListTodo, ListTree, MessageSquare, Minus, Package, PanelLeft, Pencil, Plus, Redo2, RefreshCw, Rows2, Search, Settings, SlidersHorizontal, Sparkles,
     Square, SquareCode, SquareKanban, SquareTerminal, Strikethrough, Table, TextCursorInput, TextQuote, TextSearch, Trash2, TriangleAlert, Type, Undo2, X, ZoomIn, ZoomOut,
     type IconNode,
@@ -74,6 +74,7 @@ const ICONS = {
     'format-italic': Italic,
     'format-strike': Strikethrough,
     'format-code': Code,
+    'format-highlight': Highlighter,
     'format-link': Link,
     'format-text': Type,
     'format-h1': Heading1,
