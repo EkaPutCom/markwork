@@ -3,9 +3,9 @@
 // document, and the Timeline of its file. Which are folded or hidden, and their sizes, are a setting the window writes.
 
 import { Fragment, useRef, useState, type ReactNode } from 'react';
-import { relativeTime } from '../../../src/base/gitlog.js';
 import { FolderTree } from './Explorer.js';
 import { Icon } from './Icons.js';
+import { commitTime } from './notes.js';
 import { OutlineList } from './Outline.js';
 import { SECTIONS, type SectionId, type SectionState } from '../lib/client.js';
 import * as P from '../lib/panes.js';
@@ -53,14 +53,13 @@ function OpenEditors() {
 function Timeline() {
     const client = useClient();
     const { history } = useStore();
-    const now = Date.now() / 1000;
     if (history.commits.length === 0) return <p className="empty">{history.note || 'No history for this document.'}</p>;
     return (
         <div className="commits" aria-label="Timeline">
             {history.commits.map(c => (
                 <button key={c.hash} className="commit" onClick={() => client.openCommit(c.hash)}>
                     <span className="subject">{c.subject || '(no message)'}</span>
-                    <span className="meta">{c.author} · {relativeTime(c.time, now)}</span>
+                    <span className="meta">{c.author} · {commitTime(c.time)}</span>
                 </button>
             ))}
             {history.more && <button className="button" onClick={() => client.moreHistory()}>Load more</button>}

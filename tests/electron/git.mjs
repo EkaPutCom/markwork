@@ -46,7 +46,7 @@ try {
     await step('a commit opens in a viewer with its changes and its contents; Escape closes it', async () => {
         await history.getByRole('button', { name: /Add line two/ }).click();
         const viewer = page.getByRole('dialog', { name: /Add line two/ });
-        await viewer.locator('pre.diff .line.add', { hasText: 'two' }).waitFor();
+        await viewer.locator('pre.diff .cell.add', { hasText: 'two' }).waitFor();
         await viewer.getByRole('tab', { name: 'Contents' }).click();
         await viewer.locator('pre.contents', { hasText: 'two' }).waitFor();
         await page.keyboard.press('Escape');
@@ -56,7 +56,7 @@ try {
     await step('the uncommitted changes of a new file open with a commit form, and committing writes the commit', async () => {
         await history.getByRole('button', { name: 'b.md', exact: true }).click();
         const viewer = page.getByRole('dialog', { name: 'Changes to b.md' });
-        await viewer.locator('pre.diff .line.add', { hasText: 'brand new' }).waitFor();
+        await viewer.locator('pre.diff .cell.add', { hasText: 'brand new' }).waitFor();
         const commit = viewer.getByRole('button', { name: 'Commit', exact: true });
         assert.equal(await commit.isDisabled(), true, 'a message is needed');
         await viewer.getByLabel('Commit message').fill('Add b from the viewer');
@@ -136,9 +136,9 @@ try {
         const pullPage = page.locator('.pull-page');
         await pullPage.getByRole('heading', { name: /#7\s+Move the release/ }).waitFor();
         await pullPage.getByRole('button', { name: /plan\.md/ }).waitFor();
-        await pullPage.locator('pre.diff .line.add', { hasText: '22 November' }).waitFor();
+        await pullPage.locator('pre.diff .cell.add', { hasText: '22 November' }).waitFor();
         await pullPage.getByRole('tab', { name: 'Raw diff' }).click();
-        await pullPage.locator('pre.diff .line.add', { hasText: 'Ship 22 November' }).waitFor();
+        await pullPage.locator('pre.diff .cell.add', { hasText: 'Ship 22 November' }).waitFor();
         await pullPage.getByRole('button', { name: /logo\.png/ }).click();
         await pullPage.getByText(/binary file|no text change/).waitFor();
         await pullPage.getByRole('tab', { name: /Discussion/ }).click();

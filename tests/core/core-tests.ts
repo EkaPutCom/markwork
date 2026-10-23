@@ -30,6 +30,7 @@ import { csvTests } from '../unit/csv.js';
 import { pageTabTests } from '../unit/pagetabs.js';
 import { dbmlTests } from '../unit/dbml.js';
 import { gitLogTests } from '../unit/gitlog.js';
+import { diffViewTests } from '../unit/diffview.js';
 import { fileWriteTests } from '../unit/files.js';
 import { fileOpsTests } from '../unit/fileops.js';
 import { filesControllerTests } from '../unit/filescontroller.js';
@@ -109,6 +110,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     pageTabTests();
     dbmlTests();
     gitLogTests();
+    diffViewTests();
     await fileWriteTests();
     fileOpsTests();
     await filesControllerTests();
