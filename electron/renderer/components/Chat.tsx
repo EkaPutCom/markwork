@@ -192,7 +192,7 @@ export function ChatReview() {
         setBusy(false);
     };
     return (
-        <Modal title={`Agent proposal: ${title}`} onClose={() => client.chat.reject(view.ask, note)} wide>
+        <Modal title={`Agent proposal: ${title}`} onClose={() => client.chat.reject(view.ask, note)} wide className="diff-viewer">
             <div className="review">
                 <div className="info"><b>{title}</b>
                     <span className="side-meta">{view.changes.map(c => `${view.batch ? `${c.file}: ` : ''}${c.reason.trim()}`).join('\n').trim() || 'The agent gave no reason.'}</span></div>

@@ -3,11 +3,11 @@
 // runs git and the commit message writer; this draws what it sends and reports what the user did.
 
 import { useEffect, useMemo, useState } from 'react';
-import { relativeTime } from '../../../src/base/gitlog.js';
 import type { ChangeKind, ChangedFile, WriteResult } from '../../../src/app/protocol/history.js';
 import { DiffLines } from './Diff.js';
 import { Icon } from './Icons.js';
 import { Modal } from './Modals.js';
+import { commitTime } from './notes.js';
 import type { Client } from '../lib/client.js';
 import { useClient, useStore } from '../lib/useClient.js';
 
@@ -88,7 +88,6 @@ export function History() {
     const [folded, setFolded] = useState(false);
     // Every uncommitted file starts checked; a file the user unchecked stays so while it is in the list.
     const chosen = useMemo(() => changed.filter(c => !unchecked.has(c.path)).map(c => c.path), [changed, unchecked]);
-    const now = Date.now() / 1000;
     const state = changes?.state;
 
     return (
@@ -121,7 +120,7 @@ export function History() {
                     {commits.map(c => (
                         <button key={c.hash} className="commit" onClick={() => client.openCommit(c.hash)}>
                             <span className="subject">{c.subject || '(no message)'}</span>
-                            <span className="meta">{c.short} · {c.author} · {relativeTime(c.time, now)}</span>
+                            <span className="meta">{c.short} · {c.author} · {commitTime(c.time)}</span>
                         </button>
                     ))}
                     {history.more && <button className="button" onClick={() => client.moreHistory()}>Load more</button>}
@@ -141,9 +140,9 @@ function Viewer({ id }: { id: number }) {
     const name = file.split(/[\\/]/).pop() ?? file;
     const title = commit ? `${commit.subject || '(no message)'} · ${commit.short}` : `Changes to ${name}`;
     return (
-        <Modal title={title} wide onClose={() => client.closeViewer(id)}>
+        <Modal title={title} wide className="diff-viewer" onClose={() => client.closeViewer(id)}>
             <div className="viewer">
-                {commit && <p className="viewer-meta">{commit.author} · {relativeTime(commit.time, Date.now() / 1000)} · {name}</p>}
+                {commit && <p className="viewer-meta">{commit.author} · {commitTime(commit.time)} · {name}</p>}
                 {commit && (
                     <div className="pref-tabs" role="tablist">
                         {(['changes', 'contents'] as const).map(t => (

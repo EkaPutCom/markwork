@@ -330,3 +330,7 @@ export function formatDate(date: string, options: Intl.DateTimeFormatOptions): s
     const [y, m, d] = date.split('-').map(Number);
     return new Date(y, m - 1, d).toLocaleDateString(undefined, options);
 }
+
+// When a commit was made, in full and on a 24-hour clock: "23 Oct 2026, 06:55" in the system's own order.
+export const commitTime = (seconds: number): string =>
+    new Date(seconds * 1000).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });

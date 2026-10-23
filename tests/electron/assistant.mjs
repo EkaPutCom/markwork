@@ -101,8 +101,8 @@ try {
     await step('a proposal opens the review with the diff; Apply writes the file and the card offers Undo', async () => {
         await ask('bump the date');
         await review.waitFor();
-        await review.getByText('+Ship 22 November').waitFor();
-        await review.getByText('-Ship 15 November').waitFor();
+        await review.locator('pre.diff .cell.add', { hasText: 'Ship 22 November' }).waitFor();
+        await review.locator('pre.diff .cell.del', { hasText: 'Ship 15 November' }).waitFor();
         assert.match(plan(), /15 November/, 'nothing is written before the decision');
         await review.getByRole('button', { name: 'Apply', exact: true }).click();
         await review.waitFor({ state: 'detached' });
@@ -139,7 +139,7 @@ try {
         await review.waitFor({ state: 'detached' });
         await panel.locator('.chat-proposal', { hasText: 'Rejected.' }).last().waitFor();
         await panel.locator('.chat-proposal', { hasText: 'Rejected.' }).last().getByRole('button', { name: 'View diff' }).click();
-        await panel.locator('pre.diff').last().getByText('+Ship 22 November').waitFor();
+        await panel.locator('pre.diff').last().locator('.cell.add', { hasText: 'Ship 22 November' }).waitFor();
     });
 
     await step('Stop ends a running turn and the card says so, with Retry', async () => {

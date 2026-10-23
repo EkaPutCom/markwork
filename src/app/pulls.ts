@@ -81,14 +81,14 @@ export function noteLines(diff: NoteDiff): DiffLine[] {
     if (diff.fields.length) {
         lines.push({ kind: 'hunk', text: _('Fields') });
         for (const f of diff.fields) {
-            if (f.before !== null) lines.push({ kind: 'del', text: `- ${f.key}: ${f.before}` });
-            if (f.after !== null) lines.push({ kind: 'add', text: `+ ${f.key}: ${f.after}` });
+            if (f.before !== null) lines.push({ kind: 'del', text: `-${f.key}: ${f.before}` });
+            if (f.after !== null) lines.push({ kind: 'add', text: `+${f.key}: ${f.after}` });
         }
         lines.push({ kind: 'context', text: '' });
     }
     if (diff.body.some(l => l.kind !== 'same')) {
         lines.push({ kind: 'hunk', text: _('Text') });
-        for (const l of diff.body) lines.push({ kind: l.kind === 'same' ? 'context' : l.kind, text: `${l.kind === 'add' ? '+' : l.kind === 'del' ? '-' : ' '} ${l.text}` });
+        for (const l of diff.body) lines.push({ kind: l.kind === 'same' ? 'context' : l.kind, text: `${l.kind === 'add' ? '+' : l.kind === 'del' ? '-' : ' '}${l.text}` });
     }
     return lines;
 }
