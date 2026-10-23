@@ -255,7 +255,7 @@ footer { color: var(--text-3); font-size: .82rem; padding: 30px 0 60px; }
     <li><span class="h">7080c4e</span><span><b>Chapter 7</b> · Diagnosing GJS callbacks that get rejected during GC.</span></li>
     <li><span class="h">8d976da</span><span><b>Chapter 5</b> · A table grid is created when it enters the screen, its size taken from the measurer's cache.</span></li>
     <li><span class="h">295d7b9</span><span><b>Chapter 7</b> · Migration to GTK 4.14: the bench environment changes, the baseline is replaced. The regression is recorded in <a href="#ch7">Chapter 7</a>.</span></li>
-    <li><span class="h">inspector</span><span><b>Chapter 8</b> · Electron: a drawing is kept over a cursor move when nothing it takes from the selection changed (<code>selectionKey</code>), found by the Editor Inspector's <code>draw-time</code> check.</span></li>
+    <li><span class="h">aec7774</span><span><b>Chapter 8</b> · Electron: a drawing is kept over a cursor move when nothing it takes from the selection changed (<code>selectionKey</code>), found by the Editor Inspector's <code>draw-time</code> check.</span></li>
   </ol>
 </section>
 
@@ -735,7 +735,7 @@ cellSizes: Map&lt;cellMarkup, [w, h]&gt;     // ≤1,024 cells</code></pre>
 
 <!-- ============================================================ -->
 <section class="chapter" id="ch8">
-  <div class="chapnum">Chapter 8 · branch feat/editor-inspector · <code>syntaxField</code>, <code>selectionKey</code> in <code>electron/renderer/lib/editor.ts</code></div>
+  <div class="chapnum">Chapter 8 · commit aec7774 · <code>syntaxField</code>, <code>selectionKey</code> in <code>electron/renderer/lib/editor.ts</code></div>
   <h2>Moving the cursor: keep the drawing when nothing it took from the selection changed</h2>
   <p>The first chapter of the Electron era, and the first found by a tool rather than by feel. The Editor Inspector (<code>docs/design/debugger.md</code>) times each drawing of the text, and its <code>draw-time</code> check warned on a plain click in <code>tests/samples/all-formats.md</code>: 8.4 ms, as much as typing. The cause was one line in the field that holds the decorations: it drew the whole text again on <b>any</b> selection change, because some of the drawing depends on where the cursor is.</p>
   <p>So the question of Chapter 1 again: <b>what actually changed?</b> Reading the build, it takes the selection in only a few places. In the visual editor (the default): the diagrams the selection touches (shown as their source), the markers that span lines and that it touches (front matter, a fence not drawn as a box), and focus mode's paragraph. In the live view: which lines the selection covers, since that is where markers show. Everything else (bold, headings, list bullets, tables and code boxes in the visual editor, pictures) is the same wherever the cursor stands.</p>
