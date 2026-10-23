@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markwork editor debugger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff; --fg: #09090b; --muted: #71717a; --dim: #52525b; --border: #e4e4e7; --sidebar: #fafafa; --accent: #f4f4f5;
+  --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --primary: #18181b; --primary-fg: #fafafa; --link: #2563eb;
+  --hid: #f59e0b; --wid: #8b5cf6; --pre: #0ea5e9; --sel: #2563eb;
+}
+body { margin: 0; background: #e4e4e7; font-family: Geist, system-ui, sans-serif; font-size: 14px; color: var(--fg); }
+.label { font: 600 13px Geist, sans-serif; color: #3f3f46; margin: 32px 32px 8px; max-width: 1280px; }
+.label span { font-weight: 400; color: var(--muted); }
+.board { position: relative; width: 1280px; height: 800px; margin: 0 32px 16px; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; border-radius: 10px; box-shadow: 0 1px 3px rgb(0 0 0 / 10%); }
+button { font: inherit; cursor: pointer; color: inherit; }
+svg { flex-shrink: 0; }
+kbd { font: 11px 'Geist Mono', monospace; color: var(--dim); background: var(--accent); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; line-height: 18px; }
+.mono { font-family: 'Geist Mono', monospace; }
+
+/* Header */
+header { height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+.crumb { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.crumb b { color: var(--fg); font-weight: 500; }
+.badge { font-size: 12px; font-weight: 500; color: var(--dim); border: 1px solid var(--border); border-radius: 6px; padding: 0 8px; line-height: 20px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.badge i { width: 6px; height: 6px; border-radius: 3px; background: var(--ok); }
+.badge.rec i { background: var(--bad); animation: blink 1.2s infinite; }
+.badge.bad { color: var(--bad); border-color: #fecaca; background: #fef2f2; }
+.badge.ok { color: var(--ok); border-color: #bbf7d0; background: #f0fdf4; }
+@keyframes blink { 50% { opacity: .3; } }
+.grow { flex: 1; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 8px; background: var(--accent); }
+.seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--dim); font-weight: 500; display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--bg); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+.btn { height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); display: inline-flex; align-items: center; gap: 6px; font-weight: 500; font-size: 13px; box-shadow: 0 1px 2px rgb(0 0 0 / 5%); white-space: nowrap; }
+.btn:hover { background: var(--accent); }
+.btn.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+.btn.primary:hover { background: #27272a; }
+.btn.sm { height: 26px; padding: 0 8px; font-size: 12px; }
+.icon-btn { width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; color: var(--dim); }
+.icon-btn:hover { background: var(--accent); }
+
+/* Two views of the same text */
+.views { height: 318px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); }
+.view { display: flex; flex-direction: column; min-width: 0; }
+.view + .view { border-left: 1px solid var(--border); }
+.vhead { height: 36px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px; font-size: 12px; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--sidebar); }
+.vhead b { color: var(--fg); font-weight: 600; }
+.legend { display: flex; gap: 10px; margin-left: auto; }
+.legend label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-weight: 400; color: var(--dim); }
+.legend input { margin: 0; accent-color: var(--primary); }
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.vbody { flex: 1; overflow: auto; padding: 18px 28px; }
+
+/* Visual side */
+.vis { font-size: 15px; line-height: 1.7; }
+.vis h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 26px; line-height: 1.25; }
+.vis p { margin: 0 0 10px; }
+.vis .li { display: flex; align-items: baseline; gap: 0; margin: 0 0 2px; }
+.vis .li .mk { width: 26px; flex-shrink: 0; display: inline-flex; }
+.vis .li input { width: 15px; height: 15px; margin: 0; accent-color: var(--primary); transform: translateY(2px); }
+.vis .li.done .tx { color: var(--muted); text-decoration: line-through; }
+.vis .lit { color: var(--bad); }
+.caret { display: inline-block; width: 2px; height: 1.15em; background: var(--sel); vertical-align: text-bottom; margin: 0 -1px; animation: blink 1s steps(1) infinite; }
+/* The overlay: what is hidden, what is a widget, what is a prefix */
+.ov .h { display: none; }
+.ov.show-h .h { display: inline; background: repeating-linear-gradient(135deg, #fde68a 0 3px, #fef3c7 3px 6px); color: #92400e; font: 11px 'Geist Mono', monospace; border-radius: 2px; padding: 0 1px; outline: 1px dashed var(--hid); }
+.ov.show-w .w { outline: 1.5px solid var(--wid); outline-offset: 1px; border-radius: 3px; }
+.ov.show-p .p { box-shadow: inset 0 -2px 0 var(--pre); }
+[data-r] { transition: background .1s; }
+[data-r].hot { background: #dbeafe !important; outline: 1.5px solid var(--sel) !important; border-radius: 2px; }
+.vis .bugmark { position: relative; }
+.pin { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font: 600 10px Geist, sans-serif; color: #fff; background: var(--bad); border-radius: 4px; padding: 0 5px; line-height: 16px; white-space: nowrap; }
+
+/* Source side */
+.src { font: 13px/24px 'Geist Mono', monospace; padding: 12px 0; }
+.src .ln { display: flex; }
+.src .g { width: 74px; flex-shrink: 0; text-align: right; padding-right: 14px; color: #a1a1aa; user-select: none; font-size: 11px; }
+.src .g b { color: var(--dim); font-weight: 500; margin-right: 6px; }
+.src .ln.cur { background: #eff6ff; }
+.src .sx { color: #a1a1aa; }
+.src .ln.cur .sx.gone { color: var(--bad); text-decoration: line-through; background: #fee2e2; }
+.pos { position: relative; }
+.ptip { position: absolute; bottom: 100%; left: -14px; font: 600 10px 'Geist Mono', monospace; color: #fff; background: var(--sel); border-radius: 3px; padding: 0 4px; line-height: 15px; }
+.strip { flex-shrink: 0; display: flex; gap: 16px; align-items: center; padding: 0 16px; height: 32px; border-top: 1px solid var(--border); font: 12px 'Geist Mono', monospace; color: var(--dim); background: var(--sidebar); }
+.strip b { color: var(--fg); font-weight: 500; }
+.strip .bad { color: var(--bad); }
+
+/* The dock */
+.dock { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.tabs { height: 38px; flex-shrink: 0; display: flex; align-items: stretch; padding: 0 8px; border-bottom: 1px solid var(--border); gap: 2px; }
+.tabs button { border: 0; background: transparent; padding: 0 12px; display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--fg); }
+.tabs button .n { font-size: 11px; background: var(--accent); border-radius: 9px; padding: 0 6px; line-height: 17px; color: var(--dim); }
+.tabs button .n.bad { background: #fee2e2; color: var(--bad); }
+.tabs .tools { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.pane { flex: 1; min-height: 0; display: none; }
+.pane.on { display: flex; }
+
+/* Transactions */
+.tx-list { width: 600px; flex-shrink: 0; overflow: auto; border-right: 1px solid var(--border); }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th { position: sticky; top: 0; background: var(--sidebar); text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 10px; height: 30px; border-bottom: 1px solid var(--border); }
+td { padding: 0 10px; height: 30px; border-bottom: 1px solid #f4f4f5; white-space: nowrap; }
+td.mono { font-size: 12px; }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: var(--sidebar); }
+tr.row.sel td { background: #eff6ff; }
+tr.row.flag td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+.ev { font: 500 11.5px 'Geist Mono', monospace; padding: 1px 6px; border-radius: 4px; background: var(--accent); color: var(--dim); }
+.ev.input { background: #ecfdf5; color: #047857; }
+.ev.delete { background: #fef2f2; color: #b91c1c; }
+.ev.select { background: #eff6ff; color: #1d4ed8; }
+.ev.effect { background: #f5f3ff; color: #6d28d9; }
+.flagdot { width: 7px; height: 7px; border-radius: 4px; background: var(--bad); display: inline-block; }
+.detail { flex: 1; min-width: 0; overflow: auto; padding: 14px 18px; }
+.detail h4 { margin: 0 0 4px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.detail .sub { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+.kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 12px; font-size: 12.5px; margin-bottom: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; }
+.diff { font: 12px/20px 'Geist Mono', monospace; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+.diff div { padding: 0 10px; white-space: pre; }
+.diff .m { background: #fef2f2; color: #991b1b; }
+.diff .p { background: #f0fdf4; color: #166534; }
+.diff del { background: #fecaca; text-decoration: none; }
+.diff ins { background: #bbf7d0; text-decoration: none; }
+.alert { border: 1px solid #fecaca; background: #fef2f2; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #7f1d1d; display: flex; gap: 10px; margin-bottom: 12px; }
+.alert b { color: #991b1b; }
+.alert.info { border-color: var(--border); background: var(--sidebar); color: var(--dim); }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Decorations */
+.deco { flex: 1; overflow: auto; }
+.deco td .bar { display: inline-block; height: 8px; border-radius: 2px; vertical-align: middle; }
+
+/* Checks */
+.checks { flex: 1; overflow: auto; padding: 8px 0; }
+.check { display: flex; align-items: center; gap: 12px; padding: 9px 18px; border-bottom: 1px solid #f4f4f5; font-size: 13px; }
+.check .st { width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.check .st.ok { background: var(--ok); }
+.check .st.bad { background: var(--bad); }
+.check .st.warn { background: var(--warn); }
+.check .what { flex: 1; }
+.check .what small { display: block; color: var(--muted); font-size: 12px; }
+.check code { font: 11.5px 'Geist Mono', monospace; background: var(--accent); padding: 1px 5px; border-radius: 4px; }
+
+/* Replay */
+.replay { flex: 1; display: flex; flex-direction: column; padding: 14px 18px; gap: 12px; overflow: auto; }
+.scrub { display: flex; align-items: center; gap: 10px; }
+.track { flex: 1; height: 34px; position: relative; background: var(--sidebar); border: 1px solid var(--border); border-radius: 8px; }
+.tick { position: absolute; top: 8px; width: 3px; height: 16px; border-radius: 2px; background: #a1a1aa; }
+.tick.k { background: #10b981; } .tick.s { background: #3b82f6; } .tick.bad { background: var(--bad); height: 20px; top: 6px; width: 4px; }
+.head { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); }
+.head::before { content: ''; position: absolute; top: -4px; left: -4px; width: 10px; height: 10px; border-radius: 5px; background: var(--fg); }
+.code { font: 12px/19px 'Geist Mono', monospace; background: #18181b; color: #e4e4e7; border-radius: 8px; padding: 12px 14px; white-space: pre; overflow: auto; margin: 0; }
+.code .c { color: #71717a; } .code .s { color: #86efac; } .code .k { color: #93c5fd; } .code .r { color: #fca5a5; } .code .y { color: #fde68a; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.box { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.box h5 { margin: 0 0 8px; font-size: 12px; color: var(--muted); font-weight: 500; }
+
+/* Board 2: the agent */
+.agent { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
+.term { background: #0a0a0a; color: #d4d4d8; font: 12.5px/20px 'Geist Mono', monospace; padding: 16px 18px; overflow: auto; white-space: pre-wrap; }
+.term .pr { color: #4ade80; } .term .cm { color: #fafafa; } .term .c { color: #71717a; } .term .r { color: #f87171; } .term .y { color: #fde047; } .term .b { color: #93c5fd; } .term .g { color: #86efac; }
+.term .think { color: #a1a1aa; font-family: Geist, sans-serif; font-style: italic; display: block; margin: 6px 0; }
+.spec { overflow: auto; padding: 18px 22px; }
+.spec h3 { margin: 0 0 4px; font-size: 15px; }
+.spec p { margin: 0 0 12px; color: var(--dim); font-size: 13px; line-height: 1.55; }
+.spec table { margin-bottom: 16px; }
+.spec td { white-space: normal; height: auto; padding: 7px 10px; vertical-align: top; font-size: 12.5px; }
+.spec td:first-child { font-family: 'Geist Mono', monospace; font-size: 12px; white-space: nowrap; }
+
+/* Board 3: a report from the person who writes */
+.app3 { flex: 1; position: relative; display: flex; background: var(--bg); }
+.fake-side { width: 240px; background: var(--sidebar); border-right: 1px solid var(--border); }
+.fake-main { flex: 1; padding: 40px 120px; color: #a1a1aa; font-size: 16px; line-height: 1.75; }
+.fake-main h1 { color: #d4d4d8; font-size: 34px; margin: 0 0 12px; }
+.scrim { position: absolute; inset: 0; background: rgb(0 0 0 / 35%); display: flex; align-items: center; justify-content: center; }
+.dialog { width: 520px; background: var(--bg); border-radius: 12px; box-shadow: 0 20px 50px rgb(0 0 0 / 25%); padding: 22px 24px; }
+.dialog h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -0.01em; }
+.dialog > p { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.dialog textarea { width: 100%; box-sizing: border-box; height: 74px; font: inherit; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; resize: none; margin-bottom: 14px; }
+.inc { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+.inc label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; font-size: 13.5px; cursor: pointer; }
+.inc label + label { border-top: 1px solid var(--border); }
+.inc input { margin: 3px 0 0; accent-color: var(--primary); }
+.inc small { display: block; color: var(--muted); font-size: 12px; margin-top: 1px; }
+.preview { font: 12px/18px 'Geist Mono', monospace; background: var(--sidebar); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin-top: 6px; color: var(--dim); }
+.foot { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+.foot .note { margin-right: auto; font-size: 12px; color: var(--muted); }
+.fab { position: absolute; right: 18px; bottom: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ================================================================ Board 1 ================================================================ -->
+<div class="label">1 · The Editor Inspector, for a developer <span>— only in dev mode (<span class="mono">--inspect-editor</span> or <span class="mono">MARKWORK_DEV=1</span>), opened with <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>I</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd> is Export HTML). The top half is one text twice: as the eye sees it, with what is hidden laid over it, and as the file holds it, with offsets. Hover a piece on one side to find it on the other. Below is the dock.</span></div>
+<div class="board" id="b1">
+  <header>
+    <div class="crumb">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>
+      Editor Inspector <span>/</span> <b>Rencana rilis.md</b>
+    </div>
+    <span class="badge rec"><i></i>Recording · 14 transactions</span>
+    <span class="badge bad">1 check fails</span>
+    <div class="grow"></div>
+    <div class="seg" role="group" aria-label="Pause">
+      <button aria-pressed="true">Live</button>
+      <button aria-pressed="false">Paused at #14</button>
+    </div>
+    <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy snapshot</button>
+    <button class="btn primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Save repro</button>
+  </header>
+
+  <div class="views">
+    <div class="view">
+      <div class="vhead"><b>Visual</b> as drawn
+        <div class="legend">
+          <label><input type="checkbox" data-ov="h" checked><span class="sw" style="background:var(--hid)"></span>Hidden</label>
+          <label><input type="checkbox" data-ov="w" checked><span class="sw" style="background:var(--wid)"></span>Widgets</label>
+          <label><input type="checkbox" data-ov="p" checked><span class="sw" style="background:var(--pre)"></span>Prefixes</label>
+        </div>
+      </div>
+      <div class="vbody">
+        <div class="vis ov show-h show-w show-p" id="ov">
+          <h1><span class="h p" data-r="0">#␣</span><span data-r="2">Rencana rilis</span></h1>
+          <p><span data-r="16">Kita </span><span class="h" data-r="21">**</span><b data-r="23">rilis Jumat</b><span class="bugmark"><span class="lit" data-r="34">*</span><span class="pin">Backspace ate a hidden *</span></span><span class="caret"></span><span data-r="35"> setelah QA.</span></p>
+          <div class="li"><span class="mk w p" data-r="48"><input type="checkbox" tabindex="-1"></span><span class="tx" data-r="54">Cek tabel harga</span></div>
+          <div class="li done"><span class="mk w p" data-r="70"><input type="checkbox" checked tabindex="-1"></span><span class="tx" data-r="76">Kirim email</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="view">
+      <div class="vhead"><b>Source</b> the Markdown in the file <span style="margin-left:auto" class="mono">87 chars · 4 lines · LF</span></div>
+      <div class="vbody" style="padding:0">
+        <div class="src">
+          <div class="ln"><span class="g"><b>1</b>0</span><span><span class="sx" data-r="0"># </span><span data-r="2">Rencana rilis</span></span></div>
+          <div class="ln cur"><span class="g"><b>2</b>16</span><span><span data-r="16">Kita </span><span class="sx" data-r="21">**</span><span data-r="23">rilis Jumat</span><span class="sx" data-r="34">*</span><span class="pos"><span class="ptip">35</span></span><span class="sx gone">*</span><span data-r="35"> setelah QA.</span></span></div>
+          <div class="ln"><span class="g"><b>3</b>48</span><span><span class="sx" data-r="48">- [ ] </span><span data-r="54">Cek tabel harga</span></span></div>
+          <div class="ln"><span class="g"><b>4</b>70</span><span><span class="sx" data-r="70">- [x] </span><span data-r="76">Kirim email</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="strip">
+    <span>cursor <b>35</b></span><span>line <b>2</b> col <b>20</b></span><span>anchor <b>35</b> · head <b>35</b></span>
+    <span>in prefix <b>no</b></span><span class="bad">touching hidden 34–35 (strong close, now broken)</span>
+    <span style="margin-left:auto">parse 0.4 ms · draw 1.1 ms · 7 decorations</span>
+  </div>
+
+  <div class="dock">
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="tx">Transactions <span class="n">14</span></button>
+      <button role="tab" aria-selected="false" data-tab="deco">Decorations <span class="n">7</span></button>
+      <button role="tab" aria-selected="false" data-tab="checks">Checks <span class="n bad">1</span></button>
+      <button role="tab" aria-selected="false" data-tab="replay">Replay &amp; test</button>
+      <div class="tools">
+        <div class="seg"><button aria-pressed="true">All</button><button aria-pressed="false">Edits</button><button aria-pressed="false">Flagged</button></div>
+        <button class="icon-btn" title="Clear"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="pane on" data-pane="tx">
+      <div class="tx-list">
+        <table>
+          <thead><tr><th style="width:34px">#</th><th>When</th><th>Event</th><th>Change</th><th>Selection</th><th></th></tr></thead>
+          <tbody id="txrows"></tbody>
+        </table>
+      </div>
+      <div class="detail" id="txdetail"></div>
+    </div>
+
+    <!-- Decorations -->
+    <div class="pane" data-pane="deco">
+      <div class="deco">
+        <table>
+          <thead><tr><th>Range</th><th>Kind</th><th>Made by</th><th>Line 2 (16–48)</th><th>Text under it</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">0–2</td><td><span class="ev">replace</span></td><td class="mono">conceal · heading mark</td><td></td><td class="mono">"# "</td><td>prefix to 2</td></tr>
+            <tr><td class="mono">0–15</td><td><span class="ev">line</span></td><td class="mono">cm-md-h1</td><td></td><td class="mono">"# Rencana rilis"</td><td></td></tr>
+            <tr style="background:#fffbeb"><td class="mono">21–23</td><td><span class="ev">replace</span></td><td class="mono">conceal · StrongEmphasis open</td><td><span class="bar" style="width:12px;margin-left:30px;background:var(--hid)"></span></td><td class="mono">"**"</td><td>no close found, kept hidden</td></tr>
+            <tr><td class="mono">23–34</td><td><span class="ev">mark</span></td><td class="mono">cm-md-strong</td><td><span class="bar" style="width:66px;margin-left:42px;background:#a1a1aa"></span></td><td class="mono">"rilis Jumat"</td><td></td></tr>
+            <tr style="background:#fef2f2"><td class="mono">34–35</td><td><span class="ev delete">—</span></td><td class="mono">(nothing)</td><td><span class="bar" style="width:6px;margin-left:108px;background:var(--bad)"></span></td><td class="mono">"*"</td><td style="color:var(--bad)">a syntax char drawn as text</td></tr>
+            <tr><td class="mono">48–54</td><td><span class="ev effect">widget</span></td><td class="mono">ListMarkWidget(task)</td><td></td><td class="mono">"- [ ] "</td><td>prefix to 54</td></tr>
+            <tr><td class="mono">70–76</td><td><span class="ev effect">widget</span></td><td class="mono">ListMarkWidget(taskdone)</td><td></td><td class="mono">"- [x] "</td><td>prefix to 76</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Checks -->
+    <div class="pane" data-pane="checks">
+      <div class="checks">
+        <div class="check"><span class="st bad">!</span><div class="what">Backspace and Delete remove what the eye sees<small>#13 <code>delete.backward</code> removed 35–36 <code>"*"</code>, which was hidden. The letter before the cursor was <code>"t"</code> at 33–34.</small></div><button class="btn sm" data-go="13">Show #13</button></div>
+        <div class="check"><span class="st ok">✓</span><div class="what">Markdown round trip<small>parse → serialize gives the same text, byte for byte</small></div></div>
+        <div class="check"><span class="st ok">✓</span><div class="what">The cursor stays out of hidden prefixes<small>checked after each of 14 transactions</small></div></div>
+        <div class="check"><span class="st ok">✓</span><div class="what">Hidden ranges sit on syntax only<small>every <code>replace</code> covers marks the parser names (HeaderMark, EmphasisMark, ListMark, TaskMarker)</small></div></div>
+        <div class="check"><span class="st warn">?</span><div class="what">Every open mark has its close<small>21–23 <code>**</code> has no close since #13: hidden but now means nothing</small></div><button class="btn sm" data-tab-go="deco">Decorations</button></div>
+        <div class="check"><span class="st ok">✓</span><div class="what">Undo gives back the text before<small>undo of #13 tried on a copy: text back at #12</small></div></div>
+        <div class="check"><span class="st ok">✓</span><div class="what">Decorations do not overlap wrongly<small>no two <code>replace</code> ranges cross</small></div></div>
+        <div class="check"><span class="st ok">✓</span><div class="what">Tables keep their columns<small>no table in this text</small></div></div>
+        <div class="check"><span class="st ok">✓</span><div class="what">Drawing is quick<small>slowest draw 2.3 ms (limit 8 ms)</small></div></div>
+      </div>
+    </div>
+
+    <!-- Replay -->
+    <div class="pane" data-pane="replay">
+      <div class="replay">
+        <div class="scrub">
+          <button class="btn sm">⏮</button><button class="btn sm">◀ Step</button><button class="btn sm">Step ▶</button>
+          <div class="track">
+            <span class="tick s" style="left:4%"></span><span class="tick k" style="left:12%"></span><span class="tick k" style="left:18%"></span><span class="tick k" style="left:24%"></span>
+            <span class="tick s" style="left:35%"></span><span class="tick k" style="left:44%"></span><span class="tick k" style="left:50%"></span><span class="tick s" style="left:58%"></span>
+            <span class="tick" style="left:63%"></span><span class="tick s" style="left:70%"></span><span class="tick k" style="left:76%"></span><span class="tick s" style="left:84%"></span>
+            <span class="tick bad" style="left:91%"></span><span class="tick s" style="left:96%"></span>
+            <span class="head" style="left:91%"></span>
+          </div>
+          <span class="mono" style="font-size:12px;color:var(--dim)">#13 / 14</span>
+        </div>
+        <div class="cols">
+          <div class="box">
+            <h5>The repro, saved as <span class="mono">bug-backspace-strong.mwrepro.json</span></h5>
+<pre class="code"><span class="c">// what the dev or an agent loads back</span>
+{
+  <span class="k">"app"</span>: <span class="s">"1.0.0 · adcfa20"</span>, <span class="k">"mode"</span>: <span class="s">"visual"</span>,
+  <span class="k">"start"</span>: { <span class="k">"doc"</span>: <span class="s">"# Rencana rilis\nKita **rilis Jumat** se…"</span>,
+             <span class="k">"sel"</span>: [<span class="y">36</span>, <span class="y">36</span>] },
+  <span class="k">"steps"</span>: [ { <span class="k">"key"</span>: <span class="s">"Backspace"</span> } ],
+  <span class="k">"expect"</span>: { <span class="k">"doc"</span>: <span class="s">"…**rilis Juma** setelah QA.…"</span> },
+  <span class="k">"actual"</span>: { <span class="k">"doc"</span>: <span class="r">"…**rilis Jumat* setelah QA.…"</span> },
+  <span class="k">"failed"</span>: [<span class="r">"backspace-visible"</span>]
+}</pre>
+          </div>
+          <div class="box">
+            <h5>As a test, ready for <span class="mono">tests/electron/editor.mjs</span></h5>
+<pre class="code"><span class="c">// Backspace after the end of bold text removes its</span>
+<span class="c">// last letter, not the hidden "**"</span>
+<span class="k">await</span> step(<span class="s">'backspace after bold'</span>, <span class="k">async</span> () =&gt; {
+  <span class="k">await</span> repro.load(<span class="s">'bug-backspace-strong'</span>);
+  <span class="k">await</span> page.keyboard.press(<span class="s">'Backspace'</span>);
+  expect(<span class="k">await</span> editor.text())
+    .toContain(<span class="s">'**rilis Juma**'</span>);
+});</pre>
+            <div class="acts" style="margin-top:10px"><button class="btn sm">Copy test</button><button class="btn sm">Run it now</button><span class="badge bad">fails · as expected</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ Board 2 ================================================================ -->
+<div class="label">2 · The same inspector, for an AI agent <span>— <span class="mono">markwork editor</span> talks to the running window (or a headless one with <span class="mono">--headless</span>) and answers in JSON. Every tab of board 1 is a command here, so what a dev sees and what an agent reads are one thing. Left: an agent working on the bug; right: the commands.</span></div>
+<div class="board">
+  <header>
+    <div class="crumb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg> Terminal <span>/</span> <b>pi · fix/backspace-strong</b></div>
+    <span class="badge"><i></i>connected to the window · pid 48211</span>
+    <div class="grow"></div>
+    <span class="badge ok">test added · passes after the fix</span>
+  </header>
+  <div class="agent">
+<div class="term"><span class="pr">$</span> <span class="cm">markwork editor load bug-backspace-strong.mwrepro.json --headless</span>
+<span class="g">✓</span> loaded · visual mode · cursor 36
+<span class="pr">$</span> <span class="cm">markwork editor snapshot --at cursor</span>
+{ <span class="b">"pos"</span>: 36, <span class="b">"line"</span>: 2, <span class="b">"col"</span>: 21,
+  <span class="b">"before"</span>: <span class="y">"Jumat**"</span>, <span class="b">"after"</span>: <span class="y">" setelah"</span>,
+  <span class="b">"hidden"</span>: [[21,23,<span class="y">"**"</span>],[34,36,<span class="y">"**"</span>]],
+  <span class="b">"visibleBefore"</span>: { <span class="b">"char"</span>: <span class="y">"t"</span>, <span class="b">"at"</span>: [33,34] } }
+<span class="pr">$</span> <span class="cm">markwork editor press Backspace --explain</span>
+{ <span class="b">"tx"</span>: 1, <span class="b">"userEvent"</span>: <span class="y">"delete.backward"</span>,
+  <span class="b">"changes"</span>: [{ <span class="b">"from"</span>: 35, <span class="b">"to"</span>: 36, <span class="b">"removed"</span>: <span class="r">"*"</span> }],
+  <span class="b">"handler"</span>: <span class="y">"visual.ts backspace()"</span>,
+  <span class="b">"trace"</span>: [<span class="y">"pastHidden(36, back) → 36"</span>, <span class="r">"range end == pos: not stepped over"</span>],
+  <span class="b">"checks"</span>: { <span class="r">"backspace-visible"</span>: <span class="r">"FAIL"</span> } }
+<span class="think">The hidden range ends exactly at the cursor (34–36), so pastHidden treats the cursor as already outside it and the default Backspace deletes one "*". It should step back over the range first.</span><span class="pr">$</span> <span class="cm">npm run electron:build &amp;&amp; markwork editor replay bug-backspace-strong.mwrepro.json</span>
+<span class="g">✓</span> backspace-visible   <span class="c">removed "t" at 33–34</span>
+<span class="g">✓</span> round-trip          <span class="g">✓</span> prefix-guard      <span class="g">✓</span> undo
+<span class="pr">$</span> <span class="cm">markwork editor fuzz --mode visual --keys Backspace,Delete --docs tests/fixtures/*.md --runs 500</span>
+<span class="c">500 runs · 3 fixtures</span>
+<span class="g">✓</span> 0 failures
+<span class="pr">$</span> <span class="cm">markwork editor test-from bug-backspace-strong.mwrepro.json &gt;&gt; tests/electron/editor.mjs</span>
+<span class="g">✓</span> step 'backspace after bold' written</div>
+    <div class="spec">
+      <h3>markwork editor</h3>
+      <p>One command per thing the inspector shows. Output is JSON on stdout (<span class="mono">--pretty</span> for people); a failed check exits with 1, so an agent or CI can branch on it. Offsets are UTF-16, the same as CodeMirror's.</p>
+      <table>
+        <tbody>
+          <tr><td>snapshot [--at cursor|POS]</td><td>Text, selection, hidden ranges, prefixes, widgets and the parse tree around a place. The same as the top half of board 1.</td></tr>
+          <tr><td>press KEY… / type TEXT</td><td>Sends real keys to the view. <span class="mono">--explain</span> adds the transaction, which handler took it, and the checks after it.</td></tr>
+          <tr><td>select FROM [TO]</td><td>Puts the cursor or a selection at offsets, or <span class="mono">--visible "Jumat"</span> by the text the eye sees.</td></tr>
+          <tr><td>log [--since N] [--flagged]</td><td>The transactions tab: userEvent, changes, effects, selection before and after.</td></tr>
+          <tr><td>decorations [--line N]</td><td>The decorations tab, with the builder that made each.</td></tr>
+          <tr><td>check [NAME…]</td><td>Runs the checks on the current state. Names: <span class="mono">round-trip, prefix-guard, backspace-visible, hidden-on-syntax, marks-closed, undo, tables, draw-time</span>.</td></tr>
+          <tr><td>load / replay FILE</td><td>A <span class="mono">.mwrepro.json</span>: the start, the steps, what was expected. Replay reruns the steps and the checks.</td></tr>
+          <tr><td>fuzz</td><td>Random keys on fixture texts, with every check after each step; a failure is saved as a repro, already shrunk to the fewest steps.</td></tr>
+          <tr><td>test-from FILE</td><td>Writes a repro as a step for <span class="mono">tests/electron/editor.mjs</span>.</td></tr>
+          <tr><td>screenshot [--overlay]</td><td>A PNG of the view, with the board 1 overlay if asked (for the screenshot AGENT.md asks for).</td></tr>
+        </tbody>
+      </table>
+      <div class="alert info"><div>Only on when the window was started with <span class="mono">--inspect-editor</span> or <span class="mono">MARKWORK_DEV=1</span>, and only from this computer (the socket is in the user's runtime folder). A normal build has no inspector and no socket.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ Board 3 ================================================================ -->
+<div class="label">3 · Where the repros come from: "Something looks wrong" <span>— for the people the visual editor is for, in every build. Only the recorder runs here; no check runs until a dev or an agent replays the report. Help → Report a problem with the editor (or the link under the toolbar right after an Undo of something just typed). It saves the same repro file as board 1, so a dev or an agent opens it in the inspector; the text can be blurred into x's first.</span></div>
+<div class="board">
+  <div class="app3">
+    <div class="fake-side"></div>
+    <div class="fake-main"><h1>Rencana rilis</h1>Kita <b>rilis Jumat*</b> setelah QA.<br>☐ Cek tabel harga<br>☑ Kirim email</div>
+    <div class="scrim">
+      <div class="dialog">
+        <h2>Something looks wrong?</h2>
+        <p>Tell us what you expected. Markwork saves what the editor just did, so the problem can be played back and fixed.</p>
+        <textarea>I pressed Backspace after the bold word and a star appeared instead of the last letter going away.</textarea>
+        <div class="inc">
+          <label><input type="checkbox" checked><span>The last 2 minutes of editing<small>Keys, clicks and what each did. Nothing you type in other windows.</small></span></label>
+          <label><input type="checkbox" checked id="blur"><span>Blur my text<small>Letters become x, numbers 0, but Markdown and spaces stay, which is enough for a bug.</small>
+            <div class="preview" id="blurpv">Xxxx **xxxxx Xxxxx* xxxxxxx XX.</div></span></label>
+          <label><input type="checkbox" checked><span>A picture of the editor<small>Blurred the same way</small></span></label>
+        </div>
+        <div class="foot">
+          <span class="note">Saved as a file. Nothing is sent.</span>
+          <button class="btn">Cancel</button>
+          <button class="btn">Show file</button>
+          <button class="btn primary">Save report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Overlay switches
+document.querySelectorAll('[data-ov]').forEach(box => box.addEventListener('change', () =>
+  document.getElementById('ov').classList.toggle('show-' + box.dataset.ov, box.checked)));
+
+// Hover a piece on one side, find it on the other
+document.querySelectorAll('#b1 [data-r]').forEach(el => {
+  const peers = () => document.querySelectorAll(`#b1 [data-r="${el.dataset.r}"]`);
+  el.addEventListener('mouseenter', () => peers().forEach(p => p.classList.add('hot')));
+  el.addEventListener('mouseleave', () => peers().forEach(p => p.classList.remove('hot')));
+});
+
+// Dock tabs
+function showTab(name) {
+  document.querySelectorAll('#b1 [data-tab]').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === name));
+  document.querySelectorAll('#b1 [data-pane]').forEach(p => p.classList.toggle('on', p.dataset.pane === name));
+}
+document.querySelectorAll('#b1 [data-tab]').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+document.querySelectorAll('[data-tab-go]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tabGo)));
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { showTab('tx'); pick(+b.dataset.go); }));
+
+// Transactions
+const TX = [
+  [1, '10:42:03.118', 'select.pointer', 'select', '—', '0 → 31'],
+  [2, '10:42:04.201', 'input.type', 'input', '+"K" @16', '31 → 17'],
+  [3, '10:42:04.322', 'input.type', 'input', '+"ita " @17', '17 → 21'],
+  [4, '10:42:05.040', 'input.format', 'effect', 'bold: +"****" @21', '21 → 23'],
+  [5, '10:42:05.610', 'input.type', 'input', '+"rilis Jumat" @23', '23 → 34'],
+  [6, '10:42:06.002', 'select.pointer', 'select', '—', '34 → 36'],
+  [7, '10:42:06.410', 'input.type', 'input', '+" setelah QA." @36', '36 → 48'],
+  [8, '10:42:07.090', 'select.pointer', 'select', '—', '48 → 56'],
+  [9, '10:42:07.512', 'setVisual', 'effect', 'effect only', '56'],
+  [10, '10:42:08.880', 'select.pointer', 'select', '—', '56 → 36'],
+  [11, '10:42:09.140', 'input.type', 'input', '+"t" @35 → @36', '36 → 37'],
+  [12, '10:42:09.600', 'undo', 'delete', '−"t" @36', '37 → 36'],
+  [13, '10:42:10.231', 'delete.backward', 'delete', '−"*" 35–36', '36 → 35', true],
+  [14, '10:42:11.007', 'select.pointer', 'select', '—', '35 → 35'],
+];
+const rows = document.getElementById('txrows'), detail = document.getElementById('txdetail');
+rows.innerHTML = TX.map(([n, t, ev, k, ch, sel, bad]) =>
+  `<tr class="row${bad ? ' flag' : ''}" data-n="${n}"><td class="mono">${n}</td><td class="mono" style="color:var(--muted)">${t.slice(6)}</td>` +
+  `<td><span class="ev ${k}">${ev}</span></td><td class="mono">${ch}</td><td class="mono">${sel}</td><td>${bad ? '<span class="flagdot"></span>' : ''}</td></tr>`).join('');
+rows.querySelectorAll('tr').forEach(r => r.addEventListener('click', () => pick(+r.dataset.n)));
+
+function pick(n) {
+  rows.querySelectorAll('tr').forEach(r => r.classList.toggle('sel', +r.dataset.n === n));
+  const [, t, ev, , ch, sel, bad] = TX[n - 1];
+  detail.innerHTML = bad ? `
+    <h4>#13 <span class="ev delete">delete.backward</span> <span class="badge bad">check failed</span></h4>
+    <div class="sub">${t} · key Backspace · visual mode · handled by <span class="mono">visual.ts backspace()</span></div>
+    <div class="alert"><span>⚠</span><div><b>Backspace removed hidden syntax.</b> The cursor was at 36, just after the hidden <span class="mono">**</span> at 34–36. The eye saw <span class="mono">"t"</span> before the cursor (33–34); the change removed <span class="mono">"*"</span> at 35–36, so the bold lost its close and a star is now drawn.</div></div>
+    <dl class="kv"><dt>changes</dt><dd>{ from: 35, to: 36, insert: "" }</dd><dt>selection</dt><dd>36 → 35</dd><dt>effects</dt><dd>none</dd><dt>hidden at 36</dt><dd>[34, 36) "**" · strong close</dd><dt>pastHidden</dt><dd>(36, back) → 36 <span style="color:var(--bad)">· end == pos, not stepped</span></dd></dl>
+    <div class="diff"><div class="m">- Kita **rilis Jumat<del>*</del>* setelah QA.</div><div class="p">+ Kita **rilis Jumat* setelah QA.</div></div>
+    <div class="acts"><button class="btn sm">Show the state before</button><button class="btn sm" onclick="showTab('replay')">Make a test from this</button><button class="btn sm">Copy as JSON</button></div>`
+  : `
+    <h4>#${n} <span class="ev">${ev}</span></h4>
+    <div class="sub">${t} · all checks pass</div>
+    <dl class="kv"><dt>changes</dt><dd>${ch}</dd><dt>selection</dt><dd>${sel}</dd><dt>effects</dt><dd>${ev === 'setVisual' ? 'setVisual(true)' : 'none'}</dd></dl>
+    <div class="acts"><button class="btn sm">Show the state before</button><button class="btn sm">Copy as JSON</button></div>`;
+}
+pick(13);
+
+// Blur preview
+const blur = document.getElementById('blur'), pv = document.getElementById('blurpv');
+blur.addEventListener('change', () => pv.textContent = blur.checked ? 'Xxxx **xxxxx Xxxxx* xxxxxxx XX.' : 'Kita **rilis Jumat* setelah QA.');
+</script>
+</body>
+</html>
