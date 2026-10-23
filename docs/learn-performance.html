@@ -229,6 +229,7 @@ footer { color: var(--text-3); font-size: .82rem; padding: 30px 0 60px; }
     <a href="#ch5">5 · Lazy tables</a>
     <a href="#ch6">6 · Auto save</a>
     <a href="#ch7">7 · GC &amp; limits</a>
+    <a href="#ch8">8 · Cursor moves</a>
     <a href="#lessons">Lessons</a>
   </nav>
 </header>
@@ -254,6 +255,7 @@ footer { color: var(--text-3); font-size: .82rem; padding: 30px 0 60px; }
     <li><span class="h">7080c4e</span><span><b>Chapter 7</b> · Diagnosing GJS callbacks that get rejected during GC.</span></li>
     <li><span class="h">8d976da</span><span><b>Chapter 5</b> · A table grid is created when it enters the screen, its size taken from the measurer's cache.</span></li>
     <li><span class="h">295d7b9</span><span><b>Chapter 7</b> · Migration to GTK 4.14: the bench environment changes, the baseline is replaced. The regression is recorded in <a href="#ch7">Chapter 7</a>.</span></li>
+    <li><span class="h">inspector</span><span><b>Chapter 8</b> · Electron: a drawing is kept over a cursor move when nothing it takes from the selection changed (<code>selectionKey</code>), found by the Editor Inspector's <code>draw-time</code> check.</span></li>
   </ol>
 </section>
 
@@ -732,6 +734,45 @@ cellSizes: Map&lt;cellMarkup, [w, h]&gt;     // ≤1,024 cells</code></pre>
 </section>
 
 <!-- ============================================================ -->
+<section class="chapter" id="ch8">
+  <div class="chapnum">Chapter 8 · branch feat/editor-inspector · <code>syntaxField</code>, <code>selectionKey</code> in <code>electron/renderer/lib/editor.ts</code></div>
+  <h2>Moving the cursor: keep the drawing when nothing it took from the selection changed</h2>
+  <p>The first chapter of the Electron era, and the first found by a tool rather than by feel. The Editor Inspector (<code>docs/design/debugger.md</code>) times each drawing of the text, and its <code>draw-time</code> check warned on a plain click in <code>tests/samples/all-formats.md</code>: 8.4 ms, as much as typing. The cause was one line in the field that holds the decorations: it drew the whole text again on <b>any</b> selection change, because some of the drawing depends on where the cursor is.</p>
+  <p>So the question of Chapter 1 again: <b>what actually changed?</b> Reading the build, it takes the selection in only a few places. In the visual editor (the default): the diagrams the selection touches (shown as their source), the markers that span lines and that it touches (front matter, a fence not drawn as a box), and focus mode's paragraph. In the live view: which lines the selection covers, since that is where markers show. Everything else (bold, headings, list bullets, tables and code boxes in the visual editor, pictures) is the same wherever the cursor stands.</p>
+<pre><code>// before: every selection change → the whole text drawn again
+update: (value, tr) =&gt; tr.docChanged || tr.selection || modeEffect(tr) ? build(tr.state) : value
+
+// after: each drawing carries the key of what it took from the selection
+interface Drawn { decorations; concealed; ms; key: string }
+selectionKey(state) = visual ? `visual|${diagramsTouched}|${spanningMarkersTouched}|${focusParagraph}`
+                    : live   ? `live|${firstLine}-${lastLine}|${focusParagraph}`
+update: (value, tr) =&gt; {
+    if (tr.docChanged || modeEffect(tr)) return build(tr.state);
+    if (!tr.selection) return value;
+    return selectionKey(tr.state) === value.key ? value : build(tr.state);
+}</code></pre>
+  <p>The key is cheap: two line lookups, the code blocks, and a list of spanning markers kept per parse in a <code>WeakMap</code> (a long text has tens of thousands of markers and a few dozen of these). Markers inside a code block drawn as a box, or a table, are left out of the list, since the visual editor never shows them: a first version kept them and redrew on every entry into a code block for nothing.</p>
+  <h3>Numbers</h3>
+  <p>Measured in the app on Xvfb: one <code>view.dispatch</code> timed at a time, 200 of each after a warm-up, on a 117 KB text (<code>all-formats.md</code> 20 times: tables, code, diagrams, pictures). Before and after were built and run back to back in the same session.</p>
+  <div class="legend"><span style="--c:var(--before)">Before</span><span style="--c:var(--after)">After</span></div>
+  <div class="cmp" data-rows='[
+    ["Visual, 117 KB: move within a line (median)", 15.2, 3.7, "ms"],
+    ["Visual, 117 KB: move within a line (p95)", 17.8, 5.1, "ms"],
+    ["Visual, 117 KB: click elsewhere (median)", 15.2, 3.6, "ms"],
+    ["Live, 117 KB: move within a line (median)", 14.1, 3.5, "ms"],
+    ["Visual, 6 KB: click elsewhere (median)", 2.8, 2.0, "ms"]]'></div>
+  <p>What did not change, on purpose: in the live view a click on another line still draws everything (15 ms), since markers move with the line; and in the visual editor a click that enters or leaves a diagram does too (the p95 of random clicks stays at ±17 ms, because the 117 KB text has 40 diagrams). Typing is unchanged at ±25 ms on 117 KB: a changed text is always drawn whole. Those are the next steps, and would need the drawing itself to be patched by line rather than skipped.</p>
+  <h3>How it is kept correct</h3>
+  <p>A key that forgets something the drawing depends on fails quietly: the old drawing stays, and a diagram does not open. Two guards:</p>
+  <ul>
+    <li><b>The slow path checks the fast one.</b> In dev mode the inspector's <code>kept-drawing</code> check draws again from nothing every time a drawing was kept, and compares decorations, hidden ranges, and prefixes (<code>RangeSet.eq</code>). <code>tests/electron/inspector.mjs</code> walks the cursor through the long sample by keys and clicks in the visual editor, the live view, and focus mode with it on.</li>
+    <li><b>The test was proved to fail.</b> A deliberately wrong key (one that ignores diagrams) made the diagram step fail. The first attempt at that proof "passed" too, which led to the lesson below.</li>
+  </ul>
+  <div class="caveat"><b>A measurement that lied.</b> The first A/B of this branch (with and without the recorder, and the first wrong key) compared the same code twice. Removing a call left its import unused; with <code>noUnusedLocals</code> the typecheck failed, <code>electron:build</code> stopped before bundling, and <code>dist-electron/</code> still held the previous build. Nothing printed an error because the output was sent to <code>/dev/null</code>. The fix is cheap: check that the variant is really in the bundle (<code>grep</code> the built file) before timing it.</div>
+  <div class="lesson"><b>Lesson</b>Before caching a result, list what it reads. The selection was one input among many, and only three of its uses mattered; a key made of exactly those turned "always redraw" into "redraw when it shows". And whenever a fast path skips work, keep the slow path around in development to compare against.</div>
+</section>
+
+<!-- ============================================================ -->
 <section class="chapter" id="lessons">
   <div class="chapnum">Summary</div>
   <h2>Patterns that carry over to other code</h2>
@@ -746,6 +787,7 @@ cellSizes: Map&lt;cellMarkup, [w, h]&gt;     // ≤1,024 cells</code></pre>
       <tr><td data-k="Pattern">Copy once, shift in place</td><td data-k="Data structure"><code>new Array(n)</code> + mutation</td><td data-k="Cost per edit">3–4 copies → 1</td><td data-k="In Markwork"><code>splice</code>, <code>spliceByLine</code></td></tr>
       <tr><td data-k="Pattern">Split up long work</td><td data-k="Data structure"><code>deferFrom</code> + idle ≤8 ms</td><td data-k="Cost per edit">pause 162 → 71 ms</td><td data-k="In Markwork"><code>LineTagger.fill</code></td></tr>
       <tr><td data-k="Pattern">Lazy: create when visible</td><td data-k="Data structure"><code>widget: Widget | null</code> + a bounded size cache</td><td data-k="Cost per edit">1,000 builds → 1</td><td data-k="In Markwork"><code>TableLayer</code></td></tr>
+      <tr><td data-k="Pattern">Key the result by what it read</td><td data-k="Data structure"><code>Drawn.key</code> (what was taken from the selection)</td><td data-k="Cost per edit">every move redraws → only when it shows</td><td data-k="In Markwork"><code>selectionKey</code></td></tr>
       <tr><td data-k="Pattern">I/O off the main thread</td><td data-k="Data structure">a single timer + <code>lastEdit</code></td><td data-k="Cost per edit">fsync → queued</td><td data-k="In Markwork"><code>autosave()</code></td></tr>
     </tbody>
   </table>

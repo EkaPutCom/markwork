@@ -1,10 +1,11 @@
 // The window: the sidebar (or its rail), the header of the document, the editor with its tabs, the counts at the foot,
 // the Assistant beside them, and the command palette over all of it. The look is shadcn/ui's (docs/design/shadcn/).
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './components/EditorArea.js';
+import { Inspector } from './components/Inspector.js';
 import { FilesView } from './components/FilesView.js';
 import { Search } from './components/Search.js';
 import { Palette } from './components/Palette.js';
@@ -216,11 +217,14 @@ function Notification() {
     );
 }
 
+const INSPECTOR_KEY = 'Ctrl+Alt+i';
+
 export function App() {
     const client = useClient();
     const state = useStore();
     const page = state.settings['sidebar-page'];
     const panels = layoutOf(state);
+    const [inspecting, setInspecting] = useState(false);
 
     // The window's width decides which side panels float (client.ts layoutOf).
     useEffect(() => {
@@ -244,6 +248,13 @@ export function App() {
         const onKey = (event: KeyboardEvent) => {
             // A dialog has the keys to itself.
             if (client.getState().dialog) return;
+            // Dev mode: the Editor Inspector (not a command of the core, which a normal build has no use for).
+            if (window.markwork.devMode && matches(event, INSPECTOR_KEY)) {
+                event.preventDefault();
+                event.stopPropagation();
+                setInspecting(on => !on);
+                return;
+            }
             for (const command of COMMANDS) {
                 if (command.keys.some(k => matches(event, k)) && client.enabled(command)) {
                     event.preventDefault();
@@ -272,6 +283,7 @@ export function App() {
                     <div className={`content${panels.chat.floats ? ' float-chat' : ''}`}>
                         <div className="editor-group">
                             <EditorArea />
+                            {inspecting && <Inspector onClose={() => setInspecting(false)} />}
                             <StatusBar />
                         </div>
                         {panels.chat.shown && <Chat />}
