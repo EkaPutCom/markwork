@@ -6,12 +6,13 @@
 // Exit codes: 0 done, 1 a check failed (or a replay did not come out as expected), 2 a usage or connection error.
 
 import { spawn } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { connect } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fuzz, kindsOf, play } from './editor-fuzz.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -32,6 +33,9 @@ const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--headless [--fold
   load FILE                               a repro's start in a new tab
   replay FILE                             a repro played again with every check: pass, fail, or differs
   screenshot FILE [--overlay]             a PNG of the editor
+  fuzz [--docs GLOB,…] [--runs N] [--steps N] [--seed S] [--keys K,…] [--quiet MS] [--out DIR] [--shrink-seconds N]
+                                          random keys and clicks with every check; a failure is shrunk and saved
+  test-from FILE [--name NAME] [--dir D]  a repro as a test: tests/electron/repros/NAME.mwrepro.json
   hello                                   the window's process
 
 --headless starts its own window on a scratch folder (a copy of --folder, which is never written) and closes it at the
@@ -43,7 +47,7 @@ const fail = (message, code = 2) => { process.stderr.write(`editor: ${message}\n
 // ---------- Arguments ----------
 
 // The flags that take the next word as their value.
-const VALUED = new Set(['at', 'since', 'line', 'pos', 'mods', 'note', 'visible']);
+const VALUED = new Set(['at', 'since', 'line', 'pos', 'mods', 'note', 'visible', 'docs', 'runs', 'steps', 'seed', 'keys', 'quiet', 'out', 'shrink-seconds', 'name', 'dir']);
 
 const whole = (v, what) => {
     if (v === undefined) return undefined;
@@ -77,6 +81,11 @@ const OPS = {
     load: (_w, _f, one) => ({ file: one('a file') }),
     replay: (_w, _f, one) => ({ file: one('a file') }),
     screenshot: (_w, f, one) => ({ file: one('a file'), overlay: f.overlay === true }),
+    fuzz: (_w, f) => ({
+        docs: f.docs ?? join(repo, 'tests', 'samples', 'all-formats.md'), runs: whole(f.runs, '--runs') ?? 1, steps: whole(f.steps, '--steps') ?? 100,
+        seed: whole(f.seed, '--seed') ?? 1, keys: f.keys, quiet: whole(f.quiet, '--quiet') ?? 60, out: f.out ?? '.', shrinkSeconds: whole(f['shrink-seconds'], '--shrink-seconds') ?? 120,
+    }),
+    'test-from': (_w, f, one) => ({ file: one('a repro file'), name: f.name, dir: f.dir }),
 };
 
 function parseOp(args) {
@@ -243,29 +252,46 @@ const readJSON = file => {
     try { return JSON.parse(readFileSync(file, 'utf8')); } catch (e) { throw new Usage(`cannot read ${file}: ${e.message}`); }
 };
 
-// The request of one step of a repro: the same input a person gave.
-function stepRequest(step) {
-    if ('key' in step) return { op: 'press', keys: [step.key] };
-    if ('type' in step) return { op: 'type', text: step.type };
-    if ('select' in step) return { op: 'select', from: step.select[0], to: step.select[1] };
-    if ('external' in step) return { op: 'apply', changes: step.external };
-    if ('visible' in step.click) return { op: 'click', visible: step.click.visible, edge: step.click.edge ?? 'end' };
-    return { op: 'click', pos: step.click.pos, mods: step.click.mods };
-}
-
 async function replay(conn, file) {
     const repro = readJSON(file);
     const loaded = await conn.ask({ op: 'load', repro });
     let doc = repro.start?.doc ?? '', first = null;
     for (const [i, step] of repro.steps.entries()) {
-        const answer = await conn.ask({ ...stepRequest(step), explain: true });
+        const { answer, failing } = await play(conn, step);
         doc = answer.doc;
-        const finding = answer.entries.flatMap(e => (e.findings ?? []).map(f => ({ ...f, tx: e.n }))).find(f => f.severity === 'fail');
-        if (finding && !first) first = { step: i + 1, ...step, finding };
+        if (failing && !first) first = { step: i + 1, ...step, finding: failing };
     }
     const expected = repro.expect?.doc;
     const result = first ? 'fail' : expected !== undefined && expected !== doc ? 'differs' : 'pass';
     return { result, steps: repro.steps.length, ...(first ? { first } : {}), doc, ...(result === 'differs' ? { expected } : {}), widthDiffers: loaded.widthDiffers };
+}
+
+// The texts a fuzz run types into: files named by glob patterns, comma-separated.
+function fuzzDocs(patterns) {
+    const files = patterns.split(',').flatMap(p => globSync(p.trim())).filter(f => statSync(f).isFile());
+    if (!files.length) throw new Usage(`--docs ${patterns}: no file`);
+    return files.map(name => ({ name, doc: readFileSync(name, 'utf8') }));
+}
+
+function runFuzz(conn, request) {
+    let kinds;
+    try { kinds = kindsOf(request.keys); } catch (e) { throw new Usage(e.message); }
+    if (!existsSync(request.out)) mkdirSync(request.out, { recursive: true });
+    return fuzz(conn, { ...request, docs: fuzzDocs(request.docs), kinds });
+}
+
+// A repro kept as a test (tests/electron/repros.mjs plays each): it must pass every check, and come out as the text it
+// expects when it has one. A repro of a failure is the test of its fix.
+function testFrom(request) {
+    const repro = readJSON(request.file);
+    if (repro.format !== 'markwork-repro') throw new Usage(`${request.file} is not a markwork repro`);
+    const name = (request.name ?? basename(request.file).replace(/\.mwrepro\.json$|\.json$/, '')).replace(/[^\w.-]+/g, '-');
+    const folder = request.dir ? resolve(request.dir) : join(repo, 'tests', 'electron', 'repros');
+    mkdirSync(folder, { recursive: true });
+    const file = join(folder, `${name}.mwrepro.json`);
+    const { actual: _actual, ...kept } = repro;
+    writeFileSync(file, `${JSON.stringify({ ...kept, expect: { ...repro.expect, checks: 'pass' } }, null, 2)}\n`);
+    return { file, steps: repro.steps.length, failedBefore: repro.actual?.failed ?? [] };
 }
 
 async function runOp(conn, request) {
@@ -280,6 +306,8 @@ async function runOp(conn, request) {
             return { ...where, file: resolve(request.file), steps: repro.steps.length, failed: repro.actual.failed };
         }
         case 'load': return conn.ask({ op: 'load', repro: readJSON(request.file) });
+        case 'fuzz': return runFuzz(conn, request);
+        case 'test-from': return testFrom(request);
         case 'replay': return replay(conn, request.file);
         case 'screenshot': {
             const { png, ...area } = await conn.ask({ op: 'screenshot', overlay: request.overlay });
@@ -341,10 +369,16 @@ function prettyReplay(a) {
     return lines;
 }
 
+const prettyFuzz = a => [
+    `seed ${a.seed}: ${a.runs} runs, ${a.steps} steps, ${a.failures.length ? `${a.failures.length} failed` : 'every check passed'}`,
+    ...a.failures.map(f => `  run ${f.run} (${f.doc}) step ${f.step}: ${f.check}: ${f.message}\n    shrunk to ${f.steps} steps in ${f.tries} tries: ${f.file}`),
+];
+
 const prettyFindings = a => [`#${a.n}: ${a.findings.length ? '' : 'no findings'}`, ...a.findings.map(f => `  ${f.severity} ${f.check}: ${f.message}`)];
 
 function pretty(request, answer) {
     const lines = request.op === 'snapshot' ? prettySnapshot(answer)
+        : request.op === 'fuzz' ? prettyFuzz(answer)
         : Array.isArray(answer.entries) ? prettyEntries(answer)
         : request.op === 'replay' ? prettyReplay(answer)
         : Array.isArray(answer.findings) ? prettyFindings(answer)
@@ -385,13 +419,14 @@ async function main() {
     const { global, ops } = parsed;
     let window = null, code = 0, error = null;
     try {
-        window = await connectTo(global);
+        // test-from only copies a file: no window is needed for it.
+        window = ops.every(op => op.op === 'test-from') ? { conn: null, headless: null } : await connectTo(global);
         code = await runAll(window.conn, ops, global);
         if (window.headless && global.keep) process.stderr.write(`editor: the window keeps running: --pid ${window.headless.pid}\n`);
     } catch (e) {
         error = e instanceof Usage || !e.code ? e.message : `${e.code}: ${e.message}`;
     } finally {
-        window?.conn.close();
+        window?.conn?.close();
         if (window?.headless && !global.keep) window.headless.stop();
     }
     if (error) fail(error);

@@ -79,6 +79,15 @@ export class Recording {
         return entry;
     }
 
+    // Starts again from `state`: a repro's text just put in a tab (inspect/bridge.ts load) is where its steps begin, not
+    // a change of them.
+    restart(state: EditorState): void {
+        this.base = { doc: state.doc, selection: state.selection };
+        this.entries.length = 0;
+        this.pending = null;
+        this.changed();
+    }
+
     // Someone who shows the recording (the inspector) hears of each change; returns how to stop.
     subscribe(listener: () => void): () => void {
         this.listeners.add(listener);

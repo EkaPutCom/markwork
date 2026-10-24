@@ -3,8 +3,10 @@
 // checkboxes, the / menu, and the selection menu. What the commands do to the text is tests/unit/editcommands.ts.
 
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { copyFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('visual');
@@ -16,7 +18,22 @@ writeFileSync(join(notes, 'inbox.md'), '---\nlayout: list\n---\n\n# Inbox\n\n- A
 writeFileSync(join(notes, 'data.csv'), 'name,qty\napple,3\npear,5\n');
 
 const { steps, step } = stepper();
-const app = await launchApp({ scratch, notes });
+// Dev mode: a wait that gives up can say which transactions came last (npm run editor -- log), not only how things ended.
+const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1' } });
+const editorScript = fileURLToPath(new URL('../../scripts/editor.mjs', import.meta.url));
+// The editor's last transactions, a line each: what made them, and the selection they left.
+async function trail(count = 12) {
+    try {
+        const pid = String(await app.evaluate(() => process.pid));
+        const { entries } = JSON.parse(execFileSync(process.execPath, [editorScript, '--pid', pid, 'log'], { encoding: 'utf8', timeout: 20000 }));
+        return entries.slice(-count).map(e => {
+            const input = e.input ? `${e.input.kind}${e.input.key ? ` ${e.input.mods ? `${e.input.mods}+` : ''}${e.input.key}` : ''}` : '-';
+            return `  #${e.n} ${e.userEvent ?? '-'} (${input}) changes ${JSON.stringify(e.changes)} sel ${JSON.stringify(e.selAfter)}${e.effects.length ? ` ${e.effects.join(',')}` : ''}`;
+        }).join('\n');
+    } catch (e) {
+        return `  (no trail: ${e.message.split('\n')[0]})`;
+    }
+}
 let failed = false;
 try {
     const page = await app.firstWindow();
@@ -261,6 +278,9 @@ try {
         await popup.getByText('Heading 1').waitFor();
         await page.keyboard.type('todo');
         await waitFor(async () => (await popup.locator('li').count()) === 1);
+        // While the list is being worked out again after a letter it is disabled, and Enter is a line break: on a slow
+        // runner the one item shows before the list takes keys.
+        await page.locator('.cm-tooltip-autocomplete:not(.cm-tooltip-autocomplete-disabled) li[aria-selected]').waitFor();
         await page.keyboard.press('Enter');
         await page.keyboard.type('Buy paper');
         assert.equal(await docText(), 'intro\n\n- [ ] Buy paper');
@@ -375,7 +395,7 @@ try {
             const active = document.activeElement, inCell = active?.matches('.cm-md-cell') && s.rangeCount && active.contains(s.anchorNode);
             return [`text: ${JSON.stringify(v.state.doc.toString())}`, `selection: ${m.anchor}–${m.head} ${JSON.stringify(v.state.sliceDoc(m.from, m.to))}`,
                 `focus: ${active?.className || active?.tagName}`, `cell selection: ${inCell ? JSON.stringify(s.toString()) + ` (${s.anchorOffset}–${s.focusOffset})` : 'none'}`].join('\n');
-        });
+        }).then(async text => `${text}\nlast transactions:\n${await trail()}`);
         const caret = () => page.evaluate(() => { const s = getSelection(), r = document.createRange(); r.selectNodeContents(document.activeElement); r.setEnd(s.focusNode, s.focusOffset); return r.toString().length; });
         await waitFor(async () => (await caret()) === 7);
         assert.deepEqual(await grid.boundingBox(), before, 'opening a cell moves nothing');
@@ -607,6 +627,27 @@ try {
         await openFile('plan.md');
         await toolbar.waitFor();
         assert.equal(await visual.getAttribute('aria-pressed'), 'true', 'an ordinary document is Visual in the visual editor again');
+    });
+
+    // Last: it leaves a new document with no file open.
+    await step('a picture in a text with no file (its address cannot be told) is drawn as missing, and Backspace and Delete take it whole', async () => {
+        await page.keyboard.press('ControlOrMeta+n');
+        await waitFor(async () => (await docText()) === '' && await page.locator('.headerbar .title').getByText('Untitled').count() > 0);
+        await setDoc('text\n![a chart](images/none.png)\nafter', 0);
+        await editor.locator('.cm-md-picture-missing', { hasText: 'a chart' }).waitFor();
+        await clickBeforeText('after');
+        await page.keyboard.press('Backspace');
+        await editor.locator('.cm-md-picture.picked').waitFor();
+        assert.equal(await docText(), 'text\n![a chart](images/none.png)\nafter', 'Backspace picks it, no hidden letter goes');
+        await page.keyboard.press('Escape');
+        // Delete right before it, on its own line: a list item's line, where its markup lies inside the item's.
+        await setDoc('- item\n  ![a chart](images/none.png)\nafter', 9);
+        await editor.locator('.cm-md-picture-missing', { hasText: 'a chart' }).waitFor();
+        await page.keyboard.press('Delete');
+        await editor.locator('.cm-md-picture.picked').waitFor();
+        assert.equal(await docText(), '- item\n  ![a chart](images/none.png)\nafter', 'Delete picks it');
+        await page.keyboard.press('Delete');
+        assert.equal(await docText(), '- item\nafter', 'a second Delete removes it with its line');
     });
 } catch {
     failed = true;

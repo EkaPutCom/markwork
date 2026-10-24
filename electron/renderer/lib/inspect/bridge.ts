@@ -21,6 +21,7 @@ export class InspectError extends Error {
 
 const AROUND_LINES = 3;     // the decorations of a snapshot: the cursor's line and this many on each side
 const QUIET_MS = 500;       // an action has settled when no transaction came for this long
+const MIN_QUIET_MS = 40;    // the shortest wait asked for: two frames and a little
 const SETTLE_LIMIT_MS = 5000;
 const CORE_OPS = new Set(['open', 'mode', 'load']);
 const STEADY_MS = 300;      // a tab's editor that kept one state this long has been given its text
@@ -139,8 +140,10 @@ export class InspectBridge {
 
     // Waits until the editor has settled after an action: no transaction for QUIET_MS, and every one since `since`
     // checked. Answers those transactions.
+    // `quiet` (ms) shortens the wait for a run of many steps (fuzz), where a key comes long after the last one's frame.
     private async settle(request: InspectRequest): Promise<Answer> {
         const recording = this.recording(), since = Number(request.since ?? 0);
+        const quiet = Math.min(Math.max(Number(request.quiet ?? QUIET_MS) || QUIET_MS, MIN_QUIET_MS), QUIET_MS);
         const end = performance.now() + SETTLE_LIMIT_MS;
         let seen = recording.entries.at(-1)?.n ?? 0, quietSince = performance.now();
         while (performance.now() < end) {
@@ -148,7 +151,7 @@ export class InspectBridge {
             const now = recording.entries.at(-1)?.n ?? 0;
             if (now !== seen) { seen = now; quietSince = performance.now(); continue; }
             const fresh = recording.entries.filter(e => e.n > since);
-            if (performance.now() - quietSince >= QUIET_MS && fresh.every(e => e.findings !== null)) {
+            if (performance.now() - quietSince >= quiet && fresh.every(e => e.findings !== null)) {
                 return { ...this.where(), entries: fresh.map(entryJSON), doc: this.view().state.doc.toString() };
             }
         }
@@ -291,6 +294,9 @@ export class InspectBridge {
         }
         const view = this.view();
         if (repro.editor) await this.mode({ op: 'mode', mode: repro.editor.mode, focus: repro.editor.focus });
+        // The recording starts at the repro's text, so a repro saved from here has that text as its start.
+        await this.steady();
+        this.recording().restart(this.view().state);
         view.focus();
         await frame();
         const width = Math.round(view.contentDOM.getBoundingClientRect().width);

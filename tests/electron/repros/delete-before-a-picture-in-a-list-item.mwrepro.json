@@ -1,0 +1,63 @@
+{
+  "format": "markwork-repro",
+  "version": 1,
+  "app": {
+    "version": "fuzz",
+    "os": "linux"
+  },
+  "editor": {
+    "mode": "visual",
+    "focus": false,
+    "width": 0
+  },
+  "start": {
+    "doc": "---\nlayout: gallery\ncover: cover\nsize: medium\nadd: top\nfields:\n  cover: link\n  rating: number\n---\n\n# Design references\n\nA card for every note. The cover is the cover field, else the first image in the note, else a color from the first tag. Click a card to edit it. Change layout: gallery to layout: list and the same file is a list.\n\n- [ ] Header bar patterns #gtk [rating:: 5]\n  Title in the middle, actions on the sides.\n- [ ] Color palette #color [cover:: images/example.png]\n  The accent is blue, status colors are green, amber, and red.\n- [ ] Symbolic icons #icon [rating:: 4]\n  Line style, 16 px.\n- [ ] Typography #type\n  Cantarell, sizes 11 to 15.\n- [ ] Animation #motion [rating:: 3]\n  200 ms with ease-out.\n  ![preview](images/example.png)\n- [ ] Meeting notes #meeting\n  Decision: use GTK 4.\n- [ ] Accessibility #a11y [rating:: 5]\n  Contrast of at least 4.5.\n- [ ] Notes without a tag\n",
+    "selection": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "type": "y"
+    },
+    {
+      "type": "s"
+    },
+    {
+      "type": "n"
+    },
+    {
+      "type": "n"
+    },
+    {
+      "type": "g"
+    },
+    {
+      "type": " "
+    },
+    {
+      "click": {
+        "pos": 600
+      }
+    },
+    {
+      "key": "Enter"
+    },
+    {
+      "click": {
+        "pos": 757
+      }
+    },
+    {
+      "key": "Delete"
+    }
+  ],
+  "note": "Found by fuzz (--seed 11, run 35). Delete right before a picture on a list item's line removed a letter of its hidden markup: the visual editor's Delete stepped past only the inner hidden \"![\" (pastHidden took the first of the hidden ranges inside one another), and ran before the key that picks the picture. It now picks the picture.",
+  "blurred": false,
+  "expect": {
+    "checks": "pass"
+  }
+}
