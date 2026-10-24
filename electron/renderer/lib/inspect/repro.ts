@@ -9,7 +9,7 @@ import type { Recording, TxEntry } from './recorder.js';
 export type ReproStep =
     | { key: string }                                              // "Backspace", "Ctrl+b"
     | { type: string }
-    | { click: { visible: string; edge?: 'start' | 'end' } | { pos: number; mods?: string } }
+    | { click: { visible: string; edge?: 'start' | 'end' } | { line: number; edge: 'start' | 'end' } | { pos: number; mods?: string } }
     | { select: [number, number] }
     | { external: unknown };                                       // ChangeSet JSON: a change no input made (the core's)
 
@@ -132,8 +132,9 @@ function stepError(step: unknown): string | null {
     if ('click' in s) {
         const c = s.click as Record<string, unknown> | null;
         if (c && typeof c.visible === 'string' && (c.edge === undefined || c.edge === 'start' || c.edge === 'end')) return null;
+        if (c && Number.isInteger(c.line) && (c.line as number) >= 1 && (c.edge === 'start' || c.edge === 'end')) return null;
         if (c && Number.isInteger(c.pos) && (c.pos as number) >= 0) return null;
-        return 'clicks neither on visible text nor at a position';
+        return 'clicks neither on visible text, at the edge of a line, nor at a position';
     }
     return 'is no step a repro knows';
 }

@@ -22,6 +22,7 @@ const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--cp] [--headless 
   press KEY… [--explain]                  real keys: Backspace, Enter, Mod+b, Ctrl+Shift+z, ArrowDown
   type TEXT [--explain]                   real typing
   click --visible TEXT [--start|--end]    a click on text the eye sees (its end by default)
+  click --line N [--start|--end]          a click at the start of what line N shows, or past its end (the default)
   click --pos N [--mods M] [--explain]    a click at a position of the text
   select FROM [TO] [--explain]            a selection, dispatched (marked select.inspect)
   log [--since N] [--flagged] [--follow]  the recorded transactions
@@ -68,8 +69,9 @@ const OPS = {
     click: (_w, f) => {
         const explain = f.explain === true;
         if (f.visible !== undefined) return { visible: f.visible, edge: f.start ? 'start' : 'end', mods: f.mods, explain };
+        if (f.line !== undefined) return { line: whole(f.line, '--line'), edge: f.start ? 'start' : 'end', explain };
         if (f.pos !== undefined) return { pos: whole(f.pos, '--pos'), mods: f.mods, explain };
-        throw new Usage('click needs --visible TEXT or --pos N');
+        throw new Usage('click needs --visible TEXT, --line N, or --pos N');
     },
     select: (w, f) => {
         if (w.length < 1 || w.length > 2) throw new Usage('select needs FROM and maybe TO');

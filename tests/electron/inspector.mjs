@@ -435,7 +435,17 @@ async function throughTheBridge() {
             assert.equal(cp.length, u16.length - 2, 'two emoji');
         });
 
-        await step('editor.mjs: fuzz with a fixed seed on the long sample passes every check', async () => {
+        await step('editor.mjs: click --line clicks where the eye sees a line start and end, past its hidden syntax', async () => {
+            const end = await cli(...pid, 'click', '--line', '3', '--explain');
+            assert.equal(end.code, 0, end.stderr);
+            assert.deepEqual(end.answer.entries.at(-1).selAfter, [[30, 30]], 'past the end of "some **bold** 🎉 text"');
+            const start = await cli(...pid, 'click', '--line', '1', '--start', '--explain');
+            assert.deepEqual(start.answer.entries.at(-1).selAfter, [[2, 2]], 'after the hidden "# "');
+            const hidden = await cli(...pid, 'click', '--line', '9');
+            assert.equal(hidden.code, 2, 'a line the text does not have');
+        });
+
+                await step('editor.mjs: fuzz with a fixed seed on the long sample passes every check', async () => {
             const sample = fileURLToPath(new URL('../samples/all-formats.md', import.meta.url));
             const { code, answer, stderr } = await cli(...pid, 'fuzz', '--docs', sample, '--runs', '1', '--steps', '100', '--seed', '1', '--out', scratch);
             assert.ok(answer, stderr);

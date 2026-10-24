@@ -206,9 +206,9 @@ export class InspectBridge {
             if (typeof request.text !== 'string') throw new UsageError('usage', 'type needs the text');
             typeText(contents, request.text);
         } else if (op === 'click') {
-            const place = await this.page({ op: 'coords', visible: request.visible, edge: request.edge, pos: request.pos, cp: request.cp });
+            const place = await this.page({ op: 'coords', visible: request.visible, line: request.line, edge: request.edge, pos: request.pos, cp: request.cp });
             click(contents, place.x as number, place.y as number, typeof request.mods === 'string' ? request.mods : undefined);
-            extra = { at: place.pos };
+            extra = place.line === undefined ? { at: place.pos } : { line: place.line, edge: place.edge };
         } else {
             extra = await this.page(request);
         }

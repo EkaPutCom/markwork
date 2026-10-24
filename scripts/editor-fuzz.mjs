@@ -23,7 +23,7 @@ const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 // The kinds of step a run takes, with how often: mostly typing and the keys that bring hidden syntax next to the cursor.
 const KINDS = [
     ['type', 30], ['space', 5], ['Backspace', 14], ['Delete', 6], ['Enter', 8], ['Tab', 2], ['Shift+Tab', 2],
-    ['ArrowLeft', 6], ['ArrowRight', 6], ['ArrowUp', 4], ['ArrowDown', 4], ['Home', 3], ['End', 3], ['click', 7],
+    ['ArrowLeft', 6], ['ArrowRight', 6], ['ArrowUp', 4], ['ArrowDown', 4], ['Home', 3], ['End', 3], ['click', 6], ['click-pos', 2],
 ];
 export const KIND_NAMES = KINDS.map(([name]) => name);
 
@@ -34,12 +34,15 @@ function pick(rng, kinds) {
     return kinds.at(-1)[0];
 }
 
-// One random step for a text of `length` characters.
-export function randomStep(rng, length, kinds) {
+// One random step for a text of `length` characters on `lines` lines. A click is where a person clicks, at the start or
+// past the end of what a line shows (the bugs of the visual editor come from where such a click lands); `click-pos` is
+// a click at a position of the text, which may be one hidden from the eye.
+export function randomStep(rng, length, lines, kinds) {
     const kind = pick(rng, kinds);
     if (kind === 'type') return { type: LETTERS[Math.floor(rng() * LETTERS.length)] };
     if (kind === 'space') return { type: ' ' };
-    if (kind === 'click') return { click: { pos: Math.floor(rng() * (length + 1)) } };
+    if (kind === 'click') return { click: { line: 1 + Math.floor(rng() * lines), edge: rng() < 0.5 ? 'start' : 'end' } };
+    if (kind === 'click-pos') return { click: { pos: Math.floor(rng() * (length + 1)) } };
     return { key: kind };
 }
 
@@ -61,6 +64,7 @@ export function stepRequest(step) {
     if ('select' in step) return { op: 'select', from: step.select[0], to: step.select[1] };
     if ('external' in step) return { op: 'apply', changes: step.external };
     if ('visible' in step.click) return { op: 'click', visible: step.click.visible, edge: step.click.edge ?? 'end' };
+    if ('line' in step.click) return { op: 'click', line: step.click.line, edge: step.click.edge };
     return { op: 'click', pos: step.click.pos, mods: step.click.mods };
 }
 
@@ -118,9 +122,9 @@ async function fuzzOne(conn, { doc, name, seed, run, steps, kinds, quiet, out, s
     const rng = random(seed * 1000 + run);
     const repro = reproOf(doc, seed, run);
     await conn.ask({ op: 'load', repro });
-    let length = doc.length;
+    let length = doc.length, lines = doc.split('\n').length;
     for (let i = 0; i < steps; i++) {
-        const step = randomStep(rng, length, kinds);
+        const step = randomStep(rng, length, lines, kinds);
         let played;
         try {
             played = await play(conn, step, quiet);
@@ -133,6 +137,7 @@ async function fuzzOne(conn, { doc, name, seed, run, steps, kinds, quiet, out, s
         repro.steps.push(step);
         const { answer, failing } = played;
         length = answer.doc.length;
+        lines = answer.doc.split('\n').length;
         if (!failing) continue;
         const found = { run: run + 1, doc: name, step: i + 1, check: failing.check, message: failing.message };
         const shrunk = await shrink(conn, repro, repro.steps, failing.check, { quiet, seconds: shrinkSeconds });

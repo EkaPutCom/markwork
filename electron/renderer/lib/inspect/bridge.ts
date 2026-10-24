@@ -174,10 +174,12 @@ export class InspectBridge {
         return { ...this.where(), selection: [[anchor, head]] };
     }
 
-    // Where to click, in the window: at a position, or at the start or end of a piece of text the eye sees (the first
-    // place it is written with no hidden range in it). The editor is scrolled to it first, without a transaction.
+    // Where to click, in the window: at a position, at the start or end of a piece of text the eye sees (the first
+    // place it is written with no hidden range in it), or at the start or end of what a line shows. The editor is
+    // scrolled to it first, without a transaction.
     private async coords(request: InspectRequest): Promise<Answer> {
         const view = this.view(), { state } = view;
+        if (request.line !== undefined) return { ...this.where(), ...await this.lineEdge(view, Number(request.line), request.edge === 'start' ? 'start' : 'end') };
         let pos: number;
         if (typeof request.visible === 'string') {
             const found = visiblePlace(state, request.visible);
@@ -190,6 +192,28 @@ export class InspectBridge {
         // Just inside the letter on the side asked for, half way down the line: where a person would click.
         const x = request.edge === 'start' ? box.left + 1 : box.right - 1;
         return { ...this.where(), pos, x: Math.round(x), y: Math.round((box.top + box.bottom) / 2), zoom: window.devicePixelRatio };
+    }
+
+    // The start or end of what line `number` shows, where a person clicks to put the cursor before or after its text: just
+    // inside its first letter, or past its last one (on the last row of a wrapped line), as textEdges in
+    // tests/electron/visual.mjs. A line the editor does not draw as a line of text (inside a code box, a table, a hidden
+    // fence) has no edge.
+    private async lineEdge(view: EditorView, number: number, edge: 'start' | 'end'): Promise<Answer> {
+        const { doc } = view.state;
+        if (!Number.isInteger(number) || number < 1 || number > doc.lines) throw new InspectError('usage', `--line ${number} is not a line of the text (1–${doc.lines})`);
+        const line = doc.line(number);
+        await this.reveal(view, line.from);
+        const at = view.domAtPos(line.from).node;
+        const element = (at instanceof Element ? at : at.parentElement)?.closest('.cm-line');
+        if (!element || !view.contentDOM.contains(element) || view.posAtDOM(element, 0) !== line.from) throw new InspectError('not-found', `line ${number} is not drawn as a line of text`);
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const rows = [...range.getClientRects()].filter(r => r.width > 0 || r.height > 0);
+        const box = edge === 'start' ? rows[0] ?? element.getBoundingClientRect() : rows.at(-1) ?? element.getBoundingClientRect();
+        const content = view.contentDOM.getBoundingClientRect();
+        // Past the end, but inside the editor: a click in the empty space after a line's text.
+        const x = edge === 'start' ? box.left + 1 : Math.min(box.right + 30, content.right - 2);
+        return { line: number, edge, x: Math.round(x), y: Math.round((box.top + box.bottom) / 2), zoom: window.devicePixelRatio };
     }
 
     private async reveal(view: EditorView, pos: number): Promise<void> {
