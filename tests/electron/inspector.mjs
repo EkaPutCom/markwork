@@ -187,11 +187,19 @@ async function inDevMode() {
             const current = () => source.locator('.ins-line.current .ins-text').textContent();
             await waitFor(async () => await current() === 'onexy');
             await inspector.getByRole('button', { name: 'Paused' }).click();
-            await inspector.getByRole('button', { name: 'Step back' }).click();
-            await waitFor(async () => await current() === 'onex');
+            // The last transaction need not be the "y": one with only a selection or an effect (from the core, say) can
+            // come after it. Steps back over those to the "x".
+            const back = inspector.getByRole('button', { name: 'Step back' }), forward = inspector.getByRole('button', { name: 'Step forward' });
+            const recorded = () => inspector.locator('.ins-list tbody tr').evaluateAll(rows => rows.slice(0, 6).map(r => r.textContent).join('\n'));
+            for (let i = 0; i < 5 && await current() !== 'onex'; i++) {
+                const before = await inspector.locator('.ins-head').textContent();
+                await back.click();
+                await waitFor(async () => await inspector.locator('.ins-head').textContent() !== before, 10000, recorded);
+            }
+            await waitFor(async () => await current() === 'onex', 10000, recorded);
             assert.match(await inspector.locator('.ins-head').textContent(), /after #\d+/);
-            await inspector.getByRole('button', { name: 'Step forward' }).click();
-            await waitFor(async () => await current() === 'onexy');
+            for (let i = 0; i < 5 && await current() !== 'onexy'; i++) await forward.click();
+            await waitFor(async () => await current() === 'onexy', 10000, recorded);
             await inspector.getByRole('button', { name: 'Live' }).click();
             assert.equal(await inspector.getByRole('button', { name: 'Step back' }).count(), 0);
         });
