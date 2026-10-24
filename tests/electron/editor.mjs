@@ -445,11 +445,13 @@ try {
     await step('imagezoom: the window moves by its header and resizes by its corner', async () => {
         await setDoc('![A small one](images/small.png)', 0);
         await page.waitForFunction(() => [...document.querySelectorAll('.cm-md-pictures img')].some(i => i.naturalWidth > 0));
-        const win = page.locator('.image-viewer .viewer-window');
+        const win = page.locator('.image-viewer .viewer-window'), viewer = page.locator('.image-viewer');
         // The picture may still be settling after the text was set: a double click that lands before it is ready opens nothing.
-        for (let tries = 0; tries < 4 && !(await win.isVisible()); tries++) {
+        // Another one is sent only while no viewer is there at all: on a slow runner the first can open late, and a second
+        // landing on its backdrop would close it again.
+        for (let tries = 0; tries < 4 && !(await viewer.count()); tries++) {
             await editor.locator('.cm-md-pictures img').first().dblclick();
-            await win.waitFor({ timeout: 3000 }).catch(() => {});
+            await viewer.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
         }
         await win.waitFor();
         const rect = () => win.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
