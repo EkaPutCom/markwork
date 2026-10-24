@@ -440,19 +440,38 @@ try {
         const after = await img.evaluate(el => el.getBoundingClientRect().x);
         assert.ok(after - before > 40, `dragging shifts the image (${before} → ${after}, ${await caption()})`);
         await page.keyboard.press('Escape');
+        await page.locator('.image-viewer').waitFor({ state: 'detached' });
     });
 
     await step('imagezoom: the window moves by its header and resizes by its corner', async () => {
+        // No viewer of a step before is still on its way out: this step's double click would be skipped for it, and the
+        // window measured below would be that one, gone a moment later.
+        await page.locator('.image-viewer').waitFor({ state: 'detached' });
         await setDoc('![A small one](images/small.png)', 0);
         await page.waitForFunction(() => [...document.querySelectorAll('.cm-md-pictures img')].some(i => i.naturalWidth > 0));
-        const win = page.locator('.image-viewer .viewer-window');
+        const win = page.locator('.image-viewer .viewer-window'), viewer = page.locator('.image-viewer');
         // The picture may still be settling after the text was set: a double click that lands before it is ready opens nothing.
-        for (let tries = 0; tries < 4 && !(await win.isVisible()); tries++) {
+        // Another one is sent only while no viewer is there at all: on a slow runner the first can open late, and a second
+        // landing on its backdrop would close it again.
+        for (let tries = 0; tries < 4 && !(await viewer.count()); tries++) {
             await editor.locator('.cm-md-pictures img').first().dblclick();
-            await win.waitFor({ timeout: 3000 }).catch(() => {});
+            await viewer.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
         }
         await win.waitFor();
-        const rect = () => win.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+        // The viewer has been seen to close by itself right here on CI now and then: what happened just before it went is
+        // kept, and told if the window is gone below.
+        await page.evaluate(() => {
+            const seen = window.viewerTrail = [];
+            const t0 = performance.now(), at = () => Math.round(performance.now() - t0);
+            const name = el => el instanceof Element ? `${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? `.${el.className.split(' ').join('.')}` : ''}` : String(el);
+            for (const type of ['pointerdown', 'mousedown', 'click', 'dblclick', 'keydown', 'focusin']) {
+                window.addEventListener(type, e => seen.push(`${at()} ms ${type} ${e.key ?? ''} on ${name(e.target)}`), true);
+            }
+            new MutationObserver(() => { if (!document.querySelector('.image-viewer')) seen.push(`${at()} ms the viewer is gone; focus on ${name(document.activeElement)}`); })
+                .observe(document.body, { childList: true, subtree: true });
+        });
+        const rect = () => win.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }, null, { timeout: 5000 })
+            .catch(async e => { throw new Error(`${e.message.split('\n')[0]}\n${(await page.evaluate(() => window.viewerTrail ?? [])).join('\n')}`); });
         const before = await rect();
         await page.mouse.move(before.x + before.w / 2, before.y + 20);
         await page.mouse.down();

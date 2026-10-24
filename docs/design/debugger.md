@@ -1,6 +1,6 @@
 # Arsitektur Editor Inspector
 
-24 Oktober 2026 · tahap 1 dan 2 sudah dibangun (bagian 14) · mockup: [`shadcn/Debugger.html`](shadcn/Debugger.html)
+25 Oktober 2026 · tahap 1, 2, dan 3 sudah dibangun (bagian 14) · mockup: [`shadcn/Debugger.html`](shadcn/Debugger.html)
 
 ## Keputusan
 
@@ -458,7 +458,33 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      teksnya keluar sama.
    - **Belum ada:** `--cp` (semua posisi UTF-16), `handler` di entri (tahap 4), `around`, `widgets`, dan `parse` di
      snapshot, serta penyamaran (tahap 4).
-3. **Fuzz, penyusutan, dan `test-from`**, ditambah fuzz dengan seed tetap di CI.
+3. **Fuzz, penyusutan, dan `test-from`**, ditambah fuzz dengan seed tetap di CI. *Sudah dibangun*: `scripts/editor-fuzz.mjs`
+   (dipakai `npm run editor -- fuzz`), `test-from`, dan `tests/electron/repros.mjs`. Yang berbeda dari rancangan:
+   - **Repro yang disimpan diputar oleh `repros.mjs`,** bukan disalin menjadi `step(…)` di `visual.mjs`. `test-from`
+     menyalin repro ke `tests/electron/repros/` dengan `expect.checks: "pass"` (dan `expect.doc` bila ada), dan
+     `repros.mjs` memutar setiap berkas di sana lewat `replay` dengan semua check. Repro tetap menekan tombol sungguhan,
+     jadi aturan *Drive the editor the way a person does* tetap berlaku. Repro pertama di sana adalah aturan lama dari
+     AGENT.md: Backspace di awal baris setelah code block memilih bloknya, tidak menggabungkan baris dengan fence.
+   - **Langkah acak** diambil dengan bobot: huruf dan spasi, Backspace, Delete, Enter, Tab, Shift+Tab, panah, Home/End, dan
+     klik pada posisi acak (`--keys` membatasinya). Klik pada tepi teks terlihat belum ada; klik memakai `pos`.
+   - **Penyusutan** adalah delta debugging yang disederhanakan: buang satu dari n potongan selama check yang sama masih
+     gagal, perkecil potongannya bila tidak ada yang bisa dibuang, sampai satu langkah pun tidak bisa dibuang atau
+     waktunya (`--shrink-seconds`, 120 detik) habis.
+   - **`--quiet MS`** (60 ms untuk fuzz, 500 ms bila tidak diberi) memendekkan tunggu "editor sudah tenang" setelah
+     setiap langkah. 100 langkah memakan sekitar 10 detik.
+   - **Fuzz di CI:** satu run 100 langkah dengan seed 1 atas `all-formats.md` di `inspector.mjs`. Penyusutannya diuji
+     dengan koneksi palsu yang gagal hanya bila dua langkah tertentu ada, karena editor saat ini lulus semua check.
+   - **Temuan pertama fuzz, sudah diperbaiki.** 4 seed × 50 run × 500 langkah atas semua sampel (`--seed 11` sampai `14`,
+     ±97.000 langkah) menghasilkan 8 kegagalan `backspace-visible`, semuanya pada gambar:
+     - Delete tepat sebelum gambar di baris item daftar menghapus satu huruf markup-nya. Range tersembunyi gambar
+       bertumpuk (seluruh `![…](…)` di atas `![` dan `](…)`), dan `pastHidden` di `visual.ts` hanya melompati yang pertama.
+       Sekarang ia melompat ke ujung terjauh. Selain itu, tombol yang memilih objek (`pickingKeys` di `blockselect.ts`)
+       kini didahulukan (`Prec.high`) dari Backspace/Delete milik `visual.ts`.
+     - Di teks tanpa berkas, gambar beralamat relatif tidak punya gambar (alamatnya tidak bisa ditentukan), tetapi
+       markup-nya tetap disembunyikan, sehingga gambar itu hilang dari layar dan tombol di sekitarnya mengubah teks yang
+       tidak terlihat. Sekarang ia digambar sebagai gambar yang hilang (teks alt), dan bisa dipilih serta dihapus utuh.
+     - Klik acak pada tempat yang tidak digambar menghentikan run (seed 13). Klik itu sekarang dilewati.
+     Repro yang tersisa dari temuan pertama ada di `tests/electron/repros/`; yang kedua diuji di `visual.mjs`.
 4. **Laporan pengguna** (dialog, penyamaran, screenshot, i18n) dan `traced`/`trace` di titik keputusan `visual.ts`,
    `blockselect.ts`, dan `tables.ts`.
 

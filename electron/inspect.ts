@@ -212,7 +212,7 @@ export class InspectBridge {
         } else {
             extra = await this.page(request);
         }
-        const settled = await this.page({ op: 'settle', since: before });
+        const settled = await this.page({ op: 'settle', since: before, quiet: request.quiet });
         const entries = settled.entries as { findings: { severity: string }[] | null }[];
         const failed = entries.some(e => e.findings?.some(f => f.severity === 'fail'));
         const { entries: _entries, ...where } = settled;

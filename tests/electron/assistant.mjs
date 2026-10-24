@@ -45,6 +45,22 @@ try {
         await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Ask the Assistant');
     });
 
+    await step('Ctrl+Shift+A pressed fast, again and again, leaves the panel as the last press says', async () => {
+        // The core echoes every setting back; the echo of an older press must not turn a newer one back (client.ts
+        // staleEcho). A race, so it is tried many times: the code before failed about one round in sixteen, and only
+        // with more than one press in a row.
+        for (let round = 0; round < 40; round++) {
+            const before = await panel.count() > 0, presses = 2 + round % 3;
+            for (let k = 0; k < presses; k++) await page.keyboard.press('ControlOrMeta+Shift+a');
+            const expected = before !== (presses % 2 === 1);
+            await page.waitForTimeout(500);   // a pause, to show that no late echo turns it back
+            assert.equal(await panel.count() > 0, expected, `round ${round + 1}: ${presses} presses from ${before ? 'shown' : 'hidden'}`);
+        }
+        if (!(await panel.count())) await page.keyboard.press('ControlOrMeta+Shift+a');
+        await panel.waitFor();
+        await input.focus();
+    });
+
     await step('a suggestion fills the box; Send is off while it is empty', async () => {
         const send = page.getByRole('button', { name: 'Send', exact: true });
         assert.equal(await send.isDisabled(), true);

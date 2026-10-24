@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import { copyFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { shrink } from '../../scripts/editor-fuzz.mjs';
 import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('inspector');
@@ -321,9 +322,41 @@ async function throughTheBridge() {
             assert.equal(bad.code, 2);
             assert.match(bad.stderr, /not a modifier/);
         });
+        await step('editor.mjs: fuzz with a fixed seed on the long sample passes every check', async () => {
+            const sample = fileURLToPath(new URL('../samples/all-formats.md', import.meta.url));
+            const { code, answer, stderr } = await cli(...pid, 'fuzz', '--docs', sample, '--runs', '1', '--steps', '100', '--seed', '1', '--out', scratch);
+            assert.ok(answer, stderr);
+            assert.deepEqual(answer.failures, [], JSON.stringify(answer.failures));
+            assert.equal(answer.steps, 100);
+            assert.equal(code, 0);
+        });
+
+        await step('editor.mjs: test-from keeps a repro as a test that must pass every check', async () => {
+            const { code, answer, stderr } = await cli('test-from', repro, '--name', 'kept', '--dir', scratch);
+            assert.equal(code, 0, stderr);
+            const kept = JSON.parse(readFileSync(answer.file, 'utf8'));
+            assert.equal(kept.expect.checks, 'pass');
+            assert.equal(kept.actual, undefined, 'what happened once is not what is expected');
+        });
     } finally {
         await close(app);
     }
+
+    await step('fuzz: shrinking keeps the fewest steps that still make the check fail', async () => {
+        // A window that fails "undo" once it has had both an "A" and a "B" since the text was loaded.
+        let played = [];
+        const conn = {
+            ask: async request => {
+                if (request.op === 'load') { played = []; return {}; }
+                played.push(request.keys?.[0]);
+                const fails = played.includes('A') && played.includes('B');
+                return { doc: '', entries: [{ n: played.length, findings: fails ? [{ check: 'undo', severity: 'fail', message: 'made up' }] : [] }] };
+            },
+        };
+        const steps = Array.from({ length: 40 }, (_, i) => ({ key: i === 7 ? 'A' : i === 30 ? 'B' : 'x' }));
+        const { steps: left } = await shrink(conn, { start: { doc: '', selection: [[0, 0]] } }, steps, 'undo', { quiet: 40, seconds: 30 });
+        assert.deepEqual(left, [{ key: 'A' }, { key: 'B' }]);
+    });
 
     await step('editor.mjs --headless starts a window of its own on a copy of the folder, plays a repro, and closes', async () => {
         const before = readFileSync(join(notes, 'bridge.md'), 'utf8');

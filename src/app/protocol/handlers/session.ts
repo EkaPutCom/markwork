@@ -39,8 +39,8 @@ export function sessionHandlers({ wire, session, settingKeys, notice, onDispose 
         }
     });
 
-    // Every change, whoever made it: the frontend draws from the core's values. Its own change comes back too, which is
-    // harmless: the value is the one it set.
+    // Every change, whoever made it: the frontend draws from the core's values. Its own change comes back too; a window
+    // that has set the key again since skips that echo (renderer client.ts staleEcho).
     onDispose(session.settings.onChanged(null, key => {
         if (known(key)) wire.notify('setting', { key, value: store.get(key) });
     }));

@@ -244,7 +244,9 @@ export function blockSelection(source: BlockSource, on: (state: EditorState) => 
     return [
         pickedBlock,
         Prec.high(pickedKeys),
-        pickingKeys(source, on),
+        // Before the visual editor's own Backspace and Delete (visual.ts), which step over hidden markup: a key next to an
+        // object picks it before anything hidden changes.
+        Prec.high(pickingKeys(source, on)),
         keepOutOfPictureRuns(source, on),
         pickedLook,
         keysHint,
