@@ -11,6 +11,7 @@
     "start": "npm run build && electron .",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.electron.json && node scripts/layers.mjs",
     "layers": "node scripts/layers.mjs",
+    "editor": "node scripts/editor.mjs",
     "test": "npm run test:core:node && npm run test:electron",
     "test:core:node": "tsc --noEmit -p tsconfig.node.json && node scripts/layers.mjs && vite build -c vite.node.config.ts && node dist-node/run-core-node.js",
     "test:electron": "npm run electron:build && xvfb-run -a -s '-screen 0 1280x800x24' npm run test:electron:run",
