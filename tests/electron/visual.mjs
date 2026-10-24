@@ -305,13 +305,13 @@ try {
         assert.equal(await docText(), 'see the [docs](https://example.com)');
         await box.waitFor({ state: 'detached' });
         await setDoc('see the [docs](https://example.com)', 12);
-        await page.keyboard.press('Control+k');
+        await page.keyboard.press('ControlOrMeta+k');
         await box.waitFor();
         assert.equal(await box.getByPlaceholder('https://… or a file path').inputValue(), 'https://example.com');
         await box.getByRole('button', { name: 'Remove link' }).click();
         assert.equal(await docText(), 'see the docs');
         await setDoc('');
-        await page.keyboard.press('Control+k');
+        await page.keyboard.press('ControlOrMeta+k');
         await box.waitFor();
         assert.equal(await box.locator('input').count(), 2, 'with nothing selected the text is asked too');
         await page.keyboard.press('Escape');
@@ -369,14 +369,21 @@ try {
             const r = range.getBoundingClientRect(); return { x: r.left + 1, y: r.top + r.height / 2 };
         });
         await page.mouse.click(at.x, at.y);
+        // What the text, its selection, and the cell's own selection were, for a wait below that gives up.
+        const state = () => page.evaluate(() => {
+            const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main, s = getSelection();
+            const active = document.activeElement, inCell = active?.matches('.cm-md-cell') && s.rangeCount && active.contains(s.anchorNode);
+            return [`text: ${JSON.stringify(v.state.doc.toString())}`, `selection: ${m.anchor}–${m.head} ${JSON.stringify(v.state.sliceDoc(m.from, m.to))}`,
+                `focus: ${active?.className || active?.tagName}`, `cell selection: ${inCell ? JSON.stringify(s.toString()) + ` (${s.anchorOffset}–${s.focusOffset})` : 'none'}`].join('\n');
+        });
         const caret = () => page.evaluate(() => { const s = getSelection(), r = document.createRange(); r.selectNodeContents(document.activeElement); r.setEnd(s.focusNode, s.focusOffset); return r.toString().length; });
         await waitFor(async () => (await caret()) === 7);
         assert.deepEqual(await grid.boundingBox(), before, 'opening a cell moves nothing');
         await page.keyboard.type('X');
         assert.equal(await cell.textContent(), 'make thXis loud');
         assert.match(await docText(), /make \*\*thXis\*\* loud/, 'a letter typed in a bold word is bold, and the markers stay');
-        await page.keyboard.press('Control+z');
-        await waitFor(async () => /make \*\*this\*\* loud/.test(await docText()));
+        await page.keyboard.press('ControlOrMeta+z');
+        await waitFor(async () => /make \*\*this\*\* loud/.test(await docText()), 10000, state);
         // A selection in the cell is the text's: the menu shows, and Bold wraps it.
         await cell.evaluate(td => { const t = td.lastChild; getSelection().setBaseAndExtent(t, 1, t, 4); });
         await page.keyboard.press('Shift+ArrowRight');
@@ -387,18 +394,18 @@ try {
         assert.equal(await cell.textContent(), 'make this loud');
         assert.equal(await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed'), 'true', 'Bold is pressed for a bold selection in a cell');
         // Bold again takes it off: the selection is what the cell shows, without the hidden **.
-        await page.keyboard.press('Control+b');
-        await waitFor(async () => /make \*\*this\*\* loud \|/.test(await docText()));
+        await page.keyboard.press('ControlOrMeta+b');
+        await waitFor(async () => /make \*\*this\*\* loud \|/.test(await docText()), 10000, state);
         // The cell takes its selection back from the command before the next one (a slow runner can be a frame behind).
-        await waitFor(async () => await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed') === 'false');
-        await page.keyboard.press('Control+b');
-        await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
+        await waitFor(async () => await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed') === 'false', 10000, state);
+        await page.keyboard.press('ControlOrMeta+b');
+        await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()), 10000, state);
         // A bold word chosen with the mouse right after a command, then Bold: no more bold, not ****this****. The text takes
         // the cell's new selection (not "loud" back from the command); Bold being pressed says nothing, since loud is bold too.
         await cell.locator('.cm-md-bold', { hasText: 'this' }).dblclick();
         const selected = () => page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); });
         // Windows takes the space after a double-clicked word along; Shift+Left gives the word back.
-        await waitFor(async () => /^this\b/.test(await selected()));
+        await waitFor(async () => /^this\b/.test(await selected()), 10000, state);
         if ((await selected()) !== 'this') await page.keyboard.press('Shift+ArrowLeft');
         await waitFor(async () => (await selected()) === 'this');
         assert.equal(await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed'), 'true');
@@ -423,7 +430,7 @@ try {
         // Frames come 150 ms late, so the double-click below lands before the frame that follows Ctrl+B.
         await page.evaluate(() => { const raf = window.requestAnimationFrame; window.slowFrames = raf; window.requestAnimationFrame = cb => raf(() => setTimeout(() => cb(performance.now()), 150)); });
         try {
-            await page.keyboard.press('Control+b');
+            await page.keyboard.press('ControlOrMeta+b');
             await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
             await cell.locator('.cm-md-bold', { hasText: 'this' }).dblclick();
             await waitFor(async () => /^(\*\*)?this(\*\*)? ?$/.test(await selected()));
@@ -456,7 +463,7 @@ try {
         const menu = page.getByRole('toolbar', { name: 'Format the selection' });
         await menu.getByRole('button', { name: 'Bold' }).click();
         await waitFor(async () => (await docText()).includes('| The **dependencies** of step 0'));
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press('ControlOrMeta+i');
         await waitFor(async () => (await docText()).includes('| The ***dependencies*** of step 0'));
         await page.waitForTimeout(300);   // to show that nothing scrolls after the command either
         assert.equal(await top(), before, 'Bold and Italic in a cell do not move the page');
@@ -505,7 +512,7 @@ try {
         await page.keyboard.press('Enter');
         await page.keyboard.type('next();');
         assert.match(await docText(), /\/\/ end\nnext\(\);\n```\n\nBelow/, 'Enter makes a new line of code');
-        await page.keyboard.press('Control+z');
+        await page.keyboard.press('ControlOrMeta+z');
         await waitFor(async () => !(await docText()).includes('next();'));
         await page.keyboard.press('Escape');
         await waitFor(async () => await editor.evaluate(el => document.activeElement === el));
