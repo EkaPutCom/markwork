@@ -458,7 +458,20 @@ try {
             await viewer.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
         }
         await win.waitFor();
-        const rect = () => win.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+        // The viewer has been seen to close by itself right here on CI now and then: what happened just before it went is
+        // kept, and told if the window is gone below.
+        await page.evaluate(() => {
+            const seen = window.viewerTrail = [];
+            const t0 = performance.now(), at = () => Math.round(performance.now() - t0);
+            const name = el => el instanceof Element ? `${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? `.${el.className.split(' ').join('.')}` : ''}` : String(el);
+            for (const type of ['pointerdown', 'mousedown', 'click', 'dblclick', 'keydown', 'focusin']) {
+                window.addEventListener(type, e => seen.push(`${at()} ms ${type} ${e.key ?? ''} on ${name(e.target)}`), true);
+            }
+            new MutationObserver(() => { if (!document.querySelector('.image-viewer')) seen.push(`${at()} ms the viewer is gone; focus on ${name(document.activeElement)}`); })
+                .observe(document.body, { childList: true, subtree: true });
+        });
+        const rect = () => win.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }, null, { timeout: 5000 })
+            .catch(async e => { throw new Error(`${e.message.split('\n')[0]}\n${(await page.evaluate(() => window.viewerTrail ?? [])).join('\n')}`); });
         const before = await rect();
         await page.mouse.move(before.x + before.w / 2, before.y + 20);
         await page.mouse.down();
