@@ -10,7 +10,8 @@ import { drawnOf, focusOn } from '../editor.js';
 import { recordingOf, type Recording, type TxEntry } from './recorder.js';
 import { blurRepro, reproError, type Repro } from './repro.js';
 import { modeOf, reproOfEditor } from './report.js';
-import { snapshot } from './snapshot.js';
+import { cpSnapshot, snapshot } from './snapshot.js';
+import { makeCpMap, makeU16Map } from '../../../../src/markdown/offsets.js';
 
 export interface InspectRequest { op: string; [arg: string]: unknown }
 type Answer = Record<string, unknown>;
@@ -102,16 +103,17 @@ export class InspectBridge {
 
     private snapshot(request: InspectRequest): Answer {
         const { state } = this.view();
-        const line = state.doc.lineAt(this.at(state, request.at)).number;
+        const line = state.doc.lineAt(this.at(state, request.at, request.cp === true)).number;
         const shot = request.all === true ? snapshot(state) : snapshot(state, line - AROUND_LINES, line + AROUND_LINES);
-        return { ...this.where(), ...shot, focus: focusOn(state) };
+        return { ...this.where(), ...(request.cp === true ? cpSnapshot(state, shot) : shot), focus: focusOn(state) };
     }
 
-    // `at`: 'cursor' (or nothing) or a position in the text.
-    private at(state: EditorState, at: unknown): number {
+    // `at`: 'cursor' (or nothing) or a position in the text, in code points with --cp.
+    private at(state: EditorState, at: unknown, cp = false): number {
         if (at === undefined || at === 'cursor') return state.selection.main.head;
-        if (!Number.isInteger(at) || (at as number) < 0 || (at as number) > state.doc.length) throw new InspectError('usage', `--at ${String(at)} is not a position in the text (0–${state.doc.length})`);
-        return at as number;
+        const length = cp ? makeCpMap(state.doc.toString())(state.doc.length) : state.doc.length;
+        if (!Number.isInteger(at) || (at as number) < 0 || (at as number) > length) throw new InspectError('usage', `--at ${String(at)} is not a position in the text (0–${length})`);
+        return cp ? makeU16Map(state.doc.toString())(at as number) : at as number;
     }
 
     private decorations(request: InspectRequest): Answer {
@@ -119,7 +121,8 @@ export class InspectBridge {
         const line = request.line === undefined ? state.doc.lineAt(state.selection.main.head).number : Number(request.line);
         if (!Number.isInteger(line) || line < 1 || line > state.doc.lines) throw new InspectError('usage', `--line ${String(request.line)} is not a line of the text (1–${state.doc.lines})`);
         const [first, last] = request.line === undefined ? [line - AROUND_LINES, line + AROUND_LINES] : [line, line];
-        return { ...this.where(), lines: [Math.max(1, first), Math.min(state.doc.lines, last)], decorations: snapshot(state, first, last).decorations };
+        const shot = snapshot(state, first, last);
+        return { ...this.where(), lines: [Math.max(1, first), Math.min(state.doc.lines, last)], decorations: (request.cp === true ? cpSnapshot(state, shot) : shot).decorations };
     }
 
     private log(request: InspectRequest): Answer {
@@ -160,9 +163,12 @@ export class InspectBridge {
 
     // The one action that dispatches by itself: marked, so it shows in the log for what it is.
     private select(request: InspectRequest): Answer {
-        const view = this.view(), length = view.state.doc.length;
-        const anchor = Number(request.from), head = request.to === undefined ? anchor : Number(request.to);
-        if (![anchor, head].every(n => Number.isInteger(n) && n >= 0 && n <= length)) throw new InspectError('usage', `select ${anchor} ${head}: not inside the text (0–${length})`);
+        const view = this.view(), cp = request.cp === true;
+        const from = Number(request.from), to = request.to === undefined ? from : Number(request.to);
+        const length = cp ? makeCpMap(view.state.doc.toString())(view.state.doc.length) : view.state.doc.length;
+        if (![from, to].every(n => Number.isInteger(n) && n >= 0 && n <= length)) throw new InspectError('usage', `select ${from} ${to}: not inside the text (0–${length})`);
+        const u16 = cp ? makeU16Map(view.state.doc.toString()) : (n: number) => n;
+        const anchor = u16(from), head = u16(to);
         view.dispatch({ selection: { anchor, head }, userEvent: 'select.inspect', scrollIntoView: true });
         view.focus();
         return { ...this.where(), selection: [[anchor, head]] };
@@ -177,7 +183,7 @@ export class InspectBridge {
             const found = visiblePlace(state, request.visible);
             if (found === null) throw new InspectError('not-found', `no visible text ${JSON.stringify(request.visible)} in the editor`);
             pos = request.edge === 'start' ? found : found + request.visible.length;
-        } else pos = this.at(state, request.pos);
+        } else pos = this.at(state, request.pos, request.cp === true);
         await this.reveal(view, pos);
         const box = view.coordsAtPos(pos, request.edge === 'start' ? 1 : -1) ?? view.coordsAtPos(pos);
         if (!box) throw new InspectError('not-found', `position ${pos} is not drawn`);

@@ -324,6 +324,7 @@ async function inDevMode() {
 async function throughTheBridge() {
     // A file of its own: the steps above typed into plan.md, and autosave kept it.
     writeFileSync(join(notes, 'bridge.md'), '# Plan\n\nsome **bold** text\n');
+    writeFileSync(join(notes, 'emoji.md'), '# 🎉 Hi\n\nsome **bold** 🎉 text\n');
     const repro = join(scratch, 'bridge.mwrepro.json'), blurred = join(scratch, 'blurred.mwrepro.json');
     const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1' } });
     try {
@@ -412,6 +413,28 @@ async function throughTheBridge() {
             assert.equal(bad.code, 2);
             assert.match(bad.stderr, /not a modifier/);
         });
+        await step('editor.mjs: snapshot with an emoji, in UTF-16 and with --cp in code points; around, visibleAfter, and the parse', async () => {
+            assert.equal((await cli(...pid, 'open', 'emoji.md')).code, 0);
+            const selected = await cli(...pid, '--cp', 'select', '24');
+            assert.equal(selected.code, 0, selected.stderr);
+            const { answer: u16 } = await cli(...pid, 'snapshot');
+            assert.equal(u16.units, 'utf16');
+            assert.deepEqual(u16.cursor, { pos: 26, line: 3, col: 18, inPrefix: false, cp: 24 }, 'before "text", after "🎉 ": the emoji is two units and one character');
+            assert.deepEqual(u16.around, { before: 'some **bold** 🎉 ', after: 'text' });
+            assert.deepEqual(u16.visibleBefore, { char: ' ', from: 25, to: 26 });
+            assert.deepEqual(u16.visibleAfter, { char: 't', from: 26, to: 27 });
+            assert.ok(u16.hidden.some(([a, b]) => a === 20 && b === 22), JSON.stringify(u16.hidden));
+            assert.equal(u16.parse.line, 3);
+            assert.ok(u16.parse.spans.some(([style]) => /bold|strong/.test(style)), JSON.stringify(u16.parse.spans));
+            assert.ok(Array.isArray(u16.widgets) && typeof u16.parseMs === 'number');
+            const { answer: cp } = await cli(...pid, '--cp', 'snapshot');
+            assert.equal(cp.units, 'cp');
+            assert.deepEqual(cp.cursor, { pos: 24, line: 3, col: 17, inPrefix: false });
+            assert.deepEqual(cp.visibleBefore, { char: ' ', from: 23, to: 24 });
+            assert.ok(cp.hidden.some(([a, b]) => a === 19 && b === 21), JSON.stringify(cp.hidden));
+            assert.equal(cp.length, u16.length - 2, 'two emoji');
+        });
+
         await step('editor.mjs: fuzz with a fixed seed on the long sample passes every check', async () => {
             const sample = fileURLToPath(new URL('../samples/all-formats.md', import.meta.url));
             const { code, answer, stderr } = await cli(...pid, 'fuzz', '--docs', sample, '--runs', '1', '--steps', '100', '--seed', '1', '--out', scratch);

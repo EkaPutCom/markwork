@@ -296,6 +296,8 @@ export function Inspector({ onClose }: { onClose: () => void }) {
                             <span>line <b>{snap.cursor.line}</b> col <b>{snap.cursor.col}</b></span>
                             <span>in prefix <b className={snap.cursor.inPrefix ? 'bad' : undefined}>{snap.cursor.inPrefix ? 'yes' : 'no'}</b></span>
                             {snap.visibleBefore && <span>before it <b>{show(snap.visibleBefore.char)}</b> {snap.visibleBefore.from}–{snap.visibleBefore.to}</span>}
+                            {snap.visibleAfter && <span>after it <b>{show(snap.visibleAfter.char)}</b> {snap.visibleAfter.from}–{snap.visibleAfter.to}</span>}
+                            <span>parse <b>{snap.parseMs.toFixed(1)} ms</b></span>
                             <span>draw <b>{snap.drawMs.toFixed(1)} ms</b></span>
                         </div>
                     </div>

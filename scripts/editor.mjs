@@ -16,7 +16,7 @@ import { fuzz, kindsOf, play } from './editor-fuzz.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--headless [--folder DIR] [--keep]] <op> [args] [--then <op> [args]]…
+const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--cp] [--headless [--folder DIR] [--keep]] <op> [args] [--then <op> [args]]…
 
   snapshot [--at cursor|POS] [--all]      what the editor shows and hides
   press KEY… [--explain]                  real keys: Backspace, Enter, Mod+b, Ctrl+Shift+z, ArrowDown
@@ -37,6 +37,9 @@ const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--headless [--fold
                                           random keys and clicks with every check; a failure is shrunk and saved
   test-from FILE [--name NAME] [--dir D]  a repro as a test: tests/electron/repros/NAME.mwrepro.json
   hello                                   the window's process
+
+Positions are UTF-16 units, as CodeMirror counts; --cp makes those of snapshot, decorations, click --pos, and select code
+points, as the app protocol counts (an emoji is one). The log and repros stay in UTF-16.
 
 --headless starts its own window on a scratch folder (a copy of --folder, which is never written) and closes it at the
 end unless --keep.`;
@@ -106,13 +109,14 @@ function parseOp(args) {
 }
 
 function parseArgs(argv) {
-    const global = { pretty: false, headless: false, keep: false, pid: undefined, folder: undefined };
+    const global = { pretty: false, headless: false, keep: false, cp: false, pid: undefined, folder: undefined };
     let i = 0;
     for (; i < argv.length && argv[i].startsWith('--'); i++) {
         const a = argv[i];
         if (a === '--pretty') global.pretty = true;
         else if (a === '--headless') global.headless = true;
         else if (a === '--keep') global.keep = true;
+        else if (a === '--cp') global.cp = true;
         else if (a === '--pid' || a === '--folder') {
             if (i + 1 >= argv.length) throw new Usage(`${a} needs a value`);
             global[a.slice(2)] = argv[++i];
@@ -350,7 +354,7 @@ function prettySnapshot(a) {
     const prefix = a.cursor.inPrefix ? ' in a hidden prefix' : '';
     return [
         `${a.path ?? a.name} · ${a.mode}${a.focus ? ' · focus' : ''} · ${a.length} chars, ${a.lines} lines`,
-        `cursor ${a.cursor.pos} (line ${a.cursor.line}, col ${a.cursor.col})${prefix}; visible before: ${JSON.stringify(a.visibleBefore?.char ?? null)}`,
+        `cursor ${a.cursor.pos} (line ${a.cursor.line}, col ${a.cursor.col})${prefix}; visible before: ${JSON.stringify(a.visibleBefore?.char ?? null)}, after: ${JSON.stringify(a.visibleAfter?.char ?? null)}`,
         `hidden: ${ranges(a.hidden)}`,
         `prefixes: ${ranges(a.prefixes)}`,
         ...a.decorations.map(d => `  ${d.from}–${d.to} ${d.kind}${d.block ? ' block' : ''} ${d.what}`),
@@ -406,7 +410,8 @@ async function connectTo(global) {
 async function runAll(conn, ops, global) {
     let code = 0;
     for (const request of ops) {
-        const answer = await runOp(conn, request);
+        // --cp: the positions asked for and answered are code points, as the app protocol counts (an emoji is one).
+        const answer = await runOp(conn, global.cp ? { ...request, cp: true } : request);
         process.stdout.write(`${global.pretty ? pretty(request, answer) : JSON.stringify(answer)}\n`);
         if (failed(answer)) code = 1;
     }
