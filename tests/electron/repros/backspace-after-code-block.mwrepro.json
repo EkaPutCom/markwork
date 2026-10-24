@@ -1,0 +1,34 @@
+{
+  "format": "markwork-repro",
+  "version": 1,
+  "app": {
+    "version": "1.0.0",
+    "os": "linux",
+    "electron": "44.9.0"
+  },
+  "editor": {
+    "mode": "visual",
+    "focus": false,
+    "width": 772
+  },
+  "start": {
+    "doc": "Some code:\n\n```js\nlet a = 1;\n```\nafter the block\n",
+    "selection": [
+      [
+        33,
+        33
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "key": "Backspace"
+    }
+  ],
+  "expect": {
+    "doc": "Some code:\n\n```js\nlet a = 1;\n```\nafter the block\n",
+    "checks": "pass"
+  },
+  "blurred": false,
+  "note": "Backspace at the start of the line after a code block picks the block (blockselect.ts); it once joined the line to the closing fence (AGENT.md, Known pitfalls)."
+}
