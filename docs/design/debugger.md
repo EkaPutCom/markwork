@@ -1,6 +1,6 @@
 # Arsitektur Editor Inspector
 
-23 Oktober 2026 · tahap 1 sudah dibangun (bagian 14) · mockup: [`shadcn/Debugger.html`](shadcn/Debugger.html)
+24 Oktober 2026 · tahap 1 dan 2 sudah dibangun (bagian 14) · mockup: [`shadcn/Debugger.html`](shadcn/Debugger.html)
 
 ## Keputusan
 
@@ -434,7 +434,30 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      baris di tampilan live, membuka atau menutup diagram, dan mengetik masih menggambar ulang semuanya. Tes tidak
      mewajibkan `draw-time` diam di sampel panjang karena waktunya bergantung pada mesin.
 2. **Jembatan dan `scripts/editor.mjs`**: semua op baca dan bertindak, `--headless`, dan format repro (`save-repro`,
-   `load`, `replay`). Mulai dari tahap ini agent bisa bekerja.
+   `load`, `replay`). Mulai dari tahap ini agent bisa bekerja. *Sudah dibangun*: `electron/inspect.ts`,
+   `renderer/lib/inspect/bridge.ts` dan `repro.ts`, serta `npm run editor` (`tests/electron/inspector.mjs`, 9 langkah
+   baru). Yang berbeda dari rancangan di atas:
+   - **Perekam mendengar tombol dan klik di `window`** (fase capture), bukan lewat `domEventHandlers`. Tabel perintah
+     (`App.tsx`) mengambil tombolnya di `document` lalu menghentikannya, dan CodeMirror tidak meneruskan event dari
+     widget yang mengedit dirinya sendiri (sel tabel). Tanpa itu, Ctrl+B dan ketikan di sel tabel tidak punya `input`,
+     sehingga repro memutarnya ulang sebagai perubahan, bukan sebagai tombol.
+   - **Tidak ada pemeriksaan uid peer.** Node tidak membuka `SO_PEERCRED`. Batasnya hanya folder `0700` dan socket
+     `0600`, dan di Windows named pipe dengan ACL bawaan.
+   - **`log --follow` bertanya ulang setiap 250 ms** (`log --since N`), bukan menerima push `{"ev":"tx"}`.
+   - **Beberapa op dalam satu panggilan** dipisah `--then` (`--headless open a.md --then press End x`), karena
+     `--headless` menutup jendelanya ketika skrip selesai.
+   - **`--headless` bekerja pada salinan folder** (`--folder` disalin ke folder scratch). Tombol yang dikirim mengubah
+     teks, dan autosave akan menuliskannya ke folder asli. Di Linux ia menambah `--no-sandbox` bila helper sandbox
+     Chromium tidak terpasang setuid root (container, `npm install` baru), seperti yang juga dilakukan Playwright di tes.
+   - **Tombol memakai nama DOM**, dengan `Mod` untuk Cmd di macOS dan Ctrl di sistem lain, sama seperti `Mod-` di
+     CodeMirror. `Ctrl` selalu berarti tombol Control.
+   - **Langkah repro dari rekaman:** tombol yang hanya mengetik digabung menjadi `type`, klik menjadi `{ click: { pos } }`
+     (posisi kursor sesudahnya; rekaman tidak menyimpan teks terlihat yang diklik), dan transaksi tanpa input dalam
+     100 ms setelah input dianggap bagian dari input itu. Transaksi lain tanpa input menjadi `select` (bila hanya seleksi)
+     atau `external`. Repro yang tidak punya check gagal mendapat `expect.doc`, sehingga `replay`-nya menjadi tes bahwa
+     teksnya keluar sama.
+   - **Belum ada:** `--cp` (semua posisi UTF-16), `handler` di entri (tahap 4), `around`, `widgets`, dan `parse` di
+     snapshot, serta penyamaran (tahap 4).
 3. **Fuzz, penyusutan, dan `test-from`**, ditambah fuzz dengan seed tetap di CI.
 4. **Laporan pengguna** (dialog, penyamaran, screenshot, i18n) dan `traced`/`trace` di titik keputusan `visual.ts`,
    `blockselect.ts`, dan `tables.ts`.

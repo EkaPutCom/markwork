@@ -4,7 +4,7 @@
 // oldest one it still has.
 
 import { Prec, StateField, Transaction, type ChangeSet, type StateEffect, type EditorSelection, type EditorState, type Extension, type StateEffectType, type Text } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import { EditorView, ViewPlugin } from '@codemirror/view';
 
 const LIMIT = 500;           // entries
 const SPAN_MS = 120_000;     // and their age
@@ -103,11 +103,21 @@ export function recorder(): Extension {
     };
     return [
         recordingField,
-        // Before the keymap, which would take the key first.
+        // Keys and clicks are heard on the window, before anyone: the command table (App.tsx) takes its keys on the
+        // document and stops them, and CodeMirror does not pass on what happens in a widget that edits itself (a table
+        // cell). Only what is aimed at this editor counts.
+        ViewPlugin.define(view => {
+            const aimed = (e: Event) => e.target instanceof Node && view.dom.contains(e.target);
+            const key = (e: KeyboardEvent) => {
+                // A modifier alone does nothing; the key it is held with is the input.
+                if (aimed(e) && !MODIFIERS.has(e.key)) note(view, { kind: 'key', key: e.key, mods: mods(e) });
+            };
+            const click = (e: MouseEvent) => { if (aimed(e)) note(view, { kind: 'click', x: e.clientX, y: e.clientY, mods: mods(e) }); };
+            window.addEventListener('keydown', key, true);
+            window.addEventListener('mousedown', click, true);
+            return { destroy: () => { window.removeEventListener('keydown', key, true); window.removeEventListener('mousedown', click, true); } };
+        }),
         Prec.highest(EditorView.domEventHandlers({
-            // A modifier alone does nothing; the key it is held with is the input.
-            keydown: (e, view) => MODIFIERS.has(e.key) ? false : note(view, { kind: 'key', key: e.key, mods: mods(e) }),
-            mousedown: (e, view) => note(view, { kind: 'click', x: e.clientX, y: e.clientY, mods: mods(e) }),
             paste: (_e, view) => note(view, { kind: 'paste' }),
             drop: (_e, view) => note(view, { kind: 'drop' }),
             compositionend: (_e, view) => note(view, { kind: 'compose' }),

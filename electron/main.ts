@@ -187,6 +187,15 @@ void app.whenReady().then(() => {
         { label: 'Edit', submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     ]) : null);
     createWindow();
+    // Dev mode: the inspector's socket for scripts/editor.mjs. Its code is loaded only then.
+    if (devMode) {
+        void import('./inspect.js').then(({ InspectBridge }) => {
+            const bridge = new InspectBridge(() => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null);
+            const path = bridge.start();
+            if (process.env.MARKWORK_INSPECT_QUIET !== '1') console.log(`Editor Inspector: ${path}`);
+            app.on('will-quit', () => bridge.stop());
+        });
+    }
     checkForUpdates();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

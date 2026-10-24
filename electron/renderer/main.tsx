@@ -5,10 +5,12 @@ import { App } from './App.js';
 import { Client } from './lib/client.js';
 import { ClientContext } from './lib/useClient.js';
 import { watchChecks } from './lib/inspect/checks.js';
+import { startBridge } from './lib/inspect/bridge.js';
 
 const client = new Client();
 // Dev mode checks every transaction of the editor (docs/design/debugger.md); a normal build only records them.
-if (window.markwork.devMode) watchChecks();
+// It also answers the inspector's bridge, for scripts/editor.mjs.
+if (window.markwork.devMode) { watchChecks(); startBridge(client); }
 
 // The preload hands over the core's end of the channel, and tells when the core has gone.
 window.addEventListener('message', event => {

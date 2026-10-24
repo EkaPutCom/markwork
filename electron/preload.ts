@@ -7,6 +7,8 @@ ipcRenderer.on('core-exit', (_event, code: number | null, stderr: string) => win
 
 ipcRenderer.on('close-request', () => window.postMessage('markwork-close-request', '*'));
 
+const devMode = ipcRenderer.sendSync('dev-mode') === true;
+
 contextBridge.exposeInMainWorld('markwork', {
     initialFolder: (): Promise<string | null> => ipcRenderer.invoke('initial-folder'),
     openFolder: (path: string): Promise<void> => ipcRenderer.invoke('open-folder', path),
@@ -18,5 +20,12 @@ contextBridge.exposeInMainWorld('markwork', {
     closeWindow: (): Promise<void> => ipcRenderer.invoke('close-window'),
     chooseFile: (options: Record<string, unknown>): Promise<string | null> => ipcRenderer.invoke('choose-file', options),
     // Started with --inspect-editor or MARKWORK_DEV=1: the Editor Inspector is there (docs/design/debugger.md).
-    devMode: ipcRenderer.sendSync('dev-mode') === true,
+    devMode,
+    // Dev mode: the requests of the inspector's bridge (electron/inspect.ts), answered by the page one by one.
+    ...(devMode ? {
+        onInspect: (answer: (request: unknown) => Promise<unknown>): void => {
+            ipcRenderer.on('inspect', (_event, request: unknown) => { void answer(request).then(reply => ipcRenderer.send('inspect-reply', reply)); });
+            ipcRenderer.send('inspect-ready');
+        },
+    } : {}),
 });

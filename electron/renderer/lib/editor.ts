@@ -116,6 +116,8 @@ const parses = new WeakMap<Text, HighlightResult<string>>();
 export const visualOn = (state: EditorState): boolean => state.field(visualMode) && !state.field(sourceMode);
 // The editor shows the file as it is written.
 export const sourceOn = (state: EditorState): boolean => state.field(sourceMode);
+// Focus mode dims all but the cursor's paragraph.
+export const focusOn = (state: EditorState): boolean => state.field(focusMode);
 
 // What the decorations of a state draw, what they hide (visual.ts), how long drawing them took, and what of the selection
 // they were drawn for (selectionKey).

@@ -4,8 +4,10 @@
 // start, where the recorder is the only part that runs.
 
 import assert from 'node:assert/strict';
-import { copyFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { copyFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('inspector');
@@ -14,6 +16,15 @@ copyFileSync(new URL('../samples/all-formats.md', import.meta.url), join(notes, 
 
 const { steps, step } = stepper();
 let failed = false;
+
+// scripts/editor.mjs, as an agent runs it: its exit code and its answers, one JSON line each.
+const editorScript = fileURLToPath(new URL('../../scripts/editor.mjs', import.meta.url));
+const cli = (...args) => new Promise(resolve => {
+    execFile(process.execPath, [editorScript, ...args], { timeout: 120_000, maxBuffer: 16 << 20 }, (error, stdout, stderr) => {
+        const answers = stdout.split('\n').filter(Boolean).map(line => JSON.parse(line));
+        resolve({ code: error ? error.code ?? 1 : 0, answers, answer: answers.at(-1), stderr });
+    });
+});
 
 // Opens a file of the folder and waits for its tab.
 async function openFile(page, name) {
@@ -39,6 +50,12 @@ async function inNormalStart() {
             await page.keyboard.press('Control+Alt+i');
             await page.waitForTimeout(300);   // a pause to show that nothing happens
             assert.equal(await page.getByRole('region', { name: 'Editor Inspector' }).count(), 0);
+        });
+
+        await step('a normal start has no socket for scripts/editor.mjs', async () => {
+            const { code, stderr } = await cli('--pid', String(app.process().pid), 'hello');
+            assert.equal(code, 2, stderr);
+            assert.match(stderr, /cannot reach/);
         });
 
         await openFile(page, 'all.md');
@@ -225,6 +242,97 @@ async function inDevMode() {
     }
 }
 
+// The bridge (docs/design/debugger.md, section 8): scripts/editor.mjs against a window in dev mode, over its socket.
+async function throughTheBridge() {
+    // A file of its own: the steps above typed into plan.md, and autosave kept it.
+    writeFileSync(join(notes, 'bridge.md'), '# Plan\n\nsome **bold** text\n');
+    const repro = join(scratch, 'bridge.mwrepro.json');
+    const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1' } });
+    try {
+        const page = await app.firstWindow();
+        await page.setViewportSize({ width: 1400, height: 900 });
+        const pid = ['--pid', String(app.process().pid)];
+
+        await step('editor.mjs: hello reaches the window, and open shows a file of the folder', async () => {
+            await waitFor(async () => (await cli(...pid, 'hello')).answer?.ready === true, 30000);
+            const { code, answer, stderr } = await cli(...pid, 'open', 'bridge.md');
+            assert.equal(code, 0, stderr);
+            assert.equal(answer.name, 'bridge.md');
+        });
+
+        await step('editor.mjs: snapshot gives what the visual editor hides, and the letter the eye sees before the cursor', async () => {
+            const selected = await cli(...pid, 'select', '21');
+            assert.equal(selected.code, 0, selected.stderr);
+            const { answer } = await cli(...pid, 'snapshot', '--all');
+            assert.equal(answer.mode, 'visual');
+            assert.deepEqual(answer.prefixes, [[0, 2]], 'the heading\'s "# "');
+            for (const range of [[13, 15], [19, 21]]) assert.ok(answer.hidden.some(h => h[0] === range[0] && h[1] === range[1]), `${range} is hidden: ${JSON.stringify(answer.hidden)}`);
+            assert.deepEqual(answer.visibleBefore, { char: 'd', from: 18, to: 19 }, 'the hidden ** after "bold" is stepped over');
+        });
+
+        await step('editor.mjs: press --explain answers the transaction with its key and the findings', async () => {
+            const { code, answer, stderr } = await cli(...pid, 'press', 'Backspace', '--explain');
+            assert.equal(code, 0, stderr);
+            assert.equal(answer.doc, '# Plan\n\nsome **bol** text\n');
+            const tx = answer.entries.find(e => e.userEvent === 'delete.backward');
+            assert.ok(tx, JSON.stringify(answer.entries));
+            assert.equal(tx.input.key, 'Backspace');
+            assert.deepEqual(tx.findings.filter(f => f.severity === 'fail'), []);
+        });
+
+        await step('editor.mjs: a click on visible text puts the cursor at its end, and typing types', async () => {
+            const clicked = await cli(...pid, 'click', '--visible', 'text', '--explain');
+            assert.equal(clicked.code, 0, clicked.stderr);
+            assert.deepEqual(clicked.answer.entries.at(-1).selAfter, [[25, 25]], 'after "text"');
+            const typed = await cli(...pid, 'type', '!?', '--explain');
+            assert.equal(typed.answer.doc, '# Plan\n\nsome **bol** text!?\n');
+            assert.deepEqual(typed.answer.entries.filter(e => e.input).map(e => e.input.key), ['!', '?']);
+        });
+
+        await step('editor.mjs: save-repro, then replay passes; a repro that expects another text differs', async () => {
+            const saved = await cli(...pid, 'save-repro', repro);
+            assert.equal(saved.code, 0, saved.stderr);
+            const file = JSON.parse(readFileSync(repro, 'utf8'));
+            assert.equal(file.format, 'markwork-repro');
+            assert.ok(file.steps.some(s => s.key === 'Backspace') && file.steps.some(s => s.type === '!?'), JSON.stringify(file.steps));
+            const played = await cli(...pid, 'replay', repro);
+            assert.equal(played.code, 0, JSON.stringify(played.answer) + played.stderr);
+            assert.equal(played.answer.result, 'pass');
+            assert.equal(played.answer.doc, file.expect.doc);
+            writeFileSync(repro, JSON.stringify({ ...file, expect: { doc: 'something else' } }));
+            const differs = await cli(...pid, 'replay', repro);
+            assert.equal(differs.code, 1, 'a replay that differs exits 1');
+            assert.equal(differs.answer.result, 'differs');
+        });
+
+        await step('editor.mjs: a picture of the editor, and a usage error exits 2', async () => {
+            const png = join(scratch, 'editor.png');
+            const { code, stderr } = await cli(...pid, 'screenshot', png, '--overlay');
+            assert.equal(code, 0, stderr);
+            assert.deepEqual([...readFileSync(png).subarray(1, 4)], [0x50, 0x4e, 0x47], 'a PNG');
+            const wrong = await cli(...pid, 'frobnicate');
+            assert.equal(wrong.code, 2);
+            const bad = await cli(...pid, 'press', 'Hyper+x');
+            assert.equal(bad.code, 2);
+            assert.match(bad.stderr, /not a modifier/);
+        });
+    } finally {
+        await close(app);
+    }
+
+    await step('editor.mjs --headless starts a window of its own on a copy of the folder, plays a repro, and closes', async () => {
+        const before = readFileSync(join(notes, 'bridge.md'), 'utf8');
+        // The repro of the step above, without the text it was told to expect: only its checks decide.
+        const { expect: _expect, ...played } = JSON.parse(readFileSync(repro, 'utf8'));
+        writeFileSync(repro, JSON.stringify(played));
+        const run = await cli('--headless', '--folder', notes, 'replay', repro, '--then', 'open', 'bridge.md', '--then', 'press', 'End', 'x');
+        assert.equal(run.code, 0, run.stderr);
+        assert.equal(run.answers[0].result, 'pass');
+        assert.match(run.answers.at(-1).doc, /^# Planx\n/, 'the keys went to the copy');
+        assert.equal(readFileSync(join(notes, 'bridge.md'), 'utf8'), before, 'the folder itself is not written');
+    });
+}
+
 async function close(app) {
     await Promise.race([app.close().catch(() => {}), new Promise(r => setTimeout(r, 5000))]);
     try { app.process().kill(); } catch { /* already gone */ }
@@ -233,6 +341,7 @@ async function close(app) {
 try {
     await inNormalStart();
     await inDevMode();
+    await throughTheBridge();
 } catch {
     failed = true;
 } finally {
