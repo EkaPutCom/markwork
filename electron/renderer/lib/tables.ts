@@ -147,12 +147,17 @@ function selectionIn(cell: HTMLElement): [number, number] {
     return a <= h ? [start, end] : [end, start];
 }
 
+// The visible offset of place `raw` of a cell's Markdown.
+function visibleAt(cell: HTMLElement, raw: number): number {
+    const s = shown.get(cell);
+    return s ? s.fromRaw[Math.min(Math.max(raw, 0), s.raw.length)] : 0;
+}
+
 // Select places `anchor`–`head` of a cell's Markdown.
 function selectIn(cell: HTMLElement, anchor: number, head: number): void {
     const s = shown.get(cell);
     if (!s) return;
-    const at = (raw: number) => s.fromRaw[Math.min(Math.max(raw, 0), s.raw.length)];
-    setVisibleSelection(cell, at(anchor), at(head));
+    setVisibleSelection(cell, visibleAt(cell, anchor), visibleAt(cell, head));
 }
 
 const caretIn = (cell: HTMLElement): number => selectionIn(cell)[1];
@@ -175,6 +180,13 @@ const selectors = new WeakMap<HTMLElement, (cell: HTMLElement, left: [number, nu
 // The cells waiting for that: until then the cell shows only a caret, and its selection is not the text's (a key let go
 // right after Ctrl+B would otherwise make the text's selection that caret, and Ctrl+B again would add markers).
 const settling = new WeakSet<HTMLElement>();
+// The caret a redraw left in a cell (visible offsets), until the cell has the text's selection again. Past the frame of
+// `settling` the cell can still hold it: a cell that lost the focus for that frame (its grid put back in place) skips
+// taking the selection. A key let go or the focus coming back then must not make the text's selection that caret (a
+// second Ctrl+B would bold nothing and leave ****): the cell takes the text's selection instead. A click or a key that
+// moves the caret is the person's own place, and ends it.
+const MODIFIER_KEYS = new Set(['Control', 'Meta', 'Alt', 'Shift', 'AltGraph', 'CapsLock']);
+const placeholders = new WeakMap<HTMLElement, [number, number]>();
 
 export class TableWidget extends WidgetType {
     private readonly key: string;
@@ -261,20 +273,28 @@ export class TableWidget extends WidgetType {
         // The text's selection follows the cell's, so the toolbar, the selection menu, and the commands act on it.
         const place = (cell: HTMLElement) => {
             if (!isEdited(cell) || settling.has(cell)) return;
+            if (placeholders.has(cell)) {
+                const held = placeholders.get(cell)!, now = visibleSelection(cell);
+                if (!now || (now[0] === held[0] && now[1] === held[1])) { takeText(cell, held); return; }
+                placeholders.delete(cell);
+            }
             const line = lineOf(cell), start = line.from + cellStart(line.text, colOf(cell));
             const [anchor, head] = selectionIn(cell).map(at => start + at);
             const { main } = view.state.selection;
-            if (main.anchor !== anchor || main.head !== head) view.dispatch({ selection: { anchor, head } });
+            // Marked, so the inspector's log tells the cell's own selection from the text's.
+            if (main.anchor !== anchor || main.head !== head) view.dispatch({ selection: { anchor, head }, userEvent: 'select.cell' });
         };
-        selectors.set(wrap, (cell, left) => {
+        const takeText = (cell: HTMLElement, left: [number, number] | null) => {
             if (!cell.isConnected || !isEdited(cell)) return;
+            placeholders.delete(cell);
             // A selection made in the cell since the redraw (a double-click right after Bold) is the one that counts: the
             // text takes it, rather than the cell taking back the text's older one.
             const now = visibleSelection(cell);
             if (now && (now[0] !== left?.[0] || now[1] !== left[1])) { place(cell); return; }
             const line = lineOf(cell), start = line.from + cellStart(line.text, colOf(cell)), { main } = view.state.selection;
             if (main.from >= start && main.to <= line.to) selectIn(cell, main.anchor - start, main.head - start);
-        });
+        };
+        selectors.set(wrap, takeText);
         // What was typed in a cell is written into the text: that cell only.
         const commit = (cell: HTMLElement) => {
             const before = shown.get(cell);
@@ -340,6 +360,13 @@ export class TableWidget extends WidgetType {
         wrap.addEventListener('compositionend', event => { const cell = cellOf(event.target as Element); if (cell) commit(cell); });
         wrap.addEventListener('keyup', event => { const cell = cellOf(event.target as Element); if (cell) place(cell); });
         wrap.addEventListener('mouseup', event => { const cell = cellOf(event.target as Element); if (cell) requestAnimationFrame(() => place(cell)); });
+        // A click or a key of the person's own (not a shortcut, whose key let go must not move the text's selection) puts
+        // the caret where they mean it.
+        wrap.addEventListener('mousedown', event => { const cell = cellOf(event.target as Element); if (cell) placeholders.delete(cell); }, true);
+        wrap.addEventListener('keydown', event => {
+            const cell = cellOf(event.target as Element);
+            if (cell && !event.ctrlKey && !event.metaKey && !event.altKey && !MODIFIER_KEYS.has(event.key)) placeholders.delete(cell);
+        }, true);
         wrap.addEventListener('keydown', event => {
             const cell = cellOf(event.target as Element);
             if (!cell || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -375,8 +402,11 @@ export class TableWidget extends WidgetType {
             selectIn(cell, caret, caret);
             const select = selectors.get(dom);
             if (!select) continue;
-            const left = visibleSelection(cell);
+            // The caret just put there, from where it was put: read back from the page it can be missing (null), and
+            // a missing one would make the caret pass for a selection the person made since.
+            const at = visibleAt(cell, caret), left: [number, number] = [at, at];
             settling.add(cell);
+            placeholders.set(cell, left);
             requestAnimationFrame(() => { settling.delete(cell); select(cell, left); });
         }
         return true;
