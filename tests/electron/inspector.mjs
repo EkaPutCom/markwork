@@ -118,14 +118,14 @@ async function inDevMode() {
                 await page.keyboard.press('End');
                 await page.keyboard.type('xy');
                 await page.keyboard.press('Backspace');
-                await page.keyboard.press('Control+z');
+                await page.keyboard.press('ControlOrMeta+z');
                 await page.keyboard.press('Home');
             }
             // The cursor through the whole sample, by keys and clicks, in the visual editor, the live view, and focus mode:
             // kept-drawing compares each drawing kept over a move with a new one.
             const walk = async () => {
                 await lines.first().click();
-                await page.keyboard.press('Control+Home');
+                await page.keyboard.press('ControlOrMeta+Home');
                 for (let i = 0; i < 70; i++) await page.keyboard.press('ArrowDown');
                 for (const n of [2, 9, 17, 30]) await lines.nth(n).click();
             };
