@@ -474,7 +474,17 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      setiap langkah. 100 langkah memakan sekitar 10 detik.
    - **Fuzz di CI:** satu run 100 langkah dengan seed 1 atas `all-formats.md` di `inspector.mjs`. Penyusutannya diuji
      dengan koneksi palsu yang gagal hanya bila dua langkah tertentu ada, karena editor saat ini lulus semua check.
-   - **Sejauh ini fuzz belum menemukan bug.** 10 run × 200 langkah atas semua sampel (`--seed 7`) lulus semua check.
+   - **Temuan pertama fuzz, sudah diperbaiki.** 4 seed × 50 run × 500 langkah atas semua sampel (`--seed 11` sampai `14`,
+     ±97.000 langkah) menghasilkan 8 kegagalan `backspace-visible`, semuanya pada gambar:
+     - Delete tepat sebelum gambar di baris item daftar menghapus satu huruf markup-nya. Range tersembunyi gambar
+       bertumpuk (seluruh `![…](…)` di atas `![` dan `](…)`), dan `pastHidden` di `visual.ts` hanya melompati yang pertama.
+       Sekarang ia melompat ke ujung terjauh. Selain itu, tombol yang memilih objek (`pickingKeys` di `blockselect.ts`)
+       kini didahulukan (`Prec.high`) dari Backspace/Delete milik `visual.ts`.
+     - Di teks tanpa berkas, gambar beralamat relatif tidak punya gambar (alamatnya tidak bisa ditentukan), tetapi
+       markup-nya tetap disembunyikan, sehingga gambar itu hilang dari layar dan tombol di sekitarnya mengubah teks yang
+       tidak terlihat. Sekarang ia digambar sebagai gambar yang hilang (teks alt), dan bisa dipilih serta dihapus utuh.
+     - Klik acak pada tempat yang tidak digambar menghentikan run (seed 13). Klik itu sekarang dilewati.
+     Repro yang tersisa dari temuan pertama ada di `tests/electron/repros/`; yang kedua diuji di `visual.mjs`.
 4. **Laporan pengguna** (dialog, penyamaran, screenshot, i18n) dan `traced`/`trace` di titik keputusan `visual.ts`,
    `blockselect.ts`, dan `tables.ts`.
 

@@ -35,8 +35,9 @@ export function imageUrl(url: string, baseDir: string | null): string | null {
     return baseDir === null && !PATHS.isAbsolute(url) ? null : appUrl(source.path);
 }
 
-// url: the address as written; nth: how many pictures before it on its line have the same address (it tells two copies apart)
-export interface PictureItem { src: string; alt: string; url: string; nth: number }
+// url: the address as written; nth: how many pictures before it on its line have the same address (it tells two copies apart);
+// src: where the page loads it from, null when it cannot be told (a relative address in a text with no file yet)
+export interface PictureItem { src: string | null; alt: string; url: string; nth: number }
 
 // Where a picture's ![alt](url) is in its line's text: [start, end), or null.
 export function pictureRange(text: string, item: Pick<PictureItem, 'url' | 'nth'>): [number, number] | null {
@@ -44,11 +45,12 @@ export function pictureRange(text: string, item: Pick<PictureItem, 'url' | 'nth'
     return m ? [m.index, m.index + m[0].length] : null;
 }
 
+// A picture whose address cannot be told is a picture all the same: its markup is hidden like any other's, so it is drawn
+// as missing, and the keys pick it and remove it whole rather than a hidden letter of it.
 export function pictures(refs: readonly ImageRef[], baseDir: string | null): Map<number, PictureItem[]> {
     const byLine = new Map<number, PictureItem[]>();
     for (const ref of refs) {
         const src = imageUrl(ref.url, baseDir);
-        if (!src) continue;
         const list = byLine.get(ref.line) ?? [];
         list.push({ src, alt: ref.alt, url: ref.url, nth: list.filter(it => it.url === ref.url).length });
         byLine.set(ref.line, list);
@@ -79,21 +81,32 @@ export class PicturesWidget extends WidgetType {
             frame.className = 'cm-md-picture';
             frame.dataset.url = item.url;   // which markup it is (blockselect.ts finds a picked picture by it)
             frame.dataset.nth = String(item.nth);
-            const zoom = () => this.events.zoom({ src: item.src, title: item.alt || decodeURIComponent(item.src.split('/').pop() ?? '') });
+            const src = item.src;
+            const zoom = () => { if (src) this.events.zoom({ src, title: item.alt || decodeURIComponent(src.split('/').pop() ?? '') }); };
+            const missing = () => {
+                const span = document.createElement('span');
+                span.className = 'cm-md-picture-missing';
+                span.textContent = item.alt || 'Image not found';
+                return span;
+            };
+            if (!src) {
+                // Drawn as a picture that did not load (no toolbar, which would cover its text), and picked by a click like
+                // one that did, so the keys take it whole.
+                const span = missing();
+                span.addEventListener('click', () => this.events.activate(view, frame, item));
+                frame.append(span);
+                box.append(frame);
+                continue;
+            }
             const img = document.createElement('img');
-            img.src = item.src;
+            img.src = src;
             img.alt = item.alt;
             img.draggable = false;
             img.style.maxHeight = `${MAX_HEIGHT}px`;
             img.style.maxWidth = `min(100%, ${MAX_WIDTH}px)`;
             // A picture too small to carry the toolbar keeps the double click only.
             img.addEventListener('load', () => frame.classList.toggle('small', img.width < TOOLS_MIN_WIDTH || img.height < TOOLS_MIN_HEIGHT));
-            img.addEventListener('error', () => {
-                const missing = document.createElement('span');
-                missing.className = 'cm-md-picture-missing';
-                missing.textContent = item.alt || 'Image not found';
-                frame.replaceChildren(missing);
-            });
+            img.addEventListener('error', () => frame.replaceChildren(missing()));
             img.addEventListener('click', event => { if (event.detail === 1) this.events.activate(view, frame, item); });
             img.addEventListener('dblclick', zoom);
             frame.append(img, blockTools([

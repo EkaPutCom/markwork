@@ -85,13 +85,17 @@ export function listPrefix(ranges: ReturnType<Decoration['range']>[], lineText: 
 
 // The hidden ranges that touch `pos` from one side, followed for as long as another one starts where the last ended:
 // the first visible place before (or after) the cursor.
+// Hidden ranges can lie inside one another (a picture's markup, hidden whole, over its own hidden "![" and "](…)"): the step
+// goes past the one that reaches furthest, or Delete would remove a letter of the markup between the inner ones.
 function pastHidden(hidden: RangeSet<Decoration>, pos: number, forward: boolean): number {
     for (let moved = true; moved;) {
         moved = false;
+        let to = pos;
         hidden.between(forward ? pos : pos - 1, forward ? pos + 1 : pos, (a, b) => {
-            if (forward ? a === pos && b > pos : b === pos && a < pos) { pos = forward ? b : a; moved = true; return false; }
-            return undefined;
+            if (forward && a === pos && b > to) to = b;
+            else if (!forward && b === pos && a < to) to = a;
         });
+        if (to !== pos) { pos = to; moved = true; }
     }
     return pos;
 }

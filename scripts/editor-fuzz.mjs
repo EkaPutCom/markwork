@@ -121,8 +121,17 @@ async function fuzzOne(conn, { doc, name, seed, run, steps, kinds, quiet, out, s
     let length = doc.length;
     for (let i = 0; i < steps; i++) {
         const step = randomStep(rng, length, kinds);
+        let played;
+        try {
+            played = await play(conn, step, quiet);
+        } catch (e) {
+            // A click on a place that is not drawn (folded away, or off the lines the editor keeps) is no step a person
+            // could take: another one is taken instead.
+            if (e.code === 'not-found') continue;
+            throw e;
+        }
         repro.steps.push(step);
-        const { answer, failing } = await play(conn, step, quiet);
+        const { answer, failing } = played;
         length = answer.doc.length;
         if (!failing) continue;
         const found = { run: run + 1, doc: name, step: i + 1, check: failing.check, message: failing.message };

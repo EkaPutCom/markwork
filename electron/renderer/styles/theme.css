@@ -401,7 +401,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .cm-md-picture.small .cm-md-block-tools { display: none; }
 /* A picked object (blockselect.ts): a ring, its toolbar, and a hint of the keys; the editor's own cursor is hidden meanwhile,
    and a picture shows the cursor on its right, where Enter and typing go. */
-.cm-md-picture.picked img, .cm-md-codebox.picked, .cm-md-diagram.picked { outline: 2px solid var(--ring); outline-offset: 2px; }
+.cm-md-picture.picked img, .cm-md-picture.picked .cm-md-picture-missing, .cm-md-codebox.picked, .cm-md-diagram.picked { outline: 2px solid var(--ring); outline-offset: 2px; }
+.cm-md-picture-missing { border-radius: 3px; }
 .cm-md-diagram.picked { border-radius: 8px; }
 .cm-md-picture.picked .cm-md-block-tools, .cm-md-codebox.picked .cm-md-block-tools, .cm-md-diagram.picked .cm-md-block-tools { opacity: 1; }
 .cm-md-picture.picked::after { content: ''; position: absolute; top: 0; bottom: 0; right: -7px; width: 2px; background: var(--foreground); animation: picture-caret 1.1s steps(1) infinite; }

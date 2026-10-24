@@ -608,6 +608,27 @@ try {
         await toolbar.waitFor();
         assert.equal(await visual.getAttribute('aria-pressed'), 'true', 'an ordinary document is Visual in the visual editor again');
     });
+
+    // Last: it leaves a new document with no file open.
+    await step('a picture in a text with no file (its address cannot be told) is drawn as missing, and Backspace and Delete take it whole', async () => {
+        await page.keyboard.press('ControlOrMeta+n');
+        await waitFor(async () => (await docText()) === '' && await page.locator('.headerbar .title').getByText('Untitled').count() > 0);
+        await setDoc('text\n![a chart](images/none.png)\nafter', 0);
+        await editor.locator('.cm-md-picture-missing', { hasText: 'a chart' }).waitFor();
+        await clickBeforeText('after');
+        await page.keyboard.press('Backspace');
+        await editor.locator('.cm-md-picture.picked').waitFor();
+        assert.equal(await docText(), 'text\n![a chart](images/none.png)\nafter', 'Backspace picks it, no hidden letter goes');
+        await page.keyboard.press('Escape');
+        // Delete right before it, on its own line: a list item's line, where its markup lies inside the item's.
+        await setDoc('- item\n  ![a chart](images/none.png)\nafter', 9);
+        await editor.locator('.cm-md-picture-missing', { hasText: 'a chart' }).waitFor();
+        await page.keyboard.press('Delete');
+        await editor.locator('.cm-md-picture.picked').waitFor();
+        assert.equal(await docText(), '- item\n  ![a chart](images/none.png)\nafter', 'Delete picks it');
+        await page.keyboard.press('Delete');
+        assert.equal(await docText(), '- item\nafter', 'a second Delete removes it with its line');
+    });
 } catch {
     failed = true;
 } finally {

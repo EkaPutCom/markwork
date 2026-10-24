@@ -767,8 +767,8 @@ export class MarkdownEditor {
         },
         zoomImage: () => {
             const head = this.view.state.selection.main.head;
-            const first = pictureLines.get(this.view.state.doc)?.get(this.view.state.doc.lineAt(head).number - 1)?.[0];
-            if (first) this.events.zoomImage({ src: first.src, title: first.alt || decodeURIComponent(first.src.split('/').pop() ?? '') });
+            const first = pictureLines.get(this.view.state.doc)?.get(this.view.state.doc.lineAt(head).number - 1)?.find(item => item.src);
+            if (first?.src) this.events.zoomImage({ src: first.src, title: first.alt || decodeURIComponent(first.src.split('/').pop() ?? '') });
             else this.events.message('There is no image on this line');
         },
     };
