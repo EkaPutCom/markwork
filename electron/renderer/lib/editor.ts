@@ -3,7 +3,7 @@
 // bold, links, lists, and tables. Only the drawing is here; what the syntax is and what a command does is shared with the
 // core. CodeMirror counts UTF-16 units, as the commands do; the protocol's code points are converted at this edge.
 
-import { Annotation, EditorSelection, EditorState, StateEffect, StateField, type Extension, type Text } from '@codemirror/state';
+import { Annotation, EditorSelection, EditorState, Facet, StateEffect, StateField, type Extension, type Text } from '@codemirror/state';
 import { Decoration, EditorView, drawSelection, keymap, showTooltip, type DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, redo, undo } from '@codemirror/commands';
 import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
@@ -25,6 +25,7 @@ import type { EditCommands, TableOperation } from '../../../src/app/commands.js'
 import type { Change } from '../../../src/app/protocol/messages.js';
 import { blockHandle, moveCursorBlock } from './blockhandle.js';
 import { blockSelection, pick, removeBlock, type BlockSource, type PickedBlock } from './blockselect.js';
+import { nameEffect, recorder } from './inspect/recorder.js';
 import { LIST_PREFIX_PX, linkEditor, listPrefix, openImageEditor, openLinkEditor, selectionMenu, setVisual, slashGlyph, slashSource, visualEditing, visualMode, type Concealed } from './visual.js';
 
 // A change that comes from the core (or opens a text), not from the user: it is not reported back as an edit.
@@ -42,6 +43,10 @@ const sourceMode = StateField.define<boolean>({
     create: () => false,
     update: (on, tr) => tr.effects.reduce((v, e) => e.is(setSource) ? e.value : v, on),
 });
+nameEffect(setSource, 'setSource');
+nameEffect(setFocus, 'setFocus');
+nameEffect(setVisual, 'setVisual');
+nameEffect(refresh, 'refresh');
 
 // One style per name: the class is the name. The parser reads a style by name and carries it as it is.
 const styles = new Proxy({}, { get: (_t, name) => `cm-md-${String(name)}` }) as Styles<string>;
@@ -108,16 +113,82 @@ const pictureLines = new WeakMap<Text, Map<number, PictureItem[]>>();
 const parses = new WeakMap<Text, HighlightResult<string>>();
 
 // The visual editor is on, and the editor does not show the source.
-const visualOn = (state: EditorState): boolean => state.field(visualMode) && !state.field(sourceMode);
+export const visualOn = (state: EditorState): boolean => state.field(visualMode) && !state.field(sourceMode);
+// The editor shows the file as it is written.
+export const sourceOn = (state: EditorState): boolean => state.field(sourceMode);
 
-// What the decorations of a state draw, and what they hide (visual.ts).
-interface Drawn { decorations: DecorationSet; concealed: Concealed }
+// What the decorations of a state draw, what they hide (visual.ts), how long drawing them took, and what of the selection
+// they were drawn for (selectionKey).
+export interface Drawn { decorations: DecorationSet; concealed: Concealed; ms: number; key: string }
 
-function syntaxField(events: EditorEvents, languageLoaded: () => void): StateField<Drawn> {
+// The field of a state that holds its drawing (each state gets its own, syntaxField), and how it draws one, for the
+// inspector (inspect/).
+interface Drawing { field: StateField<Drawn>; build: (state: EditorState) => Drawn }
+const drawnField = Facet.define<Drawing, Drawing | null>({ combine: fields => fields[0] ?? null });
+export function drawnOf(state: EditorState): Drawn | null {
+    const drawing = state.facet(drawnField);
+    return drawing ? state.field(drawing.field, false) ?? null : null;
+}
+// The state's drawing made again from nothing: what the one it keeps should equal (the inspector's kept-drawing check).
+export const freshDrawing = (state: EditorState): Drawn | null => state.facet(drawnField)?.build(state) ?? null;
+
+// The lines (from 0) of the paragraph of the selection's lines (up to blank lines): what focus mode does not dim.
+function focusParagraph(doc: Text, first: number, last: number): [number, number] {
+    const blank = (n: number) => !doc.line(n + 1).text.trim();
+    let b0 = Math.min(first, doc.lines - 1), b1 = Math.min(last, doc.lines - 1);
+    while (b0 > 0 && !blank(b0 - 1)) b0--;
+    while (b1 < doc.lines - 1 && !blank(b1 + 1)) b1++;
+    return [b0, b1];
+}
+
+// The markers of a parse that span lines (front matter, a fence that is not drawn as a box): the visual editor hides
+// them unless the selection touches them. The fences of a code block it draws as a box, and anything in a table, are
+// never shown, so the selection entering them changes nothing. Kept per parse; a long text has tens of thousands of
+// markers and few of these.
+const multiLineMarkers = new WeakMap<HighlightResult<string>, [number, number][]>();
+function spanningMarkers(result: HighlightResult<string>, lines: number): [number, number][] {
+    let found = multiLineMarkers.get(result);
+    if (found) return found;
+    const boxes: [number, number][] = [
+        ...result.codeBlocks.filter(b => b.closed && !diagramKind(b) && b.endLine < lines).map(b => [b.startLine, b.endLine] as [number, number]),
+        ...result.tables.filter(t => t.end < lines).map(t => [t.start, t.end] as [number, number]),
+    ];
+    found = result.markers.filter(m => m[2] !== m[3] && !boxes.some(([a, b]) => m[2] >= a && m[2] <= b)).map(m => [m[2], m[3]]);
+    multiLineMarkers.set(result, found);
+    return found;
+}
+
+// All that the drawing of a text takes from the selection (the build below reads it in these places only). A selection
+// change that keeps the key keeps the drawing, so moving the cursor does not draw the whole text again:
+// - focus mode: the paragraph it does not dim;
+// - the live view: the lines of the selection, where markers show, and tables and code blocks are their text;
+// - the visual editor: the diagrams the selection touches (shown as their source) and the markers spanning lines it
+//   touches (shown); a one-line marker is hidden on the cursor line too, and tables and code stay grids and boxes.
+function selectionKey(state: EditorState, result: HighlightResult<string>): string {
+    const { doc } = state, main = state.selection.main;
+    const first = doc.lineAt(Math.min(main.anchor, main.head)).number - 1, last = doc.lineAt(Math.max(main.anchor, main.head)).number - 1;
+    const focus = state.field(focusMode) ? focusParagraph(doc, first, last).join('-') : '';
+    const touches = (a: number, b: number) => last >= a && first <= b;
+    // Diagrams are drawn in the live view too, but there the lines already decide.
+    if (state.field(sourceMode)) return `source|${focus}`;
+    if (!visualOn(state)) return `live|${first}-${last}|${focus}`;
+    const diagrams = result.codeBlocks.filter(b => diagramKind(b) && touches(b.startLine, b.endLine)).map(b => b.startLine);
+    const spanning = spanningMarkers(result, doc.lines).filter(([a, b]) => touches(a, b)).map(([a]) => a);
+    return `visual|${diagrams.join(',')}|${spanning.join(',')}|${focus}`;
+}
+// The parse of a text the editor has drawn.
+export const parseOf = (doc: Text): HighlightResult<string> | null => parses.get(doc) ?? null;
+
+function syntaxField(events: EditorEvents, languageLoaded: () => void): Drawing {
     const cache = new HighlightCache<string>(styles, hanging);
     let parsed: { doc: Text; result: ReturnType<HighlightCache<string>['update']> } | null = null;
 
     const build = (state: EditorState): Drawn => {
+        const start = performance.now();
+        const drawn = draw(state);
+        return { ...drawn, ms: performance.now() - start, key: selectionKey(state, parses.get(state.doc)!) };
+    };
+    const draw = (state: EditorState): Omit<Drawn, 'ms' | 'key'> => {
         const { doc } = state;
         if (parsed?.doc !== doc) parsed = { doc, result: cache.update(linesOf(doc)) };
         const { result } = parsed;
@@ -139,11 +210,7 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): StateFie
         // Focus mode: all text outside the paragraph of the cursor (lines up to blank ones) is dimmed.
         let paragraph: [number, number] | null = null;   // lines (from 0) of the cursor's paragraph, in focus mode
         if (state.field(focusMode)) {
-            const blank = (n: number) => !doc.line(n + 1).text.trim();
-            let b0 = Math.min(selFirst, doc.lines - 1), b1 = Math.min(selLast, doc.lines - 1);
-            while (b0 > 0 && !blank(b0 - 1)) b0--;
-            while (b1 < doc.lines - 1 && !blank(b1 + 1)) b1++;
-            paragraph = [b0, b1];
+            const [b0, b1] = paragraph = focusParagraph(doc, selFirst, selLast);
             const from = doc.line(b0 + 1).from, to = doc.line(b1 + 1).to;
             if (from > 0) ranges.push(dim.range(0, from));
             if (to < doc.length) ranges.push(dim.range(to, doc.length));
@@ -242,11 +309,18 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): StateFie
         return { decorations: Decoration.set(ranges, true), concealed: { hidden: Decoration.set(hiddenRanges, true), prefixes } };
     };
 
-    return StateField.define<Drawn>({
+    const field = StateField.define<Drawn>({
         create: build,
-        update: (value, tr) => tr.docChanged || tr.selection || tr.effects.some(e => e.is(setSource) || e.is(setFocus) || e.is(setVisual) || e.is(refresh)) ? build(tr.state) : value,
+        update: (value, tr) => {
+            if (tr.docChanged || tr.effects.some(e => e.is(setSource) || e.is(setFocus) || e.is(setVisual) || e.is(refresh))) return build(tr.state);
+            // The same text: a selection that leaves the key as it was leaves the drawing as it was.
+            if (!tr.selection) return value;
+            const result = parses.get(tr.state.doc);
+            return result && selectionKey(tr.state, result) === value.key ? value : build(tr.state);
+        },
         provide: f => EditorView.decorations.from(f, drawn => drawn.decorations),
     });
+    return { field, build };
 }
 
 // The objects blockselect.ts picks, from the last drawing of the text: its closed fenced blocks (code and diagrams) and the
@@ -504,11 +578,11 @@ export class MarkdownEditor {
     }
 
     private fresh(text: string): EditorState {
-        const drawn = syntaxField(this.events, () => this.rebuild());
+        const drawing = syntaxField(this.events, () => this.rebuild()), drawn = drawing.field;
         return EditorState.create({
             doc: text,
             extensions: [
-                history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, visualMode, drawn, search({ top: true, createPanel: createFindBar }), highlightSelectionMatches(),
+                history(), drawSelection(), EditorView.lineWrapping, sourceMode, focusMode, visualMode, drawn, drawnField.of(drawing), recorder(), search({ top: true, createPanel: createFindBar }), highlightSelectionMatches(),
                 clicks(this.events), suggestions(this.events),
                 visualEditing(state => state.field(drawn).concealed, visualOn), selectionMenu(this.events.run, visualOn), linkEditor, blockHandle(visualOn), linkTooltip(this.events), blockSelection(blockSource, visualOn),
                 EditorView.contentAttributes.of({ 'aria-label': 'Editor', spellcheck: 'false' }),

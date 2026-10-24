@@ -17,4 +17,6 @@ contextBridge.exposeInMainWorld('markwork', {
     unregisterHtml: (id: number): Promise<void> => ipcRenderer.invoke('html-unregister', id),
     closeWindow: (): Promise<void> => ipcRenderer.invoke('close-window'),
     chooseFile: (options: Record<string, unknown>): Promise<string | null> => ipcRenderer.invoke('choose-file', options),
+    // Started with --inspect-editor or MARKWORK_DEV=1: the Editor Inspector is there (docs/design/debugger.md).
+    devMode: ipcRenderer.sendSync('dev-mode') === true,
 });

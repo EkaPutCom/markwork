@@ -52,6 +52,10 @@
     /* Beyond the shadcn theme: the states a status shows (saved, applied, waiting), each with text beside it. */
     --success: oklch(0.627 0.194 149.214);
     --warning: oklch(0.666 0.179 58.318);
+    /* The Editor Inspector (dev mode): a widget, a line's hidden prefix, the cursor in its source view. */
+    --inspect-widget: oklch(0.606 0.25 292.717);
+    --inspect-prefix: oklch(0.685 0.169 237.323);
+    --inspect-caret: oklch(0.546 0.245 262.881);
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
@@ -90,6 +94,9 @@
         --sidebar-ring: oklch(0.552 0.016 285.938);
         --success: oklch(0.792 0.209 151.711);
         --warning: oklch(0.828 0.189 84.429);
+        --inspect-widget: oklch(0.702 0.183 293.541);
+        --inspect-prefix: oklch(0.746 0.16 232.661);
+        --inspect-caret: oklch(0.707 0.165 254.624);
         --chart-1: oklch(0.488 0.243 264.376);
         --chart-2: oklch(0.696 0.17 162.48);
         --chart-3: oklch(0.769 0.188 70.08);
@@ -127,6 +134,9 @@
     --sidebar-ring: oklch(0.552 0.016 285.938);
     --success: oklch(0.792 0.209 151.711);
     --warning: oklch(0.828 0.189 84.429);
+    --inspect-widget: oklch(0.702 0.183 293.541);
+    --inspect-prefix: oklch(0.746 0.16 232.661);
+    --inspect-caret: oklch(0.707 0.165 254.624);
     --chart-1: oklch(0.488 0.243 264.376);
     --chart-2: oklch(0.696 0.17 162.48);
     --chart-3: oklch(0.769 0.188 70.08);

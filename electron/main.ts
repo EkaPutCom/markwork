@@ -42,6 +42,10 @@ ipcMain.handle('html-unregister', (_event, id: unknown) => { if (typeof id === '
 
 const linkOf = (path: string): string | null => { try { return readlinkSync(path); } catch { return null; } };
 
+// Dev mode (docs/design/debugger.md): the Editor Inspector and its checks. Off in a normal start; the page asks once.
+const devMode = process.argv.includes('--inspect-editor') || process.env.MARKWORK_DEV === '1';
+ipcMain.on('dev-mode', event => { event.returnValue = devMode; });
+
 // Windows the page has let go (the core agreed to the close).
 const mayClose = new WeakSet<BrowserWindow>();
 ipcMain.handle('close-window', event => {

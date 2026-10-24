@@ -30,7 +30,7 @@ import { ChatModel } from './chatmodel.js';
 
 declare global {
     interface Window {
-        markwork: { registerHtml(id: number, root: string): Promise<void>; unregisterHtml(id: number): Promise<void>; pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void> };
+        markwork: { registerHtml(id: number, root: string): Promise<void>; unregisterHtml(id: number): Promise<void>; pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void>; devMode: boolean };
     }
 }
 
@@ -225,6 +225,8 @@ export class Client {
     // One editor for each pane; the focused pane's is the one the commands, the find bar, and the cursor go to.
     private readonly editors = new Map<number, MarkdownEditor>();
     private get editor(): MarkdownEditor | null { return this.editors.get(this.snapshot.panes.current) ?? null; }
+    // The focused pane's editor, for the Editor Inspector (components/Inspector.tsx), which only reads it.
+    get currentEditor(): MarkdownEditor | null { return this.editor; }
     // A pane a file is being opened into (dropped on it from the sidebar): the next document the core shows goes there.
     private openInto: number | null = null;
     private cursorTimer: ReturnType<typeof setTimeout> | null = null;
