@@ -440,9 +440,13 @@ try {
         const after = await img.evaluate(el => el.getBoundingClientRect().x);
         assert.ok(after - before > 40, `dragging shifts the image (${before} → ${after}, ${await caption()})`);
         await page.keyboard.press('Escape');
+        await page.locator('.image-viewer').waitFor({ state: 'detached' });
     });
 
     await step('imagezoom: the window moves by its header and resizes by its corner', async () => {
+        // No viewer of a step before is still on its way out: this step's double click would be skipped for it, and the
+        // window measured below would be that one, gone a moment later.
+        await page.locator('.image-viewer').waitFor({ state: 'detached' });
         await setDoc('![A small one](images/small.png)', 0);
         await page.waitForFunction(() => [...document.querySelectorAll('.cm-md-pictures img')].some(i => i.naturalWidth > 0));
         const win = page.locator('.image-viewer .viewer-window'), viewer = page.locator('.image-viewer');
