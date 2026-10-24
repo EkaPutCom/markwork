@@ -22,6 +22,7 @@ export class InspectError extends Error {
 const AROUND_LINES = 3;     // the decorations of a snapshot: the cursor's line and this many on each side
 const QUIET_MS = 500;       // an action has settled when no transaction came for this long
 const SETTLE_LIMIT_MS = 5000;
+const CORE_OPS = new Set(['open', 'mode', 'load']);
 const STEADY_MS = 300;      // a tab's editor that kept one state this long has been given its text
 
 const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -67,6 +68,9 @@ export class InspectBridge {
     }
 
     async answer(request: InspectRequest): Promise<Answer> {
+        // The ops that ask the core for something wait until it has answered the window's hello: a window that just
+        // started (--headless) listens before it is connected, and a command sent then is lost.
+        if (CORE_OPS.has(request.op)) await until(() => this.client.getState().commands.length > 0, SETTLE_LIMIT_MS, 'the connection to the core');
         switch (request.op) {
             case 'snapshot': return this.snapshot(request);
             case 'decorations': return this.decorations(request);
@@ -265,15 +269,15 @@ export class InspectBridge {
         const error = reproError(request.repro);
         if (error) throw new InspectError('bad-repro', error);
         const repro = request.repro as Repro;
-        const tabs = this.client.getState().tabs.length;
         const old = this.client.currentEditor ? recordingOf(this.client.currentEditor.view.state) : null;
         this.client.run('new');
-        // The new tab is there once the editor holds its state: a recording of its own.
+        // New Document gives a new tab, or empties the one shown when nothing was done in it yet (documents.ts blank):
+        // either way an empty text with no file, in a state of its own (a recording of its own).
         const fresh = () => {
             const view = this.client.currentEditor?.view;
-            return !!view && this.client.getState().tabs.length > tabs && this.client.activeTab?.file === null && recordingOf(view.state) !== old;
+            return !!view && this.client.activeTab?.file === null && recordingOf(view.state) !== old && view.state.doc.length === 0;
         };
-        await until(fresh, SETTLE_LIMIT_MS, 'a new tab');
+        await until(fresh, SETTLE_LIMIT_MS, 'a new document');
         // The core may still give the new tab its text (editor.ts reset makes another state): the text goes in once
         // the editor has kept one state for a while, and again if it was replaced all the same.
         const [anchor, head] = repro.start.selection[0];
