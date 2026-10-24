@@ -122,7 +122,27 @@ export function blurRepro(repro: Repro): Repro {
 
 const isPair = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && v.every(n => Number.isInteger(n) && n >= 0);
 
-function stepError(step: unknown): string | null {
+// The bridge's request that plays one step: the same input a person gave (scripts/editor-fuzz.mjs stepRequest, which the
+// command line uses, says the same).
+export function stepRequest(step: ReproStep): Record<string, unknown> {
+    if ('key' in step) return { op: 'press', keys: [step.key] };
+    if ('type' in step) return { op: 'type', text: step.type };
+    if ('select' in step) return { op: 'select', from: step.select[0], to: step.select[1] };
+    if ('external' in step) return { op: 'apply', changes: step.external };
+    const click = step.click;
+    if ('visible' in click) return { op: 'click', visible: click.visible, edge: click.edge ?? 'end' };
+    if ('line' in click) return { op: 'click', line: click.line, edge: click.edge };
+    return { op: 'click', pos: click.pos, mods: click.mods };
+}
+
+// A repro kept as a test (tests/electron/repros.mjs plays each): it must pass every check, and come out as the text it
+// expects when it has one; what happened when it was made is left out (scripts/editor.mjs test-from does the same).
+export function keptAsTest(repro: Repro): Repro {
+    const { actual: _actual, ...kept } = repro;
+    return { ...kept, expect: { ...repro.expect, checks: 'pass' } };
+}
+
+export function stepError(step: unknown): string | null {
     if (!step || typeof step !== 'object') return 'is not an object';
     const s = step as Record<string, unknown>;
     if ('key' in s) return typeof s.key === 'string' && s.key ? null : 'has a key that is not a name';

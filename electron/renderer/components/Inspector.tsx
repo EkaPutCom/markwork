@@ -10,10 +10,14 @@ import { snapshot, type Snapshot } from '../lib/inspect/snapshot.js';
 import { CHECKS, stateAfter } from '../lib/inspect/checks.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { Icon } from './Icons.js';
+import { NO_REPLAY, Replay, type ReplayState } from './InspectorReplay.js';
+import { entryJSON } from '../lib/inspect/bridge.js';
 
 const AROUND = 12;   // lines shown above and below the cursor's
 
-type DockTab = 'tx' | 'deco' | 'checks';
+type DockTab = 'tx' | 'deco' | 'checks' | 'replay';
+
+const copy = (text: string) => navigator.clipboard.writeText(text);
 
 // Redraws on each change of the recording, at most once a frame.
 function useRecording(recording: Recording | null): void {
@@ -97,8 +101,13 @@ function Source({ state, snap, hot, onHover }: { state: EditorState; snap: Snaps
     );
 }
 
-function TxDetail({ recording, entry }: { recording: Recording; entry: TxEntry }) {
+// What a transaction's detail offers: the text as the one before it left it (Paused), a test made from the recording,
+// and the transaction as the bridge gives it to a script.
+interface TxActions { before: (() => void) | null; test: () => void }
+
+function TxDetail({ recording, entry, actions }: { recording: Recording; entry: TxEntry; actions: TxActions }) {
     const edits = editsOf(entry.changes, docBefore(recording, entry.n));
+    const [copied, setCopied] = useState(false);
     return (
         <div className="ins-detail">
             <h4>#{entry.n} <span className={`ins-ev ${eventKind(entry.userEvent)}`}>{entry.userEvent ?? 'no user event'}</span></h4>
@@ -120,11 +129,16 @@ function TxDetail({ recording, entry }: { recording: Recording; entry: TxEntry }
                     {e.inserted && <ins>{e.inserted}</ins>}
                 </div>
             ))}
+            <div className="ins-acts">
+                <button className="button" disabled={!actions.before} title={actions.before ? undefined : 'Dev mode keeps no state from before the first transaction it saw'} onClick={() => actions.before?.()}>Show the State Before</button>
+                <button className="button" onClick={actions.test}>Make a Test from This</button>
+                <button className="button" onClick={() => void copy(JSON.stringify(entryJSON(entry), null, 2)).then(() => setCopied(true))}>{copied ? 'Copied' : 'Copy as JSON'}</button>
+            </div>
         </div>
     );
 }
 
-function Transactions({ recording, picked, pick }: { recording: Recording; picked: number | null; pick: (n: number) => void }) {
+function Transactions({ recording, picked, pick, actions }: { recording: Recording; picked: number | null; pick: (n: number) => void; actions: (entry: TxEntry) => TxActions }) {
     const rows = recording.entries.slice(-200).reverse();
     // The text before each entry, walking forward once (the recording only grows at its end and drops at its start).
     const first = recording.entries[0]?.n, count = recording.entries.length;
@@ -154,7 +168,7 @@ function Transactions({ recording, picked, pick }: { recording: Recording; picke
                 </table>
                 {!rows.length && <p className="dim ins-empty">Nothing recorded yet. Type in the editor.</p>}
             </div>
-            {entry && <TxDetail recording={recording} entry={entry} />}
+            {entry && <TxDetail key={entry.n} recording={recording} entry={entry} actions={actions(entry)} />}
         </>
     );
 }
@@ -220,6 +234,9 @@ export function Inspector({ onClose }: { onClose: () => void }) {
     const [paused, setPaused] = useState<number | null>(null);
     const [flash, setFlash] = useState<[number, number] | null>(null);
     const [hot, setHot] = useState<number | null>(null);
+    const [replay, setReplayState] = useState<ReplayState>(NO_REPLAY);
+    const setReplay = (change: Partial<ReplayState>) => setReplayState(old => ({ ...old, ...change }));
+    const [copiedSnapshot, setCopiedSnapshot] = useState(false);
     const view = editor?.view ?? null;
     const recording = view ? recordingOf(view.state) : null;
     useRecording(recording);
@@ -258,6 +275,18 @@ export function Inspector({ onClose }: { onClose: () => void }) {
     const failing = recording?.entries.filter(e => worst(e.findings) === 'fail').length ?? 0;
     const tabName = store.tabs.find(t => t.id === store.active)?.name;
     const open = (n: number) => { setTab('tx'); pick(n); };
+    // The state the transaction before `entry` left (dev mode keeps one for each it saw).
+    const txActions = (entry: TxEntry): TxActions => {
+        const before = steps.filter(e => e.n < entry.n).at(-1);
+        return { before: before ? () => pause(before.n) : null, test: () => { setReplay({ repro: null, label: '', message: null }); setTab('replay'); } };
+    };
+    const copySnapshot = () => {
+        if (!snap) return;
+        void copy(JSON.stringify({ tab: tabName ?? null, pane: store.panes.current, paused: live ? null : steps[at]?.n, ...snap }, null, 2)).then(() => {
+            setCopiedSnapshot(true);
+            setTimeout(() => setCopiedSnapshot(false), 1500);
+        });
+    };
     const flashBox = live && flash && view ? boxOf(view, flash) : null;
 
     return (
@@ -280,6 +309,7 @@ export function Inspector({ onClose }: { onClose: () => void }) {
                     <span className="ins-badge">#{steps[at].n} of {steps[steps.length - 1].n}</span>
                     <button className="button flat circular" aria-label="Step forward" title="Step forward" disabled={at >= steps.length - 1} onClick={() => pause(steps[at + 1]?.n)}><Icon name="go-next" /></button>
                 </>}
+                {snap && <button className="button flat" onClick={copySnapshot}>{copiedSnapshot ? 'Copied' : 'Copy Snapshot'}</button>}
                 <button className="button flat circular" aria-label="Close the inspector" title="Close (Ctrl+Alt+I)" onClick={onClose}><Icon name="window-close" /></button>
             </header>
             {!state || !snap || !recording ? <p className="dim ins-empty">No text is open in this pane.</p> : (
@@ -303,14 +333,15 @@ export function Inspector({ onClose }: { onClose: () => void }) {
                     </div>
                     <div className="ins-right">
                         <div className="ins-tabs" role="tablist">
-                            {([['tx', 'Transactions'], ['deco', 'Decorations'], ['checks', 'Checks']] as const).map(([id, name]) => (
+                            {([['tx', 'Transactions'], ['deco', 'Decorations'], ['checks', 'Checks'], ['replay', 'Replay & test']] as const).map(([id, name]) => (
                                 <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{name}</button>
                             ))}
                         </div>
                         <div className="ins-pane">
-                            {tab === 'tx' && <Transactions recording={recording} picked={picked} pick={pick} />}
+                            {tab === 'tx' && <Transactions recording={recording} picked={picked} pick={pick} actions={txActions} />}
                             {tab === 'deco' && <Decorations state={state} snap={snap} />}
                             {tab === 'checks' && <Checks recording={recording} open={open} />}
+                            {tab === 'replay' && <Replay view={view} state={replay} setState={setReplay} />}
                         </div>
                     </div>
                 </div>

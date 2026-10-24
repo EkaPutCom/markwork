@@ -1160,6 +1160,21 @@ pre.diff.commentable .line:hover .comment-button, .comment-button:focus-visible 
 .ins-detail h4 { margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
 .ins-detail dl { display: grid; grid-template-columns: 70px 1fr; gap: 2px 8px; margin: 8px 0; }
 .ins-detail dt { color: var(--muted-foreground); } .ins-detail dd { margin: 0; font-family: var(--font-mono); overflow-wrap: anywhere; }
+.ins-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ins-acts .button, .ins-replay .button { min-height: 26px; padding: 0 10px; font-size: 12px; }
+/* Replay & test: a bar of actions, the repro's steps with the next one marked, and how the replay came out. */
+.ins-replay { display: flex; flex-direction: column; gap: 8px; padding: 8px 12px; }
+.ins-replay-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.ins-replay-bar .grow { flex: 1; }
+.ins-replay-run { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.ins-steps { margin: 0; padding: 0 0 0 28px; max-height: 140px; overflow: auto; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted-foreground); }
+.ins-steps li.done { color: var(--foreground); }
+.ins-steps li.next { color: var(--foreground); font-weight: 600; } .ins-steps li.next::marker { content: '▶ '; }
+.ins-steps li.fail { color: var(--destructive); }
+.ins-result { margin: 0; font-weight: 500; } .ins-result.fail { color: var(--destructive); } .ins-result.differs { color: var(--warning); } .ins-result.pass { color: var(--success); }
+.ins-message { margin: 0; font-size: 12px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.ins-name { display: flex; align-items: center; gap: 6px; }
+.ins-name input { height: 26px; width: 200px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--foreground); font: inherit; font-size: 12px; }
 .ins-trace { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--border); color: var(--muted-foreground); font-family: var(--font-mono); font-size: 11.5px; overflow-wrap: anywhere; }
 .ins-finding { border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; border: 1px solid var(--border); }
 .ins-finding.fail { border-color: color-mix(in oklab, var(--destructive) 35%, transparent); background: color-mix(in oklab, var(--destructive) 7%, transparent); }

@@ -3,13 +3,14 @@
 // clicks are sent from here as real input (webContents.sendInputEvent), through Chromium's input path, so the keymap, the
 // event handlers, and the recorder see them as they see a person's. Loaded only in dev mode (main.ts).
 
-import { BrowserWindow, ipcMain, type KeyboardInputEvent, type WebContents } from 'electron';
-import { chmodSync, mkdirSync, rmSync } from 'node:fs';
+import { BrowserWindow, app, dialog, ipcMain, type KeyboardInputEvent, type WebContents } from 'electron';
+import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { userDirs } from '../src/platform/node/dirs.js';
 import type { OS } from '../src/platform/index.js';
+import { keptAsTest, reproError, stepError, stepRequest, type Repro, type ReproStep } from './renderer/lib/inspect/repro.js';
 
 type Message = Record<string, unknown>;
 
@@ -96,6 +97,8 @@ export class InspectBridge {
 
     constructor(private readonly window: () => BrowserWindow | null) {
         ipcMain.on('inspect-ready', event => { this.ready.add(event.sender); });
+        // The inspector panel asks the same way scripts/editor.mjs does (its replay sends real input from here).
+        ipcMain.handle('inspect-run', (_event, request: unknown) => this.answer(request && typeof request === 'object' ? request as Message : {}));
         ipcMain.on('inspect-reply', (event, reply: Message) => {
             const win = this.window();
             if (!win || event.sender !== win.webContents) return;
@@ -139,6 +142,11 @@ export class InspectBridge {
     private async handle(line: string): Promise<Message> {
         let request: Message;
         try { request = JSON.parse(line) as Message; } catch { return { re: null, ok: false, error: { code: 'usage', message: 'not a JSON line' } }; }
+        return this.answer(request);
+    }
+
+    // A request, from the socket or from the inspector panel (inspect-run): its answer, or the error it ended with.
+    async answer(request: Message): Promise<Message> {
         const re = request.id ?? null;
         try {
             return { re, ok: true, ...await this.run(request) };
@@ -180,6 +188,9 @@ export class InspectBridge {
             return answer;
         }
         if (op === 'screenshot') return this.screenshot(request);
+        if (op === 'play') return this.play(request);
+        if (op === 'save-repro') return this.saveRepro(request);
+        if (op === 'keep-test') return this.keepTest(request);
         if (!ACT_OPS.has(op)) {
             if (!READ_OPS.has(op)) throw new UsageError('usage', `no such op: ${op}`);
             return this.page(request);
@@ -217,6 +228,48 @@ export class InspectBridge {
         const failed = entries.some(e => e.findings?.some(f => f.severity === 'fail'));
         const { entries: _entries, ...where } = settled;
         return { ...where, ...extra, failed, ...(request.explain === true ? { entries } : { transactions: entries.length }) };
+    }
+
+    // One step of a repro, played as the person gave it, with the transactions it made and their findings (the panel's
+    // replay; the command line plays the same requests itself).
+    private async play(request: Message): Promise<Message> {
+        const error = stepError(request.step);
+        if (error) throw new UsageError('bad-repro', `the step ${error}`);
+        return this.run({ ...stepRequest(request.step as ReproStep), explain: true, quiet: request.quiet });
+    }
+
+    private checkedRepro(value: unknown): Repro {
+        const error = reproError(value);
+        if (error) throw new UsageError('bad-repro', error);
+        return value as Repro;
+    }
+
+    // The panel's Save Repro: where the developer chooses.
+    private async saveRepro(request: Message): Promise<Message> {
+        const repro = this.checkedRepro(request.repro), win = this.window();
+        // For tests that cannot drive a native dialog (as choose-file in main.ts).
+        const preset = process.env.MARKWORK_CHOOSE_FILE;
+        if (preset) { writeFileSync(preset, `${JSON.stringify(repro, null, 2)}\n`); return { file: preset }; }
+        const options = { title: 'Save Repro', defaultPath: join(app.getPath('documents'), 'editor.mwrepro.json'), filters: [{ name: 'Repro', extensions: ['json'] }] };
+        const chosen = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
+        if (chosen.canceled || !chosen.filePath) return { canceled: true };
+        writeFileSync(chosen.filePath, `${JSON.stringify(repro, null, 2)}\n`);
+        return { file: chosen.filePath };
+    }
+
+    // The panel's Make a Test: the repro kept in tests/electron/repros/ of the checkout the app runs from, as test-from
+    // does. Only from a checkout: a packaged app has no tests.
+    private keepTest(request: Message): Message {
+        const repro = this.checkedRepro(request.repro);
+        const name = String(request.name ?? '').trim().replace(/[^\w.-]+/g, '-').replace(/^[.-]+/, '');
+        if (!name) throw new UsageError('usage', 'the test needs a name');
+        // MARKWORK_TEST_REPROS: a test's own folder, so a test of this never writes into the checkout.
+        const folder = process.env.MARKWORK_TEST_REPROS ?? join(app.getAppPath(), 'tests', 'electron', 'repros');
+        if (!existsSync(folder)) throw new UsageError('no-checkout', `${folder} is not there: the app does not run from a checkout of Markwork`);
+        const file = join(folder, `${name}.mwrepro.json`);
+        if (existsSync(file) && request.replace !== true) throw new UsageError('exists', `${name}.mwrepro.json is already a test`);
+        writeFileSync(file, `${JSON.stringify(keptAsTest(repro), null, 2)}\n`);
+        return { file };
     }
 
     // A picture of the editor's area as PNG (base64), with its widgets outlined when asked.

@@ -141,6 +141,12 @@ const mods = (e: MouseEvent | KeyboardEvent): string | undefined =>
 // The recording of a state, from the state it was made for on (a tab keeps its own).
 const recordingField = StateField.define<Recording>({ create: state => new Recording(state), update: recording => recording });
 export const recordingOf = (state: EditorState): Recording | null => state.field(recordingField, false) ?? null;
+// A key the window took for itself that changes nothing in the text (the inspector's own Ctrl+Alt+I): the next
+// transaction is not its doing, and a replay must not press it.
+export function forgetInput(state: EditorState): void {
+    const recording = recordingOf(state);
+    if (recording) recording.pending = null;
+}
 
 export function recorder(): Extension {
     const note = (view: EditorView, input: Omit<InputEntry, 't'>): boolean => {

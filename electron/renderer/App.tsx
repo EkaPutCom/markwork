@@ -28,6 +28,7 @@ import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
 } from './ui/dropdown-menu.js';
 import { cn } from './lib/utils.js';
+import { forgetInput } from './lib/inspect/recorder.js';
 import { useClient, useStore } from './lib/useClient.js';
 import { layoutOf } from './lib/client.js';
 import { EditingMode, STRUCTURED_PAGES } from './components/EditingMode.js';
@@ -254,6 +255,7 @@ export function App() {
             if (window.markwork.devMode && matches(event, INSPECTOR_KEY)) {
                 event.preventDefault();
                 event.stopPropagation();
+                if (client.currentEditor) forgetInput(client.currentEditor.view.state);
                 setInspecting(on => !on);
                 return;
             }

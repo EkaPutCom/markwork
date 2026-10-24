@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { copyFileSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { shrink } from '../../scripts/editor-fuzz.mjs';
@@ -158,7 +158,9 @@ async function inNormalStart() {
 }
 
 async function inDevMode() {
-    const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1' } });
+    const kept = join(scratch, 'kept'), saved = join(scratch, 'saved.mwrepro.json');
+    mkdirSync(kept);
+    const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1', MARKWORK_TEST_REPROS: kept, MARKWORK_CHOOSE_FILE: saved } });
     try {
         const page = await app.firstWindow();
         await page.setViewportSize({ width: 1400, height: 900 });
@@ -314,6 +316,61 @@ async function inDevMode() {
             await tab('Decorations').click();
             await waitFor(async () => (await inspector.locator('.ins-list').textContent()).includes('ListMarkWidget'));
             assert.equal(await page.locator('.inspecting .cm-md-listmark').count(), 1, 'the widget in the editor is outlined');
+        });
+
+        const clipboard = () => app.evaluate(({ clipboard }) => clipboard.readText());
+        await step('Copy Snapshot and a transaction\'s Copy as JSON give what the bridge gives; Show the State Before pauses one back', async () => {
+            await setDoc(page, '# Plan\n\nsome text', 17);
+            await page.keyboard.type('ab');
+            await tab('Transactions').click();
+            await inspector.locator('.ins-list tbody tr').first().click();
+            await inspector.getByRole('button', { name: 'Copy as JSON' }).click();
+            await inspector.getByRole('button', { name: 'Copied' }).waitFor();
+            const entry = JSON.parse(await clipboard());
+            assert.equal(entry.input.key, 'b');
+            assert.equal(entry.userEvent, 'input.type');
+            await inspector.getByRole('button', { name: 'Show the State Before' }).click();
+            await inspector.getByText(`#${entry.n - 1} of`).waitFor();
+            assert.equal(await source.textContent().then(t => t.includes('some texta') && !t.includes('textab')), true, 'the text before the "b"');
+            await inspector.getByRole('button', { name: 'Live' }).click();
+            await inspector.getByRole('button', { name: 'Copy Snapshot' }).click();
+            await waitFor(async () => (await clipboard()).includes('"units"'));
+            const shot = JSON.parse(await clipboard());
+            assert.equal(shot.cursor.pos, 19);
+            assert.deepEqual(shot.prefixes, [[0, 2]]);
+        });
+
+        await step('Replay & test: the recording plays again in a tab of its own and passes; a repro file that expects another text differs', async () => {
+            await tab('Replay & test').click();
+            await inspector.getByRole('button', { name: 'Replay This Recording' }).click();
+            await inspector.getByRole('button', { name: 'Play All' }).click();
+            await waitFor(async () => /^pass/m.test(await inspector.innerText()), 30000, async () => { await page.screenshot({ path: '/tmp/mwscratch/shots/replay-fail.png' }); return (await inspector.innerText()).slice(0, 1500); });
+            const other = join(scratch, 'other.mwrepro.json');
+            writeFileSync(other, JSON.stringify({
+                format: 'markwork-repro', version: 1, app: { version: 'test', os: 'linux' }, editor: { mode: 'visual', focus: false, width: 0 },
+                start: { doc: 'some **bold** x', selection: [[0, 0]] }, steps: [{ key: 'End' }, { type: 'y' }],
+                expect: { doc: 'something else' }, blurred: false,
+            }));
+            await inspector.getByLabel('Repro file').setInputFiles(other);
+            await inspector.getByText('other.mwrepro.json').waitFor();
+            await inspector.getByRole('button', { name: 'Step ▶' }).click();
+            await inspector.locator('.ins-steps li.next').getByText('type "y"').waitFor();
+            await inspector.getByRole('button', { name: 'Play All' }).click();
+            await inspector.getByRole('status').filter({ hasText: /^differs/ }).waitFor({ timeout: 30000 });
+            assert.equal(await page.evaluate(`${view}.state.doc.toString()`), 'some **bold** xy', 'the steps were real keys');
+        });
+
+        await step('Replay & test: Save Repro writes the repro, and Make a Test keeps it as test-from does', async () => {
+            await inspector.getByRole('button', { name: 'Save Repro…' }).click();
+            await inspector.getByText(`Saved as ${saved}`).waitFor();
+            assert.equal(JSON.parse(readFileSync(saved, 'utf8')).start.doc, 'some **bold** x');
+            await inspector.getByLabel('Test name').fill('from the panel');
+            await inspector.getByRole('button', { name: 'Make a Test' }).click();
+            await inspector.getByText('Kept as a test').waitFor();
+            const test = JSON.parse(readFileSync(join(kept, 'from-the-panel.mwrepro.json'), 'utf8'));
+            assert.equal(test.expect.checks, 'pass');
+            assert.equal(test.actual, undefined);
+            assert.deepEqual(test.steps, [{ key: 'End' }, { type: 'y' }]);
         });
     } finally {
         await close(app);

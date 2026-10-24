@@ -33,5 +33,7 @@ contextBridge.exposeInMainWorld('markwork', {
             ipcRenderer.on('inspect', (_event, request: unknown) => { void answer(request).then(reply => ipcRenderer.send('inspect-reply', reply)); });
             ipcRenderer.send('inspect-ready');
         },
+        // The panel's own requests to the bridge in the main process: a replay's steps as real input, saving a repro.
+        inspectRun: (request: Record<string, unknown>): Promise<Record<string, unknown>> => ipcRenderer.invoke('inspect-run', request),
     } : {}),
 });
