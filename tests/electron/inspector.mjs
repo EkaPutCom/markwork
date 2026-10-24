@@ -254,7 +254,9 @@ async function throughTheBridge() {
         const pid = ['--pid', String(app.process().pid)];
 
         await step('editor.mjs: hello reaches the window, and open shows a file of the folder', async () => {
-            await waitFor(async () => (await cli(...pid, 'hello')).answer?.ready === true, 30000);
+            let hello = null;
+            await waitFor(async () => (hello = await cli(...pid, 'hello')).answer?.ready === true, 30000,
+                () => `last answer: ${JSON.stringify(hello?.answer)}, exit ${hello?.code}, ${hello?.stderr}`);
             const { code, answer, stderr } = await cli(...pid, 'open', 'bridge.md');
             assert.equal(code, 0, stderr);
             assert.equal(answer.name, 'bridge.md');
