@@ -40,6 +40,7 @@ export interface FrontendCommands {
     showPalette(): void;
     showShortcuts(): void;
     showAbout(): void;
+    showReport(): void;                        // a report of a problem with the editor (docs/design/debugger.md, section 11)
     quit(): void;
 }
 
@@ -203,6 +204,7 @@ export const COMMANDS: readonly Command[] = [
     option('autosave', _('Autosave'), []),
     command('preferences', { label: _('Preferences'), keys: ['Ctrl+,'], run: h => h.showPreferences() }),
     command('shortcuts', { label: _('Keyboard Shortcuts'), keys: ['Ctrl+?'], editor: h => h.showShortcuts() }),
+    command('report-problem', { label: _('Report a Problem with the Editor…'), scope: 'text', editor: h => h.showReport() }),
     command('about', { label: _('About Markwork'), editor: h => h.showAbout() }),
     command('quit', { label: _('Quit'), keys: ['Ctrl+q'], editor: h => h.quit() }),
     command('command-palette', { label: _('Command Palette'), keys: ['Ctrl+Shift+p'], editor: h => h.showPalette() }),

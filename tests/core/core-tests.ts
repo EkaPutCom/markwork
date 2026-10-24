@@ -17,6 +17,7 @@ import { searchFilterTests, searchTests } from '../unit/search.js';
 import { kanbanModelTests } from '../unit/kanban.js';
 import { inboxModelTests } from '../unit/inbox.js';
 import { fieldsModelTests } from '../unit/fields.js';
+import { blurTests } from '../unit/blur.js';
 import { layoutTests } from '../unit/layout.js';
 import { tableLayoutTests } from '../unit/tablelayout.js';
 import { editCommandTests } from '../unit/editcommands.js';
@@ -93,6 +94,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     kanbanModelTests();
     inboxModelTests();
     fieldsModelTests();
+    blurTests();
     layoutTests();
     tableTests();
     blockTests();

@@ -2,7 +2,7 @@
 // runs in every build, since a report of a problem with the editor is made of it (docs/design/debugger.md); it keeps no
 // copy of the text per transaction, only the changes, and the text before the oldest one it still has.
 
-import { Prec, StateField, Transaction, type ChangeSet, type StateEffect, type EditorSelection, type EditorState, type Extension, type StateEffectType, type Text } from '@codemirror/state';
+import { Annotation, Prec, StateField, Transaction, type ChangeSet, type StateEffect, type EditorSelection, type EditorState, type Extension, type StateEffectType, type Text } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
 
 const LIMIT = 500;           // entries
@@ -34,17 +34,53 @@ export interface TxEntry {
     effects: string[];               // the names of the effects nameEffect() knows; the others are 'effect'
     input: InputEntry | null;
     findings: Finding[] | null;      // null: not checked (the checks run in dev mode only)
+    handler?: string;                // the traced command that made it (dev mode only)
+    trace?: string[];                // what the decisions on the way said (dev mode only)
 }
+
+// A transaction the recording leaves out: one that only puts the view back where it was (inspect/report.ts).
+export const unrecorded = Annotation.define<boolean>();
 
 const effectNames: [(effect: StateEffect<unknown>) => boolean, string][] = [];
 
 // Gives an effect a name in the recording; an effect has none of its own.
 export function nameEffect<T>(type: StateEffectType<T>, name: string): void { effectNames.push([effect => effect.is(type), name]); }
 
-// Told of every transaction that is recorded, in any tab: the checks of dev mode.
+// Told of every transaction that is recorded, in any tab: the checks of dev mode, and the window's offer of a report
+// after an Undo (ReportProblem.tsx). Returns how to stop.
 type Observer = (recording: Recording, entry: TxEntry, tr: Transaction) => void;
-let observer: Observer | null = null;
-export function observeRecordings(watch: Observer | null): void { observer = watch; }
+const observers = new Set<Observer>();
+export function observeRecordings(watch: Observer): () => void {
+    observers.add(watch);
+    return () => { observers.delete(watch); };
+}
+
+// ---------- Tracing (dev mode) ----------
+//
+// CodeMirror does not say which command took a key, and a minified bundle has no function names, so the commands of the
+// visual editor that have been behind its bugs are wrapped in traced() with a name of their own, and a few decisions
+// say what they decided with trace(). Outside dev mode they only test a boolean (a line given to trace() is still built,
+// once per key), so they are kept to the places that have been behind a bug.
+
+let tracing = false;
+const handlers: string[] = [];
+let notes: string[] = [];
+export function traceCommands(on: boolean): void { tracing = on; }
+
+// Runs `fn` as the handler `name`: a transaction it dispatches carries the name, and what trace() said on the way.
+export function handling<R>(name: string, fn: () => R): R {
+    if (!tracing) return fn();
+    handlers.push(name);
+    try { return fn(); } finally {
+        handlers.pop();
+        if (!handlers.length) notes = [];
+    }
+}
+// A command named for the recording.
+export const traced = <A extends unknown[]>(name: string, run: (...args: A) => boolean) =>
+    (...args: A): boolean => handling(name, () => run(...args));
+// A line about a decision, kept with the transaction the handler around it makes.
+export function trace(message: string): void { if (tracing && handlers.length) notes.push(message); }
 
 export class Recording {
     // The text and selection before the oldest entry: the start of a replay.
@@ -67,12 +103,16 @@ export class Recording {
             effects: tr.effects.map(e => effectNames.find(([is]) => is(e))?.[1] ?? 'effect'),
             input, findings: null,
         };
+        if (handlers.length) {
+            entry.handler = handlers[handlers.length - 1];
+            if (notes.length) { entry.trace = notes; notes = []; }
+        }
         this.entries.push(entry);
         while (this.entries.length > LIMIT) {
             const old = this.entries.shift()!;
             this.base = { doc: old.changes.apply(this.base.doc), selection: old.after };
         }
-        observer?.(this, entry, tr);
+        for (const watch of observers) watch(this, entry, tr);
         this.changed();
         return entry;
     }
@@ -132,7 +172,9 @@ export function recorder(): Extension {
         EditorView.updateListener.of(update => {
             const recording = recordingOf(update.state);
             if (!recording) return;
-            for (const tr of update.transactions) if (tr.docChanged || tr.selection || tr.effects.length) recording.push(tr);
+            for (const tr of update.transactions) {
+                if ((tr.docChanged || tr.selection || tr.effects.length) && !tr.annotation(unrecorded)) recording.push(tr);
+            }
         }),
     ];
 }

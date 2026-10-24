@@ -1,6 +1,6 @@
 # Arsitektur Editor Inspector
 
-25 Oktober 2026 · tahap 1, 2, dan 3 sudah dibangun (bagian 14) · mockup: [`shadcn/Debugger.html`](shadcn/Debugger.html)
+25 Oktober 2026 · keempat tahap sudah dibangun (bagian 14) · mockup: [`shadcn/Debugger.html`](shadcn/Debugger.html)
 
 ## Keputusan
 
@@ -83,10 +83,12 @@ Core (`src/app/`, utility process) tidak terlibat. Inspector mengamati editor, d
 | `electron/renderer/lib/inspect/recorder.ts` | Extension `recorder()`, ring buffer, `Recording` |
 | `electron/renderer/lib/inspect/snapshot.ts` | `snapshot(view, at?)`: teks, seleksi, hidden, prefix, widget, dekorasi, parse di sekitar kursor |
 | `electron/renderer/lib/inspect/checks.ts` | Daftar check (bagian 6), masing-masing berupa fungsi murni di atas state CodeMirror |
-| `electron/renderer/lib/inspect/repro.ts` | Format `.mwrepro.json`: membuat, membaca, dan menyamarkan teks (bagian 9) |
+| `electron/renderer/lib/inspect/repro.ts` | Format `.mwrepro.json`: membuat, membaca, dan menyamarkan repro (bagian 9). Murni, juga dipakai main untuk memeriksa laporan |
+| `electron/renderer/lib/inspect/report.ts` | Repro dari editor yang sedang tampil, laporan pengguna tanpa `expect`, dan gambar editor dengan teks tersamar (bagian 11) |
+| `src/markdown/blur.ts` | `blurText()`: aturan penyamaran (bagian 9), murni, dengan unit test di `tests/unit/blur.ts` |
 | `electron/renderer/lib/inspect/bridge.ts` | Menjawab permintaan `inspect` dari main |
 | `electron/renderer/components/Inspector.tsx` | Panel dan dock (Transactions, Decorations, Checks, Replay & test) |
-| `electron/renderer/components/ReportProblem.tsx` | Dialog "Something looks wrong?" |
+| `electron/renderer/components/ReportProblem.tsx` | Dialog "Something looks wrong?" dan link yang menawarkannya setelah Undo |
 | `electron/inspect.ts` | `inspectBridge`: socket, framing, dan input lewat `webContents.sendInputEvent` |
 | `electron/main.ts`, `preload.ts` | Memuat `inspect.ts` hanya dengan flag (bagian 8.1), dan `saveReport` untuk bagian 11 |
 | `scripts/editor.mjs` | Klien baris perintah, `npm run editor -- <op>` |
@@ -461,8 +463,7 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      100 ms setelah input dianggap bagian dari input itu. Transaksi lain tanpa input menjadi `select` (bila hanya seleksi)
      atau `external`. Repro yang tidak punya check gagal mendapat `expect.doc`, sehingga `replay`-nya menjadi tes bahwa
      teksnya keluar sama.
-   - **Belum ada:** `--cp` (semua posisi UTF-16), `handler` di entri (tahap 4), `around`, `widgets`, dan `parse` di
-     snapshot, serta penyamaran (tahap 4).
+   - **Belum ada:** `--cp` (semua posisi UTF-16), serta `around`, `widgets`, dan `parse` di snapshot.
 3. **Fuzz, penyusutan, dan `test-from`**, ditambah fuzz dengan seed tetap di CI. *Sudah dibangun*: `scripts/editor-fuzz.mjs`
    (dipakai `npm run editor -- fuzz`), `test-from`, dan `tests/electron/repros.mjs`. Yang berbeda dari rancangan:
    - **Repro yang disimpan diputar oleh `repros.mjs`,** bukan disalin menjadi `step(…)` di `visual.mjs`. `test-from`
@@ -491,7 +492,45 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      - Klik acak pada tempat yang tidak digambar menghentikan run (seed 13). Klik itu sekarang dilewati.
      Repro yang tersisa dari temuan pertama ada di `tests/electron/repros/`; yang kedua diuji di `visual.mjs`.
 4. **Laporan pengguna** (dialog, penyamaran, screenshot, i18n) dan `traced`/`trace` di titik keputusan `visual.ts`,
-   `blockselect.ts`, dan `tables.ts`.
+   `blockselect.ts`, dan `tables.ts`. *Sudah dibangun*: `markdown/blur.ts`, `inspect/report.ts`,
+   `components/ReportProblem.tsx`, perintah `report-problem` (Help dan palet), IPC `report-picture`/`report-save`/
+   `report-show` di `main.ts`, `save-repro --blur`, serta `traced`/`handling`/`trace` di `recorder.ts`
+   (`tests/unit/blur.ts`, 7 tes; `tests/electron/inspector.mjs`, 4 langkah baru dan 1 langkah yang diperluas). Yang
+   berbeda dari rancangan:
+   - **Teks dialog tidak melewati `_()`.** Renderer tidak punya terjemahan: `scripts/layers.mjs` hanya mengizinkan
+     renderer mengambil nilai dari `markdown/`, pesan `app/protocol/`, dan `app/commands.ts`, dan semua teks renderer
+     lain juga ditulis langsung dalam bahasa Inggris. Yang diterjemahkan hanya nama perintahnya di tabel perintah
+     (`_('Report a Problem with the Editor…')`). Terjemahan dialog menunggu cara renderer menerjemahkan.
+   - **Pilihan rekaman.** Mockup menulis "The last 2 minutes of editing". Karena batasnya sekarang 500 transaksi,
+     pilihannya menjadi *What the editor just did* dengan jumlah perubahan yang tersimpan. Bila dimatikan, `start`
+     adalah teks sekarang dan tidak ada langkah.
+   - **Aturan penyamaran yang sebenarnya.** Tanda baca memang tidak pernah diganti, jadi yang perlu dijaga dari parse
+     hanya bahasa fence dan skema URL. Di luar itu dijaga juga awalan baris (`RE.quote`, `RE.list`: nomor daftar dan
+     `[x]`) dan kunci field (`findSegments`: `[due::`). Kata di dalam sintaks tersembunyi ikut disamarkan: target
+     `[[catatan]]`, teks alt gambar, dan alamat tautan selain skemanya. Huruf Latin beraksen (é, ü) disamarkan karena
+     termasuk huruf Latin dan lebarnya tetap satu unit UTF-16.
+   - **Gambar diambil oleh main dan disimpan di sana sampai laporan disimpan.** Renderer meminta `report-picture`
+     dengan kotak editor saat editor menampilkan state tersamar (`view.setState`, dua frame, lalu state asli
+     dikembalikan) dan dialognya disembunyikan. State baru digambar dari atas, jadi posisi scroll dikembalikan dengan
+     `view.scrollSnapshot()` lewat transaksi berisi efek saja yang ditandai `unrecorded`, sehingga tidak masuk rekaman.
+     Mengatur `scrollTop` langsung tidak cukup, karena CodeMirror mengukur ulang tinggi baris sesudahnya. `report-save` lalu menulis repro dan PNG-nya berdampingan, dan repro
+     mendapat field `picture` berisi nama PNG itu. Renderer tidak pernah mengirim byte gambar.
+   - **Tombol perintah tidak berjalan selama dialog terbuka.** Dialog ini bukan dialog core (`dialog`), jadi tabel
+     perintah di `App.tsx` juga berhenti saat `info === 'report'`. Tanpa itu, Ctrl+Z di kolom catatan membatalkan teks
+     yang sedang dilaporkan.
+   - **Laporan tidak punya `expect`.** `reproOf` memberi `expect` bila tidak ada check yang gagal, tetapi di build biasa
+     tidak ada check yang berjalan, jadi `reportOf` membuangnya.
+   - **Link "Something looks wrong?"** muncul di bawah toolbar format pane yang fokus. "Tab yang sama" dihitung per
+     rekaman, jadi tab yang teksnya diganti core (rekaman baru) bisa menawarkannya lagi.
+   - **Nama handler:** `visual.backspace`, `visual.delete`, `pick.before`, `pick.after`, `picked.remove`,
+     `picked.leave`, `picked.line-after`, serta `table.cell-input`, `table.step`, dan `table.leave` lewat
+     `handling()` (sel tabel ditangani event DOM, bukan perintah CodeMirror). `trace()` hanya mencatat di dalam handler
+     yang dilacak, dan catatannya dibuang bila handler itu tidak membuat transaksi. Di luar mode dev keduanya hanya
+     memeriksa satu boolean; kalimat untuk `trace()` tetap disusun, sekali per tombol yang ditangani.
+   - **Biaya:** 2.000 transaksi ketik di `all-formats.md` tetap ±1,4 ms per transaksi di build biasa (1,388 dan
+     1,474 ms sesudah, 1,410 ms sebelum, satu run masing-masing; selisihnya sebesar derau antar-run). Penyamaran `all-formats.md`
+     (5.842 karakter) memakan ±6 ms. Itu terjadi sekali saat dialog dibuka (pratinjau) dan beberapa kali saat laporan
+     disimpan (teks awal, teks sekarang, dan state untuk gambar), tidak pernah saat mengetik.
 
 Setiap tahap adalah satu PR beserta testnya, dan README diperbarui (pintasan dan perintah palet) di tahap 1 dan 4.
 

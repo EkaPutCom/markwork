@@ -9,6 +9,7 @@ import { Decoration, EditorView, WidgetType, keymap, showTooltip, type Tooltip, 
 import { startCompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { iconElement, type IconName } from '../components/Icons.js';
 import { cellSelectionRect } from './tables.js';
+import { trace, traced } from './inspect/recorder.js';
 
 export const setVisual = StateEffect.define<boolean>();
 export const visualMode = StateField.define<boolean>({
@@ -108,6 +109,7 @@ function backspace(view: EditorView, conceal: (state: EditorState) => Concealed)
     const end = prefixes.get(line.from);
     // At the start of a heading, quote, or list item's text: it becomes a paragraph.
     if (end !== undefined && sel.head <= end) {
+        trace(`in the prefix of line ${line.number} (${line.from}–${end}): the line becomes a paragraph`);
         view.dispatch({ changes: { from: line.from, to: end }, selection: { anchor: line.from }, userEvent: 'delete.backward', scrollIntoView: true });
         return true;
     }
@@ -116,6 +118,7 @@ function backspace(view: EditorView, conceal: (state: EditorState) => Concealed)
     const at = state.doc.lineAt(pos);
     const from = pos > at.from ? at.from + findClusterBreak(at.text, pos - at.from, false) : pos - 1;
     if (from < 0) return true;
+    trace(`stepped back past hidden ${pos}–${sel.head}; removes ${from}–${pos}`);
     view.dispatch({ changes: { from, to: pos }, userEvent: 'delete.backward', scrollIntoView: true });
     return true;
 }
@@ -130,6 +133,7 @@ function deleteForward(view: EditorView, conceal: (state: EditorState) => Concea
         const next = state.doc.line(line.number + 1);
         const end = prefixes.get(next.from);
         if (end === undefined) return false;
+        trace(`at the end of line ${line.number}: the next line joins it without its prefix (${next.from}–${end})`);
         view.dispatch({ changes: { from: line.to, to: end }, userEvent: 'delete.forward' });
         return true;
     }
@@ -137,6 +141,7 @@ function deleteForward(view: EditorView, conceal: (state: EditorState) => Concea
     if (pos === sel.head) return false;
     const at = state.doc.lineAt(pos);
     const to = pos < at.to ? at.from + findClusterBreak(at.text, pos - at.from, true) : Math.min(pos + 1, state.doc.length);
+    trace(`stepped on past hidden ${sel.head}–${pos}; removes ${pos}–${to}`);
     view.dispatch({ changes: { from: pos, to }, userEvent: 'delete.forward' });
     return true;
 }
@@ -163,8 +168,8 @@ export function visualEditing(conceal: (state: EditorState) => Concealed, on: (s
         EditorView.atomicRanges.of(view => on(view.state) ? conceal(view.state).hidden : Decoration.none),
         keepOutOfPrefixes(conceal, on),
         keymap.of([
-            { key: 'Backspace', run: view => on(view.state) && backspace(view, conceal) },
-            { key: 'Delete', run: view => on(view.state) && deleteForward(view, conceal) },
+            { key: 'Backspace', run: traced('visual.backspace', view => on(view.state) && backspace(view, conceal)) },
+            { key: 'Delete', run: traced('visual.delete', view => on(view.state) && deleteForward(view, conceal)) },
         ]),
     ];
 }

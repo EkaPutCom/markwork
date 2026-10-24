@@ -108,9 +108,11 @@ function TxDetail({ recording, entry }: { recording: Recording; entry: TxEntry }
             {entry.findings?.length === 0 && <p className="dim">All checks pass.</p>}
             <dl>
                 <dt>input</dt><dd>{inputLabel(entry) || '—'}</dd>
+                <dt>handler</dt><dd>{entry.handler ?? '—'}</dd>
                 <dt>selection</dt><dd>{selLabel(entry)}</dd>
                 <dt>effects</dt><dd>{entry.effects.join(', ') || '—'}</dd>
             </dl>
+            {entry.trace?.map((line, i) => <p key={i} className="ins-trace">{line}</p>)}
             {edits.map((e, i) => (
                 <div key={i} className="ins-diff">
                     <span className="dim">{e.from}–{e.to}</span>

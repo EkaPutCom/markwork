@@ -11,6 +11,7 @@ import { Search } from './components/Search.js';
 import { Palette } from './components/Palette.js';
 import { DialogLayer } from './components/Dialog.js';
 import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './components/Modals.js';
+import { ReportDialog } from './components/ReportProblem.js';
 import { FieldsDialog } from './components/FieldsDialog.js';
 import { ImageViewer } from './components/ImageViewer.js';
 import { Chat, ChatReview } from './components/Chat.js';
@@ -246,8 +247,9 @@ export function App() {
     // Every key of the command table, for the commands this window carries out. Captured before the editor sees it.
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
-            // A dialog has the keys to itself.
-            if (client.getState().dialog) return;
+            // A dialog has the keys to itself, and so does the report of a problem with the editor: Ctrl+Z in its note
+            // would undo the very text it reports on.
+            if (client.getState().dialog || client.getState().info === 'report') return;
             // Dev mode: the Editor Inspector (not a command of the core, which a normal build has no use for).
             if (window.markwork.devMode && matches(event, INSPECTOR_KEY)) {
                 event.preventDefault();
@@ -299,6 +301,7 @@ export function App() {
             <PreferencesDialog />
             <ShortcutsDialog />
             <AboutDialog />
+            <ReportDialog />
             <FieldsDialog />
             <ChatReview />
             <LogViewer />

@@ -1,15 +1,16 @@
 // The Electron main process: a window, the core in a utility process, and the channel between them. It holds no
 // application logic; the file dialogs are the one thing only it can show.
 
-import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, protocol, safeStorage, shell, utilityProcess } from 'electron';
-import { readlinkSync, statSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, protocol, safeStorage, shell, utilityProcess, type NativeImage, type WebContents } from 'electron';
+import { existsSync, readlinkSync, statSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkForUpdates } from './updater.js';
 import { hasDrive } from '../src/markdown/paths.js';
 import { SecretVault, answerSecret } from '../src/platform/node/vault.js';
 import { HTML_CSP, HTML_SCHEME, htmlContentType, parseHtmlUrl, resolveHtmlRequest } from '../src/markdown/htmlview.js';
+import { reproError } from './renderer/lib/inspect/repro.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -45,6 +46,55 @@ const linkOf = (path: string): string | null => { try { return readlinkSync(path
 // Dev mode (docs/design/debugger.md): the Editor Inspector and its checks. Off in a normal start; the page asks once.
 const devMode = process.argv.includes('--inspect-editor') || process.env.MARKWORK_DEV === '1';
 ipcMain.on('dev-mode', event => { event.returnValue = devMode; });
+
+// ---------- Reports of a problem with the editor (docs/design/debugger.md, section 11) ----------
+//
+// The page cannot write files, so a report is written here, in the app's own data folder (never the work folder, where
+// it could be committed with the person's notes). Only a repro this version can read is taken, under a name made here;
+// nothing is sent anywhere.
+
+const REPORT_LIMIT = 64 * 1024 * 1024;
+const reportsFolder = () => join(app.getPath('userData'), 'reports');
+// The picture of the editor each page took last, while it showed its text blurred: kept here until the report is saved.
+const pictures = new WeakMap<WebContents, NativeImage>();
+// The reports this run wrote: the only files Show File reveals.
+const savedReports = new Set<string>();
+
+const two = (n: number) => String(n).padStart(2, '0');
+function reportName(now = new Date()): string {
+    const stamp = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}`;
+    for (let n = 1; ; n++) {
+        const name = n === 1 ? stamp : `${stamp}-${n}`;
+        if (!existsSync(join(reportsFolder(), `${name}.mwrepro.json`))) return name;
+    }
+}
+
+const isRect = (r: unknown): r is Electron.Rectangle => !!r && typeof r === 'object'
+    && ['x', 'y', 'width', 'height'].every(k => Number.isInteger((r as Record<string, unknown>)[k]) && (r as Record<string, number>)[k] >= 0);
+
+ipcMain.handle('report-picture', async (event, rect: unknown) => {
+    if (!isRect(rect) || !rect.width || !rect.height) throw new Error('not a part of the window');
+    pictures.set(event.sender, await event.sender.capturePage(rect));
+});
+ipcMain.handle('report-save', async (event, json: unknown, withPicture: unknown) => {
+    if (typeof json !== 'string' || json.length > REPORT_LIMIT) throw new Error('not a report');
+    const repro = JSON.parse(json) as Record<string, unknown>;
+    const error = reproError(repro);
+    if (error) throw new Error(`not a report: ${error}`);
+    await mkdir(reportsFolder(), { recursive: true });
+    const name = reportName(), picture = withPicture === true ? pictures.get(event.sender) : undefined;
+    pictures.delete(event.sender);
+    repro.app = { ...repro.app as object, electron: process.versions.electron, os: process.platform };
+    if (picture) {
+        repro.picture = `${name}.png`;
+        await writeFile(join(reportsFolder(), repro.picture as string), picture.toPNG());
+    } else delete repro.picture;
+    const path = join(reportsFolder(), `${name}.mwrepro.json`);
+    await writeFile(path, `${JSON.stringify(repro, null, 2)}\n`);
+    savedReports.add(path);
+    return { path, name: `${name}.mwrepro.json` };
+});
+ipcMain.handle('report-show', (_event, path: unknown) => { if (typeof path === 'string' && savedReports.has(path)) shell.showItemInFolder(path); });
 
 // Windows the page has let go (the core agreed to the close).
 const mayClose = new WeakSet<BrowserWindow>();

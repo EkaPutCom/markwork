@@ -29,7 +29,7 @@ const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--headless [--fold
   check [NAME…]                           the findings of the last transaction
   open PATH                               a file of the work folder, or any file by its absolute path
   mode visual|live|source [--focus|--no-focus]
-  save-repro FILE [--note TEXT]           the recording as a repro (.mwrepro.json)
+  save-repro FILE [--note TEXT] [--blur]  the recording as a repro (.mwrepro.json); --blur: letters x, digits 0
   load FILE                               a repro's start in a new tab
   replay FILE                             a repro played again with every check: pass, fail, or differs
   screenshot FILE [--overlay]             a PNG of the editor
@@ -77,7 +77,7 @@ const OPS = {
     check: w => ({ names: w }),
     open: (_w, _f, one) => ({ path: one('a path') }),
     mode: (_w, f, one) => ({ mode: one('visual, live, or source'), focus: f.focus === true ? true : f['no-focus'] === true ? false : undefined }),
-    'save-repro': (_w, f, one) => ({ file: one('a file'), note: f.note }),
+    'save-repro': (_w, f, one) => ({ file: one('a file'), note: f.note, blur: f.blur === true }),
     load: (_w, _f, one) => ({ file: one('a file') }),
     replay: (_w, _f, one) => ({ file: one('a file') }),
     screenshot: (_w, f, one) => ({ file: one('a file'), overlay: f.overlay === true }),
@@ -301,7 +301,7 @@ async function runOp(conn, request) {
             return conn.ask({ op: 'open', path: request.path, absolute });
         }
         case 'save-repro': {
-            const { repro, ...where } = await conn.ask({ op: 'repro', note: request.note });
+            const { repro, ...where } = await conn.ask({ op: 'repro', note: request.note, blur: request.blur });
             writeFileSync(request.file, `${JSON.stringify(repro, null, 2)}\n`);
             return { ...where, file: resolve(request.file), steps: repro.steps.length, failed: repro.actual.failed };
         }

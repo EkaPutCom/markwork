@@ -6,9 +6,10 @@
 import { ChangeSet, type EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type { Client } from '../client.js';
-import { drawnOf, focusOn, sourceOn, visualOn } from '../editor.js';
+import { drawnOf, focusOn } from '../editor.js';
 import { recordingOf, type Recording, type TxEntry } from './recorder.js';
-import { reproError, reproOf, type Repro } from './repro.js';
+import { blurRepro, reproError, type Repro } from './repro.js';
+import { modeOf, reproOfEditor } from './report.js';
 import { snapshot } from './snapshot.js';
 
 export interface InspectRequest { op: string; [arg: string]: unknown }
@@ -41,10 +42,9 @@ export function entryJSON(entry: TxEntry): Answer {
         n: entry.n, t: Math.round(entry.t), userEvent: entry.userEvent, changes: entry.changes.toJSON(),
         selBefore: entry.before.ranges.map(r => [r.anchor, r.head]), selAfter: entry.after.ranges.map(r => [r.anchor, r.head]),
         effects: entry.effects, input: entry.input, findings: entry.findings,
+        ...(entry.handler ? { handler: entry.handler } : {}), ...(entry.trace ? { trace: entry.trace } : {}),
     };
 }
-
-const modeOf = (state: EditorState): 'visual' | 'live' | 'source' => sourceOn(state) ? 'source' : visualOn(state) ? 'visual' : 'live';
 
 export class InspectBridge {
     private overlaid: HTMLElement | null = null;
@@ -254,17 +254,11 @@ export class InspectBridge {
         throw new InspectError('timeout', `the editor did not keep one state within ${SETTLE_LIMIT_MS} ms`);
     }
 
-    // The repro of the recording so far. The main process adds what only it knows (the Electron version).
+    // The repro of the recording so far, blurred when asked. The main process adds what only it knows (the Electron version).
     private repro(request: InspectRequest): Answer {
-        const view = this.view(), recording = this.recording();
-        const failed = [...new Set(recording.entries.flatMap(e => (e.findings ?? []).filter(f => f.severity === 'fail').map(f => f.check)))];
-        const repro = reproOf(recording, {
-            app: { version: __APP_VERSION__, os: navigator.platform },
-            editor: { mode: modeOf(view.state), focus: focusOn(view.state), width: Math.round(view.contentDOM.getBoundingClientRect().width) },
-            doc: view.state.doc.toString(), failed,
-            note: typeof request.note === 'string' ? request.note : undefined,
-        });
-        return { ...this.where(), repro };
+        this.recording();
+        const repro = reproOfEditor(this.view(), { note: typeof request.note === 'string' ? request.note : undefined })!;
+        return { ...this.where(), repro: request.blur === true ? blurRepro(repro) : repro };
     }
 
     // A repro's start in a new tab with no file, in the repro's mode: the place a replay plays its steps.

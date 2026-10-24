@@ -30,7 +30,7 @@ import { ChatModel } from './chatmodel.js';
 
 declare global {
     interface Window {
-        markwork: { registerHtml(id: number, root: string): Promise<void>; unregisterHtml(id: number): Promise<void>; pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void>; devMode: boolean; onInspect?: (answer: (request: unknown) => Promise<unknown>) => void };
+        markwork: { registerHtml(id: number, root: string): Promise<void>; unregisterHtml(id: number): Promise<void>; pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void>; takeReportPicture(rect: { x: number; y: number; width: number; height: number }): Promise<void>; saveReport(json: string, withPicture: boolean): Promise<{ path: string; name: string }>; showReport(path: string): Promise<void>; devMode: boolean; onInspect?: (answer: (request: unknown) => Promise<unknown>) => void };
     }
 }
 
@@ -147,7 +147,7 @@ export interface State {
     recent: string[];                // the Recent files of the menus (recent), latest first
     programsMissing: number;         // needed programs that are missing (programs.missing): the mark on the sidebar's Programs
     prefs: PreferencesData | null;   // the Preferences dialog while it is open (view.prefs.open)
-    info: 'shortcuts' | 'about' | null;   // the Keyboard Shortcuts or About dialog
+    info: 'shortcuts' | 'about' | 'report' | null;   // the Keyboard Shortcuts, About, or Report a Problem dialog
     tree: FileTree;
     search: SearchPanel;             // the Search panel's fields and the core's results (view.search)
     outline: { level: number; text: string; line: number }[];   // the headings of the active document (view.outline)
@@ -928,7 +928,7 @@ export class Client {
             closePane: () => this.closePane(),
             moveToNextPane: () => this.moveToNextPane(),
             showPalette: () => this.openPalette(),
-            showShortcuts: () => this.showInfo('shortcuts'), showAbout: () => this.showInfo('about'),
+            showShortcuts: () => this.showInfo('shortcuts'), showAbout: () => this.showInfo('about'), showReport: () => this.showInfo('report'),
             quit: () => window.close(),
         };
     }

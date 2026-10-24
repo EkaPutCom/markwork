@@ -3,6 +3,7 @@
 // replay of the changes would give the recorded text whatever the code does now.
 
 import type { ChangeSet, EditorSelection } from '@codemirror/state';
+import { blurText } from '../../../../src/markdown/blur.js';
 import type { Recording, TxEntry } from './recorder.js';
 
 export type ReproStep =
@@ -23,6 +24,7 @@ export interface Repro {
     actual?: { doc: string; failed: string[] };
     note?: string;
     blurred: boolean;
+    picture?: string;      // a report's picture of the editor: a PNG next to it, by its name (electron/main.ts)
 }
 
 // A transaction with no input of its own this soon after one with an input was made by that input too (a key whose
@@ -91,6 +93,30 @@ export function reproOf(recording: Recording, context: ReproContext): Repro {
         actual: { doc: context.doc, failed: context.failed },
         ...(context.note ? { note: context.note } : {}),
         blurred: false,
+    };
+}
+
+// A ChangeSet's JSON: a length kept, or a length replaced by the lines inserted.
+const blurChange = (part: unknown): unknown => Array.isArray(part) ? part.map(p => typeof p === 'string' ? blurText(p) : p) : part;
+
+function blurStep(step: ReproStep): ReproStep {
+    if ('type' in step) return { type: blurText(step.type) };
+    if ('click' in step && 'visible' in step.click) return { click: { ...step.click, visible: blurText(step.click.visible) } };
+    if ('external' in step && Array.isArray(step.external)) return { external: step.external.map(blurChange) };
+    return step;
+}
+
+// The same repro with its text blurred (markdown/blur.ts): every text, what was typed, and what a change brought. A
+// blurred text is as long as the real one, so the selections, clicks, and changes stay as they are. The note is the
+// person's own words to the developer, and stays.
+export function blurRepro(repro: Repro): Repro {
+    return {
+        ...repro,
+        start: { ...repro.start, doc: blurText(repro.start.doc) },
+        steps: repro.steps.map(blurStep),
+        ...(repro.expect ? { expect: { ...repro.expect, ...(repro.expect.doc !== undefined ? { doc: blurText(repro.expect.doc) } : {}) } } : {}),
+        ...(repro.actual ? { actual: { ...repro.actual, doc: blurText(repro.actual.doc) } } : {}),
+        blurred: true,
     };
 }
 
