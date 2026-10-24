@@ -222,6 +222,8 @@ export class Client {
     private pullAnswer: ((answer: PullRequestAnswer | null) => void) | null = null;
     private readonly listeners = new Set<() => void>();
     private conn: Connection | null = null;
+    // The values this window sent for each setting and the core has not echoed yet (JSON, oldest first).
+    private readonly sentSettings = new Map<string, string[]>();
     // One editor for each pane; the focused pane's is the one the commands, the find bar, and the cursor go to.
     private readonly editors = new Map<number, MarkdownEditor>();
     private get editor(): MarkdownEditor | null { return this.editors.get(this.snapshot.panes.current) ?? null; }
@@ -811,7 +813,23 @@ export class Client {
     // Shown at once, then written by the core, which sends the value back.
     setSetting(key: string, value: unknown): void {
         this.applySettings({ [key]: value });
-        this.conn?.notify('setting', { key, value });
+        if (!this.conn) return;
+        const sent = this.sentSettings.get(key) ?? [];
+        sent.push(JSON.stringify(value));
+        this.sentSettings.set(key, sent);
+        this.conn.notify('setting', { key, value });
+    }
+
+    // A `setting` notice that is only the echo of a value this window sent, while it has sent a newer one for that key
+    // since: the newer one stands. The core echoes every change (handlers/session.ts), in order, so the echo of an older
+    // value would otherwise turn the setting back for a moment, and a toggle in that moment (Ctrl+Shift+A pressed twice
+    // fast) would read it and land on the wrong side. A value the window did not send is applied as it comes.
+    private staleEcho(key: string, value: unknown): boolean {
+        const sent = this.sentSettings.get(key);
+        if (!sent?.length || sent[0] !== JSON.stringify(value)) return false;
+        sent.shift();
+        if (!sent.length) this.sentSettings.delete(key);
+        return sent.length > 0;
     }
 
     private applySettings(changed: Record<string, unknown>): void {
@@ -1187,7 +1205,7 @@ export class Client {
             case 'view.prefs.project': this.set({ project: p.page as ProjectPage, worktrees: null }); break;
             case 'view.prefs.worktrees': if (this.snapshot.project?.name === (p.list as WorktreeList).project) this.set({ worktrees: p.list as WorktreeList }); break;
             case 'open.uri': window.open(p.uri as string); break;
-            case 'setting': this.applySettings({ [p.key as string]: p.value }); break;
+            case 'setting': if (!this.staleEcho(p.key as string, p.value)) this.applySettings({ [p.key as string]: p.value }); break;
             case 'commands.state': this.set({ disabled: p.disabled as string[] }); break;
             case 'view.status': this.set({ status: { visible: p.visible !== false, counts: p.counts as StatusCounts } }); break;
             case 'view.layout': this.set({ layout: { layout: p.layout as string | null, structured: p.structured === true } }); break;
