@@ -26,6 +26,9 @@ const cli = (...args) => new Promise(resolve => {
     });
 });
 
+// The main process's own pid, which names its socket: on Windows the process Playwright started is another one.
+const mainPid = app => app.evaluate(() => process.pid);
+
 // Opens a file of the folder and waits for its tab.
 async function openFile(page, name) {
     await page.getByRole('treeitem', { name: new RegExp(name.replace('.', '\\.')) }).click();
@@ -53,7 +56,7 @@ async function inNormalStart() {
         });
 
         await step('a normal start has no socket for scripts/editor.mjs', async () => {
-            const { code, stderr } = await cli('--pid', String(app.process().pid), 'hello');
+            const { code, stderr } = await cli('--pid', String(await mainPid(app)), 'hello');
             assert.equal(code, 2, stderr);
             assert.match(stderr, /cannot reach/);
         });
@@ -251,7 +254,7 @@ async function throughTheBridge() {
     try {
         const page = await app.firstWindow();
         await page.setViewportSize({ width: 1400, height: 900 });
-        const pid = ['--pid', String(app.process().pid)];
+        const pid = ['--pid', String(await mainPid(app))];
 
         await step('editor.mjs: hello reaches the window, and open shows a file of the folder', async () => {
             let hello = null;
