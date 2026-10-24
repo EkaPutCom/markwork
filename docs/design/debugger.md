@@ -9,6 +9,9 @@
 - **Laporan pengguna tetap ada di build biasa.** Yang berjalan untuk itu hanya perekam (bagian 4). Tidak ada check yang
   berjalan diam-diam: laporan cukup membawa rekaman, dan check dijalankan oleh developer atau agent saat repro diputar
   ulang (`replay`, bagian 10).
+- **Penyamaran hanya mengganti huruf Latin dan angka.** Emoji dan aksara non-Latin dibiarkan apa adanya untuk saat ini
+  (bagian 9), supaya bug lebar dan offset tetap bisa diputar ulang.
+- **Rekaman menyimpan 500 transaksi terakhir**, tanpa batas waktu (bagian 4).
 
 Editor visual adalah inti Markwork: Markdown yang tampil seperti dokumen biasa, untuk orang yang tidak tahu Markdown. Ia juga
 sumber bug terbanyak, dan hampir semuanya punya satu sebab yang sama (AGENT.md, *Known pitfalls*): yang dilihat mata dan
@@ -136,7 +139,7 @@ Cara kerjanya:
   mengambil isi slot tersebut. Teks yang ditempel tidak disalin ke `input`, karena sudah ada di `changes`.
 - **Transaksi.** `EditorView.updateListener` membaca `update.transactions`. Inilah yang dipakai editor sendiri untuk
   `changed`/`moved`, jadi tidak ada jalur kedua.
-- **Ring buffer.** Rekaman menyimpan maksimal 500 entri atau 2 menit, mana yang lebih dulu tercapai. Rekaman memegang
+- **Ring buffer.** Rekaman menyimpan maksimal 500 entri, tanpa batas waktu. Rekaman memegang
   `base: { doc: Text; selection }`. Saat entri tertua dibuang, `changes`-nya diterapkan ke `base.doc`. `Text` CodeMirror
   persisten, jadi operasi ini O(log n) dan tidak memerlukan `doc.toString()`.
 - **Efek.** `StateEffect` tidak punya nama. Karena itu `recorder.ts` memegang daftar efek yang dikenal (`setVisual`,
@@ -343,11 +346,13 @@ sama dengan apa yang dilihat developer di jendela app. Proses app berhenti ketik
   `{ "external": changes }`.
 - **`width`** ikut disimpan, karena baris yang membungkus (`lineWrapping`) mengubah ke mana klik dan panah atas/bawah
   mendarat.
-- **Penyamaran** (`blurred: true`, bagian 11) mengganti setiap huruf dengan `x`/`X` (mengikuti huruf besar-kecilnya)
-  dan setiap angka dengan `0`, hanya di dalam isi teks menurut parse. Penanda (`**`, `- [x]`, `#`, fence, `|`) tidak
-  diubah. Panjang UTF-16 dijaga: huruf di luar BMP diganti `xx`. Akibatnya semua offset, seleksi, dan langkah tetap
-  berlaku. URL disamarkan dengan cara yang sama kecuali skemanya. Emoji tidak disamarkan karena sering menjadi sumber
-  bug offset (pertanyaan terbuka 1).
+- **Penyamaran** (`blurred: true`, bagian 11) mengganti setiap huruf Latin dengan `x`/`X` (mengikuti huruf
+  besar-kecilnya) dan setiap angka dengan `0`, hanya di dalam isi teks menurut parse. Penanda (`**`, `- [x]`, `#`,
+  fence, `|`) tidak diubah. Karena penggantinya selebar yang diganti, semua offset, seleksi, dan langkah tetap
+  berlaku. URL disamarkan dengan cara yang sama kecuali skemanya. Emoji dan aksara non-Latin (misalnya Arab, Cina,
+  atau Devanagari) dibiarkan apa adanya: keduanya sering menjadi sumber bug lebar dan offset, dan menggantinya bisa
+  menghilangkan bug itu. Akibatnya teks dalam aksara non-Latin ikut terbaca di laporan, dan pratinjau dialog
+  (bagian 11) memperlihatkannya kepada pengguna sebelum disimpan.
 
 ## 10. Replay, fuzz, dan tes
 
@@ -371,7 +376,7 @@ Alur kerja yang dituju, untuk developer maupun agent: muat repro → `press --ex
 
 Board 3 mockup: Help → *Report a problem with the editor*.
 
-- Dialog mengambil `Recording` tab yang aktif (maksimal 2 menit terakhir) dan mengubahnya menjadi repro. `start` adalah
+- Dialog mengambil `Recording` tab yang aktif (maksimal 500 transaksi terakhir) dan mengubahnya menjadi repro. `start` adalah
   `base` rekaman, langkahnya adalah input-input itu, dan `actual` adalah keadaan sekarang. Tidak ada `expect`. Gantinya
   adalah catatan pengguna di `note`.
 - Pilihan *Blur my text* aktif secara default (bagian 9). Pratinjaunya menampilkan baris kursor yang sudah disamarkan,
@@ -492,11 +497,13 @@ Setiap tahap adalah satu PR beserta testnya, dan README diperbarui (pintasan dan
 
 ## 15. Pertanyaan terbuka
 
-1. **Emoji dan aksara non-Latin dalam penyamaran.** Kalau tidak disamarkan, isi teks bisa ikut terbaca, misalnya teks
-   dalam aksara lain. Kalau disamarkan, bug yang berkaitan dengan lebar atau offset bisa hilang. Salah satu jalan
-   tengah adalah mengganti dengan karakter lain yang lebar UTF-16 dan kategorinya sama.
-2. **Ukuran rekaman.** Apakah 500 transaksi atau 2 menit cukup untuk bug yang baru disadari belakangan, misalnya bold
-   yang rusak dan baru terlihat setelah scroll?
+Tidak ada lagi. Dua pertanyaan sebelumnya sudah diputuskan (lihat *Keputusan*):
+
+1. **Emoji dan aksara non-Latin dalam penyamaran:** dibiarkan apa adanya untuk saat ini. Bila teks non-Latin yang
+   ikut terbaca menjadi masalah, jalan tengahnya adalah mengganti dengan karakter lain yang lebar UTF-16 dan
+   kategorinya sama.
+2. **Ukuran rekaman:** 500 transaksi cukup. Batas 2 menit dibuang, sehingga bug yang baru disadari belakangan
+   (misalnya bold yang rusak dan baru terlihat setelah scroll) tetap ada di rekaman selama belum lewat 500 transaksi.
 
 Catatan untuk contoh di mockup: bug "Backspace menghapus `*` tersembunyi" hanya ilustrasi. `pastHidden` di `visual.ts` sudah
 melompati range yang berakhir tepat di kursor, jadi kasus persis itu seharusnya lulus. Contoh itu dipilih karena

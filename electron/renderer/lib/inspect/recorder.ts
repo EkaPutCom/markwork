@@ -1,13 +1,11 @@
-// The recorder: every transaction of a tab's text, with the key, click, or paste that caused it, for the last 500 or the
-// last two minutes. It runs in every build, since a report of a problem with the editor is made of it
-// (docs/design/debugger.md); it keeps no copy of the text per transaction, only the changes, and the text before the
-// oldest one it still has.
+// The recorder: every transaction of a tab's text, with the key, click, or paste that caused it, for the last 500. It
+// runs in every build, since a report of a problem with the editor is made of it (docs/design/debugger.md); it keeps no
+// copy of the text per transaction, only the changes, and the text before the oldest one it still has.
 
 import { Prec, StateField, Transaction, type ChangeSet, type StateEffect, type EditorSelection, type EditorState, type Extension, type StateEffectType, type Text } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
 
 const LIMIT = 500;           // entries
-const SPAN_MS = 120_000;     // and their age
 const INPUT_MS = 50;         // an input belongs to the transaction that follows it this soon
 
 export interface InputEntry {
@@ -70,7 +68,7 @@ export class Recording {
             input, findings: null,
         };
         this.entries.push(entry);
-        while (this.entries.length > LIMIT || now - this.entries[0].t > SPAN_MS) {
+        while (this.entries.length > LIMIT) {
             const old = this.entries.shift()!;
             this.base = { doc: old.changes.apply(this.base.doc), selection: old.after };
         }
