@@ -57,11 +57,13 @@ export const CHECKS: readonly Check[] = [
         },
     },
     {
-        // A cursor that only moved does not stand in a line's hidden prefix (visual.ts keepOutOfPrefixes).
+        // A cursor that only moved does not stand in a line's hidden prefix (visual.ts keepOutOfPrefixes), and neither
+        // does one a deletion left: removing the first letter of a heading's text can join the spaces after it to the
+        // prefix (visual.ts textStartAfter).
         name: 'prefix-guard',
         run(before, tr, after) {
-            if (tr.docChanged || !tr.selection || !visualOn(after)) return null;
-            const sel = after.selection.main, drawn = drawnOf(before);
+            if (!visualOn(after) || (tr.docChanged ? !tr.isUserEvent('delete') : !tr.selection)) return null;
+            const sel = after.selection.main, drawn = drawnOf(tr.docChanged ? after : before);
             if (after.selection.ranges.length > 1 || !sel.empty || !drawn) return null;
             const line = after.doc.lineAt(sel.head), end = drawn.concealed.prefixes.get(line.from);
             if (end === undefined || sel.head >= end || end === line.from) return null;

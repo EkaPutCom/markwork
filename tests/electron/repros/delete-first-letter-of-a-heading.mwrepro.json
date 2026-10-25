@@ -1,0 +1,42 @@
+{
+  "format": "markwork-repro",
+  "version": 1,
+  "app": {
+    "version": "1.0.0",
+    "os": "linux"
+  },
+  "editor": {
+    "mode": "visual",
+    "focus": false,
+    "width": 772
+  },
+  "start": {
+    "doc": "## a Emphasis\n",
+    "selection": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "click": {
+        "line": 1,
+        "edge": "start"
+      }
+    },
+    {
+      "key": "Delete"
+    },
+    {
+      "key": "Delete"
+    }
+  ],
+  "expect": {
+    "doc": "##  mphasis\n",
+    "checks": "pass"
+  },
+  "blurred": false,
+  "note": "Delete on the first letter of a heading's text: the space after it joins the hidden prefix (\"##  \"), and the cursor goes past it to where the text starts. Found by fuzz (seed 21, edge clicks): the cursor stayed inside the prefix, and the next Delete removed a space no one could see."
+}

@@ -10,6 +10,7 @@ import { startCompletion, type Completion, type CompletionContext, type Completi
 import { iconElement, type IconName } from '../components/Icons.js';
 import { cellSelectionRect } from './tables.js';
 import { trace, traced } from './inspect/recorder.js';
+import { lineKindOf } from '../../../src/markdown/editcommands.js';
 
 export const setVisual = StateEffect.define<boolean>();
 export const visualMode = StateField.define<boolean>({
@@ -101,6 +102,17 @@ function pastHidden(hidden: RangeSet<Decoration>, pos: number, forward: boolean)
     return pos;
 }
 
+// Where the cursor goes after removing `from`–`to` at the start of a line's text. The spaces after it may join the
+// prefix ("## a b" less its "a" is "##  b", and a heading's prefix takes every space after the #s): the cursor goes on
+// to where the text starts now, where it is seen, or it would stand inside the hidden prefix and the next key would
+// change what cannot be seen.
+function textStartAfter(state: EditorState, from: number, to: number): number {
+    const line = state.doc.lineAt(from);
+    if (to > line.to) return from;
+    const text = line.text.slice(0, from - line.from) + line.text.slice(to - line.from);
+    return Math.max(from, line.from + lineKindOf(text).prefix);
+}
+
 function backspace(view: EditorView, conceal: (state: EditorState) => Concealed): boolean {
     const { state } = view, sel = state.selection.main;
     if (!sel.empty) return false;
@@ -114,12 +126,16 @@ function backspace(view: EditorView, conceal: (state: EditorState) => Concealed)
         return true;
     }
     const pos = pastHidden(hidden, sel.head, false);
-    if (pos === sel.head) return false;
     const at = state.doc.lineAt(pos);
     const from = pos > at.from ? at.from + findClusterBreak(at.text, pos - at.from, false) : pos - 1;
+    // The text's first letter goes: what follows may join the prefix.
+    const first = end !== undefined && from === end;
+    if (pos === sel.head && !first) return false;
     if (from < 0) return true;
-    trace(`stepped back past hidden ${pos}–${sel.head}; removes ${from}–${pos}`);
-    view.dispatch({ changes: { from, to: pos }, userEvent: 'delete.backward', scrollIntoView: true });
+    const anchor = first ? textStartAfter(state, from, pos) : from;
+    trace(pos === sel.head ? `removes the first letter of line ${line.number}'s text, ${from}–${pos}; the cursor goes to ${anchor}`
+        : `stepped back past hidden ${pos}–${sel.head}; removes ${from}–${pos}`);
+    view.dispatch({ changes: { from, to: pos }, selection: { anchor }, userEvent: 'delete.backward', scrollIntoView: true });
     return true;
 }
 
@@ -137,12 +153,18 @@ function deleteForward(view: EditorView, conceal: (state: EditorState) => Concea
         view.dispatch({ changes: { from: line.to, to: end }, userEvent: 'delete.forward' });
         return true;
     }
-    const pos = pastHidden(hidden, sel.head, true);
-    if (pos === sel.head) return false;
+    // A cursor left inside the prefix stands where it is seen: at the end of it, where the text starts.
+    const textAt = prefixes.get(line.from);
+    const start = textAt !== undefined && sel.head > line.from && sel.head < textAt ? textAt : sel.head;
+    const pos = pastHidden(hidden, start, true);
+    const first = textAt !== undefined && pos === textAt;
+    if (pos === sel.head && !first) return false;
     const at = state.doc.lineAt(pos);
     const to = pos < at.to ? at.from + findClusterBreak(at.text, pos - at.from, true) : Math.min(pos + 1, state.doc.length);
-    trace(`stepped on past hidden ${sel.head}–${pos}; removes ${pos}–${to}`);
-    view.dispatch({ changes: { from: pos, to }, userEvent: 'delete.forward' });
+    const anchor = first ? textStartAfter(state, pos, to) : pos;
+    trace(pos === sel.head ? `removes the first letter of line ${line.number}'s text, ${pos}–${to}; the cursor goes to ${anchor}`
+        : `stepped on past hidden ${sel.head}–${pos}; removes ${pos}–${to}`);
+    view.dispatch({ changes: { from: pos, to }, selection: { anchor }, userEvent: 'delete.forward' });
     return true;
 }
 
