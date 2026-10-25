@@ -87,14 +87,14 @@ export class PicturesWidget extends WidgetType {
                 const span = document.createElement('span');
                 span.className = 'cm-md-picture-missing';
                 span.textContent = item.alt || 'Image not found';
+                // Picked by a click like one that loaded, so the keys take it whole (also when the file failed to load).
+                span.addEventListener('click', () => this.events.activate(view, frame, item));
                 return span;
             };
             if (!src) {
                 // Drawn as a picture that did not load (no toolbar, which would cover its text), and picked by a click like
                 // one that did, so the keys take it whole.
-                const span = missing();
-                span.addEventListener('click', () => this.events.activate(view, frame, item));
-                frame.append(span);
+                frame.append(missing());
                 box.append(frame);
                 continue;
             }
