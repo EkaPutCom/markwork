@@ -472,7 +472,15 @@ try {
         });
         const rect = () => win.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }, null, { timeout: 5000 })
             .catch(async e => { throw new Error(`${e.message.split('\n')[0]}\n${(await page.evaluate(() => window.viewerTrail ?? [])).join('\n')}`); });
-        const before = await rect();
+        // The window may still be settling (the picture's size arriving): grabbing its header where it was lands on the backdrop,
+        // which closes the viewer. Measured again until two frames agree.
+        let before = await rect();
+        for (let i = 0; i < 20; i++) {
+            await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+            const again = await rect();
+            if (JSON.stringify(again) === JSON.stringify(before)) break;
+            before = again;
+        }
         await page.mouse.move(before.x + before.w / 2, before.y + 20);
         await page.mouse.down();
         await page.mouse.move(before.x + before.w / 2 + 40, before.y + 50, { steps: 4 });
