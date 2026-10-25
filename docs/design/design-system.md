@@ -73,6 +73,8 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 4: Galeri dev di dalam app
 
+**Selesai** (25 Oktober 2026): `electron/renderer/components/UiGallery.tsx`, dibuka dengan `Ctrl+Alt+G` hanya di mode dev (`npm start`, `MARKWORK_DEV=1`). Dokumen contohnya `tests/samples/ui-gallery.md`, dibuka lewat tombol Open Sample Document sebagai salinan di folder data app (`main.ts`, `ui-gallery-sample`), jadi menyuntingnya tidak mengubah file di repo. Tesnya `tests/electron/ui-gallery.mjs`.
+
 - Satu layar mode dev: semua primitif dan keadaannya, light dan dark.
 - Satu dokumen contoh Markdown yang memuat semua elemen editor.
 - Satu tes Electron yang membuka galeri.

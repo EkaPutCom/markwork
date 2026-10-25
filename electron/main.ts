@@ -2,7 +2,7 @@
 // application logic; the file dialogs are the one thing only it can show.
 
 import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, protocol, safeStorage, shell, utilityProcess, type NativeImage, type WebContents } from 'electron';
-import { existsSync, readlinkSync, statSync } from 'node:fs';
+import { cpSync, existsSync, readlinkSync, rmSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,6 +46,18 @@ const linkOf = (path: string): string | null => { try { return readlinkSync(path
 // Dev mode (docs/design/debugger.md): the Editor Inspector and its checks. Off in a normal start; the page asks once.
 const devMode = process.argv.includes('--inspect-editor') || process.env.MARKWORK_DEV === '1';
 ipcMain.on('dev-mode', event => { event.returnValue = devMode; });
+// The UI Gallery's sample document (tests/samples/ui-gallery.md, docs/design/design-system.md stage 4), copied with its
+// pictures into the app's data folder on each ask, so editing it there never changes the one in the repository. Null
+// where the samples are not next to the app (a packaged build started in dev mode).
+ipcMain.handle('ui-gallery-sample', () => {
+    const samples = join(app.getAppPath(), 'tests', 'samples');
+    if (!devMode || !existsSync(join(samples, 'ui-gallery.md'))) return null;
+    const folder = join(app.getPath('userData'), 'ui-gallery');
+    rmSync(folder, { recursive: true, force: true });
+    cpSync(join(samples, 'images'), join(folder, 'images'), { recursive: true });
+    cpSync(join(samples, 'ui-gallery.md'), join(folder, 'ui-gallery.md'));
+    return join(folder, 'ui-gallery.md');
+});
 
 // ---------- Reports of a problem with the editor (docs/design/debugger.md, section 11) ----------
 //

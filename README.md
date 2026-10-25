@@ -73,7 +73,7 @@ Without a path, the folder and the tabs of the last session come back. On the fi
 
 | Command | Function |
 | --- | --- |
-| `npm start` | Build, then open the app with the Editor Inspector on (`Ctrl+Alt+I`) |
+| `npm start` | Build, then open the app in dev mode: the Editor Inspector (`Ctrl+Alt+I`) and the UI Gallery (`Ctrl+Alt+G`) |
 | `npm run build` | Check the types and the layer rules, then build the app into `dist-electron/` |
 | `npm run typecheck` | Only check the types (the core without Node's types, the core's tests and the Node port, the Electron app) and the layer rules |
 | `npm test` | The core's tests on Node, then the Electron app's tests (below) |
@@ -228,6 +228,7 @@ On macOS, `Ctrl` in the table is `⌘`.
 | Ctrl+? | The list of keyboard shortcuts |
 | Enter / Shift+Enter | In the Assistant message box: send / new line |
 | Ctrl+Alt+I | The Editor Inspector, in dev mode only (`--inspect-editor` or `MARKWORK_DEV=1`) |
+| Ctrl+Alt+G | The UI Gallery: every primitive, token, and pattern of `docs/design/ui.md`, light and dark, and a sample document with every element of the editor; in dev mode only |
 
 ## Tests
 

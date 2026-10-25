@@ -35,5 +35,7 @@ contextBridge.exposeInMainWorld('markwork', {
         },
         // The panel's own requests to the bridge in the main process: a replay's steps as real input, saving a repro.
         inspectRun: (request: Record<string, unknown>): Promise<Record<string, unknown>> => ipcRenderer.invoke('inspect-run', request),
+        // The UI Gallery's sample document, as a fresh copy to open (null where the samples are not there).
+        uiGallerySample: (): Promise<string | null> => ipcRenderer.invoke('ui-gallery-sample'),
     } : {}),
 });

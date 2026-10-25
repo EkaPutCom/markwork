@@ -257,3 +257,5 @@ The baseline is never raised by hand to let a change pass. A line that breaks a 
 ## Checking a change
 
 As `AGENT.md` asks for every change of appearance: a real screenshot in the light and the dark theme and in a narrow window, looked at before the work is called finished and shown to the user.
+
+The UI Gallery shows every primitive of `ui/` in its states, the text sizes, the color tokens and the patterns of this file in one screen, with a Light / Dark switch. It is there in dev mode only (`npm start`, or `MARKWORK_DEV=1`): `Ctrl+Alt+G` opens and closes it (`components/UiGallery.tsx`). A change to a primitive or a token is checked there; a new primitive gets a row there in the same change, and `tests/electron/ui-gallery.mjs` names its section. Its Open Sample Document button opens a copy of `tests/samples/ui-gallery.md`, which has every element of the editor's content once, for a change to the editor's look.

@@ -6,6 +6,7 @@ import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './components/EditorArea.js';
 import { Inspector } from './components/Inspector.js';
+import { UI_GALLERY_KEY, UiGallery } from './components/UiGallery.js';
 import { FilesView } from './components/FilesView.js';
 import { Search } from './components/Search.js';
 import { Palette } from './components/Palette.js';
@@ -227,6 +228,7 @@ export function App() {
     const page = state.settings['sidebar-page'];
     const panels = layoutOf(state);
     const [inspecting, setInspecting] = useState(false);
+    const [gallery, setGallery] = useState(false);
 
     // The window's width decides which side panels float (client.ts layoutOf).
     useEffect(() => {
@@ -257,6 +259,13 @@ export function App() {
                 event.stopPropagation();
                 if (client.currentEditor) forgetInput(client.currentEditor.view.state);
                 setInspecting(on => !on);
+                return;
+            }
+            // Dev mode: the UI Gallery (components/UiGallery.tsx).
+            if (window.markwork.devMode && matches(event, UI_GALLERY_KEY)) {
+                event.preventDefault();
+                event.stopPropagation();
+                setGallery(on => !on);
                 return;
             }
             for (const command of COMMANDS) {
@@ -297,6 +306,7 @@ export function App() {
                     </div>
                 </div>
             </div>
+            {gallery && <UiGallery onClose={() => setGallery(false)} />}
             <Notification />
             <Palette />
             <ImageViewer />
