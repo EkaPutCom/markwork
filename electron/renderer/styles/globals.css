@@ -99,6 +99,23 @@
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
+    /* The window's layers, bottom to top (ui.md "Layers"): what floats over the content is ordered by these alone; 1 to
+       9 order siblings inside one component. The primitives' z-50 is --z-overlay. */
+    --z-float-backdrop: 10;
+    --z-float: 20;
+    --z-hint: 30;
+    --z-viewer: 35;
+    --z-screen: 40;
+    --z-overlay: 50;
+    --z-toast: 60;
+    /* How long a change of state takes (ui.md "Motion"); none when the system asks for less motion. */
+    --duration-fast: 100ms;
+    --duration-normal: 150ms;
+    --duration-slow: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root { --duration-fast: 0ms; --duration-normal: 0ms; --duration-slow: 0ms; }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -261,8 +278,10 @@
     --color-chart-5: var(--chart-5);
 }
 
-/* The text sizes beside Tailwind's (ui.md "Type"): 11px for small capitals labels and counts, 13px for dense UI. */
+/* The text sizes beside Tailwind's (ui.md "Type"): 11px for small capitals labels and counts, 13px for dense UI. A
+   Tailwind transition without a duration takes --duration-normal. */
 @theme {
+    --default-transition-duration: var(--duration-normal);
     --text-2xs: 0.6875rem;
     --text-2xs--line-height: calc(1 / 0.6875);
     --text-ui: 0.8125rem;

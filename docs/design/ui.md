@@ -13,6 +13,8 @@ This file describes the target. Parts of it are not in the code yet. Where a rul
 | Theme tokens of shadcn, `--success`, `--warning`, `--chart-*` | In `globals.css` |
 | Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`, except Command and the Sonner toast: they need the `cmdk` and `sonner` packages and come with the palette and the toast in stage 5. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
 | Text sizes `text-2xs` and `text-ui`, the tokens of this file | In `globals.css` |
+| Layer and motion tokens (`--z-*`, `--duration-*`) | In `globals.css`; `theme.css` uses them |
+| `domButton` for widgets without React | In `ui/dom.ts`, used by the find bar; the other widgets in `lib/` move to it in stage 6 |
 | The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Removed component by component in stage 5; do not use them in new code |
 | The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node` |
 
@@ -114,6 +116,33 @@ A new color is a new token in `globals.css` with a light value in `:root` and th
 - **Radius:** `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl` (all from `--radius`) and `rounded-full`. Inside `ui/` the primitives keep shadcn's own small values (a check box's `rounded-[4px]`). Controls `rounded-md`, cards and dialogs `rounded-lg` or `rounded-xl`, dots and avatars `rounded-full`. No radius in px.
 - **Shadows:** Tailwind's `shadow-xs` to `shadow-2xl` only, for things that float (menus, popovers, a floating panel, a dragged card); in `theme.css` as `var(--shadow-md)`.
 
+## Layers
+
+What floats over the content takes its place from a token of `globals.css`, bottom to top:
+
+| Token | Value | For |
+| --- | --- | --- |
+| `--z-float-backdrop` | 10 | The darkening behind a floating sidebar or Assistant |
+| `--z-float` | 20 | A sidebar or the Assistant floating over the editor in a narrow window |
+| `--z-hint` | 30 | A hint or a small popup tied to a panel (the block hint, the Assistant's popover, the Inspector's flash) |
+| `--z-viewer` | 35 | A viewer over the whole window (the image viewer) |
+| `--z-screen` | 40 | A screen over the window (the UI Gallery) |
+| `--z-overlay` | 50 | Dialogs, menus, popovers, the palette: the primitives' own `z-50` is this layer |
+| `--z-toast` | 60 | The toast, over everything |
+
+- In `theme.css`: `z-index: var(--z-overlay)`. In a class: `z-(--z-overlay)`.
+- A number from 1 to 9 only orders siblings inside one component (a sticky header row over its cells, a grip over a sash). It never lifts something over another component.
+- A new layer is a new token here, between the two it goes between, not a number picked to win.
+- Inside `ui/` the primitives keep shadcn's `z-50` and `z-10`.
+
+## Motion
+
+- A change of state (hover, open, a fold, a move) takes `--duration-fast` (100ms: a hover, a chevron, a small move), `--duration-normal` (150ms: a switch, a color), or `--duration-slow` (200ms: a dialog or a panel coming in). In `theme.css`: `transition: opacity var(--duration-fast)`. In a class: `transition-colors` (it takes `--duration-normal`) or `duration-(--duration-fast)`.
+- The default easing; no `cubic-bezier` of a feature's own.
+- Motion shows what changed; it never delays work. Nothing animates on every keystroke or while a list scrolls.
+- When the system asks for less motion (`prefers-reduced-motion`), the three tokens are 0ms, so whatever uses them stops moving. A loop that tells the user something runs (a spinner, a blinking caret) is an `animation` with `infinite` and keeps its own duration; it slows down rather than stops.
+- Inside `ui/` the primitives keep shadcn's own animations (`animate-in`, `duration-200`).
+
 ## Icons
 
 - Through `Icon` (`<Icon name="search" />`) or, in a widget without React, `iconElement(name)`. Both are in `Icons.tsx`, named by what the icon stands for.
@@ -203,15 +232,30 @@ A primitive that is missing: add it to `ui/` with the shadcn CLI (`components.js
 | Text that is cut off (a file name, a title, a path) | A `title` with the full value is fine |
 | An error | Never in a `title`; see [Errors](#errors) |
 
-Editor widgets in `lib/` keep `title` until stage 6.
+A widget without React (see [Widgets without React](#widgets-without-react)) has no Tooltip: its icon button carries the name as `aria-label` and `title`, which `domButton` sets.
 
 ## The editor's content
 
 - Styles of the document are in `theme.css`, under `.cm-editor` and `.cm-md-*` (the names come from `SyntaxName` in `src/markdown/highlight.ts`). They use the document-text, syntax, conflict, and highlight tokens above, and sizes in `em`.
 - The editor's own look (line height, the width of the text column, the gaps around headings and code boxes) is set once there; a feature does not restyle it.
 - A widget's vertical spacing is padding or a transparent border, not a margin: CodeMirror does not count a widget's margin, and a click below it lands on the wrong line.
-- Widgets in `lib/` build DOM without React, so they cannot use the primitives. They take the same look from the primitives' class functions (`buttonVariants({ variant: 'ghost', size: 'icon-xs' })`, `badgeVariants(…)`) and their icons from `iconElement`. They never write their own button or badge CSS.
+- Widgets in `lib/` build DOM without React, so they cannot use the primitives. See [Widgets without React](#widgets-without-react).
 - A change to the editor's look is checked with `tests/samples/all-formats.md` in both themes and in visual and source mode.
+
+## Widgets without React
+
+The editor's widgets and panels in `lib/` (the find bar, the block tools, the link editor, the conflict bar) build their DOM with `document.createElement`, so they cannot render a React primitive. They take the primitive's look from the same source:
+
+- A button is made with `domButton` from `ui/dom.ts`: the classes of `buttonVariants`, `type="button"`, and for an icon only its `aria-label` and `title`. It keeps the editor's focus and selection while pressed, unless `keepFocus: false`.
+
+  ```ts
+  domButton({ label: 'Close', content: iconElement('window-close'), size: 'icon-sm', onClick: () => this.close() })
+  ```
+- Another control (a field, a check box) gets a function of its own in `ui/dom.ts`, built the same way from the React primitive's classes. Move the classes into a `cva` or a constant that both use, so the two never drift.
+- A badge takes `badgeVariants(…)` as its `className`.
+- Icons come from `iconElement`.
+- A widget never writes its own button, field, or badge CSS in `theme.css`; it writes only its layout there (where the bar sits, the gap between its parts).
+- `document.createElement('button' | 'input' | 'select' | 'textarea')` is written only in `ui/`.
 
 ## `theme.css`
 
@@ -237,7 +281,9 @@ Editor widgets in `lib/` keep `title` until stage 6.
 `scripts/ui.mjs` runs in `npm run typecheck` and `npm run test:core:node` (so in `npm test` and CI) and fails on:
 
 - a color value outside `globals.css`: `#…`, a color function, a named color in CSS, or a Tailwind palette class (`text-white`, `bg-red-500`)
-- a raw `<button>`, `<input>`, `<select>`, or `<textarea>` outside `ui/`
+- a raw `<button>`, `<input>`, `<select>`, or `<textarea>` outside `ui/`, in JSX or made with `document.createElement`
+- a `z-index` of 10 or more that is not a token, or a `z-10` … `z-[…]` class of 10 or more outside `ui/`
+- a `transition` or `animation` with a time that is not a token (a loop with `infinite` keeps its own), a `cubic-bezier`, or a `duration-…`, `delay-…` or `ease-[…]` class outside `ui/`
 - a `font-size` or `font` in px, or a `text-[…px]` class, outside `globals.css`
 - a `style={{…}}` whose values are all constants
 - a button of an icon size that is not an `IconButton`

@@ -418,7 +418,7 @@ export function UiGallery({ onClose }: { onClose: () => void }) {
         onClose();
     };
     return (
-        <div role="region" aria-label="UI Gallery" className="fixed inset-0 z-40 flex flex-col bg-background text-foreground">
+        <div role="region" aria-label="UI Gallery" className="fixed inset-0 z-(--z-screen) flex flex-col bg-background text-foreground">
             <header className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
                 <h1 className="text-lg font-semibold">UI Gallery</h1>
                 <span className="text-xs text-muted-foreground">Dev mode · the primitives of ui/ and the tokens, as docs/design/ui.md names them</span>

@@ -27,6 +27,8 @@ const RULES = {
     'constant-style': 'an inline style of constants only; put it in a class (ui.md "Inline style")',
     'icon-button': 'a Button of an icon size; use IconButton (ui.md "Tooltip and title")',
     'old-class': 'a class of the old set in theme.css; use the primitive (ui.md "theme.css")',
+    'z-index': 'a layer as a number; use a --z-* token (ui.md "Layers")',
+    'motion': 'a duration or an easing of its own; use a --duration-* token (ui.md "Motion")',
 };
 
 const RAW = new Set(['button', 'input', 'select', 'textarea']);
@@ -37,6 +39,12 @@ const HUES = 'white|black|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|
 // its palette (`text-white`, `bg-red-500/50`).
 const STRING_COLOR = new RegExp(`(^|[\\s(\\[,'"])#[0-9a-fA-F]{3,8}(?![\\w-])|\\b(rgba?|hsla?|oklch|oklab|lab|lch)\\(|\\b(bg|text|border|ring|fill|stroke|outline|from|via|to|shadow|decoration|divide|accent|caret|placeholder)-(${HUES})(-\\d{2,3})?\\b`);
 const STRING_FONT_PX = /\btext-\[\d+(\.\d+)?px\]/;
+// A layer class of 10 or more (`z-10`, `z-[100]`); `z-(--z-overlay)` is the token.
+const STRING_Z = /(^|\s|:)-?z-(\d{2,}|\[\d{2,}\])(?![\w-])/g;
+// A duration, a delay, or an easing class (`duration-300`, `delay-[50ms]`, `ease-[…]`); `duration-(--duration-fast)` is the token.
+const STRING_MOTION = /(^|\s|:)(duration|delay)-(\d+|\[[^\]]*\])(?![\w-])|(^|\s|:)ease-\[/g;
+// In CSS, a time written as a number (`.15s`, `200ms`).
+const CSS_TIME = /(?<![\w-])\d*\.?\d+m?s(?![\w-])/;
 // In CSS, a color inside a declaration's value; named colors only as whole words.
 const CSS_COLOR = new RegExp(`#[0-9a-fA-F]{3,8}(?![\\w-])|\\b(rgba?|hsla?|oklch|oklab|lab|lch)\\(|(^|[\\s,(])(${HUES}|grey|silver|navy|maroon|olive|aqua|fuchsia|lime)(?=$|[\\s,);!])`);
 const ALLOW = /ui-allow:/;
@@ -69,6 +77,10 @@ function checkCss(source, report) {
         if (allowed(lines, line)) continue;
         if (CSS_COLOR.test(value)) report('color', line, `${property}: ${value.trim()}`);
         if (/^(font-size|font)$/.test(property) && /(?<![\d./])\d+(\.\d+)?px/.test(value)) report('font-size', line, `${property}: ${value.trim()}`);   // a line height after / is not a size
+        if (property === 'z-index' && /^\s*\d{2,}\s*$/.test(value)) report('z-index', line, `${property}: ${value.trim()}`);
+        const loop = property.startsWith('animation') && /\binfinite\b/.test(value);
+        if (/^(transition|animation)(-duration|-delay)?$/.test(property) && !loop && CSS_TIME.test(value)) report('motion', line, `${property}: ${value.trim()}`);
+        if (/cubic-bezier\(/.test(value)) report('motion', line, `${property}: ${value.trim()}`);
     }
 }
 
@@ -161,19 +173,31 @@ function classSetter(node) {
     return isClassList && ['add', 'toggle', 'replace'].includes(callee.property.name) ? { list: node.arguments } : null;
 }
 
-function checkStrings(node, report) {
+function checkStrings(node, file, report) {
     const text = stringOf(node);
     if (text === null) return;
     const color = STRING_COLOR.exec(text);
     if (color) report('color', node.start, `"${color[0].trim()}"`);
     const size = STRING_FONT_PX.exec(text);
     if (size) report('font-size', node.start, `"${size[0]}"`);
+    if (file.startsWith('ui/')) return;
+    for (const z of text.matchAll(STRING_Z)) report('z-index', node.start, `"${z[0].replace(/^[\s:]+/, '')}"`);
+    for (const motion of text.matchAll(STRING_MOTION)) report('motion', node.start, `"${motion[0].replace(/^[\s:]+/, '')}"`);
+}
+
+// document.createElement('button'), the raw control a widget without React makes; ui/dom.ts makes it for them.
+function checkCreateElement(node, file, report) {
+    const callee = node.type === 'CallExpression' ? node.callee : null;
+    if (file.startsWith('ui/') || callee?.type !== 'MemberExpression' || callee.property.name !== 'createElement') return;
+    const tag = node.arguments[0] ? stringOf(node.arguments[0]) : null;
+    if (RAW.has(tag)) report('raw-element', node.start, `createElement('${tag}')`);
 }
 
 function checkScript(source, file, report) {
     const program = parseAst(source, { lang: file.endsWith('.tsx') ? 'tsx' : 'ts' }, file);
     for (const node of walk(program)) {
-        checkStrings(node, report);
+        checkStrings(node, file, report);
+        checkCreateElement(node, file, report);
         if (node.type === 'JSXOpeningElement') { checkOpeningElement(node, file, report); continue; }
         const setter = file.endsWith('.ts') ? classSetter(node) : null;
         if (setter) for (const part of setter.list ?? [setter]) checkClasses(part, report);
