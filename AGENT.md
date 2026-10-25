@@ -17,7 +17,7 @@ Language: code comments, commit messages, interface text, test names, and docume
 | `npm install` | Install the dependencies (once) |
 | `npm run typecheck` | The types (the core without Node's types, the Node port and the core's tests, the Electron app) and the layer rules |
 | `npm run build` | Check, then build the app into `dist-electron/` |
-| `npm start` | Build and open the app with the Editor Inspector on, `Ctrl+Alt+I` (`npm start -- <folder>` opens a folder) |
+| `npm start` | Build and open the app in dev mode: the Editor Inspector, `Ctrl+Alt+I`, and the UI Gallery, `Ctrl+Alt+G` (`npm start -- <folder>` opens a folder) |
 | `npm test` | The core's tests on Node, then the Electron tests |
 | `npm run test:core:node` | The core's tests (`tests/core/core-tests.ts`) on Node, no display; run it after any change to `src/` |
 | `npm run test:electron` | Build, then the Electron tests (`tests/electron/*.mjs`, Playwright) under Xvfb; `npm run test:electron:run` runs them on the display you have; `node tests/electron/<name>.mjs` runs one file |

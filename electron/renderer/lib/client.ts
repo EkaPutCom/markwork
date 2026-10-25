@@ -30,7 +30,7 @@ import { ChatModel } from './chatmodel.js';
 
 declare global {
     interface Window {
-        markwork: { registerHtml(id: number, root: string): Promise<void>; unregisterHtml(id: number): Promise<void>; pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void>; takeReportPicture(rect: { x: number; y: number; width: number; height: number }): Promise<void>; saveReport(json: string, withPicture: boolean): Promise<{ path: string; name: string }>; showReport(path: string): Promise<void>; devMode: boolean; onInspect?: (answer: (request: unknown) => Promise<unknown>) => void; inspectRun?: (request: Record<string, unknown>) => Promise<Record<string, unknown>> };
+        markwork: { registerHtml(id: number, root: string): Promise<void>; unregisterHtml(id: number): Promise<void>; pathsOf(files: File[]): string[]; closeWindow(): Promise<void>; chooseFile(options: ChooseFileOptions): Promise<string | null>; initialFolder(): Promise<string | null>; openFolder(path: string): Promise<void>; takeReportPicture(rect: { x: number; y: number; width: number; height: number }): Promise<void>; saveReport(json: string, withPicture: boolean): Promise<{ path: string; name: string }>; showReport(path: string): Promise<void>; devMode: boolean; onInspect?: (answer: (request: unknown) => Promise<unknown>) => void; inspectRun?: (request: Record<string, unknown>) => Promise<Record<string, unknown>>; uiGallerySample?: () => Promise<string | null> };
     }
 }
 
