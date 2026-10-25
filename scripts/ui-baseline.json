@@ -1,0 +1,176 @@
+{
+    "App.tsx": {
+        "raw-element": 3,
+        "icon-button": 2,
+        "old-class": 5
+    },
+    "components/AgentsPrefs.tsx": {
+        "raw-element": 8,
+        "old-class": 5
+    },
+    "components/Board.tsx": {
+        "raw-element": 5,
+        "old-class": 2
+    },
+    "components/Calendar.tsx": {
+        "raw-element": 7,
+        "old-class": 4
+    },
+    "components/Chart.tsx": {
+        "color": 17,
+        "raw-element": 6,
+        "old-class": 7
+    },
+    "components/Chat.tsx": {
+        "raw-element": 32,
+        "old-class": 44
+    },
+    "components/Collab.tsx": {
+        "raw-element": 16,
+        "old-class": 16
+    },
+    "components/Csv.tsx": {
+        "raw-element": 13,
+        "old-class": 12
+    },
+    "components/Dialog.tsx": {
+        "old-class": 3,
+        "raw-element": 2
+    },
+    "components/EditingMode.tsx": {
+        "raw-element": 2
+    },
+    "components/EditorArea.tsx": {
+        "raw-element": 1,
+        "old-class": 2,
+        "icon-button": 2
+    },
+    "components/Explorer.tsx": {
+        "old-class": 2,
+        "raw-element": 4
+    },
+    "components/FieldsDialog.tsx": {
+        "raw-element": 16,
+        "old-class": 14
+    },
+    "components/FilesView.tsx": {
+        "raw-element": 3,
+        "old-class": 4,
+        "icon-button": 4
+    },
+    "components/FormatBar.tsx": {
+        "icon-button": 1
+    },
+    "components/Gallery.tsx": {
+        "raw-element": 3,
+        "old-class": 3
+    },
+    "components/Harness.tsx": {
+        "raw-element": 20,
+        "old-class": 18
+    },
+    "components/History.tsx": {
+        "raw-element": 13,
+        "old-class": 11
+    },
+    "components/Home.tsx": {
+        "raw-element": 5,
+        "old-class": 6
+    },
+    "components/HtmlPage.tsx": {
+        "raw-element": 1,
+        "old-class": 2
+    },
+    "components/ImageViewer.tsx": {
+        "raw-element": 3,
+        "old-class": 4
+    },
+    "components/Inbox.tsx": {
+        "raw-element": 3,
+        "old-class": 4
+    },
+    "components/Inspector.tsx": {
+        "raw-element": 11,
+        "old-class": 15
+    },
+    "components/InspectorReplay.tsx": {
+        "raw-element": 10,
+        "old-class": 10
+    },
+    "components/LogViewer.tsx": {
+        "old-class": 10,
+        "raw-element": 8
+    },
+    "components/Modals.tsx": {
+        "old-class": 8,
+        "raw-element": 6
+    },
+    "components/notes.tsx": {
+        "raw-element": 20,
+        "old-class": 11
+    },
+    "components/Outline.tsx": {
+        "raw-element": 1
+    },
+    "components/Palette.tsx": {
+        "raw-element": 1
+    },
+    "components/Programs.tsx": {
+        "raw-element": 1,
+        "icon-button": 1
+    },
+    "components/Pull.tsx": {
+        "raw-element": 12,
+        "old-class": 13
+    },
+    "components/ReportProblem.tsx": {
+        "raw-element": 9,
+        "old-class": 11
+    },
+    "components/Review.tsx": {
+        "raw-element": 20,
+        "old-class": 17
+    },
+    "components/Search.tsx": {
+        "raw-element": 11,
+        "old-class": 7
+    },
+    "components/Sidebar.tsx": {
+        "raw-element": 3,
+        "old-class": 6
+    },
+    "components/TableView.tsx": {
+        "raw-element": 5,
+        "old-class": 4
+    },
+    "components/Tabs.tsx": {
+        "raw-element": 1,
+        "old-class": 3
+    },
+    "components/Timeline.tsx": {
+        "raw-element": 3,
+        "old-class": 2
+    },
+    "lib/diagrams.ts": {
+        "color": 7
+    },
+    "lib/findbar.ts": {
+        "old-class": 7
+    },
+    "lib/visual.ts": {
+        "old-class": 2
+    },
+    "styles/theme.css": {
+        "color": 133,
+        "font-size": 181
+    },
+    "ui/badge.tsx": {
+        "color": 1
+    },
+    "ui/button.tsx": {
+        "color": 1
+    },
+    "ui/menubar.tsx": {
+        "font-size": 1
+    }
+}

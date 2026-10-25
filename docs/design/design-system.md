@@ -57,7 +57,7 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 2: Penjaga di `npm test`
 
-`scripts/ui.mjs`, dijalankan di `test:core:node` di samping `scripts/layers.mjs`.
+**Selesai** (25 Oktober 2026): `scripts/ui.mjs` dan `scripts/ui-baseline.json`, dijalankan di `npm run typecheck` dan `test:core:node` sesudah `scripts/layers.mjs`. Baseline awal: 933 temuan di 45 file (288 elemen mentah, 285 class lama, 182 ukuran teks px, 159 warna, 10 tombol ikon, 0 style konstan). Cara pakainya ada di bagian "What the guard checks" di [`ui.md`](ui.md).
 
 - Gagal pada warna literal di luar file token, elemen mentah di luar `ui/`, `style={{}}` tanpa alasan.
 - Nilai dinamis yang sah (posisi atau indentasi hasil hitungan) diberi komentar penanda.

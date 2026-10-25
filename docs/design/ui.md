@@ -17,7 +17,7 @@ This file describes the target. Parts of it are not in the code yet. Where a rul
 | Tokens `--cat-*`, `--on-cat`, `--cat-none`, `--highlight`, `--overlay`, `--scrim` | Stage 3 |
 | The alias tokens at the head of `theme.css` (`--bg`, `--row-hover`, …) | Removed in stage 3; do not use them in new code |
 | The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Removed component by component in stage 5; do not use them in new code |
-| The guard in `npm test` (`scripts/ui.mjs`) | Stage 2 |
+| The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node` |
 
 ## Where things live
 
@@ -100,7 +100,7 @@ A new color is a new token in `globals.css` with a light value in `:root` and th
 | `text-lg` | 18px | Dialog and page titles |
 | `text-2xl` | 24px | Large titles (Home, Welcome) |
 
-- No `text-[…px]` and no `font-size` in px outside `globals.css`.
+- No `text-[…px]` and no `font-size` in px outside `globals.css`. A rule in `theme.css` takes the size from the scale's variable: `font-size: var(--text-xs)`.
 - **Weights:** `font-normal` for text, `font-medium` for controls and row labels, `font-semibold` for titles and headings. `font-bold` only for H1 in the editor.
 - A small capitals label: `text-2xs font-semibold uppercase tracking-wider text-muted-foreground`, as the Files view's section heads.
 - Digits that line up (counts, sizes, line numbers, a table of numbers): `tabular-nums`.
@@ -234,16 +234,25 @@ Editor widgets in `lib/` keep `title` until stage 6.
 
 ## What the guard checks
 
-From stage 2, `npm test` runs `scripts/ui.mjs`, which fails on:
+`scripts/ui.mjs` runs in `npm run typecheck` and `npm run test:core:node` (so in `npm test` and CI) and fails on:
 
-- a color value outside `globals.css`
+- a color value outside `globals.css`: `#…`, a color function, a named color in CSS, or a Tailwind palette class (`text-white`, `bg-red-500`)
 - a raw `<button>`, `<input>`, `<select>`, or `<textarea>` outside `ui/`
-- a `font-size` in px or a `text-[…px]` class outside `globals.css`
+- a `font-size` or `font` in px, or a `text-[…px]` class, outside `globals.css`
 - a `style={{…}}` whose values are all constants
 - a button of an icon size that is not an `IconButton`
-- a new use of a class from the old set
+- a class from the old set (see [`theme.css`](#themecss)), in JSX or set by a widget in `lib/`
 
-While the old code is migrated, the guard compares each file with a baseline (`scripts/ui-baseline.json`): a file may have fewer of these than its baseline, never more, and a new file has none. When a file's count goes down, lower its baseline in the same change.
+While the old code is migrated, the guard compares each file with a baseline (`scripts/ui-baseline.json`): a file may have fewer of these than its baseline, never more, and a new file has none. When a file's count goes down the guard fails too, so the baseline follows the code: lower it in the same change.
+
+| Command | Does |
+| --- | --- |
+| `npm run ui` | Check |
+| `npm run ui -- --list <part of a path>` | List every finding in the matching files, with its line (`--list ''` for all) |
+| `npm run ui -- --update` | Lower the baseline to the counts now; it never raises one |
+| `npm run ui -- --print` | Print the counts now, in the baseline's shape |
+
+The baseline is never raised by hand to let a change pass. A line that breaks a rule on purpose (a color a library needs as a value, an `<input type="file">` that stays hidden) says why in a comment on that line or the one above: `ui-allow: <reason>`. The guard skips it.
 
 ## Checking a change
 
