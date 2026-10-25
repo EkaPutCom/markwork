@@ -25,18 +25,21 @@ export function Palette() {
     // The query is emptied when the palette closes, not after it opens: an effect after opening would wipe what was typed
     // in the first moment (and Enter would then run the first command of the whole list).
     useEffect(() => { if (!palette) setQuery(''); }, [palette]);
-    useEffect(() => setChosen(commands[0]?.id ?? ''), [commands]);
+    // What Enter runs: the command the arrows or the pointer chose, while it is still in the list; else the first match.
+    // Worked out in the render, not after it: an Enter typed right after the query would otherwise run the first
+    // command of the list before the query.
+    const selected = commands.some(c => c.id === chosen) ? chosen : commands[0]?.id ?? '';
 
     const close = () => { client.openPalette(false); client.focusEditor(); };
     // cmdk takes the Enter (preventDefault), so the editor that has the focus right after does not type a new line.
     const choose = (id: string) => { close(); client.run(id); };
     return (
         <CommandDialog open={palette} onOpenChange={open => { if (!open) close(); }}
-            commandProps={{ shouldFilter: false, value: chosen, onValueChange: setChosen }}
+            commandProps={{ shouldFilter: false, value: selected, onValueChange: setChosen }}
             title="Command Palette" description="Type a command or search, then Enter to run it"
             // The editor takes the focus back (close), not the element that had it before the palette.
             contentProps={{ className: 'palette top-[14vh] translate-y-0 sm:max-w-[560px]', onCloseAutoFocus: e => e.preventDefault() }}>
-            <CommandInput value={query} onValueChange={setQuery} placeholder="Type a command or search…" aria-label="Command">
+            <CommandInput value={query} onValueChange={text => { setQuery(text); setChosen(''); }} placeholder="Type a command or search…" aria-label="Command">
                 <Kbd>Esc</Kbd>
             </CommandInput>
             <CommandList className="max-h-[340px]">
