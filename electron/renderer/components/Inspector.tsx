@@ -309,7 +309,7 @@ export function Inspector({ onClose }: { onClose: () => void }) {
                     <span className="ins-badge">#{steps[at].n} of {steps[steps.length - 1].n}</span>
                     <button className="button flat circular" aria-label="Step forward" title="Step forward" disabled={at >= steps.length - 1} onClick={() => pause(steps[at + 1]?.n)}><Icon name="go-next" /></button>
                 </>}
-                {snap && <button className="button flat" onClick={copySnapshot}>{copiedSnapshot ? 'Copied' : 'Copy Snapshot'}</button>}
+                {snap && <button className="button flat ins-copy" onClick={copySnapshot}>{copiedSnapshot ? 'Copied' : 'Copy Snapshot'}</button>}
                 <button className="button flat circular" aria-label="Close the inspector" title="Close (Ctrl+Alt+I)" onClick={onClose}><Icon name="window-close" /></button>
             </header>
             {!state || !snap || !recording ? <p className="dim ins-empty">No text is open in this pane.</p> : (
