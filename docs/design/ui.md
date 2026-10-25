@@ -64,6 +64,7 @@ One palette of eight named colors for anything the user tells apart by color: fi
 - Tokens: `--cat-red`, `--cat-amber`, `--cat-green`, `--cat-blue`, `--cat-purple`, `--cat-teal`, `--cat-pink`, `--cat-gray`. The names are those of `OPTION_COLORS` in `src/markdown/fields.ts`, which a document stores (`option:color`); they never change.
 - Text or an icon on a category color: `--on-cat`. A chart slice with no value: `--cat-none`.
 - A color picked by index (tags, covers from `tagColor`/`tagColorIndex`) maps to the names in this order: green, blue, purple, red, pink, teal, amber, gray. Avatars use the first six.
+- A large field of a category color (a gallery cover) is softened toward the page: `color-mix(in oklab, var(--cat-…) 70%, var(--background))`. Dots, chips, slices and avatars take the color as it is.
 - No other categorical palette, in CSS or in TypeScript.
 
 ### Editor and other families

@@ -835,9 +835,9 @@ input[type=checkbox]:not([role=switch]):disabled { opacity: .5; cursor: default;
 /* The chips of a gallery card are as wide as their text and wrap onto the next line, as the badges of a shadcn card. */
 .gallery-card .badges { display: flex; flex-wrap: wrap; gap: 6px; } .gallery-card .badges:empty { display: none; }
 .gallery-card .badges .chip { justify-content: flex-start; max-width: 100%; }
-/* The covers: solid, in the eight colors of the tags. */
-.cover-0 { background: var(--cat-green) !important; } .cover-1 { background: var(--cat-blue) !important; } .cover-2 { background: var(--cat-purple) !important; } .cover-3 { background: var(--cat-red) !important; }
-.cover-4 { background: var(--cat-pink) !important; } .cover-5 { background: var(--cat-teal) !important; } .cover-6 { background: var(--cat-amber) !important; } .cover-7 { background: var(--cat-gray) !important; }
+/* The covers: in the eight colors of the tags, softened toward the page (70%), since a cover is a large field of color. */
+.cover-0 { background: color-mix(in oklab, var(--cat-green) 70%, var(--background)) !important; } .cover-1 { background: color-mix(in oklab, var(--cat-blue) 70%, var(--background)) !important; } .cover-2 { background: color-mix(in oklab, var(--cat-purple) 70%, var(--background)) !important; } .cover-3 { background: color-mix(in oklab, var(--cat-red) 70%, var(--background)) !important; }
+.cover-4 { background: color-mix(in oklab, var(--cat-pink) 70%, var(--background)) !important; } .cover-5 { background: color-mix(in oklab, var(--cat-teal) 70%, var(--background)) !important; } .cover-6 { background: color-mix(in oklab, var(--cat-amber) 70%, var(--background)) !important; } .cover-7 { background: color-mix(in oklab, var(--cat-gray) 70%, var(--background)) !important; }
 .chart-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .chart-body > .kpis, .chart-body > .chart-panel.panel-tags { grid-column: 1 / -1; }
 .chart-panel.panel-tags .tag-row { grid-template-columns: 90px 220px auto; }
 .settings-toggle.checked { background: var(--accent); }
