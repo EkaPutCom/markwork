@@ -406,6 +406,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .cm-md-picture.picked img, .cm-md-picture.picked .cm-md-picture-missing, .cm-md-codebox.picked, .cm-md-diagram.picked { outline: 2px solid var(--ring); outline-offset: 2px; }
 .cm-md-picture-missing { border-radius: 3px; }
 .cm-md-diagram.picked { border-radius: 8px; }
+.cm-md-codebox.picked { outline-offset: -6px; }
 .cm-md-picture.picked .cm-md-block-tools, .cm-md-codebox.picked .cm-md-block-tools, .cm-md-diagram.picked .cm-md-block-tools { opacity: 1; }
 .cm-md-picture.picked::after { content: ''; position: absolute; top: 0; bottom: 0; right: -7px; width: 2px; background: var(--foreground); animation: picture-caret 1.1s steps(1) infinite; }
 .cm-editor:not(.cm-focused) .cm-md-picture.picked::after { display: none; }
@@ -514,7 +515,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { border-color
 .cm-md-dim { opacity: .35; }
 
 /* A code block as a box that scrolls sideways. */
-.cm-md-codebox { position: relative; contain: inline-size; min-width: 0; max-width: 100%; box-sizing: border-box; margin: 8px 0; padding: 8px 12px; background: var(--code-bg); border-radius: 8px; overflow-x: auto; cursor: text; }
+/* The 8px above and below the box are a transparent border, not a margin: CodeMirror does not count a widget's vertical margin, and a click
+   below each code block would land lower. */
+.cm-md-codebox { position: relative; contain: inline-size; min-width: 0; max-width: 100%; box-sizing: border-box; border: solid transparent; border-width: 8px 0; background-clip: padding-box; padding: 8px 12px; background: var(--code-bg); border-radius: 8px; overflow-x: auto; cursor: text; }
 .cm-md-codebox pre { margin: 0; font-family: var(--font-mono); font-size: 14px; line-height: 1.5; white-space: pre; }
 .cm-md-codebox pre.cm-md-codeedit { min-height: 1.5em; outline: none; }
 .cm-md-codebox.exit-hint::after { content: 'Press Enter again to leave the code block'; position: absolute; right: 12px; bottom: 8px; font: 12px var(--font-sans); color: var(--muted-foreground); pointer-events: none; }
