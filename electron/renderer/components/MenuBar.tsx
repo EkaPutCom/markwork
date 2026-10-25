@@ -59,7 +59,7 @@ export function MenuBar() {
         ['Go', [
             { id: 'home' }, { id: 'programs' }, '-', { id: 'journal' }, { id: 'journal-capture' }, { id: 'journal-summary' }, '-', { id: 'next-tab' }, { id: 'prev-tab' },
         ]],
-        ['Help', [{ id: 'shortcuts' }, '-', { id: 'about' }]],
+        ['Help', [{ id: 'shortcuts' }, { id: 'report-problem' }, '-', { id: 'about' }]],
     ];
 
     const run = (id: string, arg?: string) => { if (id === 'open-folder') void client.openFolder(); else client.run(id, arg); };

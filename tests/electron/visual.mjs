@@ -418,6 +418,8 @@ try {
         await waitFor(async () => /make \*\*this\*\* loud \|/.test(await docText()), 10000, state);
         // The cell takes its selection back from the command before the next one (a slow runner can be a frame behind).
         await waitFor(async () => await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed') === 'false', 10000, state);
+        // ...and the selection the command left ("loud") is back too, not a caret a late select.cell collapsed it to.
+        await waitFor(async () => await page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); }) === 'loud', 10000, state);
         await page.keyboard.press('ControlOrMeta+b');
         await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()), 10000, state);
         // A bold word chosen with the mouse right after a command, then Bold: no more bold, not ****this****. The text takes

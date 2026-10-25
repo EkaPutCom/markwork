@@ -11,6 +11,7 @@ import { Search } from './components/Search.js';
 import { Palette } from './components/Palette.js';
 import { DialogLayer } from './components/Dialog.js';
 import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './components/Modals.js';
+import { ReportDialog } from './components/ReportProblem.js';
 import { FieldsDialog } from './components/FieldsDialog.js';
 import { ImageViewer } from './components/ImageViewer.js';
 import { Chat, ChatReview } from './components/Chat.js';
@@ -27,6 +28,7 @@ import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
 } from './ui/dropdown-menu.js';
 import { cn } from './lib/utils.js';
+import { forgetInput } from './lib/inspect/recorder.js';
 import { useClient, useStore } from './lib/useClient.js';
 import { layoutOf } from './lib/client.js';
 import { EditingMode, STRUCTURED_PAGES } from './components/EditingMode.js';
@@ -246,12 +248,14 @@ export function App() {
     // Every key of the command table, for the commands this window carries out. Captured before the editor sees it.
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
-            // A dialog has the keys to itself.
-            if (client.getState().dialog) return;
+            // A dialog has the keys to itself, and so does the report of a problem with the editor: Ctrl+Z in its note
+            // would undo the very text it reports on.
+            if (client.getState().dialog || client.getState().info === 'report') return;
             // Dev mode: the Editor Inspector (not a command of the core, which a normal build has no use for).
             if (window.markwork.devMode && matches(event, INSPECTOR_KEY)) {
                 event.preventDefault();
                 event.stopPropagation();
+                if (client.currentEditor) forgetInput(client.currentEditor.view.state);
                 setInspecting(on => !on);
                 return;
             }
@@ -299,6 +303,7 @@ export function App() {
             <PreferencesDialog />
             <ShortcutsDialog />
             <AboutDialog />
+            <ReportDialog />
             <FieldsDialog />
             <ChatReview />
             <LogViewer />

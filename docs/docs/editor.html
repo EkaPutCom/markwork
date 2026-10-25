@@ -125,6 +125,16 @@
   <li>A warning appears before closing if there are unsaved changes.</li>
   <li><strong>HTML export</strong> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>): one standalone HTML file with CSS. Diagrams in the exported file load Mermaid from a CDN.</li>
 </ul>
+
+<h2 id="report">Reporting a problem with the editor</h2>
+<p>When a key does something you did not expect (a letter that would not go away, a star that appeared, a line that joined another), <em>Help → Report a Problem with the Editor…</em> saves what the editor just did as a file, so whoever fixes Markwork can play it back. Right after you undo something you had just typed, a small <em>Something looks wrong?</em> link under the toolbar offers the same for a few seconds, once per tab.</p>
+<ul>
+  <li><strong>What happened</strong> is your own note: what you did and what you expected. It is saved as you write it.</li>
+  <li><strong>What the editor just did</strong>: the last 500 changes of the document (keys, clicks, and what each did), nothing typed in other windows. Without it, the report holds the text as it is now.</li>
+  <li><strong>Blur my text</strong> (on at first): every letter becomes <code>x</code> or <code>X</code> and every digit <code>0</code>, while the Markdown, the spaces, the punctuation, emoji, and letters of other scripts (Arabic, Chinese, Cyrillic, …) stay, which is what a bug of the editor needs. The line of the cursor shows how it will be saved. A link keeps its <code>https://</code>, a field its name, a code block its language; the words of a link's address and of a note link are blurred too.</li>
+  <li><strong>A picture of the editor</strong>: the editor as it is on screen, blurred the same way when the text is.</li>
+</ul>
+<p>The report is a <code>.mwrepro.json</code> file (and a <code>.png</code> beside it) in the <code>reports</code> folder of Markwork's data folder, not in your work folder, so it is never committed with your notes. <em>Show File</em> opens that folder. Nothing is sent anywhere: attach the file to a bug report yourself.</p>
 </main>
 <aside class="toc" id="toc" aria-label="Table of contents"></aside>
 </div>

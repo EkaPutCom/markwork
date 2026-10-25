@@ -6,10 +6,12 @@
 import { ChangeSet, type EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type { Client } from '../client.js';
-import { drawnOf, focusOn, sourceOn, visualOn } from '../editor.js';
+import { drawnOf, focusOn } from '../editor.js';
 import { recordingOf, type Recording, type TxEntry } from './recorder.js';
-import { reproError, reproOf, type Repro } from './repro.js';
-import { snapshot } from './snapshot.js';
+import { blurRepro, reproError, type Repro } from './repro.js';
+import { modeOf, reproOfEditor } from './report.js';
+import { cpSnapshot, snapshot } from './snapshot.js';
+import { makeCpMap, makeU16Map } from '../../../../src/markdown/offsets.js';
 
 export interface InspectRequest { op: string; [arg: string]: unknown }
 type Answer = Record<string, unknown>;
@@ -24,7 +26,9 @@ const QUIET_MS = 500;       // an action has settled when no transaction came fo
 const MIN_QUIET_MS = 40;    // the shortest wait asked for: two frames and a little
 const SETTLE_LIMIT_MS = 5000;
 const CORE_OPS = new Set(['open', 'mode', 'load']);
-const STEADY_MS = 300;      // a tab's editor that kept one state this long has been given its text
+const STEADY_MS = 300;
+const NEW_DOC_MS = 3000;    // a new document asked for in load, before it is asked for again
+const NEW_DOC_TRIES = 4;      // a tab's editor that kept one state this long has been given its text
 
 const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -41,10 +45,9 @@ export function entryJSON(entry: TxEntry): Answer {
         n: entry.n, t: Math.round(entry.t), userEvent: entry.userEvent, changes: entry.changes.toJSON(),
         selBefore: entry.before.ranges.map(r => [r.anchor, r.head]), selAfter: entry.after.ranges.map(r => [r.anchor, r.head]),
         effects: entry.effects, input: entry.input, findings: entry.findings,
+        ...(entry.handler ? { handler: entry.handler } : {}), ...(entry.trace ? { trace: entry.trace } : {}),
     };
 }
-
-const modeOf = (state: EditorState): 'visual' | 'live' | 'source' => sourceOn(state) ? 'source' : visualOn(state) ? 'visual' : 'live';
 
 export class InspectBridge {
     private overlaid: HTMLElement | null = null;
@@ -102,16 +105,17 @@ export class InspectBridge {
 
     private snapshot(request: InspectRequest): Answer {
         const { state } = this.view();
-        const line = state.doc.lineAt(this.at(state, request.at)).number;
+        const line = state.doc.lineAt(this.at(state, request.at, request.cp === true)).number;
         const shot = request.all === true ? snapshot(state) : snapshot(state, line - AROUND_LINES, line + AROUND_LINES);
-        return { ...this.where(), ...shot, focus: focusOn(state) };
+        return { ...this.where(), ...(request.cp === true ? cpSnapshot(state, shot) : shot), focus: focusOn(state) };
     }
 
-    // `at`: 'cursor' (or nothing) or a position in the text.
-    private at(state: EditorState, at: unknown): number {
+    // `at`: 'cursor' (or nothing) or a position in the text, in code points with --cp.
+    private at(state: EditorState, at: unknown, cp = false): number {
         if (at === undefined || at === 'cursor') return state.selection.main.head;
-        if (!Number.isInteger(at) || (at as number) < 0 || (at as number) > state.doc.length) throw new InspectError('usage', `--at ${String(at)} is not a position in the text (0–${state.doc.length})`);
-        return at as number;
+        const length = cp ? makeCpMap(state.doc.toString())(state.doc.length) : state.doc.length;
+        if (!Number.isInteger(at) || (at as number) < 0 || (at as number) > length) throw new InspectError('usage', `--at ${String(at)} is not a position in the text (0–${length})`);
+        return cp ? makeU16Map(state.doc.toString())(at as number) : at as number;
     }
 
     private decorations(request: InspectRequest): Answer {
@@ -119,7 +123,8 @@ export class InspectBridge {
         const line = request.line === undefined ? state.doc.lineAt(state.selection.main.head).number : Number(request.line);
         if (!Number.isInteger(line) || line < 1 || line > state.doc.lines) throw new InspectError('usage', `--line ${String(request.line)} is not a line of the text (1–${state.doc.lines})`);
         const [first, last] = request.line === undefined ? [line - AROUND_LINES, line + AROUND_LINES] : [line, line];
-        return { ...this.where(), lines: [Math.max(1, first), Math.min(state.doc.lines, last)], decorations: snapshot(state, first, last).decorations };
+        const shot = snapshot(state, first, last);
+        return { ...this.where(), lines: [Math.max(1, first), Math.min(state.doc.lines, last)], decorations: (request.cp === true ? cpSnapshot(state, shot) : shot).decorations };
     }
 
     private log(request: InspectRequest): Answer {
@@ -160,30 +165,57 @@ export class InspectBridge {
 
     // The one action that dispatches by itself: marked, so it shows in the log for what it is.
     private select(request: InspectRequest): Answer {
-        const view = this.view(), length = view.state.doc.length;
-        const anchor = Number(request.from), head = request.to === undefined ? anchor : Number(request.to);
-        if (![anchor, head].every(n => Number.isInteger(n) && n >= 0 && n <= length)) throw new InspectError('usage', `select ${anchor} ${head}: not inside the text (0–${length})`);
+        const view = this.view(), cp = request.cp === true;
+        const from = Number(request.from), to = request.to === undefined ? from : Number(request.to);
+        const length = cp ? makeCpMap(view.state.doc.toString())(view.state.doc.length) : view.state.doc.length;
+        if (![from, to].every(n => Number.isInteger(n) && n >= 0 && n <= length)) throw new InspectError('usage', `select ${from} ${to}: not inside the text (0–${length})`);
+        const u16 = cp ? makeU16Map(view.state.doc.toString()) : (n: number) => n;
+        const anchor = u16(from), head = u16(to);
         view.dispatch({ selection: { anchor, head }, userEvent: 'select.inspect', scrollIntoView: true });
         view.focus();
         return { ...this.where(), selection: [[anchor, head]] };
     }
 
-    // Where to click, in the window: at a position, or at the start or end of a piece of text the eye sees (the first
-    // place it is written with no hidden range in it). The editor is scrolled to it first, without a transaction.
+    // Where to click, in the window: at a position, at the start or end of a piece of text the eye sees (the first
+    // place it is written with no hidden range in it), or at the start or end of what a line shows. The editor is
+    // scrolled to it first, without a transaction.
     private async coords(request: InspectRequest): Promise<Answer> {
         const view = this.view(), { state } = view;
+        if (request.line !== undefined) return { ...this.where(), ...await this.lineEdge(view, Number(request.line), request.edge === 'start' ? 'start' : 'end') };
         let pos: number;
         if (typeof request.visible === 'string') {
             const found = visiblePlace(state, request.visible);
             if (found === null) throw new InspectError('not-found', `no visible text ${JSON.stringify(request.visible)} in the editor`);
             pos = request.edge === 'start' ? found : found + request.visible.length;
-        } else pos = this.at(state, request.pos);
+        } else pos = this.at(state, request.pos, request.cp === true);
         await this.reveal(view, pos);
         const box = view.coordsAtPos(pos, request.edge === 'start' ? 1 : -1) ?? view.coordsAtPos(pos);
         if (!box) throw new InspectError('not-found', `position ${pos} is not drawn`);
         // Just inside the letter on the side asked for, half way down the line: where a person would click.
         const x = request.edge === 'start' ? box.left + 1 : box.right - 1;
         return { ...this.where(), pos, x: Math.round(x), y: Math.round((box.top + box.bottom) / 2), zoom: window.devicePixelRatio };
+    }
+
+    // The start or end of what line `number` shows, where a person clicks to put the cursor before or after its text: just
+    // inside its first letter, or past its last one (on the last row of a wrapped line), as textEdges in
+    // tests/electron/visual.mjs. A line the editor does not draw as a line of text (inside a code box, a table, a hidden
+    // fence) has no edge.
+    private async lineEdge(view: EditorView, number: number, edge: 'start' | 'end'): Promise<Answer> {
+        const { doc } = view.state;
+        if (!Number.isInteger(number) || number < 1 || number > doc.lines) throw new InspectError('usage', `--line ${number} is not a line of the text (1–${doc.lines})`);
+        const line = doc.line(number);
+        await this.reveal(view, line.from);
+        const at = view.domAtPos(line.from).node;
+        const element = (at instanceof Element ? at : at.parentElement)?.closest('.cm-line');
+        if (!element || !view.contentDOM.contains(element) || view.posAtDOM(element, 0) !== line.from) throw new InspectError('not-found', `line ${number} is not drawn as a line of text`);
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const rows = [...range.getClientRects()].filter(r => r.width > 0 || r.height > 0);
+        const box = edge === 'start' ? rows[0] ?? element.getBoundingClientRect() : rows.at(-1) ?? element.getBoundingClientRect();
+        const content = view.contentDOM.getBoundingClientRect();
+        // Past the end, but inside the editor: a click in the empty space after a line's text.
+        const x = edge === 'start' ? box.left + 1 : Math.min(box.right + 30, content.right - 2);
+        return { line: number, edge, x: Math.round(x), y: Math.round((box.top + box.bottom) / 2), zoom: window.devicePixelRatio };
     }
 
     private async reveal(view: EditorView, pos: number): Promise<void> {
@@ -254,17 +286,11 @@ export class InspectBridge {
         throw new InspectError('timeout', `the editor did not keep one state within ${SETTLE_LIMIT_MS} ms`);
     }
 
-    // The repro of the recording so far. The main process adds what only it knows (the Electron version).
+    // The repro of the recording so far, blurred when asked. The main process adds what only it knows (the Electron version).
     private repro(request: InspectRequest): Answer {
-        const view = this.view(), recording = this.recording();
-        const failed = [...new Set(recording.entries.flatMap(e => (e.findings ?? []).filter(f => f.severity === 'fail').map(f => f.check)))];
-        const repro = reproOf(recording, {
-            app: { version: __APP_VERSION__, os: navigator.platform },
-            editor: { mode: modeOf(view.state), focus: focusOn(view.state), width: Math.round(view.contentDOM.getBoundingClientRect().width) },
-            doc: view.state.doc.toString(), failed,
-            note: typeof request.note === 'string' ? request.note : undefined,
-        });
-        return { ...this.where(), repro };
+        this.recording();
+        const repro = reproOfEditor(this.view(), { note: typeof request.note === 'string' ? request.note : undefined })!;
+        return { ...this.where(), repro: request.blur === true ? blurRepro(repro) : repro };
     }
 
     // A repro's start in a new tab with no file, in the repro's mode: the place a replay plays its steps.
@@ -273,14 +299,23 @@ export class InspectBridge {
         if (error) throw new InspectError('bad-repro', error);
         const repro = request.repro as Repro;
         const old = this.client.currentEditor ? recordingOf(this.client.currentEditor.view.state) : null;
-        this.client.run('new');
         // New Document gives a new tab, or empties the one shown when nothing was done in it yet (documents.ts blank):
         // either way an empty text with no file, in a state of its own (a recording of its own).
         const fresh = () => {
             const view = this.client.currentEditor?.view;
             return !!view && this.client.activeTab?.file === null && recordingOf(view.state) !== old && view.state.doc.length === 0;
         };
-        await until(fresh, SETTLE_LIMIT_MS, 'a new document');
+        // A window that just started may still be putting back its tabs when the command comes, and the new one is
+        // lost among them (a slow CI runner): the command is given again rather than waited on for ever.
+        for (let tries = 1; ; tries++) {
+            this.client.run('new');
+            try {
+                await until(fresh, NEW_DOC_MS, 'a new document');
+                break;
+            } catch {
+                if (tries === NEW_DOC_TRIES) throw new InspectError('timeout', `a new document did not happen within ${NEW_DOC_TRIES} tries of ${NEW_DOC_MS} ms (the active tab: ${JSON.stringify(this.client.activeTab?.name ?? null)})`);
+            }
+        }
         // The core may still give the new tab its text (editor.ts reset makes another state): the text goes in once
         // the editor has kept one state for a while, and again if it was replaced all the same.
         const [anchor, head] = repro.start.selection[0];

@@ -1034,6 +1034,20 @@ pre.diff .line { white-space: pre; padding: 0 10px; min-width: max-content; } pr
 .form .test-row { display: flex; align-items: center; gap: 10px; } .form .status { font-size: 12px; overflow-wrap: anywhere; }
 .form .status.ok { color: var(--success); } .form .status.error { color: var(--error); } .form .status.busy { color: var(--muted-foreground); }
 .form .buttons { display: flex; flex-direction: row-reverse; gap: 10px; margin-top: 4px; } .form .buttons .button { flex: 1; }
+/* A report of a problem with the editor (ReportProblem.tsx): what it holds, each with its line of detail, in one box. */
+.dialog.modal.report { width: 520px; }
+.report .form .buttons { align-items: center; } .report .form .buttons .button { flex: 0 0 auto; }
+.report-foot { margin-right: auto; font-size: 12px; color: var(--muted-foreground); }
+.report-options { border: 1px solid var(--border); border-radius: 8px; }
+.form .report-options label.radio { align-items: flex-start; padding: 10px 12px; font-size: 13.5px; }
+.form .report-options label.radio + label.radio { border-top: 1px solid var(--border); }
+.report-options input { margin-top: 3px; accent-color: var(--primary); }
+.report-options label > span { min-width: 0; }
+.report-options small { display: block; margin-top: 1px; color: var(--muted-foreground); font-size: 12px; }
+.report-preview { display: block; margin-top: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--muted); color: var(--muted-foreground); font: 12px/18px var(--font-mono); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+/* The offer of a report after an Undo of something just typed: a quiet link under the toolbar, for a few seconds. */
+.report-offer { position: absolute; top: 8px; right: 16px; z-index: 5; }
+.report-offer .button { min-height: 28px; padding: 0 10px; font-size: 12.5px; border: 1px solid var(--border); background: var(--background); box-shadow: 0 1px 3px var(--shadow); }
 
 /* The history viewer */
 .viewer { display: flex; flex-direction: column; gap: 8px; min-width: 0; } .viewer-meta { margin: 0; color: var(--muted-foreground); font-size: 12px; }
@@ -1146,6 +1160,23 @@ pre.diff.commentable .line:hover .comment-button, .comment-button:focus-visible 
 .ins-detail h4 { margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
 .ins-detail dl { display: grid; grid-template-columns: 70px 1fr; gap: 2px 8px; margin: 8px 0; }
 .ins-detail dt { color: var(--muted-foreground); } .ins-detail dd { margin: 0; font-family: var(--font-mono); overflow-wrap: anywhere; }
+.ins-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ins-acts .button, .ins-replay .button { min-height: 26px; padding: 0 10px; font-size: 12px; }
+/* Replay & test: a bar of actions, the repro's steps with the next one marked, and how the replay came out. */
+.ins-replay { display: flex; flex-direction: column; gap: 8px; padding: 8px 12px; }
+.ins-replay-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.ins-replay-bar .grow { flex: 1; }
+.ins-replay-run { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.inspector header .ins-copy { min-height: 24px; padding: 0 8px; font-size: 12px; }
+.ins-steps { list-style: decimal; margin: 0; padding: 0 0 0 28px; max-height: 140px; overflow: auto; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted-foreground); }
+.ins-steps li.done { color: var(--foreground); }
+.ins-steps li.next { color: var(--foreground); font-weight: 600; } .ins-steps li.next::after { content: '  ← next'; font-weight: 400; color: var(--muted-foreground); }
+.ins-steps li.fail { color: var(--destructive); }
+.ins-result { margin: 0; font-weight: 500; } .ins-result.fail { color: var(--destructive); } .ins-result.differs { color: var(--warning); } .ins-result.pass { color: var(--success); }
+.ins-message { margin: 0; font-size: 12px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.ins-name { display: flex; align-items: center; gap: 6px; }
+.ins-name input { height: 26px; width: 200px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--foreground); font: inherit; font-size: 12px; }
+.ins-trace { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--border); color: var(--muted-foreground); font-family: var(--font-mono); font-size: 11.5px; overflow-wrap: anywhere; }
 .ins-finding { border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; border: 1px solid var(--border); }
 .ins-finding.fail { border-color: color-mix(in oklab, var(--destructive) 35%, transparent); background: color-mix(in oklab, var(--destructive) 7%, transparent); }
 .ins-finding.warn { border-color: color-mix(in oklab, var(--warning) 45%, transparent); background: color-mix(in oklab, var(--warning) 9%, transparent); }

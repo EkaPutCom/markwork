@@ -3,13 +3,14 @@
 // clicks are sent from here as real input (webContents.sendInputEvent), through Chromium's input path, so the keymap, the
 // event handlers, and the recorder see them as they see a person's. Loaded only in dev mode (main.ts).
 
-import { BrowserWindow, ipcMain, type KeyboardInputEvent, type WebContents } from 'electron';
-import { chmodSync, mkdirSync, rmSync } from 'node:fs';
+import { BrowserWindow, app, dialog, ipcMain, type KeyboardInputEvent, type WebContents } from 'electron';
+import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { userDirs } from '../src/platform/node/dirs.js';
 import type { OS } from '../src/platform/index.js';
+import { keptAsTest, reproError, stepError, stepRequest, type Repro, type ReproStep } from './renderer/lib/inspect/repro.js';
 
 type Message = Record<string, unknown>;
 
@@ -22,6 +23,16 @@ export function socketPath(pid = process.pid): string {
     return join(socketFolder(), `inspect-${pid}.sock`);
 }
 export const socketFolder = (): string => join(userDirs(process.platform as OS, process.env, homedir(), join).runtime, 'markwork');
+
+// The sockets of windows that are gone without closing them (killed, or ended by a test): one per pid, they would pile
+// up in the runtime folder.
+function removeStaleSockets(): void {
+    for (const name of readdirSync(socketFolder())) {
+        const pid = Number(/^inspect-(\d+)\.sock$/.exec(name)?.[1]);
+        if (!pid || pid === process.pid) continue;
+        try { process.kill(pid, 0); } catch (e) { if ((e as NodeJS.ErrnoException).code === 'ESRCH') rmSync(join(socketFolder(), name), { force: true }); }
+    }
+}
 
 class UsageError extends Error {
     constructor(readonly code: string, message: string) { super(message); }
@@ -96,6 +107,8 @@ export class InspectBridge {
 
     constructor(private readonly window: () => BrowserWindow | null) {
         ipcMain.on('inspect-ready', event => { this.ready.add(event.sender); });
+        // The inspector panel asks the same way scripts/editor.mjs does (its replay sends real input from here).
+        ipcMain.handle('inspect-run', (_event, request: unknown) => this.answer(request && typeof request === 'object' ? request as Message : {}));
         ipcMain.on('inspect-reply', (event, reply: Message) => {
             const win = this.window();
             if (!win || event.sender !== win.webContents) return;
@@ -110,6 +123,7 @@ export class InspectBridge {
             mkdirSync(socketFolder(), { recursive: true, mode: 0o700 });
             chmodSync(socketFolder(), 0o700);
             rmSync(path, { force: true });
+            removeStaleSockets();
         }
         this.server = createServer(socket => this.serve(socket));
         this.server.listen(path, () => { if (process.platform !== 'win32') chmodSync(path, 0o600); });
@@ -139,6 +153,11 @@ export class InspectBridge {
     private async handle(line: string): Promise<Message> {
         let request: Message;
         try { request = JSON.parse(line) as Message; } catch { return { re: null, ok: false, error: { code: 'usage', message: 'not a JSON line' } }; }
+        return this.answer(request);
+    }
+
+    // A request, from the socket or from the inspector panel (inspect-run): its answer, or the error it ended with.
+    async answer(request: Message): Promise<Message> {
         const re = request.id ?? null;
         try {
             return { re, ok: true, ...await this.run(request) };
@@ -180,6 +199,9 @@ export class InspectBridge {
             return answer;
         }
         if (op === 'screenshot') return this.screenshot(request);
+        if (op === 'play') return this.play(request);
+        if (op === 'save-repro') return this.saveRepro(request);
+        if (op === 'keep-test') return this.keepTest(request);
         if (!ACT_OPS.has(op)) {
             if (!READ_OPS.has(op)) throw new UsageError('usage', `no such op: ${op}`);
             return this.page(request);
@@ -206,9 +228,9 @@ export class InspectBridge {
             if (typeof request.text !== 'string') throw new UsageError('usage', 'type needs the text');
             typeText(contents, request.text);
         } else if (op === 'click') {
-            const place = await this.page({ op: 'coords', visible: request.visible, edge: request.edge, pos: request.pos });
+            const place = await this.page({ op: 'coords', visible: request.visible, line: request.line, edge: request.edge, pos: request.pos, cp: request.cp });
             click(contents, place.x as number, place.y as number, typeof request.mods === 'string' ? request.mods : undefined);
-            extra = { at: place.pos };
+            extra = place.line === undefined ? { at: place.pos } : { line: place.line, edge: place.edge };
         } else {
             extra = await this.page(request);
         }
@@ -217,6 +239,48 @@ export class InspectBridge {
         const failed = entries.some(e => e.findings?.some(f => f.severity === 'fail'));
         const { entries: _entries, ...where } = settled;
         return { ...where, ...extra, failed, ...(request.explain === true ? { entries } : { transactions: entries.length }) };
+    }
+
+    // One step of a repro, played as the person gave it, with the transactions it made and their findings (the panel's
+    // replay; the command line plays the same requests itself).
+    private async play(request: Message): Promise<Message> {
+        const error = stepError(request.step);
+        if (error) throw new UsageError('bad-repro', `the step ${error}`);
+        return this.run({ ...stepRequest(request.step as ReproStep), explain: true, quiet: request.quiet });
+    }
+
+    private checkedRepro(value: unknown): Repro {
+        const error = reproError(value);
+        if (error) throw new UsageError('bad-repro', error);
+        return value as Repro;
+    }
+
+    // The panel's Save Repro: where the developer chooses.
+    private async saveRepro(request: Message): Promise<Message> {
+        const repro = this.checkedRepro(request.repro), win = this.window();
+        // For tests that cannot drive a native dialog (as choose-file in main.ts).
+        const preset = process.env.MARKWORK_CHOOSE_FILE;
+        if (preset) { writeFileSync(preset, `${JSON.stringify(repro, null, 2)}\n`); return { file: preset }; }
+        const options = { title: 'Save Repro', defaultPath: join(app.getPath('documents'), 'editor.mwrepro.json'), filters: [{ name: 'Repro', extensions: ['json'] }] };
+        const chosen = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
+        if (chosen.canceled || !chosen.filePath) return { canceled: true };
+        writeFileSync(chosen.filePath, `${JSON.stringify(repro, null, 2)}\n`);
+        return { file: chosen.filePath };
+    }
+
+    // The panel's Make a Test: the repro kept in tests/electron/repros/ of the checkout the app runs from, as test-from
+    // does. Only from a checkout: a packaged app has no tests.
+    private keepTest(request: Message): Message {
+        const repro = this.checkedRepro(request.repro);
+        const name = String(request.name ?? '').trim().replace(/[^\w.-]+/g, '-').replace(/^[.-]+/, '');
+        if (!name) throw new UsageError('usage', 'the test needs a name');
+        // MARKWORK_TEST_REPROS: a test's own folder, so a test of this never writes into the checkout.
+        const folder = process.env.MARKWORK_TEST_REPROS ?? join(app.getAppPath(), 'tests', 'electron', 'repros');
+        if (!existsSync(folder)) throw new UsageError('no-checkout', `${folder} is not there: the app does not run from a checkout of Markwork`);
+        const file = join(folder, `${name}.mwrepro.json`);
+        if (existsSync(file) && request.replace !== true) throw new UsageError('exists', `${name}.mwrepro.json is already a test`);
+        writeFileSync(file, `${JSON.stringify(keptAsTest(repro), null, 2)}\n`);
+        return { file };
     }
 
     // A picture of the editor's area as PNG (base64), with its widgets outlined when asked.

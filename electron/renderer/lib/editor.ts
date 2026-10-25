@@ -111,6 +111,9 @@ function linesOf(doc: Text) {
 const pictureLines = new WeakMap<Text, Map<number, PictureItem[]>>();
 // The parse of each text, for what the toolbar shows at the cursor.
 const parses = new WeakMap<Text, HighlightResult<string>>();
+// How long the parse of each text took, for the inspector's snapshot (a text whose parse was kept took none).
+const parseTimes = new WeakMap<Text, number>();
+export const parseMsOf = (doc: Text): number => parseTimes.get(doc) ?? 0;
 
 // The visual editor is on, and the editor does not show the source.
 export const visualOn = (state: EditorState): boolean => state.field(visualMode) && !state.field(sourceMode);
@@ -192,7 +195,11 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Drawing 
     };
     const draw = (state: EditorState): Omit<Drawn, 'ms' | 'key'> => {
         const { doc } = state;
-        if (parsed?.doc !== doc) parsed = { doc, result: cache.update(linesOf(doc)) };
+        if (parsed?.doc !== doc) {
+            const start = performance.now();
+            parsed = { doc, result: cache.update(linesOf(doc)) };
+            parseTimes.set(doc, performance.now() - start);
+        }
         const { result } = parsed;
         parses.set(doc, result);
         const visual = visualOn(state);

@@ -1,6 +1,6 @@
 # Arsitektur Editor Inspector
 
-25 Oktober 2026 · tahap 1, 2, dan 3 sudah dibangun (bagian 14) · mockup: [`shadcn/Debugger.html`](shadcn/Debugger.html)
+25 Oktober 2026 · keempat tahap sudah dibangun (bagian 14) · mockup: [`shadcn/Debugger.html`](shadcn/Debugger.html)
 
 ## Keputusan
 
@@ -9,6 +9,9 @@
 - **Laporan pengguna tetap ada di build biasa.** Yang berjalan untuk itu hanya perekam (bagian 4). Tidak ada check yang
   berjalan diam-diam: laporan cukup membawa rekaman, dan check dijalankan oleh developer atau agent saat repro diputar
   ulang (`replay`, bagian 10).
+- **Penyamaran hanya mengganti huruf Latin dan angka.** Emoji dan aksara non-Latin dibiarkan apa adanya untuk saat ini
+  (bagian 9), supaya bug lebar dan offset tetap bisa diputar ulang.
+- **Rekaman menyimpan 500 transaksi terakhir**, tanpa batas waktu (bagian 4).
 
 Editor visual adalah inti Markwork: Markdown yang tampil seperti dokumen biasa, untuk orang yang tidak tahu Markdown. Ia juga
 sumber bug terbanyak, dan hampir semuanya punya satu sebab yang sama (AGENT.md, *Known pitfalls*): yang dilihat mata dan
@@ -80,10 +83,12 @@ Core (`src/app/`, utility process) tidak terlibat. Inspector mengamati editor, d
 | `electron/renderer/lib/inspect/recorder.ts` | Extension `recorder()`, ring buffer, `Recording` |
 | `electron/renderer/lib/inspect/snapshot.ts` | `snapshot(view, at?)`: teks, seleksi, hidden, prefix, widget, dekorasi, parse di sekitar kursor |
 | `electron/renderer/lib/inspect/checks.ts` | Daftar check (bagian 6), masing-masing berupa fungsi murni di atas state CodeMirror |
-| `electron/renderer/lib/inspect/repro.ts` | Format `.mwrepro.json`: membuat, membaca, dan menyamarkan teks (bagian 9) |
+| `electron/renderer/lib/inspect/repro.ts` | Format `.mwrepro.json`: membuat, membaca, dan menyamarkan repro (bagian 9). Murni, juga dipakai main untuk memeriksa laporan |
+| `electron/renderer/lib/inspect/report.ts` | Repro dari editor yang sedang tampil, laporan pengguna tanpa `expect`, dan gambar editor dengan teks tersamar (bagian 11) |
+| `src/markdown/blur.ts` | `blurText()`: aturan penyamaran (bagian 9), murni, dengan unit test di `tests/unit/blur.ts` |
 | `electron/renderer/lib/inspect/bridge.ts` | Menjawab permintaan `inspect` dari main |
 | `electron/renderer/components/Inspector.tsx` | Panel dan dock (Transactions, Decorations, Checks, Replay & test) |
-| `electron/renderer/components/ReportProblem.tsx` | Dialog "Something looks wrong?" |
+| `electron/renderer/components/ReportProblem.tsx` | Dialog "Something looks wrong?" dan link yang menawarkannya setelah Undo |
 | `electron/inspect.ts` | `inspectBridge`: socket, framing, dan input lewat `webContents.sendInputEvent` |
 | `electron/main.ts`, `preload.ts` | Memuat `inspect.ts` hanya dengan flag (bagian 8.1), dan `saveReport` untuk bagian 11 |
 | `scripts/editor.mjs` | Klien baris perintah, `npm run editor -- <op>` |
@@ -136,7 +141,7 @@ Cara kerjanya:
   mengambil isi slot tersebut. Teks yang ditempel tidak disalin ke `input`, karena sudah ada di `changes`.
 - **Transaksi.** `EditorView.updateListener` membaca `update.transactions`. Inilah yang dipakai editor sendiri untuk
   `changed`/`moved`, jadi tidak ada jalur kedua.
-- **Ring buffer.** Rekaman menyimpan maksimal 500 entri atau 2 menit, mana yang lebih dulu tercapai. Rekaman memegang
+- **Ring buffer.** Rekaman menyimpan maksimal 500 entri, tanpa batas waktu. Rekaman memegang
   `base: { doc: Text; selection }`. Saat entri tertua dibuang, `changes`-nya diterapkan ke `base.doc`. `Text` CodeMirror
   persisten, jadi operasi ini O(log n) dan tidak memerlukan `doc.toString()`.
 - **Efek.** `StateEffect` tidak punya nama. Karena itu `recorder.ts` memegang daftar efek yang dikenal (`setVisual`,
@@ -343,11 +348,13 @@ sama dengan apa yang dilihat developer di jendela app. Proses app berhenti ketik
   `{ "external": changes }`.
 - **`width`** ikut disimpan, karena baris yang membungkus (`lineWrapping`) mengubah ke mana klik dan panah atas/bawah
   mendarat.
-- **Penyamaran** (`blurred: true`, bagian 11) mengganti setiap huruf dengan `x`/`X` (mengikuti huruf besar-kecilnya)
-  dan setiap angka dengan `0`, hanya di dalam isi teks menurut parse. Penanda (`**`, `- [x]`, `#`, fence, `|`) tidak
-  diubah. Panjang UTF-16 dijaga: huruf di luar BMP diganti `xx`. Akibatnya semua offset, seleksi, dan langkah tetap
-  berlaku. URL disamarkan dengan cara yang sama kecuali skemanya. Emoji tidak disamarkan karena sering menjadi sumber
-  bug offset (pertanyaan terbuka 1).
+- **Penyamaran** (`blurred: true`, bagian 11) mengganti setiap huruf Latin dengan `x`/`X` (mengikuti huruf
+  besar-kecilnya) dan setiap angka dengan `0`, hanya di dalam isi teks menurut parse. Penanda (`**`, `- [x]`, `#`,
+  fence, `|`) tidak diubah. Karena penggantinya selebar yang diganti, semua offset, seleksi, dan langkah tetap
+  berlaku. URL disamarkan dengan cara yang sama kecuali skemanya. Emoji dan aksara non-Latin (misalnya Arab, Cina,
+  atau Devanagari) dibiarkan apa adanya: keduanya sering menjadi sumber bug lebar dan offset, dan menggantinya bisa
+  menghilangkan bug itu. Akibatnya teks dalam aksara non-Latin ikut terbaca di laporan, dan pratinjau dialog
+  (bagian 11) memperlihatkannya kepada pengguna sebelum disimpan.
 
 ## 10. Replay, fuzz, dan tes
 
@@ -371,7 +378,7 @@ Alur kerja yang dituju, untuk developer maupun agent: muat repro → `press --ex
 
 Board 3 mockup: Help → *Report a problem with the editor*.
 
-- Dialog mengambil `Recording` tab yang aktif (maksimal 2 menit terakhir) dan mengubahnya menjadi repro. `start` adalah
+- Dialog mengambil `Recording` tab yang aktif (maksimal 500 transaksi terakhir) dan mengubahnya menjadi repro. `start` adalah
   `base` rekaman, langkahnya adalah input-input itu, dan `actual` adalah keadaan sekarang. Tidak ada `expect`. Gantinya
   adalah catatan pengguna di `note`.
 - Pilihan *Blur my text* aktif secara default (bagian 9). Pratinjaunya menampilkan baris kursor yang sudah disamarkan,
@@ -456,8 +463,8 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      100 ms setelah input dianggap bagian dari input itu. Transaksi lain tanpa input menjadi `select` (bila hanya seleksi)
      atau `external`. Repro yang tidak punya check gagal mendapat `expect.doc`, sehingga `replay`-nya menjadi tes bahwa
      teksnya keluar sama.
-   - **Belum ada:** `--cp` (semua posisi UTF-16), `handler` di entri (tahap 4), `around`, `widgets`, dan `parse` di
-     snapshot, serta penyamaran (tahap 4).
+   - **Sudah ditambahkan kemudian** (bagian 14, *Sesudah tahap 4*): `--cp`, serta `around`, `visibleAfter`, `widgets`,
+     `parse`, dan `parseMs` di snapshot.
 3. **Fuzz, penyusutan, dan `test-from`**, ditambah fuzz dengan seed tetap di CI. *Sudah dibangun*: `scripts/editor-fuzz.mjs`
    (dipakai `npm run editor -- fuzz`), `test-from`, dan `tests/electron/repros.mjs`. Yang berbeda dari rancangan:
    - **Repro yang disimpan diputar oleh `repros.mjs`,** bukan disalin menjadi `step(…)` di `visual.mjs`. `test-from`
@@ -466,7 +473,8 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      jadi aturan *Drive the editor the way a person does* tetap berlaku. Repro pertama di sana adalah aturan lama dari
      AGENT.md: Backspace di awal baris setelah code block memilih bloknya, tidak menggabungkan baris dengan fence.
    - **Langkah acak** diambil dengan bobot: huruf dan spasi, Backspace, Delete, Enter, Tab, Shift+Tab, panah, Home/End, dan
-     klik pada posisi acak (`--keys` membatasinya). Klik pada tepi teks terlihat belum ada; klik memakai `pos`.
+     klik pada posisi acak (`--keys` membatasinya). Klik pada tepi teks terlihat ditambahkan kemudian (bagian 14,
+     *Sesudah tahap 4*).
    - **Penyusutan** adalah delta debugging yang disederhanakan: buang satu dari n potongan selama check yang sama masih
      gagal, perkecil potongannya bila tidak ada yang bisa dibuang, sampai satu langkah pun tidak bisa dibuang atau
      waktunya (`--shrink-seconds`, 120 detik) habis.
@@ -486,17 +494,103 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      - Klik acak pada tempat yang tidak digambar menghentikan run (seed 13). Klik itu sekarang dilewati.
      Repro yang tersisa dari temuan pertama ada di `tests/electron/repros/`; yang kedua diuji di `visual.mjs`.
 4. **Laporan pengguna** (dialog, penyamaran, screenshot, i18n) dan `traced`/`trace` di titik keputusan `visual.ts`,
-   `blockselect.ts`, dan `tables.ts`.
+   `blockselect.ts`, dan `tables.ts`. *Sudah dibangun*: `markdown/blur.ts`, `inspect/report.ts`,
+   `components/ReportProblem.tsx`, perintah `report-problem` (Help dan palet), IPC `report-picture`/`report-save`/
+   `report-show` di `main.ts`, `save-repro --blur`, serta `traced`/`handling`/`trace` di `recorder.ts`
+   (`tests/unit/blur.ts`, 7 tes; `tests/electron/inspector.mjs`, 4 langkah baru dan 1 langkah yang diperluas). Yang
+   berbeda dari rancangan:
+   - **Teks dialog tidak melewati `_()`.** Renderer tidak punya terjemahan: `scripts/layers.mjs` hanya mengizinkan
+     renderer mengambil nilai dari `markdown/`, pesan `app/protocol/`, dan `app/commands.ts`, dan semua teks renderer
+     lain juga ditulis langsung dalam bahasa Inggris. Yang diterjemahkan hanya nama perintahnya di tabel perintah
+     (`_('Report a Problem with the Editor…')`). Terjemahan dialog menunggu cara renderer menerjemahkan.
+   - **Pilihan rekaman.** Mockup menulis "The last 2 minutes of editing". Karena batasnya sekarang 500 transaksi,
+     pilihannya menjadi *What the editor just did* dengan jumlah perubahan yang tersimpan. Bila dimatikan, `start`
+     adalah teks sekarang dan tidak ada langkah.
+   - **Aturan penyamaran yang sebenarnya.** Tanda baca memang tidak pernah diganti, jadi yang perlu dijaga dari parse
+     hanya bahasa fence dan skema URL. Di luar itu dijaga juga awalan baris (`RE.quote`, `RE.list`: nomor daftar dan
+     `[x]`) dan kunci field (`findSegments`: `[due::`). Kata di dalam sintaks tersembunyi ikut disamarkan: target
+     `[[catatan]]`, teks alt gambar, dan alamat tautan selain skemanya. Huruf Latin beraksen (é, ü) disamarkan karena
+     termasuk huruf Latin dan lebarnya tetap satu unit UTF-16.
+   - **Gambar diambil oleh main dan disimpan di sana sampai laporan disimpan.** Renderer meminta `report-picture`
+     dengan kotak editor saat editor menampilkan state tersamar (`view.setState`, dua frame, lalu state asli
+     dikembalikan) dan dialognya disembunyikan. State baru digambar dari atas, jadi posisi scroll dikembalikan dengan
+     `view.scrollSnapshot()` lewat transaksi berisi efek saja yang ditandai `unrecorded`, sehingga tidak masuk rekaman.
+     Mengatur `scrollTop` langsung tidak cukup, karena CodeMirror mengukur ulang tinggi baris sesudahnya. `report-save` lalu menulis repro dan PNG-nya berdampingan, dan repro
+     mendapat field `picture` berisi nama PNG itu. Renderer tidak pernah mengirim byte gambar.
+   - **Tombol perintah tidak berjalan selama dialog terbuka.** Dialog ini bukan dialog core (`dialog`), jadi tabel
+     perintah di `App.tsx` juga berhenti saat `info === 'report'`. Tanpa itu, Ctrl+Z di kolom catatan membatalkan teks
+     yang sedang dilaporkan.
+   - **Laporan tidak punya `expect`.** `reproOf` memberi `expect` bila tidak ada check yang gagal, tetapi di build biasa
+     tidak ada check yang berjalan, jadi `reportOf` membuangnya.
+   - **Link "Something looks wrong?"** muncul di bawah toolbar format pane yang fokus. "Tab yang sama" dihitung per
+     rekaman, jadi tab yang teksnya diganti core (rekaman baru) bisa menawarkannya lagi.
+   - **Nama handler:** `visual.backspace`, `visual.delete`, `pick.before`, `pick.after`, `picked.remove`,
+     `picked.leave`, `picked.line-after`, serta `table.cell-input`, `table.step`, dan `table.leave` lewat
+     `handling()` (sel tabel ditangani event DOM, bukan perintah CodeMirror). `trace()` hanya mencatat di dalam handler
+     yang dilacak, dan catatannya dibuang bila handler itu tidak membuat transaksi. Di luar mode dev keduanya hanya
+     memeriksa satu boolean; kalimat untuk `trace()` tetap disusun, sekali per tombol yang ditangani.
+   - **Biaya:** 2.000 transaksi ketik di `all-formats.md` tetap ±1,4 ms per transaksi di build biasa (1,388 dan
+     1,474 ms sesudah, 1,410 ms sebelum, satu run masing-masing; selisihnya sebesar derau antar-run). Penyamaran `all-formats.md`
+     (5.842 karakter) memakan ±6 ms. Itu terjadi sekali saat dialog dibuka (pratinjau) dan beberapa kali saat laporan
+     disimpan (teks awal, teks sekarang, dan state untuk gambar), tidak pernah saat mengetik.
+
+**Sesudah tahap 4: yang tersisa dari rancangan.** *Sudah dibangun*, di PR tersendiri:
+
+- **Snapshot lengkap.** `around` (teks baris kursor di kedua sisinya, sampai 24 karakter), `visibleAfter`, `widgets`
+  (dekorasi yang menggambar sesuatu sebagai ganti teks), `parse` (gaya baris kursor dari parse, dalam UTF-16 dari awal
+  baris), dan `parseMs` (waktu parse teks ini; 0 bila parse sebelumnya dipakai ulang, `parseMsOf` di `editor.ts`).
+  `visibleBefore` tetap di tingkat atas, tidak di dalam `around`, karena tes dan skrip sudah membacanya di sana.
+- **`--cp`** adalah opsi global `editor.mjs`. Dengan opsi itu, `snapshot`, `decorations`, `click --pos`, dan `select`
+  menerima dan menjawab code point (`cpSnapshot` di `snapshot.ts`). Tanpa opsi itu, posisi tetap UTF-16 dan
+  `cursor.cp` ditambahkan bila nilainya berbeda. `log` dan repro tetap UTF-16, karena di sana posisi milik `changes`
+  CodeMirror.
+- **Klik di tepi teks terlihat.** Ada langkah repro baru `{ "click": { "line": N, "edge": "start" | "end" } }` dan
+  `click --line N [--start|--end]`. Klik jatuh tepat di dalam huruf pertama yang terlihat di baris itu, atau 30 px
+  sesudah hurufnya yang terakhir (pada baris tampilan terakhir bila baris itu terbungkus), seperti `textEdges` di
+  `visual.mjs`. Baris yang tidak digambar sebagai baris teks (di dalam kotak kode, tabel, atau fence tersembunyi)
+  menjawab `not-found`, dan fuzz melewatinya. Di fuzz, `click` sekarang jenis ini (bobot 6), sedangkan klik di posisi
+  menjadi `click-pos` (bobot 2).
+- **Tab Replay & test** (`components/InspectorReplay.tsx`): *Open Repro…* (berkas apa pun, termasuk laporan
+  pengguna, dibaca lewat `<input type="file">`), *Replay This Recording*, *Step ▶*, *Play All*, dan *Restart*, dengan
+  daftar langkah dan hasilnya (`pass`, `fail` beserta langkah dan check pertama, atau `differs`), seperti `replay`.
+  Ada juga *Copy as JSON*, *Save Repro…*, dan *Make a Test* (seperti `test-from`, ke `tests/electron/repros/` checkout
+  tempat app berjalan; `MARKWORK_TEST_REPROS` untuk tes). Langkah diputar sebagai input sungguhan oleh main, lewat IPC
+  baru `inspect-run` (hanya mode dev) yang menjawab op yang sama dengan socket, ditambah `play`, `save-repro`, dan
+  `keep-test`. `stepRequest` dan `keptAsTest` ada di `repro.ts`, salinan TypeScript dari yang dipakai CLI.
+- **Detail transaksi** mendapat *Show the State Before* (Paused pada transaksi sebelumnya), *Make a Test from This*
+  (pindah ke Replay & test dengan rekaman yang tampil), dan *Copy as JSON* (`entryJSON`, sama dengan `log`). Header
+  panel mendapat *Copy Snapshot*.
+- **`shrink FILE`** di CLI menyusutkan repro yang sudah ada sampai langkahnya paling sedikit sambil check-nya tetap
+  gagal (`--check`, atau check pertama di `actual.failed`; 600 detik bila tidak diberi). Gunanya untuk laporan
+  pengguna yang berisi ratusan langkah, dan untuk temuan fuzz yang waktu penyusutannya habis.
+- **Temuan pertama klik di tepi teks, sudah diperbaiki.** 2 seed × 20 run × 300 langkah atas semua sampel
+  (`--seed 21` dan `22`, ±12.000 langkah) menghasilkan 1 kegagalan `backspace-visible`. Delete pada huruf pertama
+  teks judul (`## a Emphasis`) membuat spasi sesudahnya ikut masuk ke prefix tersembunyi (`##  `), sementara kursor
+  tetap di posisinya, yaitu di dalam prefix itu. Delete berikutnya lalu menghapus spasi yang tidak terlihat. Backspace
+  pada huruf pertama berperilaku sama. Sekarang `textStartAfter` di `visual.ts` memindahkan kursor ke awal teks yang
+  baru (panjang prefix dari `lineKindOf` di `markdown/editcommands.ts`), Delete dari kursor yang tertinggal di dalam
+  prefix bekerja dari ujung prefix, dan `prefix-guard` juga memeriksa kursor sesudah penghapusan, tidak hanya sesudah
+  kursor bergeser. Repro-nya ada di `tests/electron/repros/` (`delete-first-letter-of-a-heading`,
+  `backspace-first-letter-of-a-heading`). Penyusutan otomatis hanya sampai 136 dari 213 langkah dalam 25 menit,
+  karena setiap percobaan memutar ulang ratusan langkah. Penyebabnya ditemukan dengan membaca `log` dan `snapshot`
+  dari jendela yang dibiarkan hidup (`--headless --keep`).
+- **Socket yang tertinggal.** Jendela yang dimatikan tanpa ditutup (oleh tes, atau `kill`) meninggalkan socket-nya di
+  folder runtime. `electron/inspect.ts` sekarang menghapus socket milik pid yang sudah tidak ada saat mulai.
+- **Bug yang ditemukan saat membangunnya:** tombol `Ctrl+Alt+I` tercatat sebagai langkah transaksi berikutnya,
+  sehingga *Replay This Recording* menutup panelnya sendiri. Sekarang `App.tsx` membuang input itu dari perekam
+  (`forgetInput`).
 
 Setiap tahap adalah satu PR beserta testnya, dan README diperbarui (pintasan dan perintah palet) di tahap 1 dan 4.
 
 ## 15. Pertanyaan terbuka
 
-1. **Emoji dan aksara non-Latin dalam penyamaran.** Kalau tidak disamarkan, isi teks bisa ikut terbaca, misalnya teks
-   dalam aksara lain. Kalau disamarkan, bug yang berkaitan dengan lebar atau offset bisa hilang. Salah satu jalan
-   tengah adalah mengganti dengan karakter lain yang lebar UTF-16 dan kategorinya sama.
-2. **Ukuran rekaman.** Apakah 500 transaksi atau 2 menit cukup untuk bug yang baru disadari belakangan, misalnya bold
-   yang rusak dan baru terlihat setelah scroll?
+Tidak ada lagi. Dua pertanyaan sebelumnya sudah diputuskan (lihat *Keputusan*):
+
+1. **Emoji dan aksara non-Latin dalam penyamaran:** dibiarkan apa adanya untuk saat ini. Bila teks non-Latin yang
+   ikut terbaca menjadi masalah, jalan tengahnya adalah mengganti dengan karakter lain yang lebar UTF-16 dan
+   kategorinya sama.
+2. **Ukuran rekaman:** 500 transaksi cukup. Batas 2 menit dibuang, sehingga bug yang baru disadari belakangan
+   (misalnya bold yang rusak dan baru terlihat setelah scroll) tetap ada di rekaman selama belum lewat 500 transaksi.
 
 Catatan untuk contoh di mockup: bug "Backspace menghapus `*` tersembunyi" hanya ilustrasi. `pastHidden` di `visual.ts` sudah
 melompati range yang berakhir tepat di kursor, jadi kasus persis itu seharusnya lulus. Contoh itu dipilih karena

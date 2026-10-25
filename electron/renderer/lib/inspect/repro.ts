@@ -3,12 +3,13 @@
 // replay of the changes would give the recorded text whatever the code does now.
 
 import type { ChangeSet, EditorSelection } from '@codemirror/state';
+import { blurText } from '../../../../src/markdown/blur.js';
 import type { Recording, TxEntry } from './recorder.js';
 
 export type ReproStep =
     | { key: string }                                              // "Backspace", "Ctrl+b"
     | { type: string }
-    | { click: { visible: string; edge?: 'start' | 'end' } | { pos: number; mods?: string } }
+    | { click: { visible: string; edge?: 'start' | 'end' } | { line: number; edge: 'start' | 'end' } | { pos: number; mods?: string } }
     | { select: [number, number] }
     | { external: unknown };                                       // ChangeSet JSON: a change no input made (the core's)
 
@@ -23,6 +24,7 @@ export interface Repro {
     actual?: { doc: string; failed: string[] };
     note?: string;
     blurred: boolean;
+    picture?: string;      // a report's picture of the editor: a PNG next to it, by its name (electron/main.ts)
 }
 
 // A transaction with no input of its own this soon after one with an input was made by that input too (a key whose
@@ -94,9 +96,53 @@ export function reproOf(recording: Recording, context: ReproContext): Repro {
     };
 }
 
+// A ChangeSet's JSON: a length kept, or a length replaced by the lines inserted.
+const blurChange = (part: unknown): unknown => Array.isArray(part) ? part.map(p => typeof p === 'string' ? blurText(p) : p) : part;
+
+function blurStep(step: ReproStep): ReproStep {
+    if ('type' in step) return { type: blurText(step.type) };
+    if ('click' in step && 'visible' in step.click) return { click: { ...step.click, visible: blurText(step.click.visible) } };
+    if ('external' in step && Array.isArray(step.external)) return { external: step.external.map(blurChange) };
+    return step;
+}
+
+// The same repro with its text blurred (markdown/blur.ts): every text, what was typed, and what a change brought. A
+// blurred text is as long as the real one, so the selections, clicks, and changes stay as they are. The note is the
+// person's own words to the developer, and stays.
+export function blurRepro(repro: Repro): Repro {
+    return {
+        ...repro,
+        start: { ...repro.start, doc: blurText(repro.start.doc) },
+        steps: repro.steps.map(blurStep),
+        ...(repro.expect ? { expect: { ...repro.expect, ...(repro.expect.doc !== undefined ? { doc: blurText(repro.expect.doc) } : {}) } } : {}),
+        ...(repro.actual ? { actual: { ...repro.actual, doc: blurText(repro.actual.doc) } } : {}),
+        blurred: true,
+    };
+}
+
 const isPair = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && v.every(n => Number.isInteger(n) && n >= 0);
 
-function stepError(step: unknown): string | null {
+// The bridge's request that plays one step: the same input a person gave (scripts/editor-fuzz.mjs stepRequest, which the
+// command line uses, says the same).
+export function stepRequest(step: ReproStep): Record<string, unknown> {
+    if ('key' in step) return { op: 'press', keys: [step.key] };
+    if ('type' in step) return { op: 'type', text: step.type };
+    if ('select' in step) return { op: 'select', from: step.select[0], to: step.select[1] };
+    if ('external' in step) return { op: 'apply', changes: step.external };
+    const click = step.click;
+    if ('visible' in click) return { op: 'click', visible: click.visible, edge: click.edge ?? 'end' };
+    if ('line' in click) return { op: 'click', line: click.line, edge: click.edge };
+    return { op: 'click', pos: click.pos, mods: click.mods };
+}
+
+// A repro kept as a test (tests/electron/repros.mjs plays each): it must pass every check, and come out as the text it
+// expects when it has one; what happened when it was made is left out (scripts/editor.mjs test-from does the same).
+export function keptAsTest(repro: Repro): Repro {
+    const { actual: _actual, ...kept } = repro;
+    return { ...kept, expect: { ...repro.expect, checks: 'pass' } };
+}
+
+export function stepError(step: unknown): string | null {
     if (!step || typeof step !== 'object') return 'is not an object';
     const s = step as Record<string, unknown>;
     if ('key' in s) return typeof s.key === 'string' && s.key ? null : 'has a key that is not a name';
@@ -106,8 +152,9 @@ function stepError(step: unknown): string | null {
     if ('click' in s) {
         const c = s.click as Record<string, unknown> | null;
         if (c && typeof c.visible === 'string' && (c.edge === undefined || c.edge === 'start' || c.edge === 'end')) return null;
+        if (c && Number.isInteger(c.line) && (c.line as number) >= 1 && (c.edge === 'start' || c.edge === 'end')) return null;
         if (c && Number.isInteger(c.pos) && (c.pos as number) >= 0) return null;
-        return 'clicks neither on visible text nor at a position';
+        return 'clicks neither on visible text, at the edge of a line, nor at a position';
     }
     return 'is no step a repro knows';
 }

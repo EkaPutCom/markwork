@@ -12,16 +12,17 @@ import { connect } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fuzz, kindsOf, play } from './editor-fuzz.mjs';
+import { fuzz, kindsOf, play, shrink } from './editor-fuzz.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--headless [--folder DIR] [--keep]] <op> [args] [--then <op> [args]]…
+const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--cp] [--headless [--folder DIR] [--keep]] <op> [args] [--then <op> [args]]…
 
   snapshot [--at cursor|POS] [--all]      what the editor shows and hides
   press KEY… [--explain]                  real keys: Backspace, Enter, Mod+b, Ctrl+Shift+z, ArrowDown
   type TEXT [--explain]                   real typing
   click --visible TEXT [--start|--end]    a click on text the eye sees (its end by default)
+  click --line N [--start|--end]          a click at the start of what line N shows, or past its end (the default)
   click --pos N [--mods M] [--explain]    a click at a position of the text
   select FROM [TO] [--explain]            a selection, dispatched (marked select.inspect)
   log [--since N] [--flagged] [--follow]  the recorded transactions
@@ -29,14 +30,19 @@ const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--headless [--fold
   check [NAME…]                           the findings of the last transaction
   open PATH                               a file of the work folder, or any file by its absolute path
   mode visual|live|source [--focus|--no-focus]
-  save-repro FILE [--note TEXT]           the recording as a repro (.mwrepro.json)
+  save-repro FILE [--note TEXT] [--blur]  the recording as a repro (.mwrepro.json); --blur: letters x, digits 0
   load FILE                               a repro's start in a new tab
   replay FILE                             a repro played again with every check: pass, fail, or differs
   screenshot FILE [--overlay]             a PNG of the editor
   fuzz [--docs GLOB,…] [--runs N] [--steps N] [--seed S] [--keys K,…] [--quiet MS] [--out DIR] [--shrink-seconds N]
                                           random keys and clicks with every check; a failure is shrunk and saved
+  shrink FILE [--check NAME] [--out F] [--quiet MS] [--shrink-seconds N]
+                                          the fewest steps of a repro that still fail its check (a report, a fuzz find)
   test-from FILE [--name NAME] [--dir D]  a repro as a test: tests/electron/repros/NAME.mwrepro.json
   hello                                   the window's process
+
+Positions are UTF-16 units, as CodeMirror counts; --cp makes those of snapshot, decorations, click --pos, and select code
+points, as the app protocol counts (an emoji is one). The log and repros stay in UTF-16.
 
 --headless starts its own window on a scratch folder (a copy of --folder, which is never written) and closes it at the
 end unless --keep.`;
@@ -47,7 +53,7 @@ const fail = (message, code = 2) => { process.stderr.write(`editor: ${message}\n
 // ---------- Arguments ----------
 
 // The flags that take the next word as their value.
-const VALUED = new Set(['at', 'since', 'line', 'pos', 'mods', 'note', 'visible', 'docs', 'runs', 'steps', 'seed', 'keys', 'quiet', 'out', 'shrink-seconds', 'name', 'dir']);
+const VALUED = new Set(['check', 'at', 'since', 'line', 'pos', 'mods', 'note', 'visible', 'docs', 'runs', 'steps', 'seed', 'keys', 'quiet', 'out', 'shrink-seconds', 'name', 'dir']);
 
 const whole = (v, what) => {
     if (v === undefined) return undefined;
@@ -65,8 +71,9 @@ const OPS = {
     click: (_w, f) => {
         const explain = f.explain === true;
         if (f.visible !== undefined) return { visible: f.visible, edge: f.start ? 'start' : 'end', mods: f.mods, explain };
+        if (f.line !== undefined) return { line: whole(f.line, '--line'), edge: f.start ? 'start' : 'end', explain };
         if (f.pos !== undefined) return { pos: whole(f.pos, '--pos'), mods: f.mods, explain };
-        throw new Usage('click needs --visible TEXT or --pos N');
+        throw new Usage('click needs --visible TEXT, --line N, or --pos N');
     },
     select: (w, f) => {
         if (w.length < 1 || w.length > 2) throw new Usage('select needs FROM and maybe TO');
@@ -77,7 +84,7 @@ const OPS = {
     check: w => ({ names: w }),
     open: (_w, _f, one) => ({ path: one('a path') }),
     mode: (_w, f, one) => ({ mode: one('visual, live, or source'), focus: f.focus === true ? true : f['no-focus'] === true ? false : undefined }),
-    'save-repro': (_w, f, one) => ({ file: one('a file'), note: f.note }),
+    'save-repro': (_w, f, one) => ({ file: one('a file'), note: f.note, blur: f.blur === true }),
     load: (_w, _f, one) => ({ file: one('a file') }),
     replay: (_w, _f, one) => ({ file: one('a file') }),
     screenshot: (_w, f, one) => ({ file: one('a file'), overlay: f.overlay === true }),
@@ -86,6 +93,7 @@ const OPS = {
         seed: whole(f.seed, '--seed') ?? 1, keys: f.keys, quiet: whole(f.quiet, '--quiet') ?? 60, out: f.out ?? '.', shrinkSeconds: whole(f['shrink-seconds'], '--shrink-seconds') ?? 120,
     }),
     'test-from': (_w, f, one) => ({ file: one('a repro file'), name: f.name, dir: f.dir }),
+    shrink: (_w, f, one) => ({ file: one('a repro file'), check: f.check, out: f.out, quiet: whole(f.quiet, '--quiet') ?? 60, shrinkSeconds: whole(f['shrink-seconds'], '--shrink-seconds') ?? 600 }),
 };
 
 function parseOp(args) {
@@ -106,13 +114,14 @@ function parseOp(args) {
 }
 
 function parseArgs(argv) {
-    const global = { pretty: false, headless: false, keep: false, pid: undefined, folder: undefined };
+    const global = { pretty: false, headless: false, keep: false, cp: false, pid: undefined, folder: undefined };
     let i = 0;
     for (; i < argv.length && argv[i].startsWith('--'); i++) {
         const a = argv[i];
         if (a === '--pretty') global.pretty = true;
         else if (a === '--headless') global.headless = true;
         else if (a === '--keep') global.keep = true;
+        else if (a === '--cp') global.cp = true;
         else if (a === '--pid' || a === '--folder') {
             if (i + 1 >= argv.length) throw new Usage(`${a} needs a value`);
             global[a.slice(2)] = argv[++i];
@@ -294,6 +303,18 @@ function testFrom(request) {
     return { file, steps: repro.steps.length, failedBefore: repro.actual?.failed ?? [] };
 }
 
+// A repro's steps cut down to the fewest that still make its check fail: the check it names as failed, or --check. A
+// person's report is hundreds of steps; the bug is in a few. Written to --out, or next to it as NAME.shrunk.mwrepro.json.
+async function shrinkRepro(conn, request) {
+    const repro = readJSON(request.file);
+    const check = request.check ?? repro.actual?.failed?.[0];
+    if (!check) throw new Usage(`${request.file} names no check that failed: give --check NAME`);
+    const shrunk = await shrink(conn, repro, repro.steps, check, { quiet: request.quiet, seconds: request.shrinkSeconds });
+    const out = request.out ?? request.file.replace(/(\.mwrepro)?\.json$/, '.shrunk.mwrepro.json');
+    writeFileSync(out, `${JSON.stringify({ ...repro, steps: shrunk.steps }, null, 2)}\n`);
+    return { file: resolve(out), check, steps: shrunk.steps.length, before: repro.steps.length, tries: shrunk.tries };
+}
+
 async function runOp(conn, request) {
     switch (request.op) {
         case 'open': {
@@ -301,13 +322,14 @@ async function runOp(conn, request) {
             return conn.ask({ op: 'open', path: request.path, absolute });
         }
         case 'save-repro': {
-            const { repro, ...where } = await conn.ask({ op: 'repro', note: request.note });
+            const { repro, ...where } = await conn.ask({ op: 'repro', note: request.note, blur: request.blur });
             writeFileSync(request.file, `${JSON.stringify(repro, null, 2)}\n`);
             return { ...where, file: resolve(request.file), steps: repro.steps.length, failed: repro.actual.failed };
         }
         case 'load': return conn.ask({ op: 'load', repro: readJSON(request.file) });
         case 'fuzz': return runFuzz(conn, request);
         case 'test-from': return testFrom(request);
+        case 'shrink': return shrinkRepro(conn, request);
         case 'replay': return replay(conn, request.file);
         case 'screenshot': {
             const { png, ...area } = await conn.ask({ op: 'screenshot', overlay: request.overlay });
@@ -350,7 +372,7 @@ function prettySnapshot(a) {
     const prefix = a.cursor.inPrefix ? ' in a hidden prefix' : '';
     return [
         `${a.path ?? a.name} · ${a.mode}${a.focus ? ' · focus' : ''} · ${a.length} chars, ${a.lines} lines`,
-        `cursor ${a.cursor.pos} (line ${a.cursor.line}, col ${a.cursor.col})${prefix}; visible before: ${JSON.stringify(a.visibleBefore?.char ?? null)}`,
+        `cursor ${a.cursor.pos} (line ${a.cursor.line}, col ${a.cursor.col})${prefix}; visible before: ${JSON.stringify(a.visibleBefore?.char ?? null)}, after: ${JSON.stringify(a.visibleAfter?.char ?? null)}`,
         `hidden: ${ranges(a.hidden)}`,
         `prefixes: ${ranges(a.prefixes)}`,
         ...a.decorations.map(d => `  ${d.from}–${d.to} ${d.kind}${d.block ? ' block' : ''} ${d.what}`),
@@ -406,7 +428,8 @@ async function connectTo(global) {
 async function runAll(conn, ops, global) {
     let code = 0;
     for (const request of ops) {
-        const answer = await runOp(conn, request);
+        // --cp: the positions asked for and answered are code points, as the app protocol counts (an emoji is one).
+        const answer = await runOp(conn, global.cp ? { ...request, cp: true } : request);
         process.stdout.write(`${global.pretty ? pretty(request, answer) : JSON.stringify(answer)}\n`);
         if (failed(answer)) code = 1;
     }

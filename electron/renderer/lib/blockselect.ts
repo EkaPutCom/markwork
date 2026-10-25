@@ -11,6 +11,7 @@
 import { EditorSelection, EditorState, Prec, StateEffect, StateField, type Extension, type Line } from '@codemirror/state';
 import { EditorView, ViewPlugin, keymap, showTooltip, type ViewUpdate } from '@codemirror/view';
 import { pictureRange } from './images.js';
+import { trace, traced } from './inspect/recorder.js';
 
 export type BlockKind = 'picture' | 'code' | 'diagram';
 
@@ -106,14 +107,14 @@ const withPicked = (run: (view: EditorView, block: PickedBlock) => void) => (vie
 };
 
 const pickedKeys = keymap.of([
-    { key: 'Enter', run: withPicked((view, block) => lineAfter(view, block)) },
-    { key: 'Backspace', run: withPicked(removeBlock) },
-    { key: 'Delete', run: withPicked(removeBlock) },
-    { key: 'Escape', run: withPicked((view, block) => leave(view, block, true)) },
-    { key: 'ArrowLeft', run: withPicked((view, block) => leave(view, block, false)) },
-    { key: 'ArrowUp', run: withPicked((view, block) => leave(view, block, false)) },
-    { key: 'ArrowRight', run: withPicked((view, block) => leave(view, block, true)) },
-    { key: 'ArrowDown', run: withPicked((view, block) => leave(view, block, true)) },
+    { key: 'Enter', run: traced('picked.line-after', withPicked((view, block) => lineAfter(view, block))) },
+    { key: 'Backspace', run: traced('picked.remove', withPicked(removeBlock)) },
+    { key: 'Delete', run: traced('picked.remove', withPicked(removeBlock)) },
+    { key: 'Escape', run: traced('picked.leave', withPicked((view, block) => leave(view, block, true))) },
+    { key: 'ArrowLeft', run: traced('picked.leave', withPicked((view, block) => leave(view, block, false))) },
+    { key: 'ArrowUp', run: traced('picked.leave', withPicked((view, block) => leave(view, block, false))) },
+    { key: 'ArrowRight', run: traced('picked.leave', withPicked((view, block) => leave(view, block, true))) },
+    { key: 'ArrowDown', run: traced('picked.leave', withPicked((view, block) => leave(view, block, true))) },
 ]);
 
 // ---------- Picking with the keys ----------
@@ -153,10 +154,11 @@ function pickingKeys(source: BlockSource, on: (state: EditorState) => boolean): 
         const line = state.doc.lineAt(sel.head);
         const block = forward ? objectBelow(state, source, sel.head) : sel.head === line.from ? objectAbove(state, source, line) : null;
         if (!block) return false;
+        trace(`the ${block.kind} at ${block.from}–${block.to} is ${forward ? 'after' : 'before'} the cursor: picked, not changed`);
         pick(view, block);
         return true;
     };
-    return keymap.of([{ key: 'Backspace', run: near(false) }, { key: 'Delete', run: near(true) }]);
+    return keymap.of([{ key: 'Backspace', run: traced('pick.before', near(false)) }, { key: 'Delete', run: traced('pick.after', near(true)) }]);
 }
 
 // ---------- Where the cursor may stand among pictures ----------

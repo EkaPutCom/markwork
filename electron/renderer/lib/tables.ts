@@ -12,6 +12,7 @@ import { WidgetType, type EditorView } from '@codemirror/view';
 import { parseInline } from '../../../src/markdown/inline.js';
 import { runTableCommand } from '../../../src/markdown/editcommands.js';
 import { cellIndexAt, cellStart, escapeCell, parseTable, setCellText, type Table } from '../../../src/markdown/table.js';
+import { handling, trace } from './inspect/recorder.js';
 
 interface CellPlace { row: number; col: number; offset: number }
 
@@ -309,7 +310,10 @@ export class TableWidget extends WidgetType {
             const change = setCellText(line.text, colOf(cell), escaped.trim());
             if (!change || change.insert === here().raw(rowOf(cell), colOf(cell))) return;
             const from = line.from + change.from;
-            view.dispatch({ changes: { from, to: line.from + change.to, insert: change.insert }, selection: { anchor: from + Math.min(caret, change.insert.length) }, userEvent: 'input.type' });
+            handling('table.cell-input', () => {
+                trace(`row ${rowOf(cell)}, column ${colOf(cell)}: the cell's text is written as ${JSON.stringify(change.insert)}`);
+                view.dispatch({ changes: { from, to: line.from + change.to, insert: change.insert }, selection: { anchor: from + Math.min(caret, change.insert.length) }, userEvent: 'input.type' });
+            });
         };
         // Add a row below the last one (the toolbar's command), and go to its first cell.
         const addRow = (cell: HTMLElement) => {
@@ -374,10 +378,10 @@ export class TableWidget extends WidgetType {
             const move = moves[event.key];
             // Enter on a last row that is empty leaves the grid instead of adding another row.
             const emptyLast = event.key === 'Enter' && rowOf(cell) === here().table.rows.length - 1 && cellsIn(wrap).filter(x => rowOf(x) === rowOf(cell)).every(x => !textIn(x));
-            if (emptyLast) { event.preventDefault(); leave(true); }
+            if (emptyLast) { event.preventDefault(); handling('table.leave', () => { trace('Enter on an empty last row: leaves the grid'); leave(true); }); }
             else if (event.key === 'Enter' && event.shiftKey) event.preventDefault();
-            else if (move) { event.preventDefault(); step(cell, move[0], move[1]); }
-            else if (event.key === 'Escape') { event.preventDefault(); leave(true); }
+            else if (move) { event.preventDefault(); handling('table.step', () => step(cell, move[0], move[1])); }
+            else if (event.key === 'Escape') { event.preventDefault(); handling('table.leave', () => leave(true)); }
         });
     }
 

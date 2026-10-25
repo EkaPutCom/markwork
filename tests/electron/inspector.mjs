@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { copyFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { shrink } from '../../scripts/editor-fuzz.mjs';
@@ -13,6 +13,7 @@ import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('inspector');
 writeFileSync(join(notes, 'plan.md'), '# Plan\n\nsome **bold** text\n');
+writeFileSync(join(notes, 'report.md'), '# Rencana rilis\n\nKita **rilis Jumat** setelah QA, 25 Oktober.\n');
 copyFileSync(new URL('../samples/all-formats.md', import.meta.url), join(notes, 'all.md'));
 
 const { steps, step } = stepper();
@@ -62,6 +63,79 @@ async function inNormalStart() {
             assert.match(stderr, /cannot reach/);
         });
 
+        await openFile(page, 'report.md');
+        const editorText = () => page.evaluate(`${view}.state.doc.toString()`);
+        const reports = async () => join(await app.evaluate(({ app }) => app.getPath('userData')), 'reports');
+        const dialog = page.getByRole('dialog', { name: 'Something looks wrong?' });
+        await step('a report of a problem with the editor: what the editor did, blurred, with a picture, and the text left as it was', async () => {
+            await page.getByText('setelah QA').click();
+            await page.keyboard.press('End');
+            await page.keyboard.type(' Tim');
+            const before = await editorText();
+            await page.getByRole('menuitem', { name: 'Help' }).click();
+            await page.getByRole('menuitem', { name: 'Report a Problem with the Editor…' }).click();
+            await dialog.waitFor();
+            assert.equal(await dialog.getByLabel('The line of the cursor, as it will be saved').textContent(), 'Xxxx **xxxxx Xxxxx** xxxxxxx XX, 00 Xxxxxxx. Xxx');
+            await dialog.getByLabel('What happened').fill('The last word went missing.');
+            await dialog.getByRole('button', { name: 'Save Report' }).click();
+            await dialog.getByText('The report is saved as').waitFor();
+            assert.equal(await editorText(), before, 'the blurred text shown for the picture is gone again');
+            const folder = await reports(), files = readdirSync(folder);
+            const name = files.find(f => f.endsWith('.mwrepro.json'));
+            assert.ok(name && (await dialog.textContent()).includes(name), JSON.stringify(files));
+            const report = JSON.parse(readFileSync(join(folder, name), 'utf8'));
+            assert.equal(report.blurred, true);
+            assert.equal(report.note, 'The last word went missing.', 'the note is the person\'s own words, not blurred');
+            assert.equal(report.expect, undefined, 'nothing was checked, so nothing is expected');
+            assert.equal(report.actual.doc, '# Xxxxxxx xxxxx\n\nXxxx **xxxxx Xxxxx** xxxxxxx XX, 00 Xxxxxxx. Xxx\n');
+            assert.equal(report.actual.doc.length, before.length);
+            assert.ok(report.steps.some(st => st.type === ' Xxx'), `what was typed, blurred: ${JSON.stringify(report.steps)}`);
+            assert.ok(report.app.electron && report.app.os, JSON.stringify(report.app));
+            const png = readFileSync(join(folder, report.picture));
+            assert.equal(png.subarray(1, 4).toString(), 'PNG', `${report.picture} is a picture`);
+            await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
+            await dialog.waitFor({ state: 'detached' });
+        });
+
+        await step('an Undo right after typing offers a report, once a tab', async () => {
+            const offer = page.getByRole('button', { name: 'Something looks wrong?' });
+            await page.locator('.cm-content').click();
+            await page.keyboard.press('Control+End');
+            await page.keyboard.type('xyz');
+            await page.keyboard.press('Control+z');
+            await offer.waitFor();
+            await offer.click();
+            await dialog.waitFor();
+            await dialog.getByRole('button', { name: 'Cancel' }).click();
+            await dialog.waitFor({ state: 'detached' });
+            await page.locator('.cm-content').click();
+            await page.keyboard.type('abc');
+            await page.keyboard.press('Control+z');
+            await page.waitForTimeout(400);   // a pause to show that the offer does not come again in this tab
+            assert.equal(await offer.count(), 0);
+        });
+
+        await openFile(page, 'all.md');
+        await step('the report dialog keeps the keys from the editor, and its picture leaves the editor where it was scrolled', async () => {
+            await page.locator('.cm-content').click();
+            await page.keyboard.type('Q');
+            const before = await editorText();
+            await page.evaluate(`${view}.scrollDOM.scrollTop = 900`);
+            const scrolled = await page.evaluate(`${view}.scrollDOM.scrollTop`);
+            assert.ok(scrolled > 0, 'the long sample scrolls');
+            await page.getByRole('menuitem', { name: 'Help' }).click();
+            await page.getByRole('menuitem', { name: 'Report a Problem with the Editor…' }).click();
+            await dialog.waitFor();
+            await dialog.getByLabel('What happened').fill('Q');
+            await page.keyboard.press('Control+z');
+            await dialog.getByRole('button', { name: 'Save Report' }).click();
+            await dialog.getByText('The report is saved as').waitFor();
+            assert.equal(await editorText(), before, 'Ctrl+Z in the note did not undo the text');
+            assert.ok(Math.abs(await page.evaluate(`${view}.scrollDOM.scrollTop`) - scrolled) < 2, 'the editor is scrolled as it was');
+            await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
+            await dialog.waitFor({ state: 'detached' });
+        });
+
         await openFile(page, 'all.md');
         await step('performance: a typed character in a long text, with only the recorder running', async () => {
             const result = await page.evaluate(`(() => {
@@ -84,7 +158,10 @@ async function inNormalStart() {
 }
 
 async function inDevMode() {
-    const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1' } });
+    const kept = join(scratch, 'kept'), saved = join(scratch, 'saved.mwrepro.json');
+    mkdirSync(kept);
+    writeFileSync(join(notes, 'replay.md'), '# Replay\n\nsome **bold** text\n');
+    const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1', MARKWORK_TEST_REPROS: kept, MARKWORK_CHOOSE_FILE: saved } });
     try {
         const page = await app.firstWindow();
         await page.setViewportSize({ width: 1400, height: 900 });
@@ -241,6 +318,67 @@ async function inDevMode() {
             await waitFor(async () => (await inspector.locator('.ins-list').textContent()).includes('ListMarkWidget'));
             assert.equal(await page.locator('.inspecting .cm-md-listmark').count(), 1, 'the widget in the editor is outlined');
         });
+
+        const clipboard = () => app.evaluate(({ clipboard }) => clipboard.readText());
+        await step('Copy Snapshot and a transaction\'s Copy as JSON give what the bridge gives; Show the State Before pauses one back', async () => {
+            await setDoc(page, '# Plan\n\nsome text', 17);
+            await page.keyboard.type('ab');
+            await tab('Transactions').click();
+            await inspector.locator('.ins-list tbody tr').first().click();
+            await inspector.getByRole('button', { name: 'Copy as JSON' }).click();
+            await inspector.getByRole('button', { name: 'Copied' }).waitFor();
+            const entry = JSON.parse(await clipboard());
+            assert.equal(entry.input.key, 'b');
+            assert.equal(entry.userEvent, 'input.type');
+            await inspector.getByRole('button', { name: 'Show the State Before' }).click();
+            await inspector.getByText(`#${entry.n - 1} of`).waitFor();
+            assert.equal(await source.textContent().then(t => t.includes('some texta') && !t.includes('textab')), true, 'the text before the "b"');
+            await inspector.getByRole('button', { name: 'Live' }).click();
+            await inspector.getByRole('button', { name: 'Copy Snapshot' }).click();
+            await waitFor(async () => (await clipboard()).includes('"units"'));
+            const shot = JSON.parse(await clipboard());
+            assert.equal(shot.cursor.pos, 19);
+            assert.deepEqual(shot.prefixes, [[0, 2]]);
+        });
+
+        await step('Replay & test: the recording plays again in a tab of its own and passes; a repro file that expects another text differs', async () => {
+            // A tab of its own: a recording of keys and clicks only, none of the dispatches of the steps above.
+            await openFile(page, 'replay.md');
+            await page.locator('.cm-content .cm-line').filter({ hasText: 'some' }).click();
+            await page.keyboard.press('End');
+            await page.keyboard.type('ab');
+            await page.keyboard.press('Backspace');
+            await tab('Replay & test').click();
+            await inspector.getByRole('button', { name: 'Replay This Recording' }).click();
+            await inspector.getByRole('button', { name: 'Play All' }).click();
+            await waitFor(async () => /^pass/m.test(await inspector.innerText()), 30000, async () => { await page.screenshot({ path: '/tmp/mwscratch/shots/replay-fail.png' }); return (await inspector.innerText()).slice(0, 1500); });
+            const other = join(scratch, 'other.mwrepro.json');
+            writeFileSync(other, JSON.stringify({
+                format: 'markwork-repro', version: 1, app: { version: 'test', os: 'linux' }, editor: { mode: 'visual', focus: false, width: 0 },
+                start: { doc: 'some **bold** x', selection: [[0, 0]] }, steps: [{ key: 'End' }, { type: 'y' }],
+                expect: { doc: 'something else' }, blurred: false,
+            }));
+            await inspector.getByLabel('Repro file').setInputFiles(other);
+            await inspector.getByText('other.mwrepro.json').waitFor();
+            await inspector.getByRole('button', { name: 'Step ▶' }).click();
+            await inspector.locator('.ins-steps li.next').getByText('type "y"').waitFor();
+            await inspector.getByRole('button', { name: 'Play All' }).click();
+            await inspector.getByRole('status').filter({ hasText: /^differs/ }).waitFor({ timeout: 30000 });
+            assert.equal(await page.evaluate(`${view}.state.doc.toString()`), 'some **bold** xy', 'the steps were real keys');
+        });
+
+        await step('Replay & test: Save Repro writes the repro, and Make a Test keeps it as test-from does', async () => {
+            await inspector.getByRole('button', { name: 'Save Repro…' }).click();
+            await inspector.getByText(`Saved as ${saved}`).waitFor();
+            assert.equal(JSON.parse(readFileSync(saved, 'utf8')).start.doc, 'some **bold** x');
+            await inspector.getByLabel('Test name').fill('from the panel');
+            await inspector.getByRole('button', { name: 'Make a Test' }).click();
+            await inspector.getByText('Kept as a test').waitFor();
+            const test = JSON.parse(readFileSync(join(kept, 'from-the-panel.mwrepro.json'), 'utf8'));
+            assert.equal(test.expect.checks, 'pass');
+            assert.equal(test.actual, undefined);
+            assert.deepEqual(test.steps, [{ key: 'End' }, { type: 'y' }]);
+        });
     } finally {
         await close(app);
     }
@@ -250,7 +388,8 @@ async function inDevMode() {
 async function throughTheBridge() {
     // A file of its own: the steps above typed into plan.md, and autosave kept it.
     writeFileSync(join(notes, 'bridge.md'), '# Plan\n\nsome **bold** text\n');
-    const repro = join(scratch, 'bridge.mwrepro.json');
+    writeFileSync(join(notes, 'emoji.md'), '# 🎉 Hi\n\nsome **bold** 🎉 text\n');
+    const repro = join(scratch, 'bridge.mwrepro.json'), blurred = join(scratch, 'blurred.mwrepro.json');
     const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1' } });
     try {
         const page = await app.firstWindow();
@@ -284,6 +423,8 @@ async function throughTheBridge() {
             assert.ok(tx, JSON.stringify(answer.entries));
             assert.equal(tx.input.key, 'Backspace');
             assert.deepEqual(tx.findings.filter(f => f.severity === 'fail'), []);
+            assert.equal(tx.handler, 'visual.backspace', 'the command of the visual editor that took the key');
+            assert.deepEqual(tx.trace, ['stepped back past hidden 19–21; removes 18–19']);
         });
 
         await step('editor.mjs: a click on visible text puts the cursor at its end, and typing types', async () => {
@@ -298,6 +439,9 @@ async function throughTheBridge() {
         await step('editor.mjs: save-repro, then replay passes; a repro that expects another text differs', async () => {
             const saved = await cli(...pid, 'save-repro', repro);
             assert.equal(saved.code, 0, saved.stderr);
+            // The same recording blurred, for the step after this one (a replay plays in a tab of its own).
+            const savedBlurred = await cli(...pid, 'save-repro', blurred, '--blur');
+            assert.equal(savedBlurred.code, 0, savedBlurred.stderr);
             const file = JSON.parse(readFileSync(repro, 'utf8'));
             assert.equal(file.format, 'markwork-repro');
             assert.ok(file.steps.some(s => s.key === 'Backspace') && file.steps.some(s => s.type === '!?'), JSON.stringify(file.steps));
@@ -311,6 +455,17 @@ async function throughTheBridge() {
             assert.equal(differs.answer.result, 'differs');
         });
 
+        await step('editor.mjs: save-repro --blur keeps every offset, so the blurred repro plays the same way', async () => {
+            const plain = JSON.parse(readFileSync(repro, 'utf8')), file = JSON.parse(readFileSync(blurred, 'utf8'));
+            assert.equal(file.blurred, true);
+            assert.equal(file.start.doc, '# Xxxx\n\nxxxx **xxxx** xxxx\n');
+            assert.deepEqual(file.start.selection, plain.start.selection);
+            assert.deepEqual(file.steps, plain.steps, 'keys, punctuation typed, clicks, and selections are the same');
+            const played = await cli(...pid, 'replay', blurred);
+            assert.equal(played.answer.result, 'pass', JSON.stringify(played.answer) + played.stderr);
+            assert.equal(played.answer.doc, '# Xxxx\n\nxxxx **xxx** xxxx!?\n');
+        });
+
         await step('editor.mjs: a picture of the editor, and a usage error exits 2', async () => {
             const png = join(scratch, 'editor.png');
             const { code, stderr } = await cli(...pid, 'screenshot', png, '--overlay');
@@ -322,7 +477,39 @@ async function throughTheBridge() {
             assert.equal(bad.code, 2);
             assert.match(bad.stderr, /not a modifier/);
         });
-        await step('editor.mjs: fuzz with a fixed seed on the long sample passes every check', async () => {
+        await step('editor.mjs: snapshot with an emoji, in UTF-16 and with --cp in code points; around, visibleAfter, and the parse', async () => {
+            assert.equal((await cli(...pid, 'open', 'emoji.md')).code, 0);
+            const selected = await cli(...pid, '--cp', 'select', '24');
+            assert.equal(selected.code, 0, selected.stderr);
+            const { answer: u16 } = await cli(...pid, 'snapshot');
+            assert.equal(u16.units, 'utf16');
+            assert.deepEqual(u16.cursor, { pos: 26, line: 3, col: 18, inPrefix: false, cp: 24 }, 'before "text", after "🎉 ": the emoji is two units and one character');
+            assert.deepEqual(u16.around, { before: 'some **bold** 🎉 ', after: 'text' });
+            assert.deepEqual(u16.visibleBefore, { char: ' ', from: 25, to: 26 });
+            assert.deepEqual(u16.visibleAfter, { char: 't', from: 26, to: 27 });
+            assert.ok(u16.hidden.some(([a, b]) => a === 20 && b === 22), JSON.stringify(u16.hidden));
+            assert.equal(u16.parse.line, 3);
+            assert.ok(u16.parse.spans.some(([style]) => /bold|strong/.test(style)), JSON.stringify(u16.parse.spans));
+            assert.ok(Array.isArray(u16.widgets) && typeof u16.parseMs === 'number');
+            const { answer: cp } = await cli(...pid, '--cp', 'snapshot');
+            assert.equal(cp.units, 'cp');
+            assert.deepEqual(cp.cursor, { pos: 24, line: 3, col: 17, inPrefix: false });
+            assert.deepEqual(cp.visibleBefore, { char: ' ', from: 23, to: 24 });
+            assert.ok(cp.hidden.some(([a, b]) => a === 19 && b === 21), JSON.stringify(cp.hidden));
+            assert.equal(cp.length, u16.length - 2, 'two emoji');
+        });
+
+        await step('editor.mjs: click --line clicks where the eye sees a line start and end, past its hidden syntax', async () => {
+            const end = await cli(...pid, 'click', '--line', '3', '--explain');
+            assert.equal(end.code, 0, end.stderr);
+            assert.deepEqual(end.answer.entries.at(-1).selAfter, [[30, 30]], 'past the end of "some **bold** 🎉 text"');
+            const start = await cli(...pid, 'click', '--line', '1', '--start', '--explain');
+            assert.deepEqual(start.answer.entries.at(-1).selAfter, [[2, 2]], 'after the hidden "# "');
+            const hidden = await cli(...pid, 'click', '--line', '9');
+            assert.equal(hidden.code, 2, 'a line the text does not have');
+        });
+
+                await step('editor.mjs: fuzz with a fixed seed on the long sample passes every check', async () => {
             const sample = fileURLToPath(new URL('../samples/all-formats.md', import.meta.url));
             const { code, answer, stderr } = await cli(...pid, 'fuzz', '--docs', sample, '--runs', '1', '--steps', '100', '--seed', '1', '--out', scratch);
             assert.ok(answer, stderr);

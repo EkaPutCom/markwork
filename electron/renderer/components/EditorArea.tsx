@@ -8,6 +8,7 @@ import { Chart } from './Chart.js';
 import { Csv } from './Csv.js';
 import { STRUCTURED_PAGES } from './EditingMode.js';
 import { FormatBar } from './FormatBar.js';
+import { ReportOffer } from './ReportProblem.js';
 import { Gallery } from './Gallery.js';
 import { Icon } from './Icons.js';
 import { Inbox } from './Inbox.js';
@@ -154,6 +155,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
             )}
             {textShown && settings.visual !== false && !pane.source && <FormatBar pane={pane} />}
             <div ref={body} className="pane-body">
+                {current && textShown && <ReportOffer />}
                 <div ref={host} className="text-editor" hidden={!textShown} />
                 {structured && tab && board && <StructuredPage key={`${tab.id}:${tab.page}`} tab={tab} board={board} />}
                 {csv && tab && <Csv key={tab.id} text={tab.csv!} rev={tab.csvRev} find={current ? csvFind : { n: 0, replace: false }} />}

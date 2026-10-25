@@ -1,0 +1,45 @@
+{
+  "format": "markwork-repro",
+  "version": 1,
+  "app": {
+    "version": "1.0.0",
+    "os": "linux"
+  },
+  "editor": {
+    "mode": "visual",
+    "focus": false,
+    "width": 772
+  },
+  "start": {
+    "doc": "## a Emphasis\n",
+    "selection": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "click": {
+        "line": 1,
+        "edge": "start"
+      }
+    },
+    {
+      "key": "ArrowRight"
+    },
+    {
+      "key": "Backspace"
+    },
+    {
+      "key": "Backspace"
+    }
+  ],
+  "expect": {
+    "doc": "Emphasis\n",
+    "checks": "pass"
+  },
+  "blurred": false,
+  "note": "Backspace on the first letter of a heading's text leaves the cursor where the text starts now, past the space that joined the prefix; the next Backspace makes the line a paragraph."
+}
