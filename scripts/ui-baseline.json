@@ -32,13 +32,6 @@
         "raw-element": 13,
         "old-class": 12
     },
-    "components/Dialog.tsx": {
-        "old-class": 3,
-        "raw-element": 2
-    },
-    "components/EditingMode.tsx": {
-        "raw-element": 2
-    },
     "components/EditorArea.tsx": {
         "raw-element": 1,
         "old-class": 2,
@@ -107,9 +100,6 @@
     "components/notes.tsx": {
         "raw-element": 20,
         "old-class": 11
-    },
-    "components/Outline.tsx": {
-        "raw-element": 1
     },
     "components/Palette.tsx": {
         "raw-element": 1

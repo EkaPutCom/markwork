@@ -81,6 +81,8 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 5: Migrasi komponen
 
+**Berjalan.** Sudah: Outline (daftar `Button` ghost, indentasi lewat `--depth`), EditingMode (`ToggleGroup` tunggal dengan `Tooltip`; tes mencarinya sebagai `radio`, bukan `button` lagi), dan dialog inti di `Dialog.tsx` (`AlertDialog` dengan `Input`, `Label`, `Button`).
+
 - Satu per satu, dari kecil ke besar: Outline, EditingMode, Dialog, Diff, Tabs, Palette, Sidebar, …, lalu Board, Chat, Review.
 - Setiap langkah: elemen mentah diganti primitif, class `theme.css` yang tak terpakai dihapus, baseline diturunkan, tes area itu dijalankan.
 - Satu PR berisi satu sampai beberapa komponen kecil.

@@ -99,19 +99,19 @@ try {
     });
 
     await step('a pane has its own Visual / Markdown, set by the header switch for the focused pane, and a board is drawn in its pane', async () => {
-        const header = page.locator('.headerbar').getByRole('group', { name: 'Editing mode' });
+        const header = page.locator('.headerbar').getByRole('radiogroup', { name: 'Editing mode' });
         const mode = async n => { await panes.nth(n).locator('.pane-body').click({ position: { x: 20, y: 20 } }); return header; };
-        await (await mode(0)).getByRole('button', { name: 'Code' }).click();
+        await (await mode(0)).getByRole('radio', { name: 'Code' }).click();
         await waitFor(async () => (await panes.nth(0).locator('.cm-editor.cm-source').count()) === 1);
         assert.equal(await panes.nth(1).locator('.cm-editor.cm-source').count(), 0, 'the other pane is still visual');
         assert.equal(await panes.nth(0).getByRole('toolbar', { name: 'Formatting' }).count(), 0, 'raw text has no toolbar');
         assert.equal(await panes.nth(1).getByRole('toolbar', { name: 'Formatting' }).count(), 1, 'the visual pane keeps its own');
-        await (await mode(0)).getByRole('button', { name: 'Visual' }).click();
+        await (await mode(0)).getByRole('radio', { name: 'Visual' }).click();
         await waitFor(async () => (await panes.nth(0).locator('.cm-editor.cm-source').count()) === 0);
         await page.getByRole('treeitem', { name: /board\.md/ }).dragTo(panes.nth(1).locator('.pane-body'), { targetPosition: { x: 200, y: 200 } });
         await panes.nth(1).locator('.board').waitFor();
         assert.equal(await panes.nth(0).locator('.board').count(), 0);
-        assert.equal(await header.getByRole('button', { name: 'Visual' }).getAttribute('aria-pressed'), 'true');
+        assert.equal(await header.getByRole('radio', { name: 'Visual' }).getAttribute('aria-checked'), 'true');
     });
 
     await step('the line between two panes is dragged to resize them', async () => {

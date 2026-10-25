@@ -40,7 +40,7 @@ try {
     await page.setViewportSize({ width: 1400, height: 900 });   // the switch gives way in a narrow header
     const editor = page.locator('.cm-content');
     const toolbar = page.getByRole('toolbar', { name: 'Formatting' });
-    const mode = page.getByRole('group', { name: 'Editing mode' });
+    const mode = page.getByRole('radiogroup', { name: 'Editing mode' });
     const docText = () => page.evaluate(() => document.querySelector('.cm-content').cmTile.view.state.doc.toString());
     const setDoc = (text, anchor = text.length, head = anchor) => page.evaluate(([t, a, h]) => {
         const view = document.querySelector('.cm-content').cmTile.view;
@@ -58,7 +58,7 @@ try {
     await page.locator('.headerbar .title').getByText('plan.md').waitFor();
 
     await step('the visual editor is on at first: the switch, the toolbar, and no syntax on the cursor line', async () => {
-        assert.equal(await mode.getByRole('button', { name: 'Visual' }).getAttribute('aria-pressed'), 'true');
+        assert.equal(await mode.getByRole('radio', { name: 'Visual' }).getAttribute('aria-checked'), 'true');
         await toolbar.waitFor();
         await setDoc('# Plan\n\nsome **bold** text', 2);
         assert.equal(await lineText(0), 'Plan', 'the # is hidden on the cursor line');
@@ -607,10 +607,10 @@ try {
     await step('Markdown is the file as it is written: every marker, plain text in a fixed-width font, and Visual comes back', async () => {
         const raw = '# Plan\n\nsome **bold** and [a link](https://x.org)\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n- [ ] task\n\n![pic](pic.png)';
         await setDoc(raw, raw.length);
-        await mode.getByRole('button', { name: 'Code' }).click();
+        await mode.getByRole('radio', { name: 'Code' }).click();
         await toolbar.waitFor({ state: 'detached' });
-        assert.equal(await mode.getByRole('button', { name: 'Code' }).getAttribute('aria-pressed'), 'true');
-        assert.equal(await mode.getByRole('button', { name: 'Visual' }).getAttribute('aria-pressed'), 'false');
+        assert.equal(await mode.getByRole('radio', { name: 'Code' }).getAttribute('aria-checked'), 'true');
+        assert.equal(await mode.getByRole('radio', { name: 'Visual' }).getAttribute('aria-checked'), 'false');
         // The cursor is on the last line, so only a mode that shows everything has these lines as they are written.
         await waitFor(async () => (await lineTexts()).join('\n') === raw);
         assert.equal(await editor.locator('.cm-md-table-grid').count(), 0, 'a table is its text, not a grid');
@@ -618,35 +618,35 @@ try {
         assert.equal(await page.locator('.cm-block-handle').evaluate(el => getComputedStyle(el).display), 'none', 'no block handle');
         const look = await editor.locator('.cm-md-h1').first().evaluate(el => ({ size: getComputedStyle(el).fontSize, weight: getComputedStyle(el).fontWeight, family: getComputedStyle(el).fontFamily }));
         assert.deepEqual([look.size, look.weight, /mono/i.test(look.family)], ['14px', '400', true], 'a heading is plain text in the fixed-width font');
-        await mode.getByRole('button', { name: 'Visual' }).click();
+        await mode.getByRole('radio', { name: 'Visual' }).click();
         await toolbar.waitFor();
-        assert.equal(await mode.getByRole('button', { name: 'Visual' }).getAttribute('aria-pressed'), 'true');
+        assert.equal(await mode.getByRole('radio', { name: 'Visual' }).getAttribute('aria-checked'), 'true');
         await editor.getByRole('checkbox', { name: 'Not done' }).waitFor();
         assert.equal(await editor.locator('.cm-md-table-grid').count(), 1, 'the grid is back');
     });
 
     await step('a document with another form (a board, a list, a CSV table) has the switch too: Visual is that form, Markdown its text', async () => {
         const text = () => editor.evaluate(() => document.querySelector('.cm-content').cmTile.view.state.doc.toString());
-        const visual = mode.getByRole('button', { name: 'Visual' }), markdown = mode.getByRole('button', { name: 'Code' });
+        const visual = mode.getByRole('radio', { name: 'Visual' }), markdown = mode.getByRole('radio', { name: 'Code' });
         const pages = [['board.md', '.board', /^---\nlayout: board/], ['inbox.md', '.inbox-page', /^---\nlayout: list/], ['data.csv', '.csv-page', /^name,qty\napple,3/]];
         for (const [file, page, raw] of pages) {
             await openFile(file);
             await pageOf(page).waitFor();
-            assert.equal(await visual.getAttribute('aria-pressed'), 'true', `${file}: Visual is pressed on its page`);
-            assert.equal(await markdown.getAttribute('aria-pressed'), 'false');
+            assert.equal(await visual.getAttribute('aria-checked'), 'true', `${file}: Visual is pressed on its page`);
+            assert.equal(await markdown.getAttribute('aria-checked'), 'false');
             await markdown.click();
             await pageOf(page).waitFor({ state: 'detached' });
             await waitFor(async () => raw.test(await text()));
-            assert.equal(await markdown.getAttribute('aria-pressed'), 'true', `${file}: Markdown is pressed on its text`);
+            assert.equal(await markdown.getAttribute('aria-checked'), 'true', `${file}: Markdown is pressed on its text`);
             assert.equal(await toolbar.count(), 0, `${file}: its text is the raw file, with no formatting toolbar`);
             assert.ok((await lineTexts()).some(l => l.includes('---') || l.includes(',')), `${file}: every marker shows`);
             await visual.click();
             await pageOf(page).waitFor();
-            assert.equal(await visual.getAttribute('aria-pressed'), 'true', `${file}: back to its page`);
+            assert.equal(await visual.getAttribute('aria-checked'), 'true', `${file}: back to its page`);
         }
         await openFile('plan.md');
         await toolbar.waitFor();
-        assert.equal(await visual.getAttribute('aria-pressed'), 'true', 'an ordinary document is Visual in the visual editor again');
+        assert.equal(await visual.getAttribute('aria-checked'), 'true', 'an ordinary document is Visual in the visual editor again');
     });
 
     // Last: it leaves a new document with no file open.

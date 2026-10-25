@@ -77,7 +77,7 @@ try {
 
     await step('Outline follows the document, and a section folds and unfolds from its header (and the setting keeps it)', async () => {
         await open('launch.md').catch(async () => { await page.getByRole('treeitem', { name: /plans/ }).click(); await open('launch.md'); });
-        const rows = section('outline').locator('.outline .row');
+        const rows = section('outline').getByRole('list', { name: 'Headings' }).getByRole('button');
         await waitFor(async () => (await rows.allTextContents()).join('|') === 'Launch|Goal|Schedule');
         await head('outline').click();
         assert.equal(await head('outline').getAttribute('aria-expanded'), 'false');
