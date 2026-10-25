@@ -9,6 +9,8 @@ import { Icon } from './Icons.js';
 import { dayMonth, formatDate, PageHeader, todayString } from './notes.js';
 import { useClient } from '../lib/useClient.js';
 import { Select } from '../ui/select.js';
+import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
 
 // The category colors of globals.css (docs/design/ui.md "Categories"), in the order a tag or a cover takes them.
 const CATEGORY_ORDER = ['green', 'blue', 'purple', 'red', 'pink', 'teal', 'amber', 'gray'];
@@ -109,7 +111,7 @@ export function Chart({ board }: { board: Board }) {
     return (
         <div className="layout-page chart" data-page="chart">
             <PageHeader board={board} fallback="Chart">
-                <button className={`button settings-toggle${settings ? ' checked' : ''}`} aria-expanded={settings} aria-label="Edit the panels" title="Panels" onClick={() => setSettings(v => !v)}><Icon name="emblem-system" /></button>
+                <IconButton variant="outline" className="settings-toggle" aria-expanded={settings} label="Edit the panels" onClick={() => setSettings(v => !v)}><Icon name="emblem-system" /></IconButton>
             </PageHeader>
             {settings && (
                 <div className="chart-settings" role="group" aria-label="Panels">
@@ -129,14 +131,14 @@ export function Chart({ board }: { board: Board }) {
                                 {item.kind === 'donut' && donut && selectFields(schema).length > 0 && (
                                     <Select aria-label="Select field" value={donut.field ?? ''} onChange={e => change(at, { ...item, field: e.target.value })}>{selectFields(schema).map(f => <option key={f.key}>{f.key}</option>)}</Select>
                                 )}
-                                <button className="icon-button" aria-label="Move up" title="Move up" disabled={at === 0} onClick={() => move(at, -1)}>↑</button>
-                                <button className="icon-button" aria-label="Move down" title="Move down" disabled={at === items.length - 1} onClick={() => move(at, 1)}>↓</button>
-                                <button className="icon-button" aria-label="Remove" title="Remove" disabled={items.length <= 1} onClick={() => change(at, null)}>−</button>
+                                <IconButton size="icon-xs" label="Move up" disabled={at === 0} onClick={() => move(at, -1)}><Icon name="chevron-up" /></IconButton>
+                                <IconButton size="icon-xs" label="Move down" disabled={at === items.length - 1} onClick={() => move(at, 1)}><Icon name="chevron-down" /></IconButton>
+                                <IconButton size="icon-xs" label="Remove" disabled={items.length <= 1} onClick={() => change(at, null)}><Icon name="list-remove" /></IconButton>
                             </div>
                         );
                     })}
-                    <div className="settings-add">{ADDABLE.map(next => <button key={next.kind} className="button" title={`Add ${PANEL_NAMES[next.kind]}`} onClick={() => commit([...items, next])}>+ {PANEL_NAMES[next.kind]}</button>)}</div>
-                    <button className="button flat" onClick={() => commit(null)}>Reset to default</button>
+                    <div className="settings-add">{ADDABLE.map(next => <Button key={next.kind} variant="outline" size="sm" onClick={() => commit([...items, next])}><Icon name="document-new" />{PANEL_NAMES[next.kind]}</Button>)}</div>
+                    <Button variant="ghost" size="sm" className="self-start" onClick={() => commit(null)}>Reset to default</Button>
                 </div>
             )}
             <div className="chart-body">{items.map(panel)}</div>

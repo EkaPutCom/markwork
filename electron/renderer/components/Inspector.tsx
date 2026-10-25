@@ -12,6 +12,10 @@ import { useClient, useStore } from '../lib/useClient.js';
 import { Icon } from './Icons.js';
 import { NO_REPLAY, Replay, type ReplayState } from './InspectorReplay.js';
 import { entryJSON } from '../lib/inspect/bridge.js';
+import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
 
 const AROUND = 12;   // lines shown above and below the cursor's
 
@@ -130,9 +134,9 @@ function TxDetail({ recording, entry, actions }: { recording: Recording; entry: 
                 </div>
             ))}
             <div className="ins-acts">
-                <button className="button" disabled={!actions.before} title={actions.before ? undefined : 'Dev mode keeps no state from before the first transaction it saw'} onClick={() => actions.before?.()}>Show the State Before</button>
-                <button className="button" onClick={actions.test}>Make a Test from This</button>
-                <button className="button" onClick={() => void copy(JSON.stringify(entryJSON(entry), null, 2)).then(() => setCopied(true))}>{copied ? 'Copied' : 'Copy as JSON'}</button>
+                <Button variant="outline" size="xs" disabled={!actions.before} title={actions.before ? undefined : 'Dev mode keeps no state from before the first transaction it saw'} onClick={() => actions.before?.()}>Show the State Before</Button>
+                <Button variant="outline" size="xs" onClick={actions.test}>Make a Test from This</Button>
+                <Button variant="outline" size="xs" onClick={() => void copy(JSON.stringify(entryJSON(entry), null, 2)).then(() => setCopied(true))}>{copied ? 'Copied' : 'Copy as JSON'}</Button>
             </div>
         </div>
     );
@@ -207,7 +211,7 @@ function Checks({ recording, open }: { recording: Recording; open: (n: number) =
                             <b>{name}</b>
                             <small>{bad ? `#${bad.n}: ${bad.message}` : `${checked} transactions checked`}{mine.length > 1 ? ` (and ${mine.length - 1} more)` : ''}</small>
                         </div>
-                        {bad && <button className="button" onClick={() => open(bad.n)}>Show #{bad.n}</button>}
+                        {bad && <Button variant="outline" size="xs" onClick={() => open(bad.n)}>Show #{bad.n}</Button>}
                     </div>
                 );
             })}
@@ -299,18 +303,19 @@ export function Inspector({ onClose }: { onClose: () => void }) {
                 {failing > 0 && <span className="ins-badge fail">{failing} failed {failing === 1 ? 'check' : 'checks'}</span>}
                 <span className="grow" />
                 {recording && (
-                    <div className="ins-seg" role="group" aria-label="Live or paused">
-                        <button aria-pressed={live} onClick={() => setPaused(null)}>Live</button>
-                        <button aria-pressed={!live} disabled={!steps.length} onClick={() => pause(steps[steps.length - 1]?.n)}>Paused</button>
-                    </div>
+                    <ToggleGroup type="single" size="xs" className="ins-seg gap-0.5 rounded-md bg-muted p-0.5" aria-label="Live or paused" value={live ? 'live' : 'paused'}
+                        onValueChange={value => { if (value === 'live') setPaused(null); else if (value === 'paused') pause(steps[steps.length - 1]?.n); }}>
+                        <ToggleGroupItem value="live" className="h-6 rounded-sm px-2 aria-checked:bg-background aria-checked:shadow-xs">Live</ToggleGroupItem>
+                        <ToggleGroupItem value="paused" className="h-6 rounded-sm px-2 aria-checked:bg-background aria-checked:shadow-xs" disabled={!steps.length}>Paused</ToggleGroupItem>
+                    </ToggleGroup>
                 )}
                 {!live && <>
-                    <button className="button flat circular" aria-label="Step back" title="Step back" disabled={at <= 0} onClick={() => pause(steps[at - 1]?.n)}><Icon name="go-previous" /></button>
+                    <IconButton size="icon-xs" label="Step back" disabled={at <= 0} onClick={() => pause(steps[at - 1]?.n)}><Icon name="go-previous" /></IconButton>
                     <span className="ins-badge">#{steps[at].n} of {steps[steps.length - 1].n}</span>
-                    <button className="button flat circular" aria-label="Step forward" title="Step forward" disabled={at >= steps.length - 1} onClick={() => pause(steps[at + 1]?.n)}><Icon name="go-next" /></button>
+                    <IconButton size="icon-xs" label="Step forward" disabled={at >= steps.length - 1} onClick={() => pause(steps[at + 1]?.n)}><Icon name="go-next" /></IconButton>
                 </>}
-                {snap && <button className="button flat ins-copy" onClick={copySnapshot}>{copiedSnapshot ? 'Copied' : 'Copy Snapshot'}</button>}
-                <button className="button flat circular" aria-label="Close the inspector" title="Close (Ctrl+Alt+I)" onClick={onClose}><Icon name="window-close" /></button>
+                {snap && <Button variant="ghost" size="xs" className="ins-copy" onClick={copySnapshot}>{copiedSnapshot ? 'Copied' : 'Copy Snapshot'}</Button>}
+                <IconButton size="icon-xs" label="Close the inspector" shortcut="Ctrl+Alt+I" onClick={onClose}><Icon name="window-close" /></IconButton>
             </header>
             {!state || !snap || !recording ? <p className="dim ins-empty">No text is open in this pane.</p> : (
                 <div className="ins-body">
@@ -331,19 +336,19 @@ export function Inspector({ onClose }: { onClose: () => void }) {
                             <span>draw <b>{snap.drawMs.toFixed(1)} ms</b></span>
                         </div>
                     </div>
-                    <div className="ins-right">
-                        <div className="ins-tabs" role="tablist">
+                    <Tabs value={tab} onValueChange={value => setTab(value as typeof tab)} className="ins-right gap-0">
+                        <TabsList className="ins-tabs">
                             {([['tx', 'Transactions'], ['deco', 'Decorations'], ['checks', 'Checks'], ['replay', 'Replay & test']] as const).map(([id, name]) => (
-                                <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{name}</button>
+                                <TabsTrigger key={id} value={id}>{name}</TabsTrigger>
                             ))}
-                        </div>
-                        <div className="ins-pane">
+                        </TabsList>
+                        <TabsContent value={tab} className="ins-pane">
                             {tab === 'tx' && <Transactions recording={recording} picked={picked} pick={pick} actions={txActions} />}
                             {tab === 'deco' && <Decorations state={state} snap={snap} />}
                             {tab === 'checks' && <Checks recording={recording} open={open} />}
                             {tab === 'replay' && <Replay view={view} state={replay} setState={setReplay} />}
-                        </div>
-                    </div>
+                        </TabsContent>
+                    </Tabs>
                 </div>
             )}
             {flashBox && <div className="ins-flash" aria-hidden="true" style={flashBox} />}

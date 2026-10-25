@@ -8,6 +8,10 @@ import { DiffLines } from './Diff.js';
 import { Icon } from './Icons.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { Select } from '../ui/select.js';
+import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
+import { Textarea } from '../ui/textarea.js';
 
 const METHOD_NAME: Record<MergeMethod, string> = { merge: 'Merge commit', squash: 'Squash and merge', rebase: 'Rebase and merge' };
 const MARK: Record<FileStatus, string> = { added: 'A', modified: 'M', deleted: 'D', renamed: 'R' };
@@ -50,8 +54,8 @@ function Discussion({ pull, comments, commenting, cleared }: { pull: PullRequest
             <Comment author={pull.author} body={pull.body.trim() || 'No description.'} time={pull.createdAt} description />
             {comments.map(c => <Comment key={c.id} author={c.author} body={c.body} time={c.createdAt} description={false} />)}
             <div className="comment-form">
-                <textarea aria-label="Comment" placeholder="Leave a comment" rows={3} value={text} disabled={commenting} onChange={e => setText(e.target.value)} />
-                <button className="button suggested" disabled={commenting || !text.trim()} onClick={() => client.commentOnPull(text.trim())}>Comment</button>
+                <Textarea aria-label="Comment" placeholder="Leave a comment" rows={3} value={text} disabled={commenting} onChange={e => setText(e.target.value)} />
+                <Button size="sm" disabled={commenting || !text.trim()} onClick={() => client.commentOnPull(text.trim())}>Comment</Button>
             </div>
         </div>
     );
@@ -74,20 +78,20 @@ export function PullPage() {
     return (
         <div className="pull-page">
             <header className="pull-head">
-                <button className="button flat circular" title="Close" aria-label="Close the review" onClick={() => client.closePull()}><Icon name="go-previous" /></button>
+                <IconButton label="Close the review" onClick={() => client.closePull()}><Icon name="go-previous" /></IconButton>
                 <div className="titles">
                     <h2>#{pull.number}  {pull.title}</h2>
                     <p className="meta">{pull.author} wants to merge {pull.headRef} into {pull.baseRef} · {relativeTime(Date.parse(pull.updatedAt) / 1000, Date.now() / 1000)}</p>
                 </div>
                 <div className="actions">
-                    {pull.url && <button className="button flat" onClick={() => client.pullInBrowser()}>Open in browser</button>}
-                    {resolving !== null && <button className="button" onClick={() => client.abortPull()}>Abort merge</button>}
+                    {pull.url && <Button variant="ghost" size="sm" onClick={() => client.pullInBrowser()}>Open in browser</Button>}
+                    {resolving !== null && <Button variant="outline" size="sm" onClick={() => client.abortPull()}>Abort merge</Button>}
                     {open && (
                         <div className="merge-split">
                             <Select aria-label="Merge method" value={method} disabled={busy || resolving !== null} onChange={e => setMethod(e.target.value as MergeMethod)}>
                                 {(Object.keys(METHOD_NAME) as MergeMethod[]).map(m => <option key={m} value={m}>{METHOD_NAME[m]}</option>)}
                             </Select>
-                            <button className="button suggested" disabled={busy || resolving !== null || pull.mergeable === false} onClick={() => client.mergePull(method)}>{busy ? 'Merging…' : 'Merge'}</button>
+                            <Button size="sm" disabled={busy || resolving !== null || pull.mergeable === false} onClick={() => client.mergePull(method)}>{busy ? 'Merging…' : 'Merge'}</Button>
                         </div>
                     )}
                 </div>
@@ -95,34 +99,34 @@ export function PullPage() {
             {banner && (
                 <div className="banner" role="status">
                     <span>{banner.text}</span>
-                    {banner.action === 'resolve' && <button className="button" onClick={() => client.resolvePull()}>Resolve locally…</button>}
-                    {banner.action === 'finish' && <button className="button suggested" onClick={() => client.finishPull()}>Finish and push</button>}
+                    {banner.action === 'resolve' && <Button variant="outline" size="sm" onClick={() => client.resolvePull()}>Resolve locally…</Button>}
+                    {banner.action === 'finish' && <Button size="sm" onClick={() => client.finishPull()}>Finish and push</Button>}
                 </div>
             )}
             <div className="pull-body">
                 <nav className="pull-files" aria-label="Changed files">
                     {files.map(f => (
-                        <button key={f.path} className={`file${selected === f.path ? ' active' : ''}`} title={f.previousPath ? `${f.previousPath} → ${f.path}` : f.path}
+                        <Button key={f.path} variant="ghost" className={`file h-auto justify-start font-normal${selected === f.path ? ' active' : ''} text-left`} title={f.previousPath ? `${f.previousPath} → ${f.path}` : f.path}
                             aria-current={selected === f.path} onClick={() => { setView(v => v === 'discussion' ? 'note' : v); client.selectPullFile(f.path); }}>
                             <span className={`mark ${MARK_CLASS[f.status]}`} aria-hidden="true">{MARK[f.status]}</span>
                             <span className="name">{f.path}</span>
                             <span className="counts">+{f.additions} −{f.deletions}</span>
-                        </button>
+                        </Button>
                     ))}
                 </nav>
-                <section className="pull-main">
-                    <div className="pref-tabs" role="tablist">
-                        <button role="tab" aria-selected={showing === 'note'} disabled={rendered === null} className={showing === 'note' ? 'active' : ''} onClick={() => setView('note')}>Note</button>
-                        <button role="tab" aria-selected={showing === 'raw'} className={showing === 'raw' ? 'active' : ''} onClick={() => setView('raw')}>Raw diff</button>
-                        <button role="tab" aria-selected={showing === 'discussion'} className={showing === 'discussion' ? 'active' : ''} onClick={() => setView('discussion')}>
-                            {comments.length ? `Discussion (${comments.length})` : 'Discussion'}
-                        </button>
-                    </div>
+                <Tabs value={showing} onValueChange={value => setView(value as typeof view)} className="pull-main">
+                    <TabsList className="pref-tabs">
+                        <TabsTrigger value="note" disabled={rendered === null}>Note</TabsTrigger>
+                        <TabsTrigger value="raw">Raw diff</TabsTrigger>
+                        <TabsTrigger value="discussion">{comments.length ? `Discussion (${comments.length})` : 'Discussion'}</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value={showing} className="flex flex-col gap-2">
                     {showing === 'discussion' ? <Discussion pull={pull} comments={comments} commenting={commenting} cleared={cleared} />
                         : message ? <p className="empty">{message}</p>
                             : fileView && fileView.note && lines.length === 0 ? <p className="empty">{fileView.note}</p>
                                 : <DiffLines lines={lines} className="large" />}
-                </section>
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     );

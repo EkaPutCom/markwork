@@ -29,7 +29,7 @@ try {
     let page = await app.firstWindow();
     const userData = await app.evaluate(({ app: a }) => a.getPath('userData'));
     const available = await app.evaluate(({ safeStorage }) => safeStorage.isEncryptionAvailable());
-    const settings = () => page.getByRole('complementary', { name: 'Assistant' }).getByRole('dialog', { name: 'Assistant settings' });
+    const settings = () => page.getByRole('dialog', { name: 'Assistant settings' });
     const openSettings = async () => {
         await page.getByRole('treeitem', { name: /plan\.md/ }).waitFor({ timeout: 15000 });
         if (!(await page.getByRole('complementary', { name: 'Assistant' }).count())) await page.keyboard.press('ControlOrMeta+Shift+A');

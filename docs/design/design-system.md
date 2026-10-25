@@ -65,7 +65,7 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 3: Melengkapi fondasi
 
-**Selesai** (25 Oktober 2026), kecuali Sonner. Command menyusul di tahap 5 bersama palet perintah.
+**Selesai** (25 Oktober 2026). Command dan Sonner ditambahkan di tahap 5 bersama palet perintah dan toast yang memakainya.
 
 - Primitif hasil tahap 0 ditambahkan ke `ui/`: 19 dari shadcn (termasuk Tooltip), ditambah `IconButton` milik Markwork. 17 di antaranya sudah ada, ditambah Toggle sebagai dasar ToggleGroup. Command dan Sonner menunggu tahap 5: keduanya butuh paket `cmdk` dan `sonner`, jadi baru ditambahkan bersama migrasi palet perintah dan toast yang memakainya.
 - Skala teks tujuh ukuran dan palet `--cat-*` ditambahkan ke file token.
@@ -81,15 +81,19 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 5: Migrasi komponen
 
-**Berjalan.** Sudah: Outline (daftar `Button` ghost, indentasi lewat `--depth`), EditingMode (`ToggleGroup` tunggal dengan `Tooltip`; tes mencarinya sebagai `radio`, bukan `button` lagi), dan dialog inti di `Dialog.tsx` (`AlertDialog` dengan `Input`, `Label`, `Button`), tombol tutup tab dokumen di `Tabs.tsx` (`IconButton`), dan palet perintah (`Command` dari paket `cmdk`, di dalam `Dialog`). `Diff.tsx` tidak punya temuan, jadi tidak diubah.
+**Selesai** (26 Oktober 2026): tidak ada lagi temuan di `components/` dan `App.tsx`. Baseline turun dari 583 ke 13, semuanya widget `lib/` yang menjadi bagian tahap 6.
 
-- Satu per satu, dari kecil ke besar: Outline, EditingMode, Dialog, Diff, Tabs, Palette, Sidebar, …, lalu Board, Chat, Review.
-- Setiap langkah: elemen mentah diganti primitif, class `theme.css` yang tak terpakai dihapus, baseline diturunkan, tes area itu dijalankan.
-- Satu PR berisi satu sampai beberapa komponen kecil.
+- Outline, EditingMode, dialog inti (`AlertDialog`), tombol tutup tab dokumen, dan palet perintah (`Command` dari paket `cmdk`) lebih dulu, dalam PR kecil. Sisanya dalam satu PR.
+- `Modal` di `Modals.tsx` sekarang `Dialog`; semua dialog tugas (Preferences, Fields, kartu, Harness, Collab, laporan masalah, viewer History, log) ikut. `hidden` menyembunyikannya sebentar tanpa menutupnya (gambar editor di laporan masalah).
+- Toast memakai Sonner (`ui/sonner.tsx`). Menu klik kanan dan menu di titik pointer memakai `ContextMenu` dan `DropdownMenu` (dengan submenu); popover field dan popover Assistant memakai `Popover`.
+- Chip menjadi `Badge` dengan class `note-chip`; pilihan yang menyatu (ukuran galeri, zoom timeline, mode kalender, filter log, Live/Paused) menjadi `ToggleGroup`, jadi tesnya mencari `radio`. Tab di dialog dan panel menjadi `Tabs`; kotak centang menjadi `Checkbox`, jadi tesnya mencari `checkbox`.
+- Dua pengecualian dengan `ui-allow`: sel grid CSV (field polos yang digambar grid itu sendiri) dan input file yang tersembunyi di Replay.
+- Class lama di `theme.css` (`.button`, `.popover`, `.dialog`, switch dan tab buatan sendiri, `.icon-button`, `.linked`, aturan entry bersama) dihapus: dari 1180 ke sekitar 1030 baris.
 
 ### Tahap 6: Tampilan editor
 
 - Style CodeMirror dan widget (tabel, code box, diagram, gambar) memakai token dan mengikuti `ui.md`.
+- Widget `lib/` yang masih membuat kontrolnya sendiri (blockhandle, blocktools, conflicts, editor, visual, sisa find bar) pindah ke `domButton` dan helper `ui/dom.ts` lain: 13 temuan terakhir di baseline.
 - Dicek di dokumen contoh tahap 4.
 
 ### Tahap 7: Penutup

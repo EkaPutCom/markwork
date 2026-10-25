@@ -1,9 +1,9 @@
-// shadcn/ui DropdownMenu (the parts this window uses). It opens with shadcn's animation but closes at once: a menu still
+// shadcn/ui DropdownMenu (the parts this window uses, with its submenus). It opens with shadcn's animation but closes at once: a menu still
 // fading out would swallow the next click on its button (a layout chosen, then the layout button pressed again).
 
 import type { ComponentProps } from 'react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
-import { CheckIcon } from 'lucide-react';
+import { CheckIcon, ChevronRightIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function DropdownMenu(props: ComponentProps<typeof DropdownMenuPrimitive.Root>) {
@@ -59,4 +59,29 @@ export function DropdownMenuSeparator({ className, ...props }: ComponentProps<ty
 
 export function DropdownMenuShortcut({ className, ...props }: ComponentProps<'span'>) {
     return <span data-slot="dropdown-menu-shortcut" className={cn('ml-auto text-xs tracking-widest text-muted-foreground', className)} {...props} />;
+}
+
+export function DropdownMenuSub(props: ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
+    return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />;
+}
+
+export function DropdownMenuSubTrigger({ className, inset, children, ...props }: ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & { inset?: boolean }) {
+    return (
+        <DropdownMenuPrimitive.SubTrigger data-slot="dropdown-menu-sub-trigger" data-inset={inset}
+            className={cn("flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4", className)}
+            {...props}>
+            {children}
+            <ChevronRightIcon className="ml-auto text-muted-foreground" />
+        </DropdownMenuPrimitive.SubTrigger>
+    );
+}
+
+export function DropdownMenuSubContent({ className, ...props }: ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+    return (
+        <DropdownMenuPrimitive.Portal>
+            <DropdownMenuPrimitive.SubContent data-slot="dropdown-menu-sub-content"
+                className={cn('z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95', className)}
+                {...props} />
+        </DropdownMenuPrimitive.Portal>
+    );
 }

@@ -5,6 +5,7 @@
 
 import { COMMANDS } from '../../../src/app/commands.js';
 import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
 import { Icon, type IconName } from './Icons.js';
 import { label as keyLabel } from '../lib/keys.js';
@@ -26,9 +27,9 @@ const OTHER_BLOCKS: Record<string, string> = {
     h4: 'Heading 4', h5: 'Heading 5', h6: 'Heading 6', bullet: 'Bulleted list', numbered: 'Numbered list', task: 'To-do list', table: 'Table',
 };
 
-const titleOf = (id: string, text: string): string => {
+const keysOf = (id: string): string | undefined => {
     const keys = COMMANDS.find(c => c.id === id)?.keys[0];
-    return keys ? `${text} (${keyLabel(keys)})` : text;
+    return keys ? keyLabel(keys) : undefined;
 };
 
 const IDLE = { block: 'paragraph', marks: [] };
@@ -41,11 +42,11 @@ export function FormatBar({ pane }: { pane: Pane }) {
     // The commands act on the pane that has the focus, so a button of this one gives it the focus first.
     const run = (id: string) => { client.focusPane(pane.id); client.run(id); client.focusEditor(); };
     const tool = (id: string, text: string, icon: IconName, pressed?: boolean) => (
-        <Button key={id} variant="ghost" size="icon-sm" title={titleOf(id, text)} aria-label={text} aria-pressed={pressed}
+        <IconButton key={id} label={text} shortcut={keysOf(id)} aria-pressed={pressed}
             // The editor keeps the focus and the selection the command works on.
             onMouseDown={e => e.preventDefault()} onClick={() => run(id)}>
             <Icon name={icon} />
-        </Button>
+        </IconButton>
     );
     const marks = new Set(format.marks);
     const style = STYLES.find(s => s.block === format.block);

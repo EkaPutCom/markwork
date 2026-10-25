@@ -7,6 +7,13 @@ import type { SendVia } from '../../../src/app/protocol/collab.js';
 import { Icon } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Button } from '../ui/button.js';
+import { Checkbox } from '../ui/checkbox.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Input } from '../ui/input.js';
+import { Label } from '../ui/label.js';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group.js';
+import { Textarea } from '../ui/textarea.js';
 
 export function Collab() {
     const client = useClient();
@@ -18,24 +25,24 @@ export function Collab() {
             <div className="side-title">
                 <span>{pulls.length ? `Pull requests (${pulls.length})` : 'Pull requests'}</span>
                 <span className="actions">
-                    <button className="button flat circular" title="Send changes as a pull request" aria-label="Send changes as a pull request" onClick={() => client.sendChanges()}><Icon name="go-up" /></button>
-                    <button className="button flat circular" title="Reload pull requests" aria-label="Reload pull requests" onClick={() => client.refreshPulls()}><Icon name="view-refresh" /></button>
+                    <IconButton size="icon-xs" label="Send changes as a pull request" onClick={() => client.sendChanges()}><Icon name="go-up" /></IconButton>
+                    <IconButton size="icon-xs" label="Reload pull requests" onClick={() => client.refreshPulls()}><Icon name="view-refresh" /></IconButton>
                 </span>
             </div>
             {collab.server && (
-                <button className="server" title="Server access" onClick={() => client.editServer()}>
+                <Button variant="ghost" size="sm" className="server justify-between font-normal" aria-label={`Server access: ${collab.server}`} onClick={() => client.editServer()}>
                     <span className="label">{collab.server}</span><Icon name="emblem-system" />
-                </button>
+                </Button>
             )}
             {collab.note && (
                 <div className="placeholder">
                     <p>{collab.note}</p>
-                    {collab.server && <button className="button" onClick={() => client.editServer()}>Server access…</button>}
+                    {collab.server && <Button variant="outline" size="sm" onClick={() => client.editServer()}>Server access…</Button>}
                 </div>
             )}
             <div className="pulls" aria-label="Open pull requests">
                 {pulls.map(p => (
-                    <button key={p.number} className="pull-row" onClick={() => client.openPull(p.number)}>
+                    <Button key={p.number} variant="ghost" className="pull-row h-auto items-stretch font-normal text-left" onClick={() => client.openPull(p.number)}>
                         <span className="subject">
                             <span className={`dot ${p.mergeable === false ? 'warning' : p.mergeable === null ? 'dim' : 'success'}`} role="img"
                                 aria-label={p.mergeable === false ? 'Conflicts with the base branch' : p.mergeable === null ? 'Checking whether it can be merged' : 'Can be merged'}>●</span>
@@ -46,7 +53,7 @@ export function Collab() {
                             {p.comments > 0 && ` · ${p.comments} ${p.comments === 1 ? 'comment' : 'comments'}`}
                             {p.mergeable === false && ' · conflicts'}
                         </span>
-                    </button>
+                    </Button>
                 ))}
             </div>
         </aside>
@@ -80,17 +87,17 @@ export function TokenDialog() {
         <Modal title="Server access" onClose={() => client.answerToken(tokenAsk.id, null)}>
             <form className="form" onSubmit={e => { e.preventDefault(); if (canForget || token.trim()) save(); }}>
                 <p>Markwork reads the pull requests of {repo.owner}/{repo.repo} on {repo.host}. Create an access token in your account settings there (Applications), allowed to read and write repositories, and paste it here.</p>
-                <input type="password" autoFocus aria-label="Access token" autoComplete="off" value={token} onChange={e => setToken(e.target.value)}
+                <Input type="password" autoFocus aria-label="Access token" autoComplete="off" value={token} onChange={e => setToken(e.target.value)}
                     placeholder={canForget ? 'Saved — type to replace' : 'Access token'} />
                 <div className="test-row">
-                    <button type="button" className="button" onClick={() => void test()}>Test connection</button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void test()}>Test connection</Button>
                     {status && <span className={`status ${status.kind}`} role="status">{status.text}</span>}
                 </div>
                 {source === 'env' && <p className="dim">The token in use comes from the MARKWORK_FORGE_TOKEN environment variable, which takes precedence over one saved here.</p>}
                 {source !== 'env' && hasToken && <p className="dim">Save with the field empty to remove the saved token.</p>}
                 <div className="buttons">
-                    <button type="submit" className="button suggested" disabled={!canForget && !token.trim()}>Save</button>
-                    <button type="button" className="button" onClick={() => client.answerToken(tokenAsk.id, null)}>Cancel</button>
+                    <Button type="submit" disabled={!canForget && !token.trim()}>Save</Button>
+                    <Button type="button" variant="outline" onClick={() => client.answerToken(tokenAsk.id, null)}>Cancel</Button>
                 </div>
             </form>
         </Modal>
@@ -132,28 +139,30 @@ export function SendChangesDialog() {
         <Modal title="Send Changes as Pull Request" onClose={() => client.answerSend(sendAsk.id, null)}>
             <form className="form" onSubmit={e => { e.preventDefault(); send(); }}>
                 <p>Sent to {options.repository}, to be merged into {options.base}.</p>
-                <label>Title<input autoFocus value={title} onChange={e => { setTitle(e.target.value); if (!branchEdited) setBranch(slug(e.target.value) || today()); }} /></label>
-                <label>Description<textarea rows={3} value={body} onChange={e => setBody(e.target.value)} /></label>
-                <label>Branch<input value={branch} onChange={e => { setBranch(e.target.value); setBranchEdited(true); }} /></label>
+                <Label>Title<Input autoFocus value={title} onChange={e => { setTitle(e.target.value); if (!branchEdited) setBranch(slug(e.target.value) || today()); }} /></Label>
+                <Label>Description<Textarea rows={3} value={body} onChange={e => setBody(e.target.value)} /></Label>
+                <Label>Branch<Input value={branch} onChange={e => { setBranch(e.target.value); setBranchEdited(true); }} /></Label>
                 <fieldset>
                     <legend>How it is sent</legend>
-                    {VIA.filter(([kind]) => kind !== 'direct' || options.canPush).map(([kind, name, detail]) => (
-                        <label key={kind} className="radio" title={detail}><input type="radio" name="via" checked={via === kind} onChange={() => setVia(kind)} />{name}</label>
-                    ))}
+                    <RadioGroup value={via} onValueChange={value => setVia(value as SendVia)} className="gap-1">
+                        {VIA.filter(([kind]) => kind !== 'direct' || options.canPush).map(([kind, name, detail]) => (
+                            <Label key={kind} className="choice" title={detail}><RadioGroupItem value={kind} />{name}</Label>
+                        ))}
+                    </RadioGroup>
                 </fieldset>
                 <fieldset className="send-files">
                     <legend>Changes to send</legend>
                     {options.changes.map(c => (
-                        <label key={c.path} className="radio">
-                            <input type="checkbox" checked={!skipped.has(c.path)} onChange={e => setSkipped(old => { const next = new Set(old); if (e.target.checked) next.delete(c.path); else next.add(c.path); return next; })} />
+                        <Label key={c.path} className="choice">
+                            <Checkbox checked={!skipped.has(c.path)} onCheckedChange={on => setSkipped(old => { const next = new Set(old); if (on === true) next.delete(c.path); else next.add(c.path); return next; })} />
                             {c.path.startsWith(prefix) ? c.path.slice(prefix.length) : c.path}
-                        </label>
+                        </Label>
                     ))}
                 </fieldset>
                 {problem && <div className="form-error" role="alert">{problem}</div>}
                 <div className="buttons">
-                    <button type="submit" className="button suggested" disabled={!!problem}>Send</button>
-                    <button type="button" className="button" onClick={() => client.answerSend(sendAsk.id, null)}>Cancel</button>
+                    <Button type="submit" disabled={!!problem}>Send</Button>
+                    <Button type="button" variant="outline" onClick={() => client.answerSend(sendAsk.id, null)}>Cancel</Button>
                 </div>
             </form>
         </Modal>

@@ -7,6 +7,10 @@ import { displayValue, readItem, OPTION_COLORS, type FieldDef, type Parsed } fro
 import { nextSort, SECTION_COLUMN, sortSpec, TITLE_COLUMN, tableColumns, tableRows, type SortSpec, type TableRow } from '../../../src/markdown/tablelayout.js';
 import { CardDialog, Chip, headingOf, Inline, refOf, todayString, usePopup, useFieldEditor, type CardAnswer } from './notes.js';
 import { Icon } from './Icons.js';
+import { Button } from '../ui/button.js';
+import { Checkbox } from '../ui/checkbox.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Input } from '../ui/input.js';
 import { useClient, useStore } from '../lib/useClient.js';
 
 // The value of a field as a small widget for its type; a missing one is a dash, and one that does not fit is marked.
@@ -66,11 +70,11 @@ export function TableView({ board, focus, tab }: { board: Board; focus: number; 
             <div className="table-wrap">
                 <header>
                     <div className="titles"><h1>{title}</h1>{description && <p className="dim">{description}</p>}</div>
-                    <button className="button" onClick={() => setDialog({ at: null, text: '', notes: [] })}>
+                    <Button variant="outline" size="sm" onClick={() => setDialog({ at: null, text: '', notes: [] })}>
                         <Icon name="list-add" />New Row
-                    </button>
+                    </Button>
                 </header>
-                <input ref={entry} className="capture" value={text} placeholder="Write a title and press Enter to add a row…" aria-label="Quick capture to the table"
+                <Input ref={entry} className="capture" value={text} placeholder="Write a title and press Enter to add a row…" aria-label="Quick capture to the table"
                     onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); capture(); } }} />
                 {rows.length === 0 ? <div className="empty-page"><h2>The table is empty</h2><p>Type a row above and press Enter.</p></div> : (
                     <table className="notes-table">
@@ -79,7 +83,7 @@ export function TableView({ board, focus, tab }: { board: Board; focus: number; 
                                 {checks && <th aria-label="Done" />}
                                 {keys.map(key => (
                                     <th key={key} aria-sort={sort?.key === key ? (sort.desc ? 'descending' : 'ascending') : 'none'}>
-                                        <button title="Sort by this column" onClick={() => setSortOverride(nextSort(sort, key))}>{label(key)}{sort?.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</button>
+                                        <Button variant="ghost" size="xs" className="sort" onClick={() => setSortOverride(nextSort(sort, key))}>{label(key)}{sort?.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</Button>
                                     </th>
                                 ))}
                                 <th aria-label="Delete" />
@@ -93,7 +97,7 @@ export function TableView({ board, focus, tab }: { board: Board; focus: number; 
                                     <tr key={`${row.at.column}:${row.at.index}:${row.card.text}`} className={row.card.done === true ? 'done' : ''}>
                                         {checks && (
                                             <td className="check-cell">
-                                                {row.card.done !== null && <input type="checkbox" checked={row.card.done} aria-label={`Mark done: ${item.title}`} onChange={() => client.editNotes({ kind: 'toggle', ...ref })} />}
+                                                {row.card.done !== null && <Checkbox checked={row.card.done} aria-label={`Done: ${item.title}`} onCheckedChange={() => client.editNotes({ kind: 'toggle', ...ref })} />}
                                             </td>
                                         )}
                                         {keys.map(key => {
@@ -109,8 +113,8 @@ export function TableView({ board, focus, tab }: { board: Board; focus: number; 
                                             );
                                         })}
                                         <td className="delete-cell">
-                                            <button className="button flat circular remove" title="Delete row" aria-label={`Delete row: ${item.title}`}
-                                                onClick={async () => { if (await client.confirm(`Delete the note “${item.title}”?`, '', 'Delete')) client.editNotes({ kind: 'delete', ...ref }); }}><Icon name="window-close" /></button>
+                                            <IconButton size="icon-xs" className="remove" label={`Delete row: ${item.title}`}
+                                                onClick={async () => { if (await client.confirm(`Delete the note “${item.title}”?`, '', 'Delete')) client.editNotes({ kind: 'delete', ...ref }); }}><Icon name="window-close" /></IconButton>
                                         </td>
                                     </tr>
                                 );

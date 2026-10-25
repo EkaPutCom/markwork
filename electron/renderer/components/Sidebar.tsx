@@ -2,6 +2,7 @@
 // and Preferences at the foot) that stays when the sidebar is closed, and the panel of the page shown beside it.
 
 import { useState, type ReactNode } from 'react';
+import { IconButton } from '../ui/icon-button.js';
 import { Icon, type IconName } from './Icons.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { layoutOf, SIDEBAR_WIDTH } from '../lib/client.js';
@@ -23,18 +24,17 @@ export function ActivityBar() {
     return (
         <nav className="rail" aria-label="Sidebar pages">
             {PAGES.map(({ page, label, icon }) => (
-                <button key={page} className="button flat" title={label} aria-label={label}
-                    aria-pressed={shown && current === page} onClick={() => client.showSidebarPage(page)}>
+                <IconButton key={page} label={label} aria-pressed={shown && current === page} onClick={() => client.showSidebarPage(page)}>
                     <Icon name={icon} />
-                </button>
+                </IconButton>
             ))}
             <span className="grow" />
-            <button className="button flat rail-programs" title="Programs" aria-label={state.programsMissing > 0 ? `Programs, ${state.programsMissing} missing` : 'Programs'} onClick={() => client.openPrograms()}>
+            <IconButton className="rail-programs" label={state.programsMissing > 0 ? `Programs, ${state.programsMissing} missing` : 'Programs'} onClick={() => client.openPrograms()}>
                 <Icon name="programs" />{state.programsMissing > 0 && <span className="mark-dot" aria-hidden="true" />}
-            </button>
-            <button className="button flat" title="Preferences" aria-label="Preferences" onClick={() => client.run('preferences')}>
+            </IconButton>
+            <IconButton label="Preferences" onClick={() => client.run('preferences')}>
                 <Icon name="preferences-system" />
-            </button>
+            </IconButton>
         </nav>
     );
 }

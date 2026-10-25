@@ -16,6 +16,11 @@ import { buildPattern, type SearchOptions } from '../../../src/markdown/search.j
 import { Icon } from './Icons.js';
 import { PopupMenu, usePopup, type MenuEntry } from './notes.js';
 import { useClient } from '../lib/useClient.js';
+import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group.js';
+import { Toggle } from '../ui/toggle.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
 
 const ROW_HEIGHT = 33, NUMBER_WIDTH = 48, BUFFER = 6;
 const MATCH_ROW = 100000;   // a match is the number row * MATCH_ROW + column
@@ -236,6 +241,7 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
     const input = (row: number, column: number, header: boolean) => {
         const value = cellAt(table, row, column);
         return (
+            // ui-allow: a cell of the grid is a bare field drawn as the grid draws it (Markwork's own CSV grid, ui.md "Primitives")
             <input key={`${row}:${column}:${value}`} data-cell={`${row}:${column}`} defaultValue={value} spellCheck={false} aria-label={header ? `Column ${column + 1} name` : `Row ${row}, ${cellAt(table, 0, column) || `column ${column + 1}`}`}
                 className={`csv-cell${header ? ' head' : ''}${numeric[column] ? ' num' : ''}${mark({ row, column })}`} style={{ width: widths[column] }}
                 onBlur={e => commit(row, column, e.target.value)} onKeyDown={e => keyDown(e, row, column)}
@@ -250,41 +256,48 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
                 // The same find bar as the editor's (findbar.ts): ▸ unfolds Replace, the toggles sit in the Find field.
                 <div className="find-panel csv-find" role="search">
                     <div className="find-box">
-                        <button className={`button expand${withReplace ? ' checked' : ''}`} aria-pressed={withReplace} aria-label="Replace" title="Replace" onClick={() => setWithReplace(v => !v)}>
+                        <IconButton size="icon-sm" label="Replace" aria-pressed={withReplace} onClick={() => setWithReplace(v => !v)}>
                             <Icon name={withReplace ? 'pan-down' : 'pan-end'} />
-                        </button>
+                        </IconButton>
                         <div className="fields">
-                            <div className={`entry${invalid ? ' invalid' : ''}`} title={invalid ? (built as { error: string }).error : undefined}>
-                                <Icon name="edit-find" />
-                                <input ref={queryInput} value={query} placeholder="Find" aria-label="Find in the table" spellCheck={false} onChange={e => setQuery(e.target.value)}
+                            <InputGroup className="h-8" title={invalid ? (built as { error: string }).error : undefined}>
+                                <InputGroupAddon><Icon name="edit-find" /></InputGroupAddon>
+                                <InputGroupInput ref={queryInput} value={query} placeholder="Find" aria-label="Find in the table" aria-invalid={invalid || undefined} spellCheck={false} onChange={e => setQuery(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); } else if (e.key === 'Escape') { e.preventDefault(); closeSearch(); } }} />
-                                {TOGGLES.map(t => (
-                                    <button key={t.key} className={`chip-button${options[t.key] ? ' checked' : ''}`} aria-pressed={options[t.key]} title={t.title} aria-label={t.title}
-                                        onMouseDown={e => e.preventDefault()} onClick={() => setOptions(o => ({ ...o, [t.key]: !o[t.key] }))}>{t.label}</button>
-                                ))}
-                            </div>
+                                <InputGroupAddon align="inline-end" className="gap-0.5">
+                                    {TOGGLES.map(t => (
+                                        <Tooltip key={t.key}>
+                                            <TooltipTrigger asChild>
+                                                <Toggle size="xs" className="h-5 min-w-5 font-mono text-2xs" aria-label={t.title} pressed={options[t.key]}
+                                                    onMouseDown={e => e.preventDefault()} onPressedChange={on => setOptions(o => ({ ...o, [t.key]: on }))}>{t.label}</Toggle>
+                                            </TooltipTrigger>
+                                            <TooltipContent>{t.title}</TooltipContent>
+                                        </Tooltip>
+                                    ))}
+                                </InputGroupAddon>
+                            </InputGroup>
                             {withReplace && (
-                                <div className="entry">
-                                    <input value={replacement} placeholder="Replace" aria-label="Replace in the table" spellCheck={false} onChange={e => setReplacement(e.target.value)}
+                                <InputGroup className="h-8">
+                                    <InputGroupInput value={replacement} placeholder="Replace" aria-label="Replace in the table" spellCheck={false} onChange={e => setReplacement(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); replaceOne(); } else if (e.key === 'Escape') closeSearch(); }} />
-                                    <button className="chip-button" title="Replace the selected result and go to the next" aria-label="Replace the selected result and go to the next" onMouseDown={e => e.preventDefault()} onClick={replaceOne}>Replace</button>
-                                    <button className="chip-button" title="Replace All" aria-label="Replace All" onMouseDown={e => e.preventDefault()} onClick={replaceAll}>All</button>
-                                </div>
+                                    <InputGroupAddon align="inline-end">
+                                        <InputGroupButton aria-label="Replace the selected result and go to the next" onMouseDown={e => e.preventDefault()} onClick={replaceOne}>Replace</InputGroupButton>
+                                        <InputGroupButton aria-label="Replace All" onMouseDown={e => e.preventDefault()} onClick={replaceAll}>All</InputGroupButton>
+                                    </InputGroupAddon>
+                                </InputGroup>
                             )}
                         </div>
-                        <div className="linked">
-                            <button className="button" title="Previous result (Shift+Enter)" aria-label="Previous match" onClick={() => step(-1)}><Icon name="chevron-up" /></button>
-                            <button className="button" title="Next result (Enter)" aria-label="Next match" onClick={() => step(1)}><Icon name="chevron-down" /></button>
-                        </div>
+                        <IconButton size="icon-sm" label="Previous match" shortcut="Shift+Enter" onClick={() => step(-1)}><Icon name="chevron-up" /></IconButton>
+                        <IconButton size="icon-sm" label="Next match" shortcut="Enter" onClick={() => step(1)}><Icon name="chevron-down" /></IconButton>
                         {label && <span className="count" role="status">{label}</span>}
                         <span className="separator" />
-                        <button className="button flat close" title="Close" aria-label="Close search" onClick={closeSearch}><Icon name="window-close" /></button>
+                        <IconButton size="icon-sm" label="Close search" shortcut="Esc" onClick={closeSearch}><Icon name="window-close" /></IconButton>
                     </div>
                 </div>
             )}
             <div className="csv-toolbar">
-                <button className="button" onClick={() => insertRowAt(rowCount, 0)}><Icon name="list-add" />Add Row</button>
-                <button className="button" onClick={() => insertColumnAt(columns)}><Icon name="list-add" />Add Column</button>
+                <Button variant="outline" size="sm" onClick={() => insertRowAt(rowCount, 0)}><Icon name="list-add" />Add Row</Button>
+                <Button variant="outline" size="sm" onClick={() => insertColumnAt(columns)}><Icon name="list-add" />Add Column</Button>
             </div>
             <div className="csv-body" ref={body} onScroll={e => setScroll({ top: e.currentTarget.scrollTop, height: e.currentTarget.clientHeight, width: e.currentTarget.clientWidth })}
                 onDragOver={dragOver} onDrop={drop}>
@@ -295,8 +308,8 @@ export function Csv({ text, rev, find }: { text: string; rev: number; find: { n:
                             <span key={c} className="csv-head-cell">
                                 <span className="grip" draggable title="Drag to move the column" aria-label={`Move column ${c + 1}`} onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(c)); setDrag({ kind: 'column', index: c, gap: null }); }} onDragEnd={() => setDrag(null)}><Icon name="list-drag-handle" /></span>
                                 {input(0, c, true)}
-                                <button className="button flat circular more" title="Column menu" aria-label={`Column menu: ${cellAt(table, 0, c) || `column ${c + 1}`}`} aria-haspopup="menu"
-                                    onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ at: { x: r.left, y: r.bottom }, entries: columnMenu(c) }); }}><Icon name="view-more" /></button>
+                                <IconButton size="icon-xs" className="more size-6" label={`Column menu: ${cellAt(table, 0, c) || `column ${c + 1}`}`} aria-haspopup="menu"
+                                    onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ at: { x: r.left, y: r.bottom }, entries: columnMenu(c) }); }}><Icon name="view-more" /></IconButton>
                             </span>
                         ))}
                         {drag?.kind === 'column' && drag.gap !== null && <span className="csv-drop-v" style={{ left: gapX, height: scroll.height + ROW_HEIGHT }} />}

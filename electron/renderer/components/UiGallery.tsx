@@ -18,11 +18,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '../ui/context-menu.js';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog.js';
 import {
-    DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub,
+    DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
 } from '../ui/dropdown-menu.js';
 import { IconButton } from '../ui/icon-button.js';
 import { Input } from '../ui/input.js';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group.js';
+import { toast } from 'sonner';
 import { Kbd } from '../ui/kbd.js';
 import { Label } from '../ui/label.js';
 import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarShortcut, MenubarTrigger } from '../ui/menubar.js';
@@ -265,7 +267,7 @@ function Choices() {
 function Overlays() {
     const [wrap, setWrap] = useState(true);
     return (
-        <Section id="overlays" title="Menus, Popover, Tooltip, Dialog, AlertDialog">
+        <Section id="overlays" title="Menus, Toast, Popover, Tooltip, Dialog, AlertDialog">
             <Row label="Menus">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" size="sm">Dropdown menu<Icon name="pan-down" /></Button></DropdownMenuTrigger>
@@ -274,6 +276,10 @@ function Overlays() {
                         <DropdownMenuItem><Icon name="document-new" />New Document<DropdownMenuShortcut>Ctrl+N</DropdownMenuShortcut></DropdownMenuItem>
                         <DropdownMenuItem disabled>Disabled item</DropdownMenuItem>
                         <DropdownMenuCheckboxItem checked={wrap} onCheckedChange={setWrap}>Wrap lines</DropdownMenuCheckboxItem>
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>Move to</DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent><DropdownMenuItem>Today</DropdownMenuItem><DropdownMenuItem>Later</DropdownMenuItem></DropdownMenuSubContent>
+                        </DropdownMenuSub>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem variant="destructive"><Icon name="edit-clear" />Move to Trash</DropdownMenuItem>
                     </DropdownMenuContent>
@@ -297,6 +303,10 @@ function Overlays() {
                         <ContextMenuItem variant="destructive">Delete</ContextMenuItem>
                     </ContextMenuContent>
                 </ContextMenu>
+            </Row>
+            <Row label="Toast">
+                <Button variant="outline" size="sm" onClick={() => toast('The note is saved')}>A notice</Button>
+                <Button variant="outline" size="sm" onClick={() => toast('The card moved to Done', { action: { label: 'Undo', onClick: () => {} } })}>With an action</Button>
             </Row>
             <Row label="Floating">
                 <Popover>
@@ -388,7 +398,7 @@ function Containers() {
             </Card>
             <Collapsible open={open} onOpenChange={setOpen} className="flex max-w-sm flex-col gap-1.5">
                 <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="xs" className="justify-start text-2xs font-semibold uppercase tracking-wider text-muted-foreground aria-expanded:bg-transparent">
+                    <Button variant="ghost" size="xs" className="justify-start text-2xs font-semibold uppercase tracking-wider text-muted-foreground aria-expanded:bg-transparent text-left">
                         <Icon name={open ? 'pan-down' : 'pan-end'} size={14} />Recent
                     </Button>
                 </CollapsibleTrigger>

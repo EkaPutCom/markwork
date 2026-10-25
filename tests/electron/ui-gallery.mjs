@@ -16,8 +16,8 @@ setTimeout(() => { console.log('  ✗ the UI Gallery test did not end within 2 m
 let failed = false;
 
 const SECTIONS = ['Text sizes', 'Colors', 'Button and IconButton', 'Badge and Kbd', 'Input, Textarea, InputGroup, Label',
-    'Checkbox, Switch, RadioGroup, Select, Toggle', 'Menus, Popover, Tooltip, Dialog, AlertDialog', 'Tabs, Card, Collapsible, Separator',
-    'Status, working, empty, error'];
+    'Checkbox, Switch, RadioGroup, Select, Toggle', 'Menus, Toast, Popover, Tooltip, Dialog, AlertDialog', 'Tabs, Card, Collapsible, Separator',
+    'Command', 'Status, working, empty, error'];
 // What the sample document draws in the visual editor: one of each.
 const EDITOR_PARTS = ['.cm-md-h1', '.cm-md-checkbox', '.cm-md-codebox', '.cm-md-table-grid', '.cm-md-diagram', '.cm-md-picture', '.cm-md-picture-missing', '.cm-md-conflict-bar'];
 

@@ -5,6 +5,8 @@ import { useState } from 'react';
 import type { InstallWay, ProgramInfo, ProgramsData } from '../../../src/app/protocol/screen.js';
 import { Badge } from '@/ui/badge';
 import { Button } from '@/ui/button';
+import { IconButton } from '@/ui/icon-button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs';
 import { Icon } from './Icons.js';
 import { useClient } from '../lib/useClient.js';
 
@@ -46,25 +48,30 @@ function Install({ program }: { program: ProgramInfo }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
     };
-    return (
-        <div className="program-install">
-            {program.install.length > 1 && (
-                <div className="program-tabs" role="tablist" aria-label={`How to install ${program.name}`}>
-                    {program.install.map(w => (
-                        <button key={w.os} role="tab" aria-selected={w.os === os} onClick={() => setOs(w.os)}>{OS_NAMES[w.os]}</button>
-                    ))}
-                </div>
-            )}
+    const shown = (
+        <>
             <p>{way.text}</p>
             {way.command && (
                 <div className="program-command">
                     <Icon name="utilities-terminal" size={14} />
                     <code>{way.command}</code>
-                    <Button variant="ghost" size="icon-xs" title={copied ? 'Copied' : 'Copy'} aria-label={copied ? 'Copied' : `Copy the command for ${program.name}`} onClick={copy}>
+                    <IconButton size="icon-xs" label={copied ? 'Copied' : `Copy the command for ${program.name}`} onClick={copy}>
                         <Icon name={copied ? 'emblem-ok' : 'edit-copy'} size={14} />
-                    </Button>
+                    </IconButton>
                 </div>
             )}
+        </>
+    );
+    return (
+        <div className="program-install">
+            {program.install.length > 1 ? (
+                <Tabs value={os} onValueChange={value => setOs(value as typeof os)}>
+                    <TabsList aria-label={`How to install ${program.name}`}>
+                        {program.install.map(w => <TabsTrigger key={w.os} value={w.os}>{OS_NAMES[w.os]}</TabsTrigger>)}
+                    </TabsList>
+                    <TabsContent value={os}>{shown}</TabsContent>
+                </Tabs>
+            ) : shown}
             <p className="then">Then come back and choose <b>Check again</b>.</p>
             <div className="program-actions">
                 <Button size="xs" onClick={() => client.openTerminalFor(program.machine)}>

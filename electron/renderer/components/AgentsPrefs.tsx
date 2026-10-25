@@ -6,6 +6,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { PreferencesData, ProjectPage, WorktreeList } from '../../../src/app/protocol/preferences.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { Select } from '../ui/select.js';
+import { Button } from '../ui/button.js';
+import { Input } from '../ui/input.js';
+import { Switch } from '../ui/switch.js';
 
 function Row({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
     return <div className="pref-row"><span className="text"><span className="title">{title}</span>{subtitle && <span className="subtitle">{subtitle}</span>}</span>{children}</div>;
@@ -16,7 +19,7 @@ function CommitText({ value, label, placeholder, onCommit }: { value: string; la
     const [text, setText] = useState(value);
     useEffect(() => { setText(value); }, [value]);
     const commit = () => { if (text !== value) onCommit(text); };
-    return <input aria-label={label} value={text} placeholder={placeholder} onChange={e => setText(e.target.value)} onBlur={commit}
+    return <Input className="w-56" aria-label={label} value={text} placeholder={placeholder} onChange={e => setText(e.target.value)} onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } else if (e.key === 'Escape' && text !== value) { e.stopPropagation(); setText(value); } }} />;
 }
 
@@ -37,7 +40,7 @@ function Worktrees({ page, list }: { page: ProjectPage; list: WorktreeList | nul
                 {list.items.map(w => (
                     <li key={w.path}>
                         <span className="text"><span className="title">{w.branch}</span><span className="subtitle">{w.path}</span></span>
-                        <button className="button" onClick={() => void client.removeWorktree(page.name, w.path).then(e => setError(e ?? ''))}>Remove…</button>
+                        <Button variant="outline" size="sm" onClick={() => void client.removeWorktree(page.name, w.path).then(e => setError(e ?? ''))}>Remove…</Button>
                     </li>
                 ))}
             </ul>
@@ -55,17 +58,17 @@ function ProjectPageView({ page }: { page: ProjectPage }) {
     return (
         <div className="pref-page">
             <div className="project-head">
-                <button className="button flat" onClick={() => client.closeProject()}>← Projects</button>
+                <Button variant="ghost" size="sm" onClick={() => client.closeProject()}>← Projects</Button>
                 <h3>{page.name}</h3>
             </div>
             <Row title="Folder" subtitle={`On ${page.machine}`}><code className="path">{page.folder}</code></Row>
             <Row title="A worktree per card" subtitle="Each card works on a branch of its own, so cards do not step on each other">
-                <input type="checkbox" role="switch" aria-label="A worktree per card" checked={iso.worktrees} onChange={e => change({ worktrees: e.target.checked })} />
+                <Switch aria-label="A worktree per card" checked={iso.worktrees} onCheckedChange={on => change({ worktrees: on })} />
             </Row>
             {iso.worktrees && (
                 <>
                     <Row title="Cards at the same time" subtitle={`1 to ${page.maxSlots}`}>
-                        <input type="number" aria-label="Cards at the same time" min={1} max={page.maxSlots} value={iso.slots}
+                        <Input type="number" className="w-20" aria-label="Cards at the same time" min={1} max={page.maxSlots} value={iso.slots}
                             onChange={e => { const n = Number(e.target.value); if (Number.isInteger(n)) change({ slots: n }); }} />
                     </Row>
                     <Row title="Base branch" subtitle="Empty: the branch the project folder is on"><CommitText label="Base branch" value={iso.base} onCommit={base => change({ base })} /></Row>
@@ -102,16 +105,16 @@ export function AgentsPage({ prefs }: { prefs: PreferencesData }) {
             <h3>Machines</h3>
             {!prefs.machines.length && <p className="dim">No machines yet. Add one to run agents over ssh.</p>}
             {prefs.machines.map(m => (
-                <Row key={m.name} title={m.name} subtitle={m.target}><button className="button" aria-label={`Remove ${m.name}`} onClick={() => client.removeMachine(m.name)}>Remove</button></Row>
+                <Row key={m.name} title={m.name} subtitle={m.target}><Button variant="outline" size="sm" aria-label={`Remove ${m.name}`} onClick={() => client.removeMachine(m.name)}>Remove</Button></Row>
             ))}
-            <div className="pref-actions"><button className="button" onClick={() => client.addMachine()}>Add Machine…</button></div>
+            <div className="pref-actions"><Button variant="outline" size="sm" onClick={() => client.addMachine()}>Add Machine…</Button></div>
             <h3>Projects</h3>
             {!prefs.projects.length && <p className="dim">A project appears here when you assign its first card to an agent.</p>}
             {prefs.projects.map(p => (
-                <button key={p.name} className="pref-row project-row" onClick={() => client.openProject(p.name)}>
+                <Button key={p.name} variant="ghost" className="pref-row project-row h-auto font-normal text-left" onClick={() => client.openProject(p.name)}>
                     <span className="text"><span className="title">{p.name}</span><span className="subtitle">{p.folder}</span></span>
                     <span className="side-meta">{p.worktrees ? 'worktrees' : 'in the folder'} ›</span>
-                </button>
+                </Button>
             ))}
         </div>
     );

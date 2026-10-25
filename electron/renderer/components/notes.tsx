@@ -4,7 +4,7 @@
 // (src/markdown/noteedit.ts); what an operation does is the core's (and applyNoteEdit's, which the client also runs to
 // show a change at once).
 
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useId, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { DUE_FIELD, AGENT_FIELD, AGENT_NAME, DUE_INPUT, splitCard, withDueDate, type Board, type Card, type Position } from '../../../src/markdown/kanban.js';
 import { fieldInputText, nearestOption, OPTION_COLORS, OPTION_TEXT, parseValue, readItem, type FieldChip, type FieldDef } from '../../../src/markdown/fields.js';
 import { CREATED_FIELD, itemMeta } from '../../../src/markdown/inbox.js';
@@ -14,6 +14,16 @@ import { Icon, type IconName } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useClient } from '../lib/useClient.js';
 import { Select } from '../ui/select.js';
+import { cn } from '../lib/utils.js';
+import { Badge, badgeVariants } from '../ui/badge.js';
+import { Button } from '../ui/button.js';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Input } from '../ui/input.js';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group.js';
+import { Label } from '../ui/label.js';
+import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover.js';
+import { Textarea } from '../ui/textarea.js';
 
 export const refOf = (at: Position, card: Card): CardRef => ({ at, card: card.text });
 
@@ -59,11 +69,13 @@ export function Inline({ text }: { text: string }) {
     );
 }
 
+// A field, a tag, a date: a Badge, with the dot of its category color (`opt-*`, `tag-*`) from theme.css. One that can be
+// changed is a button drawn as the same Badge.
 export function Chip({ text, icon, className, title, onClick }: { text: string; icon?: IconName; className?: string; title?: string; onClick?: (e: React.MouseEvent) => void }) {
     const content = <>{icon && <Icon name={icon} size={12} />}{text}</>;
     return onClick
-        ? <button type="button" className={`chip ${className ?? ''}`} title={title} onClick={e => { e.stopPropagation(); onClick(e); }}>{content}</button>
-        : <span className={`chip ${className ?? ''}`} title={title}>{content}</span>;
+        ? <Button type="button" variant={null} size={null} className={cn(badgeVariants({ variant: 'secondary' }), 'note-chip', className)} title={title} onClick={e => { e.stopPropagation(); onClick(e); }}>{content}</Button>
+        : <Badge variant="secondary" className={cn('note-chip', className)} title={title}>{content}</Badge>;
 }
 
 // The chip of a field: a select in the color of its option, a value that does not fit marked invalid. A click changes it.
@@ -87,38 +99,24 @@ export function Tags({ tags }: { tags: string[] }) {
 
 export interface MenuEntry { label?: string; run?: () => void; enabled?: boolean; submenu?: MenuEntry[]; separator?: boolean }
 
+// A point on the screen that a menu or a popover opens from: a right click, or the button that asked for it.
+function Anchor({ at, ...props }: { at: { x: number; y: number } } & ComponentProps<'span'>) {
+    return <span {...props} aria-hidden="true" className="pointer-anchor" style={{ left: at.x, top: at.y }} />;
+}
+
+// A DropdownMenu at the pointer; a submenu opens beside its entry. Escape and a click away close it, as any menu.
 export function PopupMenu({ at, entries, onClose }: { at: { x: number; y: number }; entries: MenuEntry[]; onClose: () => void }) {
-    const [open, setOpen] = useState<number | null>(null);
-    const ref = useRef<HTMLDivElement>(null);
-    const [shift, setShift] = useState({ x: 0, y: 0 });
-    useEffect(() => {
-        const close = (e: Event) => { if (!(e.target as Element).closest('.popup')) onClose(); };
-        const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
-        document.addEventListener('mousedown', close, true);
-        document.addEventListener('keydown', key, true);
-        return () => { document.removeEventListener('mousedown', close, true); document.removeEventListener('keydown', key, true); };
-    }, [onClose]);
-    // Kept inside the window.
-    useEffect(() => {
-        const box = ref.current?.getBoundingClientRect();
-        if (box) setShift({ x: Math.min(0, window.innerWidth - box.right - 8), y: Math.min(0, window.innerHeight - box.bottom - 8) });
-    }, [open]);
-    const run = (entry: MenuEntry) => { onClose(); entry.run?.(); };
+    const item = (entry: MenuEntry, key: number) => entry.separator ? <DropdownMenuSeparator key={key} /> : entry.submenu ? (
+        <DropdownMenuSub key={key}>
+            <DropdownMenuSubTrigger disabled={entry.enabled === false}>{entry.label}</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>{entry.submenu.map(item)}</DropdownMenuSubContent>
+        </DropdownMenuSub>
+    ) : <DropdownMenuItem key={key} disabled={entry.enabled === false} onSelect={() => entry.run?.()}>{entry.label}</DropdownMenuItem>;
     return (
-        <div ref={ref} className="popover popup" role="menu" style={{ left: at.x + shift.x, top: at.y + shift.y }}>
-            {entries.map((entry, i) => entry.separator ? <hr key={i} /> : (
-                <div key={i}>
-                    <button role="menuitem" disabled={entry.enabled === false} onClick={() => entry.submenu ? setOpen(open === i ? null : i) : run(entry)}>
-                        <span>{entry.label}</span>{entry.submenu && <span className="more">›</span>}
-                    </button>
-                    {entry.submenu && open === i && (
-                        <div className="submenu">
-                            {entry.submenu.map((sub, j) => sub.separator ? <hr key={j} /> : <button key={j} role="menuitem" disabled={sub.enabled === false} onClick={() => run(sub)}><span>{sub.label}</span></button>)}
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
+        <DropdownMenu open onOpenChange={open => { if (!open) onClose(); }}>
+            <DropdownMenuTrigger asChild><Anchor at={at} /></DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-52">{entries.map(item)}</DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -132,19 +130,12 @@ export function usePopup<T>() {
 
 export interface FieldEdit { def: FieldDef; current: string; at: { x: number; y: number }; apply(raw: string, option?: string): void }
 
+// A Popover at the chip or the cell clicked; its first field has the focus.
 export function FieldPopover({ edit, onClose }: { edit: FieldEdit; onClose: () => void }) {
     const { def, current, at, apply } = edit;
     const [text, setText] = useState(current);
     const ref = useRef<HTMLDivElement>(null);
     const done = (raw: string, option?: string) => { onClose(); apply(raw, option); };
-    useEffect(() => {
-        const close = (e: Event) => { if (!(e.target as Element).closest('.field-popover')) onClose(); };
-        const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
-        document.addEventListener('mousedown', close, true);
-        document.addEventListener('keydown', key, true);
-        ref.current?.querySelector('input')?.focus();
-        return () => { document.removeEventListener('mousedown', close, true); document.removeEventListener('keydown', key, true); };
-    }, [onClose]);
 
     const close = def.type === 'select' ? nearestOption(def, text.trim()) : null;
     const parsed = text.trim() && def.type !== 'select' ? parseValue(def, text.trim()) : null;
@@ -154,24 +145,27 @@ export function FieldPopover({ edit, onClose }: { edit: FieldEdit; onClose: () =
         if (def.type === 'select') { if (close) done(close); else if (value && OPTION_TEXT.test(value)) done(value, value); return; }
         if (!error) done(value);
     };
+    const option = (label: ReactNode, run: () => void, key?: string) => <Button key={key} variant="ghost" size="sm" className="option justify-between font-normal" onClick={run}>{label}</Button>;
     return (
-        <div ref={ref} className="popover popup field-popover" role="dialog" aria-label={def.key} style={{ left: Math.min(at.x, window.innerWidth - 260), top: Math.min(at.y, window.innerHeight - 320) }}>
-            {def.type === 'select' && def.options.map(option => (
-                <button key={option} className="option" onClick={() => done(option)}>
-                    <span className={`chip opt-chip${def.colors?.[option] ? ` opt-${def.colors[option]}` : ''}`}>{option}</span>{option === current && <span className="tick">✓</span>}
-                </button>
-            ))}
+        <Popover open onOpenChange={open => { if (!open) onClose(); }}>
+            <PopoverAnchor asChild><Anchor at={at} /></PopoverAnchor>
+            <PopoverContent ref={ref} align="start" className="field-popover" aria-label={def.key}
+                onOpenAutoFocus={e => { e.preventDefault(); ref.current?.querySelector('input')?.focus(); }}>
+            {def.type === 'select' && def.options.map(o => option(
+                <><Badge variant="secondary" className={cn('note-chip opt-chip', def.colors?.[o] && `opt-${def.colors[o]}`)}>{o}</Badge>{o === current && <Icon name="emblem-ok" size={14} />}</>,
+                () => done(o), o))}
             {def.type === 'date' && (
-                <input type="date" aria-label={`${def.key} date`} value={/^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : ''}
+                <Input type="date" aria-label={`${def.key} date`} value={/^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : ''}
                     onChange={e => e.target.value && done(def.key === DUE_FIELD.key ? withDueDate(current, e.target.value) : withDueDate(text, e.target.value))} />
             )}
-            <input value={text} placeholder={def.type === 'select' ? 'Another value…' : def.type === 'date' ? 'YYYY-MM-DD or YYYY-MM-DD HH:MM' : def.key} aria-label={def.key}
+            <Input value={text} placeholder={def.type === 'select' ? 'Another value…' : def.type === 'date' ? 'YYYY-MM-DD or YYYY-MM-DD HH:MM' : def.key} aria-label={def.key}
                 onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }} />
-            {def.type === 'select' && text.trim() && !close && OPTION_TEXT.test(text.trim()) && <button className="option" onClick={submit}>Add “{text.trim()}” to the list</button>}
-            {def.type === 'select' && close && text.trim() !== '' && <button className="option" onClick={submit}>Use “{close}”</button>}
+            {def.type === 'select' && text.trim() && !close && OPTION_TEXT.test(text.trim()) && option(`Add “${text.trim()}” to the list`, submit)}
+            {def.type === 'select' && close && text.trim() !== '' && option(`Use “${close}”`, submit)}
             {error && <div className="field-error" role="alert">{error}</div>}
-            <button className="option" onClick={() => done('')}>Clear</button>
-        </div>
+            {option('Clear', () => done(''))}
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -209,13 +203,15 @@ function DueInput({ value, onChange }: { value: string; onChange(value: string):
     const picker = useRef<HTMLInputElement>(null);
     return (
         <div className="due-field">
-            <label htmlFor={id}>Due</label>
-            <div className="with-button">
-                <input id={id} value={value} placeholder="YYYY-MM-DD" onChange={e => onChange(e.target.value)} />
-                <input ref={picker} type="date" className="picker" tabIndex={-1} aria-hidden="true" value={/^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : ''}
+            <Label htmlFor={id}>Due</Label>
+            <InputGroup className="with-button">
+                <InputGroupInput id={id} value={value} placeholder="YYYY-MM-DD" onChange={e => onChange(e.target.value)} />
+                <Input ref={picker} type="date" className="picker" tabIndex={-1} aria-hidden="true" value={/^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : ''}
                     onChange={e => onChange(e.target.value ? withDueDate(value, e.target.value) : '')} />
-                <button type="button" className="button flat" title="Pick a date" aria-label="Pick a date" onClick={() => picker.current?.showPicker()}><Icon name="x-office-calendar" /></button>
-            </div>
+                <InputGroupAddon align="inline-end">
+                    <IconButton size="icon-xs" label="Pick a date" onClick={() => picker.current?.showPicker()}><Icon name="x-office-calendar" /></IconButton>
+                </InputGroupAddon>
+            </InputGroup>
         </div>
     );
 }
@@ -249,24 +245,24 @@ export function CardDialog({ heading, kind, text, notes, schema, agents = false,
     return (
         <Modal title={heading} onClose={() => onDone(null)}>
             <form className="card-form" onSubmit={e => { e.preventDefault(); submit(); }}>
-                <label><span>Title</span><input autoFocus value={title} onChange={e => { setTitle(e.target.value); setProblem(null); }} /></label>
-                <label><span>Tags (separated by spaces)</span><input value={tags} placeholder="tag1 tag2" onChange={e => setTags(e.target.value)} /></label>
+                <Label><span>Title</span><Input autoFocus value={title} onChange={e => { setTitle(e.target.value); setProblem(null); }} /></Label>
+                <Label><span>Tags (separated by spaces)</span><Input value={tags} placeholder="tag1 tag2" onChange={e => setTags(e.target.value)} /></Label>
                 {kind === 'card' && <DueInput value={due} onChange={value => { setDue(value); setProblem(null); }} />}
-                {kind === 'card' && agents && <label><span>Assigned to</span><input value={agent} placeholder="e.g. pi (empty = not assigned)" onChange={e => { setAgent(e.target.value); setProblem(null); }} /></label>}
+                {kind === 'card' && agents && <Label><span>Assigned to</span><Input value={agent} placeholder="e.g. pi (empty = not assigned)" onChange={e => { setAgent(e.target.value); setProblem(null); }} /></Label>}
                 {shown.map(f => (
-                    <label key={f.key}><span>{f.key}</span>
+                    <Label key={f.key}><span>{f.key}</span>
                         {f.type === 'select' && !f.multiple && f.options.length ? (
                             <Select value={values[f.key]} onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}>
                                 <option value="" />{[...new Set([...f.options, ...(values[f.key] ? [values[f.key]] : [])])].map(o => <option key={o} value={o}>{o}</option>)}
                             </Select>
-                        ) : <input value={values[f.key]} onChange={e => { setValues(v => ({ ...v, [f.key]: e.target.value })); setProblem(null); }} />}
-                    </label>
+                        ) : <Input value={values[f.key]} onChange={e => { setValues(v => ({ ...v, [f.key]: e.target.value })); setProblem(null); }} />}
+                    </Label>
                 ))}
-                <label><span>Notes</span><textarea rows={6} value={body} onChange={e => setBody(e.target.value)} /></label>
+                <Label><span>Notes</span><Textarea rows={6} value={body} onChange={e => setBody(e.target.value)} /></Label>
                 {problem && <div className="field-error" role="alert">{problem}</div>}
                 <div className="buttons">
-                    <button type="submit" className="button suggested">Save</button>
-                    <button type="button" className="button" onClick={() => onDone(null)}>Cancel</button>
+                    <Button type="submit">Save</Button>
+                    <Button type="button" variant="outline" onClick={() => onDone(null)}>Cancel</Button>
                 </div>
             </form>
         </Modal>
@@ -300,7 +296,7 @@ export function PageHeader({ board, fallback, onNew, children }: { board: Board;
         <header className="page-header">
             <div className="titles"><h1>{title}</h1>{description && <p className="dim">{description}</p>}</div>
             {children}
-            {onNew && <button className="button" title="Add a note with a title, fields, and notes" onClick={onNew}>New Note</button>}
+            {onNew && <Button variant="outline" size="sm" onClick={onNew}><Icon name="list-add" />New Note</Button>}
         </header>
     );
 }

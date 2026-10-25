@@ -14,7 +14,7 @@ export function OutlineList() {
                 <li key={i}>
                     <Button
                         variant="ghost" size="sm"
-                        className="w-full justify-start pr-2 pl-[calc(0.75rem+var(--depth)*0.75rem)] text-ui font-normal hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        className="w-full justify-start pr-2 pl-[calc(0.75rem+var(--depth)*0.75rem)] text-ui font-normal hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-left"
                         style={{ '--depth': heading.level - 1 } as CSSProperties}
                         onClick={() => client.jumpToHeading(i)}
                     >

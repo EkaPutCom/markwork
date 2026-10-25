@@ -11,11 +11,11 @@ This file describes the target. Parts of it are not in the code yet. Where a rul
 | Part | State |
 | --- | --- |
 | Theme tokens of shadcn, `--success`, `--warning`, `--chart-*` | In `globals.css` |
-| Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`, except the Sonner toast: it needs the `sonner` package and comes with the toast in stage 5. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
+| Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
 | Text sizes `text-2xs` and `text-ui`, the tokens of this file | In `globals.css` |
 | Layer and motion tokens (`--z-*`, `--duration-*`) | In `globals.css`; `theme.css` uses them |
 | `domButton` for widgets without React | In `ui/dom.ts`, used by the find bar; the other widgets in `lib/` move to it in stage 6 |
-| The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Removed component by component in stage 5; do not use them in new code |
+| The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Gone from the components (stage 5). The find bar's `.entry` and `.chip-button` stay until the widgets of `lib/` move in stage 6; do not use them in new code |
 | The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node` |
 
 ## Where things live
@@ -173,7 +173,7 @@ Use a primitive from `ui/` for every control. A raw `<button>`, `<input>`, `<sel
 | A task in its own window (Preferences, a form) | `Dialog` | |
 | A question that must be answered (discard, delete, overwrite) | `AlertDialog` | Buttons say the verb: "Discard changes", not "OK" |
 | A name or shortcut on hover and focus | `Tooltip` | Through `IconButton` in most cases |
-| A short notice that goes away | Toast (shadcn's Sonner; until it is added, the toast of `App.tsx` through the store's `toast`) | Never the only place an error is told when the user must act on it |
+| A short notice that goes away | Toast: shadcn's Sonner (`ui/sonner.tsx`), shown from the store's `toast` by `App.tsx` | Never the only place an error is told when the user must act on it |
 | Search through commands or items | `Command` | The palette and the `/` menu |
 | A block that stands apart (board card, proposal) | `Card` | Not for every section: a section is a heading and a gap |
 | A section that folds | `Collapsible` | Files view sections |

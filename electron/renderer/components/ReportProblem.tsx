@@ -11,6 +11,10 @@ import { observeRecordings, recordingOf, type Recording } from '../lib/inspect/r
 import { reportOf, takeEditorPicture } from '../lib/inspect/report.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { Modal } from './Modals.js';
+import { Button } from '../ui/button.js';
+import { Checkbox } from '../ui/checkbox.js';
+import { Label } from '../ui/label.js';
+import { Textarea } from '../ui/textarea.js';
 
 const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
@@ -57,46 +61,44 @@ function ReportForm({ view, onClose }: { view: EditorView; onClose: () => void }
     };
 
     return (
-        <div style={hidden ? { visibility: 'hidden' } : undefined}>
-            <Modal title="Something looks wrong?" onClose={onClose} className="report">
-                {saved ? (
-                    <div className="form">
-                        <p>The report is saved as <b>{saved.name}</b>. Nothing was sent: attach the file to a bug report, or give it to whoever fixes Markwork.</p>
-                        <div className="buttons">
-                            <button type="button" className="button suggested" autoFocus onClick={onClose}>Close</button>
-                            <button type="button" className="button" onClick={() => void window.markwork.showReport(saved.path)}>Show File</button>
-                        </div>
+        <Modal title="Something looks wrong?" onClose={onClose} className="report" hidden={hidden}>
+            {saved ? (
+                <div className="form">
+                    <p>The report is saved as <b>{saved.name}</b>. Nothing was sent: attach the file to a bug report, or give it to whoever fixes Markwork.</p>
+                    <div className="buttons">
+                        <Button type="button" autoFocus onClick={onClose}>Close</Button>
+                        <Button type="button" variant="outline" onClick={() => void window.markwork.showReport(saved.path)}>Show File</Button>
                     </div>
-                ) : (
-                    <form className="form" onSubmit={e => { e.preventDefault(); void save(); }}>
-                        <p>Tell us what you expected. Markwork saves what the editor just did, so the problem can be played back and fixed.</p>
-                        <label>What happened<textarea autoFocus rows={3} value={note} onChange={e => setNote(e.target.value)}
-                            placeholder="I pressed Backspace after a bold word, and a star appeared instead of the last letter going away." /></label>
-                        <div className="report-options" role="group" aria-label="What the report holds">
-                            <label className="radio">
-                                <input type="checkbox" checked={steps} onChange={e => setSteps(e.target.checked)} />
-                                <span>What the editor just did<small>{count ? `The last ${count === 1 ? 'change' : `${count} changes`}` : 'Nothing yet'}: keys, clicks, and what each did. Nothing typed in other windows.</small></span>
-                            </label>
-                            <label className="radio">
-                                <input type="checkbox" checked={blur} onChange={e => setBlur(e.target.checked)} />
-                                <span>Blur my text<small>Letters become x and numbers 0, but Markdown, spaces, emoji, and other scripts stay, which is enough for a bug.</small>
-                                    <code className="report-preview" aria-label="The line of the cursor, as it will be saved">{blur ? preview.blurred : preview.real}</code></span>
-                            </label>
-                            <label className="radio">
-                                <input type="checkbox" checked={picture} onChange={e => setPicture(e.target.checked)} />
-                                <span>A picture of the editor<small>{blur ? 'Blurred the same way.' : 'As it is on screen.'}</small></span>
-                            </label>
-                        </div>
-                        {error && <div className="form-error" role="alert">{error}</div>}
-                        <div className="buttons">
-                            <button type="submit" className="button suggested" disabled={busy}>Save Report</button>
-                            <button type="button" className="button" onClick={onClose}>Cancel</button>
-                            <span className="report-foot">Saved as a file. Nothing is sent.</span>
-                        </div>
-                    </form>
-                )}
-            </Modal>
-        </div>
+                </div>
+            ) : (
+                <form className="form" onSubmit={e => { e.preventDefault(); void save(); }}>
+                    <p>Tell us what you expected. Markwork saves what the editor just did, so the problem can be played back and fixed.</p>
+                    <Label>What happened<Textarea autoFocus rows={3} value={note} onChange={e => setNote(e.target.value)}
+                        placeholder="I pressed Backspace after a bold word, and a star appeared instead of the last letter going away." /></Label>
+                    <div className="report-options" role="group" aria-label="What the report holds">
+                        <Label className="choice">
+                            <Checkbox checked={steps} onCheckedChange={on => setSteps(on === true)} />
+                            <span>What the editor just did<small>{count ? `The last ${count === 1 ? 'change' : `${count} changes`}` : 'Nothing yet'}: keys, clicks, and what each did. Nothing typed in other windows.</small></span>
+                        </Label>
+                        <Label className="choice">
+                            <Checkbox checked={blur} onCheckedChange={on => setBlur(on === true)} />
+                            <span>Blur my text<small>Letters become x and numbers 0, but Markdown, spaces, emoji, and other scripts stay, which is enough for a bug.</small>
+                                <code className="report-preview" aria-label="The line of the cursor, as it will be saved">{blur ? preview.blurred : preview.real}</code></span>
+                        </Label>
+                        <Label className="choice">
+                            <Checkbox checked={picture} onCheckedChange={on => setPicture(on === true)} />
+                            <span>A picture of the editor<small>{blur ? 'Blurred the same way.' : 'As it is on screen.'}</small></span>
+                        </Label>
+                    </div>
+                    {error && <div className="form-error" role="alert">{error}</div>}
+                    <div className="buttons">
+                        <Button type="submit" disabled={busy}>Save Report</Button>
+                        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+                        <span className="report-foot">Saved as a file. Nothing is sent.</span>
+                    </div>
+                </form>
+            )}
+        </Modal>
     );
 }
 
@@ -142,7 +144,7 @@ export function ReportOffer() {
     if (!shown || info === 'report') return null;
     return (
         <div className="report-offer">
-            <button type="button" className="button flat" onClick={() => { setShown(false); client.run('report-problem'); }}>Something looks wrong?</button>
+            <Button type="button" variant="outline" size="xs" className="shadow-sm" onClick={() => { setShown(false); client.run('report-problem'); }}>Something looks wrong?</Button>
         </div>
     );
 }

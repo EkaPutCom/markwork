@@ -92,7 +92,7 @@ try {
     await step('the context button shows what is sent, and its switches change it', async () => {
         const button = panel.getByRole('button', { name: /^Context/ });
         await button.click();
-        const popover = panel.getByRole('dialog', { name: 'Context' });
+        const popover = page.getByRole('dialog', { name: 'Context' });
         await popover.getByText(/Total ≈/).waitFor();
         await popover.getByLabel('Open document').uncheck();
         await page.waitForFunction(() => !document.querySelector('.chat-popover')?.textContent?.includes('Document: '));
@@ -103,7 +103,7 @@ try {
 
     await step('the settings popover tells where the key is kept and takes the model and switches', async () => {
         await panel.getByRole('button', { name: 'Assistant settings' }).click();
-        const settings = panel.getByRole('dialog', { name: 'Assistant settings' });
+        const settings = page.getByRole('dialog', { name: 'Assistant settings' });
         await settings.getByText(/A key is set from the DEEPSEEK_API_KEY environment variable/).waitFor();
         assert.equal(await settings.getByRole('button', { name: 'Forget' }).count(), 0, 'a key from the environment is not forgotten here');
         await settings.getByLabel('Thinking mode').check();
@@ -175,11 +175,11 @@ try {
         const log = page.getByRole('dialog', { name: 'Agent log' });
         await log.getByRole('treeitem', { name: /hello there/ }).waitFor();
         await page.locator('.log-tree .step.round').first().waitFor();
-        await log.getByRole('button', { name: 'Tools', exact: true }).click();
+        await log.getByRole('radio', { name: 'Tools', exact: true }).click();
         await log.getByRole('treeitem', { name: /edit_file/ }).first().click();
         await log.getByRole('tab', { name: 'Arguments' }).click();
         await log.getByText(/old_text/).waitFor();
-        await log.getByRole('button', { name: 'All', exact: true }).click();
+        await log.getByRole('radio', { name: 'All', exact: true }).click();
         const rounds = await page.locator('.log-tree .step.round').count();
         await log.getByRole('treeitem', { name: /hello there/ }).getByRole('button', { name: 'Collapse' }).click();
         await page.waitForFunction(n => document.querySelectorAll('.log-tree .step.round').length < n, rounds);
@@ -193,7 +193,7 @@ try {
         const chats = join(notes, '.markwork', 'chats');
         await waitFor(() => existsSync(chats) && readdirSync(chats).some(f => f.endsWith('.md')));
         await panel.getByRole('button', { name: 'Conversations' }).click();
-        const list = panel.getByRole('dialog', { name: 'Conversations' });
+        const list = page.getByRole('dialog', { name: 'Conversations' });
         await list.getByText('hello there').waitFor();
         await page.keyboard.press('Escape');
         await panel.getByRole('button', { name: 'New conversation' }).click();

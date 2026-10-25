@@ -4,6 +4,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icons.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Input } from '../ui/input.js';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group.js';
+import { Toggle } from '../ui/toggle.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
 
 const OPTIONS = [
     { key: 'caseSensitive', label: 'Aa', title: 'Match Case' },
@@ -36,34 +42,43 @@ export function Search() {
         <aside className="sidebar search" aria-label="Search">
             <div className="side-head">
                 <div className="side-title">Search</div>
-                <button className="button flat" title="Search again" aria-label="Search again" onClick={() => client.setSearchForm({ form: { ...form, text } })}><Icon name="view-refresh" /></button>
+                <IconButton label="Search again" onClick={() => client.setSearchForm({ form: { ...form, text } })}><Icon name="view-refresh" /></IconButton>
             </div>
             <div className="search-form">
-                <button className={`button expand${replace ? ' checked' : ''}`} title="Replace" aria-label="Show Replace" aria-pressed={replace} onClick={() => client.setSearchForm({ replace: !replace })}>
+                <IconButton size="icon-sm" label="Show Replace" aria-pressed={replace} onClick={() => client.setSearchForm({ replace: !replace })}>
                     <Icon name={replace ? 'pan-down' : 'pan-end'} />
-                </button>
+                </IconButton>
                 <div className="fields">
-                    <div className="entry">
-                        <Icon name="edit-find" />
-                        <input ref={field} type="search" aria-label="Search" placeholder="Search" value={text} aria-invalid={results?.invalid || undefined}
+                    <InputGroup className="h-8">
+                        <InputGroupAddon><Icon name="edit-find" /></InputGroupAddon>
+                        <InputGroupInput ref={field} type="search" aria-label="Search" placeholder="Search" value={text} aria-invalid={results?.invalid || undefined}
                             onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') client.setSearchForm({ form: { ...form, text } }); }} />
-                        {OPTIONS.map(o => (
-                            <button key={o.key} className={`chip-button${form[o.key] ? ' checked' : ''}`} title={o.title} aria-label={o.title} aria-pressed={form[o.key]}
-                                onClick={() => client.setSearchForm({ form: { ...form, [o.key]: !form[o.key] } })}>{o.label}</button>
-                        ))}
-                    </div>
+                        <InputGroupAddon align="inline-end" className="gap-0.5">
+                            {OPTIONS.map(o => (
+                                <Tooltip key={o.key}>
+                                    <TooltipTrigger asChild>
+                                        <Toggle size="xs" className="h-5 min-w-5 font-mono text-2xs" aria-label={o.title} pressed={form[o.key]}
+                                            onPressedChange={on => client.setSearchForm({ form: { ...form, [o.key]: on } })}>{o.label}</Toggle>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{o.title}</TooltipContent>
+                                </Tooltip>
+                            ))}
+                        </InputGroupAddon>
+                    </InputGroup>
                     {replace && (
-                        <div className="entry">
-                            <input aria-label="Replace" placeholder="Replace" value={replacement} onChange={e => client.setSearchForm({ replacement: e.target.value })} />
-                            <button className="chip-button" title="Replace All" aria-label="Replace All" disabled={!results || results.total === 0} onClick={() => client.replaceAll()}>All</button>
-                        </div>
+                        <InputGroup className="h-8">
+                            <InputGroupInput aria-label="Replace" placeholder="Replace" value={replacement} onChange={e => client.setSearchForm({ replacement: e.target.value })} />
+                            <InputGroupAddon align="inline-end">
+                                <InputGroupButton aria-label="Replace All" disabled={!results || results.total === 0} onClick={() => client.replaceAll()}>All</InputGroupButton>
+                            </InputGroupAddon>
+                        </InputGroup>
                     )}
-                    <button className={`chip-button more${filters || filtered ? ' checked' : ''}`} title="Files to include and exclude" aria-label="Files to include and exclude" aria-expanded={filters}
-                        onClick={() => setFilters(v => !v)}><Icon name="view-more-horizontal" /></button>
+                    <IconButton variant="secondary" size="icon-xs" className="more h-5 self-end" label="Files to include and exclude" aria-expanded={filters} aria-pressed={filters || filtered}
+                        onClick={() => setFilters(v => !v)}><Icon name="view-more-horizontal" /></IconButton>
                     {filters && (
                         <>
-                            <div className="entry"><input aria-label="Files to include" title={GLOBS} placeholder="Files to include: agenda/**, *.md" value={form.include} onChange={e => client.setSearchForm({ form: { ...form, include: e.target.value } })} /></div>
-                            <div className="entry"><input aria-label="Files to exclude" title={GLOBS} placeholder="Files to exclude: drafts/**" value={form.exclude} onChange={e => client.setSearchForm({ form: { ...form, exclude: e.target.value } })} /></div>
+                            <Input className="h-8" aria-label="Files to include" title={GLOBS} placeholder="Files to include: agenda/**, *.md" value={form.include} onChange={e => client.setSearchForm({ form: { ...form, include: e.target.value } })} />
+                            <Input className="h-8" aria-label="Files to exclude" title={GLOBS} placeholder="Files to exclude: drafts/**" value={form.exclude} onChange={e => client.setSearchForm({ form: { ...form, exclude: e.target.value } })} />
                         </>
                     )}
                 </div>
@@ -76,15 +91,15 @@ export function Search() {
                     const open = !folded.has(f.file);
                     return (
                         <div key={f.file} className="result-file" role="group" aria-label={f.file}>
-                            <button className="file-name" aria-expanded={open} onClick={() => fold(f.file)}>
+                            <Button variant="ghost" className="file-name h-auto justify-start font-normal text-left" aria-expanded={open} onClick={() => fold(f.file)}>
                                 <Icon name={open ? 'pan-down' : 'pan-end'} size={12} />
                                 <span className="label"><b>{name}</b>{folder && <span className="folder"> {folder}</span>}</span><span className="count">{f.hits.length}</span>
-                            </button>
+                            </Button>
                             {open && f.hits.map((h, i) => (
-                                <button key={i} className="hit" role="treeitem" onClick={() => client.openHit(f.file, i)}>
+                                <Button key={i} variant="ghost" className="hit h-auto justify-start font-normal text-left" role="treeitem" onClick={() => client.openHit(f.file, i)}>
                                     <span className="line">{h.line + 1}</span>
                                     <span className="snippet">{h.before}<mark>{h.match}</mark>{h.after}</span>
-                                </button>
+                                </Button>
                             ))}
                         </div>
                     );
