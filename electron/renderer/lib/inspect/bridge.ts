@@ -26,7 +26,9 @@ const QUIET_MS = 500;       // an action has settled when no transaction came fo
 const MIN_QUIET_MS = 40;    // the shortest wait asked for: two frames and a little
 const SETTLE_LIMIT_MS = 5000;
 const CORE_OPS = new Set(['open', 'mode', 'load']);
-const STEADY_MS = 300;      // a tab's editor that kept one state this long has been given its text
+const STEADY_MS = 300;
+const NEW_DOC_MS = 3000;    // a new document asked for in load, before it is asked for again
+const NEW_DOC_TRIES = 4;      // a tab's editor that kept one state this long has been given its text
 
 const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -297,14 +299,23 @@ export class InspectBridge {
         if (error) throw new InspectError('bad-repro', error);
         const repro = request.repro as Repro;
         const old = this.client.currentEditor ? recordingOf(this.client.currentEditor.view.state) : null;
-        this.client.run('new');
         // New Document gives a new tab, or empties the one shown when nothing was done in it yet (documents.ts blank):
         // either way an empty text with no file, in a state of its own (a recording of its own).
         const fresh = () => {
             const view = this.client.currentEditor?.view;
             return !!view && this.client.activeTab?.file === null && recordingOf(view.state) !== old && view.state.doc.length === 0;
         };
-        await until(fresh, SETTLE_LIMIT_MS, 'a new document');
+        // A window that just started may still be putting back its tabs when the command comes, and the new one is
+        // lost among them (a slow CI runner): the command is given again rather than waited on for ever.
+        for (let tries = 1; ; tries++) {
+            this.client.run('new');
+            try {
+                await until(fresh, NEW_DOC_MS, 'a new document');
+                break;
+            } catch {
+                if (tries === NEW_DOC_TRIES) throw new InspectError('timeout', `a new document did not happen within ${NEW_DOC_TRIES} tries of ${NEW_DOC_MS} ms (the active tab: ${JSON.stringify(this.client.activeTab?.name ?? null)})`);
+            }
+        }
         // The core may still give the new tab its text (editor.ts reset makes another state): the text goes in once
         // the editor has kept one state for a while, and again if it was replaced all the same.
         const [anchor, head] = repro.start.selection[0];
