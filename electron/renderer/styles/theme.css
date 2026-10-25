@@ -216,7 +216,9 @@
 .cm-editor .cm-content { flex: 0 1 800px !important; margin: 0 auto; padding: 0 48px; caret-color: var(--foreground); }
 .cm-editor .cm-line { padding: 2px 0; }
 .cm-md-h1-line { padding-top: .7em; padding-bottom: .25em; }
-.cm-md-h2-line { padding-top: .8em; padding-bottom: .3em; border-bottom: 1px solid var(--border); margin-bottom: .4em; }
+/* The rule under a level 2 heading is drawn in its padding, not as a border with a margin below it: CodeMirror does not count a line's
+   vertical margin, and every such heading would move a click further off its line. */
+.cm-md-h2-line { padding-top: .8em; padding-bottom: .7em; background: linear-gradient(var(--border), var(--border)) no-repeat 0 calc(100% - .4em) / 100% 1px; }
 .cm-md-h3-line, .cm-md-h4-line, .cm-md-h5-line, .cm-md-h6-line { padding-top: .45em; }
 .cm-md-quote-line, .cm-md-quote2-line, .cm-md-quote3-line { padding-left: 20px !important; border-left: 2px solid var(--border); font-style: italic; }
 .cm-cursor, .cm-dropCursor { border-left-color: var(--foreground) !important; }
