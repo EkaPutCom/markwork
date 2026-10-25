@@ -43,6 +43,14 @@ export function editCommandTests(): void {
         eq(after('a ·word‸ b', s => wrap(s, '**')), 'a ‸**word**· b');
         eq(after('a ‸**word**· b', s => wrap(s, '**')), 'a ‸word· b', 'the same marker again removes it');
         eq(after('a ‸ b', s => wrap(s, '`')), 'a `‸` b');
+        eq(after('a **bo‸ld** b', s => wrap(s, '**')), 'a bo‸ld b', 'a cursor inside a bold word takes the bold off the whole word');
+        eq(after('a **‸bold** b', s => wrap(s, '**')), 'a ‸bold b', 'at the start of its text');
+        eq(after('a **bold‸** b', s => wrap(s, '**')), 'a bold‸ b', 'at the end of its text');
+        eq(after('a __bo‸ld__ b', s => wrap(s, '**')), 'a bo‸ld b', 'either marker of bold');
+        eq(after('***bo‸ld***', s => wrap(s, '**')), '*bo‸ld*', 'bold comes off bold italic');
+        eq(after('a `co‸de` b', s => wrap(s, '`')), 'a co‸de b', 'inline code');
+        eq(after('a **bold**‸ b', s => wrap(s, '**')), 'a **bold****‸** b', 'after the closing marker is outside the span');
+        eq(after('a *it‸alic* b', s => wrap(s, '**')), 'a *it**‸**alic* b', 'inside another format: a pair, as before');
         eq(after('a ‸🎉· b', s => wrap(s, '*')), 'a ‸*🎉*· b', 'an emoji is two UTF-16 units');
     });
 
