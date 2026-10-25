@@ -11,11 +11,8 @@ This file describes the target. Parts of it are not in the code yet. Where a rul
 | Part | State |
 | --- | --- |
 | Theme tokens of shadcn, `--success`, `--warning`, `--chart-*` | In `globals.css` |
-| Primitives Button, Badge, DropdownMenu, Menubar, Select, Separator, Kbd | In `ui/` |
-| The other primitives in [Primitives](#primitives), Tooltip, `IconButton` | Stage 3. Need one now: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
-| Text sizes `text-2xs` and `text-ui` | Stage 3 (`@theme` in `globals.css`) |
-| Tokens `--cat-*`, `--on-cat`, `--cat-none`, `--highlight`, `--overlay`, `--scrim` | Stage 3 |
-| The alias tokens at the head of `theme.css` (`--bg`, `--row-hover`, …) | Removed in stage 3; do not use them in new code |
+| Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`, except Command and the Sonner toast: they need the `cmdk` and `sonner` packages and come with the palette and the toast in stage 5. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
+| Text sizes `text-2xs` and `text-ui`, the tokens of this file | In `globals.css` |
 | The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Removed component by component in stage 5; do not use them in new code |
 | The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node` |
 
@@ -77,7 +74,9 @@ One palette of eight named colors for anything the user tells apart by color: fi
 | Code syntax | `--tok-keyword`, `--tok-string`, `--tok-number`, `--tok-comment`, `--tok-name`, `--tok-type`, `--tok-op` | Fenced code with a language |
 | Git conflicts | `--cf-current`, `--cf-current-head`, `--cf-incoming`, `--cf-incoming-head`, `--cf-neutral` | Conflict blocks |
 | Search hits and `==mark==` | `--highlight`, `--highlight-strong` (the current hit) | Editor, Search panel, CSV |
-| Darkening over content | `--overlay` (behind a dialog), `--scrim` (over a picture) | Backdrops, controls on images |
+| Darkening over content | `--overlay` (behind a dialog), `--scrim` (behind the image viewer, over a bar), `--scrim-strong` (a control over a picture) | Backdrops, controls on images |
+| Text on a solid color of meaning | `--destructive-foreground`, `--success-foreground`, `--on-cat` | A late chip, a done bar, an avatar |
+| Fixed grounds | `--canvas-dark` (the image viewer), `--html-page` (an HTML page, white in both themes) | |
 | Board column | `--column-bg` | Board lists |
 | Editor Inspector | `--inspect-widget`, `--inspect-prefix`, `--inspect-caret` | Dev mode only |
 
@@ -111,8 +110,8 @@ A new color is a new token in `globals.css` with a light value in `:root` and th
 - **Spacing** is Tailwind's scale on 2px and 4px steps: `0.5` (2px), `1` (4px), `1.5` (6px), `2` (8px), `3` (12px), `4` (16px), `6` (24px). Gap between items in a row: `gap-1.5` or `gap-2`. Inside a panel or dialog: `p-3` or `p-4`. Between sections: `gap-4` or `gap-6`. No 10px or 14px.
 - Lay out siblings with flex or grid and `gap`, not margins on each child.
 - **Heights of controls** are the primitives' sizes: Button `default` h-9, `sm` h-8, `xs` h-7; icon buttons `icon` 36px, `icon-sm` 32px, `icon-xs` 28px. Dense bars (pane bar, format bar, tree) use `sm` or `xs`; dialogs and forms use `default`.
-- **Radius:** `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl` (all from `--radius`) and `rounded-full`. Controls `rounded-md`, cards and dialogs `rounded-lg` or `rounded-xl`, dots and avatars `rounded-full`. No radius in px.
-- **Shadows:** Tailwind's `shadow-xs` to `shadow-lg` only, for things that float (menus, popovers, a floating panel, a dragged card).
+- **Radius:** `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl` (all from `--radius`) and `rounded-full`. Inside `ui/` the primitives keep shadcn's own small values (a check box's `rounded-[4px]`). Controls `rounded-md`, cards and dialogs `rounded-lg` or `rounded-xl`, dots and avatars `rounded-full`. No radius in px.
+- **Shadows:** Tailwind's `shadow-xs` to `shadow-2xl` only, for things that float (menus, popovers, a floating panel, a dragged card); in `theme.css` as `var(--shadow-md)`.
 
 ## Icons
 

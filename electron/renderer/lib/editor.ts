@@ -86,7 +86,7 @@ function measurePrefix(indent: string, marker: string, gap: string, task: string
     let width = prefixWidths.get(key);
     if (width !== undefined) return width;
     const style = getComputedStyle(document.documentElement);
-    const text = style.getPropertyValue('--font-text') || 'sans-serif', mono = style.getPropertyValue('--font-mono') || 'monospace';
+    const text = style.getPropertyValue('--font-sans') || 'sans-serif', mono = style.getPropertyValue('--font-mono') || 'monospace';
     const ctx = canvas ??= document.createElement('canvas').getContext('2d')!;
     const size = 16;
     const measure = (s: string, font: string) => { ctx.font = font; return ctx.measureText(s.replace(/\t/g, ' '.repeat(TAB_WIDTH))).width; };

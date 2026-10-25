@@ -17,7 +17,7 @@ export function MenubarMenu(props: ComponentProps<typeof MenubarPrimitive.Menu>)
 export function MenubarTrigger({ className, ...props }: ComponentProps<typeof MenubarPrimitive.Trigger>) {
     return (
         <MenubarPrimitive.Trigger data-slot="menubar-trigger"
-            className={cn('flex h-6 cursor-default select-none items-center rounded-sm px-2 text-[13px] outline-hidden hover:bg-accent focus:bg-accent data-[state=open]:bg-accent', className)}
+            className={cn('flex h-6 cursor-default select-none items-center rounded-sm px-2 text-ui outline-hidden hover:bg-accent focus:bg-accent data-[state=open]:bg-accent', className)}
             {...props} />
     );
 }

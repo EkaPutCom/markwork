@@ -68,7 +68,7 @@ function checkCss(source, report) {
         const line = lineAt(css, m.index);
         if (allowed(lines, line)) continue;
         if (CSS_COLOR.test(value)) report('color', line, `${property}: ${value.trim()}`);
-        if (/^(font-size|font)$/.test(property) && /\d+(\.\d+)?px/.test(value)) report('font-size', line, `${property}: ${value.trim()}`);
+        if (/^(font-size|font)$/.test(property) && /(?<![\d./])\d+(\.\d+)?px/.test(value)) report('font-size', line, `${property}: ${value.trim()}`);   // a line height after / is not a size
     }
 }
 
