@@ -65,7 +65,7 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 3: Melengkapi fondasi
 
-**Selesai** (25 Oktober 2026), kecuali Command dan Sonner.
+**Selesai** (25 Oktober 2026), kecuali Sonner. Command menyusul di tahap 5 bersama palet perintah.
 
 - Primitif hasil tahap 0 ditambahkan ke `ui/`: 19 dari shadcn (termasuk Tooltip), ditambah `IconButton` milik Markwork. 17 di antaranya sudah ada, ditambah Toggle sebagai dasar ToggleGroup. Command dan Sonner menunggu tahap 5: keduanya butuh paket `cmdk` dan `sonner`, jadi baru ditambahkan bersama migrasi palet perintah dan toast yang memakainya.
 - Skala teks tujuh ukuran dan palet `--cat-*` ditambahkan ke file token.
@@ -81,7 +81,7 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 5: Migrasi komponen
 
-**Berjalan.** Sudah: Outline (daftar `Button` ghost, indentasi lewat `--depth`), EditingMode (`ToggleGroup` tunggal dengan `Tooltip`; tes mencarinya sebagai `radio`, bukan `button` lagi), dan dialog inti di `Dialog.tsx` (`AlertDialog` dengan `Input`, `Label`, `Button`).
+**Berjalan.** Sudah: Outline (daftar `Button` ghost, indentasi lewat `--depth`), EditingMode (`ToggleGroup` tunggal dengan `Tooltip`; tes mencarinya sebagai `radio`, bukan `button` lagi), dan dialog inti di `Dialog.tsx` (`AlertDialog` dengan `Input`, `Label`, `Button`), tombol tutup tab dokumen di `Tabs.tsx` (`IconButton`), dan palet perintah (`Command` dari paket `cmdk`, di dalam `Dialog`). `Diff.tsx` tidak punya temuan, jadi tidak diubah.
 
 - Satu per satu, dari kecil ke besar: Outline, EditingMode, Dialog, Diff, Tabs, Palette, Sidebar, …, lalu Board, Chat, Review.
 - Setiap langkah: elemen mentah diganti primitif, class `theme.css` yang tak terpakai dihapus, baseline diturunkan, tes area itu dijalankan.

@@ -67,6 +67,7 @@
   },
   "main": "dist-electron/main.js",
   "dependencies": {
+    "cmdk": "^1.1.1",
     "electron-updater": "^6.8.9"
   },
   "homepage": "https://github.com/EkaPutCom/markwork"
