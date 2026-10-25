@@ -2,6 +2,9 @@
 // shows and sets the mode of the pane that has the focus.
 
 import { Icon } from './Icons.js';
+import { Kbd } from '../ui/kbd.js';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
 import { layoutOf as declaredLayout } from '../../../src/markdown/layout.js';
 import type { Tab } from '../lib/client.js';
 import type { Pane } from '../lib/panes.js';
@@ -32,14 +35,24 @@ export function EditingMode({ tab, pane }: { tab: Tab; pane: Pane }) {
         }
         client.focusEditor();
     };
+    // A click on the mode already chosen still gives the editor the focus back, so the items act on click and the group
+    // only shows the state.
+    const item = (toMarkdown: boolean, label: string, hint: string, shortcut?: string) => (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <ToggleGroupItem value={toMarkdown ? 'code' : 'visual'} onClick={() => choose(toMarkdown)}
+                    className="rounded-md border border-transparent px-2 text-ui text-muted-foreground hover:bg-transparent hover:text-foreground aria-checked:bg-background aria-checked:text-foreground aria-checked:shadow-sm dark:aria-checked:border-input dark:aria-checked:bg-input/30">
+                    <Icon name={toMarkdown ? 'mode-markdown' : 'mode-visual'} /><span className="label-text">{label}</span>
+                </ToggleGroupItem>
+            </TooltipTrigger>
+            <TooltipContent>{hint}{shortcut && <Kbd>{shortcut}</Kbd>}</TooltipContent>
+        </Tooltip>
+    );
     return (
-        <div className="mode-switch" role="group" aria-label="Editing mode">
-            <button type="button" aria-pressed={visual} title="Visual: the document as it looks" onClick={() => choose(false)}>
-                <Icon name="mode-visual" /><span className="label-text">Visual</span>
-            </button>
-            <button type="button" aria-pressed={markdown} title="Code: the file as it is written, with all its syntax (Ctrl+/)" onClick={() => choose(true)}>
-                <Icon name="mode-markdown" /><span className="label-text">Code</span>
-            </button>
-        </div>
+        <ToggleGroup type="single" size="xs" value={visual ? 'visual' : markdown ? 'code' : ''} aria-label="Editing mode"
+            className="mode-switch flex-none gap-0.5 rounded-lg bg-muted p-0.5">
+            {item(false, 'Visual', 'The document as it looks')}
+            {item(true, 'Code', 'The file as it is written, with all its syntax', 'Ctrl+/')}
+        </ToggleGroup>
     );
 }

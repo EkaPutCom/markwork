@@ -1,9 +1,15 @@
-// The window's dialog, drawn as an alert dialog: a heading, the detail, an entry when the core asks for text,
-// and a row of buttons. It answers the questions of the core (client.ts): the ones this window knows by name and any
-// `Question` or `Prompt` it has no dialog of its own for.
+// The window's dialog, an AlertDialog: a heading, the detail, an entry when the core asks for text, and a row of buttons.
+// It answers the questions of the core (client.ts): the ones this window knows by name and any `Question` or `Prompt` it
+// has no dialog of its own for.
 
 import { useEffect, useRef, useState } from 'react';
 import { useClient, useStore } from '../lib/useClient.js';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog.js';
+import { Button } from '../ui/button.js';
+import { Input } from '../ui/input.js';
+import { Label } from '../ui/label.js';
+
+const VARIANT = { suggested: 'default', destructive: 'destructive' } as const;
 
 export function DialogLayer() {
     const client = useClient();
@@ -15,7 +21,8 @@ export function DialogLayer() {
     useEffect(() => {
         if (!dialog) return;
         setText(dialog.entry?.value ?? '');
-        // The entry, or else the default button, has the focus, so Enter answers and Escape dismisses.
+        // The entry, or else the default button, has the focus, so Enter answers and Escape dismisses. Done here rather
+        // than in onOpenAutoFocus, so a question that follows another one at once gets it too.
         setTimeout(() => { if (dialog.entry) entry.current?.select(); else first.current?.focus(); });
     }, [dialog]);
     if (!dialog) return null;
@@ -25,27 +32,33 @@ export function DialogLayer() {
         if (!client.getState().dialog) client.focusEditor();
     };
     return (
-        <div className="dialog-backdrop" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); answer(null); } }}>
-            <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-detail">
-                <h2 id="dialog-title">{dialog.title}</h2>
-                {dialog.detail && <p id="dialog-detail">{dialog.detail}</p>}
+        <AlertDialog open>
+            <AlertDialogContent
+                onOpenAutoFocus={e => e.preventDefault()}
+                onEscapeKeyDown={e => { e.preventDefault(); answer(null); }}
+                {...!dialog.detail && { 'aria-describedby': undefined }}
+            >
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{dialog.title}</AlertDialogTitle>
+                    {dialog.detail && <AlertDialogDescription className="[overflow-wrap:anywhere]">{dialog.detail}</AlertDialogDescription>}
+                </AlertDialogHeader>
                 {dialog.entry && (
-                    <label className="entry">
-                        <span>{dialog.entry.label}</span>
-                        <input
-                            ref={entry} value={text} onChange={e => setText(e.target.value)}
+                    <div className="grid gap-2">
+                        <Label htmlFor="dialog-entry">{dialog.entry.label}</Label>
+                        <Input
+                            id="dialog-entry" ref={entry} value={text} onChange={e => setText(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); answer(dialog.buttons[0]?.value ?? null); } }}
                         />
-                    </label>
+                    </div>
                 )}
-                <div className="buttons">
+                <AlertDialogFooter className="flex-col sm:flex-row-reverse sm:justify-start">
                     {dialog.buttons.map((b, i) => (
-                        <button key={b.value} ref={i === 0 ? first : undefined} className={`button${b.style ? ` ${b.style}` : ''}`} onClick={() => answer(b.value)}>
+                        <Button key={b.value} ref={i === 0 ? first : undefined} variant={b.style ? VARIANT[b.style] : 'outline'} onClick={() => answer(b.value)}>
                             {b.label}
-                        </button>
+                        </Button>
                     ))}
-                </div>
-            </div>
-        </div>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }

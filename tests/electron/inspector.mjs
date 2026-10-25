@@ -123,6 +123,11 @@ async function inNormalStart() {
             await page.evaluate(`${view}.scrollDOM.scrollTop = 900`);
             const scrolled = await page.evaluate(`${view}.scrollDOM.scrollTop`);
             assert.ok(scrolled > 0, 'the long sample scrolls');
+            // Where the editor is scrolled is the line at its top: the blurred picture draws the diagrams and pictures
+            // again, and one above can take its height a moment later (a slow runner did), which moves the pixels but
+            // not the line the scroll is anchored on.
+            const topLine = () => page.evaluate(`(v => v.state.doc.lineAt(v.lineBlockAtHeight(v.scrollDOM.scrollTop).from).number)(${view})`);
+            const top = await topLine();
             await page.getByRole('menuitem', { name: 'Help' }).click();
             await page.getByRole('menuitem', { name: 'Report a Problem with the Editor…' }).click();
             await dialog.waitFor();
@@ -131,7 +136,7 @@ async function inNormalStart() {
             await dialog.getByRole('button', { name: 'Save Report' }).click();
             await dialog.getByText('The report is saved as').waitFor();
             assert.equal(await editorText(), before, 'Ctrl+Z in the note did not undo the text');
-            assert.ok(Math.abs(await page.evaluate(`${view}.scrollDOM.scrollTop`) - scrolled) < 2, 'the editor is scrolled as it was');
+            await waitFor(async () => (await topLine()) === top, 10000, async () => `the editor is scrolled as it was: line ${top} at the top before, line ${await topLine()} now`);
             await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
             await dialog.waitFor({ state: 'detached' });
         });

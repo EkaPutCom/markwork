@@ -183,7 +183,7 @@ try {
     // ---------- outline.ts (the side panel) ----------
     await step('outline: the Files view lists the headings in its Outline section, and a click jumps to one', async () => {
         await open(/Idea\.md/);
-        const rows = page.locator('.outline .row');
+        const rows = page.getByRole('list', { name: 'Headings' }).getByRole('button');
         await rows.first().waitFor();
         assert.deepEqual(await rows.allTextContents(), ['Idea', 'Section Two']);
         await rows.nth(1).click();

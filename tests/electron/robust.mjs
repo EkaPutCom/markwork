@@ -88,7 +88,7 @@ try {
 
     await step('sample: the file opens and every heading, and only those, is in the outline', async () => {
         await open('all-formats.md');
-        const rows = page.locator('.outline .row');
+        const rows = page.getByRole('list', { name: 'Headings' }).getByRole('button');
         await rows.first().waitFor();
         const names = await rows.allTextContents();
         for (const h of ['Markdown All-Formats Test', 'Heading 6', 'Heading with closing marks', '15. Tricky cases']) assert.ok(names.includes(h), `the heading "${h}" is missing`);
@@ -217,7 +217,7 @@ try {
 
     await step('robust: the outline follows a heading that is edited, removed, and shifted, and a click lands on it', async () => {
         await setDoc('# One\n\n## Two\n\n# Three');
-        const rows = page.locator('.outline .row');
+        const rows = page.getByRole('list', { name: 'Headings' }).getByRole('button');
         await waitFor(async () => (await rows.allTextContents()).join('|') === 'One|Two|Three');
         await edit(13, 13, ' new', 17);   // at the end of "## Two"
         await waitFor(async () => (await rows.allTextContents()).join('|') === 'One|Two new|Three');
