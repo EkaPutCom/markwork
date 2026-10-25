@@ -5,7 +5,8 @@
 import { EditorSelection } from '@codemirror/state';
 import type { EditorView, Panel, ViewUpdate } from '@codemirror/view';
 import { closeSearchPanel, findNext, findPrevious, getSearchQuery, replaceAll, replaceNext, SearchQuery, setSearchQuery } from '@codemirror/search';
-import { iconElement, type IconName } from '../components/Icons.js';
+import { iconElement } from '../components/Icons.js';
+import { domButton } from '../ui/dom.js';
 
 // The results are counted up to this many; past it the count says "1000+".
 const COUNT_LIMIT = 1000;
@@ -21,16 +22,9 @@ export function createFindBar(view: EditorView): Panel {
     return bar;
 }
 
-function button(className: string, title: string, content: string | IconName, icon: boolean, run: () => void): HTMLButtonElement {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = className;
-    b.title = title;
-    b.setAttribute('aria-label', title);
-    if (icon) b.append(iconElement(content as IconName)); else b.textContent = content;
-    b.addEventListener('mousedown', e => e.preventDefault());   // the field keeps the focus
-    b.addEventListener('click', run);
-    return b;
+// A toggle or an action of the fields (Aa, ab, .*, Replace, All): a small text button of their own.
+function chip(title: string, text: string, run: () => void): HTMLButtonElement {
+    return domButton({ label: title, content: text, variant: null, size: null, className: 'chip-button', onClick: run });
 }
 
 class FindBar implements Panel {
@@ -72,7 +66,7 @@ class FindBar implements Panel {
         }
 
         const toggle = (key: 'caseSensitive' | 'wholeWord' | 'regexp', label: string, title: string) =>
-            button('chip-button', title, label, false, () => { this.toggles[key].classList.toggle('checked'); this.toggles[key].setAttribute('aria-pressed', String(this.toggles[key].classList.contains('checked'))); this.commit(false); });
+            chip(title, label, () => { this.toggles[key].classList.toggle('checked'); this.toggles[key].setAttribute('aria-pressed', String(this.toggles[key].classList.contains('checked'))); this.commit(false); });
         this.toggles = {
             caseSensitive: toggle('caseSensitive', 'Aa', 'Match Case'),
             wholeWord: toggle('wholeWord', 'ab', 'Whole Words'),
@@ -84,22 +78,22 @@ class FindBar implements Panel {
         this.replaceRow = el('div', 'entry');
         this.replaceRow.hidden = true;
         this.replaceRow.append(this.replace,
-            button('chip-button', 'Replace the selected result and go to the next', 'Replace', false, () => replaceNext(view)),
-            button('chip-button', 'Replace All', 'All', false, () => replaceAll(view)));
+            chip('Replace the selected result and go to the next', 'Replace', () => replaceNext(view)),
+            chip('Replace All', 'All', () => replaceAll(view)));
         const fields = el('div', 'fields');
         fields.append(this.findEntry, this.replaceRow);
 
-        this.expand = button('button expand', 'Replace', 'pan-end', true, () => this.setExpanded(this.replaceRow.hidden === true));
+        this.expand = domButton({ label: 'Replace', content: iconElement('pan-end'), size: 'icon-sm', onClick: () => this.setExpanded(this.replaceRow.hidden === true) });
         this.expand.setAttribute('aria-pressed', 'false');
 
         const arrows = el('div', 'linked');
-        arrows.append(button('button', 'Previous result (Shift+Enter)', 'chevron-up', true, () => findPrevious(view)),
-            button('button', 'Next result (Enter)', 'chevron-down', true, () => findNext(view)));
+        arrows.append(domButton({ label: 'Previous result (Shift+Enter)', content: iconElement('chevron-up'), size: 'icon-sm', onClick: () => findPrevious(view) }),
+            domButton({ label: 'Next result (Enter)', content: iconElement('chevron-down'), size: 'icon-sm', onClick: () => findNext(view) }));
 
         this.count = el('span', 'count');
         this.count.setAttribute('role', 'status');
         const separator = el('span', 'separator');
-        const close = button('button flat close', 'Close', 'window-close', true, () => this.close());
+        const close = domButton({ label: 'Close', content: iconElement('window-close'), size: 'icon-sm', onClick: () => this.close() });
 
         this.dom = el('div', 'find-panel');
         this.dom.setAttribute('role', 'search');
@@ -122,7 +116,6 @@ class FindBar implements Panel {
 
     setExpanded(on: boolean): void {
         this.replaceRow.hidden = !on;
-        this.expand.classList.toggle('checked', on);
         this.expand.setAttribute('aria-pressed', String(on));
         this.expand.replaceChildren(iconElement(on ? 'pan-down' : 'pan-end'));
     }

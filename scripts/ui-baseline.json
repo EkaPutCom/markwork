@@ -140,10 +140,23 @@
         "raw-element": 3,
         "old-class": 2
     },
+    "lib/blockhandle.ts": {
+        "raw-element": 2
+    },
+    "lib/blocktools.ts": {
+        "raw-element": 1
+    },
+    "lib/conflicts.ts": {
+        "raw-element": 1
+    },
+    "lib/editor.ts": {
+        "raw-element": 1
+    },
     "lib/findbar.ts": {
-        "old-class": 7
+        "old-class": 2
     },
     "lib/visual.ts": {
-        "old-class": 2
+        "old-class": 2,
+        "raw-element": 4
     }
 }
