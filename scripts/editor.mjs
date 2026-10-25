@@ -12,7 +12,7 @@ import { connect } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fuzz, kindsOf, play } from './editor-fuzz.mjs';
+import { fuzz, kindsOf, play, shrink } from './editor-fuzz.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -36,6 +36,8 @@ const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--cp] [--headless 
   screenshot FILE [--overlay]             a PNG of the editor
   fuzz [--docs GLOB,…] [--runs N] [--steps N] [--seed S] [--keys K,…] [--quiet MS] [--out DIR] [--shrink-seconds N]
                                           random keys and clicks with every check; a failure is shrunk and saved
+  shrink FILE [--check NAME] [--out F] [--quiet MS] [--shrink-seconds N]
+                                          the fewest steps of a repro that still fail its check (a report, a fuzz find)
   test-from FILE [--name NAME] [--dir D]  a repro as a test: tests/electron/repros/NAME.mwrepro.json
   hello                                   the window's process
 
@@ -51,7 +53,7 @@ const fail = (message, code = 2) => { process.stderr.write(`editor: ${message}\n
 // ---------- Arguments ----------
 
 // The flags that take the next word as their value.
-const VALUED = new Set(['at', 'since', 'line', 'pos', 'mods', 'note', 'visible', 'docs', 'runs', 'steps', 'seed', 'keys', 'quiet', 'out', 'shrink-seconds', 'name', 'dir']);
+const VALUED = new Set(['check', 'at', 'since', 'line', 'pos', 'mods', 'note', 'visible', 'docs', 'runs', 'steps', 'seed', 'keys', 'quiet', 'out', 'shrink-seconds', 'name', 'dir']);
 
 const whole = (v, what) => {
     if (v === undefined) return undefined;
@@ -91,6 +93,7 @@ const OPS = {
         seed: whole(f.seed, '--seed') ?? 1, keys: f.keys, quiet: whole(f.quiet, '--quiet') ?? 60, out: f.out ?? '.', shrinkSeconds: whole(f['shrink-seconds'], '--shrink-seconds') ?? 120,
     }),
     'test-from': (_w, f, one) => ({ file: one('a repro file'), name: f.name, dir: f.dir }),
+    shrink: (_w, f, one) => ({ file: one('a repro file'), check: f.check, out: f.out, quiet: whole(f.quiet, '--quiet') ?? 60, shrinkSeconds: whole(f['shrink-seconds'], '--shrink-seconds') ?? 600 }),
 };
 
 function parseOp(args) {
@@ -300,6 +303,18 @@ function testFrom(request) {
     return { file, steps: repro.steps.length, failedBefore: repro.actual?.failed ?? [] };
 }
 
+// A repro's steps cut down to the fewest that still make its check fail: the check it names as failed, or --check. A
+// person's report is hundreds of steps; the bug is in a few. Written to --out, or next to it as NAME.shrunk.mwrepro.json.
+async function shrinkRepro(conn, request) {
+    const repro = readJSON(request.file);
+    const check = request.check ?? repro.actual?.failed?.[0];
+    if (!check) throw new Usage(`${request.file} names no check that failed: give --check NAME`);
+    const shrunk = await shrink(conn, repro, repro.steps, check, { quiet: request.quiet, seconds: request.shrinkSeconds });
+    const out = request.out ?? request.file.replace(/(\.mwrepro)?\.json$/, '.shrunk.mwrepro.json');
+    writeFileSync(out, `${JSON.stringify({ ...repro, steps: shrunk.steps }, null, 2)}\n`);
+    return { file: resolve(out), check, steps: shrunk.steps.length, before: repro.steps.length, tries: shrunk.tries };
+}
+
 async function runOp(conn, request) {
     switch (request.op) {
         case 'open': {
@@ -314,6 +329,7 @@ async function runOp(conn, request) {
         case 'load': return conn.ask({ op: 'load', repro: readJSON(request.file) });
         case 'fuzz': return runFuzz(conn, request);
         case 'test-from': return testFrom(request);
+        case 'shrink': return shrinkRepro(conn, request);
         case 'replay': return replay(conn, request.file);
         case 'screenshot': {
             const { png, ...area } = await conn.ask({ op: 'screenshot', overlay: request.overlay });

@@ -4,7 +4,7 @@
 // event handlers, and the recorder see them as they see a person's. Loaded only in dev mode (main.ts).
 
 import { BrowserWindow, app, dialog, ipcMain, type KeyboardInputEvent, type WebContents } from 'electron';
-import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -23,6 +23,16 @@ export function socketPath(pid = process.pid): string {
     return join(socketFolder(), `inspect-${pid}.sock`);
 }
 export const socketFolder = (): string => join(userDirs(process.platform as OS, process.env, homedir(), join).runtime, 'markwork');
+
+// The sockets of windows that are gone without closing them (killed, or ended by a test): one per pid, they would pile
+// up in the runtime folder.
+function removeStaleSockets(): void {
+    for (const name of readdirSync(socketFolder())) {
+        const pid = Number(/^inspect-(\d+)\.sock$/.exec(name)?.[1]);
+        if (!pid || pid === process.pid) continue;
+        try { process.kill(pid, 0); } catch (e) { if ((e as NodeJS.ErrnoException).code === 'ESRCH') rmSync(join(socketFolder(), name), { force: true }); }
+    }
+}
 
 class UsageError extends Error {
     constructor(readonly code: string, message: string) { super(message); }
@@ -113,6 +123,7 @@ export class InspectBridge {
             mkdirSync(socketFolder(), { recursive: true, mode: 0o700 });
             chmodSync(socketFolder(), 0o700);
             rmSync(path, { force: true });
+            removeStaleSockets();
         }
         this.server = createServer(socket => this.serve(socket));
         this.server.listen(path, () => { if (process.platform !== 'win32') chmodSync(path, 0o600); });

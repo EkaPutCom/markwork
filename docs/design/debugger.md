@@ -463,7 +463,8 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      100 ms setelah input dianggap bagian dari input itu. Transaksi lain tanpa input menjadi `select` (bila hanya seleksi)
      atau `external`. Repro yang tidak punya check gagal mendapat `expect.doc`, sehingga `replay`-nya menjadi tes bahwa
      teksnya keluar sama.
-   - **Belum ada:** `--cp` (semua posisi UTF-16), serta `around`, `widgets`, dan `parse` di snapshot.
+   - **Sudah ditambahkan kemudian** (bagian 14, *Sesudah tahap 4*): `--cp`, serta `around`, `visibleAfter`, `widgets`,
+     `parse`, dan `parseMs` di snapshot.
 3. **Fuzz, penyusutan, dan `test-from`**, ditambah fuzz dengan seed tetap di CI. *Sudah dibangun*: `scripts/editor-fuzz.mjs`
    (dipakai `npm run editor -- fuzz`), `test-from`, dan `tests/electron/repros.mjs`. Yang berbeda dari rancangan:
    - **Repro yang disimpan diputar oleh `repros.mjs`,** bukan disalin menjadi `step(…)` di `visual.mjs`. `test-from`
@@ -472,7 +473,8 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      jadi aturan *Drive the editor the way a person does* tetap berlaku. Repro pertama di sana adalah aturan lama dari
      AGENT.md: Backspace di awal baris setelah code block memilih bloknya, tidak menggabungkan baris dengan fence.
    - **Langkah acak** diambil dengan bobot: huruf dan spasi, Backspace, Delete, Enter, Tab, Shift+Tab, panah, Home/End, dan
-     klik pada posisi acak (`--keys` membatasinya). Klik pada tepi teks terlihat belum ada; klik memakai `pos`.
+     klik pada posisi acak (`--keys` membatasinya). Klik pada tepi teks terlihat ditambahkan kemudian (bagian 14,
+     *Sesudah tahap 4*).
    - **Penyusutan** adalah delta debugging yang disederhanakan: buang satu dari n potongan selama check yang sama masih
      gagal, perkecil potongannya bila tidak ada yang bisa dibuang, sampai satu langkah pun tidak bisa dibuang atau
      waktunya (`--shrink-seconds`, 120 detik) habis.
@@ -531,6 +533,52 @@ Board 3 mockup: Help → *Report a problem with the editor*.
      1,474 ms sesudah, 1,410 ms sebelum, satu run masing-masing; selisihnya sebesar derau antar-run). Penyamaran `all-formats.md`
      (5.842 karakter) memakan ±6 ms. Itu terjadi sekali saat dialog dibuka (pratinjau) dan beberapa kali saat laporan
      disimpan (teks awal, teks sekarang, dan state untuk gambar), tidak pernah saat mengetik.
+
+**Sesudah tahap 4: yang tersisa dari rancangan.** *Sudah dibangun*, di PR tersendiri:
+
+- **Snapshot lengkap.** `around` (teks baris kursor di kedua sisinya, sampai 24 karakter), `visibleAfter`, `widgets`
+  (dekorasi yang menggambar sesuatu sebagai ganti teks), `parse` (gaya baris kursor dari parse, dalam UTF-16 dari awal
+  baris), dan `parseMs` (waktu parse teks ini; 0 bila parse sebelumnya dipakai ulang, `parseMsOf` di `editor.ts`).
+  `visibleBefore` tetap di tingkat atas, tidak di dalam `around`, karena tes dan skrip sudah membacanya di sana.
+- **`--cp`** adalah opsi global `editor.mjs`. Dengan opsi itu, `snapshot`, `decorations`, `click --pos`, dan `select`
+  menerima dan menjawab code point (`cpSnapshot` di `snapshot.ts`). Tanpa opsi itu, posisi tetap UTF-16 dan
+  `cursor.cp` ditambahkan bila nilainya berbeda. `log` dan repro tetap UTF-16, karena di sana posisi milik `changes`
+  CodeMirror.
+- **Klik di tepi teks terlihat.** Ada langkah repro baru `{ "click": { "line": N, "edge": "start" | "end" } }` dan
+  `click --line N [--start|--end]`. Klik jatuh tepat di dalam huruf pertama yang terlihat di baris itu, atau 30 px
+  sesudah hurufnya yang terakhir (pada baris tampilan terakhir bila baris itu terbungkus), seperti `textEdges` di
+  `visual.mjs`. Baris yang tidak digambar sebagai baris teks (di dalam kotak kode, tabel, atau fence tersembunyi)
+  menjawab `not-found`, dan fuzz melewatinya. Di fuzz, `click` sekarang jenis ini (bobot 6), sedangkan klik di posisi
+  menjadi `click-pos` (bobot 2).
+- **Tab Replay & test** (`components/InspectorReplay.tsx`): *Open Repro…* (berkas apa pun, termasuk laporan
+  pengguna, dibaca lewat `<input type="file">`), *Replay This Recording*, *Step ▶*, *Play All*, dan *Restart*, dengan
+  daftar langkah dan hasilnya (`pass`, `fail` beserta langkah dan check pertama, atau `differs`), seperti `replay`.
+  Ada juga *Copy as JSON*, *Save Repro…*, dan *Make a Test* (seperti `test-from`, ke `tests/electron/repros/` checkout
+  tempat app berjalan; `MARKWORK_TEST_REPROS` untuk tes). Langkah diputar sebagai input sungguhan oleh main, lewat IPC
+  baru `inspect-run` (hanya mode dev) yang menjawab op yang sama dengan socket, ditambah `play`, `save-repro`, dan
+  `keep-test`. `stepRequest` dan `keptAsTest` ada di `repro.ts`, salinan TypeScript dari yang dipakai CLI.
+- **Detail transaksi** mendapat *Show the State Before* (Paused pada transaksi sebelumnya), *Make a Test from This*
+  (pindah ke Replay & test dengan rekaman yang tampil), dan *Copy as JSON* (`entryJSON`, sama dengan `log`). Header
+  panel mendapat *Copy Snapshot*.
+- **`shrink FILE`** di CLI menyusutkan repro yang sudah ada sampai langkahnya paling sedikit sambil check-nya tetap
+  gagal (`--check`, atau check pertama di `actual.failed`; 600 detik bila tidak diberi). Gunanya untuk laporan
+  pengguna yang berisi ratusan langkah, dan untuk temuan fuzz yang waktu penyusutannya habis.
+- **Temuan pertama klik di tepi teks, sudah diperbaiki.** 2 seed × 20 run × 300 langkah atas semua sampel
+  (`--seed 21` dan `22`, ±12.000 langkah) menghasilkan 1 kegagalan `backspace-visible`. Delete pada huruf pertama
+  teks judul (`## a Emphasis`) membuat spasi sesudahnya ikut masuk ke prefix tersembunyi (`##  `), sementara kursor
+  tetap di posisinya, yaitu di dalam prefix itu. Delete berikutnya lalu menghapus spasi yang tidak terlihat. Backspace
+  pada huruf pertama berperilaku sama. Sekarang `textStartAfter` di `visual.ts` memindahkan kursor ke awal teks yang
+  baru (panjang prefix dari `lineKindOf` di `markdown/editcommands.ts`), Delete dari kursor yang tertinggal di dalam
+  prefix bekerja dari ujung prefix, dan `prefix-guard` juga memeriksa kursor sesudah penghapusan, tidak hanya sesudah
+  kursor bergeser. Repro-nya ada di `tests/electron/repros/` (`delete-first-letter-of-a-heading`,
+  `backspace-first-letter-of-a-heading`). Penyusutan otomatis hanya sampai 136 dari 213 langkah dalam 25 menit,
+  karena setiap percobaan memutar ulang ratusan langkah. Penyebabnya ditemukan dengan membaca `log` dan `snapshot`
+  dari jendela yang dibiarkan hidup (`--headless --keep`).
+- **Socket yang tertinggal.** Jendela yang dimatikan tanpa ditutup (oleh tes, atau `kill`) meninggalkan socket-nya di
+  folder runtime. `electron/inspect.ts` sekarang menghapus socket milik pid yang sudah tidak ada saat mulai.
+- **Bug yang ditemukan saat membangunnya:** tombol `Ctrl+Alt+I` tercatat sebagai langkah transaksi berikutnya,
+  sehingga *Replay This Recording* menutup panelnya sendiri. Sekarang `App.tsx` membuang input itu dari perekam
+  (`forgetInput`).
 
 Setiap tahap adalah satu PR beserta testnya, dan README diperbarui (pintasan dan perintah palet) di tahap 1 dan 4.
 
