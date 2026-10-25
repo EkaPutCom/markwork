@@ -6,6 +6,10 @@ import { useMemo, useState, type DragEvent } from 'react';
 import { boardSchema, cardFields, cardMeta, dropIndex, dueStatus, type Board as BoardData, type Position } from '../../../src/markdown/kanban.js';
 import { wikiLinksIn } from '../../../src/markdown/wikilink.js';
 import { Icon } from './Icons.js';
+import { Button } from '../ui/button.js';
+import { Checkbox } from '../ui/checkbox.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Input } from '../ui/input.js';
 import { CardDialog, Chip, FieldChips, formatDay, Inline, PopupMenu, refOf, Tags, todayString, usePopup, useFieldEditor, type CardAnswer, type MenuEntry } from './notes.js';
 import type { CardMenuEntry } from '../lib/client.js';
 import { useClient } from '../lib/useClient.js';
@@ -121,7 +125,7 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
                         onDrop={e => drop(e, c)}>
                         <h2>
                             <span className="name">{columnName(column.title)}</span><span className="count">{column.cards.length}</span>
-                            <button className="icon-button" aria-label={`List menu: ${columnName(column.title)}`} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ at: { x: r.left, y: r.bottom }, entries: columnEntries(c) }); }}>⋯</button>
+                            <IconButton size="icon-xs" className="list-menu" label={`List menu: ${columnName(column.title)}`} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ at: { x: r.left, y: r.bottom }, entries: columnEntries(c) }); }}><Icon name="view-more-horizontal" /></IconButton>
                         </h2>
                         <div className="cards">
                             {column.cards.map((card, index) => {
@@ -142,10 +146,8 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
                                             onClick={() => setEditing({ ...at, text: card.text, notes: card.notes })}
                                             onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) setEditing({ ...at, text: card.text, notes: card.notes }); }}
                                             onContextMenu={e => { e.preventDefault(); void openCardMenu(at, e.clientX, e.clientY); }}>
-                                            <button className="check" aria-label={`${card.done ? 'Mark not done' : 'Mark done'}: ${meta.title}`}
-                                                onClick={e => { e.stopPropagation(); client.editNotes({ kind: 'toggle', ...ref }); }}>
-                                                {card.done ? <Icon name="emblem-ok" /> : <span className="ring" />}
-                                            </button>
+                                            <Checkbox className="card-check" checked={card.done === true} aria-label={`Done: ${meta.title}`}
+                                                onClick={e => e.stopPropagation()} onCheckedChange={() => client.editNotes({ kind: 'toggle', ...ref })} />
                                             <div className="body">
                                                 <div className="text"><Inline text={meta.title} /></div>
                                                 <div className="badges">
@@ -166,7 +168,7 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
                             })}
                             {drag?.target?.column === c && drag.target.index >= others && mark}
                         </div>
-                        <button className="add" onClick={() => setAddingCard(c)}><Icon name="list-add" />Add card</button>
+                        <Button variant="ghost" size="sm" className="add" onClick={() => setAddingCard(c)}><Icon name="list-add" />Add card</Button>
                     </section>
                 );
             })}
@@ -180,10 +182,10 @@ export function Board({ board, groupField, agents, runs }: { board: BoardData; g
                         setDrafts(d => ({ ...d, list: '' }));
                         setAdding(null);
                     }}>
-                        <input autoFocus value={drafts.list ?? ''} onChange={e => setDrafts(d => ({ ...d, list: e.target.value }))} placeholder="List name" aria-label="New list name"
+                        <Input autoFocus value={drafts.list ?? ''} onChange={e => setDrafts(d => ({ ...d, list: e.target.value }))} placeholder="List name" aria-label="New list name"
                             onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setAdding(null); } }} onBlur={() => { if (!(drafts.list ?? '').trim()) setAdding(null); }} />
                     </form>
-                ) : <button className="add" onClick={() => setAdding('list')}><Icon name="list-add" />Add list</button>}
+                ) : <Button variant="ghost" size="sm" className="add" onClick={() => setAdding('list')}><Icon name="list-add" />Add list</Button>}
             </div>
             {menu && <PopupMenu at={menu.at} entries={menu.entries} onClose={closeMenu} />}
             {fieldPopover}

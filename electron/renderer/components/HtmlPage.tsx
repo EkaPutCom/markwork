@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { htmlViewUrl } from '../../../src/markdown/htmlview.js';
+import { IconButton } from '../ui/icon-button.js';
 import { Icon } from './Icons.js';
 
 export function HtmlPage({ id, file, root }: { id: number; file: string; root: string }) {
@@ -23,7 +24,7 @@ export function HtmlPage({ id, file, root }: { id: number; file: string; root: s
     return (
         <div className="html-page">
             <div className="html-bar">
-                <button className="button flat" aria-label="Reload" title="Reload (Ctrl+R)" onClick={() => setReload(n => n + 1)}><Icon name="view-refresh" /></button>
+                <IconButton label="Reload" shortcut="Ctrl+R" onClick={() => setReload(n => n + 1)}><Icon name="view-refresh" /></IconButton>
                 <span className="where" title={file}>{file}</span>
             </div>
             {!url ? <p className="empty">The page is outside its folder</p>

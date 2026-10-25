@@ -86,7 +86,7 @@ try {
     });
 
     await step('board: the check, the card menu, and a delete that asks first', async () => {
-        await page.getByRole('button', { name: 'Mark done: One' }).click();
+        await page.getByRole('checkbox', { name: 'Done: One' }).click();
         await page.locator('.board .card.done', { hasText: 'One' }).waitFor();
         await page.locator('.board .card', { hasText: 'Old' }).click({ button: 'right' });
         await page.getByRole('menuitem', { name: 'Delete' }).click();
@@ -118,7 +118,7 @@ try {
     await step('Fields…: a field with colored options is added, and a card\'s chip changes it from a popover', async () => {
         await page.getByRole('menubar').getByRole('menuitem', { name: 'Edit', exact: true }).click();
         await page.getByRole('menuitem', { name: 'Fields…' }).click();
-        await dialog.getByRole('button', { name: '+ Add field' }).click();
+        await dialog.getByRole('button', { name: 'Add field' }).click();
         await dialog.getByLabel('Field name').fill('prio');
         await dialog.getByLabel('Field type').click();
         await page.getByRole('option', { name: 'Choice' }).click();
@@ -136,11 +136,11 @@ try {
         await dialog.getByLabel('prio').click();
         await page.getByRole('option', { name: 'high' }).click();
         await dialog.getByRole('button', { name: 'Save' }).click();
-        const chip = page.locator('.board .card', { hasText: 'One' }).locator('.chip.opt-red', { hasText: 'high' });
+        const chip = page.locator('.board .card', { hasText: 'One' }).locator('.note-chip.opt-red', { hasText: 'high' });
         await chip.waitFor();
         await chip.click();
         await page.locator('.field-popover').getByRole('button', { name: 'low' }).click();
-        await page.locator('.board .card', { hasText: 'One' }).locator('.chip', { hasText: 'low' }).waitFor();
+        await page.locator('.board .card', { hasText: 'One' }).locator('.note-chip', { hasText: 'low' }).waitFor();
         assert.match(await saved('board.md', /One \[prio:: low\]/), /One \[prio:: low\]/);
     });
 
@@ -193,7 +193,7 @@ try {
         await page.getByRole('button', { name: /^Title/ }).click();
         await page.locator('.notes-table tbody tr', { hasText: 'Bravo' }).locator('td[data-field=status]').click();
         await page.locator('.field-popover').getByRole('button', { name: 'doing' }).click();
-        await page.locator('.notes-table tbody tr', { hasText: 'Bravo' }).locator('.chip', { hasText: 'doing' }).waitFor();
+        await page.locator('.notes-table tbody tr', { hasText: 'Bravo' }).locator('.note-chip', { hasText: 'doing' }).waitFor();
         assert.match(await saved('table.md', /Bravo \[status:: doing\]/), /Bravo \[status:: doing\]/);
     });
 
@@ -221,9 +221,9 @@ try {
         await dialog.getByLabel('Title').fill('Planning');
         await dialog.getByRole('button', { name: 'Save' }).click();
         await page.locator(`.calendar-day[data-date="${month}-16"]`).getByText('Planning').waitFor();
-        await page.getByRole('button', { name: 'Agenda' }).click();
+        await page.getByRole('radio', { name: 'Agenda' }).click();
         await page.locator('.agenda').getByText('Planning').waitFor();
-        await page.getByRole('button', { name: 'Week' }).click();
+        await page.getByRole('radio', { name: 'Week' }).click();
         await page.locator('.calendar-grid').waitFor();
     });
 
@@ -268,7 +268,7 @@ try {
         await page.getByLabel('Search the notes of the gallery').fill('');
         const width = () => page.locator('.gallery-card').first().evaluate(el => el.getBoundingClientRect().width);
         const medium = await width();
-        await page.getByRole('button', { name: 'Large' }).click();
+        await page.getByRole('radio', { name: 'Large' }).click();
         assert.ok(await width() > medium, 'large is wider than medium');
         await page.getByRole('button', { name: 'Delete note: Sunset' }).click();
         await alert.getByRole('button', { name: 'Delete' }).click();

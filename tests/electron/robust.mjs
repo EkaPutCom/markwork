@@ -246,7 +246,7 @@ try {
 
     await step('nothing failed in the page or the core along the way', async () => {
         assert.deepEqual(errors, []);
-        assert.equal(await page.locator('.notification.error').count(), 0, 'the core stopped');
+        assert.equal(await page.locator('[data-sonner-toast][data-type=error]').count(), 0, 'the core stopped');
     });
 } catch {
     failed = true;

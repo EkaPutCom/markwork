@@ -7,6 +7,11 @@ import type { HarnessAsk, HarnessReply } from '../../../src/app/protocol/harness
 import { isValidMachineName, isValidSshTarget } from '../../../src/agent/daemon/machines.js';
 import { Modal } from './Modals.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Button } from '../ui/button.js';
+import { Input } from '../ui/input.js';
+import { Label } from '../ui/label.js';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group.js';
+import { Textarea } from '../ui/textarea.js';
 
 // What the harness asked, in the words of a dialog: a choice among options, a yes or no, a line, or free text.
 function AnswerForm({ id, ask, agent }: { id: number; ask: HarnessAsk; agent: string }) {
@@ -21,20 +26,20 @@ function AnswerForm({ id, ask, agent }: { id: number; ask: HarnessAsk; agent: st
                 {ask.message && <p className="ask-message">{ask.message}</p>}
                 {ask.kind === 'select' && (
                     <div className="choices" role="group" aria-label="Options">
-                        {ask.options.map(option => <button type="button" key={option} className="button" onClick={() => answer({ value: option })}>{option}</button>)}
+                        {ask.options.map(option => <Button type="button" key={option} variant="outline" size="sm" onClick={() => answer({ value: option })}>{option}</Button>)}
                     </div>
                 )}
                 {free && (
                     ask.kind === 'input'
-                        ? <label>Your answer<input autoFocus value={text} onChange={e => setText(e.target.value)} /></label>
-                        : <label>{ask.kind === 'question' ? `Reply to ${agent}` : 'Your answer'}<textarea autoFocus rows={5} value={text} onChange={e => setText(e.target.value)} /></label>
+                        ? <Label>Your answer<Input autoFocus value={text} onChange={e => setText(e.target.value)} /></Label>
+                        : <Label>{ask.kind === 'question' ? `Reply to ${agent}` : 'Your answer'}<Textarea autoFocus rows={5} value={text} onChange={e => setText(e.target.value)} /></Label>
                 )}
                 <div className="buttons">
-                    {ask.kind === 'confirm' && <button type="button" className="button suggested" onClick={() => answer({ confirmed: true })}>Allow</button>}
-                    {free && <button type="submit" className="button suggested" disabled={ask.kind !== 'editor' && !text.trim()}>{ask.kind === 'question' ? 'Send Reply' : 'Answer'}</button>}
-                    {ask.kind === 'confirm' && <button type="button" className="button" onClick={() => answer({ confirmed: false })}>Deny</button>}
-                    <button type="button" className="button" title={ask.kind === 'question' ? `Leave ${agent}'s question for later` : `${agent} keeps waiting`} onClick={() => answer(null)}>Later</button>
-                    <button type="button" className="button" title={ask.kind === 'question' ? 'End without a reply' : 'Skip the question'} onClick={() => answer({ cancelled: true })}>Skip</button>
+                    {ask.kind === 'confirm' && <Button type="button" onClick={() => answer({ confirmed: true })}>Allow</Button>}
+                    {free && <Button type="submit" disabled={ask.kind !== 'editor' && !text.trim()}>{ask.kind === 'question' ? 'Send Reply' : 'Answer'}</Button>}
+                    {ask.kind === 'confirm' && <Button type="button" variant="outline" onClick={() => answer({ confirmed: false })}>Deny</Button>}
+                    <Button type="button" variant="outline" title={ask.kind === 'question' ? `Leave ${agent}'s question for later` : `${agent} keeps waiting`} onClick={() => answer(null)}>Later</Button>
+                    <Button type="button" variant="outline" title={ask.kind === 'question' ? 'End without a reply' : 'Skip the question'} onClick={() => answer({ cancelled: true })}>Skip</Button>
                 </div>
             </form>
         </Modal>
@@ -52,11 +57,11 @@ function TextForm({ id, title, label, context, text: initial }: { id: number; ti
             <form className="form" onSubmit={e => { e.preventDefault(); done(true); }}>
                 <p>{label}</p>
                 {context && <pre className="context">{context}</pre>}
-                <textarea autoFocus rows={6} aria-label={title} value={text} onChange={e => setText(e.target.value)}
+                <Textarea autoFocus rows={6} aria-label={title} value={text} onChange={e => setText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); done(true); } }} />
                 <div className="buttons">
-                    <button type="submit" className="button suggested" disabled={!text.trim()}>Send</button>
-                    <button type="button" className="button" onClick={() => done(false)}>Cancel</button>
+                    <Button type="submit" disabled={!text.trim()}>Send</Button>
+                    <Button type="button" variant="outline" onClick={() => done(false)}>Cancel</Button>
                 </div>
             </form>
         </Modal>
@@ -76,12 +81,12 @@ function MachineForm({ id, taken }: { id: number; taken: string[] }) {
         <Modal title="Add a Machine" onClose={() => done(false)}>
             <form className="form" onSubmit={e => { e.preventDefault(); done(true); }}>
                 <p>Agents can run on another computer you reach with ssh. Markwork opens the connection with your ssh settings and keys.</p>
-                <label>Name<input autoFocus value={name} placeholder="build-box" onChange={e => setName(e.target.value)} /></label>
-                <label>SSH target<input value={target} placeholder="user@host" onChange={e => setTarget(e.target.value)} /></label>
+                <Label>Name<Input autoFocus value={name} placeholder="build-box" onChange={e => setName(e.target.value)} /></Label>
+                <Label>SSH target<Input value={target} placeholder="user@host" onChange={e => setTarget(e.target.value)} /></Label>
                 {problem && name && <div className="form-error" role="alert">{problem}</div>}
                 <div className="buttons">
-                    <button type="submit" className="button suggested" disabled={!!problem}>Add</button>
-                    <button type="button" className="button" onClick={() => done(false)}>Cancel</button>
+                    <Button type="submit" disabled={!!problem}>Add</Button>
+                    <Button type="button" variant="outline" onClick={() => done(false)}>Cancel</Button>
                 </div>
             </form>
         </Modal>
@@ -129,18 +134,20 @@ export function PullRequestDialog() {
             <form className="form" onSubmit={e => { e.preventDefault(); send(); }}>
                 <p>{options.branch} goes to {options.host} and is offered for {options.repository}, to be merged into {options.base}.</p>
                 {options.uncommitted && <p className="dim">The agent left changes it did not commit. They are committed on the branch first.</p>}
-                <label>Title<input autoFocus value={title} onChange={e => setTitle(e.target.value)} /></label>
-                <label>Description<textarea rows={6} value={body} onChange={e => setBody(e.target.value)} /></label>
+                <Label>Title<Input autoFocus value={title} onChange={e => setTitle(e.target.value)} /></Label>
+                <Label>Description<Textarea rows={6} value={body} onChange={e => setBody(e.target.value)} /></Label>
                 <fieldset>
                     <legend>How it is sent</legend>
-                    {VIA.filter(([kind]) => kind !== 'direct' || options.canPush).map(([kind, name, detail]) => (
-                        <label key={kind} className="radio" title={detail}><input type="radio" name="via" checked={via === kind} onChange={() => setVia(kind)} />{name}</label>
-                    ))}
+                    <RadioGroup value={via} onValueChange={value => setVia(value as typeof via)} className="gap-1">
+                        {VIA.filter(([kind]) => kind !== 'direct' || options.canPush).map(([kind, name, detail]) => (
+                            <Label key={kind} className="choice" title={detail}><RadioGroupItem value={kind} />{name}</Label>
+                        ))}
+                    </RadioGroup>
                 </fieldset>
                 {problem && <div className="form-error" role="alert">{problem}</div>}
                 <div className="buttons">
-                    <button type="submit" className="button suggested" disabled={!!problem}>Send</button>
-                    <button type="button" className="button" onClick={() => client.answerPullRequest(pullAsk.id, null)}>Cancel</button>
+                    <Button type="submit" disabled={!!problem}>Send</Button>
+                    <Button type="button" variant="outline" onClick={() => client.answerPullRequest(pullAsk.id, null)}>Cancel</Button>
                 </div>
             </form>
         </Modal>

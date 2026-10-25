@@ -8,6 +8,10 @@ import { calendarData, type CalendarItem } from '../../../src/markdown/calendar.
 import { boardSchema, type Board, type Position } from '../../../src/markdown/kanban.js';
 import { formatDate, PageHeader, refOf, todayString, useNoteDialog } from './notes.js';
 import { useClient } from '../lib/useClient.js';
+import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
+import { Icon } from './Icons.js';
 
 type Mode = 'month' | 'week' | 'agenda';
 const MODES: [Mode, string][] = [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']];
@@ -46,10 +50,10 @@ export function Calendar({ board }: { board: Board }) {
         const done = item.card.done === true, late = !done && item.date < today;
         const label = (item.time ? `${item.time} ` : '') + item.title;
         return (
-            <button key={`${item.at.column}:${item.at.index}`} className={`calendar-event${done ? ' done' : late ? ' late' : ''}`} draggable aria-label={label}
+            <Button key={`${item.at.column}:${item.at.index}`} variant="ghost" size="xs" className={`calendar-event justify-start${done ? ' done' : late ? ' late' : ''} text-left`} draggable aria-label={label}
                 title={done ? `${item.title} (done)` : late ? `${item.title} (past its date)` : item.title}
                 onDragStart={e => { e.dataTransfer.setData('text/plain', item.card.text); dragged.current = item.at; }} onDragEnd={() => { dragged.current = null; setOver(null); }}
-                onClick={e => { e.stopPropagation(); edit(item.at); }}>{label}</button>
+                onClick={e => { e.stopPropagation(); edit(item.at); }}>{label}</Button>
         );
     };
     const cell = (date: string, limit: number) => {
@@ -59,7 +63,7 @@ export function Calendar({ board }: { board: Board }) {
                 title={data.key ? 'Double-click to add a note on this day' : undefined} onDoubleClick={() => data.key && add(date)} {...target(date, date)}>
                 <span className={`daynum${date === today ? ' today' : ''}`}>{Number(date.slice(8))}</span>
                 {items.slice(0, limit).map(event)}
-                {items.length > limit && <button className="more dim caption" title="Show this week" onClick={e => { e.stopPropagation(); setAnchor(date); setMode('week'); }}>+{items.length - limit} more</button>}
+                {items.length > limit && <Button variant="link" size="xs" className="more h-auto justify-start text-muted-foreground text-left" onClick={e => { e.stopPropagation(); setAnchor(date); setMode('week'); }}>+{items.length - limit} more</Button>}
             </div>
         );
     };
@@ -80,9 +84,14 @@ export function Calendar({ board }: { board: Board }) {
             <PageHeader board={board} fallback="Calendar" onNew={() => add()} />
             <div className="calendar-bar">
                 <h2 className="period">{period}</h2>
-                <span className="linked"><button className="button" aria-label="Previous" onClick={() => step(-1)}>‹</button><button className="button" aria-label="Next" onClick={() => step(1)}>›</button></span>
-                <button className="button" title="Go to today" onClick={() => setAnchor('')}>Today</button>
-                <span className="linked">{MODES.map(([m, label]) => <button key={m} className={`button${mode === m ? ' checked' : ''}`} aria-pressed={mode === m} onClick={() => setMode(m)}>{label}</button>)}</span>
+                <span className="flex">
+                    <IconButton variant="outline" size="icon-sm" className="rounded-r-none" label="Previous" onClick={() => step(-1)}><Icon name="go-previous" /></IconButton>
+                    <IconButton variant="outline" size="icon-sm" className="rounded-l-none border-l-0" label="Next" onClick={() => step(1)}><Icon name="go-next" /></IconButton>
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setAnchor('')}>Today</Button>
+                <ToggleGroup type="single" variant="outline" size="sm" aria-label="View" value={mode} onValueChange={value => { if (value) setMode(value as typeof mode); }}>
+                    {MODES.map(([m, label]) => <ToggleGroupItem key={m} value={m} className="px-3">{label}</ToggleGroupItem>)}
+                </ToggleGroup>
             </div>
             <div className="calendar-body">
                 <div className="calendar-main">
@@ -99,8 +108,8 @@ export function Calendar({ board }: { board: Board }) {
                     <h3>Not scheduled ({data.undated.length})</h3>
                     {!data.key && <p className="dim">Declare a date field in the frontmatter (fields: due: date) to place notes on days.</p>}
                     {data.undated.map(item => (
-                        <button key={`${item.at.column}:${item.at.index}`} className="calendar-note" draggable onClick={() => edit(item.at)}
-                            onDragStart={e => { e.dataTransfer.setData('text/plain', item.card.text); dragged.current = item.at; }} onDragEnd={() => { dragged.current = null; setOver(null); }}>{item.title}</button>
+                        <Button key={`${item.at.column}:${item.at.index}`} variant="outline" size="sm" className="calendar-note justify-start font-normal text-left" draggable onClick={() => edit(item.at)}
+                            onDragStart={e => { e.dataTransfer.setData('text/plain', item.card.text); dragged.current = item.at; }} onDragEnd={() => { dragged.current = null; setOver(null); }}>{item.title}</Button>
                     ))}
                     {data.key && <p className="dim caption">Drag a note to a day to schedule it.</p>}
                 </aside>

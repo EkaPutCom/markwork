@@ -35,7 +35,7 @@ try {
     const card = () => page.getByRole('group', { name: 'Write the notes' });
     const menuItem = name => page.getByRole('menuitem', { name });
     const openMenu = async () => { await card().click({ button: 'right' }); await page.getByRole('menu').waitFor(); };
-    const badge = () => card().locator('.chip.agent');
+    const badge = () => card().locator('.note-chip.agent');
 
     await step('the board opens and a card offers to be worked on by an agent', async () => {
         await page.getByRole('treeitem', { name: /board\.md/ }).waitFor({ timeout: 15000 });

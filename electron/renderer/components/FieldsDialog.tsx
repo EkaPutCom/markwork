@@ -8,6 +8,10 @@ import { fieldNameProblem, OPTION_COLORS, optionProblem, type FieldDef, type Fie
 import { Modal } from './Modals.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { Select } from '../ui/select.js';
+import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Input } from '../ui/input.js';
+import { Icon } from './Icons.js';
 
 const TYPES: readonly FieldType[] = ['text', 'number', 'select', 'date', 'progress', 'person', 'agent', 'link'];
 const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', number: 'Number', select: 'Choice', date: 'Date', progress: 'Progress', person: 'Person', agent: 'Agent', link: 'Link' };
@@ -59,10 +63,10 @@ function Form({ id, options }: { id: number; options: NonNullable<ReturnType<typ
                             <div key={i} className="field-row">
                                 <div className="head">
                                     <span className="mover">
-                                        <button type="button" className="icon-button" aria-label="Move up" title="Move up" disabled={i === 0} onClick={() => setDraft(l => swap(l, i, i - 1))}>↑</button>
-                                        <button type="button" className="icon-button" aria-label="Move down" title="Move down" disabled={i === draft.length - 1} onClick={() => setDraft(l => swap(l, i, i + 1))}>↓</button>
+                                        <IconButton type="button" size="icon-xs" label="Move up" disabled={i === 0} onClick={() => setDraft(l => swap(l, i, i - 1))}><Icon name="chevron-up" /></IconButton>
+                                        <IconButton type="button" size="icon-xs" label="Move down" disabled={i === draft.length - 1} onClick={() => setDraft(l => swap(l, i, i + 1))}><Icon name="chevron-down" /></IconButton>
                                     </span>
-                                    {d.fresh ? <input autoFocus className={problem ? 'error' : ''} value={d.def.key} placeholder="Field name" aria-label="Field name" title={problem ? PROBLEM[problem] : undefined}
+                                    {d.fresh ? <Input autoFocus aria-invalid={problem ? true : undefined} value={d.def.key} placeholder="Field name" aria-label="Field name" title={problem ? PROBLEM[problem] : undefined}
                                         onChange={e => set(i, f => ({ ...f, def: { ...f.def, key: e.target.value } }))} />
                                         : <strong className="name">{d.def.key}</strong>}
                                     {d.fresh ? (
@@ -70,7 +74,7 @@ function Form({ id, options }: { id: number; options: NonNullable<ReturnType<typ
                                             {TYPES.map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
                                         </Select>
                                     ) : <span className="dim">{TYPE_LABEL[d.def.type]}{d.def.multiple ? ' ×' : ''}</span>}
-                                    {d.fresh && <button type="button" className="icon-button" aria-label="Remove this field" title="Remove this field" onClick={() => setDraft(l => l.filter((_x, j) => j !== i))}>×</button>}
+                                    {d.fresh && <IconButton type="button" size="icon-xs" label="Remove this field" onClick={() => setDraft(l => l.filter((_x, j) => j !== i))}><Icon name="window-close" /></IconButton>}
                                 </div>
                                 {problem && <div className="field-error" role="alert">{PROBLEM[problem]}</div>}
                                 {d.def.type === 'select' && (
@@ -83,30 +87,30 @@ function Form({ id, options }: { id: number; options: NonNullable<ReturnType<typ
                                                 <div key={j}>
                                                     <div className="option-row">
                                                         <span className="mover">
-                                                            <button type="button" className="icon-button" aria-label="Move option up" disabled={j === 0} onClick={() => set(i, f => ({ ...f, options: swap(f.options, j, j - 1) }))}>↑</button>
-                                                            <button type="button" className="icon-button" aria-label="Move option down" disabled={j === d.options.length - 1} onClick={() => set(i, f => ({ ...f, options: swap(f.options, j, j + 1) }))}>↓</button>
+                                                            <IconButton type="button" size="icon-xs" label="Move option up" disabled={j === 0} onClick={() => set(i, f => ({ ...f, options: swap(f.options, j, j - 1) }))}><Icon name="chevron-up" /></IconButton>
+                                                            <IconButton type="button" size="icon-xs" label="Move option down" disabled={j === d.options.length - 1} onClick={() => set(i, f => ({ ...f, options: swap(f.options, j, j + 1) }))}><Icon name="chevron-down" /></IconButton>
                                                         </span>
-                                                        <button type="button" className={`opt-dot ${o.color ? `opt-dot-${o.color}` : 'opt-dot-auto'}${colorOpen === key ? ' chosen' : ''}`} aria-label="Color of this option" title="Color of this option"
+                                                        <IconButton type="button" variant={null} size="icon-xs" className={`opt-dot ${o.color ? `opt-dot-${o.color}` : 'opt-dot-auto'}`} aria-expanded={colorOpen === key} label="Color of this option"
                                                             onClick={() => setColorOpen(colorOpen === key ? null : key)} />
-                                                        <input className={issue ? 'error' : ''} value={o.text} aria-label="Option" title={issue ? OPTION_PROBLEM[issue] : undefined}
+                                                        <Input aria-invalid={issue ? true : undefined} value={o.text} aria-label="Option" title={issue ? OPTION_PROBLEM[issue] : undefined}
                                                             onChange={e => set(i, f => ({ ...f, options: f.options.map((x, k) => k === j ? { ...x, text: e.target.value } : x) }))} />
                                                         {uses > 0 && <span className="dim caption">{uses} {uses === 1 ? 'note' : 'notes'}</span>}
-                                                        <button type="button" className="icon-button" aria-label="Remove option" title="Remove option" onClick={() => set(i, f => ({ ...f, options: f.options.filter((_x, k) => k !== j) }))}>×</button>
+                                                        <IconButton type="button" size="icon-xs" label="Remove option" onClick={() => set(i, f => ({ ...f, options: f.options.filter((_x, k) => k !== j) }))}><Icon name="window-close" /></IconButton>
                                                     </div>
                                                     {colorOpen === key && (
                                                         <div className="color-row">
                                                             {OPTION_COLORS.map(color => (
-                                                                <button type="button" key={color} className={`opt-dot opt-dot-${color}${o.color === color ? ' chosen' : ''}`} aria-label={color} title={color}
+                                                                <IconButton type="button" key={color} variant={null} size="icon-xs" className={`opt-dot opt-dot-${color}`} aria-pressed={o.color === color} label={color}
                                                                     onClick={() => { set(i, f => ({ ...f, options: f.options.map((x, k) => k === j ? { ...x, color } : x) })); setColorOpen(null); }} />
                                                             ))}
-                                                            <button type="button" className="button flat" onClick={() => { set(i, f => ({ ...f, options: f.options.map((x, k) => k === j ? { ...x, color: null } : x) })); setColorOpen(null); }}>Automatic</button>
+                                                            <Button type="button" variant="ghost" size="sm" onClick={() => { set(i, f => ({ ...f, options: f.options.map((x, k) => k === j ? { ...x, color: null } : x) })); setColorOpen(null); }}>Automatic</Button>
                                                         </div>
                                                     )}
                                                 </div>
                                             );
                                         })}
                                         <div className="option-row">
-                                            <input value={added[i] ?? ''} placeholder="Add an option…" aria-label="Add an option"
+                                            <Input value={added[i] ?? ''} placeholder="Add an option…" aria-label="Add an option"
                                                 onChange={e => setAdded(a => ({ ...a, [i]: e.target.value }))}
                                                 onKeyDown={e => {
                                                     if (e.key !== 'Enter') return;
@@ -116,12 +120,12 @@ function Form({ id, options }: { id: number; options: NonNullable<ReturnType<typ
                                                     set(i, f => ({ ...f, options: [...f.options, { text, color: null }] }));
                                                     setAdded(a => ({ ...a, [i]: '' }));
                                                 }} />
-                                            <button type="button" className="icon-button" aria-label="Add option" title="Add option" onClick={() => {
+                                            <IconButton type="button" size="icon-xs" label="Add option" onClick={() => {
                                                 const text = (added[i] ?? '').trim();
                                                 if (!text || optionProblem(text, d.options.map(o => o.text))) return;
                                                 set(i, f => ({ ...f, options: [...f.options, { text, color: null }] }));
                                                 setAdded(a => ({ ...a, [i]: '' }));
-                                            }}>+</button>
+                                            }}><Icon name="list-add" /></IconButton>
                                         </div>
                                     </div>
                                 )}
@@ -129,10 +133,10 @@ function Form({ id, options }: { id: number; options: NonNullable<ReturnType<typ
                         );
                     })}
                 </div>
-                <button type="button" className="button flat" onClick={() => setDraft(l => [...l, { def: { key: '', type: 'text', multiple: false, options: [] }, fresh: true, options: [] }])}>+ Add field</button>
+                <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setDraft(l => [...l, { def: { key: '', type: 'text', multiple: false, options: [] }, fresh: true, options: [] }])}><Icon name="list-add" />Add field</Button>
                 <div className="buttons">
-                    <button type="submit" className="button suggested">Save</button>
-                    <button type="button" className="button" onClick={() => client.answerSchema(id, null)}>Cancel</button>
+                    <Button type="submit">Save</Button>
+                    <Button type="button" variant="outline" onClick={() => client.answerSchema(id, null)}>Cancel</Button>
                 </div>
             </form>
         </Modal>

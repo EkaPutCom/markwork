@@ -8,6 +8,9 @@ import { boardSchema, type Board } from '../../../src/markdown/kanban.js';
 import { imageUrl } from '../lib/images.js';
 import { Chip, PageHeader, Tags, useNoteDialog } from './notes.js';
 import { Icon } from './Icons.js';
+import { IconButton } from '../ui/icon-button.js';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group.js';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
 import { useClient } from '../lib/useClient.js';
 
 const SIZE_LABEL: Record<GallerySize, string> = { small: 'Small', medium: 'Medium', large: 'Large' };
@@ -30,8 +33,13 @@ export function Gallery({ board }: { board: Board }) {
         <div className="layout-page gallery" data-page="gallery">
             <PageHeader board={board} fallback="Gallery" onNew={() => add()} />
             <div className="gallery-bar">
-                <span className="search-entry"><Icon name="edit-find" /><input type="search" value={query} placeholder="Search notes…" aria-label="Search the notes of the gallery" onChange={e => setQuery(e.target.value)} /></span>
-                <span className="linked">{GALLERY_SIZES.map(s => <button key={s} className={`button${size === s ? ' checked' : ''}`} aria-pressed={size === s} onClick={() => setSizeOverride(s)}>{SIZE_LABEL[s]}</button>)}</span>
+                <InputGroup className="h-8 flex-1">
+                    <InputGroupAddon><Icon name="edit-find" /></InputGroupAddon>
+                    <InputGroupInput type="search" value={query} placeholder="Search notes…" aria-label="Search the notes of the gallery" onChange={e => setQuery(e.target.value)} />
+                </InputGroup>
+                <ToggleGroup type="single" variant="outline" size="sm" aria-label="Card size" value={size} onValueChange={value => { if (value) setSizeOverride(value as GallerySize); }}>
+                    {GALLERY_SIZES.map(s => <ToggleGroupItem key={s} value={s} className="px-3">{SIZE_LABEL[s]}</ToggleGroupItem>)}
+                </ToggleGroup>
             </div>
             <div className="gallery-grid">
                 {shown.map(card => {
@@ -42,8 +50,8 @@ export function Gallery({ board }: { board: Board }) {
                             onClick={() => edit(card.at)} onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) edit(card.at); }}>
                             <div className={`cover ${card.cover.kind === 'color' ? `cover-${card.cover.index}` : card.cover.kind === 'image' ? 'cover-missing' : 'cover-none'}`} style={{ height: Math.round(width * 0.45) }}>
                                 {src && <img src={src} alt={card.title} onError={e => { e.currentTarget.hidden = true; }} />}
-                                <button className="delete button circular" title="Delete note" aria-label={`Delete note: ${card.title}`}
-                                    onClick={async e => { e.stopPropagation(); if (await client.confirm(`Delete the note “${card.title}”?`, '', 'Delete')) client.editNotes({ kind: 'delete', at: card.at, card: card.card.text }); }}><Icon name="window-close" /></button>
+                                <IconButton className="delete rounded-full" label={`Delete note: ${card.title}`}
+                                    onClick={async e => { e.stopPropagation(); if (await client.confirm(`Delete the note “${card.title}”?`, '', 'Delete')) client.editNotes({ kind: 'delete', at: card.at, card: card.card.text }); }}><Icon name="window-close" /></IconButton>
                             </div>
                             <div className="text">
                                 <h3>{card.title}</h3>

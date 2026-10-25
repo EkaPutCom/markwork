@@ -10,6 +10,11 @@ import { LOG_HEADERS, settledNewest, visibleSteps } from '../../../src/agent/log
 import { Icon } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useChat, useClient, useStore } from '../lib/useClient.js';
+import { Badge } from '../ui/badge.js';
+import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
 
 const FILTERS: [string, TraceKind[]][] = [['All', []], ['Tools', ['tool']], ['Reasoning', ['reasoning']], ['Model', ['round', 'text']]];
 const KIND_NAME: Record<TraceKind, string> = { turn: 'Question', round: 'Model round', reasoning: 'Reasoning', text: 'Answer', tool: 'Tool call', usage: 'Usage', note: 'Note', error: 'Error' };
@@ -70,21 +75,23 @@ function Detail({ event, nodes }: { event: TraceEvent | null; nodes: TraceNode[]
         <div className="log-detail">
             <div className="head">
                 <b className="name">{name}</b>
-                {state && <span className={`chip ${event.status}`}>{state}</span>}
+                {state && <Badge variant="secondary" className={`note-chip ${event.status}`}>{state}</Badge>}
                 <span className="side-meta">{KIND_NAME[event.kind]}{event.round !== undefined && event.kind !== 'round' ? ` · round ${event.round}` : ''} · {event.time.slice(11)}</span>
             </div>
             <div className="metrics">{metricsOf(event, nodes).map(([value, caption]) => <div key={caption} className="metric"><b>{value}</b><span className="side-meta">{caption}</span></div>)}</div>
-            <div className="tabs" role="tablist">{tabs.map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}</div>
-            <div className="page">
-                {tab === 'summary' && blocks.filter(([, text]) => text).map(([caption, text]) => <div key={caption}><div className="side-meta">{caption}</div><pre>{text}</pre></div>)}
-                {tab === 'args' && <pre>{event.args || '(no arguments)'}</pre>}
-                {tab === 'result' && <pre>{event.result || (event.status === 'running' ? 'Waiting for the result…' : '(empty)')}</pre>}
-                {tab === 'raw' && <pre>{AgentTrace.format(event)}</pre>}
-            </div>
+            <Tabs value={tab} onValueChange={value => setTab(value as Tab)} className="contents">
+                <TabsList className="self-start">{tabs.map(([id, label]) => <TabsTrigger key={id} value={id}>{label}</TabsTrigger>)}</TabsList>
+                <TabsContent value={tab} className="page">
+                    {tab === 'summary' && blocks.filter(([, text]) => text).map(([caption, text]) => <div key={caption}><div className="side-meta">{caption}</div><pre>{text}</pre></div>)}
+                    {tab === 'args' && <pre>{event.args || '(no arguments)'}</pre>}
+                    {tab === 'result' && <pre>{event.result || (event.status === 'running' ? 'Waiting for the result…' : '(empty)')}</pre>}
+                    {tab === 'raw' && <pre>{AgentTrace.format(event)}</pre>}
+                </TabsContent>
+            </Tabs>
             <div className="actions">
-                {tool && <button className="button" onClick={() => copy(event.args ?? '')}>Copy arguments</button>}
-                {tool && <button className="button" onClick={() => copy(event.result ?? '')}>Copy result</button>}
-                <button className="button" onClick={() => copy(AgentTrace.format(event))}>Copy event</button>
+                {tool && <Button variant="outline" size="sm" onClick={() => copy(event.args ?? '')}>Copy arguments</Button>}
+                {tool && <Button variant="outline" size="sm" onClick={() => copy(event.result ?? '')}>Copy result</Button>}
+                <Button variant="outline" size="sm" onClick={() => copy(AgentTrace.format(event))}>Copy event</Button>
             </div>
         </div>
     );
@@ -110,11 +117,11 @@ export function LogPanel({ log, rev, empty }: { log: TraceReplica; rev: number; 
     return (
         <div className="log">
             <div className="log-bar">
-                <button className="button" title="Copy the whole log as text" onClick={() => void navigator.clipboard.writeText(log.text())}>Copy all</button>
-                <button className="button" title="Clear the log view" onClick={() => { setPicked(null); log.clear(); }}>Clear</button>
-                <span className="filters" role="group" aria-label="Show">
-                    {FILTERS.map(([label], i) => <button key={label} className={`button${filter === i ? ' checked' : ''}`} aria-pressed={filter === i} onClick={() => setFilter(i)}>{label}</button>)}
-                </span>
+                <Button variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(log.text())}>Copy all</Button>
+                <Button variant="outline" size="sm" onClick={() => { setPicked(null); log.clear(); }}>Clear</Button>
+                <ToggleGroup type="single" variant="outline" size="sm" className="filters" aria-label="Show" value={String(filter)} onValueChange={value => { if (value) setFilter(Number(value)); }}>
+                    {FILTERS.map(([label], i) => <ToggleGroupItem key={label} value={String(i)} className="px-3">{label}</ToggleGroupItem>)}
+                </ToggleGroup>
                 <span className="side-meta summary">{log.events.length ? `${rounds} model rounds · ${tools} tool calls` : empty}</span>
             </div>
             <div className="log-body">
@@ -126,8 +133,8 @@ export function LogPanel({ log, rev, empty }: { log: TraceReplica; rev: number; 
                             <div key={e.seq} role="treeitem" aria-selected={e.seq === selected} aria-level={n.depth + 1} tabIndex={0}
                                 className={`step ${e.kind}${e.seq === selected ? ' selected' : ''}${e.status === 'failed' ? ' failed' : ''}`} style={{ paddingLeft: 4 + n.depth * 14 }}
                                 onClick={() => setPicked(e.seq === newest ? null : e.seq)} onKeyDown={ev => { if (ev.key === 'Enter') setPicked(e.seq === newest ? null : e.seq); }}>
-                                {header ? <button className="button flat circular" aria-label={collapsed.has(e.seq) ? 'Expand' : 'Collapse'} aria-expanded={!collapsed.has(e.seq)}
-                                    onClick={ev => { ev.stopPropagation(); toggle(e.seq); }}><Icon name={collapsed.has(e.seq) ? 'pan-end' : 'pan-down'} size={12} /></button> : <span className="gap" />}
+                                {header ? <IconButton size="icon-xs" className="size-5" label={collapsed.has(e.seq) ? 'Expand' : 'Collapse'} aria-expanded={!collapsed.has(e.seq)}
+                                    onClick={ev => { ev.stopPropagation(); toggle(e.seq); }}><Icon name={collapsed.has(e.seq) ? 'pan-end' : 'pan-down'} size={12} /></IconButton> : <span className="gap" />}
                                 <span className="label">{rowLabel(e)}{e.status === 'failed' ? ' — failed' : ''}</span>
                                 <span className="side-meta">{rowMeta(e)}</span>
                             </div>

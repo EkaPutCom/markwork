@@ -24,6 +24,7 @@ import { label } from '../lib/keys.js';
 import { isSolo, type Pane as PaneData, type Zone } from '../lib/panes.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
 import { COMMANDS } from '../../../src/app/commands.js';
 
@@ -40,7 +41,7 @@ function Welcome() {
                 {hint('Open Folder', 'Ctrl+Shift+O')}
                 {hint('New Document', 'Ctrl+N')}
             </ul>
-            {!root && <button className="button suggested" onClick={() => void client.openFolder()}>Open Folder</button>}
+            {!root && <Button onClick={() => void client.openFolder()}>Open Folder</Button>}
         </div>
     );
 }
@@ -132,12 +133,12 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
                 <div className="pane-bar">
                     <PaneTabs pane={pane} solo={false} label={solo ? 'Open documents' : `Documents of pane ${index + 1}`} onMenu={() => setMenu(true)} />
                     <span className="spacer" />
-                    <Button variant="ghost" size="icon-sm" title={`Split Right (${keysOf('split-right')})`} aria-label="Split Right" onClick={() => client.splitPane('right', pane.id)}>
+                    <IconButton label="Split Right" shortcut={keysOf('split-right')} onClick={() => client.splitPane('right', pane.id)}>
                         <Icon name="split-right" />
-                    </Button>
+                    </IconButton>
                     <DropdownMenu open={menu} onOpenChange={setMenu}>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" aria-label="Pane actions" title="Pane actions"><Icon name="view-more-horizontal" /></Button>
+                            <IconButton label="Pane actions"><Icon name="view-more-horizontal" /></IconButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-56" onCloseAutoFocus={e => { e.preventDefault(); client.focusEditor(); }}>
                             <DropdownMenuItem onSelect={() => client.splitPane('right', pane.id)}><Icon name="split-right" />Split Right<DropdownMenuShortcut>{keysOf('split-right')}</DropdownMenuShortcut></DropdownMenuItem>

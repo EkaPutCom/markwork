@@ -11,6 +11,7 @@ import { SECTIONS, type SectionId, type SectionState } from '../lib/client.js';
 import * as P from '../lib/panes.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { Button } from '../ui/button.js';
+import { IconButton } from '../ui/icon-button.js';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
 
 const MENU_NAMES: Record<SectionId, string> = { editors: 'Open Editors', folder: 'Folders', outline: 'Outline', timeline: 'Timeline' };
@@ -27,9 +28,9 @@ function EditorRow({ doc, pane, current }: { doc: number; pane: number; current:
             <Icon name={board ? 'view-dual' : 'text-x-generic'} className="icon" />
             <span className="label">{tab.name}</span>
             {tab.mirror.modified && <span className="dot" role="img" aria-label="Unsaved" />}
-            <button className="button flat circular close" aria-label={`Close editor ${tab.name}`} onClick={e => { e.stopPropagation(); client.closeTab(doc, pane); }}>
+            <IconButton label={`Close editor ${tab.name}`} size="icon-xs" className="close size-5 rounded-sm" onClick={e => { e.stopPropagation(); client.closeTab(doc, pane); }}>
                 <Icon name="window-close" size={14} />
-            </button>
+            </IconButton>
         </div>
     );
 }
@@ -57,12 +58,12 @@ function Timeline() {
     return (
         <div className="commits" aria-label="Timeline">
             {history.commits.map(c => (
-                <button key={c.hash} className="commit" onClick={() => client.openCommit(c.hash)}>
+                <Button key={c.hash} variant="ghost" className="commit h-auto items-stretch font-normal text-left" onClick={() => client.openCommit(c.hash)}>
                     <span className="subject">{c.subject || '(no message)'}</span>
                     <span className="meta">{c.author} · {commitTime(c.time)}</span>
-                </button>
+                </Button>
             ))}
-            {history.more && <button className="button" onClick={() => client.moreHistory()}>Load more</button>}
+            {history.more && <Button variant="outline" size="sm" className="more" onClick={() => client.moreHistory()}>Load more</Button>}
         </div>
     );
 }
@@ -127,9 +128,9 @@ export function FilesView() {
             title: name,
             actions: root && (
                 <>
-                    <Button variant="ghost" size="icon-xs" title="New File…" aria-label="New File" onClick={() => client.createEntry('file', root)}><Icon name="document-new" size={15} /></Button>
-                    <Button variant="ghost" size="icon-xs" title="New Folder…" aria-label="New Folder" onClick={() => client.createEntry('folder', root)}><Icon name="folder" size={15} /></Button>
-                    <Button variant="ghost" size="icon-xs" title="Collapse Folders" aria-label="Collapse Folders" onClick={() => client.collapseFolders()}><Icon name="chevrons-up-down" size={15} /></Button>
+                    <IconButton size="icon-xs" label="New File" onClick={() => client.createEntry('file', root)}><Icon name="document-new" size={15} /></IconButton>
+                    <IconButton size="icon-xs" label="New Folder" onClick={() => client.createEntry('folder', root)}><Icon name="folder" size={15} /></IconButton>
+                    <IconButton size="icon-xs" label="Collapse Folders" onClick={() => client.collapseFolders()}><Icon name="chevrons-up-down" size={15} /></IconButton>
                 </>
             ),
             body: <FolderTree />,
@@ -144,7 +145,7 @@ export function FilesView() {
                 <span>Explorer</span>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-xs" aria-label="Views and More Actions" title="Views and More Actions"><Icon name="view-more-horizontal" /></Button>
+                        <IconButton size="icon-xs" label="Views and More Actions"><Icon name="view-more-horizontal" /></IconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-52" onCloseAutoFocus={e => e.preventDefault()}>
                         <DropdownMenuLabel>Sections</DropdownMenuLabel>

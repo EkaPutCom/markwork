@@ -11,6 +11,15 @@ import { Icon, type IconName } from './Icons.js';
 import { Modal } from './Modals.js';
 import { useChat, useClient } from '../lib/useClient.js';
 import { Select } from '../ui/select.js';
+import { Button } from '../ui/button.js';
+import { Checkbox } from '../ui/checkbox.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Input } from '../ui/input.js';
+import { Label } from '../ui/label.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover.js';
+import { Separator } from '../ui/separator.js';
+import { Spinner } from '../ui/spinner.js';
+import { Textarea } from '../ui/textarea.js';
 
 const SUGGESTIONS = [
     'Summarize this document in a few points',
@@ -29,17 +38,16 @@ function useElapsed(from: number, to: number | null): number {
     return Math.max(0, Math.round(((to ?? now) - from) / 1000)) * 1000;
 }
 
-// A popover under its button: closes on a click outside or Escape.
-function Popover({ onClose, children, label }: { onClose: () => void; children: ReactNode; label: string }) {
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        const away = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node) && !(e.target as Element).closest('[data-popover-button]')) onClose(); };
-        const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
-        document.addEventListener('mousedown', away);
-        document.addEventListener('keydown', key, true);
-        return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', key, true); };
-    }, [onClose]);
-    return <div ref={ref} className="chat-popover" role="dialog" aria-label={label}>{children}</div>;
+// A Popover of the panel beside the button that opens it; a click outside or Escape closes it.
+function PanelPopover({ open, onOpenChange, trigger, label, side = 'bottom', children }: {
+    open: boolean; onOpenChange: (open: boolean) => void; trigger: ReactNode; label: string; side?: 'top' | 'bottom'; children: ReactNode;
+}) {
+    return (
+        <Popover open={open} onOpenChange={onOpenChange}>
+            <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+            <PopoverContent side={side} align={side === 'top' ? 'start' : 'end'} className="chat-popover" aria-label={label}>{children}</PopoverContent>
+        </Popover>
+    );
 }
 
 // ---------- The answer ----------
@@ -54,19 +62,19 @@ function TurnStatus({ answer }: { answer: AnswerView }) {
     return (
         <div className={`chat-status ${answer.phase}`}>
             <div className="top">
-                <button className="head" aria-expanded={open} onClick={() => setOpen(v => !v)}>
-                    {running ? <span className="spinner" aria-hidden="true" /> : icon && <Icon name={icon} size={14} className={answer.phase === 'done' ? 'done-icon' : undefined} />}
+                <Button variant="ghost" className="head font-normal" aria-expanded={open} onClick={() => setOpen(v => !v)}>
+                    {running ? <Spinner aria-hidden="true" className="size-3.5" /> : icon && <Icon name={icon} size={14} className={answer.phase === 'done' ? 'done-icon' : undefined} />}
                     <span className="label">{statusLine(answer)}</span>
                     <span className="time">{formatMs(elapsed)}</span>
                     <Icon name={open ? 'pan-down' : 'pan-end'} size={12} />
-                </button>
-                {retry && answer.question && <button className="button flat" onClick={() => void client.chat.send(answer.question!)}>Retry</button>}
+                </Button>
+                {retry && answer.question && <Button variant="ghost" size="sm" onClick={() => void client.chat.send(answer.question!)}>Retry</Button>}
             </div>
             {open && (
                 <div className="details">
                     {answer.context && <div className="side-meta">{answer.context}</div>}
                     {answer.steps.map(s => (
-                        <div key={s.id} className="chat-step">{s.summary ? <Icon name="emblem-ok" size={12} /> : <span className="spinner" aria-hidden="true" />}
+                        <div key={s.id} className="chat-step">{s.summary ? <Icon name="emblem-ok" size={12} /> : <Spinner aria-hidden="true" className="size-3" />}
                             <span>{s.summary ? `${s.label} → ${s.summary}` : `${s.label}…`}</span></div>
                     ))}
                     {answer.reasoning.trim() && <details className="chat-thinking"><summary>Thinking process</summary><div>{answer.reasoning.trim()}</div></details>}
@@ -97,7 +105,7 @@ function WorkList({ work, running, elapsed }: { work: WorkState; running: boolea
                     const state = step.status === 'pending' ? (i === current ? 'in progress' : 'not yet') : step.status;
                     return (
                         <li key={i} aria-label={`${step.text} — ${state}`} className={step.status}>
-                            <span className="mark">{i === current ? <span className="spinner" aria-hidden="true" /> : step.status === 'done' ? <Icon name="emblem-ok" size={11} /> : step.status === 'blocked' ? <Icon name="dialog-warning" size={13} /> : <span className="pending" />}</span>
+                            <span className="mark">{i === current ? <Spinner aria-hidden="true" className="size-3" /> : step.status === 'done' ? <Icon name="emblem-ok" size={11} /> : step.status === 'blocked' ? <Icon name="dialog-warning" size={13} /> : <span className="pending" />}</span>
                             <span className="text">{step.text}</span>
                         </li>
                     );
@@ -114,10 +122,10 @@ function ActionBar({ answer }: { answer: AnswerView }) {
     const [inserted, setInserted] = useState<string | null>(null);
     return (
         <div className="chat-actions">
-            <button className="button flat" onClick={() => { void navigator.clipboard.writeText(answer.text); setCopied(true); }}><Icon name="edit-copy" size={14} /><span>{copied ? 'Copied' : 'Copy'}</span></button>
-            <button className="button flat" onClick={async () => setInserted(await client.chat.insert(answer.text) ? 'Inserted' : 'Open a note first')}><Icon name="insert-text" size={14} /><span>{inserted ?? 'Insert into note'}</span></button>
-            {answer.question && <button className="button flat" onClick={() => void client.chat.send(answer.question!)}><Icon name="view-refresh" size={14} /><span>Retry</span></button>}
-            <button className="button flat" onClick={() => client.chat.openLog(true)}><Icon name="utilities-terminal" size={14} /><span>Log</span></button>
+            <Button variant="ghost" size="xs" onClick={() => { void navigator.clipboard.writeText(answer.text); setCopied(true); }}><Icon name="edit-copy" size={14} /><span>{copied ? 'Copied' : 'Copy'}</span></Button>
+            <Button variant="ghost" size="xs" onClick={async () => setInserted(await client.chat.insert(answer.text) ? 'Inserted' : 'Open a note first')}><Icon name="insert-text" size={14} /><span>{inserted ?? 'Insert into note'}</span></Button>
+            {answer.question && <Button variant="ghost" size="xs" onClick={() => void client.chat.send(answer.question!)}><Icon name="view-refresh" size={14} /><span>Retry</span></Button>}
+            <Button variant="ghost" size="xs" onClick={() => client.chat.openLog(true)}><Icon name="utilities-terminal" size={14} /><span>Log</span></Button>
         </div>
     );
 }
@@ -160,11 +168,11 @@ function ProposalCard({ ask }: { ask: number }) {
             {reasons && <div className="side-meta">{reasons}</div>}
             <div className={view.state === 'failed' ? 'chat-error' : 'side-meta'}>{status}</div>
             <div className="row">
-                {view.state === 'open' && <button className="button suggested" onClick={() => client.chat.openReview(ask)}>Review changes</button>}
+                {view.state === 'open' && <Button size="xs" onClick={() => client.chat.openReview(ask)}>Review changes</Button>}
                 {view.state === 'applied' && !view.undone && (
-                    <button className="button" title="Restore the files to their contents before this change" onClick={() => void client.chat.undo({ ask })}>Undo</button>
+                    <Button variant="outline" size="xs" title="Restore the files to their contents before this change" onClick={() => void client.chat.undo({ ask })}>Undo</Button>
                 )}
-                {view.state !== 'open' && view.state !== 'cancelled' && <button className="button flat" aria-expanded={diff} onClick={() => setDiff(v => !v)}>{diff ? 'Hide diff' : 'View diff'}</button>}
+                {view.state !== 'open' && view.state !== 'cancelled' && <Button variant="ghost" size="xs" aria-expanded={diff} onClick={() => setDiff(v => !v)}>{diff ? 'Hide diff' : 'View diff'}</Button>}
             </div>
             {diff && <DiffLines lines={view.changes.flatMap(c => c.diff)} />}
         </div>
@@ -200,18 +208,18 @@ export function ChatReview() {
                     <fieldset className="picks">
                         <legend className="side-meta">Files to apply (uncheck to reject some):</legend>
                         {view.changes.map((c, i) => (
-                            <label key={i}><input type="checkbox" checked={picked[i] !== false} onChange={e => setPicked(p => p.map((v, j) => j === i ? e.target.checked : v))} />
-                                {c.description}{c.kind === 'move' ? '' : ` · +${c.added} −${c.removed}`}</label>
+                            <Label key={i} className="font-normal"><Checkbox checked={picked[i] !== false} onCheckedChange={on => setPicked(p => p.map((v, j) => j === i ? on === true : v))} />
+                                {c.description}{c.kind === 'move' ? '' : ` · +${c.added} −${c.removed}`}</Label>
                         ))}
                     </fieldset>
                 )}
                 <DiffLines lines={view.changes.flatMap(c => c.diff)} />
                 {view.error && <div className="chat-error status" role="alert">Failed to apply: {view.error}</div>}
                 <div className="bar">
-                    {open && <input className="note" placeholder="Note for the agent (optional), e.g. the reason for rejecting" aria-label="Note for the agent" value={note} onChange={e => setNote(e.target.value)} />}
-                    <button className="button" onClick={() => client.chat.reject(view.ask, note)}>{open ? 'Reject' : 'Close'}</button>
-                    {open && <button className="button suggested" disabled={busy || chosen.length === 0} onClick={() => void apply()}>
-                        {view.batch && chosen.length < view.changes.length ? `Apply ${chosen.length} of ${view.changes.length}` : 'Apply'}</button>}
+                    {open && <Input className="note" placeholder="Note for the agent (optional), e.g. the reason for rejecting" aria-label="Note for the agent" value={note} onChange={e => setNote(e.target.value)} />}
+                    <Button variant="outline" onClick={() => client.chat.reject(view.ask, note)}>{open ? 'Reject' : 'Close'}</Button>
+                    {open && <Button disabled={busy || chosen.length === 0} onClick={() => void apply()}>
+                        {view.batch && chosen.length < view.changes.length ? `Apply ${chosen.length} of ${view.changes.length}` : 'Apply'}</Button>}
                 </div>
             </div>
         </Modal>
@@ -225,8 +233,8 @@ function PastRow({ action }: { action: PastAction }) {
     return (
         <div className="chat-past">
             <div className="row">
-                <button className="button" title={action.changes.map(c => c.file).join('\n')} aria-expanded={diff} onClick={() => setDiff(v => !v)}>View diff · {action.changes.length} {action.changes.length === 1 ? 'file' : 'files'}</button>
-                {action.status === 'applied' && <button className="button" title="Restore the files to their contents before this change" onClick={() => void client.chat.undo({ event: action.id })}>Undo</button>}
+                <Button variant="outline" size="xs" title={action.changes.map(c => c.file).join('\n')} aria-expanded={diff} onClick={() => setDiff(v => !v)}>View diff · {action.changes.length} {action.changes.length === 1 ? 'file' : 'files'}</Button>
+                {action.status === 'applied' && <Button variant="outline" size="xs" title="Restore the files to their contents before this change" onClick={() => void client.chat.undo({ event: action.id })}>Undo</Button>}
             </div>
             {diff && <DiffLines lines={action.changes.flatMap(c => c.diff)} />}
         </div>
@@ -246,21 +254,22 @@ function ContextButton() {
     useEffect(() => { if (open) void client.chat.updateContext(); }, [open, client]);
     return (
         <div className="chat-context">
-            <button className="button flat" data-popover-button aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(v => !v)}>
-                Context{built ? ` · ≈${fmtTokens(built.tokens)} tokens` : ''}<Icon name="pan-down" size={12} />
-            </button>
-            {open && settings && (
-                <Popover label="Context" onClose={() => setOpen(false)}>
+            <PanelPopover open={open && !!settings} onOpenChange={setOpen} label="Context" side="top" trigger={
+                <Button variant="ghost" size="xs" className="font-normal text-muted-foreground">
+                    Context{built ? ` · ≈${fmtTokens(built.tokens)} tokens` : ''}<Icon name="pan-down" size={12} />
+                </Button>
+            }>
+                {settings && <>
                     {CONTEXT_PARTS.map(([key, text]) => (
-                        <label key={key} className="check"><input type="checkbox" checked={settings.options[key]} onChange={e => client.chat.setOptions({ ...settings.options, [key]: e.target.checked })} />{text}</label>
+                        <Label key={key} className="chat-check"><Checkbox aria-label={text} checked={settings.options[key]} onCheckedChange={on => client.chat.setOptions({ ...settings.options, [key]: on === true })} />{text}</Label>
                     ))}
-                    <hr />
+                    <Separator />
                     {built && !built.items.length && <div className="side-meta">No document context is being sent.</div>}
                     {built?.items.map((item, i) => <div key={i} className="part">{KIND_LABEL[item.kind]}: {item.label} · {fmtTokens(item.tokens)}</div>)}
                     {built && <div className="side-meta">Total ≈{fmtTokens(built.tokens)} tokens of the {fmtTokens(settings.budget)} budget</div>}
                     {built?.unknownMentions.map(m => <div key={m} className="side-meta">File @{m} was not found in the project folder.</div>)}
-                </Popover>
-            )}
+                </>}
+            </PanelPopover>
         </div>
     );
 }
@@ -271,23 +280,18 @@ function HistoryButton() {
     const [open, setOpen] = useState(false);
     useEffect(() => { if (open) void client.chat.loadChats(); }, [open, client]);
     return (
-        <div className="anchor">
-            <button className="button flat" data-popover-button title="Conversations" aria-label="Conversations" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(v => !v)}><Icon name="document-open-recent" /></button>
-            {open && (
-                <Popover label="Conversations" onClose={() => setOpen(false)}>
-                    {chats === null && <div className="side-meta">Open a work folder to keep conversations.</div>}
-                    {chats?.length === 0 && <div className="side-meta">No saved conversations yet.</div>}
-                    {chats?.map(c => (
-                        <div key={c.path} className="chat-item">
-                            <button className="open" onClick={async () => { if (await client.chat.openChat(c.path)) setOpen(false); }}>
-                                <span className="title">{c.title}</span><span className="side-meta">{c.created.replace('T', ' ').slice(0, 16)} · {c.turns} {c.turns === 1 ? 'turn' : 'turns'}</span>
-                            </button>
-                            <button className="button flat circular" title="Move to the Trash" aria-label={`Delete ${c.title}`} onClick={() => void client.chat.deleteChat(c.path)}><Icon name="window-close" size={12} /></button>
-                        </div>
-                    ))}
-                </Popover>
-            )}
-        </div>
+        <PanelPopover open={open} onOpenChange={setOpen} label="Conversations" trigger={<IconButton size="icon-xs" label="Conversations"><Icon name="document-open-recent" /></IconButton>}>
+            {chats === null && <div className="side-meta">Open a work folder to keep conversations.</div>}
+            {chats?.length === 0 && <div className="side-meta">No saved conversations yet.</div>}
+            {chats?.map(c => (
+                <div key={c.path} className="chat-item">
+                    <Button variant="ghost" className="open h-auto items-stretch font-normal text-left" onClick={async () => { if (await client.chat.openChat(c.path)) setOpen(false); }}>
+                        <span className="title">{c.title}</span><span className="side-meta">{c.created.replace('T', ' ').slice(0, 16)} · {c.turns} {c.turns === 1 ? 'turn' : 'turns'}</span>
+                    </Button>
+                    <IconButton size="icon-xs" label={`Delete ${c.title}`} onClick={() => void client.chat.deleteChat(c.path)}><Icon name="window-close" size={12} /></IconButton>
+                </div>
+            ))}
+        </PanelPopover>
     );
 }
 
@@ -302,29 +306,26 @@ function SettingsButton({ forceOpen }: { forceOpen: number }) {
     useEffect(() => { if (forceOpen > 0) setOpen(true); }, [forceOpen]);
     useEffect(() => { if (open) void client.chat.keyStatus(); }, [open, client]);
     return (
-        <div className="anchor">
-            <button className="button flat" data-popover-button title="Settings" aria-label="Assistant settings" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(v => !v)}><Icon name="emblem-system" /></button>
-            {open && settings && (
-                <Popover label="Assistant settings" onClose={() => setOpen(false)}>
-                    <div className="field-title">DeepSeek API key</div>
-                    <div className="side-meta" role="status">{key === undefined ? '' : key ? `A key is set ${SOURCES[key]}.` : 'No key yet.'}</div>
-                    <input type="password" autoComplete="off" aria-label="API key" placeholder="Paste the key" value={text} onChange={e => setText(e.target.value)} />
-                    {error && <div className="chat-error">{error}</div>}
-                    <div className="row">
-                        <button className="button suggested" disabled={!text.trim()} onClick={async () => { const e = await client.chat.saveKey(text.trim()); setError(e ?? ''); if (!e) setText(''); }}>Save</button>
-                        {key && key !== 'env' && <button className="button" onClick={() => void client.chat.forgetKey()}>Forget</button>}
-                    </div>
-                    <hr />
-                    <label className="check"><span>Model</span>
-                        <Select value={settings.model} aria-label="Model" onChange={e => client.chat.setModel(e.target.value)}>
-                            {(models.length ? models : [settings.model]).map(m => <option key={m} value={m}>{m}</option>)}
-                        </Select>
-                    </label>
-                    <label className="check"><input type="checkbox" checked={settings.thinking} onChange={e => client.chat.setThinking(e.target.checked)} />Thinking mode</label>
-                    <label className="check"><input type="checkbox" checked={settings.saveChats} onChange={e => client.chat.setSaveChats(e.target.checked)} />Save conversation history</label>
-                </Popover>
-            )}
-        </div>
+        <PanelPopover open={open && !!settings} onOpenChange={setOpen} label="Assistant settings" trigger={<IconButton size="icon-xs" label="Assistant settings"><Icon name="emblem-system" /></IconButton>}>
+            {settings && <>
+                <div className="field-title">DeepSeek API key</div>
+                <div className="side-meta" role="status">{key === undefined ? '' : key ? `A key is set ${SOURCES[key]}.` : 'No key yet.'}</div>
+                <Input type="password" autoComplete="off" aria-label="API key" placeholder="Paste the key" value={text} onChange={e => setText(e.target.value)} />
+                {error && <div className="chat-error">{error}</div>}
+                <div className="row">
+                    <Button size="sm" disabled={!text.trim()} onClick={async () => { const e = await client.chat.saveKey(text.trim()); setError(e ?? ''); if (!e) setText(''); }}>Save</Button>
+                    {key && key !== 'env' && <Button variant="outline" size="sm" onClick={() => void client.chat.forgetKey()}>Forget</Button>}
+                </div>
+                <Separator />
+                <div className="chat-check justify-between"><span>Model</span>
+                    <Select value={settings.model} aria-label="Model" onChange={e => client.chat.setModel(e.target.value)}>
+                        {(models.length ? models : [settings.model]).map(m => <option key={m} value={m}>{m}</option>)}
+                    </Select>
+                </div>
+                <Label className="chat-check"><Checkbox aria-label="Thinking mode" checked={settings.thinking} onCheckedChange={on => client.chat.setThinking(on === true)} />Thinking mode</Label>
+                <Label className="chat-check"><Checkbox aria-label="Save conversation history" checked={settings.saveChats} onCheckedChange={on => client.chat.setSaveChats(on === true)} />Save conversation history</Label>
+            </>}
+        </PanelPopover>
     );
 }
 
@@ -357,8 +358,8 @@ export function Chat() {
         <aside className="chat" aria-label="Assistant">
             <div className="chat-head">
                 <span className="side-title">Assistant</span>
-                <button className="button flat" title="New conversation" aria-label="New conversation" onClick={() => model.reset()}><Icon name="edit-clear" /></button>
-                <button className="button flat" title="Agent log" aria-label="Agent log" onClick={() => model.openLog(true)}><Icon name="utilities-terminal" /></button>
+                <IconButton size="icon-xs" label="New conversation" onClick={() => model.reset()}><Icon name="edit-clear" /></IconButton>
+                <IconButton size="icon-xs" label="Agent log" onClick={() => model.openLog(true)}><Icon name="utilities-terminal" /></IconButton>
                 <HistoryButton />
                 <SettingsButton forceOpen={keyPrompt} />
             </div>
@@ -367,7 +368,7 @@ export function Chat() {
                 {entries.length === 0 && (
                     <div className="chat-empty">
                         <p className="side-meta">Ask or request help with anything about your work. The assistant reads the open document and relevant excerpts from other files in the folder.</p>
-                        {SUGGESTIONS.map(s => <button key={s} className="button" onClick={() => { model.setDraft(s); model.focusInput(); }}>{s}</button>)}
+                        {SUGGESTIONS.map(s => <Button key={s} variant="outline" className="h-auto justify-start whitespace-normal px-3 py-2 text-left font-normal" onClick={() => { model.setDraft(s); model.focusInput(); }}>{s}</Button>)}
                     </div>
                 )}
                 {entries.map((e, i) => {
@@ -377,7 +378,7 @@ export function Chat() {
                         case 'note': return <div key={i} className={e.error ? 'chat-error' : 'side-meta'}>{e.text}</div>;
                         case 'work': return (
                             <div key={i}><WorkList work={e.work} running={false} />
-                                {e.work.status !== 'complete' && <button className="button" onClick={() => model.resume()}>Resume work</button>}</div>
+                                {e.work.status !== 'complete' && <Button variant="outline" size="sm" onClick={() => model.resume()}>Resume work</Button>}</div>
                         );
                         case 'past': return <PastRow key={i} action={e.action} />;
                     }
@@ -385,11 +386,11 @@ export function Chat() {
             </div>
             <ContextButton />
             <div className="chat-input">
-                <textarea ref={input} rows={2} aria-label="Ask the Assistant" placeholder="Ask a question" value={draft}
+                <Textarea ref={input} rows={2} aria-label="Ask the Assistant" className="min-h-0 border-0 bg-transparent p-1 shadow-none focus-visible:ring-0 dark:bg-transparent" placeholder="Ask a question" value={draft}
                     onChange={e => model.setDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
-                <button className={`button ${busy ? 'destructive' : 'suggested'}`} title={busy ? 'Stop' : 'Send (Enter)'} aria-label={busy ? 'Stop' : 'Send'}
-                    disabled={!busy && !draft.trim()} onClick={() => busy ? model.stop() : send()}><Icon name={busy ? 'media-playback-stop' : 'go-up'} /></button>
+                <IconButton variant={busy ? 'destructive' : 'default'} size="icon-sm" label={busy ? 'Stop' : 'Send'} shortcut={busy ? undefined : 'Enter'}
+                    disabled={!busy && !draft.trim()} onClick={() => busy ? model.stop() : send()}><Icon name={busy ? 'media-playback-stop' : 'go-up'} /></IconButton>
             </div>
         </aside>
     );

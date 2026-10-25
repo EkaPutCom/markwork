@@ -289,7 +289,7 @@ async function inDevMode() {
             await page.keyboard.type('xy');
             const current = () => source.locator('.ins-line.current .ins-text').textContent();
             await waitFor(async () => await current() === 'onexy');
-            await inspector.getByRole('button', { name: 'Paused' }).click();
+            await inspector.getByRole('radio', { name: 'Paused' }).click();
             // The last transaction need not be the "y": one with only a selection or an effect (from the core, say) can
             // come after it. Steps back over those to the "x".
             const back = inspector.getByRole('button', { name: 'Step back' }), forward = inspector.getByRole('button', { name: 'Step forward' });
@@ -303,7 +303,7 @@ async function inDevMode() {
             assert.match(await inspector.locator('.ins-head').textContent(), /after #\d+/);
             for (let i = 0; i < 5 && await current() !== 'onexy'; i++) await forward.click();
             await waitFor(async () => await current() === 'onexy', 10000, recorded);
-            await inspector.getByRole('button', { name: 'Live' }).click();
+            await inspector.getByRole('radio', { name: 'Live' }).click();
             assert.equal(await inspector.getByRole('button', { name: 'Step back' }).count(), 0);
         });
 
@@ -338,7 +338,7 @@ async function inDevMode() {
             await inspector.getByRole('button', { name: 'Show the State Before' }).click();
             await inspector.getByText(`#${entry.n - 1} of`).waitFor();
             assert.equal(await source.textContent().then(t => t.includes('some texta') && !t.includes('textab')), true, 'the text before the "b"');
-            await inspector.getByRole('button', { name: 'Live' }).click();
+            await inspector.getByRole('radio', { name: 'Live' }).click();
             await inspector.getByRole('button', { name: 'Copy Snapshot' }).click();
             await waitFor(async () => (await clipboard()).includes('"units"'));
             const shot = JSON.parse(await clipboard());

@@ -7,6 +7,8 @@ import { boardSchema, type Board } from '../../../src/markdown/kanban.js';
 import { barSpan, PIXELS_PER_DAY, timelineRange, timelineRows, timelineTicks, timelineZoom, ZOOMS, type TimelineRow, type Zoom } from '../../../src/markdown/timeline.js';
 import { dayMonth, formatDate, PageHeader, refOf, todayString, useNoteDialog } from './notes.js';
 import { useClient } from '../lib/useClient.js';
+import { Button } from '../ui/button.js';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
 
 const ROW_HEIGHT = 34, HEAD_HEIGHT = 30, LABEL_WIDTH = 200, CLICK_SLOP = 4;
 const ZOOM_LABEL: Record<Zoom, string> = { week: 'Week', month: 'Month', quarter: 'Quarter' };
@@ -58,15 +60,17 @@ export function Timeline({ board }: { board: Board }) {
         <div className="layout-page timeline" data-page="timeline">
             <PageHeader board={board} fallback="Timeline" onNew={() => add()} />
             <div className="timeline-controls">
-                <span className="linked">{ZOOMS.map(z => <button key={z} className={`button${zoom === z ? ' checked' : ''}`} aria-pressed={zoom === z} onClick={() => setZoomOverride(z)}>{ZOOM_LABEL[z]}</button>)}</span>
-                <button className="button" title="Scroll to today" onClick={() => scroller.current?.scrollTo({ left: Math.max(0, offsetToday * px - 120), behavior: 'smooth' })}>Today</button>
+                <ToggleGroup type="single" variant="outline" size="sm" aria-label="Zoom" value={zoom} onValueChange={value => { if (value) setZoomOverride(value as Zoom); }}>
+                    {ZOOMS.map(z => <ToggleGroupItem key={z} value={z} className="px-3">{ZOOM_LABEL[z]}</ToggleGroupItem>)}
+                </ToggleGroup>
+                <Button variant="outline" size="sm" onClick={() => scroller.current?.scrollTo({ left: Math.max(0, offsetToday * px - 120), behavior: 'smooth' })}>Today</Button>
             </div>
             <div className="timeline-chart">
                 <div className="timeline-labels" style={{ width: LABEL_WIDTH }}>
                     <div className="timeline-head" style={{ height: HEAD_HEIGHT }}>Notes</div>
                     {rows.map(row => (
-                        <button key={`${row.at.column}:${row.at.index}`} className={`timeline-label${row.card.done === true ? ' dim' : ''}`} style={{ height: ROW_HEIGHT }}
-                            title={row.start ? undefined : 'This note has no date, so it has no bar.'} onClick={() => edit(row.at)}>{row.title}</button>
+                        <Button key={`${row.at.column}:${row.at.index}`} variant="ghost" className={`timeline-label rounded-none font-normal${row.card.done === true ? ' dim' : ''}`} style={{ height: ROW_HEIGHT }}
+                            title={row.start ? undefined : 'This note has no date, so it has no bar.'} onClick={() => edit(row.at)}>{row.title}</Button>
                     ))}
                 </div>
                 <div className="timeline-scroll" ref={scroller}>

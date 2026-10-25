@@ -8,6 +8,9 @@ import { useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { reproError, type Repro, type ReproStep } from '../lib/inspect/repro.js';
 import { reproOfEditor } from '../lib/inspect/report.js';
+import { Button } from '../ui/button.js';
+import { Input } from '../ui/input.js';
+import { Label } from '../ui/label.js';
 
 type Answer = Record<string, unknown>;
 interface Failing { check: string; message: string; step: number }
@@ -106,12 +109,13 @@ export function Replay({ view, state, setState }: { view: EditorView | null; sta
     return (
         <div className="ins-list wide ins-replay">
             <div className="ins-replay-bar">
+                {/* ui-allow: the file input stays hidden; the Open Repro… button opens it */}
                 <input ref={file} type="file" accept=".json,application/json" hidden aria-label="Repro file" onChange={e => { void openFile(e.target.files?.[0]); e.target.value = ''; }} />
-                <button className="button" disabled={state.busy} onClick={() => file.current?.click()}>Open Repro…</button>
-                <button className="button" disabled={state.busy || !view} onClick={() => { const r = view && reproOfEditor(view); if (r) void load(r, 'this recording'); }}>Replay This Recording</button>
+                <Button variant="outline" size="xs" disabled={state.busy} onClick={() => file.current?.click()}>Open Repro…</Button>
+                <Button variant="outline" size="xs" disabled={state.busy || !view} onClick={() => { const r = view && reproOfEditor(view); if (r) void load(r, 'this recording'); }}>Replay This Recording</Button>
                 <span className="grow" />
-                <button className="button" disabled={state.busy || !shown} onClick={copy}>Copy as JSON</button>
-                <button className="button" disabled={state.busy || !shown} onClick={() => void save()}>Save Repro…</button>
+                <Button variant="outline" size="xs" disabled={state.busy || !shown} onClick={copy}>Copy as JSON</Button>
+                <Button variant="outline" size="xs" disabled={state.busy || !shown} onClick={() => void save()}>Save Repro…</Button>
             </div>
             {repro && (
                 <div className="ins-replay-run">
@@ -119,9 +123,9 @@ export function Replay({ view, state, setState }: { view: EditorView | null; sta
                         <b>{state.label}</b>
                         <span className="dim">{repro.steps.length} steps{repro.blurred ? ' · blurred' : ''}{repro.note ? ` · “${repro.note}”` : ''}</span>
                         <span className="grow" />
-                        <button className="button flat" disabled={state.busy} onClick={() => void load(repro, state.label)}>Restart</button>
-                        <button className="button" disabled={state.busy || state.at >= repro.steps.length} onClick={() => void playFrom(state.at, 1)}>Step ▶</button>
-                        <button className="button suggested" disabled={state.busy || state.at >= repro.steps.length} onClick={() => void playFrom(state.at, repro.steps.length)}>Play All</button>
+                        <Button variant="ghost" size="xs" disabled={state.busy} onClick={() => void load(repro, state.label)}>Restart</Button>
+                        <Button variant="outline" size="xs" disabled={state.busy || state.at >= repro.steps.length} onClick={() => void playFrom(state.at, 1)}>Step ▶</Button>
+                        <Button size="xs" disabled={state.busy || state.at >= repro.steps.length} onClick={() => void playFrom(state.at, repro.steps.length)}>Play All</Button>
                     </div>
                     <ol className="ins-steps" aria-label="Steps">
                         {repro.steps.map((step, i) => (
@@ -133,8 +137,8 @@ export function Replay({ view, state, setState }: { view: EditorView | null; sta
                 </div>
             )}
             <div className="ins-replay-bar">
-                <label className="ins-name">Test name<input value={name} placeholder="backspace-after-bold" onChange={e => setName(e.target.value)} /></label>
-                <button className="button" disabled={state.busy || !shown || !name.trim()} onClick={() => void keep()}>Make a Test</button>
+                <Label className="ins-name">Test name<Input className="h-7 w-52 text-xs" value={name} placeholder="backspace-after-bold" onChange={e => setName(e.target.value)} /></Label>
+                <Button variant="outline" size="xs" disabled={state.busy || !shown || !name.trim()} onClick={() => void keep()}>Make a Test</Button>
                 <span className="dim">{repro ? 'From the repro above.' : 'From the recording shown.'} It must pass every check: make it from a bug once it is fixed.</span>
             </div>
             {state.message && <p role="status" className="ins-message">{state.message}</p>}

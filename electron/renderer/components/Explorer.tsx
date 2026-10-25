@@ -3,11 +3,13 @@
 // A right click opens a menu, F2 and Delete work on the focused row, a row can be dragged onto a folder, and files dropped from
 // a file manager are copied in.
 
-import { useEffect, useState, type DragEvent } from 'react';
+import { useRef, useState, type DragEvent } from 'react';
 import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree.js';
 import { Icon } from './Icons.js';
 import { FILE_DRAG } from './Tabs.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Button } from '../ui/button.js';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '../ui/context-menu.js';
 
 const INTERNAL = 'application/x-markwork-path';
 
@@ -17,32 +19,25 @@ const NEW_ITEMS: { kind: NewKind; label: string }[] = [
     { kind: 'inbox', label: 'New Inbox…' }, { kind: 'table', label: 'New Table…' }, { kind: 'csv', label: 'New CSV Table…' },
 ];
 
-interface MenuState { x: number; y: number; target: FolderEntry | null }   // null = the work folder itself
-
-function ContextMenu({ menu, root, close }: { menu: MenuState; root: string; close: () => void }) {
+// The menu of a right click on the tree: what to make in the folder (or beside the file) clicked, and for a row its Rename
+// and Move to Trash. `target` is null for the work folder itself.
+function TreeMenu({ target, root }: { target: FolderEntry | null; root: string }) {
     const client = useClient();
-    useEffect(() => {
-        const away = (e: Event) => { if (!(e.target as Element).closest('.context-menu')) close(); };
-        const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
-        document.addEventListener('mousedown', away);
-        document.addEventListener('keydown', key);
-        return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', key); };
-    }, [close]);
-    const { target } = menu;
     // New things go into the folder clicked, or next to the file clicked.
     const dir = !target ? root : target.isDir ? target.path : target.path.slice(0, Math.max(target.path.lastIndexOf('/'), target.path.lastIndexOf('\\')));
-    const run = (action: () => void) => () => { close(); action(); };
     return (
-        <div className="popover context-menu" role="menu" style={{ left: menu.x, top: menu.y }}>
-            {NEW_ITEMS.map(i => <button key={i.kind} role="menuitem" onClick={run(() => client.createEntry(i.kind, dir))}>{i.label}</button>)}
-            {target && <hr />}
-            {target && <button role="menuitem" onClick={run(() => client.renameEntry(target.path))}>Rename…<kbd>F2</kbd></button>}
-            {target && <button role="menuitem" onClick={run(() => client.removeEntry(target.path))}>Move to Trash<kbd>Del</kbd></button>}
-        </div>
+        <ContextMenuContent className="min-w-52">
+            {NEW_ITEMS.map(i => <ContextMenuItem key={i.kind} onSelect={() => client.createEntry(i.kind, dir)}>{i.label}</ContextMenuItem>)}
+            {target && <>
+                <ContextMenuSeparator />
+                <ContextMenuItem onSelect={() => client.renameEntry(target.path)}>Rename…<ContextMenuShortcut>F2</ContextMenuShortcut></ContextMenuItem>
+                <ContextMenuItem onSelect={() => client.removeEntry(target.path)}>Move to Trash<ContextMenuShortcut>Del</ContextMenuShortcut></ContextMenuItem>
+            </>}
+        </ContextMenuContent>
     );
 }
 
-function Row({ entry, depth, onMenu }: { entry: FolderEntry; depth: number; onMenu: (e: React.MouseEvent, target: FolderEntry) => void }) {
+function Row({ entry, depth, onMenu }: { entry: FolderEntry; depth: number; onMenu: (target: FolderEntry) => void }) {
     const client = useClient();
     const { tree } = useStore();
     const open = entry.isDir && tree.expanded.includes(entry.path);
@@ -67,7 +62,7 @@ function Row({ entry, depth, onMenu }: { entry: FolderEntry; depth: number; onMe
                 className={`row${active ? ' active' : ''}${over ? ' drop' : ''}`} style={{ paddingLeft: 10 + depth * 20 }}
                 draggable onDragStart={e => { e.dataTransfer.setData(INTERNAL, entry.path); if (!entry.isDir) e.dataTransfer.setData(FILE_DRAG, entry.path); e.dataTransfer.effectAllowed = 'copyMove'; }}
                 onDragOver={e => { if (entry.isDir) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)} onDrop={drop}
-                onClick={activate} onContextMenu={e => onMenu(e, entry)}
+                onClick={activate} onContextMenu={() => onMenu(entry)}
                 onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
                     else if (e.key === 'F2') { e.preventDefault(); client.renameEntry(entry.path); }
@@ -83,7 +78,7 @@ function Row({ entry, depth, onMenu }: { entry: FolderEntry; depth: number; onMe
     );
 }
 
-function Folder({ dir, depth, onMenu }: { dir: string; depth: number; onMenu: (e: React.MouseEvent, target: FolderEntry) => void }) {
+function Folder({ dir, depth, onMenu }: { dir: string; depth: number; onMenu: (target: FolderEntry) => void }) {
     const { tree } = useStore();
     const entries = tree.folders[dir];
     if (!entries) return <div className="row" style={{ paddingLeft: 10 + depth * 20 }}><span className="label dim">Loading…</span></div>;
@@ -94,31 +89,35 @@ function Folder({ dir, depth, onMenu }: { dir: string; depth: number; onMenu: (e
 export function FolderTree() {
     const client = useClient();
     const { tree } = useStore();
-    const [menu, setMenu] = useState<MenuState | null>(null);
+    // A right click on a row names it, then reaches the tree, whose menu opens for it; on the tree itself, for the folder.
+    const clicked = useRef<FolderEntry | null>(null);
+    const [target, setTarget] = useState<FolderEntry | null>(null);
     const { root } = tree;
     const name = root?.split(/[\\/]/).pop() ?? '';
-    const show = (e: React.MouseEvent, target: FolderEntry | null) => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, target }); };
 
+    if (!root) {
+        return (
+            <div className="placeholder">
+                <p>No folder is open</p>
+                <Button variant="outline" size="sm" onClick={() => void client.openFolder()}>Open Folder…</Button>
+            </div>
+        );
+    }
     return (
-        <>
-            {!root ? (
-                <div className="placeholder">
-                    <p>No folder is open</p>
-                    <button className="button" onClick={() => void client.openFolder()}>Open Folder…</button>
-                </div>
-            ) : (
-                <div className="tree" role="tree" aria-label={name} onContextMenu={e => show(e, null)}
+        <ContextMenu>
+            <ContextMenuTrigger asChild>
+                <div className="tree" role="tree" aria-label={name} onContextMenu={() => { setTarget(clicked.current); clicked.current = null; }}
                     onDragOver={e => e.preventDefault()}
                     onDrop={e => {
                         e.preventDefault();
                         const source = e.dataTransfer.getData(INTERNAL);
                         if (source) client.moveEntry(source, root); else client.copyInto(window.markwork.pathsOf([...e.dataTransfer.files]), root);
                     }}>
-                    <Folder dir={root} depth={0} onMenu={show} />
+                    <Folder dir={root} depth={0} onMenu={entry => { clicked.current = entry; }} />
                     {tree.folders[root]?.length === 0 && <p className="empty">No notes in this folder.</p>}
                 </div>
-            )}
-            {menu && root && <ContextMenu menu={menu} root={root} close={() => setMenu(null)} />}
-        </>
+            </ContextMenuTrigger>
+            <TreeMenu target={target} root={root} />
+        </ContextMenu>
     );
 }

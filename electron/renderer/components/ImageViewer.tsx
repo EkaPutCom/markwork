@@ -7,6 +7,7 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from './Icons.js';
+import { IconButton } from '../ui/icon-button.js';
 import { useClient, useStore } from '../lib/useClient.js';
 
 const STEP = 1.25, MIN = 0.05, MAX = 8;
@@ -93,7 +94,7 @@ export function ImageViewer() {
                         <span className="name">{image.title}</span>
                         {natural.w > 0 && <span className="size">{natural.w} × {natural.h} px</span>}
                     </span>
-                    <button className="button circular" aria-label="Close" title="Close" onClick={() => client.closeImage()}><Icon name="window-close" /></button>
+                    <IconButton size="icon-xs" label="Close" shortcut="Esc" onClick={() => client.closeImage()}><Icon name="window-close" /></IconButton>
                 </header>
                 <div className={`area${image.svg ? ' diagram' : ''}`} ref={area}
                     onWheel={event => { const [px, py] = centre(event); zoomTo(view.scale * (event.deltaY < 0 ? STEP : 1 / STEP), px, py); }}
@@ -123,9 +124,9 @@ export function ImageViewer() {
                       }} />}
                 </div>
                 <div className="zoom-bar">
-                    <button className="button" aria-label="Zoom out" title="Zoom out (−)" onClick={() => zoomTo(view.scale / STEP)}>−</button>
+                    <IconButton variant="outline" size="icon-sm" label="Zoom out" shortcut="−" onClick={() => zoomTo(view.scale / STEP)}>−</IconButton>
                     <span className="zoom-level" aria-live="polite">{Math.round(view.scale * 100)}%</span>
-                    <button className="button" aria-label="Zoom in" title="Zoom in (+)" onClick={() => zoomTo(view.scale * STEP)}>+</button>
+                    <IconButton variant="outline" size="icon-sm" label="Zoom in" shortcut="+" onClick={() => zoomTo(view.scale * STEP)}>+</IconButton>
                 </div>
                 <div className="resize right" onPointerDown={event => reshape(event, { right: true })} />
                 <div className="resize bottom" onPointerDown={event => reshape(event, { bottom: true })} />

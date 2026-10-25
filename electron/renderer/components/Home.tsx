@@ -7,6 +7,8 @@ import type { HomeData } from '../../../src/app/protocol/screen.js';
 import { Icon } from './Icons.js';
 import { StatusIcon } from './Programs.js';
 import { Button } from '@/ui/button';
+import { Checkbox } from '@/ui/checkbox';
+import { IconButton } from '@/ui/icon-button';
 import { useClient } from '../lib/useClient.js';
 
 const SHOWN_TASKS = 7;
@@ -71,8 +73,8 @@ function Task({ task }: { task: HomeData['tasks'][number] }) {
     const due = task.status === 'overdue' ? `${-task.days} day${task.days === -1 ? '' : 's'} overdue` : task.status === 'today' ? 'Today' : task.days === 1 ? 'Tomorrow' : 'Day after tomorrow';
     return (
         <Row title={task.title} subtitle={task.project ? `${task.project} · ${board}` : board} suffix={due} onClick={() => client.openWorkspaceFile(task.file)}
-            prefix={<input type="checkbox" checked={checked} aria-label={`Mark done: ${task.title}`} onClick={e => e.stopPropagation()}
-                onChange={async e => { const done = e.target.checked; setChecked(done); if (!await client.toggleTask(task, done)) setChecked(!done); }} />} />
+            prefix={<Checkbox checked={checked} aria-label={`Done: ${task.title}`} onClick={e => e.stopPropagation()}
+                onCheckedChange={async value => { const done = value === true; setChecked(done); if (!await client.toggleTask(task, done)) setChecked(!done); }} />} />
     );
 }
 
@@ -87,8 +89,8 @@ export function Home({ data }: { data: HomeData | null }) {
                 <h1>Welcome to Markwork</h1>
                 <p>Open a work folder to see the latest files, kanban due dates, and the inbox here.</p>
                 <div className="actions">
-                    <button className="button suggested" onClick={() => void client.openFolder()}>Open Folder…</button>
-                    <button className="button" onClick={() => client.run('new')}>New Document</button>
+                    <Button onClick={() => void client.openFolder()}>Open Folder…</Button>
+                    <Button variant="outline" onClick={() => client.run('new')}>New Document</Button>
                 </div>
             </div></div>
         );
@@ -109,15 +111,15 @@ export function Home({ data }: { data: HomeData | null }) {
                 <Section title="Continue">
                     <div className="resume">
                         {data.resume.map(e => (
-                            <button key={e.path} className="card" aria-label={`Continue ${e.subtitle} in ${e.title}`} onClick={() => client.openRecent(e.path)}>
+                            <Button key={e.path} variant="outline" className="card h-auto items-start font-normal text-left" aria-label={`Continue ${e.subtitle} in ${e.title}`} onClick={() => client.openRecent(e.path)}>
                                 <span className="title">{e.title}</span><span className="subtitle">{e.subtitle}</span>
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </Section>
             )}
             {journal && <Section title="Journal"><Row title="Today's journal" subtitle={journalLine ?? ''} onClick={() => client.openJournal()}
-                action={<button className="button flat circular" title="Add to Journal…" aria-label="Add to Journal…" onClick={e => { e.stopPropagation(); client.run('journal-capture'); }}><Icon name="list-add" /></button>} /></Section>}
+                action={<IconButton label="Add to Journal…" onClick={e => { e.stopPropagation(); client.run('journal-capture'); }}><Icon name="list-add" /></IconButton>} /></Section>}
             {(data.runs.length > 0 || data.agentHost) && (
                 <Section title="Agent">
                     {data.agentHost && <Row title={`Agents run on ${data.agentHost.label}`} subtitle={data.agentHost.state === 'ready' ? '' : data.agentHost.detail}

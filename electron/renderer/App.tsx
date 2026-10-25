@@ -24,7 +24,10 @@ import { Icon, type IconName } from './components/Icons.js';
 import { label, matches } from './lib/keys.js';
 import { ActivityBar, SideShell } from './components/Sidebar.js';
 import { MenuBar } from './components/MenuBar.js';
+import { toast } from 'sonner';
 import { Button } from './ui/button.js';
+import { IconButton } from './ui/icon-button.js';
+import { Toaster } from './ui/sonner.js';
 import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
 } from './ui/dropdown-menu.js';
@@ -51,9 +54,9 @@ function Title({ items }: { items: MenuItem[] }) {
             {tab.page === 'home' || tab.page === 'programs' ? <span className="name">{tab.name}</span> : (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <button className="title-button" title="Document Menu" aria-label="Document Menu">
+                        <Button variant="ghost" size="sm" className="title-button" aria-label="Document Menu">
                             <span className="name">{tab.name}</span><Icon name="pan-down" size={14} />
-                        </button>
+                        </Button>
                     </DropdownMenuTrigger>
                     <MenuContent items={items} align="start" />
                 </DropdownMenu>
@@ -148,9 +151,9 @@ function HeaderBar() {
     ];
     return (
         <header className={`headerbar${panels.compact ? ' compact' : ''}`}>
-            <Button variant="ghost" size="icon-sm" title="Toggle Sidebar" aria-label="Toggle Sidebar" aria-pressed={panels.sidebar.shown} onClick={() => client.toggleSidebar()}>
+            <IconButton label="Toggle Sidebar" aria-pressed={panels.sidebar.shown} onClick={() => client.toggleSidebar()}>
                 <Icon name="sidebar-show" />
-            </Button>
+            </IconButton>
             <span className="vsep" aria-hidden="true" />
             <Title items={documentItems} />
             <SaveState />
@@ -167,9 +170,9 @@ function HeaderBar() {
                 </DropdownMenu>
             )}
             <span className="vsep" aria-hidden="true" />
-            <Button variant="ghost" size="icon-sm" title="Assistant (Ctrl+Shift+A)" aria-label="Assistant" aria-pressed={panels.chat.shown} onClick={() => client.run('chat')}>
+            <IconButton label="Assistant" shortcut="Ctrl+Shift+A" aria-pressed={panels.chat.shown} onClick={() => client.run('chat')}>
                 <Icon name="chat-message-new" />
-            </Button>
+            </IconButton>
         </header>
     );
 }
@@ -200,24 +203,25 @@ function StatusBar() {
     );
 }
 
+// The core's notices, as Sonner toasts: the store keeps one at a time (a new one takes the place of the last), with an
+// action when the core offers one; the core's own failure stays until the window is reloaded.
 function Notification() {
     const client = useClient();
-    const { toast, coreError } = useStore();
+    const { toast: notice, coreError, settings } = useStore();
     useEffect(() => {
-        if (!toast) return;
-        const timer = setTimeout(() => client.dismissToast(), 6000);
-        return () => clearTimeout(timer);
-    }, [toast, client]);
-    const text = coreError ?? toast?.text;
-    if (!text) return null;
-    return (
-        <div className={`notification${coreError ? ' error' : ''}`} role="alert">
-            <Icon name={coreError ? 'dialog-error' : 'dialog-information'} />
-            <span className="message">{text}</span>
-            {toast?.action && <button className="button suggested" onClick={() => client.runToast(toast.action!.token)}>{toast.action.label}</button>}
-            {!coreError && <button className="button flat circular" aria-label="Dismiss" onClick={() => client.dismissToast()}><Icon name="window-close" /></button>}
-        </div>
-    );
+        if (!notice) { toast.dismiss('notice'); return; }
+        toast(notice.text, {
+            id: 'notice', duration: 6000, closeButton: true,
+            action: notice.action ? { label: notice.action.label, onClick: () => client.runToast(notice.action!.token) } : undefined,
+            onDismiss: () => client.dismissToast(), onAutoClose: () => client.dismissToast(),
+        });
+    }, [notice, client]);
+    useEffect(() => {
+        if (coreError) toast.error(coreError, { id: 'core-error', duration: Infinity, dismissible: false });
+        else toast.dismiss('core-error');
+    }, [coreError]);
+    const scheme = settings['color-scheme'];
+    return <Toaster theme={scheme === 'light' || scheme === 'dark' ? scheme : 'system'} position="bottom-center" />;
 }
 
 const INSPECTOR_KEY = 'Ctrl+Alt+i';

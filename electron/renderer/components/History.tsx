@@ -10,6 +10,11 @@ import { Modal } from './Modals.js';
 import { commitTime } from './notes.js';
 import type { Client } from '../lib/client.js';
 import { useClient, useStore } from '../lib/useClient.js';
+import { Button } from '../ui/button.js';
+import { Checkbox } from '../ui/checkbox.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs.js';
+import { Textarea } from '../ui/textarea.js';
 
 const KIND_MARK: Record<ChangeKind, string> = { modified: 'M', added: 'A', deleted: 'D', renamed: 'R', untracked: 'U' };
 const KIND_CLASS: Record<ChangeKind, string> = { modified: 'warning', added: 'success', deleted: 'error', renamed: 'warning', untracked: 'success' };
@@ -48,18 +53,17 @@ function MessageBox({ streamed, rev, files, label, busy, onCommit, write, stop }
     return (
         <div className="commit-form">
             <div className="message-box">
-                <textarea aria-label="Commit message" placeholder="Commit message" rows={3} value={text} disabled={writing} onChange={e => setText(e.target.value)}
+                <Textarea aria-label="Commit message" placeholder="Commit message" rows={3} value={text} disabled={writing} onChange={e => setText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void commit(); } }} />
             </div>
             {problem && <div className="form-error" role="alert">{problem}</div>}
             {/* The commit button, and beside it ✨ that has the assistant write the message (■ stops it). */}
             <div className="commit-row">
-                <button className="button suggested" disabled={busy || writing || !text.trim() || files.length === 0} onClick={() => void commit()}>{label}</button>
-                <button className="button write" title={writing ? 'Stop writing' : 'Write the message with the assistant (reads the checked changes)'}
-                    aria-label={writing ? 'Stop writing' : 'Write the message with the assistant'} disabled={!writing && files.length === 0}
+                <Button className="flex-1" disabled={busy || writing || !text.trim() || files.length === 0} onClick={() => void commit()}>{label}</Button>
+                <IconButton variant="outline" size="icon" label={writing ? 'Stop writing' : 'Write the message with the assistant'} disabled={!writing && files.length === 0}
                     onClick={() => { if (writing) stop(); else void ask(); }}>
                     <Icon name={writing ? 'media-playback-stop' : 'sparkle'} />
-                </button>
+                </IconButton>
             </div>
         </div>
     );
@@ -68,13 +72,13 @@ function MessageBox({ streamed, rev, files, label, busy, onCommit, write, stop }
 function ChangeRow({ change, checked, onCheck, client }: { change: ChangedFile; checked: boolean; onCheck: (on: boolean) => void; client: Client }) {
     return (
         <div className="change-row">
-            <input type="checkbox" checked={checked} title="Include in the commit" aria-label={`Include ${change.name} in the commit`} onChange={e => onCheck(e.target.checked)} />
+            <Checkbox checked={checked} aria-label={`Include ${change.name} in the commit`} onCheckedChange={on => onCheck(on === true)} />
             <span className={`mark ${KIND_CLASS[change.kind]}`} aria-hidden="true">{KIND_MARK[change.kind]}</span>
-            <button className="name" title="View the changes against the last commit" onClick={() => client.openChanges(change.path)}>{change.name}</button>
-            <button className="button flat circular" title={discardLabel(change.kind)} aria-label={`${discardLabel(change.kind)}: ${change.name}`}
+            <Button variant="ghost" size="xs" className="name justify-start font-normal text-left" onClick={() => client.openChanges(change.path)}>{change.name}</Button>
+            <IconButton label={`${discardLabel(change.kind)}: ${change.name}`}
                 onClick={() => void client.discardFile(change.path).then(outcome => { if (typeof outcome === 'object') client.say(outcome.error); })}>
                 <Icon name="edit-undo" />
-            </button>
+            </IconButton>
         </div>
     );
 }
@@ -94,17 +98,17 @@ export function History() {
         <aside className="sidebar history" aria-label="History">
             <div className="side-head">
                 <div className="side-title">History</div>
-                <button className="button flat" title="Reload history" aria-label="Reload history" onClick={() => client.refreshHistory()}><Icon name="view-refresh" /></button>
+                <IconButton label="Reload history" onClick={() => client.refreshHistory()}><Icon name="view-refresh" /></IconButton>
             </div>
             <div className="history-body">
                 {changes?.file && state && state !== 'clean' && (
-                    <button className="uncommitted" title="View changes against the last commit" onClick={() => client.openChanges(changes.file!)}>
+                    <Button variant="ghost" size="sm" className="uncommitted justify-start text-left" onClick={() => client.openChanges(changes.file!)}>
                         {state === 'untracked' ? '● New file, not committed yet' : '● Uncommitted changes'}
-                    </button>
+                    </Button>
                 )}
                 {changed.length > 0 && (
                     <section className="changes" aria-label="Uncommitted">
-                        <h3><button className="fold" aria-expanded={!folded} onClick={() => setFolded(v => !v)}><Icon name={folded ? 'pan-end' : 'pan-down'} size={12} />Uncommitted ({changed.length})</button></h3>
+                        <h3><Button variant="ghost" size="xs" className="fold" aria-expanded={!folded} onClick={() => setFolded(v => !v)}><Icon name={folded ? 'pan-end' : 'pan-down'} size={12} />Uncommitted ({changed.length})</Button></h3>
                         {!folded && changed.map(c => (
                             <ChangeRow key={c.path} change={c} client={client} checked={!unchecked.has(c.path)}
                                 onCheck={on => setUnchecked(old => { const next = new Set(old); if (on) next.delete(c.path); else next.add(c.path); return next; })} />
@@ -118,12 +122,12 @@ export function History() {
                 {commits.length === 0 && history.note && <p className="empty">{history.note}</p>}
                 <div className="commits" aria-label="Commits">
                     {commits.map(c => (
-                        <button key={c.hash} className="commit" onClick={() => client.openCommit(c.hash)}>
+                        <Button key={c.hash} variant="ghost" className="commit h-auto items-stretch font-normal text-left" onClick={() => client.openCommit(c.hash)}>
                             <span className="subject">{c.subject || '(no message)'}</span>
                             <span className="meta">{c.short} · {c.author} · {commitTime(c.time)}</span>
-                        </button>
+                        </Button>
                     ))}
-                    {history.more && <button className="button" onClick={() => client.moreHistory()}>Load more</button>}
+                    {history.more && <Button variant="outline" size="sm" className="more" onClick={() => client.moreHistory()}>Load more</Button>}
                 </div>
             </div>
         </aside>
@@ -134,7 +138,7 @@ export function History() {
 function Viewer({ id }: { id: number }) {
     const client = useClient();
     const viewer = useStore().viewers.find(v => v.id === id);
-    const [tab, setTab] = useState<'changes' | 'contents'>('changes');
+    const [tab, setTab] = useState('changes');
     if (!viewer) return null;
     const { commit, file } = viewer;
     const name = file.split(/[\\/]/).pop() ?? file;
@@ -144,11 +148,12 @@ function Viewer({ id }: { id: number }) {
             <div className="viewer">
                 {commit && <p className="viewer-meta">{commit.author} · {commitTime(commit.time)} · {name}</p>}
                 {commit && (
-                    <div className="pref-tabs" role="tablist">
-                        {(['changes', 'contents'] as const).map(t => (
-                            <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t === 'changes' ? 'Changes' : 'Contents'}</button>
-                        ))}
-                    </div>
+                    <Tabs value={tab} onValueChange={setTab}>
+                        <TabsList className="pref-tabs">
+                            <TabsTrigger value="changes">Changes</TabsTrigger>
+                            <TabsTrigger value="contents">Contents</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                 )}
                 {(!commit || tab === 'changes') && (
                     viewer.diff === null ? <p className="empty">Loading…</p>
@@ -170,7 +175,7 @@ function ViewerForm({ viewer }: { viewer: { id: number; message: string; message
                 onCommit={message => client.viewerCommit(viewer.id, message)}
                 write={() => client.viewerWrite(viewer.id)} stop={() => client.viewerStopWriting(viewer.id)} />
             {error && <div className="form-error" role="alert">{error}</div>}
-            <button className="button flat destructive-text" onClick={() => void client.viewerDiscard(viewer.id).then(o => { if (typeof o === 'object') setError(o.error); })}>Discard Changes…</button>
+            <Button variant="ghost" size="sm" className="self-start text-destructive hover:text-destructive" onClick={() => void client.viewerDiscard(viewer.id).then(o => { if (typeof o === 'object') setError(o.error); })}>Discard Changes…</Button>
         </div>
     );
 }

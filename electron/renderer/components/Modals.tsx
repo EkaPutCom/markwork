@@ -8,21 +8,41 @@ import { Icon } from './Icons.js';
 import { label } from '../lib/keys.js';
 import { useClient, useStore } from '../lib/useClient.js';
 import { Select } from '../ui/select.js';
+import { cn } from '../lib/utils.js';
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '../ui/dialog.js';
+import { IconButton } from '../ui/icon-button.js';
+import { Input } from '../ui/input.js';
+import { Kbd } from '../ui/kbd.js';
+import { Switch } from '../ui/switch.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
 
-// A dialog with its header bar: the title in the middle (or what `header` puts there, as the tabs of Preferences) and Close.
-export function Modal({ title, onClose, children, wide, header, className }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; header?: ReactNode; className?: string }) {
-    useEffect(() => {
-        const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
-        window.addEventListener('keydown', key, true);
-        return () => window.removeEventListener('keydown', key, true);
-    }, [onClose]);
+// A task in a window of its own: shadcn's Dialog with a header bar, the title at the start (or what `header` puts there,
+// as the tabs of Preferences) and Close at the end. Escape and a click beside it close it. With `tabs`, the header and the
+// body share one Tabs, so `header` holds its TabsList and the body its TabsContent. `hidden` takes it and its darkening
+// out of sight for a moment without closing it (while a picture of the editor is taken).
+export function Modal({ title, onClose, children, wide, header, className, tabs, hidden }: {
+    title: string; onClose: () => void; children: ReactNode; wide?: boolean; header?: ReactNode; className?: string;
+    tabs?: { value: string; onValueChange: (value: string) => void }; hidden?: boolean;
+}) {
+    const body = (
+        <>
+            <header>
+                {header ?? <DialogTitle>{title}</DialogTitle>}
+                {header && <DialogTitle className="sr-only">{title}</DialogTitle>}
+                <DialogClose asChild><IconButton size="icon-xs" label="Close"><Icon name="window-close" /></IconButton></DialogClose>
+            </header>
+            {children}
+        </>
+    );
     return (
-        <div className="dialog-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className={`dialog modal${wide ? ' wide' : ''}${className ? ` ${className}` : ''}`} role="dialog" aria-label={title} aria-modal="true">
-                <header>{header ?? <h2>{title}</h2>}<button className="button flat circular" aria-label="Close" onClick={onClose}><Icon name="window-close" /></button></header>
-                {children}
-            </div>
-        </div>
+        <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+            {/* Without a field that takes the focus (autoFocus), the dialog itself has it: on Close, the first thing in it,
+                its Tooltip would open, and the first Escape would close only that. */}
+            <DialogContent showCloseButton={false} aria-describedby={undefined} className={cn('modal block gap-0 p-0 outline-none focus-visible:shadow-lg', wide && 'wide', hidden && 'out-of-sight', className)}
+                onOpenAutoFocus={e => { e.preventDefault(); (e.currentTarget as HTMLElement).focus(); }}>
+                {tabs ? <Tabs value={tabs.value} onValueChange={tabs.onValueChange} className="contents">{body}</Tabs> : body}
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -50,11 +70,11 @@ function SpinButton({ label, value, min, max, step, onChange }: { label: string;
     const set = (n: number) => { const clamped = Math.min(max, Math.max(min, Math.round(n))); setText(String(clamped)); if (clamped !== value) onChange(clamped); };
     return (
         <span className="spin">
-            <input type="text" inputMode="numeric" role="spinbutton" aria-label={label} aria-valuenow={value} aria-valuemin={min} aria-valuemax={max} value={text}
+            <Input type="text" inputMode="numeric" role="spinbutton" aria-label={label} aria-valuenow={value} aria-valuemin={min} aria-valuemax={max} value={text}
                 onChange={e => setText(e.target.value)} onBlur={() => { const n = Number(text); if (Number.isFinite(n) && text.trim()) set(n); else setText(String(value)); }}
                 onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'ArrowUp') { e.preventDefault(); set(value + step); } else if (e.key === 'ArrowDown') { e.preventDefault(); set(value - step); } }} />
-            <button type="button" className="button circular" aria-label="Decrease" disabled={value <= min} onClick={e => { e.preventDefault(); set(value - step); }}><Icon name="list-remove" /></button>
-            <button type="button" className="button circular" aria-label="Increase" disabled={value >= max} onClick={e => { e.preventDefault(); set(value + step); }}><Icon name="list-add" /></button>
+            <IconButton variant="outline" label="Decrease" disabled={value <= min} onClick={e => { e.preventDefault(); set(value - step); }}><Icon name="list-remove" /></IconButton>
+            <IconButton variant="outline" label="Increase" disabled={value >= max} onClick={e => { e.preventDefault(); set(value + step); }}><Icon name="list-add" /></IconButton>
         </span>
     );
 }
@@ -72,17 +92,17 @@ export function PreferencesDialog() {
     if (!prefs) return null;
     const set = (key: string) => (value: string | number | boolean) => client.setPreference(key, value);
     const toggle = (key: 'visual' | 'focus' | 'typewriter' | 'home' | 'autosave' | 'chatThinking' | 'chatSave' | 'forgeNotify', title: string, subtitle?: string) => (
-        <Row title={title} subtitle={subtitle}><input type="checkbox" role="switch" checked={prefs[key]} onChange={e => set(key)(e.target.checked)} /></Row>
+        <Row title={title} subtitle={subtitle}><Switch aria-label={title} checked={prefs[key]} onCheckedChange={set(key)} /></Row>
     );
     const tabs = (
-        <div className="pref-tabs" role="tablist">
-            {PREF_PAGES.map(p => (
-                <button key={p.page} role="tab" aria-selected={page === p.page} className={page === p.page ? 'active' : ''} onClick={() => setPage(p.page)}><Icon name={p.icon} />{p.label}</button>
-            ))}
-        </div>
+        <TabsList className="pref-tabs">
+            {PREF_PAGES.map(p => <TabsTrigger key={p.page} value={p.page}><Icon name={p.icon} />{p.label}</TabsTrigger>)}
+        </TabsList>
     );
     return (
-        <Modal title="Preferences" onClose={() => client.closePreferences()} wide header={tabs} className="preferences">
+        <Modal title="Preferences" onClose={() => client.closePreferences()} wide header={tabs} className="preferences"
+            tabs={{ value: page, onValueChange: value => setPage(value as typeof page) }}>
+            <TabsContent value={page}>
             {page === 'general' ? (
                 <div className="pref-page">
                     <Group title="View">
@@ -119,6 +139,7 @@ export function PreferencesDialog() {
                     </Group>
                 </div>
             )}
+            </TabsContent>
         </Modal>
     );
 }
@@ -150,7 +171,7 @@ export function ShortcutsDialog() {
                     return items.length === 0 ? null : (
                         <section key={title}>
                             <h3>{title}</h3>
-                            {items.map(c => <div key={c!.id} className="shortcut"><span>{c!.label}</span><kbd>{label(c!.keys[0])}</kbd></div>)}
+                            {items.map(c => <div key={c!.id} className="shortcut"><span>{c!.label}</span><Kbd>{label(c!.keys[0])}</Kbd></div>)}
                         </section>
                     );
                 })}
