@@ -214,14 +214,27 @@ function toggleFormat(line: string, from: number, to: number, marker: string): {
     return { from: a, to: b, insert: marker + inner + marker, text: [a, a + marker.length * 2 + inner.length], added: true };
 }
 
+// A cursor inside a span of the format (or at either end of its text) takes the format off the whole span, as the Bold
+// button of a word processor does for a word; the cursor stays before the same letter. null: the cursor is in no such span.
+function unwrapAt(line: string, at: number, marker: string): { from: number; to: number; insert: string; cursor: number } | null {
+    const format = FORMAT_OF[marker];
+    const span = format && inlineOf(line).spans.find(s => hasFormat(s.tag, format) && s.a < s.b && s.a <= at && at <= s.b);
+    const toggled = span ? toggleFormat(line, span.a, span.b, marker) : null;
+    return toggled && { from: toggled.from, to: toggled.to, insert: toggled.insert, cursor: toggled.text[0] + at - span!.a };
+}
+
 // Wrap the selection with a marker, e.g. ** for bold. If the selection is already wrapped, the marker is removed.
 // Without a selection: insert a pair of markers and put the cursor in between. The selected text stays selected, with
 // the cursor at its start; the selection is never empty in between (on X11 an empty one would clear the primary selection).
 // On one line the formats are what the line shows (toggleFormat): the same selection with or without its hidden markers.
 export function wrap(state: TextState, left: string, right = left): TextEdit {
     const from = Math.min(state.anchor, state.head), to = Math.max(state.anchor, state.head);
-    if (from === to) return { changes: [{ from, to, insert: left + right }], selection: cursorAt(from + left.length) };
     const { line, start, end } = lineAround(state.text, from);
+    if (from === to) {
+        const unwrapped = left === right ? unwrapAt(line, from - start, left) : null;
+        if (unwrapped) return { changes: [{ from: start + unwrapped.from, to: start + unwrapped.to, insert: unwrapped.insert }], selection: cursorAt(start + unwrapped.cursor) };
+        return { changes: [{ from, to, insert: left + right }], selection: cursorAt(from + left.length) };
+    }
     const toggled = left === right && to <= end ? toggleFormat(line, from - start, to - start, left) : null;
     if (toggled) {
         const [a, b] = toggled.text;
