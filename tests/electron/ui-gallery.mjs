@@ -3,8 +3,8 @@
 // document opens as a copy with every element of the editor drawn.
 
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { scratchFolder, launchApp, stepper } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('ui-gallery');
@@ -27,7 +27,7 @@ async function run(env, test) {
         const page = await app.firstWindow();
         await page.setViewportSize({ width: 1280, height: 800 });
         await page.getByRole('treeitem', { name: /plan\.md/ }).waitFor();
-        await test(page);
+        await test(page, app);
     } finally {
         await Promise.race([app.close().catch(() => {}), new Promise(r => setTimeout(r, 5000))]);
         try { app.process().kill(); } catch { /* already gone */ }
@@ -43,7 +43,7 @@ try {
         });
     });
 
-    await run({ MARKWORK_DEV: '1', MARKWORK_INSPECT_QUIET: '1' }, async page => {
+    await run({ MARKWORK_DEV: '1', MARKWORK_INSPECT_QUIET: '1' }, async (page, app) => {
         const errors = [];
         page.on('pageerror', e => errors.push(String(e)));
         // The sample's missing picture is meant to fail to load; nothing else may.
@@ -108,10 +108,12 @@ try {
                 }
             }, EDITOR_PARTS);
             assert.deepEqual(EDITOR_PARTS.filter(part => !seen.includes(part)), [], 'every element of the editor is drawn');
-            // The copy is in the app's data folder (its name is Electron's), with its pictures, not in the repository.
-            const copy = readdirSync(scratch, { recursive: true }).find(path => path.endsWith(join('ui-gallery', 'ui-gallery.md')));
-            assert.ok(copy, 'the copy is in the data folder');
-            assert.ok(existsSync(join(scratch, dirname(copy), 'images', 'example.png')), 'with its pictures');
+            // The copy is in Electron's data folder for the app (outside the scratch folder on macOS and Windows), with its
+            // pictures, not in the repository.
+            const copy = join(await app.evaluate(({ app }) => app.getPath('userData')), 'ui-gallery');
+            assert.ok(existsSync(join(copy, 'ui-gallery.md')), 'the copy is in the data folder');
+            assert.ok(existsSync(join(copy, 'images', 'example.png')), 'with its pictures');
+            rmSync(copy, { recursive: true, force: true });
         });
 
         await step('Ctrl+Alt+G opens it again and closes it', async () => {

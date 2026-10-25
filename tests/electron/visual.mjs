@@ -422,6 +422,24 @@ try {
         await waitFor(async () => await page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); }) === 'loud', 10000, state);
         await page.keyboard.press('ControlOrMeta+b');
         await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()), 10000, state);
+        // The cell loses the focus for the frame after Bold (a slow runner did), and gets it back with the caret somewhere
+        // else: that caret is not the person's, so the text keeps "loud" selected rather than taking it.
+        await page.evaluate(() => new Promise(done => {
+            const td = document.activeElement;
+            document.querySelector('[role="toolbar"][aria-label="Format the selection"] button[aria-label^="Bold"]').click();
+            td.blur();
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                // The caret first, as the browser puts it when the focus comes back; then the focus, if that did not bring it.
+                getSelection().collapse(td.lastChild, td.lastChild.length);
+                if (document.activeElement !== td) td.focus();
+                td.dispatchEvent(new KeyboardEvent('keyup', { key: 'Control', bubbles: true }));
+                done();
+            }));
+        }));
+        await waitFor(async () => /make \*\*this\*\* loud \|/.test(await docText()), 10000, state);
+        assert.equal(await page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); }), 'loud', 'the focus coming back keeps the text\'s selection');
+        await page.keyboard.press('ControlOrMeta+b');
+        await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()), 10000, state);
         // A bold word chosen with the mouse right after a command, then Bold: no more bold, not ****this****. The text takes
         // the cell's new selection (not "loud" back from the command); Bold being pressed says nothing, since loud is bold too.
         await cell.locator('.cm-md-bold', { hasText: 'this' }).dblclick();
