@@ -8,7 +8,7 @@
   "author": "Eka Putra <eka@ekaput.com>",
   "scripts": {
     "build": "npm run typecheck && node scripts/electron-build.mjs",
-    "start": "npm run build && electron .",
+    "start": "npm run build && electron . --inspect-editor",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.electron.json && node scripts/layers.mjs",
     "layers": "node scripts/layers.mjs",
     "editor": "node scripts/editor.mjs",

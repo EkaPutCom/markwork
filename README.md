@@ -73,7 +73,7 @@ Without a path, the folder and the tabs of the last session come back. On the fi
 
 | Command | Function |
 | --- | --- |
-| `npm start` | Build, then open the app |
+| `npm start` | Build, then open the app with the Editor Inspector on (`Ctrl+Alt+I`) |
 | `npm run build` | Check the types and the layer rules, then build the app into `dist-electron/` |
 | `npm run typecheck` | Only check the types (the core without Node's types, the core's tests and the Node port, the Electron app) and the layer rules |
 | `npm test` | The core's tests on Node, then the Electron app's tests (below) |
