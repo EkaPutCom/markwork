@@ -404,10 +404,12 @@ try {
         assert.match(await docText(), /make \*\*thXis\*\* loud/, 'a letter typed in a bold word is bold, and the markers stay');
         await page.keyboard.press('ControlOrMeta+z');
         await waitFor(async () => /make \*\*this\*\* loud/.test(await docText()), 10000, state);
-        // A selection in the cell is the text's: the menu shows, and Bold wraps it.
+        // A selection in the cell is the text's: the menu shows, and Bold wraps it. The cell can be without the focus for
+        // a frame after the undo (a slow runner was), and a selection made then never reaches the text, so it waits for it.
+        await waitFor(() => page.evaluate(() => document.activeElement?.matches('.cm-md-cell') ?? false), 10000, state);
         await cell.evaluate(td => { const t = td.lastChild; getSelection().setBaseAndExtent(t, 1, t, 4); });
         await page.keyboard.press('Shift+ArrowRight');
-        await page.getByRole('toolbar', { name: 'Format the selection' }).waitFor();
+        await waitFor(async () => (await page.getByRole('toolbar', { name: 'Format the selection' }).count()) === 1, 10000, state);
         await toolbar.getByRole('button', { name: /^Bold/ }).click();
         await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
         assert.equal(await page.evaluate(() => document.activeElement.matches('.cm-md-cell')), true, 'the cell keeps the focus');
