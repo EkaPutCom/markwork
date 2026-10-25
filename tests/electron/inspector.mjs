@@ -160,6 +160,7 @@ async function inNormalStart() {
 async function inDevMode() {
     const kept = join(scratch, 'kept'), saved = join(scratch, 'saved.mwrepro.json');
     mkdirSync(kept);
+    writeFileSync(join(notes, 'replay.md'), '# Replay\n\nsome **bold** text\n');
     const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1', MARKWORK_TEST_REPROS: kept, MARKWORK_CHOOSE_FILE: saved } });
     try {
         const page = await app.firstWindow();
@@ -341,6 +342,12 @@ async function inDevMode() {
         });
 
         await step('Replay & test: the recording plays again in a tab of its own and passes; a repro file that expects another text differs', async () => {
+            // A tab of its own: a recording of keys and clicks only, none of the dispatches of the steps above.
+            await openFile(page, 'replay.md');
+            await page.locator('.cm-content .cm-line').filter({ hasText: 'some' }).click();
+            await page.keyboard.press('End');
+            await page.keyboard.type('ab');
+            await page.keyboard.press('Backspace');
             await tab('Replay & test').click();
             await inspector.getByRole('button', { name: 'Replay This Recording' }).click();
             await inspector.getByRole('button', { name: 'Play All' }).click();
