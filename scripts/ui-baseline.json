@@ -101,9 +101,6 @@
         "raw-element": 20,
         "old-class": 11
     },
-    "components/Palette.tsx": {
-        "raw-element": 1
-    },
     "components/Programs.tsx": {
         "raw-element": 1,
         "icon-button": 1
@@ -131,10 +128,6 @@
     "components/TableView.tsx": {
         "raw-element": 5,
         "old-class": 4
-    },
-    "components/Tabs.tsx": {
-        "raw-element": 1,
-        "old-class": 3
     },
     "components/Timeline.tsx": {
         "raw-element": 3,

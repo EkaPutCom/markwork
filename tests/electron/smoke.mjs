@@ -225,7 +225,7 @@ try {
         await page.locator('.headerbar button[aria-label=Layout]', { hasText: 'Board' }).waitFor();
         await page.keyboard.press('ControlOrMeta+Shift+P');
         await page.locator('.palette input').fill('bold');
-        await page.locator('.palette li.none').waitFor();
+        await page.locator('.palette [cmdk-empty]').waitFor();
         await page.keyboard.press('Escape');
     });
 

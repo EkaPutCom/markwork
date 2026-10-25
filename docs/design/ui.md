@@ -11,7 +11,7 @@ This file describes the target. Parts of it are not in the code yet. Where a rul
 | Part | State |
 | --- | --- |
 | Theme tokens of shadcn, `--success`, `--warning`, `--chart-*` | In `globals.css` |
-| Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`, except Command and the Sonner toast: they need the `cmdk` and `sonner` packages and come with the palette and the toast in stage 5. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
+| Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`, except the Sonner toast: it needs the `sonner` package and comes with the toast in stage 5. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
 | Text sizes `text-2xs` and `text-ui`, the tokens of this file | In `globals.css` |
 | Layer and motion tokens (`--z-*`, `--duration-*`) | In `globals.css`; `theme.css` uses them |
 | `domButton` for widgets without React | In `ui/dom.ts`, used by the find bar; the other widgets in `lib/` move to it in stage 6 |

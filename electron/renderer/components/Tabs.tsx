@@ -1,4 +1,5 @@
 import { useState, type DragEvent } from 'react';
+import { IconButton } from '@/ui/icon-button';
 import { Icon } from './Icons.js';
 import type { Tab } from '../lib/client.js';
 import type { Pane } from '../lib/panes.js';
@@ -46,9 +47,9 @@ export function PaneTabs({ pane, solo, label, onMenu }: { pane: Pane; solo: bool
                         <Icon name="text-x-generic" size={14} className="file" />
                         <span className="label">{t.name}</span>
                         {t.mirror.modified && <span className="dot" role="img" aria-label="Unsaved" />}
-                        <button className="button flat circular close" aria-label={`Close ${t.name}`} onClick={e => { e.stopPropagation(); client.closeTab(t.id, pane.id); }}>
+                        <IconButton label={`Close ${t.name}`} size="icon-xs" className="close size-5 rounded-sm text-muted-foreground" onClick={e => { e.stopPropagation(); client.closeTab(t.id, pane.id); }}>
                             <Icon name="window-close" size={14} />
-                        </button>
+                        </IconButton>
                     </div>
                 ))}
             </div>

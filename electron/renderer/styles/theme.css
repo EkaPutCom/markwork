@@ -160,7 +160,6 @@
 .tab .file { flex: none; color: var(--primary); }
 .tab .dot { width: 8px; height: 8px; border-radius: 4px; background: var(--foreground); flex: none; margin-left: auto; }
 .tab .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tab .close { flex: none; min-width: 20px !important; min-height: 20px !important; width: 20px; height: 20px; border-radius: 4px; color: var(--muted-foreground); }
 .tab .dot + .close { margin-left: -2px; }
 /* The close button of a tab not shown is there (for the keyboard and a screen reader) but seen only on hover. */
 .tab:not(.active):not(:hover) .close:not(:focus-visible) { opacity: 0; }
@@ -310,17 +309,6 @@
 .notification .message { flex: 1; }
 .notification .button.suggested { min-height: 28px; }
 
-/* Command palette: shadcn's Command in a dialog. */
-.palette-backdrop { position: fixed; inset: 0; z-index: var(--z-overlay); background: var(--overlay); }
-.palette { position: absolute; top: 14vh; left: 50%; transform: translateX(-50%); width: 560px; max-width: calc(100% - 32px); background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-2xl); overflow: hidden; }
-.palette .input-row { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 12px; border-bottom: 1px solid var(--border); color: var(--muted-foreground); }
-.palette .input-row input { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: 0; box-shadow: none; padding: 0; font: inherit; font-size: var(--text-sm); color: var(--foreground); }
-.palette .input-row input::placeholder { color: var(--muted-foreground); }
-.palette ul { list-style: none; margin: 0; padding: 4px; max-height: 340px; overflow: auto; }
-.palette li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 8px; height: 36px; border-radius: 4px; cursor: default; font-size: var(--text-sm); }
-.palette li.selected { background: var(--accent); color: var(--accent-foreground); }
-.palette li.none { justify-content: center; color: var(--muted-foreground); height: 64px; }
-.palette .foot { display: flex; align-items: center; gap: 16px; height: 36px; padding: 0 12px; border-top: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 50%, transparent); font-size: var(--text-xs); color: var(--muted-foreground); }
 
 /* An entry: shadcn's Input. */
 .entry-base, .card-form input, .card-form textarea, .card-form select, .fields-form input, .fields-form select, .capture,

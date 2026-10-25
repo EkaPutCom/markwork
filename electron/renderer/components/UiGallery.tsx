@@ -14,6 +14,7 @@ import { Button } from '../ui/button.js';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card.js';
 import { Checkbox } from '../ui/checkbox.js';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible.js';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from '../ui/command.js';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '../ui/context-menu.js';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog.js';
 import {
@@ -338,6 +339,29 @@ function Overlays() {
     );
 }
 
+// The Command as it stands in a page: the palette opens it in a Dialog (Ctrl+Shift+P).
+function Commands() {
+    return (
+        <Section id="command" title="Command">
+            <Command className="max-w-md rounded-lg border shadow-md">
+                <CommandInput placeholder="Type a command or search…" aria-label="Command" />
+                <CommandList>
+                    <CommandEmpty>No matching commands</CommandEmpty>
+                    <CommandGroup heading="Format">
+                        <CommandItem>Bold<CommandShortcut><Kbd>Ctrl+B</Kbd></CommandShortcut></CommandItem>
+                        <CommandItem>Italic<CommandShortcut><Kbd>Ctrl+I</Kbd></CommandShortcut></CommandItem>
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="File">
+                        <CommandItem>Save<CommandShortcut><Kbd>Ctrl+S</Kbd></CommandShortcut></CommandItem>
+                        <CommandItem disabled>Close Other Tabs</CommandItem>
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+        </Section>
+    );
+}
+
 function Containers() {
     const [open, setOpen] = useState(true);
     return (
@@ -441,6 +465,7 @@ export function UiGallery({ onClose }: { onClose: () => void }) {
                     <Entries />
                     <Choices />
                     <Overlays />
+                    <Commands />
                     <Containers />
                     <Patterns />
                 </div>
