@@ -10,14 +10,14 @@ import { dayMonth, formatDate, PageHeader, todayString } from './notes.js';
 import { useClient } from '../lib/useClient.js';
 import { Select } from '../ui/select.js';
 
-const SLICE_COLORS: Record<string, string> = { red: '#e5484d', amber: '#e9a23b', green: '#3fa66b', blue: '#3b7dd8', purple: '#8e5bd6', teal: '#2f8f99', pink: '#c2417a', gray: '#8a8f98' };
-const FALLBACK = ['#4c9a6a', '#3b7dd8', '#8e5bd6', '#d6602e', '#c2417a', '#2f8f99', '#8a7a1c', '#5e6c84'];
-const NO_VALUE_COLOR = '#c9ccd2';
+// The category colors of globals.css (docs/design/ui.md "Categories"), in the order a tag or a cover takes them.
+const CATEGORY_ORDER = ['green', 'blue', 'purple', 'red', 'pink', 'teal', 'amber', 'gray'];
 const BAR_AREA = 120, TAG_BAR = 220, DONUT = 140, RING = 26;
 const PANEL_NAMES: Record<ChartItem['kind'], string> = { kpi: 'Numbers', bar: 'Bars', donut: 'Donut', tags: 'Tags' };
 const ADDABLE: ChartItem[] = [{ kind: 'kpi' }, { kind: 'bar', field: null, period: null }, { kind: 'donut', field: null }, { kind: 'tags' }];
 
-const colorOf = (slice: Slice, index: number): string => slice.name === NO_VALUE ? NO_VALUE_COLOR : slice.color ? SLICE_COLORS[slice.color] : FALLBACK[index % FALLBACK.length];
+// A slice's color: none for the notes without a value, else its option's own color, else the next one in order.
+const colorOf = (slice: Slice, index: number): string => `var(--cat-${slice.name === NO_VALUE ? 'none' : slice.color || CATEGORY_ORDER[index % CATEGORY_ORDER.length]})`;
 
 function Donut({ slices }: { slices: Slice[] }) {
     const total = slices.reduce((n, s) => n + s.count, 0);
@@ -31,7 +31,7 @@ function Donut({ slices }: { slices: Slice[] }) {
                 <g transform={`rotate(-90 ${DONUT / 2} ${DONUT / 2})`}>
                     {slices.map((s, i) => {
                         const length = total ? (s.count / total) * c : 0;
-                        const circle = <circle key={s.name} cx={DONUT / 2} cy={DONUT / 2} r={radius} fill="none" stroke={colorOf(s, i)} strokeWidth={RING} strokeDasharray={`${length} ${c - length}`} strokeDashoffset={-offset} />;
+                        const circle = <circle key={s.name} cx={DONUT / 2} cy={DONUT / 2} r={radius} fill="none" style={{ stroke: colorOf(s, i) }} strokeWidth={RING} strokeDasharray={`${length} ${c - length}`} strokeDashoffset={-offset} />;
                         offset += length;
                         return circle;
                     })}

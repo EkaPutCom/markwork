@@ -32,11 +32,11 @@ const isDark = (): boolean => {
 
 // Mermaid wants plain colors, not the oklch() or color-mix() of the tokens, so each token is read back through a canvas as #rrggbb.
 const swatch = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
-const token = (name: string, fallback: string): string => {
+const token = (name: string): string => {
     const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     swatch.clearRect(0, 0, 1, 1);
-    swatch.fillStyle = '#000';
-    swatch.fillStyle = value || fallback;
+    swatch.fillStyle = '#000';   // ui-allow: the canvas's reset, so a value it cannot read does not keep the last color
+    swatch.fillStyle = value;
     swatch.fillRect(0, 0, 1, 1);
     const [r, g, b] = swatch.getImageData(0, 0, 1, 1).data;
     return '#' + [r, g, b].map(n => n.toString(16).padStart(2, '0')).join('');
@@ -44,8 +44,8 @@ const token = (name: string, fallback: string): string => {
 
 // The shadcn look: flat cards on the page background, thin borders, muted lines, the interface's own font.
 function themeVariables(): Record<string, string> {
-    const background = token('--background', '#fff'), card = token('--card', '#fff'), muted = token('--muted', '#f4f4f5');
-    const foreground = token('--foreground', '#000'), dim = token('--muted-foreground', '#71717a'), border = token('--border', '#e4e4e7');
+    const background = token('--background'), card = token('--card'), muted = token('--muted');
+    const foreground = token('--foreground'), dim = token('--muted-foreground'), border = token('--border');
     return {
         fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-sans').trim() || 'sans-serif', fontSize: '13px',
         background, mainBkg: card, primaryColor: card, primaryTextColor: foreground, primaryBorderColor: border,

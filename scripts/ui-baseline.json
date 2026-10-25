@@ -17,7 +17,6 @@
         "old-class": 4
     },
     "components/Chart.tsx": {
-        "color": 17,
         "raw-element": 6,
         "old-class": 7
     },
@@ -151,26 +150,10 @@
         "raw-element": 3,
         "old-class": 2
     },
-    "lib/diagrams.ts": {
-        "color": 7
-    },
     "lib/findbar.ts": {
         "old-class": 7
     },
     "lib/visual.ts": {
         "old-class": 2
-    },
-    "styles/theme.css": {
-        "color": 133,
-        "font-size": 181
-    },
-    "ui/badge.tsx": {
-        "color": 1
-    },
-    "ui/button.tsx": {
-        "color": 1
-    },
-    "ui/menubar.tsx": {
-        "font-size": 1
     }
 }

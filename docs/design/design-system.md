@@ -65,7 +65,9 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 3: Melengkapi fondasi
 
-- Primitif hasil tahap 0 ditambahkan ke `ui/`: 19 dari shadcn (termasuk Tooltip), ditambah `IconButton` milik Markwork.
+**Selesai** (25 Oktober 2026), kecuali Command dan Sonner.
+
+- Primitif hasil tahap 0 ditambahkan ke `ui/`: 19 dari shadcn (termasuk Tooltip), ditambah `IconButton` milik Markwork. 17 di antaranya sudah ada, ditambah Toggle sebagai dasar ToggleGroup. Command dan Sonner menunggu tahap 5: keduanya butuh paket `cmdk` dan `sonner`, jadi baru ditambahkan bersama migrasi palet perintah dan toast yang memakainya.
 - Skala teks tujuh ukuran dan palet `--cat-*` ditambahkan ke file token.
 - Warna literal di `theme.css` diganti token, dan alias token di kepala `theme.css` diganti token shadcn.
 
