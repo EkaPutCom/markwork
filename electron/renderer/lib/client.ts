@@ -171,7 +171,7 @@ export interface State {
 }
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
-const CORE_COMMANDS = new Set(['send-changes', 'preferences', 'open-recent', 'home', 'programs', 'visual', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'next-tab', 'prev-tab',
+const CORE_COMMANDS = new Set(['send-changes', 'preferences', 'open-recent', 'home', 'programs', 'visual', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'close-all-tabs', 'next-tab', 'prev-tab',
     'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave', 'chat', 'journal', 'journal-capture', 'journal-summary']);
 const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
@@ -360,6 +360,20 @@ export class Client {
         const { layout, closesDocument } = P.closeTab(this.snapshot.panes, pane, doc);
         if (closesDocument) void this.ask('tab.close', { doc });
         else this.setPanes(layout);
+    };
+
+    // Close Others, Close to the Right, Close All of a pane: as closeTab for each, and the core asks once about all the
+    // documents that close with their last tab.
+    closeTabs = (docs: readonly number[], pane = this.snapshot.panes.current): void => {
+        let layout = this.snapshot.panes;
+        const closing: number[] = [];
+        for (const doc of docs) {
+            const step = P.closeTab(layout, pane, doc);
+            if (step.closesDocument) closing.push(doc);
+            else layout = step.layout;
+        }
+        this.setPanes(layout);
+        if (closing.length) void this.ask('tab.closeMany', { docs: closing });
     };
 
     // ---------- Panes ----------
@@ -1120,6 +1134,7 @@ export class Client {
                 break;
             }
             case 'page.close': this.dropDoc(p.page as number); break;
+            case 'doc.park': this.setPanes(P.close(this.snapshot.panes, id)); break;   // the tab goes, the document stays
             case 'page.active': this.leaveReview(); this.showDoc(p.page as number); break;
             case 'view.home': {
                 this.leaveReview();

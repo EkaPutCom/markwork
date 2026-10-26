@@ -171,6 +171,17 @@ export class DocumentController<E extends TextEditor> {
         return await this.confirmDiscard(target) && this.docs.includes(target) && this.remove(target);
     }
 
+    // Close several tabs at once (Close All, Close Others): it asks about the changed documents first, one by one, and
+    // closes nothing if one is cancelled. With no ids, every tab. Documents go before pages, so the last document is
+    // emptied (or parked behind a page) as with its own close button.
+    async closeMany(ids: readonly number[] = this.host.tabOrder()): Promise<boolean> {
+        const docs = this.docs.filter(d => ids.includes(d.id));
+        if (!await this.confirmDiscardAll(docs)) return false;
+        for (const doc of docs) if (this.docs.includes(doc)) this.remove(doc);
+        for (const page of this.pages.filter(p => ids.includes(p.id))) if (this.pages.includes(page)) this.closePage(page);
+        return true;
+    }
+
     // Close the tabs whose file lies outside folder (asks about unsaved changes first).
     // false = the user cancelled, so the folder should not be switched.
     async closeOutside(folder: string): Promise<boolean> {

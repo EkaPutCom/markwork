@@ -147,6 +147,13 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
                         <DropdownMenuContent align="end" className="min-w-56" onCloseAutoFocus={e => { e.preventDefault(); client.focusEditor(); }}>
                             <DropdownMenuItem onSelect={() => client.splitPane('right', pane.id)}><Icon name="split-right" />Split Right<DropdownMenuShortcut>{keysOf('split-right')}</DropdownMenuShortcut></DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => client.splitPane('bottom', pane.id)}><Icon name="split-down" />Split Down<DropdownMenuShortcut>{keysOf('split-down')}</DropdownMenuShortcut></DropdownMenuItem>
+                            {pane.tabs.includes(pane.active) && <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => client.closeTab(pane.active, pane.id)}>Close<DropdownMenuShortcut>{keysOf('close-tab')}</DropdownMenuShortcut></DropdownMenuItem>
+                                <DropdownMenuItem disabled={pane.tabs.length < 2} onSelect={() => client.closeTabs(pane.tabs.filter(t => t !== pane.active), pane.id)}>Close Others</DropdownMenuItem>
+                                <DropdownMenuItem disabled={pane.tabs.at(-1) === pane.active} onSelect={() => client.closeTabs(pane.tabs.slice(pane.tabs.indexOf(pane.active) + 1), pane.id)}>Close to the Right</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => client.closeTabs(pane.tabs, pane.id)}>Close All<DropdownMenuShortcut>{keysOf('close-all-tabs')}</DropdownMenuShortcut></DropdownMenuItem>
+                            </>}
                             {!solo && <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onSelect={() => { client.focusPane(pane.id); client.moveToNextPane(); }}>Move Tab to Next Pane</DropdownMenuItem>

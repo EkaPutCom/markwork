@@ -29,6 +29,11 @@ export function documentHandlers({ wire, session, frontend, notice, sendFiles }:
     });
     wire.on('tab.select', p => { session.documents.select(num(p.doc, 'doc')); });
     wire.on('tab.close', async p => ({ closed: await session.documents.closeById(num(p.doc, 'doc')) }));
+    // Close Others, Close to the Right, Close All of a pane: closed = false when a question about changes was cancelled.
+    wire.on('tab.closeMany', async p => {
+        if (!Array.isArray(p.docs)) throw new RequestError('bad_request', 'docs is missing');
+        return { closed: await session.documents.closeMany(p.docs.map(d => num(d, 'docs'))) };
+    });
 
     notice('doc.edit', p => frontend.editors.get(num(p.doc, 'doc'))?.receiveEdit(num(p.version, 'version'), p.modified === true, p.changes as Change[]));
     notice('doc.cursor', p => frontend.editors.get(num(p.doc, 'doc'))?.receiveCursor(num(p.version, 'version'), num(p.offset, 'offset'),

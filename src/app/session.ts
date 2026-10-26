@@ -291,6 +291,7 @@ export class AppSession<E extends TextEditor> {
             editFields: () => views.editFields(),
             sendChanges: () => void this.contribute.start(),
             closeTab: () => docs.closeTab(),
+            closeAllTabs: () => docs.closeMany(),
             switchTab: step => docs.switchTab(step),
             openHome: () => docs.openHome(),
             openPrograms: () => docs.openPrograms(),

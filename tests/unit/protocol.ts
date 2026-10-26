@@ -431,6 +431,14 @@ export async function protocolTests(): Promise<void> {
         const data = ui.last('view.home')!.data as { workspace: string | null; recent: unknown[] };
         eq(data.workspace, dir);
         eq(ui.last('page.active'), { page: opened.page });
+        // The empty document loses its tab next to Home; chosen again it is back, and its close button takes the tab away again.
+        const doc = ui.last('doc.park')!.doc as number;
+        ui.client.notify('tab.select', { doc });
+        await until(() => ui.last('doc.active')?.doc === doc);
+        const parks = ui.log.filter(l => l.ev === 'doc.park').length;
+        const gone = await ui.client.request('tab.close', { doc });
+        ok(gone.ok && gone.closed === true, 'tab.close of the last document');
+        eq(ui.log.filter(l => l.ev === 'doc.park').length, parks + 1, 'the renderer is told the tab goes');
         // An HTML file of the folder opens in its own tab.
         disk.write(disk.join(dir, 'page.html'), '<h1>hi</h1>');
         ok((await ui.client.request('open.file', { name: 'page.html' })).ok, 'open.file');
@@ -453,6 +461,30 @@ export async function protocolTests(): Promise<void> {
         await until(() => ui.log.filter(l => l.ev === 'doc.open').length === 2);
         const fresh = ui.last('doc.open')!.doc as number;
         eq(ui.log.filter(l => l.ev === 'doc.reset' && l.payload.doc === fresh).length, 0, 'no doc.reset after doc.open');
+        server.dispose();
+    });
+
+    await test('tab.closeMany closes several tabs, and a Cancel about a changed document closes none', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await ui.client.request('open.file', { name: 'board.md' });
+        await until(() => ui.log.filter(l => l.ev === 'doc.open').length === 2);
+        const docs = ui.log.filter(l => l.ev === 'doc.open').map(l => l.payload.doc as number);
+        // A new document with text in it: the question about it is cancelled, so every tab stays.
+        ok((await ui.client.request('command', { name: 'new' })).ok, 'new');
+        await until(() => ui.log.filter(l => l.ev === 'doc.open').length === 3);
+        const fresh = ui.last('doc.open')!.doc as number;
+        await until(() => ui.active === ui.mirrors.get(fresh));
+        ui.type(ui.active, 'kept');
+        ui.answers['ask.saveChanges'] = { answer: 'cancel' };
+        const cancelled = await ui.client.request('tab.closeMany', { docs: [...docs, fresh] });
+        ok(cancelled.ok && cancelled.closed === false, 'cancelled');
+        eq(ui.mirrors.size, 3, 'nothing closed');
+        // Without the changed document, the two files close.
+        const closed = await ui.client.request('tab.closeMany', { docs });
+        ok(closed.ok && closed.closed === true, 'closed');
+        await until(() => ui.mirrors.size === 1);
+        ok(ui.mirrors.has(fresh), 'the changed document stays');
         server.dispose();
     });
 
