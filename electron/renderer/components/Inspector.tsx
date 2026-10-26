@@ -134,7 +134,7 @@ function TxDetail({ recording, entry, actions }: { recording: Recording; entry: 
                 </div>
             ))}
             <div className="ins-acts">
-                <Button variant="outline" size="xs" disabled={!actions.before} title={actions.before ? undefined : 'Dev mode keeps no state from before the first transaction it saw'} onClick={() => actions.before?.()}>Show the State Before</Button>
+                <Button variant="outline" size="xs" disabled={!actions.before} aria-description={actions.before ? undefined : 'Dev mode keeps no state from before the first transaction it saw'} onClick={() => actions.before?.()}>Show the State Before</Button>
                 <Button variant="outline" size="xs" onClick={actions.test}>Make a Test from This</Button>
                 <Button variant="outline" size="xs" onClick={() => void copy(JSON.stringify(entryJSON(entry), null, 2)).then(() => setCopied(true))}>{copied ? 'Copied' : 'Copy as JSON'}</Button>
             </div>

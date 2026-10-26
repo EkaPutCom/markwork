@@ -1,6 +1,8 @@
 // Checks the window's code against the rules of docs/design/ui.md ("What the guard checks"): colors only as tokens,
 // controls only from ui/, text sizes only from the scale, inline style only for computed values, icon buttons only as
-// IconButton, and none of the old theme.css classes that imitate a primitive. Run by `npm run test:core:node`.
+// IconButton, layers and motion only as tokens, radius only from --radius, spacing only on the scale, no title on a
+// button with text, and none of the old theme.css classes that imitate a primitive. Run by `npm run typecheck` and
+// `npm run test:core:node`.
 //
 // Every file must be clean. A line that breaks a rule on purpose says why in a comment on it or on the line above:
 // `ui-allow: <reason>`.
@@ -24,6 +26,9 @@ const RULES = {
     'constant-style': 'an inline style of constants only; put it in a class (ui.md "Inline style")',
     'icon-button': 'a Button of an icon size; use IconButton (ui.md "Tooltip and title")',
     'old-class': 'a class of the old set in theme.css; use the primitive (ui.md "theme.css")',
+    'radius': 'a radius in px; use a --radius-* token or a rounded-* class (ui.md "Spacing, size, radius")',
+    'spacing': 'a spacing of 10px or 14px; use the scale (ui.md "Spacing, size, radius")',
+    'title': 'a title on a Button with text; change the text or use aria-description (ui.md "Tooltip and title")',
     'z-index': 'a layer as a number; use a --z-* token (ui.md "Layers")',
     'motion': 'a duration or an easing of its own; use a --duration-* token (ui.md "Motion")',
 };
@@ -40,6 +45,15 @@ const STRING_FONT_PX = /\btext-\[\d+(\.\d+)?px\]/;
 const STRING_Z = /(^|\s|:)-?z-(\d{2,}|\[\d{2,}\])(?![\w-])/g;
 // A duration, a delay, or an easing class (`duration-300`, `delay-[50ms]`, `ease-[…]`); `duration-(--duration-fast)` is the token.
 const STRING_MOTION = /(^|\s|:)(duration|delay)-(\d+|\[[^\]]*\])(?![\w-])|(^|\s|:)ease-\[/g;
+// A radius class in px (`rounded-[6px]`, `rounded-t-[4px]`); ui/ keeps shadcn's own.
+const STRING_RADIUS = /(^|\s|:)rounded(-[a-z]+)?-\[[^\]]*px\](?![\w-])/g;
+// A spacing class of 10px or 14px (`px-2.5`, `gap-3.5`, `p-[10px]`), off the scale of ui.md.
+const STRING_SPACING = /(^|\s|:)-?(p[xytrblse]?|m[xytrblse]?|gap(-[xy])?|space-[xy])-(2\.5|3\.5|\[(10|14)px\])(?![\w-])/g;
+// In CSS, a radius written in px outside a calc() on --radius (`calc(var(--radius) + 2px)` is the token).
+const CSS_RADIUS_PX = /(?<![\d.\w-])[1-9]\d*(\.\d+)?px/;
+const CSS_CALC = /calc\((?:[^()]|\([^()]*\))*\)/g;
+// In CSS, a spacing of 10px or 14px.
+const CSS_SPACING_PX = /(?<![\d.\w])(10|14)px/;
 // In CSS, a time written as a number (`.15s`, `200ms`).
 const CSS_TIME = /(?<![\w-])\d*\.?\d+m?s(?![\w-])/;
 // In CSS, a color inside a declaration's value; named colors only as whole words.
@@ -65,6 +79,23 @@ const allowed = (lines, line) => ALLOW.test(lines[line - 1] ?? '') || ALLOW.test
 // The CSS with its comments blanked out, newlines kept so offsets still give the right line.
 const stripCssComments = css => css.replace(/\/\*[\s\S]*?\*\//g, c => c.replace(/[^\n]/g, ' '));
 
+// Color, text size, layer, and motion: the rules of the tokens.
+function checkTokenDeclaration(property, value, line, report) {
+    if (CSS_COLOR.test(value)) report('color', line, `${property}: ${value.trim()}`);
+    if (/^(font-size|font)$/.test(property) && /(?<![\d./])\d+(\.\d+)?px/.test(value)) report('font-size', line, `${property}: ${value.trim()}`);   // a line height after / is not a size
+    if (property === 'z-index' && /^\s*\d{2,}\s*$/.test(value)) report('z-index', line, `${property}: ${value.trim()}`);
+    const loop = property.startsWith('animation') && /\binfinite\b/.test(value);
+    if (/^(transition|animation)(-duration|-delay)?$/.test(property) && !loop && CSS_TIME.test(value)) report('motion', line, `${property}: ${value.trim()}`);
+    if (/cubic-bezier\(/.test(value)) report('motion', line, `${property}: ${value.trim()}`);
+}
+
+// Radius and spacing: the rules of ui.md "Spacing, size, radius".
+function checkShapeDeclaration(property, value, line, report) {
+    const radius = /^border(-[a-z]+)*-radius$/.test(property) && value.replace(CSS_CALC, c => c.includes('var(--radius') ? '' : c);
+    if (radius && CSS_RADIUS_PX.test(radius)) report('radius', line, `${property}: ${value.trim()}`);
+    if (/^((padding|margin)(-[a-z]+)*|(row-|column-)?gap)$/.test(property) && CSS_SPACING_PX.test(value)) report('spacing', line, `${property}: ${value.trim()}`);
+}
+
 function checkCss(source, report) {
     const lines = source.split('\n');
     const css = stripCssComments(source);
@@ -72,12 +103,8 @@ function checkCss(source, report) {
         const [, property, value] = m;
         const line = lineAt(css, m.index);
         if (allowed(lines, line)) continue;
-        if (CSS_COLOR.test(value)) report('color', line, `${property}: ${value.trim()}`);
-        if (/^(font-size|font)$/.test(property) && /(?<![\d./])\d+(\.\d+)?px/.test(value)) report('font-size', line, `${property}: ${value.trim()}`);   // a line height after / is not a size
-        if (property === 'z-index' && /^\s*\d{2,}\s*$/.test(value)) report('z-index', line, `${property}: ${value.trim()}`);
-        const loop = property.startsWith('animation') && /\binfinite\b/.test(value);
-        if (/^(transition|animation)(-duration|-delay)?$/.test(property) && !loop && CSS_TIME.test(value)) report('motion', line, `${property}: ${value.trim()}`);
-        if (/cubic-bezier\(/.test(value)) report('motion', line, `${property}: ${value.trim()}`);
+        checkTokenDeclaration(property, value, line, report);
+        checkShapeDeclaration(property, value, line, report);
     }
 }
 
@@ -151,6 +178,7 @@ function checkOpeningElement(node, file, report) {
         if (key === 'className') checkClasses(attribute, report);
         else if (key === 'style') checkStyle(attribute, report);
         else if (key === 'size' && name === 'Button' && !inUi && ICON_SIZES.has(attributeString(attribute))) report('icon-button', node.start, `<Button size="${attributeString(attribute)}">`);
+        else if (key === 'title' && name === 'Button' && !inUi) report('title', attribute.start, '<Button title=…>');
     }
 }
 
@@ -180,6 +208,8 @@ function checkStrings(node, file, report) {
     if (file.startsWith('ui/')) return;
     for (const z of text.matchAll(STRING_Z)) report('z-index', node.start, `"${z[0].replace(/^[\s:]+/, '')}"`);
     for (const motion of text.matchAll(STRING_MOTION)) report('motion', node.start, `"${motion[0].replace(/^[\s:]+/, '')}"`);
+    for (const radius of text.matchAll(STRING_RADIUS)) report('radius', node.start, `"${radius[0].replace(/^[\s:]+/, '')}"`);
+    for (const spacing of text.matchAll(STRING_SPACING)) report('spacing', node.start, `"${spacing[0].replace(/^[\s:]+/, '')}"`);
 }
 
 // document.createElement('button'), the raw control a widget without React makes; ui/dom.ts makes it for them.

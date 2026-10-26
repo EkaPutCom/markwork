@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { Button } from './ui/button.js';
 import { IconButton } from './ui/icon-button.js';
 import { Toaster } from './ui/sonner.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.js';
 import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
 } from './ui/dropdown-menu.js';
@@ -161,11 +162,16 @@ function HeaderBar() {
             {tab && !s.pullShown && !s.reviewShown && ['text', 'csv', ...STRUCTURED_PAGES].includes(tab.page) && <EditingMode tab={tab} pane={currentPane(s.panes)} />}
             {tab && s.layout.layout !== null && (
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" aria-label="Layout" title="View">
-                            <Icon name={shown.icon} /><span className="label-text">{shown.name}</span><Icon name="pan-down" className="text-muted-foreground" />
-                        </Button>
-                    </DropdownMenuTrigger>
+                    <Tooltip>
+                        <DropdownMenuTrigger asChild>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="sm" aria-label="Layout">
+                                    <Icon name={shown.icon} /><span className="label-text">{shown.name}</span><Icon name="pan-down" className="text-muted-foreground" />
+                                </Button>
+                            </TooltipTrigger>
+                        </DropdownMenuTrigger>
+                        <TooltipContent>Layout</TooltipContent>
+                    </Tooltip>
                     <MenuContent items={layoutItems} className="layout-menu min-w-52" />
                 </DropdownMenu>
             )}

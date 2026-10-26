@@ -51,6 +51,7 @@ export function Calendar({ board }: { board: Board }) {
         const label = (item.time ? `${item.time} ` : '') + item.title;
         return (
             <Button key={`${item.at.column}:${item.at.index}`} variant="ghost" size="xs" className={`calendar-event justify-start${done ? ' done' : late ? ' late' : ''} text-left`} draggable aria-label={label}
+                // ui-allow: an event is cut off with an ellipsis; the title is its full name
                 title={done ? `${item.title} (done)` : late ? `${item.title} (past its date)` : item.title}
                 onDragStart={e => { e.dataTransfer.setData('text/plain', item.card.text); dragged.current = item.at; }} onDragEnd={() => { dragged.current = null; setOver(null); }}
                 onClick={e => { e.stopPropagation(); edit(item.at); }}>{label}</Button>

@@ -36,7 +36,7 @@ export function DialogContent({ className, children, showCloseButton = true, ...
                 {children}
                 {showCloseButton && (
                     <DialogPrimitive.Close data-slot="dialog-close" aria-label="Close"
-                        className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+                        className="absolute top-4 right-4 rounded-[2px] opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
                         <XIcon />
                     </DialogPrimitive.Close>
                 )}

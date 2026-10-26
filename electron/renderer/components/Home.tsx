@@ -50,7 +50,7 @@ function Setup({ setup }: { setup: NonNullable<HomeData['setup']> }) {
     const client = useClient();
     return (
         <section className="home-section setup-section" aria-label="Set up">
-            <div className="setup-head"><h2>Set up</h2><Button variant="ghost" size="xs" title="Hide until something else is missing" onClick={() => client.hideSetup()}>Hide</Button></div>
+            <div className="setup-head"><h2>Set up</h2><Button variant="ghost" size="xs" aria-description="Hide until something else is missing" onClick={() => client.hideSetup()}>Hide</Button></div>
             <div className="home-list setup-list">
                 {setup.items.map(p => (
                     <Row key={p.id} title={p.state === 'not-allowed' ? `${p.name} is not allowed by markworkd on ${p.machine}` : p.machine ? `${p.name} is not installed on ${p.machine}` : `${p.name} is not installed`}

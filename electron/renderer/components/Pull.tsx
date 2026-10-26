@@ -106,6 +106,7 @@ export function PullPage() {
             <div className="pull-body">
                 <nav className="pull-files" aria-label="Changed files">
                     {files.map(f => (
+                        // ui-allow: a file name is cut off with an ellipsis; the title is its full path
                         <Button key={f.path} variant="ghost" className={`file h-auto justify-start font-normal${selected === f.path ? ' active' : ''} text-left`} title={f.previousPath ? `${f.previousPath} → ${f.path}` : f.path}
                             aria-current={selected === f.path} onClick={() => { setView(v => v === 'discussion' ? 'note' : v); client.selectPullFile(f.path); }}>
                             <span className={`mark ${MARK_CLASS[f.status]}`} aria-hidden="true">{MARK[f.status]}</span>

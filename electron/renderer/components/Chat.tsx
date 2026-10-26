@@ -170,7 +170,7 @@ function ProposalCard({ ask }: { ask: number }) {
             <div className="row">
                 {view.state === 'open' && <Button size="xs" onClick={() => client.chat.openReview(ask)}>Review changes</Button>}
                 {view.state === 'applied' && !view.undone && (
-                    <Button variant="outline" size="xs" title="Restore the files to their contents before this change" onClick={() => void client.chat.undo({ ask })}>Undo</Button>
+                    <Button variant="outline" size="xs" aria-description="Restore the files to their contents before this change" onClick={() => void client.chat.undo({ ask })}>Undo</Button>
                 )}
                 {view.state !== 'open' && view.state !== 'cancelled' && <Button variant="ghost" size="xs" aria-expanded={diff} onClick={() => setDiff(v => !v)}>{diff ? 'Hide diff' : 'View diff'}</Button>}
             </div>
@@ -233,8 +233,8 @@ function PastRow({ action }: { action: PastAction }) {
     return (
         <div className="chat-past">
             <div className="row">
-                <Button variant="outline" size="xs" title={action.changes.map(c => c.file).join('\n')} aria-expanded={diff} onClick={() => setDiff(v => !v)}>View diff · {action.changes.length} {action.changes.length === 1 ? 'file' : 'files'}</Button>
-                {action.status === 'applied' && <Button variant="outline" size="xs" title="Restore the files to their contents before this change" onClick={() => void client.chat.undo({ event: action.id })}>Undo</Button>}
+                <Button variant="outline" size="xs" aria-description={action.changes.map(c => c.file).join(', ')} aria-expanded={diff} onClick={() => setDiff(v => !v)}>View diff · {action.changes.length} {action.changes.length === 1 ? 'file' : 'files'}</Button>
+                {action.status === 'applied' && <Button variant="outline" size="xs" aria-description="Restore the files to their contents before this change" onClick={() => void client.chat.undo({ event: action.id })}>Undo</Button>}
             </div>
             {diff && <DiffLines lines={action.changes.flatMap(c => c.diff)} />}
         </div>
