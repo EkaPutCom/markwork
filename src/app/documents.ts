@@ -249,10 +249,12 @@ export class DocumentController<E extends TextEditor> {
     }
 
     // Empty doc (or fill it with text) as a new document without a file.
+    // A document that already is that text, unchanged (a new tab is empty), is not written again: the window has it, and a
+    // second write would wipe what the user typed into it meanwhile.
     reset(doc: Doc<E>, text = ''): void {
         this.activate(doc);
         this.set(doc, { file: null });
-        doc.editor.setText(text);
+        if (doc.editor.getText() !== text || doc.editor.isModified()) doc.editor.setText(text);
         this.host.contentChanged(doc.id);
     }
 

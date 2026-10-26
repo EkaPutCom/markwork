@@ -453,6 +453,17 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('a new document is opened empty and not reset again, so what is typed into it at once stays', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.active?.text.startsWith('# Note') === true);
+        ok((await ui.client.request('command', { name: 'new' })).ok, 'new');
+        await until(() => ui.log.filter(l => l.ev === 'doc.open').length === 2);
+        const fresh = ui.last('doc.open')!.doc as number;
+        eq(ui.log.filter(l => l.ev === 'doc.reset' && l.payload.doc === fresh).length, 0, 'no doc.reset after doc.open');
+        server.dispose();
+    });
+
     await test('tab.closeMany closes several tabs, and a Cancel about a changed document closes none', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
