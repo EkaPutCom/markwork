@@ -568,6 +568,28 @@ try {
         assert.match(await docText(), /```\nprint\(1\)\n```/);
         await page.keyboard.press('Escape');
     });
+
+    await step('a code block\'s language is a button over its box: the list finds it by name, a word not in it is kept, Plain text takes it away', async () => {
+        await setDoc('Above\n\n```\nprint("hi")\n```\n\nBelow', 0);
+        const language = editor.locator('.cm-md-codelang');
+        assert.equal((await language.textContent()).trim(), 'Plain text');
+        const search = page.getByPlaceholder('Search languages…');
+        await language.click();
+        await search.fill('pyth');
+        await page.keyboard.press('Enter');
+        await waitFor(async () => (await docText()).includes('```python\nprint("hi")\n```'));
+        await waitFor(async () => (await language.textContent()).trim() === 'Python');
+        await waitFor(async () => await page.evaluate(() => document.activeElement?.matches('.cm-md-codeedit')));
+        await language.click();
+        await search.fill('zzlang');
+        await page.getByRole('option', { name: 'Use “zzlang”' }).click();
+        await waitFor(async () => (await docText()).includes('```zzlang\n'));
+        await language.click();
+        await page.getByRole('option', { name: 'Plain text' }).click();
+        await waitFor(async () => (await docText()).includes('Above\n\n```\nprint'));
+        await page.keyboard.press('ControlOrMeta+z');
+        await waitFor(async () => (await docText()).includes('```zzlang\n'));
+    });
     await step('a block has a handle: + adds a block with the / menu, the grip drags it, and the keyboard moves it', async () => {
         await setDoc('# Plan\n\nFirst\n\n- a\n- b\n\nLast', 0);
         await editor.locator('.cm-line', { hasText: 'First' }).hover();

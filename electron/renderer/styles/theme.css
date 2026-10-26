@@ -394,6 +394,8 @@
 .cm-md-codebox { position: relative; contain: inline-size; min-width: 0; max-width: 100%; box-sizing: border-box; border: solid transparent; border-width: 8px 0; padding: 8px 12px; background: var(--code-bg); background-clip: padding-box; border-radius: var(--radius-md) / calc(var(--radius-md) + 8px); overflow-x: auto; cursor: text; }
 .cm-md-codebox pre { margin: 0; font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.5; white-space: pre; }
 .cm-md-codebox pre.cm-md-codeedit { min-height: 1.5em; outline: none; }
+/* The language of the block over its code (visual editor); it stays at the left while the code scrolls sideways */
+.cm-md-codehead { position: sticky; left: 0; display: flex; margin: -4px -8px 4px; }
 .cm-md-codebox.exit-hint::after { content: 'Press Enter again to leave the code block'; position: absolute; right: 12px; bottom: 8px; font: var(--text-xs) var(--font-sans); color: var(--muted-foreground); pointer-events: none; }
 .cm-editor .cm-content .cm-md-codeedit:focus ::selection, .cm-editor .cm-content .cm-md-codeedit:focus::selection { background: var(--sel) !important; }
 
