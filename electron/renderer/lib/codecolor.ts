@@ -9,6 +9,8 @@ import { classHighlighter, highlightTree } from '@lezer/highlight';
 import { Decoration, WidgetType, type EditorView } from '@codemirror/view';
 import type { CodeBlock } from '../../../src/markdown/highlight.js';
 import { diagramKind } from '../../../src/markdown/diagram.js';
+import { iconElement } from '../components/Icons.js';
+import { domButton } from '../ui/dom.js';
 import { DELETE_ICON, blockTools, copyTool } from './blocktools.js';
 import { fencedBlockAt, pick, removeBlock } from './blockselect.js';
 
@@ -26,6 +28,34 @@ const mark = (cls: string) => {
 function describe(lang: string): LanguageDescription | null {
     const name = lang.trim().split(/[\s{]/)[0];
     return name ? LanguageDescription.matchLanguageName(languages, name, true) : null;
+}
+
+// The name a block's language is shown by: the grammar's ("JavaScript" for js), the word itself if no grammar has it, or
+// "Plain text" for none.
+export function languageLabel(lang: string): string {
+    return describe(lang)?.name ?? (lang.trim().split(/[\s{]/)[0] || 'Plain text');
+}
+
+// What a language is written as after the fence: its name in small letters, or its first short name when the name has a
+// space ("Common Lisp" is lisp), so that the word names it again.
+export function fenceName(language: LanguageDescription): string {
+    return /\s/.test(language.name) && language.alias.length ? language.alias[0] : language.name.toLowerCase().replace(/\s+/g, '-');
+}
+
+// The window's list of languages for a code block (LanguagePicker.tsx), opened by the button over the box: where the
+// button is, the language the block has, and what writes the one chosen.
+export interface LanguagePick {
+    at: { left: number; top: number; width: number; height: number };
+    current: string;
+    choose(lang: string): void;
+}
+
+// Write a language after a code block's opening fence; '' takes it away. What follows it (```js title=x) stays.
+function setLanguage(view: EditorView, box: HTMLElement, lang: string): void {
+    const fence = view.state.doc.lineAt(view.posAtDOM(box)), m = /^(\s*(?:`{3,}|~{3,})[ \t]*)(\S*)/.exec(fence.text);
+    if (!m || m[2] === lang) return;
+    const from = fence.from + m[1].length;
+    view.dispatch({ changes: { from, to: from + m[2].length, insert: lang }, userEvent: 'input' });
 }
 
 type Span = [from: number, to: number, cls: string];
@@ -117,9 +147,10 @@ function codeRange(view: EditorView, box: HTMLElement, lines: number): { fence: 
 export class CodeBoxWidget extends WidgetType {
     private readonly key: string;
 
-    constructor(readonly text: string, readonly spans: readonly Span[], private readonly dim = false, private readonly editable = false, readonly lines = 0) {
+    constructor(readonly text: string, readonly spans: readonly Span[], private readonly dim = false, private readonly editable = false, readonly lines = 0,
+        readonly lang = '', private readonly pickLanguage: (pick: LanguagePick) => void = () => {}) {
         super();
-        this.key = `${text}\0${spans.map(s => s.join(':')).join(',')}${dim ? '\0dim' : ''}${editable ? `\0edit${lines}` : ''}`;
+        this.key = `${text}\0${spans.map(s => s.join(':')).join(',')}${dim ? '\0dim' : ''}${editable ? `\0edit${lines}\0${lang}` : ''}`;
     }
 
     override eq(other: CodeBoxWidget): boolean { return other.key === this.key; }
@@ -131,7 +162,10 @@ export class CodeBoxWidget extends WidgetType {
         paint(pre, this.text, this.spans);
         box.append(pre, blockTools([copyTool(() => boxes.get(box)?.text ?? this.text), { label: 'Delete', icon: DELETE_ICON, run: () => { const b = fencedBlockAt(view, box, 'code'); if (b) removeBlock(view, b); } }]));
         boxes.set(box, this);
-        if (this.editable) this.edit(view, box, pre);
+        if (this.editable) {
+            box.prepend(this.languageBar(view, box));
+            this.edit(view, box, pre);
+        }
         else box.addEventListener('mousedown', event => {
             event.preventDefault();
             const { doc } = view.state;
@@ -141,6 +175,24 @@ export class CodeBoxWidget extends WidgetType {
             view.focus();
         });
         return box;
+    }
+
+    // The block's language over its code, as a button that opens the list of languages.
+    private languageBar(view: EditorView, box: HTMLElement): HTMLElement {
+        const bar = document.createElement('div');
+        bar.className = 'cm-md-codehead';
+        const button = domButton({ label: languageLabel(this.lang), size: 'xs', className: 'cm-md-codelang text-muted-foreground', onClick: () => {
+            const r = button.getBoundingClientRect(), here = boxes.get(box)!;
+            here.pickLanguage({
+                at: { left: r.left, top: r.top, width: r.width, height: r.height }, current: here.lang,
+                choose: lang => { setLanguage(view, box, lang); box.querySelector('pre')?.focus(); },
+            });
+        } });
+        button.setAttribute('aria-haspopup', 'dialog');
+        button.setAttribute('aria-description', 'The language of the code block');
+        button.append(iconElement('chevron-down', 14));
+        bar.append(button);
+        return bar;
     }
 
     private edit(view: EditorView, box: HTMLElement, pre: HTMLElement): void {
@@ -239,6 +291,8 @@ export class CodeBoxWidget extends WidgetType {
         if (!pre) return false;
         boxes.set(dom, this);
         dom.classList.toggle('cm-md-dim', this.dim);
+        const language = dom.querySelector('.cm-md-codelang');
+        if (language && this.lang !== from.lang) language.firstChild!.textContent = languageLabel(this.lang);
         const focused = document.activeElement === pre, sel = focused ? selectionIn(pre) : null;
         const typed = (pre.textContent ?? '') === this.text;
         paint(pre, this.text, this.spans);

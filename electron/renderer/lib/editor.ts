@@ -20,7 +20,7 @@ import { createFindBar, findBarOf } from './findbar.js';
 import { DiagramWidget } from './diagrams.js';
 import { diagramKind } from '../../../src/markdown/diagram.js';
 import { TableWidget, focusCell, gridAt, tableOf } from './tables.js';
-import { CodeBoxWidget, codeColors, focusCode, spansOf } from './codecolor.js';
+import { CodeBoxWidget, codeColors, focusCode, spansOf, type LanguagePick } from './codecolor.js';
 import { PicturesWidget, pictureRange, pictures, type PictureItem, type ZoomedImage } from './images.js';
 import { cpToU16, makeU16Map } from '../../../src/markdown/offsets.js';
 import type { EditCommands, TableOperation } from '../../../src/app/commands.js';
@@ -240,7 +240,7 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Drawing 
             for (const block of result.codeBlocks) {
                 if (!block.closed || diagramKind(block) || block.endLine >= doc.lines) continue;
                 if (!visual && (!block.text.trim() || (selLast >= block.startLine && selFirst <= block.endLine))) continue;
-                ranges.push(Decoration.replace({ widget: new CodeBoxWidget(block.text, spansOf(block, languageLoaded).spans, dimmed(block.startLine, block.endLine), visual, block.endLine - block.startLine - 1), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
+                ranges.push(Decoration.replace({ widget: new CodeBoxWidget(block.text, spansOf(block, languageLoaded).spans, dimmed(block.startLine, block.endLine), visual, block.endLine - block.startLine - 1, block.lang, events.chooseLanguage), block: true }).range(doc.line(block.startLine + 1).from, doc.line(block.endLine + 1).to));
                 for (let k = block.startLine; k <= block.endLine; k++) grids.add(k);
                 boxed.add(block);
             }
@@ -538,6 +538,7 @@ export interface EditorEvents {
     noteNames(): Promise<string[]>;  // the notes a [[ may link to, relative to the folder
     run(id: string, arg?: boolean): void;    // run a command of the window (the visual editor's menus)
     format(format: FormatAt): void;  // what the text at the cursor is changed: the toolbar shows it
+    chooseLanguage(pick: LanguagePick): void;   // the language button of a code block was pressed: the window shows the list
 }
 
 // What the text at the cursor is: the kind of its line (markdown/editcommands.ts LineKind, or 'table' or 'code') and

@@ -101,7 +101,7 @@ export function Tags({ tags }: { tags: string[] }) {
 export interface MenuEntry { label?: string; run?: () => void; enabled?: boolean; submenu?: MenuEntry[]; separator?: boolean }
 
 // A point on the screen that a menu or a popover opens from: a right click, or the button that asked for it.
-function Anchor({ at, ...props }: { at: { x: number; y: number } } & ComponentProps<'span'>) {
+export function Anchor({ at, ...props }: { at: { x: number; y: number } } & ComponentProps<'span'>) {
     return <span {...props} aria-hidden="true" className="pointer-anchor" style={{ left: at.x, top: at.y }} />;
 }
 
