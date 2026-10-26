@@ -171,7 +171,9 @@ try {
     });
 
     await step('Enter and Tab in lists and tables do what the commands say', async () => {
+        // The text is set only once the new tab is shown: before that it would go into note.md, still in the editor.
         await page.keyboard.press('ControlOrMeta+n');
+        await waitFor(async () => (await docText()) === '' && await title.getByText('Untitled').count() > 0);
         await editor.click();
         const enter = async (from, expected, why) => {
             await setDoc(from);
