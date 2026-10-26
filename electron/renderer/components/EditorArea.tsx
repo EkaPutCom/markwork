@@ -12,6 +12,7 @@ import { ReportOffer } from './ReportProblem.js';
 import { Gallery } from './Gallery.js';
 import { Icon } from './Icons.js';
 import { Inbox } from './Inbox.js';
+import { LanguagePicker } from './LanguagePicker.js';
 import { PullPage } from './Pull.js';
 import { ReviewPage } from './Review.js';
 import { TableView } from './TableView.js';
@@ -19,6 +20,7 @@ import { FILE_DRAG, PaneTabs, TAB_DRAG } from './Tabs.js';
 import { Timeline } from './Timeline.js';
 import type { Board as BoardData } from '../../../src/markdown/kanban.js';
 import type { Tab } from '../lib/client.js';
+import type { LanguagePick } from '../lib/codecolor.js';
 import { MarkdownEditor } from '../lib/editor.js';
 import { label } from '../lib/keys.js';
 import { isSolo, type Pane as PaneData, type Zone } from '../lib/panes.js';
@@ -79,6 +81,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
     const host = useRef<HTMLDivElement>(null), root = useRef<HTMLElement>(null), body = useRef<HTMLDivElement>(null);
     const [zone, setZone] = useState<Zone | null>(null);
     const [menu, setMenu] = useState(false);
+    const [language, setLanguage] = useState<LanguagePick | null>(null);
     const tab = tabs.find(t => t.id === pane.active);
     const current = panes.current === pane.id;
     const index = panes.columns.flatMap(c => c.panes).findIndex(p => p.id === pane.id);
@@ -96,6 +99,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
             noteNames: () => client.noteNames(client.paneDoc(pane.id)),
             run: (id, arg) => { client.focusPane(pane.id); client.run(id, arg); },
             format: format => client.formatted(format, pane.id),
+            chooseLanguage: setLanguage,
         });
         client.attachEditor(pane.id, editor);
         return () => { client.attachEditor(pane.id, null); editor.view.destroy(); };
@@ -164,6 +168,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
             {textShown && settings.visual !== false && !pane.source && <FormatBar pane={pane} />}
             <div ref={body} className="pane-body">
                 {current && textShown && <ReportOffer />}
+                {language && <LanguagePicker pick={language} onClose={() => setLanguage(null)} />}
                 <div ref={host} className="text-editor" hidden={!textShown} />
                 {structured && tab && board && <StructuredPage key={`${tab.id}:${tab.page}`} tab={tab} board={board} />}
                 {csv && tab && <Csv key={tab.id} text={tab.csv!} rev={tab.csvRev} find={current ? csvFind : { n: 0, replace: false }} />}
