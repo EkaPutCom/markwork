@@ -326,10 +326,17 @@ async function inDevMode() {
 
         const clipboard = () => app.evaluate(({ clipboard }) => clipboard.readText());
         await step('Copy Snapshot and a transaction\'s Copy as JSON give what the bridge gives; Show the State Before pauses one back', async () => {
-            await setDoc(page, '# Plan\n\nsome text', 17);
-            await page.keyboard.type('ab');
             await tab('Transactions').click();
-            await inspector.locator('.ins-list tbody tr').first().click();
+            await setDoc(page, '# Plan\n\nsome text', 17);
+            const rows = inspector.locator('.ins-list tbody tr');
+            await rows.first().waitFor();
+            const last = Number(await rows.first().locator('td').first().textContent());
+            await page.keyboard.type('ab');
+            // The "b" just typed, not the newest row: a transaction with no key can come after it (a slow machine draws
+            // late), and an older "b" is in the list too.
+            const typed = rows.filter({ has: page.locator('td:nth-child(3)', { hasText: /^b$/ }) }).first();
+            await waitFor(async () => Number(await typed.locator('td').first().textContent()) > last);
+            await typed.click();
             await inspector.getByRole('button', { name: 'Copy as JSON' }).click();
             await inspector.getByRole('button', { name: 'Copied' }).waitFor();
             const entry = JSON.parse(await clipboard());
