@@ -92,6 +92,17 @@ Karena pelanggarannya sebanyak ini, penjaga bekerja sebagai **ratchet**: file ba
 
 ### Tahap 6: Tampilan editor
 
+**Selesai** (26 Oktober 2026): baseline turun dari 13 ke nol, jadi `scripts/ui-baseline.json` tinggal `{}`.
+
+- `ui/dom.ts` bertambah `domInput`, `domInputGroup`, `domInputGroupAddon`, `domToggle`, `domCheckbox`, dan `domKbd`. Class-nya dibagi dengan primitif React lewat konstanta (`inputClasses`, `checkboxClasses`, `inputGroupClasses`, `kbdClasses`) dan `cva` yang sudah ada (`toggleVariants`, `addonVariants`).
+- Pegangan blok, toolbar blok, bar konflik, tooltip tautan, menu seleksi, editor tautan, dan kotak task memakai helper itu. Find bar memakai `InputGroup` dan `Toggle` seperti find bar CSV; `.entry`, `.chip-button`, dan `.linked` hilang dari `theme.css`, begitu juga CSS tombol dan field milik widget.
+- Ikon SVG yang ditulis sebagai string (toolbar blok, tooltip tautan) diganti `iconElement`. Toolbar blok sekarang permukaan Popover (terang di tema terang), bukan bar gelap transparan.
+- Tombol berteks tanpa `title`: bar konflik memindahkan keterangannya ke `aria-description`, tombol Ask di menu seleksi memakai `aria-label`.
+- CSS editor: radius memakai `--radius-*`; jarak 8px di atas dan bawah code block yang terbuka menjadi border transparan, bukan margin. Code box tertutup ternyata menggambar latarnya sampai ke border transparan (`background` ditulis sesudah `background-clip` dan mengembalikannya); urutannya dibetulkan, dan radiusnya dibuat 8px lebih tinggi supaya sudut di dalam border tetap bulat.
+- Dicek di dokumen contoh tahap 4, terang dan gelap, dan di jendela sempit. Tes Electron `smoke`, `editor`, `visual`, `ui-gallery`, dan `inspector` lolos.
+
+Rencana awalnya:
+
 - Style CodeMirror dan widget (tabel, code box, diagram, gambar) memakai token dan mengikuti `ui.md`.
 - Widget `lib/` yang masih membuat kontrolnya sendiri (blockhandle, blocktools, conflicts, editor, visual, sisa find bar) pindah ke `domButton` dan helper `ui/dom.ts` lain: 13 temuan terakhir di baseline.
 - Dicek di dokumen contoh tahap 4.

@@ -14,8 +14,8 @@ This file describes the target. Parts of it are not in the code yet. Where a rul
 | Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
 | Text sizes `text-2xs` and `text-ui`, the tokens of this file | In `globals.css` |
 | Layer and motion tokens (`--z-*`, `--duration-*`) | In `globals.css`; `theme.css` uses them |
-| `domButton` for widgets without React | In `ui/dom.ts`, used by the find bar; the other widgets in `lib/` move to it in stage 6 |
-| The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Gone from the components (stage 5). The find bar's `.entry` and `.chip-button` stay until the widgets of `lib/` move in stage 6; do not use them in new code |
+| `domButton` and the other helpers for widgets without React | In `ui/dom.ts`; every widget in `lib/` builds its controls with them (stage 6) |
+| The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Gone from the components (stage 5) and the widgets of `lib/` (stage 6) |
 | The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node` |
 
 ## Where things live
@@ -244,16 +244,17 @@ A widget without React (see [Widgets without React](#widgets-without-react)) has
 
 ## Widgets without React
 
-The editor's widgets and panels in `lib/` (the find bar, the block tools, the link editor, the conflict bar) build their DOM with `document.createElement`, so they cannot render a React primitive. They take the primitive's look from the same source:
+The editor's widgets and panels in `lib/` (the find bar, the block handle and tools, the selection menu, the link editor, the task box, the conflict bar) build their DOM with `document.createElement`, so they cannot render a React primitive. They take the primitive's look from the same source:
 
 - A button is made with `domButton` from `ui/dom.ts`: the classes of `buttonVariants`, `type="button"`, and for an icon only its `aria-label` and `title`. It keeps the editor's focus and selection while pressed, unless `keepFocus: false`.
 
   ```ts
   domButton({ label: 'Close', content: iconElement('window-close'), size: 'icon-sm', onClick: () => this.close() })
   ```
-- Another control (a field, a check box) gets a function of its own in `ui/dom.ts`, built the same way from the React primitive's classes. Move the classes into a `cva` or a constant that both use, so the two never drift.
+- The other controls in `ui/dom.ts`, each from its React primitive's classes: `domInput` (an Input; `inGroup` for the entry of a group), `domInputGroup` and `domInputGroupAddon`, `domToggle` (its state in `aria-pressed`, read and set with `isPressed` and `setPressed`), `domCheckbox` (a button with role checkbox, as Radix draws it; `setChecked` turns it), and `domKbd`.
+- A control that has none yet gets a function of its own there, built the same way. Move the primitive's classes into a `cva` or a constant that both use (`inputClasses`, `checkboxClasses`, `kbdClasses`), so the two never drift.
 - A badge takes `badgeVariants(…)` as its `className`.
-- Icons come from `iconElement`.
+- Icons come from `iconElement`, never an SVG written as a string.
 - A widget never writes its own button, field, or badge CSS in `theme.css`; it writes only its layout there (where the bar sits, the gap between its parts).
 - `document.createElement('button' | 'input' | 'select' | 'textarea')` is written only in `ui/`.
 

@@ -12,6 +12,7 @@ import { EditorSelection, EditorState, Prec, StateEffect, StateField, type Exten
 import { EditorView, ViewPlugin, keymap, showTooltip, type ViewUpdate } from '@codemirror/view';
 import { pictureRange } from './images.js';
 import { trace, traced } from './inspect/recorder.js';
+import { domKbd } from '../ui/dom.js';
 
 export type BlockKind = 'picture' | 'code' | 'diagram';
 
@@ -231,9 +232,8 @@ const keysHint = showTooltip.compute([pickedBlock], state => {
             const dom = document.createElement('div');
             dom.className = 'cm-block-hint';
             for (const [key, does] of [['Enter', 'new line'], ['Backspace', 'delete'], ['Esc', 'done']]) {
-                const item = document.createElement('span'), kbd = document.createElement('kbd');
-                kbd.textContent = key;
-                item.append(kbd, ` ${does}`);
+                const item = document.createElement('span');
+                item.append(domKbd(key), ` ${does}`);
                 dom.append(item);
             }
             const element = () => { const el = drawnElement(view, block); return el?.matches('.cm-md-picture') ? el.querySelector('img') : el; };

@@ -14,6 +14,8 @@ import { acceptCompletion, autocompletion, type CompletionContext } from '@codem
 import { linkAt, taskToggleAt, wikiLinkAt } from '../../../src/markdown/clicks.js';
 import { suggestNotes, wikiQuery, wikiTargetFor } from '../../../src/markdown/wikilink.js';
 import { conflictDecorations } from './conflicts.js';
+import { iconElement, type IconName } from '../components/Icons.js';
+import { domButton } from '../ui/dom.js';
 import { createFindBar, findBarOf } from './findbar.js';
 import { DiagramWidget } from './diagrams.js';
 import { diagramKind } from '../../../src/markdown/diagram.js';
@@ -484,10 +486,6 @@ function clicks(events: EditorEvents): Extension {
     });
 }
 
-const OPEN_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>';
-const SOURCE_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>';
-const GO_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
-
 // The tooltip of the link the cursor is in: a button to open it, a web address in the browser or a note in its own tab. A click on a
 // link puts the cursor there, so the tooltip shows at once.
 interface LinkTarget { pos: number; note: string | null; uri: string | null; editable: boolean }   // editable: a [text](url) link, which the link box edits
@@ -508,23 +506,14 @@ function linkTargetAt(state: EditorState): LinkTarget | null {
 }
 
 function linkTooltip(events: EditorEvents): Extension {
-    const button = (label: string, icon: string, run: () => void) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.innerHTML = icon;
-        b.title = label;
-        b.setAttribute('aria-label', label);
-        b.addEventListener('mousedown', event => event.preventDefault());
-        b.addEventListener('click', run);
-        return b;
-    };
+    const button = (label: string, icon: IconName, run: () => void) => domButton({ label, content: iconElement(icon, 14), size: 'icon-xs', onClick: run });
     const create = (view: EditorView, target: LinkTarget) => {
         const dom = document.createElement('div');
         dom.className = 'cm-link-open';
         dom.append(target.note
-            ? button(`Go to ${target.note}`, GO_ICON, () => events.openNote(target.note!))
-            : button(`Open ${target.uri}`, OPEN_ICON, () => events.openLink(target.uri!)));
-        if (target.editable) dom.append(button('Edit link', SOURCE_ICON, () => openLinkEditor(view)));
+            ? button(`Go to ${target.note}`, 'go-next', () => events.openNote(target.note!))
+            : button(`Open ${target.uri}`, 'external-link', () => events.openLink(target.uri!)));
+        if (target.editable) dom.append(button('Edit link', 'format-code', () => openLinkEditor(view)));
         return { dom };
     };
     return StateField.define<LinkTarget | null>({
