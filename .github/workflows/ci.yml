@@ -8,6 +8,24 @@ on:
   pull_request:
 
 jobs:
+  git-rules:
+    name: Git naming rules
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm run test:git-rules
+      - run: npm run git:check -- --ci
+        env:
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
   core:
     name: Core on Node (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

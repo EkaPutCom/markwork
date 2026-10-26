@@ -60,6 +60,7 @@ Node.js 22.12+ (tested with Node.js 24) and npm:
 
 ```bash
 npm install
+npm run hooks:install
 npm start
 ```
 
@@ -70,6 +71,8 @@ npm start -- ~/notes
 ```
 
 Without a path, the folder and the tabs of the last session come back. On the first launch the editor shows a sample document; after that, an empty one or Home.
+
+Read `AGENTS.md` before contributing. Branch names use `type/short-kebab-case-description` (for example `feat/horizontal-rules`), and commit subjects use `type(module): description` (for example `feat(editor): add a block removal button`). Types are `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, and `perf`. `npm run hooks:install` enables the tracked commit-message hook in this checkout; PR CI checks branch names and all new non-merge commits. The installer refuses to replace an existing custom hooks directory. These checks validate format; contributors still review the English description and its accuracy.
 
 | Command | Function |
 | --- | --- |
