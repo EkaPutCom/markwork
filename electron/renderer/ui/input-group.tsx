@@ -7,17 +7,17 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/ui/button';
 import { Input } from '@/ui/input';
 
-export function InputGroup({ className, ...props }: ComponentProps<'div'>) {
-    return (
-        <div data-slot="input-group" role="group"
-            className={cn('group/input-group relative flex h-9 w-full min-w-0 items-center rounded-md border border-input shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30',
+// The classes of the group, the addon, and the entry inside, shared with ui/dom.ts so the find bar draws the same.
+export const inputGroupClasses = cn('group/input-group relative flex h-9 w-full min-w-0 items-center rounded-md border border-input shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30',
                 'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-[3px] has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50',
-                'has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-destructive/20 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40', className)}
-            {...props} />
-    );
+                'has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-destructive/20 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40');
+export const inputGroupInputClasses = 'flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent';
+
+export function InputGroup({ className, ...props }: ComponentProps<'div'>) {
+    return <div data-slot="input-group" role="group" className={cn(inputGroupClasses, className)} {...props} />;
 }
 
-const addonVariants = cva(
+export const addonVariants = cva(
     "flex h-auto cursor-text select-none items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground group-data-[disabled=true]/input-group:opacity-50 [&>svg:not([class*='size-'])]:size-4",
     {
         variants: {
@@ -45,5 +45,5 @@ export function InputGroupButton({ className, variant = 'ghost', size = 'xs', ..
 }
 
 export function InputGroupInput({ className, ...props }: ComponentProps<'input'>) {
-    return <Input data-slot="input-group-control" className={cn('flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent', className)} {...props} />;
+    return <Input data-slot="input-group-control" className={cn(inputGroupInputClasses, className)} {...props} />;
 }

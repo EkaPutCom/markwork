@@ -7,6 +7,7 @@ import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { startCompletion } from '@codemirror/autocomplete';
 import { blockAt, blocksOf, moveBlock, type Block } from '../../../src/markdown/blocks.js';
 import { iconElement } from '../components/Icons.js';
+import { domButton } from '../ui/dom.js';
 
 // The blocks of each text, found once.
 const found = new WeakMap<Text, { lines: string[]; blocks: Block[] }>();
@@ -51,27 +52,19 @@ export function moveCursorBlock(view: EditorView, delta: -1 | 1): boolean {
 
 class BlockHandle {
     private readonly handle = document.createElement('div');
-    private readonly grip = document.createElement('button');
+    private readonly grip = domButton({ label: 'Drag to move the block', content: iconElement('list-drag-handle'), size: 'icon-xs', className: 'cursor-grab text-muted-foreground' });
     private readonly marker = document.createElement('div');   // where a dragged block would land
     private index = -1;
     private dragging: { index: number; before: number } | null = null;
     private readonly stops: (() => void)[] = [];
 
     constructor(private readonly view: EditorView, private readonly on: (state: EditorState) => boolean) {
-        const add = document.createElement('button');
-        for (const [button, label, icon] of [[add, 'Add a block below', 'list-add'], [this.grip, 'Drag to move the block', 'list-drag-handle']] as const) {
-            button.type = 'button';
-            button.title = label;
-            button.setAttribute('aria-label', label);
-            button.append(iconElement(icon, 16));
-        }
+        // The editor keeps the focus and the selection while the handle is used.
+        const add = domButton({ label: 'Add a block below', content: iconElement('list-add'), size: 'icon-xs', className: 'text-muted-foreground', onClick: () => this.addBlock() });
         this.handle.className = 'cm-block-handle';
         this.handle.append(add, this.grip);
         this.marker.className = 'cm-block-drop';
         view.dom.append(this.handle, this.marker);
-        // The editor keeps the focus and the selection while the handle is used.
-        add.addEventListener('mousedown', event => event.preventDefault());
-        add.addEventListener('click', () => this.addBlock());
         this.grip.addEventListener('pointerdown', event => this.startDrag(event));
         const listen = <K extends keyof HTMLElementEventMap>(target: HTMLElement, type: K, handler: (event: HTMLElementEventMap[K]) => void) => {
             target.addEventListener(type, handler);
@@ -118,9 +111,9 @@ class BlockHandle {
         const pad = parseFloat(getComputedStyle(this.view.contentDOM).paddingLeft) || 0;
         const text = this.view.contentDOM.getBoundingClientRect().left - this.view.dom.getBoundingClientRect().left + pad;
         this.handle.style.display = 'flex';
-        this.handle.style.left = `${Math.max(4, text - 54)}px`;
+        this.handle.style.left = `${Math.max(4, text - 60)}px`;
         // Level with the first line of the block (a table or a tall block is only as tall as its first rows).
-        this.handle.style.top = `${top + (Math.min(bottom - top, 36) - 24) / 2}px`;
+        this.handle.style.top = `${top + (Math.min(bottom - top, 36) - 28) / 2}px`;
     }
 
     // A new empty block after this one, with the "/" menu open in it.

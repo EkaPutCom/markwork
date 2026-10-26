@@ -5,6 +5,7 @@
 import { Decoration, WidgetType, type EditorView } from '@codemirror/view';
 import type { Text } from '@codemirror/state';
 import { findConflicts, resolution, roles, type Choice, type Conflict } from '../../../src/markdown/conflicts.js';
+import { domButton } from '../ui/dom.js';
 
 const CHOICES: { choice: Choice; label: string; tip: (c: Conflict) => string }[] = [
     { choice: 'current', label: 'Accept Current', tip: c => `Keep the lines from ${c.current || 'the current side'} and drop the other side` },
@@ -37,18 +38,15 @@ class ConflictBar extends WidgetType {
         const bar = document.createElement('div');
         bar.className = 'cm-md-conflict-bar';
         for (const { choice, label, tip } of CHOICES) {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = label;
-            button.title = tip(this.conflict);
-            button.addEventListener('mousedown', event => event.preventDefault());
-            button.addEventListener('click', () => {
+            // A text button has no title (ui.md "Tooltip and title"); what it keeps is said to a screen reader.
+            const button = domButton({ label, size: 'xs', onClick: () => {
                 // The position may have moved since the widget was made: find this conflict again by its place.
                 const now = findConflicts(view.state.doc.toString().split('\n'));
                 const at = view.state.doc.lineAt(view.posAtDOM(bar)).number;
                 const found = now.find(c => c.start + 1 >= at - 1 && c.start + 1 <= at + 1) ?? now.find(c => c.start === this.conflict.start);
                 if (found) choose(view, found, choice);
-            });
+            } });
+            button.setAttribute('aria-description', tip(this.conflict));
             bar.append(button);
         }
         return bar;

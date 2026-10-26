@@ -190,7 +190,7 @@ Mockup acuan di `shadcn/` sendiri memakai 13px dan 11px di samping 12px dan 14px
 | Teks yang terpotong (nama file, judul, path) | `title` dengan nilai lengkapnya tetap boleh |
 | Pesan error | Dilarang di `title`; error ditulis terlihat di bawah field, dengan `aria-invalid` pada input |
 
-- Widget editor di `lib/` (6 `title`) sementara tetap memakai `title`, dirapikan di tahap 6.
+- Widget editor di `lib/` (6 `title`) dirapikan di tahap 6: tombol ikonnya mendapat `title` dari `domButton` (tanpa Tooltip di luar React), tombol berteksnya tidak lagi memakai `title`.
 - Primitif baru untuk tahap 3: Tooltip (shadcn) dan IconButton (milik Markwork).
 - Penjaga tahap 2 menolak tombol berukuran ikon yang tidak memakai `IconButton`.
 

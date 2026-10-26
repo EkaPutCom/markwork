@@ -8,6 +8,7 @@ import { EditorSelection, EditorState, StateEffect, StateField, findClusterBreak
 import { Decoration, EditorView, WidgetType, keymap, showTooltip, type Tooltip, type TooltipView } from '@codemirror/view';
 import { startCompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { iconElement, type IconName } from '../components/Icons.js';
+import { domButton, domCheckbox, domInput, type DomButtonOptions } from '../ui/dom.js';
 import { cellSelectionRect } from './tables.js';
 import { trace, traced } from './inspect/recorder.js';
 import { lineKindOf } from '../../../src/markdown/editcommands.js';
@@ -51,12 +52,9 @@ class ListMarkWidget extends WidgetType {
     }
 
     // A task's box: a click writes the other state into the text, in the "[ ]" it stands for.
-    private box(view: EditorView, mark: HTMLElement): HTMLInputElement {
-        const box = document.createElement('input');
-        box.type = 'checkbox';
-        box.className = 'cm-md-checkbox';
-        box.checked = this.kind === 'taskdone';
-        box.setAttribute('aria-label', box.checked ? 'Done' : 'Not done');
+    private box(view: EditorView, mark: HTMLElement): HTMLButtonElement {
+        const done = this.kind === 'taskdone';
+        const box = domCheckbox({ label: done ? 'Done' : 'Not done', checked: done, className: 'cm-md-checkbox' });
         box.addEventListener('mousedown', event => {
             event.preventDefault();
             const at = view.posAtDOM(mark), line = view.state.doc.lineAt(at);
@@ -208,22 +206,17 @@ function selectionMenuDom(run: RunCommand): HTMLElement {
     dom.className = 'cm-selection-menu';
     dom.setAttribute('role', 'toolbar');
     dom.setAttribute('aria-label', 'Format the selection');
-    const button = (label: string, icon: IconName, onClick: () => void, text?: string) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.title = label;
-        b.setAttribute('aria-label', label);
-        b.append(iconElement(icon, 15));
-        if (text) { const t = document.createElement('span'); t.textContent = text; b.append(t); b.classList.add('with-text'); }
-        // The editor keeps the focus and the selection; the command acts on them.
-        b.addEventListener('mousedown', event => event.preventDefault());
-        b.addEventListener('click', onClick);
-        return b;
-    };
+    // The editor keeps the focus and the selection; the command acts on them.
+    const button = (label: string, icon: IconName, onClick: () => void) => domButton({ label, content: iconElement(icon, 15), size: 'icon-xs', onClick });
     for (const [id, label, icon] of SELECTION_BUTTONS) dom.append(button(label, icon, () => run(id)));
     const sep = document.createElement('span');
     sep.className = 'sep';
-    dom.append(sep, button('Ask the Assistant about the selection', 'sparkle', () => run('chat', true), 'Ask'));
+    // A text button: the visible word, and the whole of what it does for a screen reader (no title, ui.md "Tooltip and title").
+    const ask = document.createDocumentFragment();
+    ask.append(iconElement('sparkle', 15), 'Ask');
+    const askButton = domButton({ label: 'Ask the Assistant about the selection', content: ask, size: 'xs', onClick: () => run('chat', true) });
+    askButton.removeAttribute('title');
+    dom.append(sep, askButton);
     return dom;
 }
 
@@ -269,11 +262,7 @@ function linkEditDom(view: EditorView, edit: LinkEdit): TooltipView {
         const row = document.createElement('label');
         const name = document.createElement('span');
         name.textContent = label;
-        const field = document.createElement('input');
-        field.type = 'text';
-        field.value = value;
-        field.placeholder = placeholder;
-        field.spellcheck = false;
+        const field = domInput({ value, placeholder, className: 'h-8' });
         row.append(name, field);
         dom.append(row);
         return field;
@@ -288,17 +277,10 @@ function linkEditDom(view: EditorView, edit: LinkEdit): TooltipView {
     };
     const buttons = document.createElement('div');
     buttons.className = 'actions';
-    const button = (label: string, type: 'submit' | 'button', onClick?: () => void) => {
-        const b = document.createElement('button');
-        b.type = type;
-        b.textContent = label;
-        if (onClick) b.addEventListener('click', onClick);
-        buttons.append(b);
-        return b;
-    };
-    if (edit.image) button('Remove image', 'button', () => replace('')).classList.add('remove');
-    else if (edit.existing) button('Remove link', 'button', () => replace(edit.text)).classList.add('remove');
-    button('Apply', 'submit').classList.add('apply');
+    const button = (options: DomButtonOptions) => buttons.append(domButton({ keepFocus: false, ...options }));
+    if (edit.image) button({ label: 'Remove image', variant: 'outline', className: 'mr-auto', onClick: () => replace('') });
+    else if (edit.existing) button({ label: 'Remove link', variant: 'outline', className: 'mr-auto', onClick: () => replace(edit.text) });
+    button({ label: 'Apply', variant: 'default', type: 'submit' });
     dom.append(buttons);
     dom.addEventListener('submit', event => {
         event.preventDefault();
