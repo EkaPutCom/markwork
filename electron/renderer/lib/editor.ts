@@ -261,6 +261,12 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Drawing 
                 if (name.startsWith(INDENT_PREFIX)) { if (!visual) ranges.push(indentDeco(Number(name.slice(INDENT_PREFIX.length))).range(line.from)); continue; }
                 const from = u16(result.starts[i] + a), to = Math.min(u16(result.starts[i] + b), line.to);
                 if (LINE_STYLES.has(name.replace('cm-md-', ''))) ranges.push(lineDeco(`${name}-line`).range(line.from));
+                // A thematic break is one divider, with its source available in Code mode (or on the active live-view line).
+                if (name === 'cm-md-hr' && !sourceOn(state) && (visual || line.to < sel.from || line.from > sel.to)) {
+                    ranges.push(hidden.range(from, to));
+                    hiddenRanges.push(hidden.range(from, to));
+                    continue;
+                }
                 if (to > from) ranges.push(mark(name).range(from, to));
                 if (visual && name === 'cm-md-bullet' && to > from) {
                     const item = listPrefix(ranges, line.text, line.from, from);

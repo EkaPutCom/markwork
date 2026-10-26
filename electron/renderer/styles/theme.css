@@ -192,7 +192,9 @@
    taller than the corner, so the corner of the background inside the border is round. */
 .cm-editor .cm-line.cm-md-fence-line:is(:first-child, .cm-line:not(.cm-md-codeblock-line) + *) { border-top: 8px solid transparent; background-clip: padding-box; border-radius: var(--radius-md) var(--radius-md) 0 0 / calc(var(--radius-md) + 8px) calc(var(--radius-md) + 8px) 0 0; }
 .cm-editor .cm-line.cm-md-fence-line:has(+ .cm-line:not(.cm-md-codeblock-line)), .cm-editor .cm-line.cm-md-fence-line:last-child { border-bottom: 8px solid transparent; background-clip: padding-box; border-radius: 0 0 var(--radius-md) var(--radius-md) / 0 0 calc(var(--radius-md) + 8px) calc(var(--radius-md) + 8px); }
-.cm-md-hr-line { border-bottom: 1px solid var(--border); }
+/* Draw in the middle of the line box so the divider has balanced space and CodeMirror keeps accurate hit testing. */
+.cm-editor .cm-line.cm-md-hr-line { padding-top: 8px; padding-bottom: 8px; background: linear-gradient(var(--border), var(--border)) no-repeat center / 100% 1px; }
+.cm-md-hr { color: var(--muted-foreground); background: var(--background); font-family: var(--font-mono); }
 .cm-md-bullet, .cm-md-task { color: var(--muted-foreground); font-weight: 600; }
 .cm-md-taskdone, .cm-md-done { color: var(--muted-foreground); text-decoration: line-through; }
 .cm-md-tablehead { font-weight: 600; }

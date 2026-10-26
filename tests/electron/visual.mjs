@@ -68,6 +68,52 @@ try {
         assert.equal(await toolbar.getByRole('button', { name: 'Bold' }).getAttribute('aria-pressed'), 'true', 'Bold is pressed in bold text');
     });
 
+    await step('horizontal rules hide all three markers and preserve their source through mode changes and undo', async () => {
+        const text = 'Before\n\n---\n\n***\n\n___\n\nAfter';
+        await setDoc(text, 9);
+        const rules = editor.locator('.cm-md-hr-line');
+        assert.equal(await rules.count(), 3);
+        assert.deepEqual(await rules.allTextContents(), ['', '', '']);
+        await mode.getByRole('radio', { name: 'Code' }).click();
+        assert.deepEqual(await rules.allTextContents(), ['---', '***', '___']);
+        assert.equal(await rules.first().evaluate(el => getComputedStyle(el).backgroundImage), 'none');
+        await mode.getByRole('radio', { name: 'Visual' }).click();
+        assert.deepEqual(await rules.allTextContents(), ['', '', '']);
+        await setDoc(text, text.length);
+        await page.evaluate(() => {
+            const view = document.querySelector('.cm-content').cmTile.view;
+            view.dispatch({ changes: { from: view.state.doc.length, insert: '\n\n---' }, userEvent: 'input.paste' });
+        });
+        assert.equal(await rules.count(), 4);
+        await page.keyboard.press('ControlOrMeta+z');
+        assert.equal(await docText(), text);
+    });
+
+    await step('clicking a divider and pressing either delete key removes it as one block, and undo restores it', async () => {
+        for (const marker of ['---', '***', '___']) for (const key of ['Backspace', 'Delete']) {
+            const text = `Before\n\n${marker}\n\nAfter`;
+            await setDoc(text, 0);
+            await editor.locator('.cm-md-hr-line').click();
+            await page.keyboard.press(key);
+            assert.equal(await docText(), 'Before\n\n\n\nAfter', `${key} removes ${marker} without deleting adjacent text`);
+            await page.keyboard.press('ControlOrMeta+z');
+            assert.equal(await docText(), text);
+        }
+    });
+
+    await step('the minus beside Add block removes a divider or paragraph as one undoable action', async () => {
+        for (const block of ['---', 'Paragraph\ncontinued']) {
+            const text = `Before\n\n${block}\n\nAfter`;
+            await setDoc(text, 0);
+            const target = block === '---' ? editor.locator('.cm-md-hr-line') : editor.locator('.cm-line', { hasText: 'Paragraph' });
+            await target.hover();
+            await page.getByRole('button', { name: 'Remove block' }).click();
+            assert.equal(await docText(), 'Before\n\n\n\nAfter');
+            await page.keyboard.press('ControlOrMeta+z');
+            assert.equal(await docText(), text);
+        }
+    });
+
     await step('the toolbar formats the selection and turns a line into a list, a numbered list, and a to-do list', async () => {
         await setDoc('one word', 4, 8);
         await toolbar.getByRole('button', { name: 'Italic' }).click();
