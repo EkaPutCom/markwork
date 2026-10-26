@@ -74,6 +74,7 @@ export function Inline({ text }: { text: string }) {
 export function Chip({ text, icon, className, title, onClick }: { text: string; icon?: IconName; className?: string; title?: string; onClick?: (e: React.MouseEvent) => void }) {
     const content = <>{icon && <Icon name={icon} size={12} />}{text}</>;
     return onClick
+        // ui-allow: a chip is cut off with an ellipsis; its title is the one its Badge form has (the field it shows)
         ? <Button type="button" variant={null} size={null} className={cn(badgeVariants({ variant: 'secondary' }), 'note-chip', className)} title={title} onClick={e => { e.stopPropagation(); onClick(e); }}>{content}</Button>
         : <Badge variant="secondary" className={cn('note-chip', className)} title={title}>{content}</Badge>;
 }

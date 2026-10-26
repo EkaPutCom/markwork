@@ -109,6 +109,16 @@ Rencana awalnya:
 
 ### Tahap 7: Penutup
 
+**Selesai** (26 Oktober 2026): `scripts/ui-baseline.json` dihapus. `scripts/ui.mjs` tidak lagi membaca baseline; setiap file harus bersih, dan `--update` serta `--print` hilang (`--list` tetap ada). Pengecualian tinggal tiga baris `ui-allow`: sel grid CSV, input file tersembunyi di Replay, dan reset warna canvas di `lib/diagrams.ts`. `ui.md`, `AGENT.md`, dan `README.md` tidak lagi menyebut baseline, dan bagian Status di `ui.md` menyatakan kodenya sudah mengikuti aturan.
+
+Audit sesudahnya menemukan tiga aturan `ui.md` yang belum diikuti dan belum dicek. Ketiganya dirapikan di PR yang sama dan sekarang dicek penjaga:
+
+- **Radius dalam px.** 60 `border-radius` di `theme.css` diganti token. `--radius-xs` (4px, untuk tanda kecil) dan `--radius-full` ditambahkan ke `globals.css`. Tombol tutup `Dialog` memakai `rounded-[2px]`, supaya nilai shadcn-nya tetap meski `rounded-xs` sekarang 4px.
+- **Spacing 10px dan 14px.** 77 nilai di `padding`, `margin`, dan `gap` dipindah ke skala: `gap` turun ke 8px atau 12px, `padding` dan `margin` naik ke 12px atau 16px.
+- **`title` di tombol berteks.** Tombol Layout dan Text style memakai `Tooltip`, karena teksnya hilang di jendela sempit. Keterangan tombol lain (Undo, View diff, Later, Skip, Hide, Show the State Before, baris Timeline tanpa tanggal) pindah ke `aria-description`. `title` tetap ada untuk teks terpotong (event Calendar, chip, path di Pull), dengan `ui-allow`.
+
+Rencana awalnya:
+
 - Baseline nol, file baseline dihapus, penjaga ketat penuh.
 - `ui.md` diperbarui dengan kondisi akhir.
 

@@ -6,6 +6,7 @@
 import { COMMANDS } from '../../../src/app/commands.js';
 import { Button } from '../ui/button.js';
 import { IconButton } from '../ui/icon-button.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
 import { Icon, type IconName } from './Icons.js';
 import { label as keyLabel } from '../lib/keys.js';
@@ -57,12 +58,17 @@ export function FormatBar({ pane }: { pane: Pane }) {
             {tool('redo', 'Redo', 'edit-redo')}
             <span className="sep" aria-hidden="true" />
             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="style-button" aria-label="Text style" title="Text style">
-                        <span className="label-text">{style?.label ?? OTHER_BLOCKS[format.block] ?? 'Normal text'}</span>
-                        <Icon name="pan-down" className="text-muted-foreground" />
-                    </Button>
-                </DropdownMenuTrigger>
+                <Tooltip>
+                    <DropdownMenuTrigger asChild>
+                        <TooltipTrigger asChild>
+                            <Button variant="outline" size="sm" className="style-button" aria-label="Text style">
+                                <span className="label-text">{style?.label ?? OTHER_BLOCKS[format.block] ?? 'Normal text'}</span>
+                                <Icon name="pan-down" className="text-muted-foreground" />
+                            </Button>
+                        </TooltipTrigger>
+                    </DropdownMenuTrigger>
+                    <TooltipContent>Text style</TooltipContent>
+                </Tooltip>
                 <DropdownMenuContent align="start" className="min-w-44" onCloseAutoFocus={e => { e.preventDefault(); client.focusEditor(); }}>
                     {STYLES.map(s => (
                         <DropdownMenuItem key={s.block} onSelect={() => { client.focusPane(pane.id); client.run(s.command); }} aria-checked={s.block === format.block} role="menuitemradio">

@@ -70,7 +70,7 @@ export function Timeline({ board }: { board: Board }) {
                     <div className="timeline-head" style={{ height: HEAD_HEIGHT }}>Notes</div>
                     {rows.map(row => (
                         <Button key={`${row.at.column}:${row.at.index}`} variant="ghost" className={`timeline-label rounded-none font-normal${row.card.done === true ? ' dim' : ''}`} style={{ height: ROW_HEIGHT }}
-                            title={row.start ? undefined : 'This note has no date, so it has no bar.'} onClick={() => edit(row.at)}>{row.title}</Button>
+                            aria-description={row.start ? undefined : 'This note has no date, so it has no bar.'} onClick={() => edit(row.at)}>{row.title}</Button>
                     ))}
                 </div>
                 <div className="timeline-scroll" ref={scroller}>

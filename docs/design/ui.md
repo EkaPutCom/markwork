@@ -6,7 +6,7 @@ Precedence: what the user asks for, then this file, then the mockups. The look s
 
 ## Status
 
-This file describes the target. Parts of it are not in the code yet. Where a rule names something that does not exist yet, add it the way this file describes rather than falling back to the old way.
+The code follows this file everywhere (since 26 October 2026, stage 7 of [`design-system.md`](design-system.md)), and the guard holds every file to it with no exceptions but `ui-allow`. Where a rule names something that does not exist yet, add it the way this file describes.
 
 | Part | State |
 | --- | --- |
@@ -14,9 +14,9 @@ This file describes the target. Parts of it are not in the code yet. Where a rul
 | Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
 | Text sizes `text-2xs` and `text-ui`, the tokens of this file | In `globals.css` |
 | Layer and motion tokens (`--z-*`, `--duration-*`) | In `globals.css`; `theme.css` uses them |
-| `domButton` and the other helpers for widgets without React | In `ui/dom.ts`; every widget in `lib/` builds its controls with them (stage 6) |
-| The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Gone from the components (stage 5) and the widgets of `lib/` (stage 6) |
-| The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node` |
+| `domButton` and the other helpers for widgets without React | In `ui/dom.ts`; every widget in `lib/` builds its controls with them |
+| The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Gone: from `theme.css`, the components, and the widgets of `lib/` |
+| The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node`; strict, every file clean |
 
 ## Where things live
 
@@ -113,7 +113,7 @@ A new color is a new token in `globals.css` with a light value in `:root` and th
 - **Spacing** is Tailwind's scale on 2px and 4px steps: `0.5` (2px), `1` (4px), `1.5` (6px), `2` (8px), `3` (12px), `4` (16px), `6` (24px). Gap between items in a row: `gap-1.5` or `gap-2`. Inside a panel or dialog: `p-3` or `p-4`. Between sections: `gap-4` or `gap-6`. No 10px or 14px.
 - Lay out siblings with flex or grid and `gap`, not margins on each child.
 - **Heights of controls** are the primitives' sizes: Button `default` h-9, `sm` h-8, `xs` h-7; icon buttons `icon` 36px, `icon-sm` 32px, `icon-xs` 28px. Dense bars (pane bar, format bar, tree) use `sm` or `xs`; dialogs and forms use `default`.
-- **Radius:** `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl` (all from `--radius`) and `rounded-full`. Inside `ui/` the primitives keep shadcn's own small values (a check box's `rounded-[4px]`). Controls `rounded-md`, cards and dialogs `rounded-lg` or `rounded-xl`, dots and avatars `rounded-full`. No radius in px.
+- **Radius:** `rounded-xs` (4px), `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl` (all from `--radius`) and `rounded-full`; in `theme.css` `var(--radius-xs)` … `var(--radius-xl)` and `var(--radius-full)`, or a `calc()` on `--radius`. Inside `ui/` the primitives keep shadcn's own small values (a check box's `rounded-[4px]`). Small marks (a highlight, a key, inline code, a swatch) `rounded-xs`, controls `rounded-md`, cards and dialogs `rounded-lg` or `rounded-xl`, dots, pills, thin lines and avatars `rounded-full`. No radius in px.
 - **Shadows:** Tailwind's `shadow-xs` to `shadow-2xl` only, for things that float (menus, popovers, a floating panel, a dragged card); in `theme.css` as `var(--shadow-md)`.
 
 ## Layers
@@ -227,7 +227,8 @@ A primitive that is missing: add it to `ui/` with the shadcn CLI (`components.js
 | Case | Rule |
 | --- | --- |
 | A button that is only an icon | `IconButton` with `label` (and `shortcut` when there is one) |
-| A button with text | No `title`. If the text is not clear, change the text, or add a visible description |
+| A button with text | No `title`. If the text is not clear, change the text, or add a visible description. A longer explanation for a screen reader goes in `aria-description` |
+| A button whose text hides in a narrow window | A `Tooltip` around it with its name, as the Layout and Text style buttons have |
 | A shortcut hint | `Tooltip` with `Kbd`: `IconButton shortcut=…`, or a `Tooltip` around a text button |
 | Text that is cut off (a file name, a title, a path) | A `title` with the full value is fine |
 | An error | Never in a `title`; see [Errors](#errors) |
@@ -261,7 +262,7 @@ The editor's widgets and panels in `lib/` (the find bar, the block handle and to
 ## `theme.css`
 
 - New rules go there only for Markwork's own layout (see the end of [Primitives](#primitives)) and the editor. Nothing that looks like a primitive: use the primitive.
-- No new class from the old set (`.button`, `.flat`, `.suggested`, `.circular`, `.icon-button`, `.entry`, `.chip`, `.popover`, `.dialog`, `.check`, `.radio`, `.switch`), even where the code around still uses it.
+- No class from the old set (`.button`, `.flat`, `.suggested`, `.circular`, `.icon-button`, `.entry`, `.chip`, `.popover`, `.dialog`, `.check`, `.radio`, `.switch`); they are gone, and the guard fails on one.
 - A bare element is styled only inside `@layer base`, so it never overrides a Tailwind class on a primitive.
 - It stays outside the CSS layers, so it wins over CodeMirror's defaults.
 
@@ -289,17 +290,18 @@ The editor's widgets and panels in `lib/` (the find bar, the block handle and to
 - a `style={{…}}` whose values are all constants
 - a button of an icon size that is not an `IconButton`
 - a class from the old set (see [`theme.css`](#themecss)), in JSX or set by a widget in `lib/`
+- a radius in px outside `ui/`: a `border-radius` that is not a token or a `calc()` on `--radius`, or a `rounded-[…px]` class
+- a spacing of 10px or 14px outside `ui/`: in a `padding`, `margin`, or `gap`, or a `…-2.5`, `…-3.5`, `…-[10px]` class
+- a `title` on a `Button` outside `ui/` (the text that is cut off says `ui-allow`)
 
-While the old code is migrated, the guard compares each file with a baseline (`scripts/ui-baseline.json`): a file may have fewer of these than its baseline, never more, and a new file has none. When a file's count goes down the guard fails too, so the baseline follows the code: lower it in the same change.
+Every file must have none of these; there is no baseline.
 
 | Command | Does |
 | --- | --- |
 | `npm run ui` | Check |
 | `npm run ui -- --list <part of a path>` | List every finding in the matching files, with its line (`--list ''` for all) |
-| `npm run ui -- --update` | Lower the baseline to the counts now; it never raises one |
-| `npm run ui -- --print` | Print the counts now, in the baseline's shape |
 
-The baseline is never raised by hand to let a change pass. A line that breaks a rule on purpose (a color a library needs as a value, an `<input type="file">` that stays hidden) says why in a comment on that line or the one above: `ui-allow: <reason>`. The guard skips it.
+A line that breaks a rule on purpose (a color a library needs as a value, an `<input type="file">` that stays hidden) says why in a comment on that line or the one above: `ui-allow: <reason>`. The guard skips it.
 
 ## Checking a change
 

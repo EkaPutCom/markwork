@@ -307,7 +307,7 @@ tests/
 scripts/
   electron-build.mjs      the build: main, core, preload, and renderer with Vite; the translations
   layers.mjs              the layer rules and the complexity limit (run by build and typecheck)
-  ui.mjs                  the rules of docs/design/ui.md, with ui-baseline.json (run by typecheck and test:core:node)
+  ui.mjs                  the rules of docs/design/ui.md (run by typecheck and test:core:node)
   capture.mjs, capture/   the screenshots of docs/assets/ and their scripted fakes
   forgejo.sh, pot.sh, make-icon.cjs
 resources/                the app icon and the packaging files electron-builder reads
@@ -335,7 +335,7 @@ electron/core.ts   ──►  src/app/protocol (ProtocolServer)  ──►  src/
 - **`app/`** is the application layer: controllers that reach the screen through interfaces they declare (a view that gets plain data and reports with `on*` callbacks, dialogs that answer with a value or a Promise). `AppSession` builds and owns them and connects them to each other; the frontend hands it one `AppFrontend`, which `app/protocol/frontend.ts` implements by sending messages. Commands are data (`app/commands.ts`): an id, a label, default keys in a neutral notation (`Ctrl+Shift+P`, `Ctrl` is `⌘` on macOS), where they apply, and where they run.
 - **The renderer** is a view. From `src/` it takes the pure Markdown modules, the protocol's messages, wire, mirror, and change math, the command list, and a few pure agent modules for the log; other modules only for their types, and nothing that reaches the runtime.
 - **`src/` imports nothing outside `src/`**: `electron/` uses it, never the other way round.
-- **The rules are checked.** [`scripts/layers.mjs`](scripts/layers.mjs) runs in `npm run build` and `npm run typecheck` and fails on a forbidden import. It also parses `src/` and `scripts/` and fails on a function whose cyclomatic complexity (counted like ESLint's `complexity` rule) is above 15. [`scripts/ui.mjs`](scripts/ui.mjs) runs in `npm run typecheck` and `npm run test:core:node` and holds the window's code to [`docs/design/ui.md`](docs/design/ui.md): no color values, raw controls, text sizes in px, constant inline styles, icon buttons that are not `IconButton`, or classes of the old set. The old code is held to a baseline (`scripts/ui-baseline.json`) that may only go down.
+- **The rules are checked.** [`scripts/layers.mjs`](scripts/layers.mjs) runs in `npm run build` and `npm run typecheck` and fails on a forbidden import. It also parses `src/` and `scripts/` and fails on a function whose cyclomatic complexity (counted like ESLint's `complexity` rule) is above 15. [`scripts/ui.mjs`](scripts/ui.mjs) runs in `npm run typecheck` and `npm run test:core:node` and holds the window's code to [`docs/design/ui.md`](docs/design/ui.md): no color values, raw controls, text sizes in px, constant inline styles, icon buttons that are not `IconButton`, radii in px, spacing of 10px or 14px, `title` on buttons with text, or classes of the old set. Every file is held to them; a line that breaks one on purpose says why with `ui-allow: <reason>`.
 
 ### The editor
 

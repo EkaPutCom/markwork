@@ -38,8 +38,8 @@ function AnswerForm({ id, ask, agent }: { id: number; ask: HarnessAsk; agent: st
                     {ask.kind === 'confirm' && <Button type="button" onClick={() => answer({ confirmed: true })}>Allow</Button>}
                     {free && <Button type="submit" disabled={ask.kind !== 'editor' && !text.trim()}>{ask.kind === 'question' ? 'Send Reply' : 'Answer'}</Button>}
                     {ask.kind === 'confirm' && <Button type="button" variant="outline" onClick={() => answer({ confirmed: false })}>Deny</Button>}
-                    <Button type="button" variant="outline" title={ask.kind === 'question' ? `Leave ${agent}'s question for later` : `${agent} keeps waiting`} onClick={() => answer(null)}>Later</Button>
-                    <Button type="button" variant="outline" title={ask.kind === 'question' ? 'End without a reply' : 'Skip the question'} onClick={() => answer({ cancelled: true })}>Skip</Button>
+                    <Button type="button" variant="outline" aria-description={ask.kind === 'question' ? `Leave ${agent}'s question for later` : `${agent} keeps waiting`} onClick={() => answer(null)}>Later</Button>
+                    <Button type="button" variant="outline" aria-description={ask.kind === 'question' ? 'End without a reply' : 'Skip the question'} onClick={() => answer({ cancelled: true })}>Skip</Button>
                 </div>
             </form>
         </Modal>
