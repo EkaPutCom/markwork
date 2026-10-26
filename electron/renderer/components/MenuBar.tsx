@@ -32,7 +32,7 @@ export function MenuBar() {
             { id: 'open' }, { id: 'open-folder' }, ...(recent.length ? [{ sub: 'Open Recent', lines: recent }] : []), '-',
             { id: 'save' }, { id: 'save-as' }, { id: 'autosave', check: true }, '-',
             { id: 'export-html' }, { id: 'send-changes' }, '-',
-            { id: 'preferences' }, '-', { id: 'close-tab' }, { id: 'quit' },
+            { id: 'preferences' }, '-', { id: 'close-tab' }, { id: 'close-all-tabs' }, { id: 'quit' },
         ]],
         ['Edit', [
             { id: 'undo' }, { id: 'redo' }, '-',

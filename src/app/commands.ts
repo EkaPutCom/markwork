@@ -54,6 +54,7 @@ export interface CoreCommands {
     editFields(): void;
     sendChanges(): void;
     closeTab(): Promise<boolean>;
+    closeAllTabs(): Promise<boolean>;
     switchTab(step: number): void;
     openHome(): void;
     openPrograms(): void;
@@ -138,6 +139,7 @@ export const COMMANDS: readonly Command[] = [
     command('journal-capture', { label: _('Add to Journal…'), keys: ['Ctrl+Shift+j'], run: h => void h.journal.capture() }),
     command('journal-summary', { label: _('Summarize Journal with Assistant'), run: h => void h.journal.summarize() }),
     command('close-tab', { label: _('Close Tab'), keys: ['Ctrl+w'], run: h => void h.closeTab() }),
+    command('close-all-tabs', { label: _('Close All Tabs'), keys: ['Ctrl+Shift+w'], run: h => void h.closeAllTabs() }),
     command('next-tab', { label: _('Next Tab'), keys: ['Ctrl+PageDown', 'Ctrl+Tab'], run: h => h.switchTab(1) }),
     command('prev-tab', { label: _('Previous Tab'), keys: ['Ctrl+PageUp', 'Ctrl+Shift+Tab'], run: h => h.switchTab(-1) }),
     command('find', { label: _('Find'), keys: ['Ctrl+f'], scope: 'text', editor: h => h.openFind() }),

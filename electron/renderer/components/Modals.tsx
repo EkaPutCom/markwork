@@ -149,7 +149,7 @@ export function PreferencesDialog() {
 // The sections and the commands in them.
 const SECTIONS: [string, string[]][] = [
     ['Files', ['new', 'open', 'open-folder', 'save', 'save-as', 'export-html']],
-    ['Tab', ['home', 'next-tab', 'prev-tab', 'close-tab']],
+    ['Tab', ['home', 'next-tab', 'prev-tab', 'close-tab', 'close-all-tabs']],
     ['Journal', ['journal', 'journal-capture']],
     ['Editing', ['undo', 'redo', 'find', 'replace', 'search-files', 'replace-files']],
     ['Format', ['bold', 'italic', 'strike', 'inline-code', 'highlight', 'link', 'image', 'codeblock', 'table', 'divider', 'quote', 'ulist', 'olist', 'tasklist', 'block-up', 'block-down']],

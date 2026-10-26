@@ -453,6 +453,30 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('tab.closeMany closes several tabs, and a Cancel about a changed document closes none', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await ui.client.request('open.file', { name: 'board.md' });
+        await until(() => ui.log.filter(l => l.ev === 'doc.open').length === 2);
+        const docs = ui.log.filter(l => l.ev === 'doc.open').map(l => l.payload.doc as number);
+        // A new document with text in it: the question about it is cancelled, so every tab stays.
+        ok((await ui.client.request('command', { name: 'new' })).ok, 'new');
+        await until(() => ui.log.filter(l => l.ev === 'doc.open').length === 3);
+        const fresh = ui.last('doc.open')!.doc as number;
+        await until(() => ui.active === ui.mirrors.get(fresh));
+        ui.type(ui.active, 'kept');
+        ui.answers['ask.saveChanges'] = { answer: 'cancel' };
+        const cancelled = await ui.client.request('tab.closeMany', { docs: [...docs, fresh] });
+        ok(cancelled.ok && cancelled.closed === false, 'cancelled');
+        eq(ui.mirrors.size, 3, 'nothing closed');
+        // Without the changed document, the two files close.
+        const closed = await ui.client.request('tab.closeMany', { docs });
+        ok(closed.ok && closed.closed === true, 'closed');
+        await until(() => ui.mirrors.size === 1);
+        ok(ui.mirrors.has(fresh), 'the changed document stays');
+        server.dispose();
+    });
+
     await test('the Programs page is a tab of its own: view.programs, programs.missing, and Check again', async () => {
         const { server, ui } = await start();
         ok((await ui.client.request('act.programs.open', {})).ok, 'act.programs.open');
