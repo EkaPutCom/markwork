@@ -477,6 +477,7 @@
 .program-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .resume { display: flex; gap: 12px; padding: 12px; flex-wrap: wrap; }
 .resume .card { flex: 1; min-width: 160px; padding: 12px; border-radius: var(--radius); background: var(--card); display: flex; flex-direction: column; gap: 0; }
+.resume .card:hover { background: var(--accent); }
 .resume .card .subtitle { font-size: var(--text-xs); color: var(--muted-foreground); }
 .html-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .html-bar { display: flex; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid var(--border); }
