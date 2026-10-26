@@ -12,6 +12,7 @@ import { domButton, domCheckbox, domInput, type DomButtonOptions } from '../ui/d
 import { cellSelectionRect } from './tables.js';
 import { trace, traced } from './inspect/recorder.js';
 import { lineKindOf } from '../../../src/markdown/editcommands.js';
+import { RE } from '../../../src/markdown/syntax.js';
 
 export const setVisual = StateEffect.define<boolean>();
 export const visualMode = StateField.define<boolean>({
@@ -111,10 +112,22 @@ function textStartAfter(state: EditorState, from: number, to: number): number {
     return Math.max(from, line.from + lineKindOf(text).prefix);
 }
 
+// A concealed thematic break is a block: either delete key removes its whole source, leaving an empty paragraph.
+function deleteRule(view: EditorView, hidden: RangeSet<Decoration>, userEvent: string): boolean {
+    const line = view.state.doc.lineAt(view.state.selection.main.head);
+    if (!RE.hr.test(line.text)) return false;
+    let concealed = false;
+    hidden.between(line.from, line.to, (from, to) => { if (from === line.from && to === line.to) concealed = true; });
+    if (!concealed) return false;
+    view.dispatch({ changes: { from: line.from, to: line.to }, selection: { anchor: line.from }, userEvent });
+    return true;
+}
+
 function backspace(view: EditorView, conceal: (state: EditorState) => Concealed): boolean {
     const { state } = view, sel = state.selection.main;
     if (!sel.empty) return false;
     const { hidden, prefixes } = conceal(state);
+    if (deleteRule(view, hidden, 'delete.backward')) return true;
     const line = state.doc.lineAt(sel.head);
     const end = prefixes.get(line.from);
     // At the start of a heading, quote, or list item's text: it becomes a paragraph.
@@ -141,6 +154,7 @@ function deleteForward(view: EditorView, conceal: (state: EditorState) => Concea
     const { state } = view, sel = state.selection.main;
     if (!sel.empty) return false;
     const { hidden, prefixes } = conceal(state);
+    if (deleteRule(view, hidden, 'delete.forward')) return true;
     const line = state.doc.lineAt(sel.head);
     // At the end of a line: the next line's text joins this one without its prefix.
     if (sel.head === line.to && line.number < state.doc.lines) {

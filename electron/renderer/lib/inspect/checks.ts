@@ -43,6 +43,8 @@ export const CHECKS: readonly Check[] = [
             let found: string | null = null;
             tr.changes.iterChangedRanges((from, to) => {
                 if (found || to <= from || (end !== undefined && from === line.from && to === end)) return;
+                // A divider's complete source represents the visible line, so deleting it removes a visible block.
+                if (from === line.from && to === line.to && parseOf(before.doc)?.spans[line.number - 1]?.some(([name]) => name === 'cm-md-hr')) return;
                 let cut: [number, number] | null = null, covered = 0;
                 hidden.between(from, to, (a, b) => {
                     if (a >= to || b <= from) return;
@@ -95,6 +97,9 @@ export const CHECKS: readonly Check[] = [
             if (!drawn || !parse || drawn === drawnOf(before)) return null;
             const u16 = makeU16Map(after.doc.toString());
             const markers = new Set(parse.markers.map(([a, b]) => `${u16(a)}:${u16(b)}`));
+            parse.spans.forEach((spans, i) => {
+                for (const [name, a, b] of spans) if (name === 'cm-md-hr') markers.add(`${u16(parse.starts[i] + a)}:${u16(parse.starts[i] + b)}`);
+            });
             let found: string | null = null;
             drawn.concealed.hidden.between(0, after.doc.length, (from, to) => {
                 if (markers.has(`${from}:${to}`) || !after.sliceDoc(from, to).trim()) return;

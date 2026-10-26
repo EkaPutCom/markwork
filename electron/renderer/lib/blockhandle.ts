@@ -1,5 +1,5 @@
 // The block handle of the visual editor: beside the block the pointer is over, a "+" that adds a block after it (and opens
-// the "/" menu there) and a grip that drags it to another place. What a block is and how it moves is markdown/blocks.ts;
+// the "/" menu there), a "−" that removes it, and a grip that drags it to another place. What a block is and how it moves is markdown/blocks.ts;
 // here it is only drawn and wired to the pointer. The same move runs from the keyboard (Move Block Up / Down).
 
 import { EditorSelection, EditorState, type Extension, type Text } from '@codemirror/state';
@@ -52,7 +52,7 @@ export function moveCursorBlock(view: EditorView, delta: -1 | 1): boolean {
 
 class BlockHandle {
     private readonly handle = document.createElement('div');
-    private readonly grip = domButton({ label: 'Drag to move the block', content: iconElement('list-drag-handle'), size: 'icon-xs', className: 'cursor-grab text-muted-foreground' });
+    private readonly grip = domButton({ label: 'Drag to move the block', content: iconElement('list-drag-handle'), size: 'icon-xs', className: 'size-5 cursor-grab text-muted-foreground' });
     private readonly marker = document.createElement('div');   // where a dragged block would land
     private index = -1;
     private dragging: { index: number; before: number } | null = null;
@@ -60,9 +60,10 @@ class BlockHandle {
 
     constructor(private readonly view: EditorView, private readonly on: (state: EditorState) => boolean) {
         // The editor keeps the focus and the selection while the handle is used.
-        const add = domButton({ label: 'Add a block below', content: iconElement('list-add'), size: 'icon-xs', className: 'text-muted-foreground', onClick: () => this.addBlock() });
+        const add = domButton({ label: 'Add a block below', content: iconElement('list-add'), size: 'icon-xs', className: 'size-5 text-muted-foreground', onClick: () => this.addBlock() });
+        const remove = domButton({ label: 'Remove block', content: iconElement('list-remove'), size: 'icon-xs', className: 'size-5 text-muted-foreground hover:text-destructive', onClick: () => this.removeBlock() });
         this.handle.className = 'cm-block-handle';
-        this.handle.append(add, this.grip);
+        this.handle.append(add, remove, this.grip);
         this.marker.className = 'cm-block-drop';
         view.dom.append(this.handle, this.marker);
         this.grip.addEventListener('pointerdown', event => this.startDrag(event));
@@ -111,9 +112,9 @@ class BlockHandle {
         const pad = parseFloat(getComputedStyle(this.view.contentDOM).paddingLeft) || 0;
         const text = this.view.contentDOM.getBoundingClientRect().left - this.view.dom.getBoundingClientRect().left + pad;
         this.handle.style.display = 'flex';
-        this.handle.style.left = `${Math.max(4, text - 60)}px`;
+        this.handle.style.left = `${Math.max(4, text - 64)}px`;
         // Level with the first line of the block (a table or a tall block is only as tall as its first rows).
-        this.handle.style.top = `${top + (Math.min(bottom - top, 36) - 28) / 2}px`;
+        this.handle.style.top = `${top + (Math.min(bottom - top, 36) - 20) / 2}px`;
     }
 
     // A new empty block after this one, with the "/" menu open in it.
@@ -124,6 +125,15 @@ class BlockHandle {
         this.view.dispatch({ changes: { from: end, insert: '\n\n/' }, selection: EditorSelection.cursor(end + 3), scrollIntoView: true, userEvent: 'input' });
         this.view.focus();
         startCompletion(this.view);
+        this.hide();
+    }
+
+    private removeBlock(): void {
+        const { doc } = this.view.state, block = blocksIn(doc).blocks[this.index];
+        if (!block) return;
+        const from = doc.line(block.start + 1).from, to = doc.line(block.end + 1).to;
+        this.view.dispatch({ changes: { from, to }, selection: EditorSelection.cursor(from), scrollIntoView: true, userEvent: 'remove.block' });
+        this.view.focus();
         this.hide();
     }
 
