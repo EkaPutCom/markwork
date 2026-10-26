@@ -6,7 +6,7 @@ Precedence: what the user asks for, then this file, then the mockups. The look s
 
 ## Status
 
-This file describes the target. Parts of it are not in the code yet. Where a rule names something that does not exist yet, add it the way this file describes rather than falling back to the old way.
+The code follows this file everywhere (since 26 October 2026, stage 7 of [`design-system.md`](design-system.md)), and the guard holds every file to it with no exceptions but `ui-allow`. Where a rule names something that does not exist yet, add it the way this file describes.
 
 | Part | State |
 | --- | --- |
@@ -14,9 +14,9 @@ This file describes the target. Parts of it are not in the code yet. Where a rul
 | Primitives in [Primitives](#primitives), with Tooltip and `IconButton` | In `ui/`. Need another one: add it to `ui/` (shadcn CLI, or by hand in the same shape) |
 | Text sizes `text-2xs` and `text-ui`, the tokens of this file | In `globals.css` |
 | Layer and motion tokens (`--z-*`, `--duration-*`) | In `globals.css`; `theme.css` uses them |
-| `domButton` and the other helpers for widgets without React | In `ui/dom.ts`; every widget in `lib/` builds its controls with them (stage 6) |
-| The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Gone from the components (stage 5) and the widgets of `lib/` (stage 6) |
-| The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node` |
+| `domButton` and the other helpers for widgets without React | In `ui/dom.ts`; every widget in `lib/` builds its controls with them |
+| The classes in `theme.css` that imitate a primitive (`.button`, `.flat`, `.entry`, …) | Gone: from `theme.css`, the components, and the widgets of `lib/` |
+| The guard in `npm test` (`scripts/ui.mjs`) | In `npm run typecheck` and `npm run test:core:node`; strict, every file clean |
 
 ## Where things live
 
@@ -261,7 +261,7 @@ The editor's widgets and panels in `lib/` (the find bar, the block handle and to
 ## `theme.css`
 
 - New rules go there only for Markwork's own layout (see the end of [Primitives](#primitives)) and the editor. Nothing that looks like a primitive: use the primitive.
-- No new class from the old set (`.button`, `.flat`, `.suggested`, `.circular`, `.icon-button`, `.entry`, `.chip`, `.popover`, `.dialog`, `.check`, `.radio`, `.switch`), even where the code around still uses it.
+- No class from the old set (`.button`, `.flat`, `.suggested`, `.circular`, `.icon-button`, `.entry`, `.chip`, `.popover`, `.dialog`, `.check`, `.radio`, `.switch`); they are gone, and the guard fails on one.
 - A bare element is styled only inside `@layer base`, so it never overrides a Tailwind class on a primitive.
 - It stays outside the CSS layers, so it wins over CodeMirror's defaults.
 
@@ -290,16 +290,14 @@ The editor's widgets and panels in `lib/` (the find bar, the block handle and to
 - a button of an icon size that is not an `IconButton`
 - a class from the old set (see [`theme.css`](#themecss)), in JSX or set by a widget in `lib/`
 
-While the old code is migrated, the guard compares each file with a baseline (`scripts/ui-baseline.json`): a file may have fewer of these than its baseline, never more, and a new file has none. When a file's count goes down the guard fails too, so the baseline follows the code: lower it in the same change.
+Every file must have none of these; there is no baseline.
 
 | Command | Does |
 | --- | --- |
 | `npm run ui` | Check |
 | `npm run ui -- --list <part of a path>` | List every finding in the matching files, with its line (`--list ''` for all) |
-| `npm run ui -- --update` | Lower the baseline to the counts now; it never raises one |
-| `npm run ui -- --print` | Print the counts now, in the baseline's shape |
 
-The baseline is never raised by hand to let a change pass. A line that breaks a rule on purpose (a color a library needs as a value, an `<input type="file">` that stays hidden) says why in a comment on that line or the one above: `ui-allow: <reason>`. The guard skips it.
+A line that breaks a rule on purpose (a color a library needs as a value, an `<input type="file">` that stays hidden) says why in a comment on that line or the one above: `ui-allow: <reason>`. The guard skips it.
 
 ## Checking a change
 

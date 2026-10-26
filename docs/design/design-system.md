@@ -109,6 +109,10 @@ Rencana awalnya:
 
 ### Tahap 7: Penutup
 
+**Selesai** (26 Oktober 2026): `scripts/ui-baseline.json` dihapus. `scripts/ui.mjs` tidak lagi membaca baseline; setiap file harus bersih, dan `--update` serta `--print` hilang (`--list` tetap ada). Pengecualian tinggal tiga baris `ui-allow`: sel grid CSV, input file tersembunyi di Replay, dan reset warna canvas di `lib/diagrams.ts`. `ui.md`, `AGENT.md`, dan `README.md` tidak lagi menyebut baseline, dan bagian Status di `ui.md` menyatakan kodenya sudah mengikuti aturan.
+
+Rencana awalnya:
+
 - Baseline nol, file baseline dihapus, penjaga ketat penuh.
 - `ui.md` diperbarui dengan kondisi akhir.
 

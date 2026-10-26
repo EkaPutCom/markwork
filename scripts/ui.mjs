@@ -2,22 +2,19 @@
 // controls only from ui/, text sizes only from the scale, inline style only for computed values, icon buttons only as
 // IconButton, and none of the old theme.css classes that imitate a primitive. Run by `npm run test:core:node`.
 //
-// The old code does not follow the rules yet, so each file is held to a baseline (scripts/ui-baseline.json): it may
-// have fewer findings of a rule than its baseline, never more, and a file not in the baseline has none. A line that
-// breaks a rule on purpose says why in a comment on it or on the line above: `ui-allow: <reason>`.
+// Every file must be clean. A line that breaks a rule on purpose says why in a comment on it or on the line above:
+// `ui-allow: <reason>`.
 //
-//   node scripts/ui.mjs            check; exits 1 and lists every violation
-//   node scripts/ui.mjs --update   lower the baseline to the counts now (it never raises one)
-//   node scripts/ui.mjs --print    print the counts now, as the baseline file holds them
+//   node scripts/ui.mjs                  check; exits 1 and lists every violation
+//   node scripts/ui.mjs --list <path>    list every finding in the files whose path contains <path>
 
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseAst } from 'rolldown/parseAst';   // the oxc parser that Vite 8 already ships, as scripts/layers.mjs uses
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const renderer = join(root, 'electron', 'renderer');
-const baselinePath = join(root, 'scripts', 'ui-baseline.json');
 
 // What each rule means, for the report.
 const RULES = {
@@ -221,49 +218,14 @@ function findingsOf(file) {
     return found;
 }
 
-// The counts per file and rule, sorted, without empty entries: the shape of the baseline file.
-function countsOf(findings) {
-    const counts = {};
-    for (const [file, list] of [...findings].sort(([a], [b]) => a.localeCompare(b))) {
-        for (const [rule] of list) {
-            counts[file] ??= {};
-            counts[file][rule] = (counts[file][rule] ?? 0) + 1;
-        }
-    }
-    return counts;
-}
-
-function readBaseline() {
-    try { return JSON.parse(readFileSync(baselinePath, 'utf8')); }
-    catch (e) { if (e.code === 'ENOENT') return {}; throw e; }
-}
-
-// The baseline with every count lowered to the one now; files and rules at zero go.
-function lowered(baseline, counts) {
-    const next = {};
-    for (const [file, rules] of Object.entries(baseline)) {
-        for (const [rule, allowedCount] of Object.entries(rules)) {
-            const now = Math.min(allowedCount, counts[file]?.[rule] ?? 0);
-            if (now > 0) (next[file] ??= {})[rule] = now;
-        }
-    }
-    return next;
-}
-
-function compare(findings, counts, baseline) {
+// One error per file and rule, with the line of each finding.
+function errorsOf(findings) {
     const errors = [];
-    for (const [file, rules] of Object.entries(counts)) {
-        for (const [rule, now] of Object.entries(rules)) {
-            const limit = baseline[file]?.[rule] ?? 0;
-            if (now <= limit) continue;
-            const where = findings.get(file).filter(([r]) => r === rule).map(([, line, what]) => `\n      ${line}: ${what}`).join('');
-            errors.push(`electron/renderer/${file}: ${now} × ${RULES[rule]} (baseline ${limit}):${where}`);
-        }
-    }
-    for (const [file, rules] of Object.entries(baseline)) {
-        for (const [rule, limit] of Object.entries(rules)) {
-            const now = counts[file]?.[rule] ?? 0;
-            if (now < limit) errors.push(`electron/renderer/${file}: ${rule} went down from ${limit} to ${now}; lower the baseline with \`node scripts/ui.mjs --update\``);
+    for (const [file, list] of [...findings].sort(([a], [b]) => a.localeCompare(b))) {
+        for (const rule of new Set(list.map(([r]) => r))) {
+            const found = list.filter(([r]) => r === rule);
+            const where = found.map(([, line, what]) => `\n      ${line}: ${what}`).join('');
+            errors.push(`electron/renderer/${file}: ${found.length} × ${RULES[rule]}:${where}`);
         }
     }
     return errors;
@@ -271,25 +233,17 @@ function compare(findings, counts, baseline) {
 
 const files = rendererFiles();
 const findings = new Map(files.map(f => [f, findingsOf(f)]));
-const counts = countsOf(findings);
-const baseline = readBaseline();
 
 const listFilter = process.argv.includes('--list') ? process.argv[process.argv.indexOf('--list') + 1] ?? '' : null;
 if (listFilter !== null) {
     for (const [file, list] of findings) {
         if (file.includes(listFilter)) for (const [rule, line, what] of list) console.log(`electron/renderer/${file}:${line}: ${rule}: ${what}`);
     }
-} else if (process.argv.includes('--print')) {
-    console.log(JSON.stringify(counts, null, 4));
-} else if (process.argv.includes('--update')) {
-    writeFileSync(baselinePath, JSON.stringify(lowered(baseline, counts), null, 4) + '\n');
-    console.log(`UI baseline lowered to the counts now (${baselinePath.slice(root.length + 1)})`);
 } else {
-    const errors = compare(findings, counts, baseline);
+    const errors = errorsOf(findings);
     if (errors.length) {
         console.error(`UI rule violations (docs/design/ui.md):\n  ${errors.join('\n  ')}`);
         process.exit(1);
     }
-    const total = Object.values(baseline).flatMap(Object.values).reduce((a, b) => a + b, 0);
-    console.log(`UI rules: ${files.length} renderer files checked; ${total} old findings left in the baseline`);
+    console.log(`UI rules: ${files.length} renderer files checked, no violations`);
 }
