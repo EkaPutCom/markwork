@@ -1,4 +1,6 @@
-# AGENT.md
+# AGENTS.md
+
+Before any Git write, read the complete Git section below, inspect the existing branch and commit conventions, and validate the proposed names. Install the local commit hook with `npm run hooks:install`; do not bypass a rejected message.
 
 A short guide for AI agents working on this project. The full explanation (features, shortcuts, architecture, how each module works) is in [README.md](README.md); read the relevant section before changing a related module.
 
@@ -165,6 +167,9 @@ Run `npm run typecheck` and `npm run test:core:node` (both run `scripts/layers.m
 
 ## Git
 
+- Before creating a branch or commit, inspect `git status --short`, `git log -10 --no-merges --oneline`, and existing branch names. Validate names before writing Git state.
+- Branch names are `type/short-kebab-case-description`, using the same types as commit messages below (e.g. `feat/horizontal-rules`, `fix/table-selection`). Follow the repository convention unless the user explicitly requests a different prefix.
 - Commit messages are in English, one short sentence in an imperative/descriptive form, written as `type(module): description` (e.g. `fix(editor): keep the selection when a format command wraps it`). `type` is one of `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`; `module` is the area changed, such as `editor`, `kanban`, `assistant`, `home`, `journal`, `electron`, `build`, or `docs`.
+- Install the tracked commit-message hook with `npm run hooks:install` after cloning. Check proposed names with `npm run git:check -- --branch <name>` or `npm run git:check -- --message-file <path>`. The hook rejects invalid subjects, while PR CI checks the branch and every new non-merge commit. Real merge commits retain Git's generated subjects. Fix rejected messages rather than bypassing the hook. Format validation does not assess the English prose or whether it accurately describes the change.
 - One logical change per commit; include its tests in the same commit.
 - `main` is protected: changes arrive through pull requests that pass CI on all three systems.
