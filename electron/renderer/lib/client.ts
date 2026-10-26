@@ -1120,6 +1120,7 @@ export class Client {
                 break;
             }
             case 'page.close': this.dropDoc(p.page as number); break;
+            case 'doc.park': this.setPanes(P.close(this.snapshot.panes, id)); break;   // the tab goes, the document stays
             case 'page.active': this.leaveReview(); this.showDoc(p.page as number); break;
             case 'view.home': {
                 this.leaveReview();

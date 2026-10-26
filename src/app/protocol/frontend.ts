@@ -183,7 +183,12 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             detachPage: (id: number) => { this.drop(id); wire.notify('page.close', { page: id }); },
             pageActivated: (id: number) => { wire.notify('page.active', { page: id }); },
             detach: (id: number) => this.detach(id),
-            listTab: (id: number, listed: boolean) => { if (!listed) this.drop(id); else if (!this.row.includes(id)) this.row.push(id); },
+            // A parked document loses its tab but stays open; it comes back with `doc.active`.
+            listTab: (id: number, listed: boolean) => {
+                if (listed) { if (!this.row.includes(id)) this.row.push(id); return; }
+                this.drop(id);
+                wire.notify('doc.park', { doc: id });
+            },
             activated: (id: number) => { this.active = id; wire.notify('doc.active', { doc: id }); },
             setTitle: (id: number, title: DocumentTitle) => wire.notify('doc.title', { doc: id, title }),
         }, 'documents');

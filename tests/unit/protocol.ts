@@ -431,6 +431,14 @@ export async function protocolTests(): Promise<void> {
         const data = ui.last('view.home')!.data as { workspace: string | null; recent: unknown[] };
         eq(data.workspace, dir);
         eq(ui.last('page.active'), { page: opened.page });
+        // The empty document loses its tab next to Home; chosen again it is back, and its close button takes the tab away again.
+        const doc = ui.last('doc.park')!.doc as number;
+        ui.client.notify('tab.select', { doc });
+        await until(() => ui.last('doc.active')?.doc === doc);
+        const parks = ui.log.filter(l => l.ev === 'doc.park').length;
+        const gone = await ui.client.request('tab.close', { doc });
+        ok(gone.ok && gone.closed === true, 'tab.close of the last document');
+        eq(ui.log.filter(l => l.ev === 'doc.park').length, parks + 1, 'the renderer is told the tab goes');
         // An HTML file of the folder opens in its own tab.
         disk.write(disk.join(dir, 'page.html'), '<h1>hi</h1>');
         ok((await ui.client.request('open.file', { name: 'page.html' })).ok, 'open.file');

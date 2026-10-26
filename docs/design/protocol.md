@@ -146,6 +146,8 @@ core → frontend   {"ev":"doc.open","doc":3,"file":"/home/eka/notes/plan.md","t
                    "cursor":120}                                      DocumentsHost.attach + TextEditor.setText
 core → frontend   {"id":"c30","op":"doc.close","doc":3,"version":18}  DocumentsHost.detach (a request, 5.2.1)
 core → frontend   {"ev":"doc.active","doc":3}                         DocumentsHost.activated
+core → frontend   {"ev":"doc.park","doc":3}                           DocumentsHost.listTab(false): the last, empty document
+                                                                      loses its tab next to a page; doc.active brings it back
 core → frontend   {"ev":"doc.title","doc":3,"title":"plan","icon":null,"modified":false}
 frontend → core   {"ev":"tabs.order","docs":[1,3,2]}                  DocumentsHost.tabOrder, after the user drags a tab
 ```
