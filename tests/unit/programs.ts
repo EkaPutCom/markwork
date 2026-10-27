@@ -1,14 +1,14 @@
 // The programs check (app/programs.ts): what is needed follows where agents run, Home's Set up section lists only what is
 // needed and missing, hiding it lasts until that list changes, and on an SSH machine pi and git are asked through its daemon.
 
-import { DaemonConnection } from '../../src/agent/daemon/connection.js';
-import { installWays, ProgramsController, remoteState, versionLine, type ProgramsHost } from '../../src/app/programs.js';
-import { platform } from '../../src/platform/index.js';
-import type { RunRequest, RunResult } from '../../src/platform/index.js';
-import type { ConnectionState } from '../../src/agent/daemon/connection.js';
-import { section, test, eq, ok } from '../core/framework.js';
-import { memorySettings } from './appsession.js';
-import { FakeDaemon } from './daemon-fake.js';
+import { DaemonConnection } from '../../src/agent/daemon/connection';
+import { installWays, ProgramsController, remoteState, versionLine, type ProgramsHost } from '../../src/app/programs';
+import { platform } from '../../src/platform/index';
+import type { RunRequest, RunResult } from '../../src/platform/index';
+import type { ConnectionState } from '../../src/agent/daemon/connection';
+import { section, test, eq, ok } from '../core/framework';
+import { memorySettings } from './appsession';
+import { FakeDaemon } from './daemon-fake';
 
 // This computer, as the test says it is: the programs found, what each prints for its version, and the terminals opened.
 function machine(found: Record<string, string>) {

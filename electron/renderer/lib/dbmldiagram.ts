@@ -2,7 +2,7 @@
 // its type in mono, and PK/FK badges; relations are thin orthogonal lines with a crow's foot on the "many" end. The colors
 // are the tokens, through the .er-* classes of styles/theme.css, so the drawing follows the theme without being redrawn.
 
-import { resolveDbml, type Column, type Relation, type Table } from '../../../src/markdown/dbml.js';
+import { resolveDbml, type Column, type Relation, type Table } from '../../../src/markdown/dbml';
 
 const PAD = 12, HEAD = 34, ROW = 30, GAP_X = 96, GAP_Y = 48, MARGIN = 16, STUB = 18;
 const CHAR = 7, MONO = 7.2;

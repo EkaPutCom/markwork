@@ -6,15 +6,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { blurText } from '../../../src/markdown/blur.js';
-import { observeRecordings, recordingOf, type Recording } from '../lib/inspect/recorder.js';
-import { reportOf, takeEditorPicture } from '../lib/inspect/report.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Modal } from './Modals.js';
-import { Button } from '../ui/button.js';
-import { Checkbox } from '../ui/checkbox.js';
-import { Label } from '../ui/label.js';
-import { Textarea } from '../ui/textarea.js';
+import { blurText } from '../../../src/markdown/blur';
+import { observeRecordings, recordingOf, type Recording } from '../lib/inspect/recorder';
+import { reportOf, takeEditorPicture } from '../lib/inspect/report';
+import { useClient, useStore } from '../lib/useClient';
+import { Modal } from './Modals';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 
 const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 

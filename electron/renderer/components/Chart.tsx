@@ -3,14 +3,14 @@
 // The charts are SVG drawn here from the model (markdown/chart.ts), so the colors are never the only information.
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { barData, chartData, chartItems, dateFields, donutData, NO_VALUE, selectFields, type ChartData, type ChartItem, type Period, type Slice } from '../../../src/markdown/chart.js';
-import { boardSchema, type Board } from '../../../src/markdown/kanban.js';
-import { Icon } from './Icons.js';
-import { dayMonth, formatDate, PageHeader, todayString } from './notes.js';
-import { useClient } from '../lib/useClient.js';
-import { Select } from '../ui/select.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
+import { barData, chartData, chartItems, dateFields, donutData, NO_VALUE, selectFields, type ChartData, type ChartItem, type Period, type Slice } from '../../../src/markdown/chart';
+import { boardSchema, type Board } from '../../../src/markdown/kanban';
+import { Icon } from './Icons';
+import { dayMonth, formatDate, PageHeader, todayString } from './notes';
+import { useClient } from '../lib/useClient';
+import { Select } from '../ui/select';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
 
 // The category colors of globals.css (docs/design/ui.md "Categories"), in the order a tag or a cover takes them.
 const CATEGORY_ORDER = ['green', 'blue', 'purple', 'red', 'pink', 'teal', 'amber', 'gray'];

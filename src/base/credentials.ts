@@ -2,8 +2,8 @@
 // system keyring, then a file in ~/.config/markwork (mode 0600) when the keyring is unavailable (e.g. a desktop without
 // gnome-keyring). A secret is never written to settings.json.
 
-import { fileExists, readTextFile, writeTextFile } from './files.js';
-import { platform } from '../platform/index.js';
+import { fileExists, readTextFile, writeTextFile } from './files';
+import { platform } from '../platform/index';
 
 export type CredentialSource = 'env' | 'keyring' | 'file';
 

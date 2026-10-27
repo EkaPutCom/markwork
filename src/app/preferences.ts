@@ -4,13 +4,13 @@
 // sent the values again when a setting changes anywhere (the menu, another window). A key or value that is not one of
 // these is refused, so a frontend can write no setting but the ones the dialog has.
 
-import { DEEPSEEK_MODELS } from '../agent/models.js';
-import { LOCAL_MACHINE, isValidMachineName, isValidSshTarget, machineProjectKey } from '../agent/daemon/machines.js';
-import type { AppSettings } from '../base/settings.js';
-import type { Isolation } from '../agent/worktree.js';
-import { _ } from '../base/i18n.js';
-import type { Question } from './dialogs.js';
-import { ProjectsPages, type ProjectPage, type ProjectRow, type ProjectsAccess, type WorktreeList } from './projects.js';
+import { DEEPSEEK_MODELS } from '../agent/models';
+import { LOCAL_MACHINE, isValidMachineName, isValidSshTarget, machineProjectKey } from '../agent/daemon/machines';
+import type { AppSettings } from '../base/settings';
+import type { Isolation } from '../agent/worktree';
+import { _ } from '../base/i18n';
+import type { Question } from './dialogs';
+import { ProjectsPages, type ProjectPage, type ProjectRow, type ProjectsAccess, type WorktreeList } from './projects';
 
 export const COLOR_SCHEMES = ['system', 'light', 'dark'] as const;
 export const FORGE_POLL_RANGE = { min: 30, max: 3600 } as const;   // seconds; the same as the schema's

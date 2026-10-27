@@ -323,7 +323,7 @@ docs/                     the site (index.html, docs/) and the design notes (des
 
 ### Build
 
-`scripts/electron-build.mjs` bundles four things with Vite: the main process and the core as ES modules for Node, the preload as CommonJS (a sandboxed preload cannot be an ES module), and the renderer as one script next to its HTML and CSS. `mermaid.min.js` is copied next to the renderer and loaded with the first diagram, and the translations are compiled into `dist-electron/locale/`. The types are checked first (`npm run typecheck`): Vite turns TypeScript into JavaScript without checking it. Imports between modules use the `.js` suffix (`'./tags.js'`) even though the file is `.ts`.
+`scripts/electron-build.mjs` bundles four things with Vite: the main process and the core as ES modules for Node, the preload as CommonJS (a sandboxed preload cannot be an ES module), and the renderer as one script next to its HTML and CSS. `mermaid.min.js` is copied next to the renderer and loaded with the first diagram, and the translations are compiled into `dist-electron/locale/`. The types are checked first (`npm run typecheck`): Vite turns TypeScript into JavaScript without checking it. Relative imports between TypeScript modules omit the file extension (`'./tags'`); Vite resolves and bundles them for both the application and the Node tests. Actual JavaScript assets and runtime build output keep their extensions.
 
 ### Layers and the direction of dependencies
 

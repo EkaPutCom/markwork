@@ -3,16 +3,16 @@
 // document, and the Timeline of its file. Which are folded or hidden, and their sizes, are a setting the window writes.
 
 import { Fragment, useRef, useState, type ReactNode } from 'react';
-import { FolderTree } from './Explorer.js';
-import { Icon } from './Icons.js';
-import { commitTime } from './notes.js';
-import { OutlineList } from './Outline.js';
-import { SECTIONS, type SectionId, type SectionState } from '../lib/client.js';
-import * as P from '../lib/panes.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
+import { FolderTree } from './Explorer';
+import { Icon } from './Icons';
+import { commitTime } from './notes';
+import { OutlineList } from './Outline';
+import { SECTIONS, type SectionId, type SectionState } from '../lib/client';
+import * as P from '../lib/panes';
+import { useClient, useStore } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 const MENU_NAMES: Record<SectionId, string> = { editors: 'Open Editors', folder: 'Folders', outline: 'Outline', timeline: 'Timeline' };
 

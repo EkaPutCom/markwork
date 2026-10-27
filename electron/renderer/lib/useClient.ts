@@ -1,6 +1,6 @@
 import { createContext, useContext, useSyncExternalStore } from 'react';
-import type { Client, State } from './client.js';
-import type { ChatState } from './chatmodel.js';
+import type { Client, State } from './client';
+import type { ChatState } from './chatmodel';
 
 export const ClientContext = createContext<Client | null>(null);
 

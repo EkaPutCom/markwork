@@ -2,4 +2,4 @@
 // declares, the names it uses itself, and how many notes have a value for each field and option. The answer is the list of
 // fields as they should be, or nothing.
 
-export type { SchemaDialogOptions, FieldUse } from '../views.js';
+export type { SchemaDialogOptions, FieldUse } from '../views';

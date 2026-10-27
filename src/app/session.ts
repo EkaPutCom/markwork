@@ -3,35 +3,35 @@
 // hooks for what must follow a document on screen. Everything that connects the controllers to each other lives here,
 // so a frontend implements AppFrontend and gets the application, not a copy of the wiring.
 
-import type { AppSettings, SidebarPage } from '../base/settings.js';
-import { WorkspaceRepository } from '../base/workspace.js';
-import { fileUri, insideName } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import { WELCOME } from '../base/welcome.js';
-import { Autosaver, type AutosaveHost } from './autosave.js';
-import { CollabController, type CollabDialogs, type CollabHost } from './collab.js';
-import { ContributeController, type ContributeDialogs, type ContributeHost } from './contribute.js';
-import { PullReviewController, type PullDialogs, type PullHost } from './pulls.js';
-import { JournalController, type JournalDialogs, type JournalHost } from './journal.js';
-import { HarnessController, type HarnessDialogs, type HarnessHost } from './harness.js';
-import type { Openers } from '../orchestrator/hub.js';
-import { HarnessReviewController, type ReviewDialogs, type ReviewHost } from './harnessreview.js';
-import { HomeController, existingRecent, type HomeHost } from './home.js';
-import { ProgramsController } from './programs.js';
-import { ViewController, type ViewDialogs, type ViewHost } from './views.js';
-import { NoteLinks, type NoteHost } from './notes.js';
-import { DocumentController, type DocumentsHost } from './documents.js';
-import type { AgentWriteHost } from './agentwrites.js';
-import { AssistantController, type AssistantHost } from './assistant.js';
-import { HistoryController, type HistoryDialogs, type HistoryHost } from './history.js';
-import { PreferencesController, type PreferencesDialogs, type PreferencesHost } from './preferences.js';
-import { OutlineController, type OutlineHost } from './outline.js';
-import { FilesController, isHtmlFile, isImageFile, type FilesDialogs, type FilesHost } from './files.js';
-import { SearchController, type SearchDialogs, type SearchHost } from './search.js';
-import type { Board } from '../markdown/kanban.js';
-import type { Doc, Page, TextEditor, ToastAction, ToastButton } from './document.js';
-import type { CommandHost, CoreCommands, FrontendCommands } from './commands.js';
-import { _ } from '../base/i18n.js';
+import type { AppSettings, SidebarPage } from '../base/settings';
+import { WorkspaceRepository } from '../base/workspace';
+import { fileUri, insideName } from '../base/files';
+import { platform } from '../platform/index';
+import { WELCOME } from '../base/welcome';
+import { Autosaver, type AutosaveHost } from './autosave';
+import { CollabController, type CollabDialogs, type CollabHost } from './collab';
+import { ContributeController, type ContributeDialogs, type ContributeHost } from './contribute';
+import { PullReviewController, type PullDialogs, type PullHost } from './pulls';
+import { JournalController, type JournalDialogs, type JournalHost } from './journal';
+import { HarnessController, type HarnessDialogs, type HarnessHost } from './harness';
+import type { Openers } from '../orchestrator/hub';
+import { HarnessReviewController, type ReviewDialogs, type ReviewHost } from './harnessreview';
+import { HomeController, existingRecent, type HomeHost } from './home';
+import { ProgramsController } from './programs';
+import { ViewController, type ViewDialogs, type ViewHost } from './views';
+import { NoteLinks, type NoteHost } from './notes';
+import { DocumentController, type DocumentsHost } from './documents';
+import type { AgentWriteHost } from './agentwrites';
+import { AssistantController, type AssistantHost } from './assistant';
+import { HistoryController, type HistoryDialogs, type HistoryHost } from './history';
+import { PreferencesController, type PreferencesDialogs, type PreferencesHost } from './preferences';
+import { OutlineController, type OutlineHost } from './outline';
+import { FilesController, isHtmlFile, isImageFile, type FilesDialogs, type FilesHost } from './files';
+import { SearchController, type SearchDialogs, type SearchHost } from './search';
+import type { Board } from '../markdown/kanban';
+import type { Doc, Page, TextEditor, ToastAction, ToastButton } from './document';
+import type { CommandHost, CoreCommands, FrontendCommands } from './commands';
+import { _ } from '../base/i18n';
 
 // The host the controllers see, put together: each controller is typed with only the part it needs.
 export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>

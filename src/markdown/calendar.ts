@@ -10,11 +10,11 @@
 //
 // Pure TypeScript.
 
-import type { DateValue, FieldDef } from './fields.js';
-import { readItem, writeField } from './fields.js';
-import { optionOf } from './layout.js';
-import { boardSchema, setCardField, type Board, type Card, type Position } from './kanban.js';
-import { dayNumber } from './dates.js';
+import type { DateValue, FieldDef } from './fields';
+import { readItem, writeField } from './fields';
+import { optionOf } from './layout';
+import { boardSchema, setCardField, type Board, type Card, type Position } from './kanban';
+import { dayNumber } from './dates';
 
 export interface CalendarItem {
     at: Position;

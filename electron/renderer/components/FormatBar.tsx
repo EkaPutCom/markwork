@@ -3,15 +3,15 @@
 // so the toolbar, the menus, the / menu, and the keys do the same thing. What is pressed follows the text at the cursor
 // (editor.ts formatAt).
 
-import { COMMANDS } from '../../../src/app/commands.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
-import { Icon, type IconName } from './Icons.js';
-import { label as keyLabel } from '../lib/keys.js';
-import type { Pane } from '../lib/panes.js';
-import { useClient, useStore } from '../lib/useClient.js';
+import { COMMANDS } from '../../../src/app/commands';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { Icon, type IconName } from './Icons';
+import { label as keyLabel } from '../lib/keys';
+import type { Pane } from '../lib/panes';
+import { useClient, useStore } from '../lib/useClient';
 
 // The kinds of line the style menu sets, with the command that sets each.
 const STYLES: { block: string; label: string; icon: IconName; command: string }[] = [

@@ -2,14 +2,14 @@
 // searches (app/search.ts); this draws what it sends and reports what the user did.
 
 import { useEffect, useRef, useState } from 'react';
-import { Icon } from './Icons.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group.js';
-import { Toggle } from '../ui/toggle.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
+import { Icon } from './Icons';
+import { useClient, useStore } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group';
+import { Toggle } from '../ui/toggle';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 const OPTIONS = [
     { key: 'caseSensitive', label: 'Aa', title: 'Match Case' },

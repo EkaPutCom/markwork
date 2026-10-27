@@ -1,16 +1,16 @@
 // Assistant tests: context composition (agent/context.ts), reading the SSE stream, answer markup, and the conversation session.
 // Without a GUI and a network; the model is replaced by a fake provider.
 
-import { buildContext, buildMessages, estimateTokens, findMentions, headingsOf, matchMention, rankChunks, splitChunks, tokenize, type ContextInput, type SourceFile } from '../../src/agent/context.js';
-import { httpErrorMessage, parseStreamLine } from '../../src/agent/sse.js';
-import { ChatSession, MAX_ROUNDS, type ToolStep } from '../../src/agent/session.js';
-import { describeCall, runTool } from '../../src/agent/tools.js';
-import { toApiMessage } from '../../src/agent/deepseek.js';
-import type { ChatMessage, ChatRequest, ChatResult, Provider } from '../../src/agent/provider.js';
-import { systemKeyStore } from '../../src/agent/apikey.js';
-import { section, test, eq, ok, contains, within } from '../core/framework.js';
-import { host } from '../core/host.js';
-import { platform } from '../../src/platform/index.js';
+import { buildContext, buildMessages, estimateTokens, findMentions, headingsOf, matchMention, rankChunks, splitChunks, tokenize, type ContextInput, type SourceFile } from '../../src/agent/context';
+import { httpErrorMessage, parseStreamLine } from '../../src/agent/sse';
+import { ChatSession, MAX_ROUNDS, type ToolStep } from '../../src/agent/session';
+import { describeCall, runTool } from '../../src/agent/tools';
+import { toApiMessage } from '../../src/agent/deepseek';
+import type { ChatMessage, ChatRequest, ChatResult, Provider } from '../../src/agent/provider';
+import { systemKeyStore } from '../../src/agent/apikey';
+import { section, test, eq, ok, contains, within } from '../core/framework';
+import { host } from '../core/host';
+import { platform } from '../../src/platform/index';
 
 const CH1 = `# Chapter 1: The Harbor
 

@@ -7,10 +7,10 @@
 // frontend sent before it saw the reset then arrives with a version at or below the replica's and is dropped, instead of
 // looking like a gap.
 
-import { makeCpMap, makeU16Map } from '../../markdown/offsets.js';
-import type { EditorMode, TextEditor } from '../document.js';
-import { applyChanges, diffChanges } from './changes.js';
-import type { Change, Wire } from './messages.js';
+import { makeCpMap, makeU16Map } from '../../markdown/offsets';
+import type { EditorMode, TextEditor } from '../document';
+import { applyChanges, diffChanges } from './changes';
+import type { Change, Wire } from './messages';
 
 const MAX_RETRIES = 3;    // conflicts in a row before an update gives up (docs/design/protocol.md, 5.4)
 

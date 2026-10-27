@@ -2,16 +2,16 @@
 // click on a card edits the note, the ✕ on its cover deletes it.
 
 import { useEffect, useMemo, useState } from 'react';
-import { displayValue, readItem } from '../../../src/markdown/fields.js';
-import { CARD_WIDTH, galleryCards, GALLERY_SIZES, gallerySize, type GallerySize } from '../../../src/markdown/gallery.js';
-import { boardSchema, type Board } from '../../../src/markdown/kanban.js';
-import { imageUrl } from '../lib/images.js';
-import { Chip, PageHeader, Tags, useNoteDialog } from './notes.js';
-import { Icon } from './Icons.js';
-import { IconButton } from '../ui/icon-button.js';
-import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group.js';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
-import { useClient } from '../lib/useClient.js';
+import { displayValue, readItem } from '../../../src/markdown/fields';
+import { CARD_WIDTH, galleryCards, GALLERY_SIZES, gallerySize, type GallerySize } from '../../../src/markdown/gallery';
+import { boardSchema, type Board } from '../../../src/markdown/kanban';
+import { imageUrl } from '../lib/images';
+import { Chip, PageHeader, Tags, useNoteDialog } from './notes';
+import { Icon } from './Icons';
+import { IconButton } from '../ui/icon-button';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
+import { useClient } from '../lib/useClient';
 
 const SIZE_LABEL: Record<GallerySize, string> = { small: 'Small', medium: 'Medium', large: 'Large' };
 

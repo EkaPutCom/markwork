@@ -1,8 +1,8 @@
 // Deterministic checks of the actual contents; it does not claim to prove the meaning of the whole document.
-import type { SourceFile } from './context.js';
-import type { ToolSpec } from './provider.js';
-import { checkNote, checkNoteField, structuredIssues } from './notes.js';
-import { newIssues, resolveLink, scanDocument, type Issue } from '../markdown/lint.js';
+import type { SourceFile } from './context';
+import type { ToolSpec } from './provider';
+import { checkNote, checkNoteField, structuredIssues } from './notes';
+import { newIssues, resolveLink, scanDocument, type Issue } from '../markdown/lint';
 
 export interface Verification {
     passed: boolean;

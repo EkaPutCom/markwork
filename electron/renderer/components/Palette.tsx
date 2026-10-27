@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { COMMANDS } from '../../../src/app/commands.js';
-import { label } from '../lib/keys.js';
-import { useClient, useStore } from '../lib/useClient.js';
+import { COMMANDS } from '../../../src/app/commands';
+import { label } from '../lib/keys';
+import { useClient, useStore } from '../lib/useClient';
 import { CommandDialog, CommandEmpty, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/ui/command';
 import { Kbd } from '@/ui/kbd';
 

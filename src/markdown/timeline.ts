@@ -14,12 +14,12 @@
 // A note with only one of the two dates is a one-day marker; a note with neither has a row but no bar. Dragging a bar
 // shifts both dates, dragging an edge changes one. Pure TypeScript.
 
-import type { FieldDef } from './fields.js';
-import { readItem } from './fields.js';
-import { optionOf } from './layout.js';
-import { boardSchema, setCardField, type Board, type Card, type Position } from './kanban.js';
-import { addDays, dayNumber, daysBetween, startOfWeek } from './dates.js';
-import { dateOf } from './calendar.js';
+import type { FieldDef } from './fields';
+import { readItem } from './fields';
+import { optionOf } from './layout';
+import { boardSchema, setCardField, type Board, type Card, type Position } from './kanban';
+import { addDays, dayNumber, daysBetween, startOfWeek } from './dates';
+import { dateOf } from './calendar';
 
 export type Zoom = 'week' | 'month' | 'quarter';
 export const ZOOMS: readonly Zoom[] = ['week', 'month', 'quarter'];

@@ -2,30 +2,30 @@
 // (docs/design/protocol.md, sections 5 to 7). This is the slice the first Electron window needs: documents and their
 // tabs, the text/board screen, the board, toasts, and the questions about documents. Everything else is `unwired`.
 
-import type { AppSettings } from '../../base/settings.js';
-import type { Board } from '../../markdown/kanban.js';
-import type { NoteEdit } from '../../markdown/noteedit.js';
-import type { CaptureView, CsvPage, KanbanView, LayoutPage, NotesView, SchemaDialogOptions, ViewDialogs, ViewScreen } from '../views.js';
-import type { FieldDef } from '../../markdown/fields.js';
-import type { ConflictComparison, DocumentDialogs } from '../documents.js';
-import type { ChooseFileOptions, Prompt } from '../dialogs.js';
-import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session.js';
-import type { Page, ToastButton } from '../document.js';
-import type { Card, Position } from '../../markdown/kanban.js';
-import type { CardRun, HarnessBoard, HarnessMenuEntry } from '../harness.js';
-import { ProtocolEditor } from './replica.js';
-import { Asks } from './asks.js';
-import type { Wire } from './messages.js';
-import { unwired } from './unwired.js';
-import { ProtocolOutline } from './outline.js';
-import { ProtocolSearch } from './search.js';
-import { ProtocolTree } from './tree.js';
-import { ProtocolPreferences, ProtocolPreferencesDialogs } from './preferences.js';
-import { ProtocolScreen } from './screen.js';
-import { ProtocolChatPanel } from './chat.js';
-import { ProtocolHistoryDialogs, ProtocolHistoryTab, ProtocolHistoryViewers } from './history.js';
-import { ProtocolHarnessDialogs, ProtocolHarnessLogs, ProtocolReviewDialogs, ProtocolReviewView, ProtocolRuns } from './harness.js';
-import { ProtocolCollabDialogs, ProtocolCollabPanel, ProtocolContributeDialogs, ProtocolPullDialogs, ProtocolPullView } from './collab.js';
+import type { AppSettings } from '../../base/settings';
+import type { Board } from '../../markdown/kanban';
+import type { NoteEdit } from '../../markdown/noteedit';
+import type { CaptureView, CsvPage, KanbanView, LayoutPage, NotesView, SchemaDialogOptions, ViewDialogs, ViewScreen } from '../views';
+import type { FieldDef } from '../../markdown/fields';
+import type { ConflictComparison, DocumentDialogs } from '../documents';
+import type { ChooseFileOptions, Prompt } from '../dialogs';
+import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session';
+import type { Page, ToastButton } from '../document';
+import type { Card, Position } from '../../markdown/kanban';
+import type { CardRun, HarnessBoard, HarnessMenuEntry } from '../harness';
+import { ProtocolEditor } from './replica';
+import { Asks } from './asks';
+import type { Wire } from './messages';
+import { unwired } from './unwired';
+import { ProtocolOutline } from './outline';
+import { ProtocolSearch } from './search';
+import { ProtocolTree } from './tree';
+import { ProtocolPreferences, ProtocolPreferencesDialogs } from './preferences';
+import { ProtocolScreen } from './screen';
+import { ProtocolChatPanel } from './chat';
+import { ProtocolHistoryDialogs, ProtocolHistoryTab, ProtocolHistoryViewers } from './history';
+import { ProtocolHarnessDialogs, ProtocolHarnessLogs, ProtocolReviewDialogs, ProtocolReviewView, ProtocolRuns } from './harness';
+import { ProtocolCollabDialogs, ProtocolCollabPanel, ProtocolContributeDialogs, ProtocolPullDialogs, ProtocolPullView } from './collab';
 
 // A page that shows the notes of the document (board, list, table, calendar, …): it sends the board as it is, and the
 // frontend answers with the operations the user makes (`act.notes.edit`). Only the board has groups and agents.

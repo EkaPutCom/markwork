@@ -1,10 +1,10 @@
 // DeepSeek client tests against a fake SSE server on 127.0.0.1 (the test host's), through the platform's streaming
 // transport, without a real network.
 
-import { DeepSeek } from '../../src/agent/deepseek.js';
-import { section, test, eq, ok, contains, within } from '../core/framework.js';
-import { host, type FakeReply } from '../core/host.js';
-import { Cancellable } from '../../src/base/cancel.js';
+import { DeepSeek } from '../../src/agent/deepseek';
+import { section, test, eq, ok, contains, within } from '../core/framework';
+import { host, type FakeReply } from '../core/host';
+import { Cancellable } from '../../src/base/cancel';
 
 export async function deepseekTests(): Promise<void> {
     section('DeepSeek client (fake server)');

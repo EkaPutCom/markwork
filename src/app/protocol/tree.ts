@@ -2,8 +2,8 @@
 // comes back as `act.tree.*` (docs/design/protocol.md 6.5). The frontend asks for the contents of a folder when it first opens
 // it (`act.tree.openFolder`); the core then keeps sending that folder when it changes on disk.
 
-import type { FileTreeView, FolderEntry } from '../files.js';
-import type { Wire } from './messages.js';
+import type { FileTreeView, FolderEntry } from '../files';
+import type { Wire } from './messages';
 
 export class ProtocolTree implements FileTreeView {
     onOpenFolder: FileTreeView['onOpenFolder'] = () => {};
@@ -23,4 +23,4 @@ export class ProtocolTree implements FileTreeView {
 }
 
 // What a frontend needs of the files module, as types (the renderer takes them from here).
-export type { FolderEntry, NewKind } from '../files.js';
+export type { FolderEntry, NewKind } from '../files';

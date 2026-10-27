@@ -1,11 +1,11 @@
 // Following [[note]] links from the editor, a board card, or an inbox item.
 
-import { newNotePath, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
-import { platform } from '../platform/index.js';
-import { insideName } from '../base/files.js';
-import type { WorkspaceRepository } from '../base/workspace.js';
-import { _, fmt } from '../base/i18n.js';
-import type { Doc, DocumentHost } from './document.js';
+import { newNotePath, resolveWikiLink, type WikiLink } from '../markdown/wikilink';
+import { platform } from '../platform/index';
+import { insideName } from '../base/files';
+import type { WorkspaceRepository } from '../base/workspace';
+import { _, fmt } from '../base/i18n';
+import type { Doc, DocumentHost } from './document';
 
 export interface NoteHost extends DocumentHost {
     readonly workspace: WorkspaceRepository;

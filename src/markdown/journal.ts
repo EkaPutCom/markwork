@@ -22,7 +22,7 @@
 //
 // Pure TypeScript. Section titles are document content, not interface text, so they are not translated.
 
-import { cardMeta, type Board } from './kanban.js';
+import { cardMeta, type Board } from './kanban';
 
 export const JOURNAL_DIR = 'journal';
 export const NOTES = 'Notes';

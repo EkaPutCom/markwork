@@ -2,9 +2,9 @@
 // they work on the file list supplied by the caller (not the disk), so they are easy to test and cannot escape the project.
 // Pure TypeScript.
 
-import { estimateTokens, matchMention, projectMap, rankChunks, splitChunks, tokenize, type SourceFile } from './context.js';
-import type { ToolSpec } from './provider.js';
-import { describeSchema, queryNotes, SCHEMA_TOOLS } from './schematools.js';
+import { estimateTokens, matchMention, projectMap, rankChunks, splitChunks, tokenize, type SourceFile } from './context';
+import type { ToolSpec } from './provider';
+import { describeSchema, queryNotes, SCHEMA_TOOLS } from './schematools';
 
 // "1 line" / "2 lines": the short result summary shown in the interface.
 export const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;

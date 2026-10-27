@@ -3,15 +3,15 @@
 // implementations of the protocol agree, and that the platform's links (a Unix socket, and the stdio of `markworkd
 // bridge`) work on the runtime the tests run on. Skipped, with a note, when Go is not installed.
 
-import { DaemonConnection, type ConnectionOptions } from '../../src/agent/daemon/connection.js';
-import { openCommandLink, openSocketLink, sshBridgeArgv } from '../../src/agent/daemon/streamlink.js';
-import type { RunSummary, StateEvent } from '../../src/agent/daemon/protocol.js';
-import { adoptRun, daemonGit, daemonSpawner } from '../../src/orchestrator/daemon.js';
-import { createWorktree, DEFAULT_ISOLATION, listWorktrees, removeWorktree } from '../../src/agent/worktree.js';
-import type { HarnessProcess, SpawnHandlers } from '../../src/orchestrator/index.js';
-import { platform } from '../../src/platform/index.js';
-import { DIM, RESET, ROOT, ok, eq, contains, section, within, test, tmp, disk, say, until } from '../core/framework.js';
-import { host } from '../core/host.js';
+import { DaemonConnection, type ConnectionOptions } from '../../src/agent/daemon/connection';
+import { openCommandLink, openSocketLink, sshBridgeArgv } from '../../src/agent/daemon/streamlink';
+import type { RunSummary, StateEvent } from '../../src/agent/daemon/protocol';
+import { adoptRun, daemonGit, daemonSpawner } from '../../src/orchestrator/daemon';
+import { createWorktree, DEFAULT_ISOLATION, listWorktrees, removeWorktree } from '../../src/agent/worktree';
+import type { HarnessProcess, SpawnHandlers } from '../../src/orchestrator/index';
+import { platform } from '../../src/platform/index';
+import { DIM, RESET, ROOT, ok, eq, contains, section, within, test, tmp, disk, say, until } from '../core/framework';
+import { host } from '../core/host';
 
 const AGENT = `#!/bin/sh
 echo ready

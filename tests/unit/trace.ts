@@ -1,11 +1,11 @@
 // Agent activity log: pure recording and real results from the agent loop with a fake provider.
-import { AgentTrace } from '../../src/agent/trace.js';
-import { TraceFeed, TraceReplica, type TraceUpdate } from '../../src/agent/tracefeed.js';
-import { ChatSession } from '../../src/agent/session.js';
-import type { ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
-import { traceTree, descendants, traceStats, turnEvents, formatMs, formatSize } from '../../src/agent/tracetree.js';
-import { settledNewest, visibleSteps } from '../../src/agent/logrows.js';
-import { section, test, eq, ok, contains, within, pause, until } from '../core/framework.js';
+import { AgentTrace } from '../../src/agent/trace';
+import { TraceFeed, TraceReplica, type TraceUpdate } from '../../src/agent/tracefeed';
+import { ChatSession } from '../../src/agent/session';
+import type { ChatResult, Provider, ToolCall } from '../../src/agent/provider';
+import { traceTree, descendants, traceStats, turnEvents, formatMs, formatSize } from '../../src/agent/tracetree';
+import { settledNewest, visibleSteps } from '../../src/agent/logrows';
+import { section, test, eq, ok, contains, within, pause, until } from '../core/framework';
 
 const files = [{ name: 'a.md', text: '# A\nRelease November 15\n' }];
 const input = { question: 'When is the release?', active: null, selection: '', files, mentions: [], options: { activeDocument: true, selection: true, project: true }, budget: 8000 };

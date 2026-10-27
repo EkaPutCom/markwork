@@ -3,12 +3,12 @@
 // value, or for a project as a patch the core checks field by field.
 
 import { useEffect, useState, type ReactNode } from 'react';
-import type { PreferencesData, ProjectPage, WorktreeList } from '../../../src/app/protocol/preferences.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Select } from '../ui/select.js';
-import { Button } from '../ui/button.js';
-import { Input } from '../ui/input.js';
-import { Switch } from '../ui/switch.js';
+import type { PreferencesData, ProjectPage, WorktreeList } from '../../../src/app/protocol/preferences';
+import { useClient, useStore } from '../lib/useClient';
+import { Select } from '../ui/select';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Switch } from '../ui/switch';
 
 function Row({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
     return <div className="pref-row"><span className="text"><span className="title">{title}</span>{subtitle && <span className="subtitle">{subtitle}</span>}</span>{children}</div>;

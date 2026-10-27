@@ -2,11 +2,11 @@
 // tells the model what a document declares, and query_notes filters and counts its notes by field. Like the browsing
 // tools they work on the file list they are given and never throw. Pure TypeScript.
 
-import { describeDef, displayValue, parseSchema, parseValue, readItem, type FieldDef, type Item, type Scalar } from '../markdown/fields.js';
-import { matchMention, type SourceFile } from './context.js';
-import { frontmatterOptions, notesOf, rawValue, resolveWords, structuredDoc, valueHint, valueOfItem, type StructuredDoc } from './notes.js';
-import type { ToolSpec } from './provider.js';
-import type { ToolOutcome } from './tools.js';
+import { describeDef, displayValue, parseSchema, parseValue, readItem, type FieldDef, type Item, type Scalar } from '../markdown/fields';
+import { matchMention, type SourceFile } from './context';
+import { frontmatterOptions, notesOf, rawValue, resolveWords, structuredDoc, valueHint, valueOfItem, type StructuredDoc } from './notes';
+import type { ToolSpec } from './provider';
+import type { ToolOutcome } from './tools';
 
 const MAX_ROWS = 100;
 const DEFAULT_ROWS = 30;

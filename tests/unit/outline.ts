@@ -1,10 +1,10 @@
 // The Outline tab and the [[ suggestions: OutlineController (app/outline.ts) and NoteLinks.namesFor
 // (app/notes.ts) in an AppSession, with views that record what they are sent.
 
-import { AppSession } from '../../src/app/session.js';
-import type { OutlineHeading, OutlineView } from '../../src/app/outline.js';
-import { section, test, eq, ok, tmp, disk } from '../core/framework.js';
-import { fakeFrontend, FakeEditor, memorySettings, quiet } from './appsession.js';
+import { AppSession } from '../../src/app/session';
+import type { OutlineHeading, OutlineView } from '../../src/app/outline';
+import { section, test, eq, ok, tmp, disk } from '../core/framework';
+import { fakeFrontend, FakeEditor, memorySettings, quiet } from './appsession';
 
 const H = (level: number, text: string, line: number): OutlineHeading => ({ level, text, line });
 

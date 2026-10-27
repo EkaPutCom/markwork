@@ -2,8 +2,8 @@
 // the line's text and a column in code points (the app protocol's unit, docs/design/protocol.md), so every frontend
 // shares them.
 
-import { cpToU16, cpLength } from './offsets.js';
-import { WIKILINK, parseWikiLink, type WikiLink } from './wikilink.js';
+import { cpToU16, cpLength } from './offsets';
+import { WIKILINK, parseWikiLink, type WikiLink } from './wikilink';
 
 // The task box to flip: the column (code points) of the character between the brackets and what replaces it.
 export interface TaskToggle {

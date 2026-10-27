@@ -2,32 +2,32 @@
 // DocMirror per document), keeps what the core shows (tabs, files, boards, toasts), and offers the actions the UI calls.
 // It holds no widgets: the editor registers itself, and the views read the snapshot.
 
-import { COMMANDS, type Command, type FrontendCommands } from '../../../src/app/commands.js';
-import type { StatusCounts } from '../../../src/app/protocol/screen.js';
-import { DocMirror } from '../../../src/app/protocol/mirror.js';
-import { RequestError, type Change, type Message } from '../../../src/app/protocol/messages.js';
-import { Connection, type Handler } from '../../../src/app/protocol/wire.js';
-import type { ChooseFileOptions, Prompt, Question } from '../../../src/app/dialogs.js';
-import type { ConflictComparison } from '../../../src/app/protocol/screen.js';
-import type { CancelSignal } from '../../../src/platform/index.js';
-import type { Board } from '../../../src/markdown/kanban.js';
-import { applyNoteEdit, type NoteEdit } from '../../../src/markdown/noteedit.js';
-import type { FormatAt, MarkdownEditor } from './editor.js';
-import * as P from './panes.js';
-import { appUrl, type ZoomedImage } from './images.js';
-import type { SearchQuery, SearchResults } from '../../../src/app/protocol/search.js';
-import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree.js';
-import type { HomeData, ProgramsData } from '../../../src/app/protocol/screen.js';
-import type { PreferencesData } from '../../../src/app/protocol/preferences.js';
-import type { SchemaDialogOptions } from '../../../src/app/protocol/schema.js';
-import type { FieldDef } from '../../../src/markdown/fields.js';
-import type { ChangeKind, Commit, DiscardOutcome, HistoryChanges, HistoryText, WriteResult } from '../../../src/app/protocol/history.js';
-import type { CollabSnapshot, MergeMethod, PullSnapshot, RepoRef, SendChangesAnswer, SendChangesOptions, TokenSource } from '../../../src/app/protocol/collab.js';
-import type { HarnessAsk, PullRequestAnswer, PullRequestOptions, ReviewSnapshot, ReviewTab } from '../../../src/app/protocol/harness.js';
-import type { ProjectPage, WorktreeList } from '../../../src/app/protocol/preferences.js';
-import type { TraceUpdate } from '../../../src/agent/tracefeed.js';
-import { TraceReplica } from '../../../src/agent/tracefeed.js';
-import { ChatModel } from './chatmodel.js';
+import { COMMANDS, type Command, type FrontendCommands } from '../../../src/app/commands';
+import type { StatusCounts } from '../../../src/app/protocol/screen';
+import { DocMirror } from '../../../src/app/protocol/mirror';
+import { RequestError, type Change, type Message } from '../../../src/app/protocol/messages';
+import { Connection, type Handler } from '../../../src/app/protocol/wire';
+import type { ChooseFileOptions, Prompt, Question } from '../../../src/app/dialogs';
+import type { ConflictComparison } from '../../../src/app/protocol/screen';
+import type { CancelSignal } from '../../../src/platform/index';
+import type { Board } from '../../../src/markdown/kanban';
+import { applyNoteEdit, type NoteEdit } from '../../../src/markdown/noteedit';
+import type { FormatAt, MarkdownEditor } from './editor';
+import * as P from './panes';
+import { appUrl, type ZoomedImage } from './images';
+import type { SearchQuery, SearchResults } from '../../../src/app/protocol/search';
+import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree';
+import type { HomeData, ProgramsData } from '../../../src/app/protocol/screen';
+import type { PreferencesData } from '../../../src/app/protocol/preferences';
+import type { SchemaDialogOptions } from '../../../src/app/protocol/schema';
+import type { FieldDef } from '../../../src/markdown/fields';
+import type { ChangeKind, Commit, DiscardOutcome, HistoryChanges, HistoryText, WriteResult } from '../../../src/app/protocol/history';
+import type { CollabSnapshot, MergeMethod, PullSnapshot, RepoRef, SendChangesAnswer, SendChangesOptions, TokenSource } from '../../../src/app/protocol/collab';
+import type { HarnessAsk, PullRequestAnswer, PullRequestOptions, ReviewSnapshot, ReviewTab } from '../../../src/app/protocol/harness';
+import type { ProjectPage, WorktreeList } from '../../../src/app/protocol/preferences';
+import type { TraceUpdate } from '../../../src/agent/tracefeed';
+import { TraceReplica } from '../../../src/agent/tracefeed';
+import { ChatModel } from './chatmodel';
 
 declare global {
     interface Window {

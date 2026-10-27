@@ -4,14 +4,14 @@
 // frontmatter (`ask.schema`); nothing here touches the text.
 
 import { useState } from 'react';
-import { fieldNameProblem, OPTION_COLORS, optionProblem, type FieldDef, type FieldType, type NameProblem, type OptionColor } from '../../../src/markdown/fields.js';
-import { Modal } from './Modals.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Select } from '../ui/select.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { Icon } from './Icons.js';
+import { fieldNameProblem, OPTION_COLORS, optionProblem, type FieldDef, type FieldType, type NameProblem, type OptionColor } from '../../../src/markdown/fields';
+import { Modal } from './Modals';
+import { useClient, useStore } from '../lib/useClient';
+import { Select } from '../ui/select';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { Icon } from './Icons';
 
 const TYPES: readonly FieldType[] = ['text', 'number', 'select', 'date', 'progress', 'person', 'agent', 'link'];
 const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', number: 'Number', select: 'Choice', date: 'Date', progress: 'Progress', person: 'Person', agent: 'Agent', link: 'Link' };

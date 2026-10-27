@@ -2,9 +2,9 @@
 // its answer is read here. A refusal, a frontend that does not know the question yet (`unknown_op`), a withdrawn ask, or
 // an answer of the wrong shape all count as the dialog's "no": the code that asked goes on as if the user dismissed it.
 
-import type { CancelSignal } from '../../platform/index.js';
-import type { ChooseFileOptions, Prompt, Question } from '../dialogs.js';
-import type { Wire } from './messages.js';
+import type { CancelSignal } from '../../platform/index';
+import type { ChooseFileOptions, Prompt, Question } from '../dialogs';
+import type { Wire } from './messages';
 
 export class Asks {
     constructor(private readonly wire: Wire) {}

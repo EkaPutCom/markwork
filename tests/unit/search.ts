@@ -1,7 +1,7 @@
 // Tests for search and replace across documents.
 
-import { section, test, eq, ok } from '../core/framework.js';
-import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, type SearchOptions } from '../../src/markdown/search.js';
+import { section, test, eq, ok } from '../core/framework';
+import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, type SearchOptions } from '../../src/markdown/search';
 
 const plain: SearchOptions = { caseSensitive: false, wholeWord: false, regex: false };
 const pattern = (query: string, options: Partial<SearchOptions> = {}): RegExp => {

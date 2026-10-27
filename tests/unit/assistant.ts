@@ -2,13 +2,13 @@
 // for the Assistant panel, and a scripted provider proposes changes. The panel only sees plain data and reports; what is written,
 // and what the agent is told, is decided by the core.
 
-import { AppSession } from '../../src/app/session.js';
-import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } from '../../src/app/assistant.js';
-import type { KeyStore } from '../../src/agent/apikey.js';
-import type { TraceUpdate } from '../../src/agent/tracefeed.js';
-import type { ChatResult, Provider } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within, until, untilText, tmp, disk } from '../core/framework.js';
-import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
+import { AppSession } from '../../src/app/session';
+import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } from '../../src/app/assistant';
+import type { KeyStore } from '../../src/agent/apikey';
+import type { TraceUpdate } from '../../src/agent/tracefeed';
+import type { ChatResult, Provider } from '../../src/agent/provider';
+import { section, test, eq, ok, contains, within, until, untilText, tmp, disk } from '../core/framework';
+import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
 

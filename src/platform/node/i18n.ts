@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Translations } from '../index.js';
+import type { Translations } from '../index';
 
 export const GETTEXT_DOMAIN = 'markwork';
 

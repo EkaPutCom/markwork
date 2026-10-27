@@ -4,10 +4,10 @@
 
 import { WidgetType } from '@codemirror/view';
 import type { EditorView } from '@codemirror/view';
-import type { ImageRef } from '../../../src/markdown/highlight.js';
-import { imageSource, type PathOps } from '../../../src/markdown/imagesource.js';
-import { DELETE_ICON, SOURCE_ICON, ZOOM_ICON, blockTools } from './blocktools.js';
-import { isAbsolutePath, slashed } from '../../../src/markdown/paths.js';
+import type { ImageRef } from '../../../src/markdown/highlight';
+import { imageSource, type PathOps } from '../../../src/markdown/imagesource';
+import { DELETE_ICON, SOURCE_ICON, ZOOM_ICON, blockTools } from './blocktools';
+import { isAbsolutePath, slashed } from '../../../src/markdown/paths';
 
 const MAX_HEIGHT = 480, MAX_WIDTH = 700;
 const TOOLS_MIN_WIDTH = 120, TOOLS_MIN_HEIGHT = 60;

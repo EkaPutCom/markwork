@@ -97,4 +97,4 @@ export interface ForgeProvider {
 }
 
 // The HTTP seam is the platform's (platform().http); tests pass a fake that answers from a table.
-export type { HttpRequest, HttpResponse, Transport } from '../platform/index.js';
+export type { HttpRequest, HttpResponse, Transport } from '../platform/index';

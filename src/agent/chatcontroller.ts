@@ -3,20 +3,20 @@
 // saved conversations, undoing applied changes, and composing the context. The panel (electron/renderer/components/Chat.tsx) draws what it
 // is told through ChatView and passes user actions in; tests drive this class with a fake view and provider.
 
-import { Cancellable } from '../base/cancel.js';
-import { platform } from '../platform/index.js';
-import { systemKeyStore, type KeyStore } from './apikey.js';
-import { buildContext, DEFAULT_BUDGET, findMentions, type BuiltContext, type ContextOptions, type SourceFile } from './context.js';
-import { deleteChat, listChats, loadChat, loadChatLog, nowStamp, saveChat, saveChatLog, titleFrom, type ChatSummary } from './chatstore.js';
-import { AgentTrace } from './trace.js';
-import { DEEPSEEK_MODELS, DeepSeek } from './deepseek.js';
-import type { Provider, Usage } from './provider.js';
-import { ChatSession, type ProposalResult, type ToolStep, type TurnInput } from './session.js';
-import { invertChange, type Change } from './changes.js';
-import type { GitAnswer, GitRequest } from './gittools.js';
-import type { SavedChat } from './transcript.js';
-import type { WorkState } from './work.js';
-import type { Freshness } from '../base/workspace.js';
+import { Cancellable } from '../base/cancel';
+import { platform } from '../platform/index';
+import { systemKeyStore, type KeyStore } from './apikey';
+import { buildContext, DEFAULT_BUDGET, findMentions, type BuiltContext, type ContextOptions, type SourceFile } from './context';
+import { deleteChat, listChats, loadChat, loadChatLog, nowStamp, saveChat, saveChatLog, titleFrom, type ChatSummary } from './chatstore';
+import { AgentTrace } from './trace';
+import { DEEPSEEK_MODELS, DeepSeek } from './deepseek';
+import type { Provider, Usage } from './provider';
+import { ChatSession, type ProposalResult, type ToolStep, type TurnInput } from './session';
+import { invertChange, type Change } from './changes';
+import type { GitAnswer, GitRequest } from './gittools';
+import type { SavedChat } from './transcript';
+import type { WorkState } from './work';
+import type { Freshness } from '../base/workspace';
 
 export const FOLDER_CHANGED = 'The work folder changed during the request';
 

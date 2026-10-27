@@ -5,7 +5,7 @@
 // quoting, spacing, and extra cells), so saving after a one-cell edit changes one line in a diff, not the whole file.
 // The delimiter, the line ending, the byte order mark, and whether the file ends with a line break are kept too.
 
-import { replaceMatches } from './search.js';
+import { replaceMatches } from './search';
 
 export type Delimiter = ',' | ';' | '\t' | '|';
 

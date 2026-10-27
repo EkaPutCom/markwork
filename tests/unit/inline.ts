@@ -1,8 +1,8 @@
 // parseInline tests.
 
-import { makeCpMap, cpLength, countWords } from '../../src/markdown/offsets.js';
-import { parseInline } from '../../src/markdown/inline.js';
-import { section, test, eq, ok } from '../core/framework.js';
+import { makeCpMap, cpLength, countWords } from '../../src/markdown/offsets';
+import { parseInline } from '../../src/markdown/inline';
+import { section, test, eq, ok } from '../core/framework';
 
 export function inlineTests(): void {
     section('parseInline');

@@ -4,13 +4,13 @@
 // results it is sent and reports what the user did through its on* actions (docs/design/protocol.md 6.5); a hit it
 // names is one it was shown, by file and position in that file's list.
 
-import { projectPath } from '../agent/path.js';
-import type { Change } from '../agent/changes.js';
-import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, MAX_HITS, type FileHits, type SearchOptions } from '../markdown/search.js';
-import { _, fmt, ngettext } from '../base/i18n.js';
-import type { WorkspaceRepository } from '../base/workspace.js';
-import { applyChangeBatch, type AgentWriteHost } from './agentwrites.js';
-import type { TextEditor } from './document.js';
+import { projectPath } from '../agent/path';
+import type { Change } from '../agent/changes';
+import { activeFilters, buildPattern, pathFilter, replaceMatches, searchFiles, MAX_HITS, type FileHits, type SearchOptions } from '../markdown/search';
+import { _, fmt, ngettext } from '../base/i18n';
+import type { WorkspaceRepository } from '../base/workspace';
+import { applyChangeBatch, type AgentWriteHost } from './agentwrites';
+import type { TextEditor } from './document';
 
 const MAX_FILES = 5000;   // the Markdown files read for one search
 const codePoints = (text: string): number => Array.from(text).length;   // the editor counts columns in code points

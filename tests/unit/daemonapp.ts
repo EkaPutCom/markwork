@@ -1,14 +1,14 @@
 // The app side of the daemon: the hub of connections per machine, and the orchestrator following a run again after
 // Markwork was closed (history replayed, the one open question asked again, a run that ended meanwhile finished).
 
-import type { Link } from '../../src/agent/daemon/client.js';
-import { isRemoteMachine, isValidMachineName, isValidSshTarget, machineProjectKey } from '../../src/agent/daemon/machines.js';
-import { sshBridgeArgv } from '../../src/agent/daemon/streamlink.js';
-import { DaemonHub, LOCAL_MACHINE, localSocketPath, type Openers } from '../../src/orchestrator/hub.js';
-import { Orchestrator, type AdoptInfo, type HarnessProcess, type SpawnHandlers } from '../../src/orchestrator/index.js';
-import { parseBoard, type Board } from '../../src/markdown/kanban.js';
-import { section, test, eq, ok, contains } from '../core/framework.js';
-import { FakeDaemon, ManualTimers, flush } from './daemon-fake.js';
+import type { Link } from '../../src/agent/daemon/client';
+import { isRemoteMachine, isValidMachineName, isValidSshTarget, machineProjectKey } from '../../src/agent/daemon/machines';
+import { sshBridgeArgv } from '../../src/agent/daemon/streamlink';
+import { DaemonHub, LOCAL_MACHINE, localSocketPath, type Openers } from '../../src/orchestrator/hub';
+import { Orchestrator, type AdoptInfo, type HarnessProcess, type SpawnHandlers } from '../../src/orchestrator/index';
+import { parseBoard, type Board } from '../../src/markdown/kanban';
+import { section, test, eq, ok, contains } from '../core/framework';
+import { FakeDaemon, ManualTimers, flush } from './daemon-fake';
 
 // ---------- the hub ----------
 

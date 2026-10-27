@@ -1,7 +1,7 @@
 // The blocks of a document and moving one (markdown/blocks.ts): what the visual editor's block handle adds after and drags.
 
-import { blockAt, blocksOf, moveBlock } from '../../src/markdown/blocks.js';
-import { section, test, eq } from '../core/framework.js';
+import { blockAt, blocksOf, moveBlock } from '../../src/markdown/blocks';
+import { section, test, eq } from '../core/framework';
 
 const lines = (text: string) => text.split('\n');
 const shape = (text: string) => blocksOf(lines(text)).map(b => `${b.kind} ${b.start}-${b.end}`);

@@ -3,9 +3,9 @@
 // tests use the same class as a scripted frontend. Texts are JavaScript strings; the changes that cross the line are in
 // code points (changes.ts).
 
-import { cpLength } from '../../markdown/offsets.js';
-import { applyChanges, diffChanges } from './changes.js';
-import type { Change } from './messages.js';
+import { cpLength } from '../../markdown/offsets';
+import { applyChanges, diffChanges } from './changes';
+import type { Change } from './messages';
 
 // The edits sent that the core may still refer to as the `base` of a doc.replace; older ones are forgotten.
 const KEPT_EDITS = 256;

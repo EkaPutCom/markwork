@@ -1,8 +1,8 @@
 // Workspace tests: the folder snapshot, change tracking, the contents cache, unsaved overlays, and warming.
 
-import { writeTextFile } from '../../src/base/files.js';
-import { WorkspaceRepository } from '../../src/base/workspace.js';
-import { section, test, eq, ok, tmp, until, disk } from '../core/framework.js';
+import { writeTextFile } from '../../src/base/files';
+import { WorkspaceRepository } from '../../src/base/workspace';
+import { section, test, eq, ok, tmp, until, disk } from '../core/framework';
 
 export async function workspaceTests(): Promise<void> {
     section('Workspace');

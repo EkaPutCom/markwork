@@ -1,13 +1,13 @@
 // Conversation life cycle without widgets: ChatController with a recording view and fake providers.
 
-import { ChatController, FOLDER_CHANGED, type ChatControllerHost, type ChatView, type TurnOutcome } from '../../src/agent/chatcontroller.js';
-import type { KeyStore } from '../../src/agent/apikey.js';
-import type { Change } from '../../src/agent/changes.js';
-import type { ChatResult, Provider } from '../../src/agent/provider.js';
-import type { ProposalResult } from '../../src/agent/session.js';
-import { chatLogPath } from '../../src/agent/chatstore.js';
-import { section, test, eq, ok, within, tmp, disk } from '../core/framework.js';
-import type { Cancellable } from '../../src/base/cancel.js';
+import { ChatController, FOLDER_CHANGED, type ChatControllerHost, type ChatView, type TurnOutcome } from '../../src/agent/chatcontroller';
+import type { KeyStore } from '../../src/agent/apikey';
+import type { Change } from '../../src/agent/changes';
+import type { ChatResult, Provider } from '../../src/agent/provider';
+import type { ProposalResult } from '../../src/agent/session';
+import { chatLogPath } from '../../src/agent/chatstore';
+import { section, test, eq, ok, within, tmp, disk } from '../core/framework';
+import type { Cancellable } from '../../src/base/cancel';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
 const answer = (text: string): Provider => ({

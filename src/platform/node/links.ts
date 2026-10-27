@@ -4,8 +4,8 @@ import { spawn } from 'node:child_process';
 import { lstatSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import type { Readable, Writable } from 'node:stream';
-import type { LineLink, Links } from '../index.js';
-import { exitStatus } from './process.js';
+import type { LineLink, Links } from '../index';
+import { exitStatus } from './process';
 
 const STDERR_TAIL = 2000;
 const EXIT_WAIT_MS = 500;   // how long a command whose stdout closed gets to report how it ended

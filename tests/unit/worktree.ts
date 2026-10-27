@@ -1,13 +1,13 @@
 // Tests for a worktree per kanban card: real git in temporary repositories (no network).
 
-import { createWorktree, DEFAULT_ISOLATION, findWorktree, listWorktrees, parseIsolation, removeWorktree, repoInfo, slugFor, worktreeRoot, writeIsolation, type Isolation } from '../../src/agent/worktree.js';
-import { buildPrompt, RunQueue } from '../../src/agent/harness.js';
-import { commentsReply, mergeWorktree, newLineNumbers, readReview, splitDiff } from '../../src/agent/worktreereview.js';
-import { parseDiff } from '../../src/base/gitlog.js';
-import { cardBranch, setCardBranch } from '../../src/markdown/kanban.js';
-import { runGit } from '../../src/base/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk, slash } from '../core/framework.js';
-import { host } from '../core/host.js';
+import { createWorktree, DEFAULT_ISOLATION, findWorktree, listWorktrees, parseIsolation, removeWorktree, repoInfo, slugFor, worktreeRoot, writeIsolation, type Isolation } from '../../src/agent/worktree';
+import { buildPrompt, RunQueue } from '../../src/agent/harness';
+import { commentsReply, mergeWorktree, newLineNumbers, readReview, splitDiff } from '../../src/agent/worktreereview';
+import { parseDiff } from '../../src/base/gitlog';
+import { cardBranch, setCardBranch } from '../../src/markdown/kanban';
+import { runGit } from '../../src/base/git';
+import { section, test, eq, ok, contains, within, tmp, disk, slash } from '../core/framework';
+import { host } from '../core/host';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
     const run = await within(runGit(cwd, args));

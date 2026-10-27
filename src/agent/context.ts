@@ -11,7 +11,7 @@
 //
 // Everything is limited by a token budget; what matters most comes first: selection, active document, @mentions, map, excerpts.
 
-import { layoutOf } from '../markdown/layout.js';
+import { layoutOf } from '../markdown/layout';
 
 export const DEFAULT_BUDGET = 48_000;
 

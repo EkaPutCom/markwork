@@ -4,10 +4,10 @@
 
 import { Transaction, type EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { blurText } from '../../../../src/markdown/blur.js';
-import { focusOn, sourceOn, visualOn } from '../editor.js';
-import { recordingOf, unrecorded } from './recorder.js';
-import { blurRepro, reproOf, type Repro } from './repro.js';
+import { blurText } from '../../../../src/markdown/blur';
+import { focusOn, sourceOn, visualOn } from '../editor';
+import { recordingOf, unrecorded } from './recorder';
+import { blurRepro, reproOf, type Repro } from './repro';
 
 export const modeOf = (state: EditorState): 'visual' | 'live' | 'source' => sourceOn(state) ? 'source' : visualOn(state) ? 'visual' : 'live';
 

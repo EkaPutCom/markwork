@@ -1,7 +1,7 @@
 // Tests for the Home data.
 
-import { dayPart, dueTasks, localDate, moveRecent, openInboxes, rememberRecent, splitRecent, type RecentFile } from '../../src/markdown/home.js';
-import { section, test, eq } from '../core/framework.js';
+import { dayPart, dueTasks, localDate, moveRecent, openInboxes, rememberRecent, splitRecent, type RecentFile } from '../../src/markdown/home';
+import { section, test, eq } from '../core/framework';
 
 const BOARD = `---
 layout: board

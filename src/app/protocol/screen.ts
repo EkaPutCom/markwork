@@ -6,12 +6,12 @@
 // The text's own counts are not sent: the frontend has the text and counts it as it types, so `setCounts` only says
 // that the counts are the text's.
 
-import type { HomeData } from '../home.js';
-import type { InstallWay, ProgramInfo, ProgramsData, SetupData } from '../programs.js';
-import type { Layout } from '../../markdown/layout.js';
-import type { StructuredPage, ViewScreen } from '../views.js';
-import type { Wire } from './messages.js';
-import type { ProtocolEditor } from './replica.js';
+import type { HomeData } from '../home';
+import type { InstallWay, ProgramInfo, ProgramsData, SetupData } from '../programs';
+import type { Layout } from '../../markdown/layout';
+import type { StructuredPage, ViewScreen } from '../views';
+import type { Wire } from './messages';
+import type { ProtocolEditor } from './replica';
 
 export type StatusCounts =
     | { kind: 'text' }
@@ -89,4 +89,4 @@ export class ProtocolScreen implements Screen {
 // What Home and the Programs page show, as it crosses the wire (the renderer takes the types from here).
 export type { HomeData, InstallWay, ProgramInfo, ProgramsData, SetupData };
 // The conflict sources and diff sent by view.conflictComparison; the editable result stays in the frontend until Apply.
-export type { ConflictComparison } from '../documents.js';
+export type { ConflictComparison } from '../documents';

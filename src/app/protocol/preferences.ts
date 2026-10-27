@@ -2,11 +2,11 @@
 // changes while it is open), and a change comes back as `act.prefs.set` (docs/design/protocol.md 9.2). The project pages and the
 // worktrees of the agent tab (showProject, showWorktrees) are sent as they come; the general tabs do not use them.
 
-import type { MachineDraft, PreferencesData, PreferencesDialogs, PreferencesView } from '../preferences.js';
-import type { ProjectPage, WorktreeList } from '../projects.js';
-import type { Question } from '../dialogs.js';
-import type { Asks } from './asks.js';
-import type { Wire } from './messages.js';
+import type { MachineDraft, PreferencesData, PreferencesDialogs, PreferencesView } from '../preferences';
+import type { ProjectPage, WorktreeList } from '../projects';
+import type { Question } from '../dialogs';
+import type { Asks } from './asks';
+import type { Wire } from './messages';
 
 export type { MachineDraft, PreferencesData, ProjectPage, WorktreeList };
 

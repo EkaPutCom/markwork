@@ -3,18 +3,18 @@
 // runs git and the commit message writer; this draws what it sends and reports what the user did.
 
 import { useEffect, useMemo, useState } from 'react';
-import type { ChangeKind, ChangedFile, WriteResult } from '../../../src/app/protocol/history.js';
-import { DiffLines } from './Diff.js';
-import { Icon } from './Icons.js';
-import { Modal } from './Modals.js';
-import { commitTime } from './notes.js';
-import type { Client } from '../lib/client.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { Checkbox } from '../ui/checkbox.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Tabs, TabsList, TabsTrigger } from '../ui/tabs.js';
-import { Textarea } from '../ui/textarea.js';
+import type { ChangeKind, ChangedFile, WriteResult } from '../../../src/app/protocol/history';
+import { DiffLines } from './Diff';
+import { Icon } from './Icons';
+import { Modal } from './Modals';
+import { commitTime } from './notes';
+import type { Client } from '../lib/client';
+import { useClient, useStore } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { IconButton } from '../ui/icon-button';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
+import { Textarea } from '../ui/textarea';
 
 const KIND_MARK: Record<ChangeKind, string> = { modified: 'M', added: 'A', deleted: 'D', renamed: 'R', untracked: 'U' };
 const KIND_CLASS: Record<ChangeKind, string> = { modified: 'warning', added: 'success', deleted: 'error', renamed: 'warning', untracked: 'success' };

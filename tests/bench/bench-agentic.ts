@@ -1,15 +1,15 @@
 // Measure the cost of the new feature locally, without a model provider or widgets.
-import '../../src/platform/node/install.js';   // the core reaches the runtime through platform()
-import '../core/host-node.js';
-import { planBatch } from '../../src/agent/batch.js';
-import { verifyWork } from '../../src/agent/verification.js';
-import { serializeChat, parseChat, type SavedChat } from '../../src/agent/transcript.js';
-import { compactHistory } from '../../src/agent/recovery.js';
-import { readTextFile, writeTextFile } from '../../src/base/files.js';
-import type { ActionEvent } from '../../src/agent/journal.js';
-import { disk, say } from '../core/framework.js';
-import { host } from '../core/host.js';
-import { platform } from '../../src/platform/index.js';
+import '../../src/platform/node/install';   // the core reaches the runtime through platform()
+import '../core/host-node';
+import { planBatch } from '../../src/agent/batch';
+import { verifyWork } from '../../src/agent/verification';
+import { serializeChat, parseChat, type SavedChat } from '../../src/agent/transcript';
+import { compactHistory } from '../../src/agent/recovery';
+import { readTextFile, writeTextFile } from '../../src/base/files';
+import type { ActionEvent } from '../../src/agent/journal';
+import { disk, say } from '../core/framework';
+import { host } from '../core/host';
+import { platform } from '../../src/platform/index';
 
 const directory = host().makeTempDir();
 const checkpoint = disk.join(directory, 'checkpoint.md');

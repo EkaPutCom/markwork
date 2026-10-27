@@ -18,12 +18,12 @@
 //
 // Pure TypeScript.
 
-import type { FieldDef } from './fields.js';
-import { readItem } from './fields.js';
-import { optionOf, withOption } from './layout.js';
-import { boardSchema, type Board, type Card } from './kanban.js';
-import { addDays, daysBetween, monthOf, startOfWeek } from './dates.js';
-import { dateField, dateOf } from './calendar.js';
+import type { FieldDef } from './fields';
+import { readItem } from './fields';
+import { optionOf, withOption } from './layout';
+import { boardSchema, type Board, type Card } from './kanban';
+import { addDays, daysBetween, monthOf, startOfWeek } from './dates';
+import { dateField, dateOf } from './calendar';
 
 export type Period = 'week' | 'month';
 

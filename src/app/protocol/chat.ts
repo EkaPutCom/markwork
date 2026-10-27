@@ -3,24 +3,24 @@
 // `act.proposal.apply` (handlers/chat.ts). The panel never gets a Change to send back: it sees how a change looks (its
 // diff) and names a proposal by the number the core gave it, so what is written is always what the agent proposed.
 
-import type { BuiltContext, ContextOptions } from '../../agent/context.js';
-import type { TurnOutcome } from '../../agent/chatcontroller.js';
-import type { ChatSummary } from '../../agent/chatstore.js';
-import type { ToolStep } from '../../agent/session.js';
-import type { SavedChat } from '../../agent/transcript.js';
-import { journalText, type ActionEvent } from '../../agent/journal.js';
-import type { WorkState } from '../../agent/work.js';
-import type { TraceUpdate } from '../../agent/tracefeed.js';
-import type { TraceEvent } from '../../agent/trace.js';
-import type { KeySource } from '../../agent/apikey.js';
-import { describeChange, diffPreview, unifiedDiff, type Change } from '../../agent/changes.js';
-import { parseDiff, type DiffLine } from '../../base/gitlog.js';
-import { DEEPSEEK_MODELS } from '../../agent/models.js';
-import { Cancellable } from '../../base/cancel.js';
-import { _, fmt } from '../../base/i18n.js';
-import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk, UndoTarget } from '../assistant.js';
-import type { Asks } from './asks.js';
-import type { Wire } from './messages.js';
+import type { BuiltContext, ContextOptions } from '../../agent/context';
+import type { TurnOutcome } from '../../agent/chatcontroller';
+import type { ChatSummary } from '../../agent/chatstore';
+import type { ToolStep } from '../../agent/session';
+import type { SavedChat } from '../../agent/transcript';
+import { journalText, type ActionEvent } from '../../agent/journal';
+import type { WorkState } from '../../agent/work';
+import type { TraceUpdate } from '../../agent/tracefeed';
+import type { TraceEvent } from '../../agent/trace';
+import type { KeySource } from '../../agent/apikey';
+import { describeChange, diffPreview, unifiedDiff, type Change } from '../../agent/changes';
+import { parseDiff, type DiffLine } from '../../base/gitlog';
+import { DEEPSEEK_MODELS } from '../../agent/models';
+import { Cancellable } from '../../base/cancel';
+import { _, fmt } from '../../base/i18n';
+import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk, UndoTarget } from '../assistant';
+import type { Asks } from './asks';
+import type { Wire } from './messages';
 
 // What the renderer takes from here (types only).
 export type { BuiltContext, ChatPanelSettings, ChatSummary, ContextOptions, DiffLine, KeySource, SavedChat, ToolStep, TraceEvent, TraceUpdate, TurnOutcome, UndoTarget, WorkState };

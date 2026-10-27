@@ -3,7 +3,7 @@
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { SettingSpec, SettingValue, SettingsStore } from '../index.js';
+import type { SettingSpec, SettingValue, SettingsStore } from '../index';
 
 const isInteger = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 

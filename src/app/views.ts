@@ -2,22 +2,22 @@
 // inbox is a view of the document text: changes made in the view are written back to the text (one undo step), and
 // text changes made otherwise (undo, typing in source) are read back into the view.
 
-import { readTextFile, writeTextFile, flushWrites } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import { isStructured, layoutOf, withLayout, LAYOUTS, type Layout } from '../markdown/layout.js';
-import { groupBoard, groupFieldOf, ungroupBoard, type Grouped } from '../markdown/boardgroup.js';
-import { newList } from '../markdown/inbox.js';
-import { newTable } from '../markdown/tablelayout.js';
-import { columnCount, fitsTableView, isCsvFile, parseCsv } from '../markdown/csv.js';
-import { boardSchema, countCards, declaredFields, fieldUses, newBoard, parseBoard, reservedFields, serializeBoard, withSchema, type Board } from '../markdown/kanban.js';
-import type { FieldDef } from '../markdown/fields.js';
-import { applyNoteEdit, type NoteEdit } from '../markdown/noteedit.js';
-import { _, fmt } from '../base/i18n.js';
-import { missingField, withField } from '../markdown/layouthint.js';
-import { errorMessage, type Doc, type DocumentHost, type TextEditor } from './document.js';
-import type { HomeData } from './home.js';
-import type { ProgramsData } from './programs.js';
-import { commandIds } from './commands.js';
+import { readTextFile, writeTextFile, flushWrites } from '../base/files';
+import { platform } from '../platform/index';
+import { isStructured, layoutOf, withLayout, LAYOUTS, type Layout } from '../markdown/layout';
+import { groupBoard, groupFieldOf, ungroupBoard, type Grouped } from '../markdown/boardgroup';
+import { newList } from '../markdown/inbox';
+import { newTable } from '../markdown/tablelayout';
+import { columnCount, fitsTableView, isCsvFile, parseCsv } from '../markdown/csv';
+import { boardSchema, countCards, declaredFields, fieldUses, newBoard, parseBoard, reservedFields, serializeBoard, withSchema, type Board } from '../markdown/kanban';
+import type { FieldDef } from '../markdown/fields';
+import { applyNoteEdit, type NoteEdit } from '../markdown/noteedit';
+import { _, fmt } from '../base/i18n';
+import { missingField, withField } from '../markdown/layouthint';
+import { errorMessage, type Doc, type DocumentHost, type TextEditor } from './document';
+import type { HomeData } from './home';
+import type { ProgramsData } from './programs';
+import { commandIds } from './commands';
 
 // Which commands apply to which view is part of the registry (app/commands.ts).
 // Text editing commands: off while a board, a list, or Home hides the text.

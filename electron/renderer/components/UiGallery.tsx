@@ -4,40 +4,40 @@
 // editor (tests/samples/ui-gallery.md). Ctrl+Alt+G opens and closes it (App.tsx).
 
 import { useState, type ReactNode } from 'react';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Icon } from './Icons.js';
+import { useClient, useStore } from '../lib/useClient';
+import { Icon } from './Icons';
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from '../ui/alert-dialog.js';
-import { Badge } from '../ui/badge.js';
-import { Button } from '../ui/button.js';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card.js';
-import { Checkbox } from '../ui/checkbox.js';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible.js';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from '../ui/command.js';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '../ui/context-menu.js';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog.js';
+} from '../ui/alert-dialog';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from '../ui/command';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '../ui/context-menu';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub,
     DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
-} from '../ui/dropdown-menu.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group.js';
+} from '../ui/dropdown-menu';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group';
 import { toast } from 'sonner';
-import { Kbd } from '../ui/kbd.js';
-import { Label } from '../ui/label.js';
-import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarShortcut, MenubarTrigger } from '../ui/menubar.js';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover.js';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group.js';
-import { Select } from '../ui/select.js';
-import { Separator } from '../ui/separator.js';
-import { Spinner } from '../ui/spinner.js';
-import { Switch } from '../ui/switch.js';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
-import { Textarea } from '../ui/textarea.js';
-import { Toggle } from '../ui/toggle.js';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
+import { Kbd } from '../ui/kbd';
+import { Label } from '../ui/label';
+import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarShortcut, MenubarTrigger } from '../ui/menubar';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Select } from '../ui/select';
+import { Separator } from '../ui/separator';
+import { Spinner } from '../ui/spinner';
+import { Switch } from '../ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Textarea } from '../ui/textarea';
+import { Toggle } from '../ui/toggle';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
 export const UI_GALLERY_KEY = 'Ctrl+Alt+g';
 

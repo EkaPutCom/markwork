@@ -3,15 +3,15 @@
 // click on a day adds a note on it.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { addDays, addMonths, monthOf, monthWeeks, startOfWeek, weekDays } from '../../../src/markdown/dates.js';
-import { calendarData, type CalendarItem } from '../../../src/markdown/calendar.js';
-import { boardSchema, type Board, type Position } from '../../../src/markdown/kanban.js';
-import { formatDate, PageHeader, refOf, todayString, useNoteDialog } from './notes.js';
-import { useClient } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
-import { Icon } from './Icons.js';
+import { addDays, addMonths, monthOf, monthWeeks, startOfWeek, weekDays } from '../../../src/markdown/dates';
+import { calendarData, type CalendarItem } from '../../../src/markdown/calendar';
+import { boardSchema, type Board, type Position } from '../../../src/markdown/kanban';
+import { formatDate, PageHeader, refOf, todayString, useNoteDialog } from './notes';
+import { useClient } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
+import { Icon } from './Icons';
 
 type Mode = 'month' | 'week' | 'agenda';
 const MODES: [Mode, string][] = [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']];

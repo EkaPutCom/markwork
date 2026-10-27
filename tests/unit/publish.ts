@@ -1,16 +1,16 @@
 // Tests for publishing a reviewed branch as a pull request: the steps against a fake forge and real local git repositories
 // (a bare "upstream", a bare "fork", and a clone with the branch), and the small pure helpers around it.
 
-import { commitLeftovers, pullFromNotes, pullNote, pullRequestBody, uncommitLeftovers } from '../../src/agent/worktreereview.js';
-import type { Worktree } from '../../src/agent/worktree.js';
-import type { SendContext } from '../../src/forge/contribute.js';
-import { GiteaProvider, isGiteaServer } from '../../src/forge/gitea.js';
-import { publishBranch, pushFailure, type PublishRequest } from '../../src/forge/publish.js';
-import { forgeKind } from '../../src/forge/remote.js';
-import { ForgeError, type ForgeProvider, type NewPull, type PullRequest, type RepoInfo } from '../../src/forge/types.js';
-import { runGit } from '../../src/base/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
-import { host } from '../core/host.js';
+import { commitLeftovers, pullFromNotes, pullNote, pullRequestBody, uncommitLeftovers } from '../../src/agent/worktreereview';
+import type { Worktree } from '../../src/agent/worktree';
+import type { SendContext } from '../../src/forge/contribute';
+import { GiteaProvider, isGiteaServer } from '../../src/forge/gitea';
+import { publishBranch, pushFailure, type PublishRequest } from '../../src/forge/publish';
+import { forgeKind } from '../../src/forge/remote';
+import { ForgeError, type ForgeProvider, type NewPull, type PullRequest, type RepoInfo } from '../../src/forge/types';
+import { runGit } from '../../src/base/git';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework';
+import { host } from '../core/host';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
     const run = await within(runGit(cwd, args));

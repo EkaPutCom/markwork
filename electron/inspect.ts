@@ -8,9 +8,9 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } 
 import { createServer, type Server, type Socket } from 'node:net';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { userDirs } from '../src/platform/node/dirs.js';
-import type { OS } from '../src/platform/index.js';
-import { keptAsTest, reproError, stepError, stepRequest, type Repro, type ReproStep } from './renderer/lib/inspect/repro.js';
+import { userDirs } from '../src/platform/node/dirs';
+import type { OS } from '../src/platform/index';
+import { keptAsTest, reproError, stepError, stepRequest, type Repro, type ReproStep } from './renderer/lib/inspect/repro';
 
 type Message = Record<string, unknown>;
 

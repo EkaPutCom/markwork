@@ -5,7 +5,7 @@
 //   reply    { re, ok, ...result }        or { re, ok: false, error: { code, message }, ...extra }
 //   notice   { ev, ...payload }           no reply
 
-import type { CancelSignal } from '../../platform/index.js';
+import type { CancelSignal } from '../../platform/index';
 
 export interface Change {
     from: number;      // code points from the start of the text, before the change

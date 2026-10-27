@@ -4,11 +4,11 @@
 
 import { useState } from 'react';
 import { languages } from '@codemirror/language-data';
-import { Command, CommandInput, CommandItem, CommandList } from '../ui/command.js';
-import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover.js';
-import { fenceName, type LanguagePick } from '../lib/codecolor.js';
-import { Icon } from './Icons.js';
-import { Anchor } from './notes.js';
+import { Command, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
+import { fenceName, type LanguagePick } from '../lib/codecolor';
+import { Icon } from './Icons';
+import { Anchor } from './notes';
 
 const CHOICES = [
     { value: '', label: 'Plain text', keywords: ['text', 'none'] },

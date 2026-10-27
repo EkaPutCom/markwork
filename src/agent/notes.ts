@@ -3,11 +3,11 @@
 // and pure TypeScript; edit_note and edit_schema (notechanges.ts) and the read tools describe_schema and
 // query_notes (schematools.ts) are built on it.
 
-import type { Issue } from '../markdown/lint.js';
-import { groupFieldOf } from '../markdown/boardgroup.js';
-import { displayValue, formatValue, parseSchema, parseValue, readItem, resolveDefault, type FieldDef, type Item, type Value } from '../markdown/fields.js';
-import { boardSchema, declaredFields, parseBoard, type Board, type Position } from '../markdown/kanban.js';
-import { layoutOf, type Layout } from '../markdown/layout.js';
+import type { Issue } from '../markdown/lint';
+import { groupFieldOf } from '../markdown/boardgroup';
+import { displayValue, formatValue, parseSchema, parseValue, readItem, resolveDefault, type FieldDef, type Item, type Value } from '../markdown/fields';
+import { boardSchema, declaredFields, parseBoard, type Board, type Position } from '../markdown/kanban';
+import { layoutOf, type Layout } from '../markdown/layout';
 
 export type Found<T> = { ok: true; value: T } | { ok: false; message: string };
 export const found = <T>(value: T): Found<T> => ({ ok: true, value });

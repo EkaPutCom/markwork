@@ -2,7 +2,7 @@
 // itself. The forge is a ForgeProvider and git is a function, both passed in, so the same steps run against a fake forge and
 // local repositories in the tests. A step that fails stops the rest and says which step it was.
 
-import type { ForgeProvider, PullRequest, RepoInfo, RepoRef } from './types.js';
+import type { ForgeProvider, PullRequest, RepoInfo, RepoRef } from './types';
 
 // fork: push to the user's own copy; direct: push a branch to the repository itself (needs the right to);
 // agit: push to refs/for/<branch>, and the server opens the pull request without any fork or branch.

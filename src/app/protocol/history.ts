@@ -3,11 +3,11 @@
 // discard question becomes the ask `ask.discard`, and what the user did comes back as `act.history.*` and
 // `act.historyViewer.*` (handlers/history.ts). A viewer is named by the number the core gave it.
 
-import type { ChangeKind, Commit, DiffLine } from '../../base/gitlog.js';
-import type { WriteResult } from '../../agent/commitmessage.js';
-import type { ChangedFile, DiscardOutcome, HistoryChanges, HistoryDialogs, HistoryLog, HistoryTabView, HistoryText, HistoryViewerSpec, HistoryViewersView } from '../history.js';
-import type { Asks } from './asks.js';
-import type { Wire } from './messages.js';
+import type { ChangeKind, Commit, DiffLine } from '../../base/gitlog';
+import type { WriteResult } from '../../agent/commitmessage';
+import type { ChangedFile, DiscardOutcome, HistoryChanges, HistoryDialogs, HistoryLog, HistoryTabView, HistoryText, HistoryViewerSpec, HistoryViewersView } from '../history';
+import type { Asks } from './asks';
+import type { Wire } from './messages';
 
 // What the renderer takes from here (types only).
 export type { ChangeKind, ChangedFile, Commit, DiffLine, DiscardOutcome, HistoryChanges, HistoryLog, HistoryText, HistoryViewerSpec, WriteResult };

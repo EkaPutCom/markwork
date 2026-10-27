@@ -1,12 +1,12 @@
 // Shared by the tests that run against a real Forgejo or Gitea (tests/live/live-forge.ts): the server, the
 // tokens, and the small helpers to talk to it with plain API calls and git. Tokens are never printed.
 
-import { base64, credentialEnv } from '../../src/forge/contribute.js';
-import { GiteaProvider } from '../../src/forge/gitea.js';
-import { parseRemote } from '../../src/forge/remote.js';
-import { runGit } from '../../src/base/git.js';
-import { disk, errorMessage, tmp } from '../core/framework.js';
-import { platform } from '../../src/platform/index.js';
+import { base64, credentialEnv } from '../../src/forge/contribute';
+import { GiteaProvider } from '../../src/forge/gitea';
+import { parseRemote } from '../../src/forge/remote';
+import { runGit } from '../../src/base/git';
+import { disk, errorMessage, tmp } from '../core/framework';
+import { platform } from '../../src/platform/index';
 
 export const SERVER_URL = platform().env('FORGEJO_URL') ?? 'http://localhost:3000';
 export const REPO = platform().env('FORGEJO_REPO') ?? 'eka/notes';

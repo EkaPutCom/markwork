@@ -1,14 +1,14 @@
 // The Visual / Markdown switch: for a pane, whether it shows the document as it looks or as it is written. One, in the header: it
 // shows and sets the mode of the pane that has the focus.
 
-import { Icon } from './Icons.js';
-import { Kbd } from '../ui/kbd.js';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
-import { layoutOf as declaredLayout } from '../../../src/markdown/layout.js';
-import type { Tab } from '../lib/client.js';
-import type { Pane } from '../lib/panes.js';
-import { useClient, useStore } from '../lib/useClient.js';
+import { Icon } from './Icons';
+import { Kbd } from '../ui/kbd';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { layoutOf as declaredLayout } from '../../../src/markdown/layout';
+import type { Tab } from '../lib/client';
+import type { Pane } from '../lib/panes';
+import { useClient, useStore } from '../lib/useClient';
 
 // The pages that draw a document's notes (a board, a list, …); with a CSV table they are what Visual shows.
 export const STRUCTURED_PAGES = ['board', 'inbox', 'table', 'calendar', 'timeline', 'gallery', 'chart'];

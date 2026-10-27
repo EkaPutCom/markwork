@@ -2,24 +2,24 @@
 // agent proposes. It draws what the core told (chatmodel.ts) and reports what the user did; it writes no file.
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { chatHtml } from '../../../src/markdown/chathtml.js';
-import { formatMs } from '../../../src/agent/tracetree.js';
-import type { ContextOptions, WorkState } from '../../../src/app/protocol/chat.js';
-import { fmtTokens, statusLine, usageLine, type AnswerView, type PastAction, type ProposalView } from '../lib/chatmodel.js';
-import { DiffLines } from './Diff.js';
-import { Icon, type IconName } from './Icons.js';
-import { Modal } from './Modals.js';
-import { useChat, useClient } from '../lib/useClient.js';
-import { Select } from '../ui/select.js';
-import { Button } from '../ui/button.js';
-import { Checkbox } from '../ui/checkbox.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { Label } from '../ui/label.js';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover.js';
-import { Separator } from '../ui/separator.js';
-import { Spinner } from '../ui/spinner.js';
-import { Textarea } from '../ui/textarea.js';
+import { chatHtml } from '../../../src/markdown/chathtml';
+import { formatMs } from '../../../src/agent/tracetree';
+import type { ContextOptions, WorkState } from '../../../src/app/protocol/chat';
+import { fmtTokens, statusLine, usageLine, type AnswerView, type PastAction, type ProposalView } from '../lib/chatmodel';
+import { DiffLines } from './Diff';
+import { Icon, type IconName } from './Icons';
+import { Modal } from './Modals';
+import { useChat, useClient } from '../lib/useClient';
+import { Select } from '../ui/select';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Separator } from '../ui/separator';
+import { Spinner } from '../ui/spinner';
+import { Textarea } from '../ui/textarea';
 
 const SUGGESTIONS = [
     'Summarize this document in a few points',

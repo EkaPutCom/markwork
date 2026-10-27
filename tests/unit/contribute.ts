@@ -1,11 +1,11 @@
 // Tests for sending changes as a pull request: the steps against a fake forge and real local git repositories
 // (a bare "upstream", a bare "fork", and a working clone), and the small pure helpers.
 
-import { branchError, credentialEnv, sendChanges, slug, type SendContext, type SendRequest } from '../../src/forge/contribute.js';
-import type { ForgeProvider, NewPull, PullRequest, RepoInfo } from '../../src/forge/types.js';
-import { runGit } from '../../src/base/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
-import { host } from '../core/host.js';
+import { branchError, credentialEnv, sendChanges, slug, type SendContext, type SendRequest } from '../../src/forge/contribute';
+import type { ForgeProvider, NewPull, PullRequest, RepoInfo } from '../../src/forge/types';
+import { runGit } from '../../src/base/git';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework';
+import { host } from '../core/host';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
     const run = await within(runGit(cwd, args));

@@ -6,11 +6,11 @@ import { cpSync, existsSync, readlinkSync, rmSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkForUpdates } from './updater.js';
-import { hasDrive } from '../src/markdown/paths.js';
-import { SecretVault, answerSecret } from '../src/platform/node/vault.js';
-import { HTML_CSP, HTML_SCHEME, htmlContentType, parseHtmlUrl, resolveHtmlRequest } from '../src/markdown/htmlview.js';
-import { reproError } from './renderer/lib/inspect/repro.js';
+import { checkForUpdates } from './updater';
+import { hasDrive } from '../src/markdown/paths';
+import { SecretVault, answerSecret } from '../src/platform/node/vault';
+import { HTML_CSP, HTML_SCHEME, htmlContentType, parseHtmlUrl, resolveHtmlRequest } from '../src/markdown/htmlview';
+import { reproError } from './renderer/lib/inspect/repro';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -251,7 +251,7 @@ void app.whenReady().then(() => {
     createWindow();
     // Dev mode: the inspector's socket for scripts/editor.mjs. Its code is loaded only then.
     if (devMode) {
-        void import('./inspect.js').then(({ InspectBridge }) => {
+        void import('./inspect').then(({ InspectBridge }) => {
             const bridge = new InspectBridge(() => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null);
             const path = bridge.start();
             if (process.env.MARKWORK_INSPECT_QUIET !== '1') console.log(`Editor Inspector: ${path}`);

@@ -2,16 +2,16 @@
 // here, not written to the file), a cell changes its field from a popover, the title opens the note's dialog.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { boardSchema, type Board, type Position } from '../../../src/markdown/kanban.js';
-import { displayValue, readItem, OPTION_COLORS, type FieldDef, type Parsed } from '../../../src/markdown/fields.js';
-import { nextSort, SECTION_COLUMN, sortSpec, TITLE_COLUMN, tableColumns, tableRows, type SortSpec, type TableRow } from '../../../src/markdown/tablelayout.js';
-import { CardDialog, Chip, headingOf, Inline, refOf, todayString, usePopup, useFieldEditor, type CardAnswer } from './notes.js';
-import { Icon } from './Icons.js';
-import { Button } from '../ui/button.js';
-import { Checkbox } from '../ui/checkbox.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { useClient, useStore } from '../lib/useClient.js';
+import { boardSchema, type Board, type Position } from '../../../src/markdown/kanban';
+import { displayValue, readItem, OPTION_COLORS, type FieldDef, type Parsed } from '../../../src/markdown/fields';
+import { nextSort, SECTION_COLUMN, sortSpec, TITLE_COLUMN, tableColumns, tableRows, type SortSpec, type TableRow } from '../../../src/markdown/tablelayout';
+import { CardDialog, Chip, headingOf, Inline, refOf, todayString, usePopup, useFieldEditor, type CardAnswer } from './notes';
+import { Icon } from './Icons';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { useClient, useStore } from '../lib/useClient';
 
 // The value of a field as a small widget for its type; a missing one is a dash, and one that does not fit is marked.
 function Value({ row, def, parsed, today }: { row: TableRow; def: FieldDef; parsed: Parsed | undefined; today: string }) {

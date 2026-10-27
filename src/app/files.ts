@@ -4,16 +4,16 @@
 // through its on* actions (docs/design/protocol.md 6.5); a path it sends back is one it was shown, or one the user
 // dropped in from outside (copied, never written over).
 
-import { platform } from '../platform/index.js';
-import { insideName } from '../base/files.js';
-import { copyEntry, createFile, createFolder, moveEntry, renameEntry, trashEntry } from '../base/fileops.js';
-import { newList } from '../markdown/inbox.js';
-import { newTable } from '../markdown/tablelayout.js';
-import { newBoard, serializeBoard } from '../markdown/kanban.js';
-import { isHtmlFile } from '../markdown/htmlview.js';
-import { isCsvFile, newCsvText } from '../markdown/csv.js';
-import { _, fmt } from '../base/i18n.js';
-import { errorMessage, type DocumentHost } from './document.js';
+import { platform } from '../platform/index';
+import { insideName } from '../base/files';
+import { copyEntry, createFile, createFolder, moveEntry, renameEntry, trashEntry } from '../base/fileops';
+import { newList } from '../markdown/inbox';
+import { newTable } from '../markdown/tablelayout';
+import { newBoard, serializeBoard } from '../markdown/kanban';
+import { isHtmlFile } from '../markdown/htmlview';
+import { isCsvFile, newCsvText } from '../markdown/csv';
+import { _, fmt } from '../base/i18n';
+import { errorMessage, type DocumentHost } from './document';
 
 export const MARKDOWN_EXTENSIONS = ['.md', '.markdown', '.mdown', '.mkd'];
 export const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'];

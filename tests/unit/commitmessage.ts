@@ -1,8 +1,8 @@
 // Commit message writer tests (agent/commitmessage.ts): pure, with a fake provider and key store.
 
-import { cleanMessage, commitLimits, commitPrompt, fitDiffs, names, writeCommitMessage, type CommitSources } from '../../src/agent/commitmessage.js';
-import type { ChatRequest } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within } from '../core/framework.js';
+import { cleanMessage, commitLimits, commitPrompt, fitDiffs, names, writeCommitMessage, type CommitSources } from '../../src/agent/commitmessage';
+import type { ChatRequest } from '../../src/agent/provider';
+import { section, test, eq, ok, contains, within } from '../core/framework';
 
 export async function commitMessageTests(): Promise<void> {
     section('Commit message writer');

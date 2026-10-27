@@ -43,7 +43,7 @@ for (const file of files) {
         const spec = m[2] ?? m[3] ?? m[4];
         let target = spec;
         if (spec.startsWith('.')) {
-            target = relative(src, normalize(join(src, dirname(file), spec.split('?')[0]))).split('\\').join('/').replace(/\.js$/, '.ts');
+            target = relative(src, normalize(join(src, dirname(file), spec.split('?')[0]))).split('\\').join('/').replace(/(?:\.js|\.ts)?$/, '.ts');
         } else if (spec.startsWith('node:')) {
             target = spec;   // a Node built-in module
         } else continue;   // npm packages
@@ -102,7 +102,7 @@ for (const file of rendererFiles) {
         if (!spec.startsWith('.')) continue;   // npm packages
         const path = normalize(join(renderer, dirname(file), spec.split('?')[0]));
         if (!relative(renderer, path).startsWith('..')) continue;   // the renderer's own files
-        const target = relative(src, path).split('\\').join('/').replace(/\.js$/, '.ts');
+        const target = relative(src, path).split('\\').join('/').replace(/(?:\.js|\.ts)?$/, '.ts');
         if (target.startsWith('..')) errors.push(`${where} (the renderer imports only its own files and the shared parts of src/)`);
         else if (m[1] ? !RENDERER_TYPES(target) : !RENDERER_VALUES(target)) {
             errors.push(`${where} (from src/ the renderer takes ${m[1] ? 'types only from markdown/, app/protocol/, app/commands.ts, app/dialogs.ts, and platform/index.ts' : 'values only from markdown/, app/protocol/ messages, wire, mirror, and changes, and app/commands.ts; import other types with `import type`'})`);

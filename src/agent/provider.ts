@@ -1,7 +1,7 @@
 // Model provider interface. The real client (deepseek.ts) and the fake provider in tests use the same shape.
 // Pure TypeScript.
 
-import type { Cancellable } from '../base/cancel.js';
+import type { Cancellable } from '../base/cancel';
 
 // One tool the model may call. `parameters` is a JSON Schema.
 export interface ToolSpec {

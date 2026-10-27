@@ -1,25 +1,25 @@
 // The app protocol without a window: changes in code points, the replica of a document, and a ProtocolServer driven by a
 // scripted frontend (DocMirror) over an in-memory line.
 
-import { applyChanges, diffChanges } from '../../src/app/protocol/changes.js';
-import { DocMirror } from '../../src/app/protocol/mirror.js';
-import { ProtocolEditor, headingsOf } from '../../src/app/protocol/replica.js';
-import { ProtocolServer } from '../../src/app/protocol/server.js';
-import { Connection } from '../../src/app/protocol/wire.js';
-import { unwiredTouched } from '../../src/app/protocol/unwired.js';
-import { Asks } from '../../src/app/protocol/asks.js';
-import { ProtocolHarnessDialogs, ProtocolReviewDialogs } from '../../src/app/protocol/harness.js';
-import type { SpawnHandlers } from '../../src/orchestrator/index.js';
-import { Cancellable } from '../../src/base/cancel.js';
-import { RequestError, type Message, type Reply, type Wire } from '../../src/app/protocol/messages.js';
-import { parseBoard } from '../../src/markdown/kanban.js';
-import { localDate } from '../../src/markdown/home.js';
-import { journalName } from '../../src/markdown/journal.js';
-import type { ChatResult, Provider } from '../../src/agent/provider.js';
-import { memorySettings } from './appsession.js';
-import { runGit } from '../../src/base/git.js';
-import { host } from '../core/host.js';
-import { section, test, eq, ok, tmp, disk, until, pause, within } from '../core/framework.js';
+import { applyChanges, diffChanges } from '../../src/app/protocol/changes';
+import { DocMirror } from '../../src/app/protocol/mirror';
+import { ProtocolEditor, headingsOf } from '../../src/app/protocol/replica';
+import { ProtocolServer } from '../../src/app/protocol/server';
+import { Connection } from '../../src/app/protocol/wire';
+import { unwiredTouched } from '../../src/app/protocol/unwired';
+import { Asks } from '../../src/app/protocol/asks';
+import { ProtocolHarnessDialogs, ProtocolReviewDialogs } from '../../src/app/protocol/harness';
+import type { SpawnHandlers } from '../../src/orchestrator/index';
+import { Cancellable } from '../../src/base/cancel';
+import { RequestError, type Message, type Reply, type Wire } from '../../src/app/protocol/messages';
+import { parseBoard } from '../../src/markdown/kanban';
+import { localDate } from '../../src/markdown/home';
+import { journalName } from '../../src/markdown/journal';
+import type { ChatResult, Provider } from '../../src/agent/provider';
+import { memorySettings } from './appsession';
+import { runGit } from '../../src/base/git';
+import { host } from '../core/host';
+import { section, test, eq, ok, tmp, disk, until, pause, within } from '../core/framework';
 
 const ALPHABET = ['a', 'b', ' ', '\n', '🎉', 'é', '#', 'x'];
 

@@ -1,9 +1,9 @@
 // A stand-in for markworkd for tests of the TypeScript client: it speaks the same protocol, in memory, in the same
 // order as the real daemon (a reply, then the records right behind it). The real daemon is exercised in daemon-live.ts.
 
-import type { Link, Timers } from '../../src/agent/daemon/client.js';
-import type { DaemonRecord, ExitInfo, RecordKind, RunState, SpawnSpec } from '../../src/agent/daemon/protocol.js';
-import { within } from '../core/framework.js';
+import type { Link, Timers } from '../../src/agent/daemon/client';
+import type { DaemonRecord, ExitInfo, RecordKind, RunState, SpawnSpec } from '../../src/agent/daemon/protocol';
+import { within } from '../core/framework';
 
 // Both ends of a connection. Delivery is synchronous, like a read loop that handles several lines in one go.
 class MemoryLink implements Link {

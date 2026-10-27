@@ -6,10 +6,10 @@
 //                    lists, quotes, tables, code blocks.
 //   2. inlineHtml()  formats the contents of each block: bold, italic, code, links, etc.
 
-import { RE, ESCAPE_OR_CODE, startsTable } from './syntax.js';
-import { parseTable, tableEnd } from './table.js';
-import { dbmlToMermaid } from './dbml.js';
-import { WIKILINK, parseWikiLink, wikiLabel } from './wikilink.js';
+import { RE, ESCAPE_OR_CODE, startsTable } from './syntax';
+import { parseTable, tableEnd } from './table';
+import { dbmlToMermaid } from './dbml';
+import { WIKILINK, parseWikiLink, wikiLabel } from './wikilink';
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const unesc = (s: string): string => s.replace(/&quot;/g, '"').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');

@@ -6,11 +6,11 @@
 
 import { useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { reproError, type Repro, type ReproStep } from '../lib/inspect/repro.js';
-import { reproOfEditor } from '../lib/inspect/report.js';
-import { Button } from '../ui/button.js';
-import { Input } from '../ui/input.js';
-import { Label } from '../ui/label.js';
+import { reproError, type Repro, type ReproStep } from '../lib/inspect/repro';
+import { reproOfEditor } from '../lib/inspect/report';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 
 type Answer = Record<string, unknown>;
 interface Failing { check: string; message: string; step: number }

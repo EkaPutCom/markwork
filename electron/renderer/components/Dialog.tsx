@@ -3,11 +3,11 @@
 // has no dialog of its own for.
 
 import { useEffect, useRef, useState } from 'react';
-import { useClient, useStore } from '../lib/useClient.js';
-import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog.js';
-import { Button } from '../ui/button.js';
-import { Input } from '../ui/input.js';
-import { Label } from '../ui/label.js';
+import { useClient, useStore } from '../lib/useClient';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 
 const VARIANT = { suggested: 'default', destructive: 'destructive' } as const;
 

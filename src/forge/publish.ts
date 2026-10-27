@@ -3,8 +3,8 @@
 // branch and no commit, it only pushes and opens the pull request. git runs wherever the repository is (a GitRunner on
 // this computer or through markworkd), the forge is called from here.
 
-import { ForgeError, type PullRequest, type RepoInfo } from './types.js';
-import { agitOptions, branchError, credentialEnv, ownCopy, type GitRun, type SendContext, type SendVia } from './contribute.js';
+import { ForgeError, type PullRequest, type RepoInfo } from './types';
+import { agitOptions, branchError, credentialEnv, ownCopy, type GitRun, type SendContext, type SendVia } from './contribute';
 
 export interface PublishRequest {
     cwd: string;           // a folder of the repository that has the branch checked out

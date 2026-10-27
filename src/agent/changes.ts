@@ -2,9 +2,9 @@
 // computes their results; it never writes anything. Applying them to disk or the editor is done by the window after
 // the user approves the diff (the review of the Assistant panel), so the model never changes files on its own.
 
-import { matchMention, type SourceFile } from './context.js';
-import type { ToolSpec } from './provider.js';
-import { NOTE_TOOLS, planNote, planSchema, type Planned } from './notechanges.js';
+import { matchMention, type SourceFile } from './context';
+import type { ToolSpec } from './provider';
+import { NOTE_TOOLS, planNote, planSchema, type Planned } from './notechanges';
 
 export interface Change {
     kind: 'create' | 'edit' | 'delete' | 'move';

@@ -6,10 +6,10 @@
 import { RangeSet, type EditorState, type Transaction } from '@codemirror/state';
 import type { DecorationSet } from '@codemirror/view';
 import { undo, undoDepth } from '@codemirror/commands';
-import { makeU16Map } from '../../../../src/markdown/offsets.js';
-import { splitRow } from '../../../../src/markdown/table.js';
-import { drawnOf, freshDrawing, parseOf, visualOn } from '../editor.js';
-import { observeRecordings, type Finding, type TxEntry } from './recorder.js';
+import { makeU16Map } from '../../../../src/markdown/offsets';
+import { splitRow } from '../../../../src/markdown/table';
+import { drawnOf, freshDrawing, parseOf, visualOn } from '../editor';
+import { observeRecordings, type Finding, type TxEntry } from './recorder';
 
 interface Check {
     name: string;

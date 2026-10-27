@@ -3,8 +3,8 @@
 
 import type { EditorState } from '@codemirror/state';
 import type { Decoration } from '@codemirror/view';
-import { makeCpMap, makeU16Map } from '../../../../src/markdown/offsets.js';
-import { drawnOf, parseMsOf, parseOf, sourceOn, visualOn } from '../editor.js';
+import { makeCpMap, makeU16Map } from '../../../../src/markdown/offsets';
+import { drawnOf, parseMsOf, parseOf, sourceOn, visualOn } from '../editor';
 
 export type DecoKind = 'replace' | 'widget' | 'mark' | 'line';
 

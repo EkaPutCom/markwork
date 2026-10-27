@@ -3,26 +3,26 @@
 // the harness, merges the work into the base branch, keeps only the branch, or discards it. The card is found again
 // by its `[branch:: …]` field, so a review works after Markwork was restarted too.
 
-import { HARNESSES, cardProject, isActive, locateCard, type Run } from '../agent/harness.js';
-import { isRemoteMachine } from '../agent/daemon/machines.js';
-import { findWorktree, removeWorktree, type Worktree } from '../agent/worktree.js';
-import { commandsRun, commentsReply, commitLeftovers, mergeWorktree, newLineNumbers, pullFromNotes, pullNote, pullRequestBody, readReview, uncommitLeftovers, type ChangedFile, type Commit, type LineComment, type MergeMethod, type RanCommand, type Review } from '../agent/worktreereview.js';
-import type { SendVia } from '../forge/contribute.js';
-import { GiteaProvider, isGiteaServer } from '../forge/gitea.js';
-import { publishBranch, type PublishResult } from '../forge/publish.js';
-import { forgeKind, parseRemote } from '../forge/remote.js';
-import type { TokenStore } from '../forge/token.js';
-import { ForgeError, type RepoRef, type Transport } from '../forge/types.js';
-import { parseDiff, type DiffLine } from '../base/gitlog.js';
-import { worktreeActivity, type ActivityKind } from '../markdown/journal.js';
-import { cardBranch, cardMeta, parseBoard, type Board, type Card } from '../markdown/kanban.js';
-import { readTextFile } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import type { AppSettings } from '../base/settings.js';
-import { _, fmt, ngettext } from '../base/i18n.js';
-import type { Question } from './dialogs.js';
-import { docFor, type DocumentHost } from './document.js';
-import type { HarnessController } from './harness.js';
+import { HARNESSES, cardProject, isActive, locateCard, type Run } from '../agent/harness';
+import { isRemoteMachine } from '../agent/daemon/machines';
+import { findWorktree, removeWorktree, type Worktree } from '../agent/worktree';
+import { commandsRun, commentsReply, commitLeftovers, mergeWorktree, newLineNumbers, pullFromNotes, pullNote, pullRequestBody, readReview, uncommitLeftovers, type ChangedFile, type Commit, type LineComment, type MergeMethod, type RanCommand, type Review } from '../agent/worktreereview';
+import type { SendVia } from '../forge/contribute';
+import { GiteaProvider, isGiteaServer } from '../forge/gitea';
+import { publishBranch, type PublishResult } from '../forge/publish';
+import { forgeKind, parseRemote } from '../forge/remote';
+import type { TokenStore } from '../forge/token';
+import { ForgeError, type RepoRef, type Transport } from '../forge/types';
+import { parseDiff, type DiffLine } from '../base/gitlog';
+import { worktreeActivity, type ActivityKind } from '../markdown/journal';
+import { cardBranch, cardMeta, parseBoard, type Board, type Card } from '../markdown/kanban';
+import { readTextFile } from '../base/files';
+import { platform } from '../platform/index';
+import type { AppSettings } from '../base/settings';
+import { _, fmt, ngettext } from '../base/i18n';
+import type { Question } from './dialogs';
+import { docFor, type DocumentHost } from './document';
+import type { HarnessController } from './harness';
 
 export type ReviewTab = 'changes' | 'summary' | 'log';
 

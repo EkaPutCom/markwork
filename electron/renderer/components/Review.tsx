@@ -3,16 +3,16 @@
 // discard, or send it as a pull request. The core reads git and decides; this draws what it sends and reports what the user did.
 
 import { useEffect, useState } from 'react';
-import type { FileStatus } from '../../../src/app/protocol/collab.js';
-import type { ReviewSnapshot, ReviewTab } from '../../../src/app/protocol/harness.js';
-import { Icon } from './Icons.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { Checkbox } from '../ui/checkbox.js';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
-import { Textarea } from '../ui/textarea.js';
+import type { FileStatus } from '../../../src/app/protocol/collab';
+import type { ReviewSnapshot, ReviewTab } from '../../../src/app/protocol/harness';
+import { Icon } from './Icons';
+import { useClient, useStore } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { IconButton } from '../ui/icon-button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Textarea } from '../ui/textarea';
 
 const MARK: Record<FileStatus, string> = { added: 'A', modified: 'M', deleted: 'D', renamed: 'R' };
 const MARK_CLASS: Record<FileStatus, string> = { added: 'success', modified: 'warning', deleted: 'error', renamed: 'warning' };

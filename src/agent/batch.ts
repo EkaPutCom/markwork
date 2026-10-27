@@ -1,7 +1,7 @@
 // A batch is planned on a copy of the manuscript: later actions see the results of earlier ones.
-import { applyToFiles, changeFiles, CHANGE_TOOLS, planChange, preflight, type Change } from './changes.js';
-import type { SourceFile } from './context.js';
-import type { ToolSpec } from './provider.js';
+import { applyToFiles, changeFiles, CHANGE_TOOLS, planChange, preflight, type Change } from './changes';
+import type { SourceFile } from './context';
+import type { ToolSpec } from './provider';
 
 export const BATCH_TOOL: ToolSpec = {
     name: 'propose_batch',

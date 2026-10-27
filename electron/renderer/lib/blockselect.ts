@@ -10,9 +10,9 @@
 
 import { EditorSelection, EditorState, Prec, StateEffect, StateField, type Extension, type Line } from '@codemirror/state';
 import { EditorView, ViewPlugin, keymap, showTooltip, type ViewUpdate } from '@codemirror/view';
-import { pictureRange } from './images.js';
-import { trace, traced } from './inspect/recorder.js';
-import { domKbd } from '../ui/dom.js';
+import { pictureRange } from './images';
+import { trace, traced } from './inspect/recorder';
+import { domKbd } from '../ui/dom';
 
 export type BlockKind = 'picture' | 'code' | 'diagram';
 

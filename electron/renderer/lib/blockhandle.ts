@@ -5,9 +5,9 @@
 import { EditorSelection, EditorState, type Extension, type Text } from '@codemirror/state';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { startCompletion } from '@codemirror/autocomplete';
-import { blockAt, blocksOf, moveBlock, type Block } from '../../../src/markdown/blocks.js';
-import { iconElement } from '../components/Icons.js';
-import { domButton } from '../ui/dom.js';
+import { blockAt, blocksOf, moveBlock, type Block } from '../../../src/markdown/blocks';
+import { iconElement } from '../components/Icons';
+import { domButton } from '../ui/dom';
 
 // The blocks of each text, found once.
 const found = new WeakMap<Text, { lines: string[]; blocks: Block[] }>();

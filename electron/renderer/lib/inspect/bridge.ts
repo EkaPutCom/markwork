@@ -5,13 +5,13 @@
 
 import { ChangeSet, type EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import type { Client } from '../client.js';
-import { drawnOf, focusOn } from '../editor.js';
-import { recordingOf, type Recording, type TxEntry } from './recorder.js';
-import { blurRepro, reproError, type Repro } from './repro.js';
-import { modeOf, reproOfEditor } from './report.js';
-import { cpSnapshot, snapshot } from './snapshot.js';
-import { makeCpMap, makeU16Map } from '../../../../src/markdown/offsets.js';
+import type { Client } from '../client';
+import { drawnOf, focusOn } from '../editor';
+import { recordingOf, type Recording, type TxEntry } from './recorder';
+import { blurRepro, reproError, type Repro } from './repro';
+import { modeOf, reproOfEditor } from './report';
+import { cpSnapshot, snapshot } from './snapshot';
+import { makeCpMap, makeU16Map } from '../../../../src/markdown/offsets';
 
 export interface InspectRequest { op: string; [arg: string]: unknown }
 type Answer = Record<string, unknown>;

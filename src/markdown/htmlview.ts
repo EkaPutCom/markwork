@@ -6,7 +6,7 @@
 // sandbox is: every request is answered from that folder and nowhere else (resolveHtmlRequest), and the page's CSP
 // keeps it from reaching anything but that scheme (HTML_CSP).
 
-import { isWindowsPath, slashed } from './paths.js';
+import { isWindowsPath, slashed } from './paths';
 
 export const HTML_EXTENSIONS = ['.html', '.htm', '.xhtml'];
 export const HTML_SCHEME = 'mwhtml';

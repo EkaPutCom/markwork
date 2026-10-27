@@ -10,20 +10,20 @@
 // FORGEJO_URL (default http://localhost:3000) and FORGEJO_REPO (default eka/notes) select the server and the repository.
 // Tokens are never printed.
 
-import '../../src/platform/node/install.js';   // the core reaches the runtime through platform()
-import '../core/host-node.js';   // the tests reach the runtime through host(), installed before framework.ts
-import { CONTRIBUTOR_TOKEN, OWNER_TOKEN, REPO, SERVER_URL as URL, api, check, clone, contributor, git, owner, read, repo, stamp, waitFor, write } from './forgejo-support.js';
-import { sendChanges, type SendContext } from '../../src/forge/contribute.js';
-import { fileDiff } from '../../src/forge/diff.js';
-import { publishBranch } from '../../src/forge/publish.js';
-import { GiteaProvider } from '../../src/forge/gitea.js';
-import { platform } from '../../src/platform/index.js';
-import { host } from '../core/host.js';
-import { base64 } from '../../src/forge/contribute.js';
-import { confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
-import type { PullRequest } from '../../src/forge/types.js';
-import { runGit } from '../../src/base/git.js';
-import { DIM, GREEN, RED, RESET, disk, errorMessage, opt, say } from '../core/framework.js';
+import '../../src/platform/node/install';   // the core reaches the runtime through platform()
+import '../core/host-node';   // the tests reach the runtime through host(), installed before framework.ts
+import { CONTRIBUTOR_TOKEN, OWNER_TOKEN, REPO, SERVER_URL as URL, api, check, clone, contributor, git, owner, read, repo, stamp, waitFor, write } from './forgejo-support';
+import { sendChanges, type SendContext } from '../../src/forge/contribute';
+import { fileDiff } from '../../src/forge/diff';
+import { publishBranch } from '../../src/forge/publish';
+import { GiteaProvider } from '../../src/forge/gitea';
+import { platform } from '../../src/platform/index';
+import { host } from '../core/host';
+import { base64 } from '../../src/forge/contribute';
+import { confirmMerged, finishLocalMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve';
+import type { PullRequest } from '../../src/forge/types';
+import { runGit } from '../../src/base/git';
+import { DIM, GREEN, RED, RESET, disk, errorMessage, opt, say } from '../core/framework';
 
 let passed = 0, failed = 0;
 async function step<T>(name: string, run: () => Promise<T>): Promise<T | undefined> {

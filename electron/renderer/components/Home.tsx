@@ -2,14 +2,14 @@
 // the user chose; it reads no files itself.
 
 import { useState } from 'react';
-import { dayPart } from '../../../src/markdown/home.js';
-import type { HomeData } from '../../../src/app/protocol/screen.js';
-import { Icon } from './Icons.js';
-import { StatusIcon } from './Programs.js';
+import { dayPart } from '../../../src/markdown/home';
+import type { HomeData } from '../../../src/app/protocol/screen';
+import { Icon } from './Icons';
+import { StatusIcon } from './Programs';
 import { Button } from '@/ui/button';
 import { Checkbox } from '@/ui/checkbox';
 import { IconButton } from '@/ui/icon-button';
-import { useClient } from '../lib/useClient.js';
+import { useClient } from '../lib/useClient';
 
 const SHOWN_TASKS = 7;
 

@@ -8,8 +8,8 @@
 // daemon that allows the project's parent folder allows them too. The base branch a worktree started from is kept
 // in the branch's own Git config (branch.<name>.markworkBase), so it can be reviewed after Markwork restarted.
 
-import type { GitRun, GitRunner } from '../forge/contribute.js';
-import { platform } from '../platform/index.js';
+import type { GitRun, GitRunner } from '../forge/contribute';
+import { platform } from '../platform/index';
 
 // A worktree folder is absolute on the machine the project is on: a POSIX path (a project on another machine) or one
 // that is absolute on this computer (C:\... on Windows).

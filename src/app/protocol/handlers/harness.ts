@@ -2,9 +2,9 @@
 // HarnessReviewController). A card is named by its place and its text and must be the one the core holds; a run by its number
 // and must have a log window open; a file or a line of the review must be one the page was sent.
 
-import { RequestError } from '../messages.js';
-import { ProtocolReviewView } from '../harness.js';
-import { num, str, type HandlerContext } from './context.js';
+import { RequestError } from '../messages';
+import { ProtocolReviewView } from '../harness';
+import { num, str, type HandlerContext } from './context';
 
 const flag = (v: unknown, what: string): boolean => {
     if (typeof v !== 'boolean') throw new RequestError('bad_request', `${what} must be true or false`);

@@ -1,8 +1,8 @@
 // The panes of the editor area (electron/renderer/lib/panes.ts): splitting, moving a tab, closing, and the focus. The
 // window draws what these functions return, so what a drag or a menu does to the panes is tested here without a window.
 
-import * as P from '../../electron/renderer/lib/panes.js';
-import { section, test, eq, ok } from '../core/framework.js';
+import * as P from '../../electron/renderer/lib/panes';
+import { section, test, eq, ok } from '../core/framework';
 
 // The panes as text: columns split by " | ", the panes of a column by " / ", each with its tabs and the one shown in brackets.
 const show = (layout: P.Layout): string => layout.columns.map(c => c.panes.map(p => p.tabs.map(t => t === p.active ? `[${t}]` : String(t)).join(',') || '-').join(' / ')).join(' | ');

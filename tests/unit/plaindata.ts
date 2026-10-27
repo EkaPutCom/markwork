@@ -8,8 +8,8 @@
 // member that breaks the rule fails the typecheck, and so does fixing one without removing it here, so the list can
 // only shrink. Each entry is one row of section 13 of the design.
 
-import type { TextEditor } from '../../src/app/document.js';
-import type { AppDialogs, AppFrontend } from '../../src/app/session.js';
+import type { TextEditor } from '../../src/app/document';
+import type { AppDialogs, AppFrontend } from '../../src/app/session';
 
 type Primitive = string | number | boolean | null | undefined | void;
 

@@ -3,12 +3,12 @@
 // from the window's, because an answer streams in many small notices and only the panel should draw again for them.
 // It decides nothing: whether a key exists, what is sent, and what is written are the core's.
 
-import { TraceReplica } from '../../../src/agent/tracefeed.js';
-import type { TraceEvent } from '../../../src/agent/trace.js';
-import type { Reply } from '../../../src/app/protocol/messages.js';
+import { TraceReplica } from '../../../src/agent/tracefeed';
+import type { TraceEvent } from '../../../src/agent/trace';
+import type { Reply } from '../../../src/app/protocol/messages';
 import type {
     BuiltContext, ChatPanelSettings, ChatSummary, ContextOptions, KeySource, ProposalChange, SavedChatView, ToolStep, TraceUpdate, TurnOutcome, WorkState,
-} from '../../../src/app/protocol/chat.js';
+} from '../../../src/app/protocol/chat';
 
 export type Phase = 'thinking' | 'step' | 'writing' | 'done' | 'stopped' | 'failed';
 

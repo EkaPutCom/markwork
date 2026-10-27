@@ -1,13 +1,13 @@
 // The menu bar at the top of the window, as VS Code's: File, Edit, Insert, View, Go, Help. Each line is a command of the
 // table (src/app/commands.ts), with its keys; a command this window cannot carry out now is dimmed.
 
-import { COMMANDS } from '../../../src/app/commands.js';
-import { label } from '../lib/keys.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { layoutOf } from '../lib/client.js';
+import { COMMANDS } from '../../../src/app/commands';
+import { label } from '../lib/keys';
+import { useClient, useStore } from '../lib/useClient';
+import { layoutOf } from '../lib/client';
 import {
     Menubar, MenubarCheckboxItem, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarShortcut, MenubarSub, MenubarSubContent, MenubarSubTrigger, MenubarTrigger,
-} from '../ui/menubar.js';
+} from '../ui/menubar';
 
 // A line of a menu: a command (with its argument, and its state when it is a check), a separator, or a submenu.
 type Line = { id: string; text?: string; arg?: string; check?: boolean } | { sub: string; lines: Line[] } | '-';

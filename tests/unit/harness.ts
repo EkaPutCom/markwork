@@ -1,12 +1,12 @@
 // External harness orchestration tests (pure): card assignment, project, prompt, the pi JSON reader, and the queue.
 
-import { assignCard, cardMeta, composeCard, parseBoard, splitCard } from '../../src/markdown/kanban.js';
+import { assignCard, cardMeta, composeCard, parseBoard, splitCard } from '../../src/markdown/kanban';
 import {
     boardProject, buildPrompt, cardProject, cardWikiLinks, CONTEXT_CHARS, MAX_LINKED_NOTES, NOTE_CHARS, checkProjectFolder, describeReply, endsWithQuestion, HARNESSES, locateCard, PiReader, resultNote,
     rpcPrompt, rpcSteer, rpcUiResponse, RunQueue, stageColumn, type HarnessAsk,
-} from '../../src/agent/harness.js';
-import { AgentTrace } from '../../src/agent/trace.js';
-import { section, test, eq, ok, contains } from '../core/framework.js';
+} from '../../src/agent/harness';
+import { AgentTrace } from '../../src/agent/trace';
+import { section, test, eq, ok, contains } from '../core/framework';
 
 const BOARD = `---
 layout: board

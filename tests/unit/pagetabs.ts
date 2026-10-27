@@ -1,9 +1,9 @@
 // Page tabs (Home, an HTML file) next to the document tabs: which tab is shown, what stays when a tab closes,
 // the empty document that waits without a tab, and which tabs the next launch gets back.
 
-import { AppSession } from '../../src/app/session.js';
-import { section, test, eq, ok, tmp, disk } from '../core/framework.js';
-import { fakeFrontend, memorySettings, quiet, tabRow } from './appsession.js';
+import { AppSession } from '../../src/app/session';
+import { section, test, eq, ok, tmp, disk } from '../core/framework';
+import { fakeFrontend, memorySettings, quiet, tabRow } from './appsession';
 
 export function pageTabTests(): void {
     section('Page tabs');

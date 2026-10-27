@@ -3,7 +3,7 @@
 // (docs/design/protocol.md 6.4, chat.log and view.runlog). Updates are batched: reasoning and answers stream in a few
 // characters at a time, and one update per interval carries each event that changed in it once.
 
-import { AgentTrace, MAX_EVENTS, type TraceEvent } from './trace.js';
+import { AgentTrace, MAX_EVENTS, type TraceEvent } from './trace';
 
 // reset = the events are the whole log now; otherwise each event is added, or replaces the one with its seq.
 export interface TraceUpdate {

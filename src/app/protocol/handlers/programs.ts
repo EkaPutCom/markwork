@@ -1,6 +1,6 @@
 // The Programs page and Home's Set up section: what the user did there (ProgramsController).
 
-import { str, type HandlerContext } from './context.js';
+import { str, type HandlerContext } from './context';
 
 export function programsHandlers({ wire, session }: HandlerContext): void {
     wire.on('act.programs.open', () => { session.documents.openPrograms(); });

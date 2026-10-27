@@ -1,11 +1,11 @@
 // Tests for resolving a pull request's conflicts locally: real git against a local bare "forge" repository.
 
-import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasMarkers, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve.js';
-import { ForgeError, type ForgeProvider } from '../../src/forge/types.js';
-import { repoChanges, runGit } from '../../src/base/git.js';
-import { platform } from '../../src/platform/index.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
-import { host } from '../core/host.js';
+import { finishLocalMerge, abortLocalMerge, confirmMerged, conflictedFiles, hasMarkers, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge } from '../../src/forge/resolve';
+import { ForgeError, type ForgeProvider } from '../../src/forge/types';
+import { repoChanges, runGit } from '../../src/base/git';
+import { platform } from '../../src/platform/index';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework';
+import { host } from '../core/host';
 
 const sh = async (cwd: string, ...args: string[]): Promise<string> => {
     const run = await within(runGit(cwd, args));

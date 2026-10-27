@@ -2,16 +2,16 @@
 // when one is opened or updated. The forge layer does the talking; this controller connects it to the sidebar tab,
 // the token dialog, and desktop notifications.
 
-import { runGit } from '../base/git.js';
-import { GiteaProvider } from '../forge/gitea.js';
-import { PullMonitor, type PullEvent } from '../forge/monitor.js';
-import { parseRemote } from '../forge/remote.js';
-import { systemTokenStore, type TokenSource, type TokenStore } from '../forge/token.js';
-import { ForgeError, type ForgeProvider, type PullRequest, type RepoRef, type Transport } from '../forge/types.js';
-import { platform } from '../platform/index.js';
-import type { AppSettings } from '../base/settings.js';
-import { _, fmt } from '../base/i18n.js';
-import type { DocumentHost } from './document.js';
+import { runGit } from '../base/git';
+import { GiteaProvider } from '../forge/gitea';
+import { PullMonitor, type PullEvent } from '../forge/monitor';
+import { parseRemote } from '../forge/remote';
+import { systemTokenStore, type TokenSource, type TokenStore } from '../forge/token';
+import { ForgeError, type ForgeProvider, type PullRequest, type RepoRef, type Transport } from '../forge/types';
+import { platform } from '../platform/index';
+import type { AppSettings } from '../base/settings';
+import { _, fmt } from '../base/i18n';
+import type { DocumentHost } from './document';
 
 // The pull requests tab: it draws what it is given and reports the user's actions through the on* callbacks.
 export interface CollabView {

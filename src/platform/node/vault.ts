@@ -5,7 +5,7 @@
 
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Secrets } from '../index.js';
+import type { Secrets } from '../index';
 
 // What safeStorage offers: encrypt and decrypt a string with a key of the user's login keychain.
 export interface Cipher {

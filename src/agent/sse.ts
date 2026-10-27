@@ -1,7 +1,7 @@
 // Reads one line of an SSE stream from an OpenAI-style chat API (used by DeepSeek).
 // Pure TypeScript so it is easy to test.
 
-import type { Usage } from './provider.js';
+import type { Usage } from './provider';
 
 // Tool-call fragments that arrive incrementally: `index` determines which tool, its arguments are concatenated.
 export interface ToolDelta {

@@ -4,8 +4,8 @@
 // Other code writes `settings.autosave = true`; every write is saved immediately, there is no save(). Code that reacts to a
 // change listens with onChanged().
 
-import type { RecentFile } from '../markdown/home.js';
-import type { SettingValue, SettingsStore } from '../platform/index.js';
+import type { RecentFile } from '../markdown/home';
+import type { SettingValue, SettingsStore } from '../platform/index';
 
 // File-backed tabs that were open when the last window was closed, restored on the next launch.
 export interface SavedTab {

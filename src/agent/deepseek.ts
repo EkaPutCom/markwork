@@ -1,13 +1,13 @@
 // DeepSeek API client (OpenAI-compatible: POST /chat/completions). The answer is read line by line from the SSE stream
 // through platform().httpStream.
 
-import { TemporaryProviderError, requestWithRetry } from './recovery.js';
-import { RuntimeMissing, platform, type HttpStream } from '../platform/index.js';
-import type { ChatMessage, ChatRequest, ChatResult, Provider, ToolCall, Usage } from './provider.js';
-import { httpErrorMessage, parseStreamLine } from './sse.js';
+import { TemporaryProviderError, requestWithRetry } from './recovery';
+import { RuntimeMissing, platform, type HttpStream } from '../platform/index';
+import type { ChatMessage, ChatRequest, ChatResult, Provider, ToolCall, Usage } from './provider';
+import { httpErrorMessage, parseStreamLine } from './sse';
 
 export const DEEPSEEK_URL = 'https://api.deepseek.com';
-export { DEEPSEEK_MODELS } from './models.js';
+export { DEEPSEEK_MODELS } from './models';
 
 // Message shape in the API (snake_case). When thinking mode is active, reasoning_content must be sent back together with tool_calls.
 export function toApiMessage(m: ChatMessage): Record<string, unknown> {

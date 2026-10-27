@@ -3,7 +3,7 @@
 
 import {
     ForgeError, type ForgeProvider, type MergeMethod, type NewPull, type PullComment, type PullFile, type PullRequest, type PullState, type RepoInfo, type RepoRef, type Transport,
-} from './types.js';
+} from './types';
 
 const PAGE = 50;
 const MAX_PAGES = 5;      // 250 pull requests; more than that are not a list anybody reads in a sidebar

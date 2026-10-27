@@ -2,10 +2,10 @@
 // and Preferences at the foot) that stays when the sidebar is closed, and the panel of the page shown beside it.
 
 import { useState, type ReactNode } from 'react';
-import { IconButton } from '../ui/icon-button.js';
-import { Icon, type IconName } from './Icons.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { layoutOf, SIDEBAR_WIDTH } from '../lib/client.js';
+import { IconButton } from '../ui/icon-button';
+import { Icon, type IconName } from './Icons';
+import { useClient, useStore } from '../lib/useClient';
+import { layoutOf, SIDEBAR_WIDTH } from '../lib/client';
 
 export const PAGES: { page: string; label: string; icon: IconName }[] = [
     { page: 'files', label: 'Files', icon: 'folder' },

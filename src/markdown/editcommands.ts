@@ -4,12 +4,12 @@
 // frontend edits the same way. Offsets are UTF-16 units of the given text, the unit of JavaScript strings; an editor that
 // counts otherwise converts at its edge.
 
-import { RE, type InlineTag } from './syntax.js';
-import { parseInline } from './inline.js';
+import { RE, type InlineTag } from './syntax';
+import { parseInline } from './inline';
 import {
     cellIndexAt, cellStart, deleteColumn, deleteRow, findTables, insertColumn, insertRow,
     parseTable, renderRow, renderTable, setAlign, splitRow, type Align, type Table, type TableRange,
-} from './table.js';
+} from './table';
 
 // The text a command reads and its selection: anchor is where the selection started, head is the cursor. Without a
 // selection the two are equal. The text may be the whole document or a part of it (the lines around the selection);

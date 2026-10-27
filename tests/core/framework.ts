@@ -1,8 +1,8 @@
 // A mini test framework used by all test modules: the result recorder and assertion functions. It reaches the runtime
 // only through the test host (host.ts) and the platform port, so the core's tests run on Node and on a fake platform.
 
-import { platform } from '../../src/platform/index.js';
-import { host } from './host.js';
+import { platform } from '../../src/platform/index';
+import { host } from './host';
 
 export const opt = (name: string) => host().args.includes(`--${name}`);
 export const optVal = (name: string) => host().args.find(a => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');

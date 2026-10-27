@@ -2,18 +2,18 @@
 //. The core talks to the forge; this draws what it sends and reports what the user did.
 
 import { useEffect, useRef, useState } from 'react';
-import { relativeTime } from '../../../src/base/gitlog.js';
-import type { SendVia } from '../../../src/app/protocol/collab.js';
-import { Icon } from './Icons.js';
-import { Modal } from './Modals.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { Checkbox } from '../ui/checkbox.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { Label } from '../ui/label.js';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group.js';
-import { Textarea } from '../ui/textarea.js';
+import { relativeTime } from '../../../src/base/gitlog';
+import type { SendVia } from '../../../src/app/protocol/collab';
+import { Icon } from './Icons';
+import { Modal } from './Modals';
+import { useClient, useStore } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Textarea } from '../ui/textarea';
 
 export function Collab() {
     const client = useClient();

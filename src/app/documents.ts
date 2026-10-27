@@ -3,19 +3,19 @@
 // controller hooks for what must follow a document on screen (DocumentsHost), and keeps thin public methods that
 // pass through for the actions and tests.
 
-import type { AppSettings } from '../base/settings.js';
-import { readTextFile, writeTextFile, fileExists, insideName } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import { moveRecent, rememberRecent } from '../markdown/home.js';
-import { markdownToHtml } from '../markdown/html.js';
-import { _, fmt, ngettext } from '../base/i18n.js';
-import { errorMessage, type Doc, type Page, type TextEditor, type ToastAction } from './document.js';
-import type { ChooseFileOptions } from './dialogs.js';
-import type { Autosaver } from './autosave.js';
-import { below } from '../markdown/paths.js';
-import { findConflicts, resolution, type Conflict } from '../markdown/conflicts.js';
-import { unifiedDiff } from '../agent/changes.js';
-import { parseDiff, type DiffLine } from '../base/gitlog.js';
+import type { AppSettings } from '../base/settings';
+import { readTextFile, writeTextFile, fileExists, insideName } from '../base/files';
+import { platform } from '../platform/index';
+import { moveRecent, rememberRecent } from '../markdown/home';
+import { markdownToHtml } from '../markdown/html';
+import { _, fmt, ngettext } from '../base/i18n';
+import { errorMessage, type Doc, type Page, type TextEditor, type ToastAction } from './document';
+import type { ChooseFileOptions } from './dialogs';
+import type { Autosaver } from './autosave';
+import { below } from '../markdown/paths';
+import { findConflicts, resolution, type Conflict } from '../markdown/conflicts';
+import { unifiedDiff } from '../agent/changes';
+import { parseDiff, type DiffLine } from '../base/gitlog';
 
 export interface ConflictComparison {
     id: number;

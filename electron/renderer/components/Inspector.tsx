@@ -5,17 +5,17 @@
 import { useEffect, useMemo, useReducer, useState, type CSSProperties, type ReactNode } from 'react';
 import type { ChangeSet, EditorState, Text } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { recordingOf, type Finding, type Recording, type TxEntry } from '../lib/inspect/recorder.js';
-import { snapshot, type Snapshot } from '../lib/inspect/snapshot.js';
-import { CHECKS, stateAfter } from '../lib/inspect/checks.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Icon } from './Icons.js';
-import { NO_REPLAY, Replay, type ReplayState } from './InspectorReplay.js';
-import { entryJSON } from '../lib/inspect/bridge.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
+import { recordingOf, type Finding, type Recording, type TxEntry } from '../lib/inspect/recorder';
+import { snapshot, type Snapshot } from '../lib/inspect/snapshot';
+import { CHECKS, stateAfter } from '../lib/inspect/checks';
+import { useClient, useStore } from '../lib/useClient';
+import { Icon } from './Icons';
+import { NO_REPLAY, Replay, type ReplayState } from './InspectorReplay';
+import { entryJSON } from '../lib/inspect/bridge';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
 const AROUND = 12;   // lines shown above and below the cursor's
 

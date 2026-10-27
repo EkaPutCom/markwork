@@ -1,5 +1,5 @@
-import { changeState, cleanNewName, type Change } from './changes.js';
-import type { SourceFile } from './context.js';
+import { changeState, cleanNewName, type Change } from './changes';
+import type { SourceFile } from './context';
 
 export interface ActionEvent {
     id: string;

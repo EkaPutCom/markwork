@@ -3,18 +3,18 @@
 // and the form that sends changes (`ask.sendChanges`). What the user did comes back as `act.collab.*` and `act.pull.*`
 // (handlers/collab.ts). A pull request is named by its number, and only one the core listed is acted on.
 
-import type { TokenSource } from '../../forge/token.js';
-import type { FileStatus, MergeMethod, PullComment, PullFile, PullRequest, RepoRef } from '../../forge/types.js';
-import type { SendVia } from '../../forge/contribute.js';
-import type { FileChange } from '../../base/gitlog.js';
-import { branchError } from '../../forge/contribute.js';
-import type { CollabDialogs, CollabView } from '../collab.js';
-import type { ContributeDialogs, SendChangesAnswer, SendChangesOptions } from '../contribute.js';
-import type { Question } from '../dialogs.js';
-import type { FileView, PullDialogs, PullReviewView } from '../pulls.js';
-import { _ } from '../../base/i18n.js';
-import type { Asks } from './asks.js';
-import type { Wire } from './messages.js';
+import type { TokenSource } from '../../forge/token';
+import type { FileStatus, MergeMethod, PullComment, PullFile, PullRequest, RepoRef } from '../../forge/types';
+import type { SendVia } from '../../forge/contribute';
+import type { FileChange } from '../../base/gitlog';
+import { branchError } from '../../forge/contribute';
+import type { CollabDialogs, CollabView } from '../collab';
+import type { ContributeDialogs, SendChangesAnswer, SendChangesOptions } from '../contribute';
+import type { Question } from '../dialogs';
+import type { FileView, PullDialogs, PullReviewView } from '../pulls';
+import { _ } from '../../base/i18n';
+import type { Asks } from './asks';
+import type { Wire } from './messages';
 
 // What the renderer takes from here (types only).
 export type { FileChange, FileStatus, FileView, MergeMethod, PullComment, PullFile, PullRequest, RepoRef, SendChangesAnswer, SendChangesOptions, SendVia, TokenSource };

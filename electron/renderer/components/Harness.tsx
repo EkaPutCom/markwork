@@ -3,15 +3,15 @@
 // answer again against what it offered; this draws the question and reports what the user chose.
 
 import { useEffect, useState } from 'react';
-import type { HarnessAsk, HarnessReply } from '../../../src/app/protocol/harness.js';
-import { isValidMachineName, isValidSshTarget } from '../../../src/agent/daemon/machines.js';
-import { Modal } from './Modals.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { Input } from '../ui/input.js';
-import { Label } from '../ui/label.js';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group.js';
-import { Textarea } from '../ui/textarea.js';
+import type { HarnessAsk, HarnessReply } from '../../../src/app/protocol/harness';
+import { isValidMachineName, isValidSshTarget } from '../../../src/agent/daemon/machines';
+import { Modal } from './Modals';
+import { useClient, useStore } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Textarea } from '../ui/textarea';
 
 // What the harness asked, in the words of a dialog: a choice among options, a yes or no, a line, or free text.
 function AnswerForm({ id, ask, agent }: { id: number; ask: HarnessAsk; agent: string }) {

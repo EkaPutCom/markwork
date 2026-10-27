@@ -1,9 +1,9 @@
 import { useState, type DragEvent } from 'react';
 import { IconButton } from '@/ui/icon-button';
-import { Icon } from './Icons.js';
-import type { Tab } from '../lib/client.js';
-import type { Pane } from '../lib/panes.js';
-import { useClient, useStore } from '../lib/useClient.js';
+import { Icon } from './Icons';
+import type { Tab } from '../lib/client';
+import type { Pane } from '../lib/panes';
+import { useClient, useStore } from '../lib/useClient';
 
 // What a dragged tab carries: the pane it comes from and its document. A file of the sidebar carries its path instead.
 export const TAB_DRAG = 'application/x-markwork-tab';

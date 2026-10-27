@@ -1,6 +1,6 @@
 // Reads a git remote URL into the forge host and the repository path. Pure: the caller runs `git remote get-url`.
 
-import type { RepoRef } from './types.js';
+import type { RepoRef } from './types';
 
 const strip = (path: string) => path.replace(/^\/+|\/+$/g, '').replace(/\.git$/, '');
 

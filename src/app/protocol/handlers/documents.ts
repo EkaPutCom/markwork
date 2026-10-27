@@ -1,10 +1,10 @@
 // Documents and their tabs (DocumentController, FilesController's folder): opening, switching, closing, and the text
 // and cursor the frontend's editor reports (docs/design/protocol.md, section 5).
 
-import { insideName } from '../../../base/files.js';
-import { platform } from '../../../platform/index.js';
-import { RequestError, type Change } from '../messages.js';
-import { num, str, type HandlerContext } from './context.js';
+import { insideName } from '../../../base/files';
+import { platform } from '../../../platform/index';
+import { RequestError, type Change } from '../messages';
+import { num, str, type HandlerContext } from './context';
 
 export function documentHandlers({ wire, session, frontend, notice, sendFiles }: HandlerContext): void {
     // Open the tabs of the last session, or the path the frontend was started with.

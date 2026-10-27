@@ -1,15 +1,15 @@
 // The command registry and the application session.
 
-import { AppSettings } from '../../src/base/settings.js';
-import type { SettingValue } from '../../src/platform/index.js';
-import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost, type EditCommands, type FrontendCommands } from '../../src/app/commands.js';
-import { AppSession, type AppFrontend, type DocumentTitle, type FrontendHost } from '../../src/app/session.js';
-import type { TextEditor, ToastButton } from '../../src/app/document.js';
-import { addCard, parseBoard } from '../../src/markdown/kanban.js';
-import { applyChangeBatch } from '../../src/app/agentwrites.js';
-import { platform, setPlatform } from '../../src/platform/index.js';
-import { fileUri } from '../../src/base/files.js';
-import { section, test, eq, ok, tmp, disk, until, untilText } from '../core/framework.js';
+import { AppSettings } from '../../src/base/settings';
+import type { SettingValue } from '../../src/platform/index';
+import { COMMANDS, COMMAND_LABELS, commandEnabled, commandIds, type CommandHost, type EditCommands, type FrontendCommands } from '../../src/app/commands';
+import { AppSession, type AppFrontend, type DocumentTitle, type FrontendHost } from '../../src/app/session';
+import type { TextEditor, ToastButton } from '../../src/app/document';
+import { addCard, parseBoard } from '../../src/markdown/kanban';
+import { applyChangeBatch } from '../../src/app/agentwrites';
+import { platform, setPlatform } from '../../src/platform/index';
+import { fileUri } from '../../src/base/files';
+import { section, test, eq, ok, tmp, disk, until, untilText } from '../core/framework';
 
 // A settings store in memory; the keys the application layer reads at startup have a value, any other reads as empty.
 export function memorySettings(): AppSettings {
@@ -234,7 +234,7 @@ export async function appSessionTests(): Promise<void> {
     });
 
     await test('conflict comparison reads the selected conflict from the unsaved buffer and never changes it', () => {
-        const shown: import('../../src/app/documents.js').ConflictComparison[] = [];
+        const shown: import('../../src/app/documents').ConflictComparison[] = [];
         const base = fakeFrontend(memorySettings(), []);
         const session = new AppSession({ ...base, documents: { ...base.documents, showConflictComparison: data => shown.push(data) } });
         session.start();
@@ -260,7 +260,7 @@ export async function appSessionTests(): Promise<void> {
     });
 
     await test('Apply Result uses only an offered comparison, preserves blank lines, and rejects a changed or closed preview', () => {
-        const shown: import('../../src/app/documents.js').ConflictComparison[] = [];
+        const shown: import('../../src/app/documents').ConflictComparison[] = [];
         const base = fakeFrontend(memorySettings(), []);
         const session = new AppSession({ ...base, documents: { ...base.documents, showConflictComparison: data => shown.push(data) } });
         session.start();
@@ -285,7 +285,7 @@ export async function appSessionTests(): Promise<void> {
     });
 
     await test('Apply Result waits behind an earlier editor write and never overwrites what landed', async () => {
-        const shown: import('../../src/app/documents.js').ConflictComparison[] = [], toasts: string[] = [];
+        const shown: import('../../src/app/documents').ConflictComparison[] = [], toasts: string[] = [];
         const base = fakeFrontend(memorySettings(), toasts, () => new LaggingEditor());
         const session = new AppSession({ ...base, documents: { ...base.documents, showConflictComparison: data => shown.push(data) } });
         session.start();

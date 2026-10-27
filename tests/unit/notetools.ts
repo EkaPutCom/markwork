@@ -1,17 +1,17 @@
 // Tests for the agent tools of structured documents: describe_schema, query_notes, edit_note, edit_schema, and the
 // field checks of verify_work. Without a GUI and network; the model is replaced by calls written in the test.
 
-import type { SourceFile } from '../../src/agent/context.js';
-import { planBatch } from '../../src/agent/batch.js';
-import { CHANGE_TOOLS, planChange, type Change } from '../../src/agent/changes.js';
-import { projectMap } from '../../src/agent/context.js';
-import { planNote } from '../../src/agent/notechanges.js';
-import { structuredIssues } from '../../src/agent/notes.js';
-import { describeSchema, queryNotes } from '../../src/agent/schematools.js';
-import { describeCall, runTool, TOOLS } from '../../src/agent/tools.js';
-import { verifyWork } from '../../src/agent/verification.js';
-import { parseSchema } from '../../src/markdown/fields.js';
-import { section, test, eq, ok, contains } from '../core/framework.js';
+import type { SourceFile } from '../../src/agent/context';
+import { planBatch } from '../../src/agent/batch';
+import { CHANGE_TOOLS, planChange, type Change } from '../../src/agent/changes';
+import { projectMap } from '../../src/agent/context';
+import { planNote } from '../../src/agent/notechanges';
+import { structuredIssues } from '../../src/agent/notes';
+import { describeSchema, queryNotes } from '../../src/agent/schematools';
+import { describeCall, runTool, TOOLS } from '../../src/agent/tools';
+import { verifyWork } from '../../src/agent/verification';
+import { parseSchema } from '../../src/markdown/fields';
+import { section, test, eq, ok, contains } from '../core/framework';
 
 const TABLE = `---
 layout: table

@@ -1,7 +1,7 @@
 // Tests for finding git conflict markers in a text and for what each choice turns a conflict into (markdown/conflicts.ts).
 
-import { section, test, eq, ok } from '../core/framework.js';
-import { findConflicts, resolution, roles } from '../../src/markdown/conflicts.js';
+import { section, test, eq, ok } from '../core/framework';
+import { findConflicts, resolution, roles } from '../../src/markdown/conflicts';
 
 const lines = (text: string): string[] => text.split('\n');
 

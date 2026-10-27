@@ -12,10 +12,10 @@
 // The cover of a note is its `cover` field, else the first image in the note (`![](images/a.png)`), else a color taken
 // from its first tag. Pure TypeScript.
 
-import type { FieldDef } from './fields.js';
-import { readItem } from './fields.js';
-import { optionOf } from './layout.js';
-import { boardSchema, type Board, type Card, type Position } from './kanban.js';
+import type { FieldDef } from './fields';
+import { readItem } from './fields';
+import { optionOf } from './layout';
+import { boardSchema, type Board, type Card, type Position } from './kanban';
 
 export type GallerySize = 'small' | 'medium' | 'large';
 export const GALLERY_SIZES: readonly GallerySize[] = ['small', 'medium', 'large'];

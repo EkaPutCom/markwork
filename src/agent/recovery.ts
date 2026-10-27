@@ -1,5 +1,5 @@
-import { estimateTokens, type Turn } from './context.js';
-import type { ChatRequest, ChatResult, Provider } from './provider.js';
+import { estimateTokens, type Turn } from './context';
+import type { ChatRequest, ChatResult, Provider } from './provider';
 
 export class TemporaryProviderError extends Error {}
 

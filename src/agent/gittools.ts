@@ -2,11 +2,11 @@
 // This module is pure: it validates arguments into a GitRequest and tidies git output. Running git is done by the
 // caller (src/base/git.ts through ChatHost), which restricts the pathspec to non-hidden Markdown files in the work folder.
 
-import { cleanNewName } from './changes.js';
-import { estimateTokens } from './context.js';
-import type { ToolSpec } from './provider.js';
-import { plural, type ToolOutcome } from './tools.js';
-import type { GitAnswer, GitRequest } from '../base/gitlog.js';
+import { cleanNewName } from './changes';
+import { estimateTokens } from './context';
+import type { ToolSpec } from './provider';
+import { plural, type ToolOutcome } from './tools';
+import type { GitAnswer, GitRequest } from '../base/gitlog';
 
 export type { GitAnswer, GitRequest };
 

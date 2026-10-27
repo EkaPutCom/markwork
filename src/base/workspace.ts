@@ -13,9 +13,9 @@
 //   request that arrives before warming finished completes the remaining walk synchronously.
 // - Unsaved documents are read from their editor (the `unsaved` overlay), not from disk.
 
-import { onDiskChange, readTextFile } from './files.js';
-import { platform } from '../platform/index.js';
-import { atOrBelow } from '../markdown/paths.js';
+import { onDiskChange, readTextFile } from './files';
+import { platform } from '../platform/index';
+import { atOrBelow } from '../markdown/paths';
 
 export interface WorkspaceFile {
     name: string;   // relative to the folder, with '/'
