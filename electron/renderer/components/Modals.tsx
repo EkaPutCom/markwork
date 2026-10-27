@@ -192,7 +192,7 @@ export function AboutDialog() {
                 <h1>Markwork</h1>
                 <p className="version">Version {__APP_VERSION__}</p>
                 <p>Markdown workspace for humans and AI agents.</p>
-                <p><a href="https://markwork.ekaput.com/" onClick={e => { e.preventDefault(); window.open('https://markwork.ekaput.com/'); }}>markwork.ekaput.com</a></p>
+                <p><a href="https://usemarkwork.com/" onClick={e => { e.preventDefault(); window.open('https://usemarkwork.com/'); }}>usemarkwork.com</a></p>
                 <p className="dim">© 2026 Eka Putra · MIT License</p>
             </div>
         </Modal>

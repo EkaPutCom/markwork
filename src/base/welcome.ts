@@ -8,7 +8,7 @@ A personal workspace for notes, plans, and tasks, together with AI agents (open 
 
 - **Bold** with \`Ctrl+B\`, *italic* with \`Ctrl+I\`
 - ~~Strikethrough~~, ==highlight==, and \`inline code\`
-- Link: [Markwork](https://markwork.ekaput.com) — **Ctrl+click** to open
+- Link: [Markwork](https://usemarkwork.com) — **Ctrl+click** to open
 
 ## Task list
 
