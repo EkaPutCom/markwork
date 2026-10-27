@@ -1,31 +1,31 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Files, tabs, and the sidebar · Markwork Documentation</title>
 <meta name="description" content="Manage the work folder in Markwork: a file tree with right-click and drag-and-drop, search and replace in all notes, CSV tables, HTML pages, many documents as tabs that are restored, and the document outline.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Workspace</p>
 <h1>Files, tabs, and the sidebar</h1>
 <p class="lead">Open a folder as a workspace, manage its files from the tree, and work on several documents at once as tabs.</p>
@@ -46,7 +46,7 @@
   <li><strong>Timeline</strong>: the Git commits of the open file (folded at first; it is read only while it is open).</li>
 </ul>
 <p>The open sections share the height of the view and are resized by the line between them. The <em>⋯</em> button in the view's title shows or hides each section, and <em>Collapse All Sections</em> folds them. Which are folded or hidden, and their sizes, are kept. <em>Home</em> and the journal are in the ☰ menu (<kbd>Alt</kbd>+<kbd>Home</kbd>, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd>).</p>
-<figure><img src="../assets/files.png" width="1280" height="780" loading="lazy" alt="The Files tab showing the tree of the work folder: notes, plans, and research"><figcaption>The file tree with folders and Markdown files</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/files.png" data-dark-src="../assets/dark/files.png" width="1280" height="780" loading="lazy" alt="The Files tab showing the tree of the work folder: notes, plans, and research"><noscript><img src="../assets/dark/files.png" width="1280" height="780" loading="lazy" alt="The Files tab showing the tree of the work folder: notes, plans, and research"></noscript></picture><figcaption>The file tree with folders and Markdown files</figcaption></figure>
 
 <h2 id="tree">The file tree</h2>
 <ul>
@@ -59,7 +59,7 @@
 
 <h2 id="search">Search in all notes</h2>
 <p><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> (or <em>Search in All Notes</em> in the command palette) opens the Search tab and puts the selected text in the field. Results appear as you type, grouped per file, with the matches marked; a click opens the file in a tab with the match selected.</p>
-<figure><img src="../assets/search.png" width="1280" height="780" loading="lazy" alt="The Search tab with the results for "release" grouped in three files, the replace field, and the include and exclude fields"><figcaption>Search in all notes: the hits are grouped per file</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/search.png" data-dark-src="../assets/dark/search.png" width="1280" height="780" loading="lazy" alt="The Search tab with the results for "release" grouped in three files, the replace field, and the include and exclude fields"><noscript><img src="../assets/dark/search.png" width="1280" height="780" loading="lazy" alt="The Search tab with the results for "release" grouped in three files, the replace field, and the include and exclude fields"></noscript></picture><figcaption>Search in all notes: the hits are grouped per file</figcaption></figure>
 <ul>
   <li>The three buttons inside the field are <em>Match Case</em>, <em>Whole Words</em>, and <em>Regular Expression</em>. A regular expression that does not compile marks the field red and the summary line says why.</li>
   <li>The summary line counts the results and the files. A search lists at most 1000 matches and says so when it stops. An unsaved tab is searched from its editor, not from the file on disk.</li>
@@ -70,7 +70,7 @@
 
 <h2 id="csv">CSV tables</h2>
 <p>A <code>.csv</code> file opens as a table you edit in place. <em>New CSV Table…</em> (in the tree's right-click menu, or in the <kbd>☰</kbd> menu) asks for a name and makes <code>name.csv</code> with a header row and one empty row; rename the columns by editing the header.</p>
-<figure><img src="../assets/csv.png" width="1280" height="780" loading="lazy" alt="A CSV file open as an editable table with a header row, numbered rows, and Add Row and Add Column buttons"><figcaption>A CSV file as a table; the file stays plain CSV</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/csv.png" data-dark-src="../assets/dark/csv.png" width="1280" height="780" loading="lazy" alt="A CSV file open as an editable table with a header row, numbered rows, and Add Row and Add Column buttons"><noscript><img src="../assets/dark/csv.png" width="1280" height="780" loading="lazy" alt="A CSV file open as an editable table with a header row, numbered rows, and Add Row and Add Column buttons"></noscript></picture><figcaption>A CSV file as a table; the file stays plain CSV</figcaption></figure>
 <ul>
   <li>Click a cell and type. The cell is written to the file when you leave it or press <kbd>Enter</kbd>, so one edit is one undo step, and <kbd>Ctrl</kbd>+<kbd>Z</kbd> works as in any document.</li>
   <li><kbd>Enter</kbd> moves down (and adds a row at the end), <kbd>Shift</kbd>+<kbd>Enter</kbd> moves up, <kbd>Tab</kbd> moves right (and adds a row after the last cell), <kbd>Esc</kbd> puts the old value back, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> inserts a row below.</li>
@@ -83,7 +83,7 @@
 
 <h2 id="html">HTML pages</h2>
 <p>An <code>.html</code>, <code>.htm</code>, or <code>.xhtml</code> file in the tree opens in a tab of its own, marked with a page icon. The page runs its JavaScript, so a report, a chart, or a small tool you saved in the work folder is interactive.</p>
-<figure><img src="../assets/html-page.png" width="1280" height="780" loading="lazy" alt="An HTML page open in a tab: a bar chart of sales per city and a button, with Back and Reload above the page"><figcaption>An HTML page in its tab, with Back and Reload above it</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/html-page.png" data-dark-src="../assets/dark/html-page.png" width="1280" height="780" loading="lazy" alt="An HTML page open in a tab: a bar chart of sales per city and a button, with Back and Reload above the page"><noscript><img src="../assets/dark/html-page.png" width="1280" height="780" loading="lazy" alt="An HTML page open in a tab: a bar chart of sales per city and a button, with Back and Reload above the page"></noscript></picture><figcaption>An HTML page in its tab, with Back and Reload above it</figcaption></figure>
 <ul>
   <li>A page tab is not a document: there is no text to edit, nothing to save, and it closes without asking. It is not remembered for the next launch (the file tabs and Home are).</li>
   <li><em>Back</em> and <em>Reload</em> (<kbd>Ctrl</kbd>+<kbd>R</kbd> or <kbd>F5</kbd>) are in the strip above the page. The page is shown again when its file changes on disk.</li>
@@ -99,11 +99,11 @@
   <li>When the app is opened again without arguments, the tabs with files are restored with their order, the active tab, and their cursor positions.</li>
   <li>The agent reads the contents of an unsaved tab, not the version on disk.</li>
 </ul>
-<figure><img src="../assets/tab.png" width="1280" height="780" loading="lazy" alt="Four documents open as tabs, one marked as unsaved"><figcaption>Many documents as tabs in one window</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/tab.png" data-dark-src="../assets/dark/tab.png" width="1280" height="780" loading="lazy" alt="Four documents open as tabs, one marked as unsaved"><noscript><img src="../assets/dark/tab.png" width="1280" height="780" loading="lazy" alt="Four documents open as tabs, one marked as unsaved"></noscript></picture><figcaption>Many documents as tabs in one window</figcaption></figure>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

@@ -3,8 +3,9 @@
 // key is needed. Afterwards the width and height of every image in docs/ are set to what was written.
 //
 //   npm run docs                                    every scene (needs a display; under CI: xvfb-run)
-//   MARKWORK_SCENES=editor,agents npm run docs      only these groups: editor, history, collab, agents, daily
+//   MARKWORK_SCENES=markdown,assistant npm run docs only these groups: markdown, assistant, tools, history, collab, agents, daily
 //   MARKWORK_OUT=/tmp/shots npm run docs            write somewhere else (the docs are not touched then)
+//   MARKWORK_THEME=dark npm run docs                only dark media; by default capture light and dark
 
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -15,7 +16,11 @@ import { repo, scratchFolder, launchApp } from '../tests/electron/support.mjs';
 import { LAUNCH, RESEARCH, SCHEDULE } from './capture/forge.mjs';
 
 const { GIFEncoder, applyPalette, quantize } = gifenc;   // a CommonJS package
-const OUT = process.env.MARKWORK_OUT ?? join(repo, 'docs', 'assets');
+const OUTPUT = process.env.MARKWORK_OUT ?? join(repo, 'docs', 'assets');
+const THEMES = process.env.MARKWORK_THEME ? [process.env.MARKWORK_THEME] : ['light', 'dark'];
+if (THEMES.some(theme => theme !== 'light' && theme !== 'dark')) throw new Error('MARKWORK_THEME must be light or dark.');
+let THEME = 'light';
+let OUT = OUTPUT;
 const ONLY = process.env.MARKWORK_SCENES?.split(',');
 const WIDTH = 1280, HEIGHT = 780;
 const GIF_WIDTH = 900, GIF_STEP = 140, GIF_COLORS = 128;
@@ -146,7 +151,7 @@ class Run {
     async start() {
         const config = join(this.scratch, 'config', 'markwork-electron');
         mkdirSync(config, { recursive: true });
-        writeFileSync(join(config, 'settings.json'), JSON.stringify({ welcomed: true, home: false, 'color-scheme': 'light', sidebar: true, chat: false, 'forge-notify': false, ...this.settings }));
+        writeFileSync(join(config, 'settings.json'), JSON.stringify({ welcomed: true, home: false, 'color-scheme': THEME, sidebar: true, chat: false, 'forge-notify': false, ...this.settings }));
         // HOME is the folder's parent, so the window names the folder ~/name rather than a temporary path.
         this.app = await launchApp({ scratch: this.scratch, notes: this.folder, env: { HOME: dirname(this.folder), DEEPSEEK_API_KEY: 'example', MARKWORK_TEST_MODEL: module('model.mjs'), ...this.env } });
         this.page = await this.app.firstWindow();
@@ -157,7 +162,7 @@ class Run {
         await this.page.evaluate(() => {
             window.toasts = [];
             new MutationObserver(() => {
-                const text = document.querySelector('.notification .message')?.textContent;
+                const text = document.querySelector('[data-sonner-toast]:not([data-removed=true]) [data-title]')?.textContent;
                 if (text && window.toasts.at(-1) !== text) window.toasts.push(text);
             }).observe(document.body, { childList: true, subtree: true, characterData: true });
         });
@@ -170,7 +175,17 @@ class Run {
             await this.page?.screenshot({ path: join(OUT, `failed-${this.name}.png`) }).catch(() => {});
             for (const text of await this.page?.evaluate(() => window.toasts).catch(() => []) ?? []) console.log(`  toast: ${text}`);
         }
-        for (const [name, frames] of this.gifs) writeGif(name, frames);
+        for (const [name, frames] of this.gifs) {
+            writeGif(name, frames);
+            // A still of the final frame lets the website respect reduced motion without loading the animation.
+            const { width, height, rgba } = frames.at(-1);
+            const bitmap = Buffer.from(rgba);
+            for (let i = 0; i < bitmap.length; i += 4) { const r = bitmap[i]; bitmap[i] = bitmap[i + 2]; bitmap[i + 2] = r; }
+            const png = await this.app.evaluate(({ nativeImage }, { data, width, height }) =>
+                nativeImage.createFromBitmap(Buffer.from(data, 'base64'), { width, height }).toPNG().toString('base64'),
+            { data: bitmap.toString('base64'), width, height });
+            writeFileSync(join(OUT, `${name}-poster.png`), Buffer.from(png, 'base64'));
+        }
         await Promise.race([this.app.close().catch(() => {}), sleep(5000)]);
         try { this.app.process().kill(); } catch { /* already gone */ }
     }
@@ -180,8 +195,8 @@ class Run {
     // A PNG of the window, or of one element of it.
     async shot(name, locator = null) {
         // A toast left from an earlier step is not part of the picture.
-        const toast = this.page.locator('.notification').getByRole('button', { name: 'Dismiss' });
-        if (await toast.isVisible().catch(() => false)) await toast.click().catch(() => {});
+        const toast = this.page.locator('[data-sonner-toast]:not([data-removed=true])').getByRole('button', { name: 'Close toast', exact: true });
+        for (const button of await toast.all()) if (await button.isVisible()) await button.click();
         await this.idle(250);
         await (locator ?? this.page).screenshot({ path: join(OUT, `${name}.png`) });
         console.log(`  ${name}.png`);
@@ -285,7 +300,8 @@ class Run {
         await this.idle(200);
     }
     async menu(item) {
-        await this.page.getByRole('button', { name: 'Main Menu' }).click();
+        const section = String(item).includes('Journal') ? 'Go' : 'File';
+        await this.page.getByRole('menubar').getByRole('menuitem', { name: section, exact: true }).click();
         await this.page.getByRole('menuitem', { name: item }).click();
     }
 
@@ -493,7 +509,7 @@ const GROUPS = {
             await run.ask(ASK_READ);
             await run.answered();
             await run.chat.getByRole('button', { name: 'Conversations' }).click();
-            await run.chat.getByRole('dialog', { name: 'Conversations' }).waitFor();
+            await page.getByRole('dialog', { name: 'Conversations' }).waitFor();
             await run.shot('chat-history');
             await page.keyboard.press('Escape');
 
@@ -505,7 +521,7 @@ const GROUPS = {
             });
             await run.idle(400);
             await run.chat.getByRole('button', { name: /^Context/ }).click();
-            await run.chat.getByRole('dialog', { name: 'Context' }).waitFor();
+            await page.getByRole('dialog', { name: 'Context' }).waitFor();
             await run.shot('context');
             await page.keyboard.press('Escape');
 
@@ -518,7 +534,7 @@ const GROUPS = {
             await run.ask(ASK_WORK);
             await run.record('work', review.waitFor({ timeout: 30000 }));
             await run.frame('work', 8);
-            const picks = review.locator('.picks input[type=checkbox]');
+            const picks = review.getByRole('checkbox');
             await picks.nth(2).uncheck();
             await review.getByLabel('Note for the agent').fill('I will write the 8 October meeting notes myself');
             await run.shot('proposal-batch', review);
@@ -629,10 +645,10 @@ const GROUPS = {
             await run.shot('history');
             await run.dark(true);
             await run.shot('history-dark');
-            await run.dark(false);
+            await run.dark(THEME === 'dark');
             await history.getByRole('button', { name: /Clarify the goal/ }).click();
             const viewer = page.getByRole('dialog', { name: /Clarify the goal/ });
-            await viewer.locator('pre.diff .line.add').first().waitFor();
+            await viewer.locator('pre.diff .cell.add').first().waitFor();
             await run.shot('history-diff', viewer);
             await page.keyboard.press('Escape');
             await run.panel('chat', true);
@@ -724,7 +740,8 @@ const GROUPS = {
             await pull.getByRole('button', { name: 'Abort merge' }).waitFor({ state: 'detached' });
             await run.open('plans/launch.md');
             await page.getByRole('button', { name: 'Pull requests', exact: true }).click();
-            await page.getByRole('button', { name: 'Dismiss' }).click().catch(() => {});
+            const toast = page.locator('[data-sonner-toast]:not([data-removed=true])').getByRole('button', { name: 'Close toast', exact: true });
+            for (const button of await toast.all()) if (await button.isVisible()) await button.click();
             await run.idle(600);
             // Sending the folder's changes as a pull request.
             put(work, 'plans/launch.md', LAUNCH.replace('Public release: 15 November', 'Public release: 22 November'));
@@ -767,7 +784,7 @@ const GROUPS = {
         await run.start();
         const { page } = run;
         const card = text => page.locator('.board .card', { hasText: text });
-        const badge = (text, status) => card(text).locator('.chip.agent', { hasText: status });
+        const badge = (text, status) => card(text).locator('.note-chip.agent', { hasText: status });
         const choose = async (text, item) => {
             await card(text).click({ button: 'right' });
             await page.getByRole('menuitem', { name: item }).click();
@@ -783,7 +800,7 @@ const GROUPS = {
             await badge('Checkout', 'working').waitFor({ timeout: 20000 });
             await run.idle(400);
             await choose('Test the cart', 'Work on it with pi');
-            await card('Test the cart').locator('.chip.agent').waitFor({ timeout: 20000 });
+            await card('Test the cart').locator('.note-chip.agent').waitFor({ timeout: 20000 });
             await run.idle(500);
             await run.frame('pi', 10);
             await run.shot('pi-board');
@@ -880,7 +897,7 @@ const GROUPS = {
             await page.getByRole('heading', { name: 'Due dates' }).waitFor();
             await run.idle(500);
             await run.frame('home', 10);
-            await page.getByLabel('Mark done: Fix the sync bug').click();
+            await page.getByRole('checkbox', { name: 'Done: Fix the sync bug' }).click();
             await run.idle(600);
             await run.frame('home', 6);
             await page.getByRole('button', { name: 'Add to Journal…', exact: true }).click();
@@ -937,25 +954,29 @@ function updateSizes() {
     const pages = [join(repo, 'docs', 'index.html'), ...readdirSync(join(repo, 'docs', 'docs')).filter(f => f.endsWith('.html')).map(f => join(repo, 'docs', 'docs', f))];
     for (const page of pages) {
         const html = readFileSync(page, 'utf8');
-        const next = html.replace(/<img src="((?:\.\.\/)?assets\/([^"]+))" width="\d+" height="\d+"/g, (all, src, name) => {
+        const next = html.replace(/<img (src|data-light-src)="((?:\.\.\/)?assets\/([^"]+))"([^>]*?)width="\d+" height="\d+"/g, (all, attr, src, name, between) => {
             const file = join(repo, 'docs', 'assets', name);
             const size = existsSync(file) && sizeOf(file);
-            return size ? `<img src="${src}" width="${size[0]}" height="${size[1]}"` : all;
+            return size ? `<img ${attr}="${src}"${between}width="${size[0]}" height="${size[1]}"` : all;
         });
         if (next !== html) writeFileSync(page, next);
     }
 }
 
-for (const [name, scene] of Object.entries(GROUPS)) {
-    if (ONLY && !ONLY.includes(name)) continue;
-    console.log(name);
-    try {
-        await scene();
-    } catch (e) {
-        console.error(`  ${name} stopped: ${e?.stack ?? e}`);
-        process.exitCode = 1;
+for (THEME of THEMES) {
+    OUT = THEME === 'dark' ? join(OUTPUT, 'dark') : OUTPUT;
+    mkdirSync(OUT, { recursive: true });
+    for (const [name, scene] of Object.entries(GROUPS)) {
+        if (ONLY && !ONLY.includes(name)) continue;
+        console.log(`${THEME}: ${name}`);
+        try {
+            await scene();
+        } catch (e) {
+            console.error(`  ${THEME}/${name} stopped: ${e?.stack ?? e}`);
+            process.exitCode = 1;
+        }
     }
 }
 if (!process.env.MARKWORK_OUT) updateSizes();
-console.log(`Done: ${OUT}`);
+console.log(`Done: ${OUTPUT}`);
 process.exit();   // Playwright keeps the event loop alive

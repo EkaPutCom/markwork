@@ -1,31 +1,31 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Settings · Markwork Documentation</title>
 <meta name="description" content="Where Markwork stores its settings, the API key, the harness project folders, and the conversation history, with their default values.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Reference</p>
 <h1>Settings</h1>
 <p class="lead">Settings are saved automatically when you change them from the menu or a panel. There is no account and no syncing to a server.</p>
@@ -57,11 +57,11 @@
 
 <h2 id="palette">The command palette</h2>
 <p><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> opens a list of every command with its shortcut. Type a few words in any order (<em>table row</em>) and press <kbd>Enter</kbd> to run the first match.</p>
-<figure><img src="../assets/palette.png" width="1280" height="780" loading="lazy" alt="The command palette with "table" typed in, listing Insert Table and the table row and column commands"><figcaption>The command palette, filtered by a search</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/palette.png" data-dark-src="../assets/dark/palette.png" width="1280" height="780" loading="lazy" alt="The command palette with "table" typed in, listing Insert Table and the table row and column commands"><noscript><img src="../assets/dark/palette.png" width="1280" height="780" loading="lazy" alt="The command palette with "table" typed in, listing Insert Table and the table row and column commands"></noscript></picture><figcaption>The command palette, filtered by a search</figcaption></figure>
 
 <h2 id="preferences">Preferences</h2>
 <p><kbd>Ctrl</kbd>+<kbd>,</kbd> opens Preferences with three pages: <em>General</em> (color scheme, the visual editor, focus and typewriter modes, Home, autosave, and how often to look for pull requests), <em>Assistant</em> (the model, thinking mode, and whether conversation history is saved), and <em>Agents</em> (where agents run, the machines, and the projects).</p>
-<figure><img src="../assets/preferences.png" width="1280" height="780" loading="lazy" alt="The Preferences dialog on the General page with the color scheme, focus mode, typewriter mode, Home, autosave, and collaboration settings"><figcaption>Preferences, General page</figcaption></figure><figure><img src="../assets/preferences-agents.png" width="1280" height="780" loading="lazy" alt="The Preferences dialog on the Agents page with where agents run, machines, and projects"><figcaption>Preferences, Agents page</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/preferences.png" data-dark-src="../assets/dark/preferences.png" width="1280" height="780" loading="lazy" alt="The Preferences dialog on the General page with the color scheme, focus mode, typewriter mode, Home, autosave, and collaboration settings"><noscript><img src="../assets/dark/preferences.png" width="1280" height="780" loading="lazy" alt="The Preferences dialog on the General page with the color scheme, focus mode, typewriter mode, Home, autosave, and collaboration settings"></noscript></picture><figcaption>Preferences, General page</figcaption></figure><figure><picture class="themed-media"><img data-light-src="../assets/preferences-agents.png" data-dark-src="../assets/dark/preferences-agents.png" width="1280" height="780" loading="lazy" alt="The Preferences dialog on the Agents page with where agents run, machines, and projects"><noscript><img src="../assets/dark/preferences-agents.png" width="1280" height="780" loading="lazy" alt="The Preferences dialog on the Agents page with where agents run, machines, and projects"></noscript></picture><figcaption>Preferences, Agents page</figcaption></figure>
 <h2 id="defaults">Default values</h2>
 <div class="table-wrap"><table>
   <tr><th>Setting</th><th>Default</th></tr>
@@ -82,9 +82,9 @@
 <h2 id="api-key">The API key</h2>
 <p>Markwork looks for the API key in the <code>DEEPSEEK_API_KEY</code> environment variable, then in the keyring, then in the fallback file. Enter or replace the key from the gear icon in the Assistant panel.</p>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

@@ -41,6 +41,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run site:build && npm run test:site
       # The type check, the layer rules, and every core test on Node, with the protocol server driven by a scripted frontend.
       - run: npm run test:core:node
         env:

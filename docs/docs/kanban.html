@@ -1,36 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The kanban board · Markwork Documentation</title>
 <meta name="description" content="The Markwork Trello-style kanban board that stays stored as a plain Markdown file: cards, lists, tags, due dates with a calendar picker, and assignment to agents.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Workspace</p>
 <h1>The kanban board</h1>
 <p class="lead">A Markdown file with <code>layout: board</code> opens as a board. Every change is written back as plain Markdown text that can be diffed and committed.</p>
 
-<figure><img src="../assets/kanban.gif" width="900" height="548" loading="lazy" alt="Animation of kanban cards moving between the Plan, In Progress, Review, and Done lists"><figcaption>Cards move from Plan to In Progress and then to Review</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/kanban.gif" data-dark-src="../assets/dark/kanban.gif" width="900" height="548" loading="lazy" alt="Animation of kanban cards moving between the Plan, In Progress, Review, and Done lists" data-light-poster="../assets/kanban-poster.png" data-dark-poster="../assets/dark/kanban-poster.png"><noscript><img src="../assets/dark/kanban.gif" width="900" height="548" loading="lazy" alt="Animation of kanban cards moving between the Plan, In Progress, Review, and Done lists"></noscript></picture><figcaption>Cards move from Plan to In Progress and then to Review</figcaption></figure>
 
 <h2 id="format">File format</h2>
 <pre><code>---
@@ -66,7 +66,7 @@ layout: board
   <li>Click a card to edit its title, notes, due date, and <em>Assigned to</em>.</li>
   <li>The due date can be typed (with a time if you like, e.g. <code>2026-10-20 09:00</code>) or chosen with the calendar button, with <em>Today</em> and <em>Clear</em>. Choosing a date keeps the time that was already typed.</li>
 </ul>
-<figure class="narrow-fig"><img src="../assets/kanban-card.png" width="420" height="610" loading="lazy" alt="The card edit dialog with the title, tags, due date with a calendar button, assigned to, and notes fields"><figcaption>The card edit dialog: a due date with a calendar button and the Assigned to field</figcaption></figure>
+<figure class="narrow-fig"><picture class="themed-media"><img data-light-src="../assets/kanban-card.png" data-dark-src="../assets/dark/kanban-card.png" width="420" height="578" loading="lazy" alt="The card edit dialog with the title, tags, due date with a calendar button, assigned to, and notes fields"><noscript><img src="../assets/dark/kanban-card.png" width="420" height="578" loading="lazy" alt="The card edit dialog with the title, tags, due date with a calendar button, assigned to, and notes fields"></noscript></picture><figcaption>The card edit dialog: a due date with a calendar button and the Assigned to field</figcaption></figure>
 <ul>
   <li>Right-click to move, move up/down, and delete; check the box to mark it done.</li>
   <li><a href="editor.html#wikilink"><code>[[Note]]</code></a> in a card title is shown as a link that can be clicked. A link in the notes of a card is shown as a <code>↗ name</code> row below the chip. The notes field in the card dialog suggests names when you type <code>[[</code>.</li>
@@ -79,9 +79,9 @@ layout: board
   <li>A card with <code>[agent:: pi]</code> is worked on by the pi harness in another project folder. See <a href="orchestrator.html">The pi orchestrator</a>. The contents of the notes linked with <code>[[ ]]</code> on a card are included in the pi prompt as <a href="orchestrator.html#context">context</a>.</li>
 </ul>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

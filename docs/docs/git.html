@@ -1,36 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Git history · Markwork Documentation</title>
 <meta name="description" content="The Markwork History tab: see the commits of the open file, read the diff and the contents of each version, and commit one or several files straight from the sidebar, with a message the assistant can write.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Workspace</p>
 <h1>Git history</h1>
 <p class="lead">See and save versions of your writing without leaving the editor. It needs <code>git</code> installed and the work folder inside a repository.</p>
 
-<figure><img src="../assets/history-dark.png" width="1280" height="780" loading="lazy" alt="The History tab with the list of uncommitted files and three commits"><figcaption>The History tab: uncommitted files and the list of commits</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/history.png" data-dark-src="../assets/dark/history.png" width="1280" height="780" loading="lazy" alt="The History tab with the list of uncommitted files and three commits"><noscript><img src="../assets/dark/history.png" width="1280" height="780" loading="lazy" alt="The History tab with the list of uncommitted files and three commits"></noscript></picture><figcaption>The History tab: uncommitted files and the list of commits</figcaption></figure>
 
 <h2 id="commits">The list of commits</h2>
 <ul>
@@ -45,7 +45,7 @@
   <li>The <em>Uncommitted (N)</em> list holds all the files that changed in the repository (M, A, D, R, U), each with a checkbox.</li>
   <li>Write a message and press <em>Commit N files</em> to commit several files at once. Open documents are saved first.</li>
 </ul>
-<figure><img src="../assets/history-diff.png" width="600" height="412" loading="lazy" alt="The diff window of a commit with colored added and removed lines"><figcaption>The diff of a commit</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/history-diff.png" data-dark-src="../assets/dark/history-diff.png" width="1200" height="368" loading="lazy" alt="The diff window of a commit with colored added and removed lines"><noscript><img src="../assets/dark/history-diff.png" width="1200" height="368" loading="lazy" alt="The diff window of a commit with colored added and removed lines"></noscript></picture><figcaption>The diff of a commit</figcaption></figure>
 
 <h2 id="write-message">Writing the message with the assistant</h2>
 <p>The button with the sparkle icon next to the commit message asks the assistant to write the message. It is in the History tab and in the <em>Uncommitted changes</em> window of one file.</p>
@@ -60,9 +60,9 @@
 <h2 id="agent">History for the agent</h2>
 <p>The agent can read the same history through <code>git_log</code>, <code>show_commit</code>, and <code>file_at_commit</code>, but it never changes the repository; the commit message it writes only fills the box. See <a href="browsing.html#git">Browsing files and Git</a>.</p>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

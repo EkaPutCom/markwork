@@ -1,36 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Assistant panel · Markwork Documentation</title>
 <meta name="description" content="The Markwork Assistant panel: ask, request a plan, or request changes from the DeepSeek agent, with streamed answers and token details.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Agent</p>
 <h1>The Assistant panel</h1>
 <p class="lead">The place where you work with the agent: ask questions, request a plan, or request changes in plain language.</p>
 
-<figure><img src="../assets/assistant.gif" width="900" height="548" loading="lazy" alt="Animation of the Assistant panel answering a question about meeting decisions that have not made it into the launch plan"><figcaption>The agent browses the meeting notes and the plan, then points out the release date that is out of sync</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/assistant.gif" data-dark-src="../assets/dark/assistant.gif" width="900" height="548" loading="lazy" alt="Animation of the Assistant panel answering a question about meeting decisions that have not made it into the launch plan" data-light-poster="../assets/assistant-poster.png" data-dark-poster="../assets/dark/assistant-poster.png"><noscript><img src="../assets/dark/assistant.gif" width="900" height="548" loading="lazy" alt="Animation of the Assistant panel answering a question about meeting decisions that have not made it into the launch plan"></noscript></picture><figcaption>The agent browses the meeting notes and the plan, then points out the release date that is out of sync</figcaption></figure>
 
 <h2 id="open">Opening the panel</h2>
 <p>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> or the Assistant button (the sparkles) in the header. The panel appears on the right side and is remembered the next time the app opens. <kbd>Enter</kbd> sends the message, <kbd>Shift</kbd>+<kbd>Enter</kbd> makes a new line.</p>
@@ -68,9 +68,9 @@
 <h2 id="reliability">Connection reliability</h2>
 <p>Connection failures, HTTP 429, and 5xx errors are retried at most twice, only if no text has been shown yet. Authentication errors are not retried. A stream that is cut off before it finishes is treated as failed, and an incomplete tool call is not executed.</p>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

@@ -1,36 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Collaboration · Markwork Documentation</title>
 <meta name="description" content="Collaboration in Markwork: see the open pull requests of a Forgejo or Gitea repository in the sidebar, review a change as a note, comment, merge, resolve a conflict on your computer, and send your own changes as a pull request.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Workspace</p>
 <h1>Collaboration</h1>
 <p class="lead">Review and merge the pull requests of your repository without leaving your notes, and send your own changes as a pull request. It works with a <strong>Forgejo</strong> or <strong>Gitea</strong> server, and the work folder has to be a clone of the repository.</p>
 
-<figure><img src="../assets/collab.gif" width="900" height="548" loading="lazy" alt="Animation of the pull requests tab: a pull request is opened, its change is read as a note and as a diff, the discussion is read, and a conflicting pull request is merged on the computer"><figcaption>The pull requests tab, the review page, a conflict resolved here, and the dialog to send changes</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/collab.gif" data-dark-src="../assets/dark/collab.gif" width="900" height="548" loading="lazy" alt="Animation of the pull requests tab: a pull request is opened, its change is read as a note and as a diff, the discussion is read, and a conflicting pull request is merged on the computer" data-light-poster="../assets/collab-poster.png" data-dark-poster="../assets/dark/collab-poster.png"><noscript><img src="../assets/dark/collab.gif" width="900" height="548" loading="lazy" alt="Animation of the pull requests tab: a pull request is opened, its change is read as a note and as a diff, the discussion is read, and a conflicting pull request is merged on the computer"></noscript></picture><figcaption>The pull requests tab, the review page, a conflict resolved here, and the dialog to send changes</figcaption></figure>
 
 <h2 id="connect">Connect to a server</h2>
 <p>Markwork finds the server by itself: it reads the address of the <code>origin</code> remote of the work folder (<code>https://git.example.org/team/notes.git</code> means the server <code>git.example.org</code> and the repository <code>team/notes</code>). A remote over SSH (<code>git@git.example.org:team/notes.git</code>) is read the same way and talks to the server over <code>https</code> on its default port. A folder without a remote, or whose remote is not a hosted repository, says so in the tab.</p>
@@ -41,7 +41,7 @@
   <li>Paste the token, press <em>Test connection</em> (it says how many pull requests it can see, or why the server refused), and press <em>Save</em>.</li>
 </ol>
 <p>The token is stored in the system keyring, one per server, and in a file with 0600 permissions (<code>~/.config/markwork/forge-&lt;server&gt;.token</code>) when there is no keyring. It is never written to the settings. The <code>MARKWORK_FORGE_TOKEN</code> environment variable is used first when it is set; the dialog then says so, because a token saved there would not be used. Saving the dialog with the field empty removes a saved token.</p>
-<figure><img src="../assets/collab-review.png" width="1280" height="780" loading="lazy" alt="The pull requests tab with three pull requests, and the review page of one of them showing the change to a launch plan as a note"><figcaption>The tab on the left; the review page replaces the editor</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/collab-review.png" data-dark-src="../assets/dark/collab-review.png" width="1280" height="780" loading="lazy" alt="The pull requests tab with three pull requests, and the review page of one of them showing the change to a launch plan as a note"><noscript><img src="../assets/dark/collab-review.png" width="1280" height="780" loading="lazy" alt="The pull requests tab with three pull requests, and the review page of one of them showing the change to a launch plan as a note"></noscript></picture><figcaption>The tab on the left; the review page replaces the editor</figcaption></figure>
 
 <h2 id="tab">The pull requests tab</h2>
 <ul>
@@ -59,8 +59,8 @@
   <li><strong>Diff.</strong> The unified diff of that file, as in the <a href="git.html">History</a> window.</li>
   <li><strong>Discussion.</strong> The description of the pull request first, then its comments. Write a comment in the box at the bottom and press <em>Comment</em>; it stays in the box if the server did not take it.</li>
 </ul>
-<figure><img src="../assets/collab-diff.png" width="1280" height="780" loading="lazy" alt="The Diff tab of a pull request showing a changed line in a launch plan"><figcaption>The Diff tab of the same file</figcaption></figure>
-<figure><img src="../assets/collab-discussion.png" width="1280" height="780" loading="lazy" alt="The Discussion tab with the description of a pull request and two comments"><figcaption>The Discussion tab</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/collab-diff.png" data-dark-src="../assets/dark/collab-diff.png" width="1280" height="780" loading="lazy" alt="The Diff tab of a pull request showing a changed line in a launch plan"><noscript><img src="../assets/dark/collab-diff.png" width="1280" height="780" loading="lazy" alt="The Diff tab of a pull request showing a changed line in a launch plan"></noscript></picture><figcaption>The Diff tab of the same file</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/collab-discussion.png" data-dark-src="../assets/dark/collab-discussion.png" width="1280" height="780" loading="lazy" alt="The Discussion tab with the description of a pull request and two comments"><noscript><img src="../assets/dark/collab-discussion.png" width="1280" height="780" loading="lazy" alt="The Discussion tab with the description of a pull request and two comments"></noscript></picture><figcaption>The Discussion tab</figcaption></figure>
 <p>A pull request that is closed or merged says so in a banner at the top. A binary file says there is no text to compare, and the page asks the server for the text of both versions, so a file is shown a moment after you choose it.</p>
 
 <h2 id="merge">Merging</h2>
@@ -88,15 +88,15 @@
   <li><strong>Apply Result</strong> replaces only the selected conflict, including its markers, as one undo step. If the document changed since the comparison was opened, the result is refused; close the comparison and open it again.</li>
   <li>Closing the comparison or pressing Escape discards the preview. Applying a result does not commit or push; use <em>Finish and push</em> after resolving all conflicts.</li>
 </ul>
-<figure><img src="../assets/collab-compare.png" width="1280" height="780" loading="lazy" alt="Three-pane conflict merge dialog: Incoming left, Current right, and an editable Result below"><figcaption>Preview the merge result before applying it to the document</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/collab-compare.png" data-dark-src="../assets/dark/collab-compare.png" width="1280" height="780" loading="lazy" alt="Three-pane conflict merge dialog: Incoming left, Current right, and an editable Result below"><noscript><img src="../assets/dark/collab-compare.png" width="1280" height="780" loading="lazy" alt="Three-pane conflict merge dialog: Incoming left, Current right, and an editable Result below"></noscript></picture><figcaption>Preview the merge result before applying it to the document</figcaption></figure>
 
 <p><strong>Abort merge</strong> (top right while this is going on) undoes the merge in your folder, after asking. Edits you made to the conflicting files are lost.</p>
-<figure><img src="../assets/collab-resolve.png" width="1280" height="780" loading="lazy" alt="A file with git's conflict markers open in source mode next to the pull requests tab"><figcaption>The conflicting file in source mode</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/collab-resolve.png" data-dark-src="../assets/dark/collab-resolve.png" width="1280" height="780" loading="lazy" alt="A file with git's conflict markers open in source mode next to the pull requests tab"><noscript><img src="../assets/dark/collab-resolve.png" width="1280" height="780" loading="lazy" alt="A file with git's conflict markers open in source mode next to the pull requests tab"></noscript></picture><figcaption>The conflicting file in source mode</figcaption></figure>
 <div class="callout"><strong>The merge happens on your computer, and the push goes to the server.</strong><p>Nothing is pushed before you press <em>Finish and push</em>. The merge commit is made in your base branch, and the push needs the right to push there; a protected branch refuses it and the toast gives the server's reason.</p></div>
 
 <h2 id="send">Sending your changes as a pull request</h2>
 <p>Edit your notes as usual. Then choose <em>Send Changes as Pull Request…</em> in the ☰ menu (or the command palette), or the button in the pull requests tab. Open documents are saved first, and the dialog lists the files that changed in the repository, all checked.</p>
-<figure><img src="../assets/collab-send.png" width="1280" height="780" loading="lazy" alt="The dialog to send changes as a pull request, with a title, a description, a branch, how it is sent, and the changed files"><figcaption>The dialog: title, description, branch, how it is sent, and which changes</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/collab-send.png" data-dark-src="../assets/dark/collab-send.png" width="1280" height="780" loading="lazy" alt="The dialog to send changes as a pull request, with a title, a description, a branch, how it is sent, and the changed files"><noscript><img src="../assets/dark/collab-send.png" width="1280" height="780" loading="lazy" alt="The dialog to send changes as a pull request, with a title, a description, a branch, how it is sent, and the changed files"></noscript></picture><figcaption>The dialog: title, description, branch, how it is sent, and which changes</figcaption></figure>
 <ul>
   <li><strong>Title and description.</strong> The title is also the commit message (the description its body). The <strong>branch</strong> is named from the title until you type in it.</li>
   <li><strong>Through my fork</strong> (the default): the branch is pushed to your own copy of the repository, and the pull request asks to merge it into the original. The copy is made on the server if you do not have one; a repository of the same name that is not a fork stops it before anything is pushed.</li>
@@ -112,9 +112,9 @@
 <h2 id="limits">What it does not do yet</h2>
 <p>Only Forgejo and Gitea are supported (the same API); GitHub and GitLab are not. There are no comments on a line and no review with an approval yet. See <a href="limitations.html#collaboration">Limitations</a>.</p>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

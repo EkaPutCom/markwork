@@ -1,36 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The pi orchestrator · Markwork Documentation</title>
 <meta name="description" content="Assign Markwork kanban cards to the pi harness working in another project folder, answer its questions and permission requests from the card, and watch its log.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Agent</p>
 <h1>The pi orchestrator</h1>
 <p class="lead">Markwork can orchestrate an external harness: a kanban card assigned to <code>pi</code> (<code>[agent:: pi]</code>) is worked on by <a href="https://pi.dev">pi</a> in another project folder, for example a code repo, not in the Markwork work folder.</p>
 
-<figure><img src="../assets/pi.gif" width="900" height="548" loading="lazy" alt="Animation of a kanban board: @pi cards are assigned, one works and one queues, both finish to Review, then a third card waits for an answer"><figcaption>pi cards: assigned, working and queued, finished to Review, then waiting for an answer</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/pi.gif" data-dark-src="../assets/dark/pi.gif" width="900" height="548" loading="lazy" alt="Animation of a kanban board: @pi cards are assigned, one works and one queues, both finish to Review, then a third card waits for an answer" data-light-poster="../assets/pi-poster.png" data-dark-poster="../assets/dark/pi-poster.png"><noscript><img src="../assets/dark/pi.gif" width="900" height="548" loading="lazy" alt="Animation of a kanban board: @pi cards are assigned, one works and one queues, both finish to Review, then a third card waits for an answer"></noscript></picture><figcaption>pi cards: assigned, working and queued, finished to Review, then waiting for an answer</figcaption></figure>
 
 
 <p>pi has to be installed first (and git, for a worktree per card). The <a href="home.html#programs">Programs</a> page says whether they are found, and how to install them; Home lists what is missing in its <em>Set up</em> section.</p>
@@ -75,7 +75,7 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <tr><td>✓ / ✕ / ■</td><td>Done / failed / stopped</td></tr>
 </table></div>
 <p>A project folder that is not a Git repository (or has worktrees turned off) is worked on by one harness at a time. In a Git repository each card gets <a href="#worktrees">its own worktree</a>, and as many cards as the project allows (2 by default) work at the same time. Other cards queue and start automatically.</p>
-<figure><img src="../assets/pi-board.png" width="1280" height="780" loading="lazy" alt="A kanban board with the card Checkout with QRIS showing pi working in In Progress and Test the cart showing pi queued in Plan"><figcaption>One card works, another card in the same project queues</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/pi-board.png" data-dark-src="../assets/dark/pi-board.png" width="1280" height="780" loading="lazy" alt="A kanban board with the card Checkout with QRIS showing pi working in In Progress and Test the cart showing pi queued in Plan"><noscript><img src="../assets/dark/pi-board.png" width="1280" height="780" loading="lazy" alt="A kanban board with the card Checkout with QRIS showing pi working in In Progress and Test the cart showing pi queued in Plan"></noscript></picture><figcaption>One card works, another card in the same project queues</figcaption></figure>
 
 
 <h2 id="worktrees">A worktree per card, and reviewing it</h2>
@@ -91,10 +91,10 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <li><strong>Preferences → Agents → Projects</strong> sets, per project: worktrees on or off, how many cards at the same time, the base branch, another folder for the worktrees, and whether the branch is kept after a merge. It also lists the card worktrees that exist and can remove them.</li>
   <li>On another machine (through markworkd) the worktrees are made and read there: Git runs through the daemon, so it must be allowed (<code>git</code> in <code>programs</code> when that list is set), and the worktree folder must be inside its <code>roots</code>. The push of <em>Create Pull Request…</em> runs there too (the machine must be able to reach the server), with the access token in the environment of that one git call; for that the daemon's <code>env_allow</code> must contain <code>GIT_CONFIG_*</code>, otherwise the push is refused with a message that says so. The daemon keeps the call's environment in its run record (readable only by its user) until Markwork forgets the run, which is right after git ends. The default, next to the project, is inside the same root when the root is the project's parent. <em>Open Terminal</em> opens <code>ssh</code> to the worktree there.</li>
 </ul>
-<figure><img src="../assets/pi-review.png" width="1280" height="780" loading="lazy" alt="The review page of a card: the changed files and commits on the left, a diff in the middle, and the Reply with 1 Comment and Merge buttons"><figcaption>The review of a card: what pi changed in its worktree, a comment on the diff, and Merge</figcaption></figure>
-<figure class="narrow-fig"><img src="../assets/pi-pr-menu.png" width="220" height="180" loading="lazy" alt="The arrow menu of the Merge button: Merge into main, Squash into main, Create Pull Request, Keep the Branch, Remove the Worktree, and Discard"><figcaption>The Merge menu with <em>Create Pull Request…</em></figcaption></figure>
-<figure><img src="../assets/pi-pr-dialog.png" width="1280" height="780" loading="lazy" alt="The Create Pull Request dialog over the review: where the branch is pushed, the title, the description, and how it is sent"><figcaption>The confirmation: nothing is pushed until <em>Send</em></figcaption></figure>
-<figure class="narrow-fig"><img src="../assets/pi-project.png" width="1280" height="780" loading="lazy" alt="The page of one project in Preferences: the project folder, a switch for one worktree per card, how many cards at the same time, the base branch, the worktree folder, and the card worktrees that exist"><figcaption>Preferences → Agents → a project: how its cards are isolated</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/pi-review.png" data-dark-src="../assets/dark/pi-review.png" width="1280" height="780" loading="lazy" alt="The review page of a card: the changed files and commits on the left, a diff in the middle, and the Reply with 1 Comment and Merge buttons"><noscript><img src="../assets/dark/pi-review.png" width="1280" height="780" loading="lazy" alt="The review page of a card: the changed files and commits on the left, a diff in the middle, and the Reply with 1 Comment and Merge buttons"></noscript></picture><figcaption>The review of a card: what pi changed in its worktree, a comment on the diff, and Merge</figcaption></figure>
+<figure class="narrow-fig"><picture class="themed-media"><img data-light-src="../assets/pi-pr-menu.png" data-dark-src="../assets/dark/pi-pr-menu.png" width="224" height="179" loading="lazy" alt="The arrow menu of the Merge button: Merge Commit, Squash and Merge, Create Pull Request, Keep Branch Only, and Discard"><noscript><img src="../assets/dark/pi-pr-menu.png" width="224" height="179" loading="lazy" alt="The arrow menu of the Merge button: Merge Commit, Squash and Merge, Create Pull Request, Keep Branch Only, and Discard"></noscript></picture><figcaption>The Merge menu with <em>Create Pull Request…</em></figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/pi-pr-dialog.png" data-dark-src="../assets/dark/pi-pr-dialog.png" width="1280" height="780" loading="lazy" alt="The Create Pull Request dialog over the review: where the branch is pushed, the title, the description, and how it is sent"><noscript><img src="../assets/dark/pi-pr-dialog.png" width="1280" height="780" loading="lazy" alt="The Create Pull Request dialog over the review: where the branch is pushed, the title, the description, and how it is sent"></noscript></picture><figcaption>The confirmation: nothing is pushed until <em>Send</em></figcaption></figure>
+<figure class="narrow-fig"><picture class="themed-media"><img data-light-src="../assets/pi-project.png" data-dark-src="../assets/dark/pi-project.png" width="1280" height="780" loading="lazy" alt="The page of one project in Preferences: the project folder, a switch for one worktree per card, how many cards at the same time, the base branch, the worktree folder, and the card worktrees that exist"><noscript><img src="../assets/dark/pi-project.png" width="1280" height="780" loading="lazy" alt="The page of one project in Preferences: the project folder, a switch for one worktree per card, how many cards at the same time, the base branch, the worktree folder, and the card worktrees that exist"></noscript></picture><figcaption>Preferences → Agents → a project: how its cards are isolated</figcaption></figure>
 
 <h2 id="answering">Answering pi</h2>
 <p>Pi runs in RPC mode, so its conversation can be continued from Markwork:</p>
@@ -105,8 +105,8 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <li><strong>Steer pi…</strong> while pi works: the guidance is received before the next step, without stopping the work.</li>
   <li><strong>Reply to pi…</strong> after it finishes: continues the same pi session so the card is worked on again.</li>
 </ul>
-<figure><img src="../assets/pi-waiting.png" width="1280" height="780" loading="lazy" alt="A kanban board: the card Tidy up the README shows pi waiting for an answer in In Progress, two other cards finished in Review"><figcaption>A card waiting for an answer stays in In Progress</figcaption></figure>
-<figure class="narrow-fig"><img src="../assets/pi-answer.png" width="480" height="358" loading="lazy" alt="The Answer pi dialog with the question of pi about the README, an answer box, and the Later, End without replying, and Send buttons"><figcaption>The Answer pi dialog</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/pi-waiting.png" data-dark-src="../assets/dark/pi-waiting.png" width="1280" height="780" loading="lazy" alt="A kanban board: the card Tidy up the README shows pi waiting for an answer in In Progress, two other cards finished in Review"><noscript><img src="../assets/dark/pi-waiting.png" width="1280" height="780" loading="lazy" alt="A kanban board: the card Tidy up the README shows pi waiting for an answer in In Progress, two other cards finished in Review"></noscript></picture><figcaption>A card waiting for an answer stays in In Progress</figcaption></figure>
+<figure class="narrow-fig"><picture class="themed-media"><img data-light-src="../assets/pi-answer.png" data-dark-src="../assets/dark/pi-answer.png" width="480" height="306" loading="lazy" alt="The pi asks dialog with a question about the README, a reply box, and the Skip, Later, and Send Reply buttons"><noscript><img src="../assets/dark/pi-answer.png" width="480" height="306" loading="lazy" alt="The pi asks dialog with a question about the README, a reply box, and the Skip, Later, and Send Reply buttons"></noscript></picture><figcaption>The dialog for answering pi</figcaption></figure>
 
 
 <h2 id="log">Log and control</h2>
@@ -116,7 +116,7 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <li><em>Stop pi</em> / <em>Cancel Queue</em></li>
   <li><em>Remove Assignment</em> and <em>Change Project Folder…</em></li>
 </ul>
-<figure><img src="../assets/pi-log.png" width="980" height="652" loading="lazy" alt="The pi Log window with the prompt sent to pi, the session, the model reasoning, the bash and edit tool calls, and the finished summary"><figcaption>The pi log: the prompt from the card, the reasoning, the tools, and the summary</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/pi-log.png" data-dark-src="../assets/dark/pi-log.png" width="980" height="652" loading="lazy" alt="The pi Log window with the prompt sent to pi, the session, the model reasoning, the bash and edit tool calls, and the finished summary"><noscript><img src="../assets/dark/pi-log.png" width="980" height="652" loading="lazy" alt="The pi Log window with the prompt sent to pi, the session, the model reasoning, the bash and edit tool calls, and the finished summary"></noscript></picture><figcaption>The pi log: the prompt from the card, the reasoning, the tools, and the summary</figcaption></figure>
 
 
 <h2 id="daemon">Agents that keep working: markworkd</h2>
@@ -126,8 +126,8 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <li>In <strong>Preferences → Agents</strong>, choose <em>This computer (markworkd)</em>, or add a machine with <em>Add Machine…</em> (a host from your <code>~/.ssh/config</code>, or <code>user@host</code>) and choose it under <em>Run agents</em>. Markwork connects with <code>ssh</code> in the background, so the key must work without a password prompt (an ssh-agent is fine).</li>
   <li>On another machine the project folder is asked as a typed path (an absolute path on that machine), and remembered per machine.</li>
 </ol>
-<figure class="narrow-fig"><img src="../assets/pi-machines.png" width="1280" height="780" loading="lazy" alt="Preferences on the Agents page: where agents run, the machines vps and nas, and the project shop with a worktree per card"><figcaption>Preferences → Agents: where agents run, the machines, and the projects</figcaption></figure>
-<figure class="narrow-fig"><img src="../assets/pi-close.png" width="1280" height="780" loading="lazy" alt="The question when the window closes: Keep Running and Close, Stop Agents and Close, or Cancel"><figcaption>Closing the window while agents work on markworkd</figcaption></figure>
+<figure class="narrow-fig"><picture class="themed-media"><img data-light-src="../assets/pi-machines.png" data-dark-src="../assets/dark/pi-machines.png" width="1280" height="780" loading="lazy" alt="Preferences on the Agents page: where agents run, the machines vps and nas, and the project shop with a worktree per card"><noscript><img src="../assets/dark/pi-machines.png" width="1280" height="780" loading="lazy" alt="Preferences on the Agents page: where agents run, the machines vps and nas, and the project shop with a worktree per card"></noscript></picture><figcaption>Preferences → Agents: where agents run, the machines, and the projects</figcaption></figure>
+<figure class="narrow-fig"><picture class="themed-media"><img data-light-src="../assets/pi-close.png" data-dark-src="../assets/dark/pi-close.png" width="1280" height="780" loading="lazy" alt="The question when the window closes: Keep Running and Close, Stop Agents and Close, or Cancel"><noscript><img src="../assets/dark/pi-close.png" width="1280" height="780" loading="lazy" alt="The question when the window closes: Keep Running and Close, Stop Agents and Close, or Cancel"></noscript></picture><figcaption>Closing the window while agents work on markworkd</figcaption></figure>
 <ul>
   <li><strong>Closing the window</strong> asks what to do: <em>Keep Running and Close</em>, <em>Stop Agents and Close</em>, or <em>Cancel</em>. Agents that are children of the window (the default) can only be stopped, so that question has no <em>Keep Running</em>.</li>
   <li><strong>Opening Markwork again</strong> finds the runs of your cards on the machine, replays what happened while you were away into the log, and asks again for an answer that is still open. A run that finished meanwhile is finished as usual: the card gets its result and moves to Review. The daemon itself may restart (an upgrade, a crash) without ending anything: each agent is held by a small helper that keeps running and hands its output to the next daemon. Only a reboot or a killed helper ends a run; then the card says it was <em>interrupted</em> and <em>Resume</em> in its menu continues the pi session where it stopped.</li>
@@ -145,9 +145,9 @@ project: web-ecommerce         <span class="c">← the default project of the bo
   <li>On another machine, what may run is decided there: markworkd runs only the programs and in the folders its own configuration allows, whatever a card or the Markdown says.</li>
 </ul>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

@@ -1,34 +1,34 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quick start · Markwork Documentation</title>
 <meta name="description" content="Install and run Markwork, a Markdown workspace for humans and AI agents on the Linux desktop, then start working with an agent in your folder.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Getting started</p>
 <h1>Quick start</h1>
-<p class="lead">Markwork is a Markdown workspace for humans and AI agents on the Linux desktop. You and the agent work in the same folder: the agent browses your notes, plans, and task boards, then proposes changes that are only written after you approve the diff.</p>
+<p class="lead">Markwork is a Markdown workspace for humans and AI agents on Linux, macOS, and Windows. You and the agent work in the same folder: the agent browses your notes, plans, and task boards, then proposes changes that are only written after you approve the diff.</p>
 
 <h2 id="install">Install</h2>
 <p>The installers are attached to each <a href="https://github.com/EkaPutCom/markwork/releases">release</a>: an AppImage and a deb for Linux, a dmg for macOS, and an exe installer for Windows. The AppImage, the dmg, and the Windows installer update themselves from the releases; the deb is updated by installing the next one.</p>
@@ -61,7 +61,7 @@ npm start -- plan.md            <span class="c"># open one file</span></pre>
 <li><strong>Kanban.</strong> Plan the work on a <a href="kanban.html">board</a>. Due dates show up on Home.</li>
 <li><strong>Agent.</strong> Ask in the Assistant panel, for example “Update the release date and move the release material card to In Progress.” The agent proposes the changes, the review window shows the diff, and you press <em>Apply</em> or <em>Reject</em>.</li>
 </ol>
-<figure><img src="../assets/agent.gif" width="900" height="548" loading="lazy" alt="Animation of the agent proposing changes to a plan and a task board; the user applies both"><figcaption>The agent proposes, you apply</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/agent.gif" data-dark-src="../assets/dark/agent.gif" width="900" height="548" loading="lazy" alt="Animation of the agent proposing changes to a plan and a task board; the user applies both" data-light-poster="../assets/agent-poster.png" data-dark-poster="../assets/dark/agent-poster.png"><noscript><img src="../assets/dark/agent.gif" width="900" height="548" loading="lazy" alt="Animation of the agent proposing changes to a plan and a task board; the user applies both"></noscript></picture><figcaption>The agent proposes, you apply</figcaption></figure>
 
 <h2 id="next">Next steps</h2>
 <div class="cards">
@@ -71,10 +71,12 @@ npm start -- plan.md            <span class="c"># open one file</span></pre>
   <a href="layouts.html"><strong>Views of the same notes</strong><span>A board, list, table, calendar, timeline, gallery, or chart from one file.</span></a>
   <a href="orchestrator.html"><strong>The pi orchestrator</strong><span>Assign kanban cards to the pi harness in another project repo.</span></a>
 </div>
+<h2 id="website-appearance">Website appearance</h2>
+<p>This website starts in the dark theme. Use the appearance button at the foot of the sidebar to switch to light; your browser remembers the choice across pages. On a phone, open the navigation first. Screenshots and GIFs follow your selection. If your device prefers reduced motion, the website shows a still image instead of each animation. This preference only changes the website; the application's theme is set in its own Preferences. Website icons are embedded in the page and also work when you open an HTML file directly from your computer.</p>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>
