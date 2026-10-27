@@ -1,31 +1,31 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>History, journal, and log · Markwork Documentation</title>
 <meta name="description" content="The Markwork conversation history per folder, the action journal and recovery of interrupted work, and the Agent log window for watching every model round and tool call.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Agent</p>
 <h1>History, journal, and log</h1>
 <p class="lead">Your conversations and decisions are saved as Markdown in the work folder, and every step of the agent can be watched live.</p>
@@ -38,7 +38,7 @@
   <li><code>.markwork/</code> automatically gets a <code>.gitignore</code> containing <code>*</code> because it holds quotes from the manuscript. Delete that file if you want to commit the history.</li>
   <li>The <em>Save conversation history in the folder</em> switch in the panel settings turns it off. Without an open folder, nothing is saved.</li>
 </ul>
-<figure><img src="../assets/chat-history.png" width="1280" height="780" loading="lazy" alt="The Assistant panel with the list of previous conversations saved in the work folder"><figcaption>The list of conversations saved in the work folder</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/chat-history.png" data-dark-src="../assets/dark/chat-history.png" width="1280" height="780" loading="lazy" alt="The Assistant panel with the list of previous conversations saved in the work folder"><noscript><img src="../assets/dark/chat-history.png" width="1280" height="780" loading="lazy" alt="The Assistant panel with the list of previous conversations saved in the work folder"></noscript></picture><figcaption>The list of conversations saved in the work folder</figcaption></figure>
 <p>For a long conversation, the model receives the latest turns and a compact summary of the old turns. The full history stays on disk.</p>
 
 <h2 id="journal">The action journal</h2>
@@ -56,7 +56,7 @@
 
 <h2 id="agent-log">The agent log</h2>
 <p>The terminal button in the panel header opens the <em>Agent log</em> window: a tree of every turn on the left and the details of the selected step on the right, updated live while the agent works.</p>
-<figure><img src="../assets/agent-log.png" width="980" height="652" loading="lazy" alt="The Agent log window: a tree of one turn with its six model rounds and the tool calls set_work, propose_batch, and verify_work on the left, and the details of the selected step on the right"><figcaption>The agent log of one job: 6 model rounds and 5 tool calls</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/agent-log.png" data-dark-src="../assets/dark/agent-log.png" width="980" height="652" loading="lazy" alt="The Agent log window: a tree of one turn with its six model rounds and the tool calls set_work, propose_batch, and verify_work on the left, and the details of the selected step on the right"><noscript><img src="../assets/dark/agent-log.png" width="980" height="652" loading="lazy" alt="The Agent log window: a tree of one turn with its six model rounds and the tool calls set_work, propose_batch, and verify_work on the left, and the details of the selected step on the right"></noscript></picture><figcaption>The agent log of one job: 6 model rounds and 5 tool calls</figcaption></figure>
 
 <ul>
   <li>Model rounds: the number of messages, the tools offered, and the tokens in/cached/out</li>
@@ -67,9 +67,9 @@
 <p>Folding a round hides its steps. Selecting a step shows its metrics (duration, result size, share of the turn's time, tokens) and the tabs <em>Summary</em>, <em>Arguments</em>, <em>Result</em>, and <em>Raw</em>; the detail follows the newest step until you pick one yourself.</p>
 <p>The filters <em>All</em>, <em>Tools</em>, <em>Reasoning</em>, and <em>Model</em>, plus the <em>Copy all</em> and <em>Clear</em> buttons. The log keeps at most 2,000 events and is not sent to the model. For the assistant it is saved next to the conversation (<code>.markwork/chats/&lt;name&gt;.log.jsonl</code>) and comes back when you reopen that conversation; <em>New conversation</em> empties the view. The pi log only exists while the app runs. The same window is used for the <a href="orchestrator.html#log">pi log</a>.</p>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

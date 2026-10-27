@@ -1,36 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Proposals and approval · Markwork Documentation</title>
 <meta name="description" content="How the Markwork agent proposes new files, text changes, deletes, moves, and kanban changes through the review window, including batches, partial approval, notes, and Undo.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Agent</p>
 <h1>Proposals and approval</h1>
 <p class="lead">The agent never writes by itself. Every action becomes a proposal with a diff that you review; files are only touched after you press <em>Apply</em>.</p>
 
-<figure><img src="../assets/proposal-diff.png" width="980" height="358" loading="lazy" alt="The review window of an agent proposal: a one-line diff of the release date with the Reject and Apply buttons"><figcaption>The review window: the release date changes from 15 to 22 November</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/proposal-diff.png" data-dark-src="../assets/dark/proposal-diff.png" width="1200" height="342" loading="lazy" alt="The review window of an agent proposal: a one-line diff of the release date with the Reject and Apply buttons"><noscript><img src="../assets/dark/proposal-diff.png" width="1200" height="342" loading="lazy" alt="The review window of an agent proposal: a one-line diff of the release date with the Reject and Apply buttons"></noscript></picture><figcaption>The review window: the release date changes from 15 to 22 November</figcaption></figure>
 
 <h2 id="actions">Actions that can be proposed</h2>
 <div class="table-wrap"><table>
@@ -52,7 +52,7 @@
   <li>A compact status card remains in the panel with a <em>Review changes</em> button to open it again.</li>
   <li>The result of Apply, Reject, an error, or Stop is sent back to the agent, so the agent does not insist after a rejection.</li>
 </ul>
-<figure><img src="../assets/proposal-kanban.png" width="980" height="448" loading="lazy" alt="The review window of an agent proposal: a kanban card moves from the Plan list to In Progress"><figcaption>Moving a card only marks that card, not the whole board</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/proposal-kanban.png" data-dark-src="../assets/dark/proposal-kanban.png" width="1200" height="450" loading="lazy" alt="The review window of an agent proposal: a kanban card moves from the Plan list to In Progress"><noscript><img src="../assets/dark/proposal-kanban.png" width="1200" height="450" loading="lazy" alt="The review window of an agent proposal: a kanban card moves from the Plan list to In Progress"></noscript></picture><figcaption>Moving a card only marks that card, not the whole board</figcaption></figure>
 
 <h2 id="batches">Batches and partial approval</h2>
 <p>For work that touches several files, the agent uses <code>propose_batch</code>. All the diffs appear in one window with a checkbox per file.</p>
@@ -63,7 +63,7 @@
   <li>A file that is deleted or moved may not be touched by another action in the same batch, so every file is safe to apply on its own.</li>
   <li>All the files are checked before any is written. If writing fails halfway, the files that were already written are restored where possible.</li>
 </ul>
-<figure><img src="../assets/proposal-batch.png" width="980" height="670" loading="lazy" alt="The review window of a three-file batch: one checkbox removed, a note for the agent filled in, the Apply 2 of 3 button"><figcaption>A three-file batch: one rejected through its checkbox, with a note for the agent</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/proposal-batch.png" data-dark-src="../assets/dark/proposal-batch.png" width="1200" height="652" loading="lazy" alt="The review window of a three-file batch: one checkbox removed, a note for the agent filled in, the Apply 2 of 3 button"><noscript><img src="../assets/dark/proposal-batch.png" width="1200" height="652" loading="lazy" alt="The review window of a three-file batch: one checkbox removed, a note for the agent filled in, the Apply 2 of 3 button"></noscript></picture><figcaption>A three-file batch: one rejected through its checkbox, with a note for the agent</figcaption></figure>
 
 
 <h2 id="notes">Notes for the agent</h2>
@@ -86,9 +86,9 @@
   <li>The proposal tools only exist when the <em>Other files in the folder</em> switch is on.</li>
 </ul>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>

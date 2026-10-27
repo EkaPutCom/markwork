@@ -1,35 +1,35 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Views of the same notes · Markwork Documentation</title>
 <meta name="description" content="One Markdown file, many views: a board, a list, a table, a calendar, a timeline, a gallery, or a chart, chosen by the layout line in the frontmatter.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fdb'/%3E%3Cpath d='M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="docs.css">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
 </head>
-<body>
-
-<header class="top">
-  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="side">Menu</button>
-  <a class="brand" href="../index.html">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 23V9h3.2L16 16l4.8-7H24v14h-3v-9l-5 7-5-7v9z" fill="var(--accent-text)"/></svg>
-    Markwork <span>Docs</span>
-  </a>
-  <nav>
-    <a href="index.html" aria-current="true">Docs</a>
-    <a class="hide-sm" href="../learn-agent.html">Learn agents</a>
-    <a href="https://github.com/EkaPutCom/markwork">GitHub</a>
-  </nav>
-</header>
-
-<div class="layout">
-<aside class="side" id="side" aria-label="Documentation navigation"></aside>
-<main class="doc">
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Workspace</p>
 <h1>Views of the same notes</h1>
 <p class="lead">A Markdown file with a <code>layout:</code> line in its frontmatter shows its notes as something other than text. The notes are the same in every view: change the line and the same file becomes a board, a list, a table, a calendar, a timeline, a gallery, or a chart. Nothing is converted or rewritten.</p>
-<figure><img src="../assets/layouts.gif" width="900" height="548" loading="lazy" alt="Animation of one file shown as a board, a list, a table, a calendar, a timeline, a gallery, and a chart"><figcaption>One file, seven views</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/layouts.gif" data-dark-src="../assets/dark/layouts.gif" width="900" height="548" loading="lazy" alt="Animation of one file shown as a board, a list, a table, a calendar, a timeline, a gallery, and a chart" data-light-poster="../assets/layouts-poster.png" data-dark-poster="../assets/dark/layouts-poster.png"><noscript><img src="../assets/dark/layouts.gif" width="900" height="548" loading="lazy" alt="Animation of one file shown as a board, a list, a table, a calendar, a timeline, a gallery, and a chart"></noscript></picture><figcaption>One file, seven views</figcaption></figure>
 
 <h2 id="choose">Choosing a view</h2>
 <ul>
@@ -52,11 +52,11 @@ fields:
 
 <h2 id="board">Board</h2>
 <p><code>layout: board</code>: lists side by side and cards you drag between them. See <a href="kanban.html">The kanban board</a>. With <code>group: status</code> the columns are the values of a select field instead of <code>##</code> headings: dragging a card to another column sets its field, and a card added to a column gets that value.</p>
-<figure><img src="../assets/layout-board.png" width="1280" height="780" loading="lazy" alt="The same notes as a kanban board with the Plan, In Progress, and Done lists"><figcaption>Board</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/layout-board.png" data-dark-src="../assets/dark/layout-board.png" width="1280" height="780" loading="lazy" alt="The same notes as a kanban board with the Plan, In Progress, and Done lists"><noscript><img src="../assets/dark/layout-board.png" width="1280" height="780" loading="lazy" alt="The same notes as a kanban board with the Plan, In Progress, and Done lists"></noscript></picture><figcaption>Board</figcaption></figure>
 
 <h2 id="list">List</h2>
 <p><code>layout: list</code>: an inbox. Quick capture on top, notes with tags and fields, drag to reorder or to another section. See <a href="inbox.html">Inbox</a>.</p>
-<figure><img src="../assets/layout-list.png" width="1280" height="780" loading="lazy" alt="The same notes as an inbox list grouped in sections"><figcaption>List</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/layout-list.png" data-dark-src="../assets/dark/layout-list.png" width="1280" height="780" loading="lazy" alt="The same notes as an inbox list grouped in sections"><noscript><img src="../assets/dark/layout-list.png" width="1280" height="780" loading="lazy" alt="The same notes as an inbox list grouped in sections"></noscript></picture><figcaption>List</figcaption></figure>
 
 <h2 id="table">Table</h2>
 <p><code>layout: table</code>: one row per note across every section, one column per field. <code>columns: [title, status, due]</code> picks and orders the columns (<code>section</code> is a column too), and <code>sort: due</code> or <code>sort: -due</code> sorts the rows.</p>
@@ -66,30 +66,30 @@ fields:
   <li>A click on a title edits the note, the checkbox marks it done, and ✕ deletes the row. The entry above the table and <em>New Row</em> add a note.</li>
 </ul>
 <p>This is different from a CSV file, which is plain data with no notes; see <a href="files.html#csv">CSV tables</a>.</p>
-<figure><img src="../assets/layout-table.png" width="1280" height="780" loading="lazy" alt="The same notes as a table with title, status, start, due, and section columns"><figcaption>Table</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/layout-table.png" data-dark-src="../assets/dark/layout-table.png" width="1280" height="780" loading="lazy" alt="The same notes as a table with title, status, start, due, and section columns"><noscript><img src="../assets/dark/layout-table.png" width="1280" height="780" loading="lazy" alt="The same notes as a table with title, status, start, due, and section columns"></noscript></picture><figcaption>Table</figcaption></figure>
 
 <h2 id="calendar">Calendar</h2>
 <p><code>layout: calendar</code>: the notes on a month grid by a date field (<code>date: due</code>, the default; else the first date field). <em>Month</em>, <em>Week</em>, and <em>Agenda</em> are three views of the same notes.</p><ul><li>Drag a note to another day to change its date (a time is kept), or to the side panel to take its date away.</li><li>Click a note to edit it; double-click a day to add a note on that day.</li><li>Today is highlighted, notes past their date are red, and done ones are struck through.</li></ul>
-<figure><img src="../assets/layout-calendar.png" width="1280" height="780" loading="lazy" alt="The same notes on a month calendar"><figcaption>Calendar</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/layout-calendar.png" data-dark-src="../assets/dark/layout-calendar.png" width="1280" height="780" loading="lazy" alt="The same notes on a month calendar"><noscript><img src="../assets/dark/layout-calendar.png" width="1280" height="780" loading="lazy" alt="The same notes on a month calendar"></noscript></picture><figcaption>Calendar</figcaption></figure>
 
 <h2 id="timeline">Timeline</h2>
 <p><code>layout: timeline</code>: a bar per note from its <code>start</code> field to its <code>end</code> field (defaults <code>start</code> and <code>due</code>). A note with one date is a one-day marker; a note with none has a row but no bar.</p><ul><li>Drag a bar to move both dates, drag an edge to change one, click to edit.</li><li>The red line is today. The dark part of a bar is the <code>progress</code> field (or the whole bar for a done note).</li><li><em>Week</em>, <em>Month</em>, and <em>Quarter</em> change the scale; <code>zoom:</code> sets the first.</li></ul>
-<figure><img src="../assets/layout-timeline.png" width="1280" height="780" loading="lazy" alt="The same notes as bars on a timeline with a line for today"><figcaption>Timeline</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/layout-timeline.png" data-dark-src="../assets/dark/layout-timeline.png" width="1280" height="780" loading="lazy" alt="The same notes as bars on a timeline with a line for today"><noscript><img src="../assets/dark/layout-timeline.png" width="1280" height="780" loading="lazy" alt="The same notes as bars on a timeline with a line for today"></noscript></picture><figcaption>Timeline</figcaption></figure>
 
 <h2 id="gallery">Gallery</h2>
 <p><code>layout: gallery</code>: a card per note with a cover. The cover is the image named by the <code>cover:</code> field (a path relative to the document), else the first image in the note, else a color from the first tag. A card shows the title, the first line of the note, tags, and fields.</p><ul><li>The search entry filters the cards; <code>size: small|medium|large</code> (or the buttons) sets their width.</li></ul>
-<figure><img src="../assets/layout-gallery.png" width="1280" height="780" loading="lazy" alt="The same notes as a gallery of cards with colored covers"><figcaption>Gallery</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/layout-gallery.png" data-dark-src="../assets/dark/layout-gallery.png" width="1280" height="780" loading="lazy" alt="The same notes as a gallery of cards with colored covers"><noscript><img src="../assets/dark/layout-gallery.png" width="1280" height="780" loading="lazy" alt="The same notes as a gallery of cards with colored covers"></noscript></picture><figcaption>Gallery</figcaption></figure>
 
 <h2 id="chart">Chart</h2>
 <p><code>layout: chart</code>: counts the notes without changing them: notes, done, overdue (past <code>due</code> and not done), the average per week, notes created per week or month (<code>by:</code> a date field, <code>period: week|month</code>), notes per value of a select field (<code>group:</code>, drawn as a donut), and per tag.</p><ul><li><code>charts: [kpi, bar, donut:status, donut:priority, tags]</code> picks the panels and their order; <code>bar:due:month</code> counts by another date field and period.</li><li>The gear button at the top right edits that list for you: move, remove, add, and choose the fields.</li></ul>
-<figure><img src="../assets/layout-chart.png" width="1280" height="780" loading="lazy" alt="The same notes as a chart with counts, a bar chart, and a donut by status"><figcaption>Chart</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/layout-chart.png" data-dark-src="../assets/dark/layout-chart.png" width="1280" height="780" loading="lazy" alt="The same notes as a chart with counts, a bar chart, and a donut by status"><noscript><img src="../assets/dark/layout-chart.png" width="1280" height="780" loading="lazy" alt="The same notes as a chart with counts, a bar chart, and a donut by status"></noscript></picture><figcaption>Chart</figcaption></figure>
 
 <h2 id="agent">The agent and views</h2>
 <p>The agent understands these files by their structure, not only their text: <code>describe_schema</code> gives it the layout, fields, and select options, and <code>query_notes</code> filters, sorts, and counts notes by field. Changes it proposes to notes and fields go through the same review window as any other change (see <a href="proposals.html">Proposals and approval</a>).</p>
 </main>
-<aside class="toc" id="toc" aria-label="Table of contents"></aside>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
-
-<script src="nav.js"></script>
+<div class="statusbar" id="site-status"></div>
+</div>
 </body>
 </html>
