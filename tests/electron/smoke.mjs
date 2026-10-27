@@ -62,6 +62,15 @@ try {
         await page.locator('.statusbar').getByText(/words/).waitFor();
     });
 
+    await step('closing a Saved notice does not remove the next notice while the first animates out', async () => {
+        await page.keyboard.press('ControlOrMeta+s');
+        const notice = page.locator('[data-sonner-toast][data-index="0"]:not([data-removed=true])').filter({ hasText: /^Saved$/ });
+        await notice.getByRole('button', { name: 'Close toast', exact: true }).click();
+        await page.keyboard.press('ControlOrMeta+s');
+        await notice.getByRole('button', { name: 'Close toast', exact: true }).waitFor();
+        assert.equal(await notice.count(), 1, 'the new notice remains visible');
+    });
+
     await step('clicking a task box flips it, and a wrapped list item hangs under its text', async () => {
         await page.getByRole('treeitem', { name: /tasks\.md/ }).click();
         await title.getByText('tasks.md').waitFor();

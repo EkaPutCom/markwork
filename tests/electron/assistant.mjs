@@ -216,7 +216,7 @@ try {
         await dialog.getByText('Add to Journal').first().waitFor();
         await dialog.getByRole('textbox').fill('printer met at ten');
         await dialog.getByRole('button', { name: 'Add' }).click();
-        await page.getByText("Recorded in today's journal").waitFor();
+        await page.locator('[data-sonner-toast][data-index="0"]:not([data-removed=true])').getByText("Recorded in today's journal").waitFor();
         const folder = join(notes, 'journal');
         await waitFor(() => existsSync(folder) && readdirSync(folder).length > 0);
         const file = readdirSync(folder)[0];
@@ -241,7 +241,9 @@ try {
         const dialog = page.getByRole('alertdialog');
         await dialog.getByRole('textbox').fill('from home');
         await dialog.getByRole('button', { name: 'Add' }).click();
-        await page.getByText("Recorded in today's journal").waitFor();
+        await page.locator('[data-sonner-toast][data-index="0"]:not([data-removed=true])').getByText("Recorded in today's journal").waitFor();
+        const folder = join(notes, 'journal');
+        await waitFor(() => readdirSync(folder).some(name => readFileSync(join(folder, name), 'utf8').includes('from home')));
     });
 } catch {
     failed = true;

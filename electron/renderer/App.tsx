@@ -1,7 +1,7 @@
 // The window: the sidebar (or its rail), the header of the document, the editor with its tabs, the counts at the foot,
 // the Assistant beside them, and the command palette over all of it. The look is shadcn/ui's (docs/design/shadcn/).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './components/EditorArea.js';
@@ -214,12 +214,16 @@ function StatusBar() {
 function Notification() {
     const client = useClient();
     const { toast: notice, coreError, settings } = useStore();
+    const active = useRef<string | number | null>(null);
     useEffect(() => {
-        if (!notice) { toast.dismiss('notice'); return; }
-        toast(notice.text, {
-            id: 'notice', duration: 6000, closeButton: true,
+        if (active.current !== null) toast.dismiss(active.current);
+        if (!notice) { active.current = null; return; }
+        // A new id gives each notice its own lifetime, even while the previous one is animating out.
+        const dismiss = () => { if (client.getState().toast === notice) client.dismissToast(); };
+        active.current = toast(notice.text, {
+            duration: 6000, closeButton: true,
             action: notice.action ? { label: notice.action.label, onClick: () => client.runToast(notice.action!.token) } : undefined,
-            onDismiss: () => client.dismissToast(), onAutoClose: () => client.dismissToast(),
+            onDismiss: dismiss, onAutoClose: dismiss,
         });
     }, [notice, client]);
     useEffect(() => {
@@ -227,7 +231,7 @@ function Notification() {
         else toast.dismiss('core-error');
     }, [coreError]);
     const scheme = settings['color-scheme'];
-    return <Toaster theme={scheme === 'light' || scheme === 'dark' ? scheme : 'system'} position="bottom-center" />;
+    return <Toaster theme={scheme === 'light' || scheme === 'dark' ? scheme : 'system'} position="bottom-center" visibleToasts={1} />;
 }
 
 const INSPECTOR_KEY = 'Ctrl+Alt+i';

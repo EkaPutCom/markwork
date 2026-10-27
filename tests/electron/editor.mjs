@@ -240,7 +240,7 @@ try {
         await page.getByRole('menuitem', { name: 'New Folder…' }).click();
         await dialog.getByRole('textbox').fill('projects');
         await dialog.getByRole('button', { name: 'OK' }).click();
-        await page.locator('[data-sonner-toast] [data-title]').waitFor();
+        await page.locator('[data-sonner-toast][data-index="0"]:not([data-removed=true]) [data-title]').filter({ hasText: /already exists/ }).waitFor();
         await open(/Source\.md/);
     });
 

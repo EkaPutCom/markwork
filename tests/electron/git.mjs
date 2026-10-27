@@ -30,7 +30,7 @@ try {
     page = await app.firstWindow();
     const history = page.getByRole('complementary', { name: 'History' });
     const collab = page.getByRole('complementary', { name: 'Pull requests' });
-    const toast = page.locator('[data-sonner-toast] [data-title]');
+    const toast = page.locator('[data-sonner-toast][data-index="0"]:not([data-removed=true]) [data-title]');
 
     await step('the History page lists the commits of the open file and the uncommitted files', async () => {
         await page.getByRole('treeitem', { name: /a\.md/ }).waitFor({ timeout: 15000 });

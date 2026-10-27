@@ -3,7 +3,7 @@
 // document opens as a copy with every element of the editor drawn.
 
 import assert from 'node:assert/strict';
-import { existsSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { scratchFolder, launchApp, stepper } from './support.mjs';
 
@@ -89,6 +89,34 @@ try {
             await gallery.getByRole('radio', { name: 'Light' }).click();
             await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
             assert.equal(await ground(), light);
+        });
+
+        await step('a notice closes from its right edge in both themes and a narrow window', async () => {
+            for (const [theme, width] of [['Light', 1280], ['Dark', 1280], ['Dark', 560]]) {
+                await page.setViewportSize({ width, height: 800 });
+                await gallery.getByRole('radio', { name: theme, exact: true }).click();
+                await gallery.getByRole('button', { name: 'A notice', exact: true }).click();
+                const notice = page.locator('[data-sonner-toast]').filter({ hasText: 'The note is saved' });
+                const close = notice.getByRole('button', { name: /Close toast/ });
+                await close.waitFor();
+                await page.waitForFunction(() => {
+                    const toast = document.querySelector('[data-sonner-toast]');
+                    return toast?.dataset.mounted === 'true';
+                });
+                const box = await notice.boundingBox(), button = await close.boundingBox();
+                assert.ok(button.x + button.width / 2 > box.x + box.width * .9, 'close is on the right');
+                assert.ok(button.x + button.width <= width, 'close stays within the window');
+                if (process.env.MARKWORK_TOAST_SCREENSHOTS) {
+                    mkdirSync(process.env.MARKWORK_TOAST_SCREENSHOTS, { recursive: true });
+                    await page.screenshot({ path: join(process.env.MARKWORK_TOAST_SCREENSHOTS, `toast-${theme.toLowerCase()}-${width}.png`) });
+                }
+                const started = performance.now();
+                await close.click();
+                await notice.waitFor({ state: 'detached' });
+                console.log(`  dismiss notice (${theme}, ${width}px): ${(performance.now() - started).toFixed(0)} ms`);
+            }
+            await page.setViewportSize({ width: 1280, height: 800 });
+            await gallery.getByRole('radio', { name: 'Light', exact: true }).click();
         });
 
         await step('Open Sample Document opens a copy with every element of the editor drawn', async () => {
