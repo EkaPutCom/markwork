@@ -6,6 +6,6 @@
 set -eu
 cd "$(dirname "$0")/.."
 files=$(grep -v '^#' po/POTFILES.in | grep -v '^$')
-common="--from-code=UTF-8 --add-comments=Translators: --package-name=markwork --msgid-bugs-address=https://usemarkwork.com/"
+common="--from-code=UTF-8 --add-comments=Translators: --package-name=markwork --msgid-bugs-address=https://markwork.id/"
 xgettext $common -L JavaScript --keyword=_ --keyword=pgettext:1c,2 --keyword=ngettext:1,2 -o po/markwork.pot $files
 echo "po/markwork.pot: $(grep -c '^msgid ' po/markwork.pot) strings"
