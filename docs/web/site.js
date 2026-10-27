@@ -10,7 +10,7 @@
     sidebar.innerHTML = `
         <a class="brand" href="${base}index.html"><span class="monogram">M</span><span>Markwork<small>Markdown, put to work.</small></span></a>
         <button class="sidebar-close icon-control" aria-label="Close navigation">${icon('x')}</button>
-        <div class="workspace">${icon('folder-open')}<span>markwork.ekaput.com</span>${icon('chevrons-up-down')}</div>
+        <div class="workspace">${icon('folder-open')}<span>usemarkwork.com</span>${icon('chevrons-up-down')}</div>
         <nav aria-label="Website">
             <a class="nav-row${docs ? '' : ' active'}" href="${base}index.html"${docs ? '' : ' aria-current="page"'}>${icon('house')}Overview</a>
             <a class="nav-row${docs ? ' active' : ''}" href="${base}docs/"${docs ? ' aria-current="true"' : ''}>${icon('book-open')}Documentation</a>
