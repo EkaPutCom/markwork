@@ -19,10 +19,10 @@
 // A style is whatever the editor applies (a CodeMirror decoration): the editor hands one per name
 // (Styles<T>), and the spans carry it as it is, so an editor can compare and apply them without a lookup.
 
-import { RE, isTableSeparator, type InlineTag } from './syntax.js';
-import { findTables, type TableRange } from './table.js';
-import { parseInline } from './inline.js';
-import { makeCpMap, cpLength, countWords } from './offsets.js';
+import { RE, isTableSeparator, type InlineTag } from './syntax';
+import { findTables, type TableRange } from './table';
+import { parseInline } from './inline';
+import { makeCpMap, cpLength, countWords } from './offsets';
 
 // The names a line can be styled with.
 export type SyntaxName = InlineTag | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'codeblock' | 'fence' | 'quote' | 'quote2' | 'quote3'

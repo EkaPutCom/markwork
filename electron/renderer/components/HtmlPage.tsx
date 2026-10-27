@@ -3,9 +3,9 @@
 // reaching the network (markdown/htmlview.ts). A link that leaves the page opens in the browser, never in the frame.
 
 import { useEffect, useState } from 'react';
-import { htmlViewUrl } from '../../../src/markdown/htmlview.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Icon } from './Icons.js';
+import { htmlViewUrl } from '../../../src/markdown/htmlview';
+import { IconButton } from '../ui/icon-button';
+import { Icon } from './Icons';
 
 export function HtmlPage({ id, file, root }: { id: number; file: string; root: string }) {
     const [reload, setReload] = useState(0);

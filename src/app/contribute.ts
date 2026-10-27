@@ -1,12 +1,12 @@
 // "Send changes as pull request": checks that the folder is connected to a forge and has changes, asks what to send, and
 // hands the sending to forge/contribute.ts. The result is told in a toast; the pull request itself shows up in the list.
 
-import { repoChanges, runGit } from '../base/git.js';
-import { sendChanges, type SendContext, type SendResult, type SendVia } from '../forge/contribute.js';
-import type { ForgeProvider, RepoRef } from '../forge/types.js';
-import type { FileChange } from '../base/gitlog.js';
-import { _, fmt } from '../base/i18n.js';
-import type { DocumentHost } from './document.js';
+import { repoChanges, runGit } from '../base/git';
+import { sendChanges, type SendContext, type SendResult, type SendVia } from '../forge/contribute';
+import type { ForgeProvider, RepoRef } from '../forge/types';
+import type { FileChange } from '../base/gitlog';
+import { _, fmt } from '../base/i18n';
+import type { DocumentHost } from './document';
 
 // What the "Send changes as pull request" dialog is shown, and what it answers.
 export interface SendChangesOptions {

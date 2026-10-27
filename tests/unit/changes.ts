@@ -1,12 +1,12 @@
 // Tests for changes proposed by the agent: proposal validation, diff preview, and the approval flow in a session.
 // Without a GUI and without a network.
 
-import { buildContext, type ContextInput, type SourceFile } from '../../src/agent/context.js';
-import { cleanNewName, CHANGE_TOOLS, diffPreview, planChange, unifiedDiff, type Change } from '../../src/agent/changes.js';
-import { ChatSession, type ProposalResult, type ToolStep } from '../../src/agent/session.js';
-import { describeCall } from '../../src/agent/tools.js';
-import type { ChatRequest, ChatResult, Provider } from '../../src/agent/provider.js';
-import { section, test, eq, ok, contains, within } from '../core/framework.js';
+import { buildContext, type ContextInput, type SourceFile } from '../../src/agent/context';
+import { cleanNewName, CHANGE_TOOLS, diffPreview, planChange, unifiedDiff, type Change } from '../../src/agent/changes';
+import { ChatSession, type ProposalResult, type ToolStep } from '../../src/agent/session';
+import { describeCall } from '../../src/agent/tools';
+import type { ChatRequest, ChatResult, Provider } from '../../src/agent/provider';
+import { section, test, eq, ok, contains, within } from '../core/framework';
 
 const PLAN = '# Plan\n\n- First draft: October\n- Revision: November\n\n## Notes\n\nNone yet.\n';
 const files: SourceFile[] = [{ name: 'plan.md', text: PLAN }, { name: 'research/harbor.md', text: '# Harbor\n\nThere are two piers.\n' }];

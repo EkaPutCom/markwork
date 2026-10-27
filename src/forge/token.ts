@@ -2,7 +2,7 @@
 // file ~/.config/markwork/forge-<host>.token (see base/credentials.ts for the order and the file's access mode). Same approach as
 // agent/apikey.ts.
 
-import { clearCredential, readCredential, saveCredential, type Credential, type CredentialSource } from '../base/credentials.js';
+import { clearCredential, readCredential, saveCredential, type Credential, type CredentialSource } from '../base/credentials';
 
 export type TokenSource = CredentialSource;
 

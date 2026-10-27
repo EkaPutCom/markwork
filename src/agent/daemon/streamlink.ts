@@ -2,8 +2,8 @@
 // bridge`, or `markworkd bridge` itself). The descriptors are the platform's (platform/node/links.ts); what
 // stays here is how the SSH bridge is reached.
 
-import { platform } from '../../platform/index.js';
-import type { Link } from './client.js';
+import { platform } from '../../platform/index';
+import type { Link } from './client';
 
 // Connects to a daemon listening on a Unix socket on this machine. Throws if nobody listens there.
 export const openSocketLink = (path: string): Link => platform().links.socket(path);

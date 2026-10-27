@@ -1,18 +1,18 @@
 // The data behind the Home tab (recent files, due tasks, agent runs, inboxes, today's journal) and the actions
 // taken from it. Everything is recomputed from the files on every render.
 
-import { fileExists, insideName } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import type { AppSettings } from '../base/settings.js';
-import type { WorkspaceRepository } from '../base/workspace.js';
-import type { ConnectionState } from '../agent/daemon/connection.js';
-import { cardProject, isActive, type Run, type RunStatus } from '../agent/harness.js';
-import { dueTasks, localDate, openInboxes, splitRecent, type InboxCount, type RecentFile, type Task } from '../markdown/home.js';
-import { isStructured } from '../markdown/layout.js';
-import { updateCard, type Board } from '../markdown/kanban.js';
-import { _, fmt } from '../base/i18n.js';
-import type { DocumentHost } from './document.js';
-import type { SetupData } from './programs.js';
+import { fileExists, insideName } from '../base/files';
+import { platform } from '../platform/index';
+import type { AppSettings } from '../base/settings';
+import type { WorkspaceRepository } from '../base/workspace';
+import type { ConnectionState } from '../agent/daemon/connection';
+import { cardProject, isActive, type Run, type RunStatus } from '../agent/harness';
+import { dueTasks, localDate, openInboxes, splitRecent, type InboxCount, type RecentFile, type Task } from '../markdown/home';
+import { isStructured } from '../markdown/layout';
+import { updateCard, type Board } from '../markdown/kanban';
+import { _, fmt } from '../base/i18n';
+import type { DocumentHost } from './document';
+import type { SetupData } from './programs';
 
 // The Continue cards fill a full row in a wide window; in a narrow window the frontend folds them.
 export const RESUME_CARDS = 3;

@@ -1,11 +1,11 @@
 // The Files tab: FilesController (app/files.ts) on a real temporary folder, through the platform port, with
 // a view that records what it is sent.
 
-import { AppSession } from '../../src/app/session.js';
-import { listFolder, type FileTreeView, type FolderEntry } from '../../src/app/files.js';
-import { section, test, eq, ok, until, pause, tmp, disk } from '../core/framework.js';
-import { host } from '../core/host.js';
-import { fakeFrontend, memorySettings, quiet } from './appsession.js';
+import { AppSession } from '../../src/app/session';
+import { listFolder, type FileTreeView, type FolderEntry } from '../../src/app/files';
+import { section, test, eq, ok, until, pause, tmp, disk } from '../core/framework';
+import { host } from '../core/host';
+import { fakeFrontend, memorySettings, quiet } from './appsession';
 
 // A tree that keeps the last contents it was sent per folder, and what it was asked to highlight and open.
 function recordingTree() {

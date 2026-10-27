@@ -7,12 +7,12 @@
 import { EditorSelection, EditorState, StateEffect, StateField, findClusterBreak, type Extension, type RangeSet } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType, keymap, showTooltip, type Tooltip, type TooltipView } from '@codemirror/view';
 import { startCompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
-import { iconElement, type IconName } from '../components/Icons.js';
-import { domButton, domCheckbox, domInput, type DomButtonOptions } from '../ui/dom.js';
-import { cellSelectionRect } from './tables.js';
-import { trace, traced } from './inspect/recorder.js';
-import { lineKindOf } from '../../../src/markdown/editcommands.js';
-import { RE } from '../../../src/markdown/syntax.js';
+import { iconElement, type IconName } from '../components/Icons';
+import { domButton, domCheckbox, domInput, type DomButtonOptions } from '../ui/dom';
+import { cellSelectionRect } from './tables';
+import { trace, traced } from './inspect/recorder';
+import { lineKindOf } from '../../../src/markdown/editcommands';
+import { RE } from '../../../src/markdown/syntax';
 
 export const setVisual = StateEffect.define<boolean>();
 export const visualMode = StateField.define<boolean>({

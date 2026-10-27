@@ -9,12 +9,12 @@
 // A card may link notes in the Markwork work folder with [[Note]] (in its title or notes). The contents of those notes
 // are copied into the prompt as context, because the harness works in another project folder and cannot read them.
 
-import { platform } from '../platform/index.js';
-import { cardMeta, type Board, type Card, type Position } from '../markdown/kanban.js';
-import { AgentTrace, prettyArguments } from './trace.js';
-import { wikiLinksIn, type WikiLink } from '../markdown/wikilink.js';
-import type { Worktree } from './worktree.js';
-import { atOrBelow, below, isWindowsPath, slashed } from '../markdown/paths.js';
+import { platform } from '../platform/index';
+import { cardMeta, type Board, type Card, type Position } from '../markdown/kanban';
+import { AgentTrace, prettyArguments } from './trace';
+import { wikiLinksIn, type WikiLink } from '../markdown/wikilink';
+import type { Worktree } from './worktree';
+import { atOrBelow, below, isWindowsPath, slashed } from '../markdown/paths';
 
 export interface HarnessSpec {
     name: string;          // the assignment name on the card, without "@"

@@ -1,12 +1,12 @@
 // One conflict in three panes: immutable sources and an editable result, applied only by the user's explicit action.
 import { useMemo, useState } from 'react';
-import { sideBySide, type DiffCell } from '../../../src/markdown/diffview.js';
-import type { ConflictComparison } from '../../../src/app/protocol/screen.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog.js';
-import { Button } from '../ui/button.js';
-import { Textarea } from '../ui/textarea.js';
-import { DiffColumn } from './Diff.js';
+import { sideBySide, type DiffCell } from '../../../src/markdown/diffview';
+import type { ConflictComparison } from '../../../src/app/protocol/screen';
+import { useClient, useStore } from '../lib/useClient';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
+import { DiffColumn } from './Diff';
 
 function Source({ title, branch, cells, accept, both }: {
     title: 'Incoming' | 'Current'; branch: string; cells: (DiffCell | null)[]; accept(): void; both(): void;

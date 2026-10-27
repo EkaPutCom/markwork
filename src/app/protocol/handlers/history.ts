@@ -1,8 +1,8 @@
 // The History tab and the history viewers: what the user did in them (HistoryController). A file or a hash must be one the
 // controller showed (it checks), and a viewer is named by the number it gave.
 
-import { RequestError } from '../messages.js';
-import { num, str, type HandlerContext } from './context.js';
+import { RequestError } from '../messages';
+import { num, str, type HandlerContext } from './context';
 
 const strings = (v: unknown, what: string): string[] => {
     if (!Array.isArray(v) || v.some(s => typeof s !== 'string')) throw new RequestError('bad_request', `${what} must be a list of strings`);

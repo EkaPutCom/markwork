@@ -25,8 +25,8 @@
 // Pure TypeScript. All operations return a new board; the original board
 // is not changed, so it is easy to test.
 
-import { layoutOf } from './layout.js';
-import { addOption, applyDefaults, countUses, fieldChips, fieldInputText, findSegments, parseSchema, readItem, setField, writeField, writeSchema, type DateValue, type FieldChip, type FieldDef } from './fields.js';
+import { layoutOf } from './layout';
+import { addOption, applyDefaults, countUses, fieldChips, fieldInputText, findSegments, parseSchema, readItem, setField, writeField, writeSchema, type DateValue, type FieldChip, type FieldDef } from './fields';
 
 export interface Card {
     done: boolean | null;   // null = plain item without a checkbox ("- text")

@@ -3,18 +3,18 @@
 // follows the newest step until the user picks one.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { TraceReplica } from '../../../src/agent/tracefeed.js';
-import { AgentTrace, type TraceEvent, type TraceKind } from '../../../src/agent/trace.js';
-import { descendants, formatCount, formatMs, formatSize, traceStats, traceTree, turnEvents, type TraceNode } from '../../../src/agent/tracetree.js';
-import { LOG_HEADERS, settledNewest, visibleSteps } from '../../../src/agent/logrows.js';
-import { Icon } from './Icons.js';
-import { Modal } from './Modals.js';
-import { useChat, useClient, useStore } from '../lib/useClient.js';
-import { Badge } from '../ui/badge.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
+import type { TraceReplica } from '../../../src/agent/tracefeed';
+import { AgentTrace, type TraceEvent, type TraceKind } from '../../../src/agent/trace';
+import { descendants, formatCount, formatMs, formatSize, traceStats, traceTree, turnEvents, type TraceNode } from '../../../src/agent/tracetree';
+import { LOG_HEADERS, settledNewest, visibleSteps } from '../../../src/agent/logrows';
+import { Icon } from './Icons';
+import { Modal } from './Modals';
+import { useChat, useClient, useStore } from '../lib/useClient';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
 const FILTERS: [string, TraceKind[]][] = [['All', []], ['Tools', ['tool']], ['Reasoning', ['reasoning']], ['Model', ['round', 'text']]];
 const KIND_NAME: Record<TraceKind, string> = { turn: 'Question', round: 'Model round', reasoning: 'Reasoning', text: 'Answer', tool: 'Tool call', usage: 'Usage', note: 'Note', error: 'Error' };

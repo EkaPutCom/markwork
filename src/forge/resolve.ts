@@ -3,9 +3,9 @@
 // The forge then sees the pull request's commits in the base branch and marks it merged. Git is a function passed in, so the
 // same steps run against local bare repositories in the tests.
 
-import { platform } from '../platform/index.js';
-import { credentialEnv, type GitRun, type GitRunner } from './contribute.js';
-import type { ForgeProvider } from './types.js';
+import { platform } from '../platform/index';
+import { credentialEnv, type GitRun, type GitRunner } from './contribute';
+import type { ForgeProvider } from './types';
 
 export interface LocalMerge {
     folder: string;

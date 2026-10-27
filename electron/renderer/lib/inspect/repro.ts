@@ -3,8 +3,8 @@
 // replay of the changes would give the recorded text whatever the code does now.
 
 import type { ChangeSet, EditorSelection } from '@codemirror/state';
-import { blurText } from '../../../../src/markdown/blur.js';
-import type { Recording, TxEntry } from './recorder.js';
+import { blurText } from '../../../../src/markdown/blur';
+import type { Recording, TxEntry } from './recorder';
 
 export type ReproStep =
     | { key: string }                                              // "Backspace", "Ctrl+b"

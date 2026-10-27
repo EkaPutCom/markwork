@@ -123,7 +123,7 @@ Run `npm run typecheck` and `npm run test:core:node` (both run `scripts/layers.m
 
 ## Code conventions
 
-- Imports between modules use the **`.js`** suffix even though the file is `.ts` (`import { x } from './tags.js'`).
+- Relative imports between TypeScript modules omit the file extension (`import { x } from './tags'`). Vite resolves the source modules; keep extensions for actual JavaScript assets and runtime build output.
 - Indentation of 4 spaces, single quotes, semicolons. Match the style and the density of comments with the files around it; a comment explains *why*, not *what*.
 - The functions in `markdown/` (including the board and table model operations) are pure: they do not change their arguments and return new values.
 - The renderer keeps no application state of its own beyond what is on screen: the store in `renderer/lib/client.ts` holds what the core sent, and an action goes to the core and comes back as a notice.

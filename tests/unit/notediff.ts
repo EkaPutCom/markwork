@@ -1,8 +1,8 @@
 // Tests for the pull request diff helpers: cutting a unified diff per file, and the note-aware diff of two versions.
 
-import { fileDiff, isBinaryDiff } from '../../src/forge/diff.js';
-import { countChanges, diffNote, MAX_DIFF_LINES } from '../../src/markdown/notediff.js';
-import { section, test, eq, ok } from '../core/framework.js';
+import { fileDiff, isBinaryDiff } from '../../src/forge/diff';
+import { countChanges, diffNote, MAX_DIFF_LINES } from '../../src/markdown/notediff';
+import { section, test, eq, ok } from '../core/framework';
 
 const DIFF = `diff --git a/agenda/rapat.md b/agenda/rapat.md
 index 111..222 100644

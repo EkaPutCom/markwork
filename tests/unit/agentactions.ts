@@ -2,17 +2,17 @@
 // user notes, Undo (the inverse of a change), Git history tools, and structure verification. Without a GUI and network,
 // except one test that runs real git in a temporary folder.
 
-import type { SourceFile } from '../../src/agent/context.js';
-import { changeState, invertChange, planChange, preflight, type Change } from '../../src/agent/changes.js';
-import { applyBatch, planBatch } from '../../src/agent/batch.js';
-import { parseEvents, reconcileEvents, type ActionEvent } from '../../src/agent/journal.js';
-import { formatGit, parseGitCall, type GitRequest } from '../../src/agent/gittools.js';
-import { verifyWork } from '../../src/agent/verification.js';
-import { ChatSession, type ProposalResult, type TurnHandlers } from '../../src/agent/session.js';
-import type { ChatRequest, ChatResult, Provider, ToolCall } from '../../src/agent/provider.js';
-import { localLinks, newIssues, resolveLink, structureIssues } from '../../src/markdown/lint.js';
-import { agentGit, gitLimits, runGit } from '../../src/base/git.js';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework.js';
+import type { SourceFile } from '../../src/agent/context';
+import { changeState, invertChange, planChange, preflight, type Change } from '../../src/agent/changes';
+import { applyBatch, planBatch } from '../../src/agent/batch';
+import { parseEvents, reconcileEvents, type ActionEvent } from '../../src/agent/journal';
+import { formatGit, parseGitCall, type GitRequest } from '../../src/agent/gittools';
+import { verifyWork } from '../../src/agent/verification';
+import { ChatSession, type ProposalResult, type TurnHandlers } from '../../src/agent/session';
+import type { ChatRequest, ChatResult, Provider, ToolCall } from '../../src/agent/provider';
+import { localLinks, newIssues, resolveLink, structureIssues } from '../../src/markdown/lint';
+import { agentGit, gitLimits, runGit } from '../../src/base/git';
+import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework';
 
 const NOTES = '---\ntitle: meeting\n---\n# Meeting\n\nRelease November 15.\nNote: November 15 final.\n';
 const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n## Done\n\n- [x] Book venue\n';

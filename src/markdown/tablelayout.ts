@@ -9,10 +9,10 @@
 //
 // Pure TypeScript.
 
-import type { DateValue, FieldDef, ProgressValue } from './fields.js';
-import { readItem } from './fields.js';
-import { optionOf } from './layout.js';
-import { boardSchema, type Board, type Card, type Position } from './kanban.js';
+import type { DateValue, FieldDef, ProgressValue } from './fields';
+import { readItem } from './fields';
+import { optionOf } from './layout';
+import { boardSchema, type Board, type Card, type Position } from './kanban';
 
 export const TITLE_COLUMN = 'title';
 export const SECTION_COLUMN = 'section';

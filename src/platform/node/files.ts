@@ -6,7 +6,7 @@ import { appendFileSync, chmodSync, closeSync, cpSync, existsSync, fsyncSync, ls
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { MessageChannel, receiveMessageOnPort, Worker } from 'node:worker_threads';
-import type { EntryInfo, EntryKind, FileSystem } from '../index.js';
+import type { EntryInfo, EntryKind, FileSystem } from '../index';
 
 let tempCounter = 0;
 

@@ -1,8 +1,8 @@
 // Background write tests: ordering per path, coalescing, and an explicit flush.
 
-import { fileUri, flushWrites, insideName, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/base/files.js';
-import { below, atOrBelow, hasDrive, isAbsolutePath, isWindowsPath, slashed } from '../../src/markdown/paths.js';
-import { section, test, eq, ok, tmp, until, disk } from '../core/framework.js';
+import { fileUri, flushWrites, insideName, readTextFile, writeTextFile, writeTextFileAsync } from '../../src/base/files';
+import { below, atOrBelow, hasDrive, isAbsolutePath, isWindowsPath, slashed } from '../../src/markdown/paths';
+import { section, test, eq, ok, tmp, until, disk } from '../core/framework';
 
 export async function fileWriteTests(): Promise<void> {
     section('Background writes');

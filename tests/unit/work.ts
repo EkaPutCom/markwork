@@ -1,10 +1,10 @@
-import { TemporaryProviderError, requestWithRetry, compactHistory } from '../../src/agent/recovery.js';
-import { reconcileEvents, type ActionEvent } from '../../src/agent/journal.js';
-import { verifyWork } from '../../src/agent/verification.js';
-import { planBatch, applyBatch } from '../../src/agent/batch.js';
-import { parseWork, workText } from '../../src/agent/work.js';
-import { parseChat, serializeChat } from '../../src/agent/transcript.js';
-import { section, test, eq, ok, contains, within } from '../core/framework.js';
+import { TemporaryProviderError, requestWithRetry, compactHistory } from '../../src/agent/recovery';
+import { reconcileEvents, type ActionEvent } from '../../src/agent/journal';
+import { verifyWork } from '../../src/agent/verification';
+import { planBatch, applyBatch } from '../../src/agent/batch';
+import { parseWork, workText } from '../../src/agent/work';
+import { parseChat, serializeChat } from '../../src/agent/transcript';
+import { section, test, eq, ok, contains, within } from '../core/framework';
 
 export async function workTests(): Promise<void> {
     section('Agent: saved work');

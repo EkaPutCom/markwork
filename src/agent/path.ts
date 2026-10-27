@@ -1,6 +1,6 @@
 // Name validation plus symlink rejection so that writes stay inside the project folder.
-import { platform } from '../platform/index.js';
-import { cleanNewName } from './changes.js';
+import { platform } from '../platform/index';
+import { cleanNewName } from './changes';
 
 export function projectPath(root: string, file: string): string {
     if (cleanNewName(file) !== file) throw Error('path is outside the work folder or invalid');

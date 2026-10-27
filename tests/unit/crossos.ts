@@ -2,9 +2,9 @@
 // file names a program may have, and which terminals are tried.
 
 import { posix, win32 } from 'node:path';
-import { programNames, samePath, userDirs } from '../../src/platform/node/dirs.js';
-import { openFirstTerminal, terminals } from '../../src/platform/terminals.js';
-import { section, test, eq, ok } from '../core/framework.js';
+import { programNames, samePath, userDirs } from '../../src/platform/node/dirs';
+import { openFirstTerminal, terminals } from '../../src/platform/terminals';
+import { section, test, eq, ok } from '../core/framework';
 
 export async function crossOsTests(): Promise<void> {
     section('Per system: folders, programs, terminals');

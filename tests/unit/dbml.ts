@@ -1,7 +1,7 @@
 // DBML → Mermaid converter tests.
 
-import { section, test, eq, ok, contains } from '../core/framework.js';
-import { dbmlToMermaid, parseDbml, DbmlError } from '../../src/markdown/dbml.js';
+import { section, test, eq, ok, contains } from '../core/framework';
+import { dbmlToMermaid, parseDbml, DbmlError } from '../../src/markdown/dbml';
 
 const SCHEMA = `// shop
 Table users {

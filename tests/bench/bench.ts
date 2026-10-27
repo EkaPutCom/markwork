@@ -11,19 +11,19 @@
 //
 // The results are the median, p95, and maximum; the JSON also stores the raw samples.
 
-import '../../src/platform/node/install.js';   // the core reaches the runtime through platform()
-import '../core/host-node.js';   // the tests reach the runtime through host(), installed before framework.ts
+import '../../src/platform/node/install';   // the core reaches the runtime through platform()
+import '../core/host-node';   // the tests reach the runtime through host(), installed before framework.ts
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { hostname } from 'node:os';
 import { dirname } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { DIM, GREEN, RED, RESET, errorMessage, optVal, say } from '../core/framework.js';
-import { readTextFile, writeTextFile } from '../../src/base/files.js';
-import { markdownToHtml } from '../../src/markdown/html.js';
-import { parseInline } from '../../src/markdown/inline.js';
-import { findTables, parseTable, renderTable } from '../../src/markdown/table.js';
-import { parseBoard, serializeBoard } from '../../src/markdown/kanban.js';
+import { DIM, GREEN, RED, RESET, errorMessage, optVal, say } from '../core/framework';
+import { readTextFile, writeTextFile } from '../../src/base/files';
+import { markdownToHtml } from '../../src/markdown/html';
+import { parseInline } from '../../src/markdown/inline';
+import { findTables, parseTable, renderTable } from '../../src/markdown/table';
+import { parseBoard, serializeBoard } from '../../src/markdown/kanban';
 
 function fail(message: string): never {
     say(`${RED}Benchmark failed: ${message}${RESET}`);

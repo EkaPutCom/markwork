@@ -1,12 +1,12 @@
 import './styles/globals.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App.js';
-import { Client } from './lib/client.js';
-import { ClientContext } from './lib/useClient.js';
-import { watchChecks } from './lib/inspect/checks.js';
-import { startBridge } from './lib/inspect/bridge.js';
-import { traceCommands } from './lib/inspect/recorder.js';
+import { App } from './App';
+import { Client } from './lib/client';
+import { ClientContext } from './lib/useClient';
+import { watchChecks } from './lib/inspect/checks';
+import { startBridge } from './lib/inspect/bridge';
+import { traceCommands } from './lib/inspect/recorder';
 
 const client = new Client();
 // Dev mode checks every transaction of the editor (docs/design/debugger.md); a normal build only records them.

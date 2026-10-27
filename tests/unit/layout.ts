@@ -1,8 +1,8 @@
 // Layout marker tests (markdown/layout.ts).
 
-import { isBoard, isList, isStructured, isTable, layoutOf, optionOf, withLayout, withOption } from '../../src/markdown/layout.js';
-import { section, test, eq } from '../core/framework.js';
-import { BOARD, INBOX } from '../core/fixtures.js';
+import { isBoard, isList, isStructured, isTable, layoutOf, optionOf, withLayout, withOption } from '../../src/markdown/layout';
+import { section, test, eq } from '../core/framework';
+import { BOARD, INBOX } from '../core/fixtures';
 
 export function layoutTests(): void {
     section('Layout (frontmatter)');

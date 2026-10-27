@@ -2,10 +2,10 @@
 // PullReviewController). A pull request is named by its number and must be one the core listed; the merge method is one of
 // the three the forges have.
 
-import { RequestError } from '../messages.js';
-import { StaleAsk } from '../collab.js';
-import type { MergeMethod } from '../../../forge/types.js';
-import { num, str, type HandlerContext } from './context.js';
+import { RequestError } from '../messages';
+import { StaleAsk } from '../collab';
+import type { MergeMethod } from '../../../forge/types';
+import { num, str, type HandlerContext } from './context';
 
 const METHODS: readonly MergeMethod[] = ['merge', 'squash', 'rebase'];
 

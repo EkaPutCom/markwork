@@ -2,7 +2,7 @@
 // po/*.po translates it. The translating itself is the platform's (the gettext catalogs read by platform/node/i18n.ts);
 // without a platform the source text is shown.
 
-import { installedPlatform } from '../platform/index.js';
+import { installedPlatform } from '../platform/index';
 
 const translations = () => installedPlatform()?.translations;
 

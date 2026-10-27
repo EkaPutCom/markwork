@@ -9,12 +9,12 @@
 // stale (null) and the view is drawn again from the board as it is.
 
 import { addCard, addColumn, boardSchema, composeCard, deleteCard, deleteColumn, deleteColumnKeepCards, moveCard, moveColumn, placeMove,
-    renameColumn, setCardField, toggleDone, updateCard, withFieldOption, type Board, type Position } from './kanban.js';
-import { captureItem, composeItem } from './inbox.js';
-import { moveToDate, textForDate } from './calendar.js';
-import { resizeRow, shiftRow } from './timeline.js';
-import { withCharts, type ChartItem } from './chart.js';
-import { setField, type FieldDef } from './fields.js';
+    renameColumn, setCardField, toggleDone, updateCard, withFieldOption, type Board, type Position } from './kanban';
+import { captureItem, composeItem } from './inbox';
+import { moveToDate, textForDate } from './calendar';
+import { resizeRow, shiftRow } from './timeline';
+import { withCharts, type ChartItem } from './chart';
+import { setField, type FieldDef } from './fields';
 
 // A card as an edit names it: where it was and what its first line said.
 export interface CardRef {

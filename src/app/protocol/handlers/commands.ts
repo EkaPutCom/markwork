@@ -1,10 +1,10 @@
 // The command table (app/commands.ts) and the tokens of toasts: what the core carries out when the frontend asks
 // (docs/design/protocol.md, sections 6.4 and 8).
 
-import { COMMANDS, type FrontendCommands } from '../../commands.js';
-import { RequestError } from '../messages.js';
-import { unwired } from '../unwired.js';
-import { num, type HandlerContext } from './context.js';
+import { COMMANDS, type FrontendCommands } from '../../commands';
+import { RequestError } from '../messages';
+import { unwired } from '../unwired';
+import { num, type HandlerContext } from './context';
 
 // The editor's own commands never reach the core; session.commands() wants the frontend's half, which has nothing to do here.
 const NO_FRONTEND_COMMANDS = unwired<FrontendCommands>({}, 'frontendCommands');

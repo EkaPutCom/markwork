@@ -1,8 +1,8 @@
 // Tests for the diff laid out side by side and inline, with the changed words.
 
-import { parseDiff } from '../../src/base/gitlog.js';
-import { inline, sideBySide, wordDiff } from '../../src/markdown/diffview.js';
-import { section, test, eq } from '../core/framework.js';
+import { parseDiff } from '../../src/base/gitlog';
+import { inline, sideBySide, wordDiff } from '../../src/markdown/diffview';
+import { section, test, eq } from '../core/framework';
 
 const DIFF = [
     '@@ -3,4 +3,4 @@ # Title',

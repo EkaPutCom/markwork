@@ -1,12 +1,12 @@
 // The edits a view of a document's notes reports (markdown/noteedit.ts), and the view controller applying them to the
 // board it holds.
 
-import { applyNoteEdit, cardText, findCard, type NoteEdit } from '../../src/markdown/noteedit.js';
-import { parseBoard, serializeBoard } from '../../src/markdown/kanban.js';
-import { AppSession } from '../../src/app/session.js';
-import type { NotesView } from '../../src/app/views.js';
-import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
-import { section, test, eq, ok, tmp, disk, pause, until } from '../core/framework.js';
+import { applyNoteEdit, cardText, findCard, type NoteEdit } from '../../src/markdown/noteedit';
+import { parseBoard, serializeBoard } from '../../src/markdown/kanban';
+import { AppSession } from '../../src/app/session';
+import type { NotesView } from '../../src/app/views';
+import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession';
+import { section, test, eq, ok, tmp, disk, pause, until } from '../core/framework';
 
 const BOARD = '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two #a\n\n## Done\n\n- [x] Old\n';
 const titles = (text: string, column = 0) => parseBoard(text).columns[column].cards.map(c => c.text);

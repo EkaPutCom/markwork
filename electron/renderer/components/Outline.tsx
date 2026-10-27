@@ -1,8 +1,8 @@
 // The headings of the active document, indented by level; a click jumps to one: the body of the Files view's Outline section.
 
 import type { CSSProperties } from 'react';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
+import { useClient, useStore } from '../lib/useClient';
+import { Button } from '../ui/button';
 
 export function OutlineList() {
     const client = useClient();

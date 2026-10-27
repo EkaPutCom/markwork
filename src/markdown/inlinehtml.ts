@@ -4,7 +4,7 @@
 // the classes carry no values. The runs are inlineruns.ts's, shared with the HTML export.
 // Pure TypeScript.
 
-import { inlineRuns, NOTE_URI, type InlineStyle } from './inlineruns.js';
+import { inlineRuns, NOTE_URI, type InlineStyle } from './inlineruns';
 
 export const escapeHtml = (s: string): string =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');

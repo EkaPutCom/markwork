@@ -2,11 +2,11 @@
 // The handlers are split per controller (docs/design/electron-migrasi.md, phase 0), so a feature that gets its messages
 // adds one file here and one line to the server, and two features carried over at once do not edit the same lines.
 
-import type { AppSession } from '../../session.js';
-import type { ProtocolFrontend } from '../frontend.js';
-import { RequestError } from '../messages.js';
-import type { ProtocolEditor } from '../replica.js';
-import type { Connection } from '../wire.js';
+import type { AppSession } from '../../session';
+import type { ProtocolFrontend } from '../frontend';
+import { RequestError } from '../messages';
+import type { ProtocolEditor } from '../replica';
+import type { Connection } from '../wire';
 
 export interface HandlerContext {
     readonly wire: Connection;

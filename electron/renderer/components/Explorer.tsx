@@ -4,12 +4,12 @@
 // a file manager are copied in.
 
 import { useRef, useState, type DragEvent } from 'react';
-import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree.js';
-import { Icon } from './Icons.js';
-import { FILE_DRAG } from './Tabs.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '../ui/context-menu.js';
+import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree';
+import { Icon } from './Icons';
+import { FILE_DRAG } from './Tabs';
+import { useClient, useStore } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '../ui/context-menu';
 
 const INTERNAL = 'application/x-markwork-path';
 

@@ -1,8 +1,8 @@
 // The syntax of a document as data (markdown/highlight.ts), with names for styles: what every editor applies, and the
 // parse of an edited range compared with a full parse of the same text.
 
-import { HighlightCache, highlightText, textLines, type HighlightResult, type Styles, type TextLines } from '../../src/markdown/highlight.js';
-import { section, test, eq, ok } from '../core/framework.js';
+import { HighlightCache, highlightText, textLines, type HighlightResult, type Styles, type TextLines } from '../../src/markdown/highlight';
+import { section, test, eq, ok } from '../core/framework';
 
 // Each style is its own name.
 const NAMES = new Proxy({}, { get: (_target, name) => name }) as Styles<string>;

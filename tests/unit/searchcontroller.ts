@@ -1,10 +1,10 @@
 // Search and replace in all the notes: SearchController (app/search.ts) on a real temporary folder, with a
 // view that records what it is sent. The panel only reports the query and what the user did.
 
-import { AppSession } from '../../src/app/session.js';
-import type { SearchQuery, SearchResults, SearchView } from '../../src/app/search.js';
-import { section, test, eq, ok, tmp, disk, untilText } from '../core/framework.js';
-import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
+import { AppSession } from '../../src/app/session';
+import type { SearchQuery, SearchResults, SearchView } from '../../src/app/search';
+import { section, test, eq, ok, tmp, disk, untilText } from '../core/framework';
+import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession';
 
 const QUERY: SearchQuery = { text: '', caseSensitive: false, wholeWord: false, regex: false, include: '', exclude: '' };
 

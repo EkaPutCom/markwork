@@ -4,8 +4,8 @@
 
 import { Decoration, WidgetType, type EditorView } from '@codemirror/view';
 import type { Text } from '@codemirror/state';
-import { findConflicts, resolution, roles, type Choice, type Conflict } from '../../../src/markdown/conflicts.js';
-import { domButton } from '../ui/dom.js';
+import { findConflicts, resolution, roles, type Choice, type Conflict } from '../../../src/markdown/conflicts';
+import { domButton } from '../ui/dom';
 
 const CHOICES: { choice: Choice | 'compare'; label: string; tip: (c: Conflict) => string }[] = [
     { choice: 'current', label: 'Accept Current Change', tip: c => `Keep the lines from ${c.current || 'the current side'} and drop the other side` },

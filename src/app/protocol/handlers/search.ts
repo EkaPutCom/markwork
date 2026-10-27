@@ -1,8 +1,8 @@
 // The Search panel: a query to run, a hit to open, and a replacement to make everywhere (SearchController).
 
-import { RequestError } from '../messages.js';
-import type { SearchQuery } from '../../search.js';
-import { num, str, type HandlerContext } from './context.js';
+import { RequestError } from '../messages';
+import type { SearchQuery } from '../../search';
+import { num, str, type HandlerContext } from './context';
 
 export function searchHandlers({ wire, frontend }: HandlerContext): void {
     wire.on('act.search.run', p => {

@@ -1,7 +1,7 @@
 // Blurring a text for a report of a problem with the editor (markdown/blur.ts).
 
-import { ROOT, section, test, eq, ok, disk } from '../core/framework.js';
-import { blurText } from '../../src/markdown/blur.js';
+import { ROOT, section, test, eq, ok, disk } from '../core/framework';
+import { blurText } from '../../src/markdown/blur';
 
 export function blurTests(): void {
     section('Blurring a report');

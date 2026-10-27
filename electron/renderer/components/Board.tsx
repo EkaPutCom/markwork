@@ -3,16 +3,16 @@
 // its lists. Every change is an operation (markdown/noteedit.ts) the client shows at once and the core applies to the text.
 
 import { useMemo, useState, type DragEvent } from 'react';
-import { boardSchema, cardFields, cardMeta, dropIndex, dueStatus, type Board as BoardData, type Position } from '../../../src/markdown/kanban.js';
-import { wikiLinksIn } from '../../../src/markdown/wikilink.js';
-import { Icon } from './Icons.js';
-import { Button } from '../ui/button.js';
-import { Checkbox } from '../ui/checkbox.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { CardDialog, Chip, FieldChips, formatDay, Inline, PopupMenu, refOf, Tags, todayString, usePopup, useFieldEditor, type CardAnswer, type MenuEntry } from './notes.js';
-import type { CardMenuEntry } from '../lib/client.js';
-import { useClient } from '../lib/useClient.js';
+import { boardSchema, cardFields, cardMeta, dropIndex, dueStatus, type Board as BoardData, type Position } from '../../../src/markdown/kanban';
+import { wikiLinksIn } from '../../../src/markdown/wikilink';
+import { Icon } from './Icons';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { CardDialog, Chip, FieldChips, formatDay, Inline, PopupMenu, refOf, Tags, todayString, usePopup, useFieldEditor, type CardAnswer, type MenuEntry } from './notes';
+import type { CardMenuEntry } from '../lib/client';
+import { useClient } from '../lib/useClient';
 
 interface Drag { from: Position; text: string; target: Position | null }
 

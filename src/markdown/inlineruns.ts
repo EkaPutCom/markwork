@@ -2,9 +2,9 @@
 // ==mark==, `code`, and links. The Markdown markers are dropped. Pure TypeScript, and the one place where the line's
 // styles are merged, so Pango (pango.ts), HTML (inlinehtml.ts), and any terminal renderer show the same text the same way.
 
-import { parseInline } from './inline.js';
-import { ESCAPE_OR_CODE } from './syntax.js';
-import { WIKILINK } from './wikilink.js';
+import { parseInline } from './inline';
+import { ESCAPE_OR_CODE } from './syntax';
+import { WIKILINK } from './wikilink';
 
 // URI scheme of [[note]] links in rendered output; a renderer that makes them clickable hands the target back through it.
 export const NOTE_URI = 'markwork-note:';

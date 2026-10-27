@@ -1,8 +1,8 @@
 // The Preferences dialog: a setting changed in it, and the dialog closing (PreferencesController).
 
-import { RequestError } from '../messages.js';
-import type { PreferenceKey } from '../../preferences.js';
-import { str, type HandlerContext } from './context.js';
+import { RequestError } from '../messages';
+import type { PreferenceKey } from '../../preferences';
+import { str, type HandlerContext } from './context';
 
 export function preferencesHandlers({ wire, session, frontend }: HandlerContext): void {
     const view = frontend.preferences;

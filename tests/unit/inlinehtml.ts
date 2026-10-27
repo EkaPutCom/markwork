@@ -1,11 +1,11 @@
 // The HTML drawing of inline Markdown and of the assistant's answers, and the runs both Pango and HTML are drawn from.
 
-import { inlineRuns } from '../../src/markdown/inlineruns.js';
-import { cellHtml } from '../../src/markdown/inlinehtml.js';
-import { chatBlocks } from '../../src/markdown/chatblocks.js';
-import { chatHtml } from '../../src/markdown/chathtml.js';
-import { NOTE_URI } from '../../src/markdown/inlineruns.js';
-import { section, test, eq, ok, contains } from '../core/framework.js';
+import { inlineRuns } from '../../src/markdown/inlineruns';
+import { cellHtml } from '../../src/markdown/inlinehtml';
+import { chatBlocks } from '../../src/markdown/chatblocks';
+import { chatHtml } from '../../src/markdown/chathtml';
+import { NOTE_URI } from '../../src/markdown/inlineruns';
+import { section, test, eq, ok, contains } from '../core/framework';
 
 export function inlineHtmlTests(): void {
     section('Inline runs and HTML');

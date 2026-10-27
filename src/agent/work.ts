@@ -1,6 +1,6 @@
 // The work state is saved together with the conversation; it does not include the model's thinking process.
-import type { Verification } from './verification.js';
-import type { ToolSpec } from './provider.js';
+import type { Verification } from './verification';
+import type { ToolSpec } from './provider';
 
 export interface WorkStep { text: string; status: 'pending' | 'done' | 'blocked' }
 export interface WorkState {

@@ -7,12 +7,12 @@ import { LanguageDescription, type LanguageSupport } from '@codemirror/language'
 import { languages } from '@codemirror/language-data';
 import { classHighlighter, highlightTree } from '@lezer/highlight';
 import { Decoration, WidgetType, type EditorView } from '@codemirror/view';
-import type { CodeBlock } from '../../../src/markdown/highlight.js';
-import { diagramKind } from '../../../src/markdown/diagram.js';
-import { iconElement } from '../components/Icons.js';
-import { domButton } from '../ui/dom.js';
-import { DELETE_ICON, blockTools, copyTool } from './blocktools.js';
-import { fencedBlockAt, pick, removeBlock } from './blockselect.js';
+import type { CodeBlock } from '../../../src/markdown/highlight';
+import { diagramKind } from '../../../src/markdown/diagram';
+import { iconElement } from '../components/Icons';
+import { domButton } from '../ui/dom';
+import { DELETE_ICON, blockTools, copyTool } from './blocktools';
+import { fencedBlockAt, pick, removeBlock } from './blockselect';
 
 const loaded = new Map<string, LanguageSupport | null>();   // null = no such language, or it failed to load
 const loading = new Set<string>();

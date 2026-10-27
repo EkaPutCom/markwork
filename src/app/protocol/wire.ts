@@ -3,9 +3,9 @@
 // `ask.cancel` (section 7) both ways: a request it sent can be withdrawn, and a request it is answering can be withdrawn
 // by the other side, in which case its answer is not sent.
 
-import { Cancellable } from '../../base/cancel.js';
-import type { CancelSignal } from '../../platform/index.js';
-import { CANCELLED, RequestError, isReply, isRequest, type Message, type Reply, type Wire } from './messages.js';
+import { Cancellable } from '../../base/cancel';
+import type { CancelSignal } from '../../platform/index';
+import { CANCELLED, RequestError, isReply, isRequest, type Message, type Reply, type Wire } from './messages';
 
 // cancel fires when the other side withdraws the request (the dialog it opened should close); the answer is then dropped.
 export type Handler = (params: Record<string, unknown>, cancel: CancelSignal) =>

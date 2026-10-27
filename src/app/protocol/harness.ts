@@ -4,17 +4,17 @@
 // What the user did comes back as `act.card.*`, `act.runlog.*`, and `act.review.*` (handlers/harness.ts). A run is named by its
 // number and a card by its place and its text; the core checks both against what it holds.
 
-import type { HarnessAsk, HarnessReply } from '../../agent/harness.js';
-import type { ChangedFile, Commit, RanCommand } from '../../agent/worktreereview.js';
-import type { SendVia } from '../../forge/contribute.js';
-import type { FileStatus } from '../../forge/types.js';
-import type { TraceUpdate } from '../../agent/tracefeed.js';
-import type { DiffLine } from '../../base/gitlog.js';
-import type { Prompt, Question } from '../dialogs.js';
-import type { CardRun, CloseAgentsChoice, HarnessDialogs, HarnessLogs } from '../harness.js';
-import type { FinishAction, PullOffer, PullRequestAnswer, PullRequestOptions, ReviewDialogs, ReviewTab, ReviewView, SummaryView } from '../harnessreview.js';
-import type { Asks } from './asks.js';
-import type { Wire } from './messages.js';
+import type { HarnessAsk, HarnessReply } from '../../agent/harness';
+import type { ChangedFile, Commit, RanCommand } from '../../agent/worktreereview';
+import type { SendVia } from '../../forge/contribute';
+import type { FileStatus } from '../../forge/types';
+import type { TraceUpdate } from '../../agent/tracefeed';
+import type { DiffLine } from '../../base/gitlog';
+import type { Prompt, Question } from '../dialogs';
+import type { CardRun, CloseAgentsChoice, HarnessDialogs, HarnessLogs } from '../harness';
+import type { FinishAction, PullOffer, PullRequestAnswer, PullRequestOptions, ReviewDialogs, ReviewTab, ReviewView, SummaryView } from '../harnessreview';
+import type { Asks } from './asks';
+import type { Wire } from './messages';
 
 // What the renderer takes from here (types only).
 export type { CardRun, CloseAgentsChoice, Commit, DiffLine, FinishAction, HarnessAsk, HarnessReply, PullOffer, PullRequestAnswer, PullRequestOptions, RanCommand, ReviewTab, SummaryView, TraceUpdate };

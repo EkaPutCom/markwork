@@ -2,14 +2,14 @@
 // repository, the real workingDiff/recentSubjects, and the message checked the way the commit box would show it.
 // Part of npm run test:live.
 
-import { systemKeyStore } from '../../src/agent/apikey.js';
-import { writeCommitMessage } from '../../src/agent/commitmessage.js';
-import type { Provider } from '../../src/agent/provider.js';
-import { recentSubjects, runGit, workingDiff } from '../../src/base/git.js';
-import { DIM, GREEN, RED, RESET, errorMessage, tmp } from '../core/framework.js';
-import { Cancellable } from '../../src/base/cancel.js';
-import { disk, say } from '../core/framework.js';
-import { platform } from '../../src/platform/index.js';
+import { systemKeyStore } from '../../src/agent/apikey';
+import { writeCommitMessage } from '../../src/agent/commitmessage';
+import type { Provider } from '../../src/agent/provider';
+import { recentSubjects, runGit, workingDiff } from '../../src/base/git';
+import { DIM, GREEN, RED, RESET, errorMessage, tmp } from '../core/framework';
+import { Cancellable } from '../../src/base/cancel';
+import { disk, say } from '../core/framework';
+import { platform } from '../../src/platform/index';
 
 interface CommitScenario {
     name: string;

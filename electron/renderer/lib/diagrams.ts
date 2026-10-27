@@ -4,12 +4,12 @@
 // gives way to its source while the cursor is in the block.
 
 import { WidgetType, type EditorView } from '@codemirror/view';
-import { DbmlError } from '../../../src/markdown/dbml.js';
-import { dbmlToSvg } from './dbmldiagram.js';
-import { DELETE_ICON, SOURCE_ICON, ZOOM_ICON, blockTools, copyTool } from './blocktools.js';
-import { fencedBlockAt, pick, removeBlock } from './blockselect.js';
-import type { ZoomedImage } from './images.js';
-import type { Kind } from '../../../src/markdown/diagram.js';
+import { DbmlError } from '../../../src/markdown/dbml';
+import { dbmlToSvg } from './dbmldiagram';
+import { DELETE_ICON, SOURCE_ICON, ZOOM_ICON, blockTools, copyTool } from './blocktools';
+import { fencedBlockAt, pick, removeBlock } from './blockselect';
+import type { ZoomedImage } from './images';
+import type { Kind } from '../../../src/markdown/diagram';
 
 interface MermaidApi {
     initialize(config: Record<string, unknown>): void;

@@ -1,9 +1,9 @@
 // On-disk file operations for the folder tree: create a file, create a folder, move, rename, copy in, and move to the
 // Trash, through the platform port. All throw an Error with a message ready to show to the user.
 
-import { platform } from '../platform/index.js';
-import { flushWrites, notifyDiskChange, trashFile } from './files.js';
-import { atOrBelow } from '../markdown/paths.js';
+import { platform } from '../platform/index';
+import { flushWrites, notifyDiskChange, trashFile } from './files';
+import { atOrBelow } from '../markdown/paths';
 
 const MARKDOWN_EXTENSION = /\.(md|markdown|mdown|mkd)$/i;
 // Every kind of file the tree shows; a rename keeps these, so the file does not disappear from the tree.

@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { setHost, type FakeReply, type FakeRequest, type FakeServer, type TestHost } from './host.js';
+import { setHost, type FakeReply, type FakeRequest, type FakeServer, type TestHost } from './host';
 
 function serve(handler: (request: FakeRequest, reply: FakeReply) => void): Promise<FakeServer> {
     const server = createServer((req, res) => {

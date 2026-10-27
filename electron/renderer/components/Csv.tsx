@@ -11,16 +11,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     cellAt, columnCount, deleteColumn, deleteRow, findCells, insertColumn, insertRow, isNumericColumn, landing, moveColumn, moveRow, nextColumnName,
     parseCsv, replaceInCell, replaceInCells, serializeCsv, setCell, type CsvTable,
-} from '../../../src/markdown/csv.js';
-import { buildPattern, type SearchOptions } from '../../../src/markdown/search.js';
-import { Icon } from './Icons.js';
-import { PopupMenu, usePopup, type MenuEntry } from './notes.js';
-import { useClient } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group.js';
-import { Toggle } from '../ui/toggle.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
+} from '../../../src/markdown/csv';
+import { buildPattern, type SearchOptions } from '../../../src/markdown/search';
+import { Icon } from './Icons';
+import { PopupMenu, usePopup, type MenuEntry } from './notes';
+import { useClient } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group';
+import { Toggle } from '../ui/toggle';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 const ROW_HEIGHT = 33, NUMBER_WIDTH = 48, BUFFER = 6;
 const MATCH_ROW = 100000;   // a match is the number row * MATCH_ROW + column

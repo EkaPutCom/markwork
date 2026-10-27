@@ -2,43 +2,43 @@
 // the Assistant beside them, and the command palette over all of it. The look is shadcn/ui's (docs/design/shadcn/).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { COMMANDS } from '../../src/app/commands.js';
-import { countWords, cpLength } from '../../src/markdown/offsets.js';
-import { EditorArea } from './components/EditorArea.js';
-import { Inspector } from './components/Inspector.js';
-import { UI_GALLERY_KEY, UiGallery } from './components/UiGallery.js';
-import { FilesView } from './components/FilesView.js';
-import { Search } from './components/Search.js';
-import { Palette } from './components/Palette.js';
-import { DialogLayer } from './components/Dialog.js';
-import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './components/Modals.js';
-import { ReportDialog } from './components/ReportProblem.js';
-import { FieldsDialog } from './components/FieldsDialog.js';
-import { ImageViewer } from './components/ImageViewer.js';
-import { ConflictCompare } from './components/ConflictCompare.js';
-import { Chat, ChatReview } from './components/Chat.js';
-import { Collab, SendChangesDialog, TokenDialog } from './components/Collab.js';
-import { History, HistoryViewers } from './components/History.js';
-import { LogViewer, RunLogs } from './components/LogViewer.js';
-import { AgentAsks, PullRequestDialog } from './components/Harness.js';
-import { Icon, type IconName } from './components/Icons.js';
-import { label, matches } from './lib/keys.js';
-import { ActivityBar, SideShell } from './components/Sidebar.js';
-import { MenuBar } from './components/MenuBar.js';
+import { COMMANDS } from '../../src/app/commands';
+import { countWords, cpLength } from '../../src/markdown/offsets';
+import { EditorArea } from './components/EditorArea';
+import { Inspector } from './components/Inspector';
+import { UI_GALLERY_KEY, UiGallery } from './components/UiGallery';
+import { FilesView } from './components/FilesView';
+import { Search } from './components/Search';
+import { Palette } from './components/Palette';
+import { DialogLayer } from './components/Dialog';
+import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './components/Modals';
+import { ReportDialog } from './components/ReportProblem';
+import { FieldsDialog } from './components/FieldsDialog';
+import { ImageViewer } from './components/ImageViewer';
+import { ConflictCompare } from './components/ConflictCompare';
+import { Chat, ChatReview } from './components/Chat';
+import { Collab, SendChangesDialog, TokenDialog } from './components/Collab';
+import { History, HistoryViewers } from './components/History';
+import { LogViewer, RunLogs } from './components/LogViewer';
+import { AgentAsks, PullRequestDialog } from './components/Harness';
+import { Icon, type IconName } from './components/Icons';
+import { label, matches } from './lib/keys';
+import { ActivityBar, SideShell } from './components/Sidebar';
+import { MenuBar } from './components/MenuBar';
 import { toast } from 'sonner';
-import { Button } from './ui/button.js';
-import { IconButton } from './ui/icon-button.js';
-import { Toaster } from './ui/sonner.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.js';
+import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
+import { Toaster } from './ui/sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import {
     DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
-} from './ui/dropdown-menu.js';
-import { cn } from './lib/utils.js';
-import { forgetInput } from './lib/inspect/recorder.js';
-import { useClient, useStore } from './lib/useClient.js';
-import { layoutOf } from './lib/client.js';
-import { EditingMode, STRUCTURED_PAGES } from './components/EditingMode.js';
-import { currentPane } from './lib/panes.js';
+} from './ui/dropdown-menu';
+import { cn } from './lib/utils';
+import { forgetInput } from './lib/inspect/recorder';
+import { useClient, useStore } from './lib/useClient';
+import { layoutOf } from './lib/client';
+import { EditingMode, STRUCTURED_PAGES } from './components/EditingMode';
+import { currentPane } from './lib/panes';
 
 // The title of the header: where the document is, as a breadcrumb, and its name, which is the Document Menu button
 // (Save, Save As, Autosave, Export, the recent files). Home and an empty window have a plain title.

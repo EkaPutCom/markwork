@@ -4,13 +4,13 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AppSettings } from '../../src/base/settings.js';
-import { SETTING_KEYS } from '../../src/base/settingskeys.js';
-import { JsonSettingsStore } from '../../src/platform/node/settings.js';
-import { catalogTranslations, languages, parseMo, pluralRule, userCatalog } from '../../src/platform/node/i18n.js';
-import { SecretVault, answerSecret, remoteSecrets, type Cipher, type SecretRequest } from '../../src/platform/node/vault.js';
-import type { SettingSpec } from '../../src/platform/index.js';
-import { section, test, eq, ok, tmp } from '../core/framework.js';
+import { AppSettings } from '../../src/base/settings';
+import { SETTING_KEYS } from '../../src/base/settingskeys';
+import { JsonSettingsStore } from '../../src/platform/node/settings';
+import { catalogTranslations, languages, parseMo, pluralRule, userCatalog } from '../../src/platform/node/i18n';
+import { SecretVault, answerSecret, remoteSecrets, type Cipher, type SecretRequest } from '../../src/platform/node/vault';
+import type { SettingSpec } from '../../src/platform/index';
+import { section, test, eq, ok, tmp } from '../core/framework';
 
 // A .mo catalog with `messages` (msgid → translations; "context\u0004id" for a context), as msgfmt writes one.
 function moFile(header: string, messages: Record<string, string[]>): Uint8Array {

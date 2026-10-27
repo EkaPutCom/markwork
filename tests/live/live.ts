@@ -11,19 +11,19 @@
 // white vs black ship) and runs ChatSession + DeepSeek + the same browsing tools as the app.
 // The key is never printed.
 
-import '../../src/platform/node/install.js';   // the core reaches the runtime through platform()
-import '../core/host-node.js';   // the tests reach the runtime through host(), installed before framework.ts
-import { liveAgentic } from './live-agentic.js';
-import { liveCommitMessage } from './live-commit.js';
-import { liveStructured } from './live-structured.js';
-import { systemKeyStore } from '../../src/agent/apikey.js';
-import { DEEPSEEK_MODELS, DeepSeek } from '../../src/agent/deepseek.js';
-import { DEFAULT_BUDGET } from '../../src/agent/context.js';
-import { WorkspaceRepository } from '../../src/base/workspace.js';
-import { ChatSession } from '../../src/agent/session.js';
-import { DIM, GREEN, RED, RESET, ROOT, optVal, opt, setRoot } from '../core/framework.js';
-import { disk, say } from '../core/framework.js';
-import { platform } from '../../src/platform/index.js';
+import '../../src/platform/node/install';   // the core reaches the runtime through platform()
+import '../core/host-node';   // the tests reach the runtime through host(), installed before framework.ts
+import { liveAgentic } from './live-agentic';
+import { liveCommitMessage } from './live-commit';
+import { liveStructured } from './live-structured';
+import { systemKeyStore } from '../../src/agent/apikey';
+import { DEEPSEEK_MODELS, DeepSeek } from '../../src/agent/deepseek';
+import { DEFAULT_BUDGET } from '../../src/agent/context';
+import { WorkspaceRepository } from '../../src/base/workspace';
+import { ChatSession } from '../../src/agent/session';
+import { DIM, GREEN, RED, RESET, ROOT, optVal, opt, setRoot } from '../core/framework';
+import { disk, say } from '../core/framework';
+import { platform } from '../../src/platform/index';
 
 setRoot(import.meta.url);
 

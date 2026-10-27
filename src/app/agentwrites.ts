@@ -3,13 +3,13 @@
 // so the user's edits are not overwritten. Delete moves to the Trash; an open document stays in the editor as when it
 // is deleted from the tree.
 
-import { readTextFile, writeTextFile, flushWrites, fileExists, notifyDiskChange } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import { projectPath } from '../agent/path.js';
-import { applyBatch } from '../agent/batch.js';
-import { changeFiles, cleanNewName, type Change } from '../agent/changes.js';
-import { agentActivity, type ActivityKind } from '../markdown/journal.js';
-import { docFor, errorMessage, type Doc, type DocumentHost, type TextEditor } from './document.js';
+import { readTextFile, writeTextFile, flushWrites, fileExists, notifyDiskChange } from '../base/files';
+import { platform } from '../platform/index';
+import { projectPath } from '../agent/path';
+import { applyBatch } from '../agent/batch';
+import { changeFiles, cleanNewName, type Change } from '../agent/changes';
+import { agentActivity, type ActivityKind } from '../markdown/journal';
+import { docFor, errorMessage, type Doc, type DocumentHost, type TextEditor } from './document';
 
 export interface AgentWriteHost<E extends TextEditor = TextEditor> extends DocumentHost<E> {
     // An open document's file was moved, deleted, or written back (see DocumentController).

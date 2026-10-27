@@ -1,7 +1,7 @@
 // Typed field tests (markdown/fields.ts).
 
-import { addOption, applyDefaults, countUses, fieldNameProblem, optionProblem, writeSchema, fieldChips, fieldInputText, findSegments, formatValue, nearestOption, parseSchema, parseValue, readItem, resolveDefault, setField, writeField, type FieldDef } from '../../src/markdown/fields.js';
-import { section, test, eq, ok } from '../core/framework.js';
+import { addOption, applyDefaults, countUses, fieldNameProblem, optionProblem, writeSchema, fieldChips, fieldInputText, findSegments, formatValue, nearestOption, parseSchema, parseValue, readItem, resolveDefault, setField, writeField, type FieldDef } from '../../src/markdown/fields';
+import { section, test, eq, ok } from '../core/framework';
 
 const DOC = [
     '---', 'layout: board', 'fields:',

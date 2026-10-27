@@ -6,8 +6,8 @@
 // merged (or squashed) into the base in the project folder. Only some of the files can be taken: they are then copied
 // from the branch and committed as one commit, which is refused for a file that also changed on the base since.
 
-import type { GitRunner, GitRun } from '../forge/contribute.js';
-import type { Outcome, Worktree } from './worktree.js';
+import type { GitRunner, GitRun } from '../forge/contribute';
+import type { Outcome, Worktree } from './worktree';
 
 export type FileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
 

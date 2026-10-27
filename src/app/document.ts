@@ -1,4 +1,4 @@
-import { platform } from '../platform/index.js';
+import { platform } from '../platform/index';
 
 // The open documents as the application layer sees them: an id, a file, and a text editor it can read and change,
 // never a widget. Every frontend gives its editor this shape, and each feature controller in

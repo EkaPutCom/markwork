@@ -2,9 +2,9 @@
 // The file format is in transcript.ts. Dot folders are not read as manuscripts by the assistant
 // (project.ts) and do not show in the Files tree, so history does not get mixed with the manuscript.
 
-import { fileExists, readTextFile, trashFile, writeTextFile } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import { chatFileName, parseChat, serializeChat, titleFrom, type SavedChat } from './transcript.js';
+import { fileExists, readTextFile, trashFile, writeTextFile } from '../base/files';
+import { platform } from '../platform/index';
+import { chatFileName, parseChat, serializeChat, titleFrom, type SavedChat } from './transcript';
 
 const MAX_LISTED = 200;
 

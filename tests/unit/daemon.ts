@@ -2,15 +2,15 @@
 // the frame format, requests and streams, reconnecting with a resume that loses and repeats nothing, and the
 // Spawner that lets the orchestrator run a harness through the daemon. The real daemon is tested in daemon-live.ts.
 
-import { DaemonClient } from '../../src/agent/daemon/client.js';
-import { DaemonConnection, type ConnectionState } from '../../src/agent/daemon/connection.js';
-import { DaemonError, encodeRequest, exitStatus, parseExit, parseFrame, type DaemonRecord, type RunSummary, type StateEvent } from '../../src/agent/daemon/protocol.js';
-import { adoptRun, daemonGit, daemonSpawner, newRunId } from '../../src/orchestrator/daemon.js';
-import { Orchestrator, type HarnessProcess, type SpawnHandlers, type SpawnMeta, type Spawner } from '../../src/orchestrator/index.js';
-import { parseBoard, type Board } from '../../src/markdown/kanban.js';
-import { section, test, eq, ok, contains, within } from '../core/framework.js';
-import { host as testHost } from '../core/host.js';
-import { FakeDaemon, ManualTimers, flush } from './daemon-fake.js';
+import { DaemonClient } from '../../src/agent/daemon/client';
+import { DaemonConnection, type ConnectionState } from '../../src/agent/daemon/connection';
+import { DaemonError, encodeRequest, exitStatus, parseExit, parseFrame, type DaemonRecord, type RunSummary, type StateEvent } from '../../src/agent/daemon/protocol';
+import { adoptRun, daemonGit, daemonSpawner, newRunId } from '../../src/orchestrator/daemon';
+import { Orchestrator, type HarnessProcess, type SpawnHandlers, type SpawnMeta, type Spawner } from '../../src/orchestrator/index';
+import { parseBoard, type Board } from '../../src/markdown/kanban';
+import { section, test, eq, ok, contains, within } from '../core/framework';
+import { host as testHost } from '../core/host';
+import { FakeDaemon, ManualTimers, flush } from './daemon-fake';
 
 function setup(opts: { backoffMs?: number[]; expectBridge?: boolean } = {}) {
     const daemon = new FakeDaemon();

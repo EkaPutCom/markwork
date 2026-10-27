@@ -4,10 +4,10 @@
 // Emoji and the letters of other scripts stay as they are: they are a common cause of width and offset bugs, and
 // replacing them could make such a bug go away.
 
-import { highlightText, type Styles } from './highlight.js';
-import { RE } from './syntax.js';
-import { findSegments } from './fields.js';
-import { makeU16Map } from './offsets.js';
+import { highlightText, type Styles } from './highlight';
+import { RE } from './syntax';
+import { findSegments } from './fields';
+import { makeU16Map } from './offsets';
 
 // The styles are not needed, only where the syntax is.
 const NO_STYLES = new Proxy({}, { get: () => 0 }) as Styles<number>;

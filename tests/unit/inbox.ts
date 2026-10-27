@@ -1,10 +1,10 @@
 // List model tests: the notes of a `layout: list` document, on the same model as a board.
 
-import { addTarget, ageOf, captureItem, composeItem, itemFields, itemMeta, newList } from '../../src/markdown/inbox.js';
-import { addColumn, boardSchema, deleteCard, moveColumn, parseBoard, serializeBoard, setCardField, updateCard, withFieldOption } from '../../src/markdown/kanban.js';
-import { isList } from '../../src/markdown/layout.js';
-import { section, test, eq, ok } from '../core/framework.js';
-import { BOARD, INBOX } from '../core/fixtures.js';
+import { addTarget, ageOf, captureItem, composeItem, itemFields, itemMeta, newList } from '../../src/markdown/inbox';
+import { addColumn, boardSchema, deleteCard, moveColumn, parseBoard, serializeBoard, setCardField, updateCard, withFieldOption } from '../../src/markdown/kanban';
+import { isList } from '../../src/markdown/layout';
+import { section, test, eq, ok } from '../core/framework';
+import { BOARD, INBOX } from '../core/fixtures';
 
 export function inboxModelTests(): void {
     section('List (model)');

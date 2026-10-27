@@ -6,9 +6,9 @@
 
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Icon } from './Icons.js';
-import { IconButton } from '../ui/icon-button.js';
-import { useClient, useStore } from '../lib/useClient.js';
+import { Icon } from './Icons';
+import { IconButton } from '../ui/icon-button';
+import { useClient, useStore } from '../lib/useClient';
 
 const STEP = 1.25, MIN = 0.05, MAX = 8;
 const PAD = 20, HEAD = 50, BAR = 50, MARGIN = 32;   // the canvas around the picture, the header, the zoom bar, the room left around the window

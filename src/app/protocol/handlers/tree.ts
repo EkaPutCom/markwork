@@ -1,10 +1,10 @@
 // The Files tab: what the user does with the tree (FilesController). A path must be one inside the work folder, except what
 // is dropped in from a file manager, which is copied and never written over.
 
-import { insideName } from '../../../base/files.js';
-import type { NewKind } from '../../files.js';
-import { RequestError } from '../messages.js';
-import { str, type HandlerContext } from './context.js';
+import { insideName } from '../../../base/files';
+import type { NewKind } from '../../files';
+import { RequestError } from '../messages';
+import { str, type HandlerContext } from './context';
 
 const KINDS: readonly NewKind[] = ['file', 'folder', 'board', 'inbox', 'table', 'csv'];
 

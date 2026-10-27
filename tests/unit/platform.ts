@@ -2,12 +2,12 @@
 // config folder is touched; the contract of the installed platform (files, idle work, processes), so every
 // implementation is held to the same behaviour; and the runtime-free base64 that builds the git credential header.
 
-import { clearCredential, readCredential, saveCredential, type Credential } from '../../src/base/credentials.js';
-import { Cancellable } from '../../src/base/cancel.js';
-import { base64 } from '../../src/forge/contribute.js';
-import { platform, setPlatform, type Platform } from '../../src/platform/index.js';
-import { section, test, eq, ok, within, tmp } from '../core/framework.js';
-import { host } from '../core/host.js';
+import { clearCredential, readCredential, saveCredential, type Credential } from '../../src/base/credentials';
+import { Cancellable } from '../../src/base/cancel';
+import { base64 } from '../../src/forge/contribute';
+import { platform, setPlatform, type Platform } from '../../src/platform/index';
+import { section, test, eq, ok, within, tmp } from '../core/framework';
+import { host } from '../core/host';
 
 const CREDENTIAL: Credential = { envVar: 'TEST_KEY', schema: 'com.example.test', attributes: { provider: 'x' }, label: 'Test key', file: 'test.key' };
 

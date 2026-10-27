@@ -1,8 +1,8 @@
 // The Home tab: what the user did on it (HomeController, and the controllers its rows open).
 
-import { RequestError } from '../messages.js';
-import type { Task } from '../../../markdown/home.js';
-import { num, str, type HandlerContext } from './context.js';
+import { RequestError } from '../messages';
+import type { Task } from '../../../markdown/home';
+import { num, str, type HandlerContext } from './context';
 
 // A task as Home showed it: the core checks the card is still the one before it writes (HomeController.toggleTask).
 function taskOf(value: unknown): Task {

@@ -4,13 +4,13 @@
 // markworkd they need markworkd too; on an SSH machine pi and git are checked there, through its daemon, so the check sees
 // the PATH and the `programs` list the agent will.
 
-import { platform, type OS, type Processes } from '../platform/index.js';
-import type { AppSettings } from '../base/settings.js';
-import type { GitRun } from '../forge/contribute.js';
-import type { ConnectionState, DaemonConnection } from '../agent/daemon/connection.js';
-import { isRemoteMachine, isValidSshTarget, LOCAL_MACHINE } from '../agent/daemon/machines.js';
-import { daemonRun } from '../orchestrator/daemon.js';
-import { _, fmt } from '../base/i18n.js';
+import { platform, type OS, type Processes } from '../platform/index';
+import type { AppSettings } from '../base/settings';
+import type { GitRun } from '../forge/contribute';
+import type { ConnectionState, DaemonConnection } from '../agent/daemon/connection';
+import { isRemoteMachine, isValidSshTarget, LOCAL_MACHINE } from '../agent/daemon/machines';
+import { daemonRun } from '../orchestrator/daemon';
+import { _, fmt } from '../base/i18n';
 
 export type ProgramName = 'git' | 'pi' | 'markworkd';
 

@@ -18,9 +18,9 @@
 // One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without a time are
 // still valid. Pure TypeScript; all operations return a new board.
 
-import { applyDefaults, fieldChips, findSegments, readItem, type DateValue, type FieldChip, type FieldDef } from './fields.js';
-import { boardSchema, type Board, type Card, type Column } from './kanban.js';
-import { optionOf } from './layout.js';
+import { applyDefaults, fieldChips, findSegments, readItem, type DateValue, type FieldChip, type FieldDef } from './fields';
+import { boardSchema, type Board, type Card, type Column } from './kanban';
+import { optionOf } from './layout';
 
 export const CREATED_FIELD: FieldDef = { key: 'created', type: 'date', multiple: false, options: [] };
 

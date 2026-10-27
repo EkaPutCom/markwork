@@ -3,13 +3,13 @@
 // worktrees go, what happens after a merge) and the card worktrees that exist now. The dialog draws what it is sent and
 // reports what the user did; a worktree it names is one the core listed for that project, and a change is checked here.
 
-import { isRemoteMachine, machineProjectKey } from '../agent/daemon/machines.js';
-import { BRANCH_PREFIX, isAbsoluteDir, listWorktrees, MAX_SLOTS, parseIsolation, removeWorktree, worktreeRoot, writeIsolation, type Isolation } from '../agent/worktree.js';
-import type { GitRunner } from '../forge/contribute.js';
-import { platform } from '../platform/index.js';
-import type { AppSettings } from '../base/settings.js';
-import { _, fmt } from '../base/i18n.js';
-import type { Question } from './dialogs.js';
+import { isRemoteMachine, machineProjectKey } from '../agent/daemon/machines';
+import { BRANCH_PREFIX, isAbsoluteDir, listWorktrees, MAX_SLOTS, parseIsolation, removeWorktree, worktreeRoot, writeIsolation, type Isolation } from '../agent/worktree';
+import type { GitRunner } from '../forge/contribute';
+import { platform } from '../platform/index';
+import type { AppSettings } from '../base/settings';
+import { _, fmt } from '../base/i18n';
+import type { Question } from './dialogs';
 
 // What the Projects page needs from the harness controller.
 export interface ProjectsAccess {

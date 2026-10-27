@@ -1,10 +1,10 @@
 // The views of a document's notes (ViewController: board, list, table, and the layouts): what the user did, as an
 // operation the core applies to the board it holds (docs/design/protocol.md, 6.3).
 
-import type { NoteEdit } from '../../../markdown/noteedit.js';
-import { parseWikiLink } from '../../../markdown/wikilink.js';
-import { RequestError } from '../messages.js';
-import { num, str, type HandlerContext } from './context.js';
+import type { NoteEdit } from '../../../markdown/noteedit';
+import { parseWikiLink } from '../../../markdown/wikilink';
+import { RequestError } from '../messages';
+import { num, str, type HandlerContext } from './context';
 
 export function notesHandlers({ wire, session, frontend }: HandlerContext): void {
     wire.on('act.notes.edit', p => {

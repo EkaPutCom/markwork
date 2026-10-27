@@ -6,7 +6,7 @@ import {
     DaemonError, PROTOCOL_VERSION, encodeRequest, parseFrame, replyError,
     type DaemonRecord, type HelloResult, type InfoResult, type ListFilter, type RunSummary, type SpawnResult, type SpawnSpec,
     type StateEvent, type StderrResult, type SubscribeResult,
-} from './protocol.js';
+} from './protocol';
 
 // A line-oriented duplex channel to the daemon.
 export interface Link {

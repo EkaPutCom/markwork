@@ -4,7 +4,7 @@
 // The types: 'b' boolean, 's' string, 'i' and 'x' integer, 'u' integer ≥ 0, 'a(si)' and 'a(sx)' a list of
 // [string, integer], 'a{ss}' an object of strings.
 
-import type { SettingSpec } from '../platform/index.js';
+import type { SettingSpec } from '../platform/index';
 
 export const SETTING_KEYS = {
     'color-scheme': { type: 's', default: 'system', choices: ['system', 'light', 'dark'] },   // system follows the system theme

@@ -1,8 +1,8 @@
 // The small toolbar that appears over a picture, a diagram, or a code block when the pointer is on it (Zoom, Edit source,
 // Copy, Delete), so what a block offers can be seen instead of guessed (a double click, a hidden markup).
 
-import { iconElement, type IconName } from '../components/Icons.js';
-import { domButton } from '../ui/dom.js';
+import { iconElement, type IconName } from '../components/Icons';
+import { domButton } from '../ui/dom';
 
 export const ZOOM_ICON: IconName = 'zoom-in';
 export const DELETE_ICON: IconName = 'edit-clear';

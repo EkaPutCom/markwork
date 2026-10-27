@@ -14,10 +14,10 @@
 // note is removed, and a new column adds an option. The order of the notes inside a column is the order of the
 // document, so dragging within a column does not change anything. Pure TypeScript.
 
-import type { FieldDef } from './fields.js';
-import { OPTION_TEXT, readItem, writeField } from './fields.js';
-import { optionOf } from './layout.js';
-import { boardSchema, withFieldOption, type Board, type Card, type Column, type Position } from './kanban.js';
+import type { FieldDef } from './fields';
+import { OPTION_TEXT, readItem, writeField } from './fields';
+import { optionOf } from './layout';
+import { boardSchema, withFieldOption, type Board, type Card, type Column, type Position } from './kanban';
 
 // The select field the board is grouped by, or null for an ordinary board.
 export function groupFieldOf(board: Board, schema: FieldDef[] = boardSchema(board)): FieldDef | null {

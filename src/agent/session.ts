@@ -5,18 +5,18 @@
 // A turn is an agent loop: the model answers, or asks for a tool (agent/tools.ts) to be run; the tool result
 // is returned and the model is called again, until there is an answer. Tool calls and their results only live for that turn.
 
-import { WORK_TOOL, parseWork, workText, type WorkState } from './work.js';
-import { BATCH_TOOL, planBatch } from './batch.js';
-import { structureCheck, VERIFY_TOOL, verifyWork } from './verification.js';
-import { describeGitCall, formatGit, GIT_TOOLS, isGitTool, parseGitCall, type GitAnswer, type GitRequest } from './gittools.js';
-import { journalText, reconcileEvents, type ActionEvent } from './journal.js';
-import { compactHistory } from './recovery.js';
-import type { Cancellable } from '../base/cancel.js';
-import { buildContext, buildMessages, estimateTokens, type BuiltContext, type ContextInput, type SourceFile, type Turn } from './context.js';
-import type { ChatMessage, ChatResult, Provider, ToolCall, ToolSpec, Usage } from './provider.js';
-import { describeCall, runTool, TOOLS } from './tools.js';
-import { AgentTrace, prettyArguments } from './trace.js';
-import { applyToFiles, CHANGE_TOOLS, changeState, describeChange, isChangeTool, planChange, type Change } from './changes.js';
+import { WORK_TOOL, parseWork, workText, type WorkState } from './work';
+import { BATCH_TOOL, planBatch } from './batch';
+import { structureCheck, VERIFY_TOOL, verifyWork } from './verification';
+import { describeGitCall, formatGit, GIT_TOOLS, isGitTool, parseGitCall, type GitAnswer, type GitRequest } from './gittools';
+import { journalText, reconcileEvents, type ActionEvent } from './journal';
+import { compactHistory } from './recovery';
+import type { Cancellable } from '../base/cancel';
+import { buildContext, buildMessages, estimateTokens, type BuiltContext, type ContextInput, type SourceFile, type Turn } from './context';
+import type { ChatMessage, ChatResult, Provider, ToolCall, ToolSpec, Usage } from './provider';
+import { describeCall, runTool, TOOLS } from './tools';
+import { AgentTrace, prettyArguments } from './trace';
+import { applyToFiles, CHANGE_TOOLS, changeState, describeChange, isChangeTool, planChange, type Change } from './changes';
 
 // The part of the budget for conversation history, outside the manuscript context.
 const HISTORY_SHARE = 0.25;

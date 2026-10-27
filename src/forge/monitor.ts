@@ -2,7 +2,7 @@
 // so it asks on a timer and compares with what it saw last time. The first poll only records a baseline, so
 // opening a folder never announces the pull requests that were already there.
 
-import { ForgeError, type ForgeProvider, type PullRequest } from './types.js';
+import { ForgeError, type ForgeProvider, type PullRequest } from './types';
 
 export type PullEvent =
     | { kind: 'opened'; pull: PullRequest }

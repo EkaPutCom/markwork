@@ -5,9 +5,9 @@ import { spawn as spawnChild, type ChildProcessWithoutNullStreams } from 'node:c
 import { accessSync, constants, statSync } from 'node:fs';
 import { homedir, hostname } from 'node:os';
 import { basename, delimiter, join } from 'node:path';
-import { programNames } from './dirs.js';
-import { openFirstTerminal } from '../terminals.js';
-import type { ChildHandlers, ChildProcess, Processes, RunRequest, RunResult } from '../index.js';
+import { programNames } from './dirs';
+import { openFirstTerminal } from '../terminals';
+import type { ChildHandlers, ChildProcess, Processes, RunRequest, RunResult } from '../index';
 
 const STDERR_TAIL = 8000;
 const DRAIN_MS = 1500;   // grace period for reading remaining output after the process exits

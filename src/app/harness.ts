@@ -1,29 +1,29 @@
 // External harnesses (@pi cards): the card menu, choosing the project folder, answering/steering/replying to a run,
 // and its log window. The runs themselves are managed by the Orchestrator this controller owns.
 
-import { fileExists, insideName, readTextFile } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import type { AppSettings } from '../base/settings.js';
-import { findProgram, labelWorktree, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator/index.js';
-import { runGit } from '../base/git.js';
-import { parseIsolation, type Isolation } from '../agent/worktree.js';
-import type { GitRunner } from '../forge/contribute.js';
-import { cardProject, checkProjectFolder, HARNESSES, isActive, locateCard as findCard, PROJECT_NAME, type HarnessAsk, type HarnessReply, type LinkedNote, type Run, type RunStatus } from '../agent/harness.js';
-import { isRemoteMachine, LOCAL_MACHINE, machineProjectKey } from '../agent/daemon/machines.js';
-import type { ConnectionState } from '../agent/daemon/connection.js';
-import type { RunSummary } from '../agent/daemon/protocol.js';
-import { openCommandLink, openSocketLink } from '../agent/daemon/streamlink.js';
-import { DaemonHub, type Openers } from '../orchestrator/hub.js';
-import { adoptRun, daemonGit, daemonSpawner } from '../orchestrator/daemon.js';
-import type { MenuEntry } from './menu.js';
-import { TraceFeed, type TraceUpdate } from '../agent/tracefeed.js';
-import { harnessActivity, type ActivityKind } from '../markdown/journal.js';
-import { assignCard, cardBranch, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban.js';
-import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink.js';
-import type { WorkspaceRepository } from '../base/workspace.js';
-import { _, fmt } from '../base/i18n.js';
-import type { Prompt } from './dialogs.js';
-import { docFor, type DocumentHost } from './document.js';
+import { fileExists, insideName, readTextFile } from '../base/files';
+import { platform } from '../platform/index';
+import type { AppSettings } from '../base/settings';
+import { findProgram, labelWorktree, Orchestrator, spawnHarness, type AdoptInfo } from '../orchestrator/index';
+import { runGit } from '../base/git';
+import { parseIsolation, type Isolation } from '../agent/worktree';
+import type { GitRunner } from '../forge/contribute';
+import { cardProject, checkProjectFolder, HARNESSES, isActive, locateCard as findCard, PROJECT_NAME, type HarnessAsk, type HarnessReply, type LinkedNote, type Run, type RunStatus } from '../agent/harness';
+import { isRemoteMachine, LOCAL_MACHINE, machineProjectKey } from '../agent/daemon/machines';
+import type { ConnectionState } from '../agent/daemon/connection';
+import type { RunSummary } from '../agent/daemon/protocol';
+import { openCommandLink, openSocketLink } from '../agent/daemon/streamlink';
+import { DaemonHub, type Openers } from '../orchestrator/hub';
+import { adoptRun, daemonGit, daemonSpawner } from '../orchestrator/daemon';
+import type { MenuEntry } from './menu';
+import { TraceFeed, type TraceUpdate } from '../agent/tracefeed';
+import { harnessActivity, type ActivityKind } from '../markdown/journal';
+import { assignCard, cardBranch, cardMeta, parseBoard, updateCard, type Board, type Card, type Position } from '../markdown/kanban';
+import { noteSection, resolveWikiLink, type WikiLink } from '../markdown/wikilink';
+import type { WorkspaceRepository } from '../base/workspace';
+import { _, fmt } from '../base/i18n';
+import type { Prompt } from './dialogs';
+import { docFor, type DocumentHost } from './document';
 
 // The run of a card on the board that is shown, for its badge: the card is named by its text.
 export interface CardRun {

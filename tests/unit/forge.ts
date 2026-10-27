@@ -1,13 +1,13 @@
 // Forge layer tests: remote URL parsing, the Forgejo/Gitea client against a fake Transport, the polling monitor, and the platform's
 // HTTP transport against a fake server on 127.0.0.1. No real network.
 
-import { GiteaProvider } from '../../src/forge/gitea.js';
-import { platform } from '../../src/platform/index.js';
-import { diffPulls, PullMonitor } from '../../src/forge/monitor.js';
-import { parseRemote } from '../../src/forge/remote.js';
-import { ForgeError, type HttpRequest, type HttpResponse, type PullRequest, type RepoRef, type Transport } from '../../src/forge/types.js';
-import { section, test, eq, ok, contains, within } from '../core/framework.js';
-import { host } from '../core/host.js';
+import { GiteaProvider } from '../../src/forge/gitea';
+import { platform } from '../../src/platform/index';
+import { diffPulls, PullMonitor } from '../../src/forge/monitor';
+import { parseRemote } from '../../src/forge/remote';
+import { ForgeError, type HttpRequest, type HttpResponse, type PullRequest, type RepoRef, type Transport } from '../../src/forge/types';
+import { section, test, eq, ok, contains, within } from '../core/framework';
+import { host } from '../core/host';
 
 const REPO: RepoRef = { baseUrl: 'https://git.example.org', host: 'git.example.org', owner: 'eka', repo: 'notes' };
 

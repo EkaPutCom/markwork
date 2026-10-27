@@ -7,13 +7,13 @@ import { readFileSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import type { OS, Platform, Scheduler, Secrets } from '../index.js';
-import { samePath, userDirs } from './dirs.js';
-import { catalogTranslations, userCatalog } from './i18n.js';
-import { nodeFiles } from './files.js';
-import { fetchStreamTransport, fetchTransport } from './http.js';
-import { nodeLinks } from './links.js';
-import { nodeProcesses } from './process.js';
+import type { OS, Platform, Scheduler, Secrets } from '../index';
+import { samePath, userDirs } from './dirs';
+import { catalogTranslations, userCatalog } from './i18n';
+import { nodeFiles } from './files';
+import { fetchStreamTransport, fetchTransport } from './http';
+import { nodeLinks } from './links';
+import { nodeProcesses } from './process';
 
 // secret-tool (libsecret's command line) speaks to the Secret Service; libsecret stores a schema's name as the
 // xdg:schema attribute, so passing it keeps the items where libsecret programs look for them. Without

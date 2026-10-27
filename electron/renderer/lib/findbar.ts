@@ -5,8 +5,8 @@
 import { EditorSelection } from '@codemirror/state';
 import type { EditorView, Panel, ViewUpdate } from '@codemirror/view';
 import { closeSearchPanel, findNext, findPrevious, getSearchQuery, replaceAll, replaceNext, SearchQuery, setSearchQuery } from '@codemirror/search';
-import { iconElement } from '../components/Icons.js';
-import { domButton, domInput, domInputGroup, domInputGroupAddon, domToggle, isPressed, setPressed } from '../ui/dom.js';
+import { iconElement } from '../components/Icons';
+import { domButton, domInput, domInputGroup, domInputGroupAddon, domToggle, isPressed, setPressed } from '../ui/dom';
 
 // The results are counted up to this many; past it the count says "1000+".
 const COUNT_LIMIT = 1000;

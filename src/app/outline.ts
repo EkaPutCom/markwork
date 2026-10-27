@@ -4,7 +4,7 @@
 // docs/design/protocol.md 5.1). The panel draws what it is sent and reports the place of the heading in that list, so a
 // jump lands on the line the list had, whatever the document did since.
 
-import type { Doc, DocumentHost, TextEditor } from './document.js';
+import type { Doc, DocumentHost, TextEditor } from './document';
 
 // One heading as the panel shows it.
 export interface OutlineHeading {

@@ -8,7 +8,7 @@
 //   | :---- | ----: |      ← separator row; colons set the alignment
 //   | one   |     1 |      ← body row (the edge pipes may be omitted)
 
-import { RE, startsTable } from './syntax.js';
+import { RE, startsTable } from './syntax';
 
 export type Align = 'left' | 'center' | 'right' | null;
 

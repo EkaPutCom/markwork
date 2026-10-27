@@ -2,14 +2,14 @@
 // edited in a dialog, moved by dragging between rows or from its menu, and a section has a menu of its own.
 
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { boardSchema, dropSpot, type Board, type DropRow, type DropSpot, type Position } from '../../../src/markdown/kanban.js';
-import { ageOf, itemFields, itemMeta } from '../../../src/markdown/inbox.js';
-import { CardDialog, FieldChips, headingOf, Inline, PopupMenu, refOf, Tags, usePopup, useFieldEditor, type CardAnswer, type MenuEntry } from './notes.js';
-import { Icon } from './Icons.js';
-import { Button } from '../ui/button.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { useClient, useStore } from '../lib/useClient.js';
+import { boardSchema, dropSpot, type Board, type DropRow, type DropSpot, type Position } from '../../../src/markdown/kanban';
+import { ageOf, itemFields, itemMeta } from '../../../src/markdown/inbox';
+import { CardDialog, FieldChips, headingOf, Inline, PopupMenu, refOf, Tags, usePopup, useFieldEditor, type CardAnswer, type MenuEntry } from './notes';
+import { Icon } from './Icons';
+import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { useClient, useStore } from '../lib/useClient';
 
 export function ageLabel(captured: Date, now: Date): string {
     const age = ageOf(captured, now);

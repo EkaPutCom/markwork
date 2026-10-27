@@ -2,15 +2,15 @@
 // in for the History tab and its viewer, and git runs for real in a temporary repository. The views only see plain
 // data and report; what is committed or thrown away is decided by the core.
 
-import { AppSession } from '../../src/app/session.js';
-import type { HistoryChanges, HistoryLog, HistoryTabView, HistoryText, HistoryViewerSpec, HistoryViewersView } from '../../src/app/history.js';
-import type { KeyStore } from '../../src/agent/apikey.js';
-import type { ChatResult } from '../../src/agent/provider.js';
-import type { Cancellable } from '../../src/base/cancel.js';
-import { runGit } from '../../src/base/git.js';
-import { section, test, eq, ok, within, until, pause, tmp, disk } from '../core/framework.js';
-import { host } from '../core/host.js';
-import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession.js';
+import { AppSession } from '../../src/app/session';
+import type { HistoryChanges, HistoryLog, HistoryTabView, HistoryText, HistoryViewerSpec, HistoryViewersView } from '../../src/app/history';
+import type { KeyStore } from '../../src/agent/apikey';
+import type { ChatResult } from '../../src/agent/provider';
+import type { Cancellable } from '../../src/base/cancel';
+import { runGit } from '../../src/base/git';
+import { section, test, eq, ok, within, until, pause, tmp, disk } from '../core/framework';
+import { host } from '../core/host';
+import { fakeFrontend, FakeEditor, LaggingEditor, memorySettings, quiet } from './appsession';
 
 const KEY: KeyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
 const V1 = '# Title\n\none\n', V2 = '# Title\n\none\ntwo\n';

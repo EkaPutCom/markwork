@@ -2,8 +2,8 @@
 // (chatblocks.ts), with inline formatting through cellHtml. Safe as innerHTML; the classes carry no colors, the page's
 // stylesheet does. Pure TypeScript.
 
-import { chatBlocks, type ChatBlock } from './chatblocks.js';
-import { cellHtml, escapeHtml } from './inlinehtml.js';
+import { chatBlocks, type ChatBlock } from './chatblocks';
+import { cellHtml, escapeHtml } from './inlinehtml';
 
 function blockHtml(block: Exclude<ChatBlock, { kind: 'code' }>): string {
     switch (block.kind) {

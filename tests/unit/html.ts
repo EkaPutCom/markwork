@@ -1,8 +1,8 @@
 // Markdown → HTML conversion tests.
 
-import { section, test, eq, contains } from '../core/framework.js';
-import { markdownToHtml } from '../../src/markdown/html.js';
-import { body } from './helpers.js';
+import { section, test, eq, contains } from '../core/framework';
+import { markdownToHtml } from '../../src/markdown/html';
+import { body } from './helpers';
 
 export function htmlTests(): void {
     section('Markdown → HTML');

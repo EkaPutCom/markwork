@@ -3,9 +3,9 @@
 // The source of truth remains the Markdown files, so there is no index or database that can go stale:
 // everything is recomputed every time Home is shown.
 
-import { cardMeta, dueStatus, parseBoard, type Board, type Card, type DueStatus, type Position } from './kanban.js';
-import { isList, isStructured } from './layout.js';
-import { below } from './paths.js';
+import { cardMeta, dueStatus, parseBoard, type Board, type Card, type DueStatus, type Position } from './kanban';
+import { isList, isStructured } from './layout';
+import { below } from './paths';
 
 export interface HomeFile {
     name: string;    // relative to the work folder

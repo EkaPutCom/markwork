@@ -2,11 +2,11 @@
 // (app/assistant.ts); this file checks what arrives and passes it on. A path to a saved conversation must be one the
 // core listed, and a proposal is named by the number the core gave it, never sent back as changes.
 
-import { RequestError } from '../messages.js';
-import type { ContextOptions } from '../../../agent/context.js';
-import type { UndoTarget } from '../../assistant.js';
-import { savedChatView } from '../chat.js';
-import { num, str, type HandlerContext } from './context.js';
+import { RequestError } from '../messages';
+import type { ContextOptions } from '../../../agent/context';
+import type { UndoTarget } from '../../assistant';
+import { savedChatView } from '../chat';
+import { num, str, type HandlerContext } from './context';
 
 const flag = (v: unknown, what: string): boolean => {
     if (typeof v !== 'boolean') throw new RequestError('bad_request', `${what} must be true or false`);

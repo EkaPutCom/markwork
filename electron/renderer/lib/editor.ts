@@ -7,28 +7,28 @@ import { Annotation, EditorSelection, EditorState, Facet, StateEffect, StateFiel
 import { Decoration, EditorView, drawSelection, keymap, showTooltip, type DecorationSet } from '@codemirror/view';
 import { defaultKeymap, history, redo, undo } from '@codemirror/commands';
 import { closeSearchPanel, findNext, findPrevious, highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
-import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type HighlightResult, type Styles } from '../../../src/markdown/highlight.js';
+import { HighlightCache, textLines, type CodeBlock, type HangingIndent, type HighlightResult, type Styles } from '../../../src/markdown/highlight';
 import { block, continueBlock, enterInTable, heading, indentListItem, inlineFormatsAt, isInCodeBlock, lineKindOf, link, runTableCommand, setLineKind, tabInTable, togglePrefix, wrap,
-    type TableCommand, type TextEdit, type TextState } from '../../../src/markdown/editcommands.js';
+    type TableCommand, type TextEdit, type TextState } from '../../../src/markdown/editcommands';
 import { acceptCompletion, autocompletion, type CompletionContext } from '@codemirror/autocomplete';
-import { linkAt, taskToggleAt, wikiLinkAt } from '../../../src/markdown/clicks.js';
-import { suggestNotes, wikiQuery, wikiTargetFor } from '../../../src/markdown/wikilink.js';
-import { conflictDecorations } from './conflicts.js';
-import { iconElement, type IconName } from '../components/Icons.js';
-import { domButton } from '../ui/dom.js';
-import { createFindBar, findBarOf } from './findbar.js';
-import { DiagramWidget } from './diagrams.js';
-import { diagramKind } from '../../../src/markdown/diagram.js';
-import { TableWidget, focusCell, gridAt, tableOf } from './tables.js';
-import { CodeBoxWidget, codeColors, focusCode, spansOf, type LanguagePick } from './codecolor.js';
-import { PicturesWidget, pictureRange, pictures, type PictureItem, type ZoomedImage } from './images.js';
-import { cpToU16, makeU16Map } from '../../../src/markdown/offsets.js';
-import type { EditCommands, TableOperation } from '../../../src/app/commands.js';
-import type { Change } from '../../../src/app/protocol/messages.js';
-import { blockHandle, moveCursorBlock } from './blockhandle.js';
-import { blockSelection, pick, removeBlock, type BlockSource, type PickedBlock } from './blockselect.js';
-import { nameEffect, recorder } from './inspect/recorder.js';
-import { LIST_PREFIX_PX, linkEditor, listPrefix, openImageEditor, openLinkEditor, selectionMenu, setVisual, slashGlyph, slashSource, visualEditing, visualMode, type Concealed } from './visual.js';
+import { linkAt, taskToggleAt, wikiLinkAt } from '../../../src/markdown/clicks';
+import { suggestNotes, wikiQuery, wikiTargetFor } from '../../../src/markdown/wikilink';
+import { conflictDecorations } from './conflicts';
+import { iconElement, type IconName } from '../components/Icons';
+import { domButton } from '../ui/dom';
+import { createFindBar, findBarOf } from './findbar';
+import { DiagramWidget } from './diagrams';
+import { diagramKind } from '../../../src/markdown/diagram';
+import { TableWidget, focusCell, gridAt, tableOf } from './tables';
+import { CodeBoxWidget, codeColors, focusCode, spansOf, type LanguagePick } from './codecolor';
+import { PicturesWidget, pictureRange, pictures, type PictureItem, type ZoomedImage } from './images';
+import { cpToU16, makeU16Map } from '../../../src/markdown/offsets';
+import type { EditCommands, TableOperation } from '../../../src/app/commands';
+import type { Change } from '../../../src/app/protocol/messages';
+import { blockHandle, moveCursorBlock } from './blockhandle';
+import { blockSelection, pick, removeBlock, type BlockSource, type PickedBlock } from './blockselect';
+import { nameEffect, recorder } from './inspect/recorder';
+import { LIST_PREFIX_PX, linkEditor, listPrefix, openImageEditor, openLinkEditor, selectionMenu, setVisual, slashGlyph, slashSource, visualEditing, visualMode, type Concealed } from './visual';
 
 // A change that comes from the core (or opens a text), not from the user: it is not reported back as an edit.
 const External = Annotation.define<boolean>();

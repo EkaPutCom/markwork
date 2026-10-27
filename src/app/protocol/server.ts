@@ -2,31 +2,31 @@
 // (docs/design/protocol.md, sections 4.5 to 6). One server serves one window. The requests and notices it answers are
 // in handlers/, one file per controller; this file only puts them together.
 
-import type { AppSettings } from '../../base/settings.js';
-import { onDiskChange } from '../../base/files.js';
-import { platform } from '../../platform/index.js';
-import { AppSession } from '../session.js';
-import { ProtocolFrontend } from './frontend.js';
-import type { Message } from './messages.js';
-import type { ProtocolEditor } from './replica.js';
-import { Connection } from './wire.js';
-import type { HandlerContext } from './handlers/context.js';
-import { commandHandlers } from './handlers/commands.js';
-import { documentHandlers } from './handlers/documents.js';
-import { notesHandlers } from './handlers/notes.js';
-import { homeHandlers } from './handlers/home.js';
-import { preferencesHandlers } from './handlers/preferences.js';
-import { outlineHandlers } from './handlers/outline.js';
-import { searchHandlers } from './handlers/search.js';
-import { treeHandlers } from './handlers/tree.js';
-import { sessionHandlers } from './handlers/session.js';
-import { chatHandlers } from './handlers/chat.js';
-import { historyHandlers } from './handlers/history.js';
-import { collabHandlers } from './handlers/collab.js';
-import { harnessHandlers } from './handlers/harness.js';
-import { programsHandlers } from './handlers/programs.js';
+import type { AppSettings } from '../../base/settings';
+import { onDiskChange } from '../../base/files';
+import { platform } from '../../platform/index';
+import { AppSession } from '../session';
+import { ProtocolFrontend } from './frontend';
+import type { Message } from './messages';
+import type { ProtocolEditor } from './replica';
+import { Connection } from './wire';
+import type { HandlerContext } from './handlers/context';
+import { commandHandlers } from './handlers/commands';
+import { documentHandlers } from './handlers/documents';
+import { notesHandlers } from './handlers/notes';
+import { homeHandlers } from './handlers/home';
+import { preferencesHandlers } from './handlers/preferences';
+import { outlineHandlers } from './handlers/outline';
+import { searchHandlers } from './handlers/search';
+import { treeHandlers } from './handlers/tree';
+import { sessionHandlers } from './handlers/session';
+import { chatHandlers } from './handlers/chat';
+import { historyHandlers } from './handlers/history';
+import { collabHandlers } from './handlers/collab';
+import { harnessHandlers } from './handlers/harness';
+import { programsHandlers } from './handlers/programs';
 
-export { PROTOCOL_VERSION } from './handlers/session.js';
+export { PROTOCOL_VERSION } from './handlers/session';
 
 export interface ServerOptions {
     // The setting keys of the schema: sent in `hello`, and the only ones the frontend may write. Without them no setting

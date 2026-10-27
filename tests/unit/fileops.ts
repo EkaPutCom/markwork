@@ -1,8 +1,8 @@
 // File operation tests: create files/folders and move.
 
-import { copyEntry, createFile, createFolder, moveEntry, renameEntry } from '../../src/base/fileops.js';
-import { remapPath } from '../../src/app/documents.js';
-import { section, test, eq, ok, tmp, disk } from '../core/framework.js';
+import { copyEntry, createFile, createFolder, moveEntry, renameEntry } from '../../src/base/fileops';
+import { remapPath } from '../../src/app/documents';
+import { section, test, eq, ok, tmp, disk } from '../core/framework';
 
 const throws = (fn: () => unknown, part: string): void => {
     try { fn(); } catch (e) { ok((e as Error).message.includes(part), `message "${(e as Error).message}" does not contain "${part}"`); return; }

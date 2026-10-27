@@ -3,8 +3,8 @@
 // block, or the frontmatter. Blocks are told apart by the lines between them; a heading or a list that follows a line
 // without a blank one in between is a block of its own. Pure TypeScript: lines in, line ranges out.
 
-import { RE } from './syntax.js';
-import { findTables } from './table.js';
+import { RE } from './syntax';
+import { findTables } from './table';
 
 export type BlockKind = 'frontmatter' | 'heading' | 'rule' | 'quote' | 'list' | 'table' | 'code' | 'paragraph';
 

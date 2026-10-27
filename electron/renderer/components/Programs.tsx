@@ -2,13 +2,13 @@
 // missing one. It draws the core's check (view.programs) and reports what the user chose; it looks for nothing itself.
 
 import { useState } from 'react';
-import type { InstallWay, ProgramInfo, ProgramsData } from '../../../src/app/protocol/screen.js';
+import type { InstallWay, ProgramInfo, ProgramsData } from '../../../src/app/protocol/screen';
 import { Badge } from '@/ui/badge';
 import { Button } from '@/ui/button';
 import { IconButton } from '@/ui/icon-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs';
-import { Icon } from './Icons.js';
-import { useClient } from '../lib/useClient.js';
+import { Icon } from './Icons';
+import { useClient } from '../lib/useClient';
 
 const OS_NAMES: Record<InstallWay['os'], string> = { linux: 'Linux', darwin: 'macOS', win32: 'Windows' };
 

@@ -2,18 +2,18 @@
 // forge, shows each as a note or as a raw diff, and merges on request. After a merge the folder is brought up to date with
 // git when it is on the base branch. The forge itself comes from CollabController through `access`.
 
-import { readTextFile } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import { runGit } from '../base/git.js';
-import { parseDiff, type DiffLine } from '../base/gitlog.js';
-import type { GitRunner } from '../forge/contribute.js';
-import { fileDiff, isBinaryDiff } from '../forge/diff.js';
-import { abortLocalMerge, confirmMerged, finishLocalMerge, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge, type PendingMerge } from '../forge/resolve.js';
-import { ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest, type RepoRef } from '../forge/types.js';
-import { diffNote, type NoteDiff } from '../markdown/notediff.js';
-import { _, fmt, ngettext } from '../base/i18n.js';
-import type { Question } from './dialogs.js';
-import { docFor, type DocumentHost } from './document.js';
+import { readTextFile } from '../base/files';
+import { platform } from '../platform/index';
+import { runGit } from '../base/git';
+import { parseDiff, type DiffLine } from '../base/gitlog';
+import type { GitRunner } from '../forge/contribute';
+import { fileDiff, isBinaryDiff } from '../forge/diff';
+import { abortLocalMerge, confirmMerged, finishLocalMerge, pendingMerge, preflight, startLocalMerge, unresolved, type LocalMerge, type PendingMerge } from '../forge/resolve';
+import { ForgeError, type ForgeProvider, type MergeMethod, type PullComment, type PullFile, type PullRequest, type RepoRef } from '../forge/types';
+import { diffNote, type NoteDiff } from '../markdown/notediff';
+import { _, fmt, ngettext } from '../base/i18n';
+import type { Question } from './dialogs';
+import { docFor, type DocumentHost } from './document';
 
 // One changed file of a pull request: as a note (null when it cannot be shown that way), and as a raw diff.
 export interface FileView {

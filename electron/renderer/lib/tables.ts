@@ -9,10 +9,10 @@
 // on any text: the cell's selection is the text's).
 
 import { WidgetType, type EditorView } from '@codemirror/view';
-import { parseInline } from '../../../src/markdown/inline.js';
-import { runTableCommand } from '../../../src/markdown/editcommands.js';
-import { cellIndexAt, cellStart, escapeCell, parseTable, setCellText, type Table } from '../../../src/markdown/table.js';
-import { handling, trace } from './inspect/recorder.js';
+import { parseInline } from '../../../src/markdown/inline';
+import { runTableCommand } from '../../../src/markdown/editcommands';
+import { cellIndexAt, cellStart, escapeCell, parseTable, setCellText, type Table } from '../../../src/markdown/table';
+import { handling, trace } from './inspect/recorder';
 
 interface CellPlace { row: number; col: number; offset: number }
 

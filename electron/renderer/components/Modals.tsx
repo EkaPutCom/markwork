@@ -2,19 +2,19 @@
 // the core sends (view.prefs.*) and reports each change as a key and a value; the other two read the window's own command table.
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { COMMANDS } from '../../../src/app/commands.js';
-import { AgentsPage } from './AgentsPrefs.js';
-import { Icon } from './Icons.js';
-import { label } from '../lib/keys.js';
-import { useClient, useStore } from '../lib/useClient.js';
-import { Select } from '../ui/select.js';
-import { cn } from '../lib/utils.js';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '../ui/dialog.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { Kbd } from '../ui/kbd.js';
-import { Switch } from '../ui/switch.js';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.js';
+import { COMMANDS } from '../../../src/app/commands';
+import { AgentsPage } from './AgentsPrefs';
+import { Icon } from './Icons';
+import { label } from '../lib/keys';
+import { useClient, useStore } from '../lib/useClient';
+import { Select } from '../ui/select';
+import { cn } from '../lib/utils';
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '../ui/dialog';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { Kbd } from '../ui/kbd';
+import { Switch } from '../ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 // A task in a window of its own: shadcn's Dialog with a header bar, the title at the start (or what `header` puts there,
 // as the tabs of Preferences) and Close at the end. Escape and a click beside it close it. With `tabs`, the header and the

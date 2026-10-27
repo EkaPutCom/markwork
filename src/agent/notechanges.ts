@@ -5,14 +5,14 @@
 // comes back as an error the model can fix, never as text in the file. Like every change tool they only compute the
 // new contents (changes.ts turns that into a Change for the user to review). Pure TypeScript.
 
-import { countUses, fieldNameProblem, isOptionColor, optionProblem, parseSchema, parseValue, readItem, setField, writeField, writeSchema, type FieldDef, type FieldType, type OptionColor } from '../markdown/fields.js';
-import { chartItems, chartItemText } from '../markdown/chart.js';
-import { captureItem, composeItem } from '../markdown/inbox.js';
-import { addCard, addColumn, deleteCard, deleteColumn, moveCard, parseBoard, renameColumn, serializeBoard, updateCard, type Board, type Position } from '../markdown/kanban.js';
-import { LAYOUTS, withLayout, withOption, type Layout } from '../markdown/layout.js';
-import { missingField } from '../markdown/layouthint.js';
-import type { ToolSpec } from './provider.js';
-import { findField, findGroup, findNote, notesOf, NOT_STRUCTURED, rawValue, resolveWords, structuredDoc, valueHint, type Found, type StructuredDoc } from './notes.js';
+import { countUses, fieldNameProblem, isOptionColor, optionProblem, parseSchema, parseValue, readItem, setField, writeField, writeSchema, type FieldDef, type FieldType, type OptionColor } from '../markdown/fields';
+import { chartItems, chartItemText } from '../markdown/chart';
+import { captureItem, composeItem } from '../markdown/inbox';
+import { addCard, addColumn, deleteCard, deleteColumn, moveCard, parseBoard, renameColumn, serializeBoard, updateCard, type Board, type Position } from '../markdown/kanban';
+import { LAYOUTS, withLayout, withOption, type Layout } from '../markdown/layout';
+import { missingField } from '../markdown/layouthint';
+import type { ToolSpec } from './provider';
+import { findField, findGroup, findNote, notesOf, NOT_STRUCTURED, rawValue, resolveWords, structuredDoc, valueHint, type Found, type StructuredDoc } from './notes';
 
 export type Planned = { ok: true; after: string } | { ok: false; message: string; summary: string };
 

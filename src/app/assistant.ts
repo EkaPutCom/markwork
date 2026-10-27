@@ -5,21 +5,21 @@
 // core to apply some of them while the ask is open, and answers with its note; the result the agent sees is what the
 // core wrote, never what the panel claims.
 
-import { agentGit } from '../base/git.js';
-import { ChatController, type ChatView, type TurnOutcome, type TurnView } from '../agent/chatcontroller.js';
-import type { KeySource } from '../agent/apikey.js';
-import type { BuiltContext, ContextOptions } from '../agent/context.js';
-import type { ChatSummary } from '../agent/chatstore.js';
-import type { ProposalResult, ToolStep } from '../agent/session.js';
-import type { Change } from '../agent/changes.js';
-import { TraceFeed, type TraceUpdate } from '../agent/tracefeed.js';
-import type { SavedChat } from '../agent/transcript.js';
-import type { WorkState } from '../agent/work.js';
-import type { Cancellable } from '../base/cancel.js';
-import type { AppSettings } from '../base/settings.js';
-import type { WorkspaceRepository } from '../base/workspace.js';
-import { applyChange, applyChangeBatch, type AgentWriteHost } from './agentwrites.js';
-import { errorMessage, type Doc, type TextEditor } from './document.js';
+import { agentGit } from '../base/git';
+import { ChatController, type ChatView, type TurnOutcome, type TurnView } from '../agent/chatcontroller';
+import type { KeySource } from '../agent/apikey';
+import type { BuiltContext, ContextOptions } from '../agent/context';
+import type { ChatSummary } from '../agent/chatstore';
+import type { ProposalResult, ToolStep } from '../agent/session';
+import type { Change } from '../agent/changes';
+import { TraceFeed, type TraceUpdate } from '../agent/tracefeed';
+import type { SavedChat } from '../agent/transcript';
+import type { WorkState } from '../agent/work';
+import type { Cancellable } from '../base/cancel';
+import type { AppSettings } from '../base/settings';
+import type { WorkspaceRepository } from '../base/workspace';
+import { applyChange, applyChangeBatch, type AgentWriteHost } from './agentwrites';
+import { errorMessage, type Doc, type TextEditor } from './document';
 
 // One proposal waiting for the user: the changes as the agent made them, and whether it is a batch (a checkbox per file).
 export interface ProposalAsk {

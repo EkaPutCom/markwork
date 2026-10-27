@@ -2,7 +2,7 @@
 // ports use it (they only say how a program is found and started), so the list is written once; a frontend that has a
 // terminal of its own never calls it. Imports only the contract.
 
-import type { OS, Processes } from './index.js';
+import type { OS, Processes } from './index';
 
 // Each candidate is an argv: a folder to start in, or a command to run (ssh to the agents' machine). Linux has the GNOME
 // ones; macOS has Terminal; Windows has Windows Terminal, then a console window of cmd.

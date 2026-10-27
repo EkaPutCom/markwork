@@ -1,17 +1,17 @@
 // Tests of the calendar, timeline, gallery, chart, and grouped board layouts (markdown/calendar.ts, timeline.ts,
 // gallery.ts, chart.ts, boardgroup.ts, dates.ts).
 
-import { readTextFile } from '../../src/base/files.js';
-import { addDays, addMonths, dayNumber, daysBetween, monthWeeks, startOfWeek, weekday } from '../../src/markdown/dates.js';
-import { calendarData, dateField, moveToDate } from '../../src/markdown/calendar.js';
-import { barSpan, resizeRow, shiftRow, timelineRange, timelineRows, timelineTicks, timelineZoom } from '../../src/markdown/timeline.js';
-import { coverOf, galleryCards, gallerySize, tagColorIndex } from '../../src/markdown/gallery.js';
-import { barData, chartData, chartItems, chartItemText, donutData, withCharts } from '../../src/markdown/chart.js';
-import { groupBoard, groupFieldOf, ungroupBoard } from '../../src/markdown/boardgroup.js';
-import { addCard, boardSchema, deleteCard, moveCard, parseBoard, serializeBoard, updateCard } from '../../src/markdown/kanban.js';
-import { isCalendar, isChart, isGallery, isTimeline, layoutOf } from '../../src/markdown/layout.js';
-import { missingField, withField } from '../../src/markdown/layouthint.js';
-import { ROOT, section, test, eq, ok, disk } from '../core/framework.js';
+import { readTextFile } from '../../src/base/files';
+import { addDays, addMonths, dayNumber, daysBetween, monthWeeks, startOfWeek, weekday } from '../../src/markdown/dates';
+import { calendarData, dateField, moveToDate } from '../../src/markdown/calendar';
+import { barSpan, resizeRow, shiftRow, timelineRange, timelineRows, timelineTicks, timelineZoom } from '../../src/markdown/timeline';
+import { coverOf, galleryCards, gallerySize, tagColorIndex } from '../../src/markdown/gallery';
+import { barData, chartData, chartItems, chartItemText, donutData, withCharts } from '../../src/markdown/chart';
+import { groupBoard, groupFieldOf, ungroupBoard } from '../../src/markdown/boardgroup';
+import { addCard, boardSchema, deleteCard, moveCard, parseBoard, serializeBoard, updateCard } from '../../src/markdown/kanban';
+import { isCalendar, isChart, isGallery, isTimeline, layoutOf } from '../../src/markdown/layout';
+import { missingField, withField } from '../../src/markdown/layouthint';
+import { ROOT, section, test, eq, ok, disk } from '../core/framework';
 
 const sample = (name: string): string => readTextFile(disk.join(ROOT, 'tests', 'samples', name));
 const titles = (cards: { card: { text: string } }[]): string[] => cards.map(c => c.card.text.replace(/ ?\[.*$/, '').replace(/ #\w+/g, ''));

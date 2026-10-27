@@ -1,11 +1,11 @@
 // Tests for what a click on a line means (markdown/clicks.ts), which diagram a code block is (markdown/diagram.ts), and
 // where an image comes from (markdown/imagesource.ts). Columns are in code points.
 
-import { section, test, eq } from '../core/framework.js';
-import { linkAt, taskToggleAt, wikiLinkAt } from '../../src/markdown/clicks.js';
-import { diagramKind } from '../../src/markdown/diagram.js';
-import { imageSource, type PathOps } from '../../src/markdown/imagesource.js';
-import type { CodeBlock } from '../../src/markdown/highlight.js';
+import { section, test, eq } from '../core/framework';
+import { linkAt, taskToggleAt, wikiLinkAt } from '../../src/markdown/clicks';
+import { diagramKind } from '../../src/markdown/diagram';
+import { imageSource, type PathOps } from '../../src/markdown/imagesource';
+import type { CodeBlock } from '../../src/markdown/highlight';
 
 const POSIX: PathOps = { isAbsolute: p => p.startsWith('/'), join: (...parts) => parts.join('/') };
 const block = (lang: string, text: string, closed = true): CodeBlock => ({ lang, text, closed, start: 0, startLine: 0, endLine: 2 });

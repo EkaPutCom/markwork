@@ -2,8 +2,8 @@
 // a file of a pull request. Drawn like VS Code: side by side when there is room, one column with both line numbers when not.
 
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { DiffLine } from '../../../src/base/gitlog.js';
-import { inline, sideBySide, type DiffCell, type DiffSpan } from '../../../src/markdown/diffview.js';
+import type { DiffLine } from '../../../src/base/gitlog';
+import { inline, sideBySide, type DiffCell, type DiffSpan } from '../../../src/markdown/diffview';
 
 const SIDE_BY_SIDE_WIDTH = 720;   // VS Code's breakpoint is wider, but its gutters are too
 

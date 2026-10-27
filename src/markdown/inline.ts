@@ -9,8 +9,8 @@
 // hidden), and images [{ alt, url, start, end }].
 // Positions are in UTF-16 units and relative to the start of the string.
 
-import { EMPHASIS, ESCAPE_OR_CODE, type InlineTag } from './syntax.js';
-import { WIKILINK } from './wikilink.js';
+import { EMPHASIS, ESCAPE_OR_CODE, type InlineTag } from './syntax';
+import { WIKILINK } from './wikilink';
 
 export interface InlineImage {
     alt: string;

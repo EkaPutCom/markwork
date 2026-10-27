@@ -1,8 +1,8 @@
 // Text changes in code points, the unit of the protocol (docs/design/protocol.md, 4.4). A frontend whose editor counts
 // UTF-16 units (CodeMirror, a textarea) converts at its edge with these; the core's replica applies them the same way.
 
-import { makeCpMap, makeU16Map } from '../../markdown/offsets.js';
-import type { Change } from './messages.js';
+import { makeCpMap, makeU16Map } from '../../markdown/offsets';
+import type { Change } from './messages';
 
 // Apply changes in order, each against the text as the previous one left it.
 export function applyChanges(text: string, changes: readonly Change[]): string {

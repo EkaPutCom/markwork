@@ -5,7 +5,7 @@
 // so [[daily note]] finds "Journal/Daily Note.md". A target containing '/' is matched against
 // the end of its path. Paths are always relative to the project folder and use '/'.
 
-import { ESCAPE_OR_CODE, RE } from './syntax.js';
+import { ESCAPE_OR_CODE, RE } from './syntax';
 
 export interface WikiLink {
     target: string;    // note name or path, without #section

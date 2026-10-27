@@ -1,6 +1,6 @@
 // The transports on Node: the built-in fetch.
 
-import type { HttpRequest, HttpStream, StreamTransport, Transport } from '../index.js';
+import type { HttpRequest, HttpStream, StreamTransport, Transport } from '../index';
 
 const TIMEOUT_SECONDS = 30;
 

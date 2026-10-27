@@ -1,7 +1,7 @@
 // Cancelling work that is in flight (a model request, a proposal waiting for review, a commit message being written).
 // Plain TypeScript, so the core needs no runtime's own cancellation type; the platform links one to it where it does the work.
 
-import type { CancelSignal } from '../platform/index.js';
+import type { CancelSignal } from '../platform/index';
 
 export class Cancellable implements CancelSignal {
     private listeners = new Set<() => void>();

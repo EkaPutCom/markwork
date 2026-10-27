@@ -5,25 +5,25 @@
 // show a change at once).
 
 import { useId, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
-import { DUE_FIELD, AGENT_FIELD, AGENT_NAME, DUE_INPUT, splitCard, withDueDate, type Board, type Card, type Position } from '../../../src/markdown/kanban.js';
-import { fieldInputText, nearestOption, OPTION_COLORS, OPTION_TEXT, parseValue, readItem, type FieldChip, type FieldDef } from '../../../src/markdown/fields.js';
-import { CREATED_FIELD, itemMeta } from '../../../src/markdown/inbox.js';
-import { inlineRuns } from '../../../src/markdown/inlineruns.js';
-import type { CardForm, CardRef } from '../../../src/markdown/noteedit.js';
-import { Icon, type IconName } from './Icons.js';
-import { Modal } from './Modals.js';
-import { useClient } from '../lib/useClient.js';
-import { Select } from '../ui/select.js';
-import { cn } from '../lib/utils.js';
-import { Badge, badgeVariants } from '../ui/badge.js';
-import { Button } from '../ui/button.js';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '../ui/dropdown-menu.js';
-import { IconButton } from '../ui/icon-button.js';
-import { Input } from '../ui/input.js';
-import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group.js';
-import { Label } from '../ui/label.js';
-import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover.js';
-import { Textarea } from '../ui/textarea.js';
+import { DUE_FIELD, AGENT_FIELD, AGENT_NAME, DUE_INPUT, splitCard, withDueDate, type Board, type Card, type Position } from '../../../src/markdown/kanban';
+import { fieldInputText, nearestOption, OPTION_COLORS, OPTION_TEXT, parseValue, readItem, type FieldChip, type FieldDef } from '../../../src/markdown/fields';
+import { CREATED_FIELD, itemMeta } from '../../../src/markdown/inbox';
+import { inlineRuns } from '../../../src/markdown/inlineruns';
+import type { CardForm, CardRef } from '../../../src/markdown/noteedit';
+import { Icon, type IconName } from './Icons';
+import { Modal } from './Modals';
+import { useClient } from '../lib/useClient';
+import { Select } from '../ui/select';
+import { cn } from '../lib/utils';
+import { Badge, badgeVariants } from '../ui/badge';
+import { Button } from '../ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { IconButton } from '../ui/icon-button';
+import { Input } from '../ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group';
+import { Label } from '../ui/label';
+import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
+import { Textarea } from '../ui/textarea';
 
 export const refOf = (at: Position, card: Card): CardRef => ({ at, card: card.text });
 

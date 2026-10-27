@@ -1,7 +1,7 @@
 // The agent log as a tree (pure): a turn holds its model rounds, a round holds the reasoning, the tool
 // calls, and the answer of that round. The events are already in this order, so the tree is the same list with a depth.
 
-import type { TraceEvent } from './trace.js';
+import type { TraceEvent } from './trace';
 
 export interface TraceNode {
     event: TraceEvent;

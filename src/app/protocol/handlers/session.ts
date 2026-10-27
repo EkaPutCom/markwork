@@ -1,10 +1,10 @@
 // Starting the conversation and the settings (docs/design/protocol.md, 4.5, 8, and 9.2). The `hello` reply carries the
 // command table and every setting; after that a setting changed on either side is one `setting` notice.
 
-import type { SettingValue } from '../../../platform/index.js';
-import { RequestError } from '../messages.js';
-import { commandTable } from './commands.js';
-import { str, type HandlerContext } from './context.js';
+import type { SettingValue } from '../../../platform/index';
+import { RequestError } from '../messages';
+import { commandTable } from './commands';
+import { str, type HandlerContext } from './context';
 
 export const PROTOCOL_VERSION = 1;
 

@@ -1,9 +1,9 @@
 // Table layout tests (markdown/tablelayout.ts).
 
-import { nextSort, newTable, sortSpec, tableColumns, tableRows } from '../../src/markdown/tablelayout.js';
-import { boardSchema, parseBoard, serializeBoard } from '../../src/markdown/kanban.js';
-import { layoutOf } from '../../src/markdown/layout.js';
-import { section, test, eq, ok } from '../core/framework.js';
+import { nextSort, newTable, sortSpec, tableColumns, tableRows } from '../../src/markdown/tablelayout';
+import { boardSchema, parseBoard, serializeBoard } from '../../src/markdown/kanban';
+import { layoutOf } from '../../src/markdown/layout';
+import { section, test, eq, ok } from '../core/framework';
 
 const TABLE = (extra = '') => `---\nlayout: table\n${extra}fields:\n  status: select(todo:gray, doing:blue, done:green) = todo\n  due: date\n  progress: progress\n  owner: person\n---\n\n# Sprint\n\n- [ ] Delta [status:: doing] [due:: 2026-10-14] [progress:: 3/5] [owner:: Eka]\n- [ ] Alpha [status:: todo] [due:: 2026-10-16]\n- [ ] Charlie [status:: done] [due:: 2026-10-08 09:00] [progress:: 100%]\n- [ ] Bravo [status:: doing] [owner:: Rina]\n\n## Later\n\n- [ ] Echo [due:: 2026-10-01] [progress:: 1/10]\n`;
 const rowsOf = (extra: string, sort: string | null) => {

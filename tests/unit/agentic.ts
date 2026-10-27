@@ -1,15 +1,15 @@
 // A complete-work evaluation with a deterministic provider, a virtual disk, and real checkpoints.
-import { WorkspaceRepository } from '../../src/base/workspace.js';
-import { projectPath } from '../../src/agent/path.js';
-import { ChatSession, type TurnHandlers } from '../../src/agent/session.js';
-import { applyBatch } from '../../src/agent/batch.js';
-import { parseChat, serializeChat } from '../../src/agent/transcript.js';
-import type { ToolCall, Provider, ChatResult } from '../../src/agent/provider.js';
-import type { SourceFile } from '../../src/agent/context.js';
-import type { Change } from '../../src/agent/changes.js';
-import { platform } from '../../src/platform/index.js';
-import { section, test, eq, ok, contains, within, disk } from '../core/framework.js';
-import { host } from '../core/host.js';
+import { WorkspaceRepository } from '../../src/base/workspace';
+import { projectPath } from '../../src/agent/path';
+import { ChatSession, type TurnHandlers } from '../../src/agent/session';
+import { applyBatch } from '../../src/agent/batch';
+import { parseChat, serializeChat } from '../../src/agent/transcript';
+import type { ToolCall, Provider, ChatResult } from '../../src/agent/provider';
+import type { SourceFile } from '../../src/agent/context';
+import type { Change } from '../../src/agent/changes';
+import { platform } from '../../src/platform/index';
+import { section, test, eq, ok, contains, within, disk } from '../core/framework';
+import { host } from '../core/host';
 
 const call = (name: string, args: unknown): ToolCall => ({ id: name, name, arguments: JSON.stringify(args) });
 const result = (toolCalls: ToolCall[] = []): ChatResult => ({ usage: null, cancelled: false, toolCalls, reasoning: '' });

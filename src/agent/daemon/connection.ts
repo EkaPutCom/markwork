@@ -2,8 +2,8 @@
 // died, a daemon that restarted) it reconnects with a growing delay and resumes what was being followed, from the
 // record after the last one it delivered, so the caller sees every record once and in order.
 
-import { DaemonClient, systemTimers, type Link, type Timers } from './client.js';
-import { DaemonError, type DaemonRecord, type RunSummary, type StateEvent } from './protocol.js';
+import { DaemonClient, systemTimers, type Link, type Timers } from './client';
+import { DaemonError, type DaemonRecord, type RunSummary, type StateEvent } from './protocol';
 
 export type ConnectionState = 'idle' | 'connecting' | 'ready' | 'waiting' | 'failed' | 'closed';
 

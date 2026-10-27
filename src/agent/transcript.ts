@@ -16,10 +16,10 @@
 // The assistant's own answer may contain a "## You" line; such a line gets a backslash
 // in front of it when saved and the backslash is removed when read.
 
-import { parseEvents, type ActionEvent } from './journal.js';
-import type { WorkState } from './work.js';
-import { parseWork } from './work.js';
-import type { Turn } from './context.js';
+import { parseEvents, type ActionEvent } from './journal';
+import type { WorkState } from './work';
+import { parseWork } from './work';
+import type { Turn } from './context';
 
 export interface SavedChat {
     title: string;

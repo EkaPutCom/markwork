@@ -2,7 +2,7 @@
 // three can be tested on one. Linux follows XDG; macOS has ~/Library; Windows has %APPDATA% (roaming settings) and
 // %LOCALAPPDATA% (data that stays on the machine).
 
-import type { OS } from '../index.js';
+import type { OS } from '../index';
 
 export interface UserDirs { config: string; data: string; runtime: string }
 

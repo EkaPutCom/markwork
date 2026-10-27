@@ -5,14 +5,14 @@
 // 6.5). A path a view sends back is only acted on when it is one the controller showed (4.4).
 
 import { commitContent, commitDiff, commitFile, commitFiles, discardChanges, fileLog, recentSubjects, repoChanges, workingDiff,
-    workingState, type GitFailure, type TextResult, type WorkingState } from '../base/git.js';
-import { parseDiff, type ChangeKind, type Commit, type DiffLine, type FileChange } from '../base/gitlog.js';
-import { writeCommitMessage, type CommitSources, type WriteResult } from '../agent/commitmessage.js';
-import { Cancellable } from '../base/cancel.js';
-import { fileExists, insideName, readTextFile } from '../base/files.js';
-import { platform } from '../platform/index.js';
-import { _, fmt } from '../base/i18n.js';
-import { docFor, type Doc, type DocumentHost, type TextEditor } from './document.js';
+    workingState, type GitFailure, type TextResult, type WorkingState } from '../base/git';
+import { parseDiff, type ChangeKind, type Commit, type DiffLine, type FileChange } from '../base/gitlog';
+import { writeCommitMessage, type CommitSources, type WriteResult } from '../agent/commitmessage';
+import { Cancellable } from '../base/cancel';
+import { fileExists, insideName, readTextFile } from '../base/files';
+import { platform } from '../platform/index';
+import { _, fmt } from '../base/i18n';
+import { docFor, type Doc, type DocumentHost, type TextEditor } from './document';
 
 // Commits loaded per request; a long history is loaded incrementally.
 export const HISTORY_PAGE = 100;

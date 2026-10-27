@@ -2,13 +2,13 @@
 // one; a click on the bar edits the note. Whole days only: the bar follows the pointer and the dates change on release.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { daysBetween } from '../../../src/markdown/dates.js';
-import { boardSchema, type Board } from '../../../src/markdown/kanban.js';
-import { barSpan, PIXELS_PER_DAY, timelineRange, timelineRows, timelineTicks, timelineZoom, ZOOMS, type TimelineRow, type Zoom } from '../../../src/markdown/timeline.js';
-import { dayMonth, formatDate, PageHeader, refOf, todayString, useNoteDialog } from './notes.js';
-import { useClient } from '../lib/useClient.js';
-import { Button } from '../ui/button.js';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group.js';
+import { daysBetween } from '../../../src/markdown/dates';
+import { boardSchema, type Board } from '../../../src/markdown/kanban';
+import { barSpan, PIXELS_PER_DAY, timelineRange, timelineRows, timelineTicks, timelineZoom, ZOOMS, type TimelineRow, type Zoom } from '../../../src/markdown/timeline';
+import { dayMonth, formatDate, PageHeader, refOf, todayString, useNoteDialog } from './notes';
+import { useClient } from '../lib/useClient';
+import { Button } from '../ui/button';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
 const ROW_HEIGHT = 34, HEAD_HEIGHT = 30, LABEL_WIDTH = 200, CLICK_SLOP = 4;
 const ZOOM_LABEL: Record<Zoom, string> = { week: 'Week', month: 'Month', quarter: 'Quarter' };
