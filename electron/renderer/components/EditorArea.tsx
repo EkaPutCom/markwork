@@ -94,6 +94,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
             message: text => client.say(text),
             openLink: uri => client.openLink(uri, client.paneDoc(pane.id)),
             zoomImage: image => client.zoomImage(image),
+            compareConflict: line => { client.focusPane(pane.id); client.compareConflict(client.paneDoc(pane.id), line); },
             baseDir: () => client.baseDir(client.paneDoc(pane.id)),
             openNote: link => client.openNote(link, client.paneDoc(pane.id)),
             noteNames: () => client.noteNames(client.paneDoc(pane.id)),

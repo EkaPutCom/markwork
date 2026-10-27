@@ -572,19 +572,98 @@ try {
     });
 
     // ---------- conflicts.ts ----------
-    await step('conflicts: sides colored, Accept Current / Both, a conflict at the end, plain headings left alone', async () => {
+    await step('Compare Changes previews Incoming, Current, and Result; only Apply Result changes the selected conflict', async () => {
+        const text = '<<<<<<< first\nnot selected\n=======\nother\n>>>>>>> elsewhere\n\n<<<<<<< HEAD\nThe release is on Friday.\n=======\nThe release is on Monday.\n>>>>>>> feature/release-date';
+        await setDoc(text, text.length);
+        const errors = [];
+        const onError = error => errors.push(String(error));
+        const onConsole = message => { if (message.type() === 'error') errors.push(message.text()); };
+        page.on('pageerror', onError);
+        page.on('console', onConsole);
+        for (const [theme, width] of [['light', 1280], ['dark', 1280], ['dark', 560]]) {
+            await page.setViewportSize({ width, height: 800 });
+            if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme) await page.keyboard.press('ControlOrMeta+Shift+d');
+            await page.waitForFunction(theme => document.documentElement.dataset.theme === theme, theme);
+            await editor.getByRole('button', { name: 'Compare Changes', exact: true }).nth(1).click();
+            const compare = page.getByRole('dialog', { name: 'Compare Changes', exact: true });
+            await compare.waitFor();
+            await compare.getByText('HEAD', { exact: true }).waitFor();
+            await compare.getByText('feature/release-date', { exact: true }).waitFor();
+            await compare.locator('pre.diff .word', { hasText: 'Friday' }).waitFor();
+            await compare.locator('pre.diff .word', { hasText: 'Monday' }).waitFor();
+            const incoming = compare.getByRole('region', { name: 'Incoming Change', exact: true });
+            const current = compare.getByRole('region', { name: 'Current Change', exact: true });
+            const incomingBox = await incoming.boundingBox(), currentBox = await current.boundingBox();
+            if (width > 600) assert.ok(incomingBox.x < currentBox.x, 'Incoming left, Current right');
+            else assert.ok(incomingBox.y < currentBox.y, 'sources stack in a narrow window');
+            assert.equal(await compare.getByRole('button', { name: 'Apply Result', exact: true }).isEnabled(), false);
+            await compare.getByRole('button', { name: 'Accept Both (Incoming First)', exact: true }).click();
+            assert.equal(await compare.getByRole('textbox', { name: 'Result', exact: true }).inputValue(), 'The release is on Monday.\nThe release is on Friday.\n');
+            assert.equal(await docText(), text, 'accepting a side only updates the preview');
+            const result = compare.getByRole('textbox', { name: 'Result', exact: true });
+            const beforeTyping = await result.inputValue();
+            await result.focus();
+            await page.keyboard.press('ControlOrMeta+End');
+            await page.keyboard.type('x');
+            await page.keyboard.press('ControlOrMeta+z');
+            assert.equal(await result.inputValue(), beforeTyping, 'Undo belongs to the result editor');
+            assert.equal(await docText(), text, 'a Result shortcut never edits the source document');
+            assert.equal(await compare.getByText('not selected', { exact: true }).count(), 0);
+            assert.equal(await compare.locator('.conflict-merge-sources [contenteditable=true], .conflict-merge-sources textarea').count(), 0, 'the sources are read only');
+            const bounds = await compare.boundingBox();
+            assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width, 'the dialog fits the window');
+            if (process.env.MARKWORK_COMPARE_SCREENSHOTS) {
+                mkdirSync(process.env.MARKWORK_COMPARE_SCREENSHOTS, { recursive: true });
+                await page.screenshot({ path: join(process.env.MARKWORK_COMPARE_SCREENSHOTS, `compare-${theme}-${width}.png`), animations: 'disabled' });
+            }
+            if (width === 560) await page.keyboard.press('Escape');
+            else await compare.getByRole('button', { name: 'Close comparison', exact: true }).click();
+            await compare.waitFor({ state: 'detached' });
+            assert.equal(await docText(), text, 'opening and closing does not alter conflict markers or editor text');
+        }
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await editor.getByRole('button', { name: 'Compare Changes', exact: true }).nth(1).click();
+        const applyDialog = page.getByRole('dialog', { name: 'Compare Changes', exact: true });
+        await applyDialog.getByRole('textbox', { name: 'Result', exact: true }).fill('The release is on Tuesday.');
+        await applyDialog.getByRole('button', { name: 'Apply Result', exact: true }).click();
+        await applyDialog.waitFor({ state: 'detached' });
+        await waitFor(async () => (await docText()).endsWith('The release is on Tuesday.'));
+        assert.equal(await editor.locator('.cm-md-conflict-bar').count(), 1, 'only the selected conflict was resolved');
+        await page.keyboard.press('ControlOrMeta+z');
+        await waitFor(async () => await docText() === text);
+        page.off('pageerror', onError);
+        page.off('console', onConsole);
+        assert.deepEqual(errors, []);
+    });
+
+    await step('conflicts: sides colored, Accept Current Change / Both, a conflict at the end, plain headings left alone', async () => {
         const two = '<<<<<<< HEAD\na1\n=======\nb1\n>>>>>>> topic\n\nmid\n\n<<<<<<< HEAD\na2\n=======\nb2\n>>>>>>> topic';
         await setDoc(two, 0);
         await editor.locator('.cm-md-conflict-bar').first().waitFor();
         assert.equal(await editor.locator('.cm-md-conflict-bar').count(), 2);
         assert.equal(await editor.locator('.cm-md-conflict-currentHead').count(), 2);
-        assert.equal(await docText(), two, 'the text does not change because of the colors');
-        await editor.getByRole('button', { name: 'Accept Current' }).first().click();
+        assert.deepEqual(await editor.locator('.cm-md-conflict-currentHead .cm-md-conflict-label').allTextContents(), [' (Current Change)', ' (Current Change)']);
+        assert.deepEqual(await editor.locator('.cm-md-conflict-incomingHead .cm-md-conflict-label').allTextContents(), [' (Incoming Change)', ' (Incoming Change)']);
+        assert.equal(await docText(), two, 'the colors and side labels do not change the file text');
+        await editor.getByRole('button', { name: 'Accept Current Change' }).first().click();
         assert.equal(await docText(), 'a1\n\nmid\n\n<<<<<<< HEAD\na2\n=======\nb2\n>>>>>>> topic');
-        await editor.getByRole('button', { name: 'Accept Both' }).click();
+        await editor.getByRole('button', { name: 'Accept Both Changes' }).click();
         assert.equal(await docText(), 'a1\n\nmid\n\na2\nb2', 'the conflict at the end of the file resolves');
+        assert.equal(await editor.locator('.cm-md-conflict-label').count(), 0, 'resolved conflicts lose their labels');
+        await page.keyboard.press('ControlOrMeta+z');
+        await editor.getByText('(Incoming Change)', { exact: true }).waitFor();
+        assert.equal(await docText(), 'a1\n\nmid\n\n<<<<<<< HEAD\na2\n=======\nb2\n>>>>>>> topic', 'undo restores the original markers without adding the labels');
+        const diff3 = '<<<<<<< HEAD\nours\n||||||| base\nancestor\n=======\ntheirs\n>>>>>>> topic';
+        await setDoc(diff3, 0);
+        await editor.getByText('(Current Change)', { exact: true }).waitFor();
+        assert.equal(await editor.locator('.cm-md-conflict-label').count(), 2, 'diff3 labels the two sides, not the ancestor');
+        assert.equal(await docText(), diff3);
+        await editor.getByRole('button', { name: 'Accept Incoming Change', exact: true }).click();
+        assert.equal(await docText(), 'theirs');
         await setDoc('Title\n=======\n\ntext', 0);   // the conflicts are found in the transaction itself
         assert.equal(await editor.locator('.cm-md-conflict').count(), 0, 'a heading underline is not a conflict');
+        await setDoc('<<<<<<< HEAD\nnot a complete conflict', 0);
+        assert.equal(await editor.locator('.cm-md-conflict-label').count(), 0, 'an incomplete marker has no side labels');
     });
 } catch {
     failed = true;

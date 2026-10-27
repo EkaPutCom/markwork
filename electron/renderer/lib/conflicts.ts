@@ -7,10 +7,11 @@ import type { Text } from '@codemirror/state';
 import { findConflicts, resolution, roles, type Choice, type Conflict } from '../../../src/markdown/conflicts.js';
 import { domButton } from '../ui/dom.js';
 
-const CHOICES: { choice: Choice; label: string; tip: (c: Conflict) => string }[] = [
-    { choice: 'current', label: 'Accept Current', tip: c => `Keep the lines from ${c.current || 'the current side'} and drop the other side` },
-    { choice: 'incoming', label: 'Accept Incoming', tip: c => `Keep the lines from ${c.incoming || 'the incoming side'} and drop the other side` },
-    { choice: 'both', label: 'Accept Both', tip: () => 'Keep both sides, the current lines first' },
+const CHOICES: { choice: Choice | 'compare'; label: string; tip: (c: Conflict) => string }[] = [
+    { choice: 'current', label: 'Accept Current Change', tip: c => `Keep the lines from ${c.current || 'the current side'} and drop the other side` },
+    { choice: 'incoming', label: 'Accept Incoming Change', tip: c => `Keep the lines from ${c.incoming || 'the incoming side'} and drop the other side` },
+    { choice: 'both', label: 'Accept Both Changes', tip: () => 'Keep both sides, the current lines first' },
+    { choice: 'compare', label: 'Compare Changes', tip: () => 'Compare the current and incoming versions without changing the document' },
 ];
 
 // Replace the whole conflict, markers included, by a choice: one undo step, the cursor at its start.
@@ -27,7 +28,7 @@ export function choose(view: EditorView, conflict: Conflict, choice: Choice): vo
 }
 
 class ConflictBar extends WidgetType {
-    constructor(private readonly conflict: Conflict) { super(); }
+    constructor(private readonly conflict: Conflict, private readonly onCompare: (line: number) => void) { super(); }
 
     override eq(other: ConflictBar): boolean {
         const a = this.conflict, b = other.conflict;
@@ -44,7 +45,10 @@ class ConflictBar extends WidgetType {
                 const now = findConflicts(view.state.doc.toString().split('\n'));
                 const at = view.state.doc.lineAt(view.posAtDOM(bar)).number;
                 const found = now.find(c => c.start + 1 >= at - 1 && c.start + 1 <= at + 1) ?? now.find(c => c.start === this.conflict.start);
-                if (found) choose(view, found, choice);
+                if (found) {
+                    if (choice === 'compare') this.onCompare(found.start + 1);
+                    else choose(view, found, choice);
+                }
             } });
             button.setAttribute('aria-description', tip(this.conflict));
             bar.append(button);
@@ -53,6 +57,18 @@ class ConflictBar extends WidgetType {
     }
 
     override ignoreEvent(): boolean { return true; }
+}
+
+// A label beside the branch name is a decoration, so copying, saving, and resolving keep Git's original text.
+class ConflictLabel extends WidgetType {
+    constructor(private readonly label: string) { super(); }
+    override eq(other: ConflictLabel): boolean { return this.label === other.label; }
+    override toDOM(): HTMLElement {
+        const label = document.createElement('span');
+        label.className = 'cm-md-conflict-label';
+        label.textContent = ` (${this.label})`;
+        return label;
+    }
 }
 
 const roleLines = new Map<string, Decoration>();
@@ -64,7 +80,7 @@ const roleLine = (role: string) => {
 
 // The decorations for the conflicts of a text, and the lines (from 0) they cover, which keep no Markdown styling: the markers
 // `=======` and `>>>>>>>` are not a heading underline and a quote here.
-export function conflictDecorations(doc: Text): { ranges: ReturnType<Decoration['range']>[]; covered: Set<number> } {
+export function conflictDecorations(doc: Text, compare: (line: number) => void): { ranges: ReturnType<Decoration['range']>[]; covered: Set<number> } {
     const ranges: ReturnType<Decoration['range']>[] = [], covered = new Set<number>();
     const text = doc.toString();
     if (!text.includes('<<<<<<<')) return { ranges, covered };
@@ -73,6 +89,10 @@ export function conflictDecorations(doc: Text): { ranges: ReturnType<Decoration[
         ranges.push(roleLine(role).range(doc.line(line + 1).from));
         covered.add(line);
     }
-    for (const c of conflicts) ranges.push(Decoration.widget({ widget: new ConflictBar(c), block: true, side: -1 }).range(doc.line(c.start + 1).from));
+    for (const c of conflicts) {
+        ranges.push(Decoration.widget({ widget: new ConflictBar(c, compare), block: true, side: -1 }).range(doc.line(c.start + 1).from));
+        ranges.push(Decoration.widget({ widget: new ConflictLabel('Current Change'), side: 1 }).range(doc.line(c.start + 1).to));
+        ranges.push(Decoration.widget({ widget: new ConflictLabel('Incoming Change'), side: 1 }).range(doc.line(c.end + 1).to));
+    }
     return { ranges, covered };
 }

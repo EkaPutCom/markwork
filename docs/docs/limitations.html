@@ -90,6 +90,7 @@
   <li>The list is read now and then (not pushed by the server), so a change shows up after the next check, or when you press refresh.</li>
   <li>Comments are on the pull request as a whole; there are no comments on a line, no review with an approval or a request for changes, and no way to edit or delete a comment. The note view compares line by line, not word by word.</li>
   <li>Only the first 250 pull requests and the first 250 changed files of a pull request are read.</li>
+  <li>Compare Changes works on one conflict at a time. Its Incoming and Current sources are snapshots; if the document changes, reopen the comparison before applying. Apply Result edits the document, but does not complete, commit, or push the repository merge.</li>
   <li>Resolving a conflict here merges the pull request into your base branch and pushes that branch. It cannot push to the branch of the pull request itself. Recording the pull request as merged needs the repository to allow manually merged pull requests; otherwise the pull request stays open on the server until you close it.</li>
   <li>Sending changes: the pull request goes to the default branch of the repository, you cannot pick another. Through a fork, the server may still be making the copy when the push comes (it has not been tried on a server that does this slowly). AGit needs the server to have it turned on, and sends a description of several lines as one line.</li>
 </ul>

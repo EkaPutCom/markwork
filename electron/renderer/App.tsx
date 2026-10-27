@@ -15,6 +15,7 @@ import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './components/Mo
 import { ReportDialog } from './components/ReportProblem.js';
 import { FieldsDialog } from './components/FieldsDialog.js';
 import { ImageViewer } from './components/ImageViewer.js';
+import { ConflictCompare } from './components/ConflictCompare.js';
 import { Chat, ChatReview } from './components/Chat.js';
 import { Collab, SendChangesDialog, TokenDialog } from './components/Collab.js';
 import { History, HistoryViewers } from './components/History.js';
@@ -266,7 +267,7 @@ export function App() {
         const onKey = (event: KeyboardEvent) => {
             // A dialog has the keys to itself, and so does the report of a problem with the editor: Ctrl+Z in its note
             // would undo the very text it reports on.
-            if (client.getState().dialog || client.getState().info === 'report') return;
+            if (client.getState().dialog || client.getState().conflictComparison || client.getState().info === 'report') return;
             // Dev mode: the Editor Inspector (not a command of the core, which a normal build has no use for).
             if (window.markwork.devMode && matches(event, INSPECTOR_KEY)) {
                 event.preventDefault();
@@ -324,6 +325,7 @@ export function App() {
             <Notification />
             <Palette />
             <ImageViewer />
+            <ConflictCompare />
             <PreferencesDialog />
             <ShortcutsDialog />
             <AboutDialog />

@@ -233,6 +233,73 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
+    await test('conflict comparison reads the selected conflict from the unsaved buffer and never changes it', () => {
+        const shown: import('../../src/app/documents.js').ConflictComparison[] = [];
+        const base = fakeFrontend(memorySettings(), []);
+        const session = new AppSession({ ...base, documents: { ...base.documents, showConflictComparison: data => shown.push(data) } });
+        session.start();
+        const doc = session.documents.active;
+        const text = '# Plan\n\n<<<<<<< HEAD\nFriday 🎉\n||||||| base\nancestor\n=======\nMonday 🎉\n>>>>>>> topic';
+        doc.editor.setText(text);
+        eq(session.documents.compareConflict(doc.id, 3), true);
+        eq([shown[0].current, shown[0].incoming], ['HEAD', 'topic']);
+        ok(shown[0].lines.some(l => l.kind === 'del' && l.text === '-Friday 🎉'), 'current on the left');
+        ok(shown[0].lines.some(l => l.kind === 'add' && l.text === '+Monday 🎉'), 'incoming on the right');
+        ok(shown[0].lines.every(l => !l.text.includes('ancestor')), 'the diff3 ancestor is not one of the compared sides');
+        eq(doc.editor.getText(), text);
+        eq(session.documents.compareConflict(doc.id, 4), false, 'a body line is not a conflict start');
+        eq(session.documents.compareConflict(-1, 3), false, 'the document must belong to this session');
+        eq(shown.length, 1);
+        doc.editor.setText('<<<<<<<\n+same\n=======\n+same\n>>>>>>>');
+        eq(session.documents.compareConflict(doc.id, 1), true);
+        eq(shown[1].lines[1], { kind: 'context', text: ' +same' }, 'identical sides retain their text and leading signs');
+        doc.editor.setText('<<<<<<<\n=======\nnew\n>>>>>>>');
+        eq(session.documents.compareConflict(doc.id, 1), true);
+        ok(shown[2].lines.some(l => l.kind === 'add' && l.text === '+new'), 'an empty current side can be compared');
+        session.dispose();
+    });
+
+    await test('Apply Result uses only an offered comparison, preserves blank lines, and rejects a changed or closed preview', () => {
+        const shown: import('../../src/app/documents.js').ConflictComparison[] = [];
+        const base = fakeFrontend(memorySettings(), []);
+        const session = new AppSession({ ...base, documents: { ...base.documents, showConflictComparison: data => shown.push(data) } });
+        session.start();
+        const doc = session.documents.active;
+        const text = 'before\n<<<<<<< HEAD\n\n=======\ntheirs\n>>>>>>> topic\nafter';
+        doc.editor.setText(text);
+        session.documents.compareConflict(doc.id, 2);
+        eq(shown[0].currentText, '\n', 'one blank line differs from an empty side');
+        eq(session.documents.applyConflictComparison(-1, 'wrong'), false);
+        eq(session.documents.applyConflictComparison(shown[0].id, shown[0].currentText), true);
+        eq(doc.editor.getText(), 'before\n\nafter');
+        eq(session.documents.applyConflictComparison(shown[0].id, 'twice'), false);
+        doc.editor.setText(text);
+        session.documents.compareConflict(doc.id, 2);
+        doc.editor.setText('changed\n' + text);
+        eq(session.documents.applyConflictComparison(shown[1].id, 'stale'), false);
+        eq(doc.editor.getText(), 'changed\n' + text);
+        session.documents.compareConflict(doc.id, 3);
+        session.documents.closeConflictComparison(shown[2].id);
+        eq(session.documents.applyConflictComparison(shown[2].id, 'closed'), false);
+        session.dispose();
+    });
+
+    await test('Apply Result waits behind an earlier editor write and never overwrites what landed', async () => {
+        const shown: import('../../src/app/documents.js').ConflictComparison[] = [], toasts: string[] = [];
+        const base = fakeFrontend(memorySettings(), toasts, () => new LaggingEditor());
+        const session = new AppSession({ ...base, documents: { ...base.documents, showConflictComparison: data => shown.push(data) } });
+        session.start();
+        const doc = session.documents.active;
+        doc.editor.setText('<<<<<<< HEAD\na\n=======\nb\n>>>>>>> topic');
+        session.documents.compareConflict(doc.id, 1);
+        doc.editor.replaceText('a newer write');
+        session.documents.applyConflictComparison(shown[0].id, 'stale result');
+        await until(() => (doc.editor as FakeEditor).text === 'a newer write');
+        eq(doc.editor.getText(), 'a newer write');
+        ok(toasts.some(t => t.includes('document changed')), 'the refused queued result is reported');
+        session.dispose();
+    });
+
     await test('startup skips saved tabs outside the restored workspace and keeps the surviving active tab', () => {
         const dir = disk.join(tmp, 'appsession-restore');
         const sibling = dir + '-other';

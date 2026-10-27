@@ -52,3 +52,11 @@ export function DiffLines({ lines, className }: { lines: DiffLine[]; className?:
         </pre>
     );
 }
+
+// One aligned source of the merge editor, with the same gutters and word highlighting as every other diff.
+export function DiffColumn({ cells }: { cells: (DiffCell | null)[] }) {
+    const digits = String(cells.reduce((n, c) => Math.max(n, c?.number ?? 0), 1)).length;
+    return <pre className="diff conflict-source" style={{ '--diff-digits': `${Math.max(digits, 2)}ch` } as CSSProperties}>
+        {cells.map((cell, i) => <div className="row" key={i}><Cell cell={cell} /></div>)}
+    </pre>;
+}
