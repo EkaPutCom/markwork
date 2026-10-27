@@ -100,24 +100,6 @@ p {
     letter-spacing:0;
     margin-top:1px;
 }
-.workspace {
-    border:1px solid var(--border);
-    background:var(--background);
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:8px;
-    border-radius:6px;
-    margin-bottom:20px;
-    font-size:12px;
-}
-.workspace svg {
-    width:14px;
-}
-.workspace svg:last-child {
-    margin-left:auto;
-    color:var(--muted-foreground);
-}
 nav {
     display:grid;
     gap:4px;
