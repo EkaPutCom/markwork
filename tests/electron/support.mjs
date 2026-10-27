@@ -35,7 +35,7 @@ export function launchApp({ scratch, notes, env = {}, settings }) {
         writeFileSync(join(scratch, 'config', 'markwork-electron', 'settings.json'), JSON.stringify(settings));
     }
     return electron.launch({
-        args: [repo, notes], cwd: repo,
+        args: [repo, ...(notes ? [notes] : [])], cwd: repo,
         env: { ...process.env, XDG_CONFIG_HOME: join(scratch, 'config'), XDG_DATA_HOME: join(scratch, 'data'), ...env },
     });
 }

@@ -567,17 +567,21 @@ export class DocumentController<E extends TextEditor> {
         this.host.settings.activeTab = kept.findIndex(k => k.at === shown);
     }
 
-    // Reopen tabs from the settings. Files that have gone missing are skipped (not recreated).
+    // Reopen tabs from the settings. A saved list can predate a workspace switch, so only restore files inside
+    // the current work folder. Without a work folder, standalone files can still be restored.
     // true = some tabs were restored.
     restoreTabs(): boolean {
         const settings = this.host.settings;
         const saved = Array.isArray(settings.tabs) ? settings.tabs : [];
+        const root = this.host.root();
+        const belongs = (file: unknown) => !root || typeof file !== 'string' || file === HOME_TAB || insideName(root, file) !== null;
+        const candidates = Array.from(saved.entries()).filter(([, tab]) => belongs(tab?.file));
         const opened: [Doc<E>, number][] = [];
         let restored = false;
         let active: Doc<E> | Page | null = null, last: Doc<E> | Page | null = null;
         let missing = 0;
         this.restoring = true;
-        for (const [i, tab] of saved.entries()) {
+        for (const [i, tab] of candidates) {
             if (tab?.file === HOME_TAB) {
                 this.openHome();
                 last = this.pages.find(p => p.kind === 'home')!;

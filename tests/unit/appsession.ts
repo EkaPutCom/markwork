@@ -233,6 +233,43 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
+    await test('startup skips saved tabs outside the restored workspace and keeps the surviving active tab', () => {
+        const dir = disk.join(tmp, 'appsession-restore');
+        const sibling = dir + '-other';
+        disk.mkdirs(dir);
+        disk.mkdirs(sibling);
+        const inside = disk.join(dir, 'plan.md'), outside = disk.join(sibling, 'all-formats.md');
+        disk.write(inside, '# Plan\n');
+        disk.write(outside, '# Another workspace\n');
+        const settings = memorySettings();
+        settings.folder = dir;
+        settings.welcomed = true;
+        settings.home = true;
+        const start = () => {
+            const session = new AppSession(fakeFrontend(settings, []));
+            session.start();
+            session.open(null);
+            return session;
+        };
+        settings.tabs = [{ file: outside, cursor: 0 }, { file: 'markwork:home', cursor: 0 }, { file: inside, cursor: 3 }];
+        settings.activeTab = 2;
+        let session = start();
+        eq(session.documents.all.map(d => d.file), [inside], 'a sibling with the same path prefix is outside');
+        eq(session.documents.active.file, inside, 'the original saved index still identifies the active tab');
+        eq(session.documents.allPages.map(p => p.kind), ['home']);
+        session.dispose();
+        settings.tabs = [{ file: outside, cursor: 0 }];
+        settings.activeTab = 0;
+        session = start();
+        eq(session.documents.page?.kind, 'home', 'only outside tabs: the normal startup fallback is used');
+        eq(session.documents.all.map(d => d.file), [null]);
+        session.dispose();
+        settings.folder = null;
+        session = start();
+        eq(session.documents.active.file, outside, 'without a workspace, standalone files still restore');
+        session.dispose();
+    });
+
     await test('opening another folder closes the tabs outside it, shows the Files tab, and closing remembers the tabs', async () => {
         const base = disk.join(tmp, 'appsession-folders');
         const [one, two] = [disk.join(base, 'one'), disk.join(base, 'two')];
