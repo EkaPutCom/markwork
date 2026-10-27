@@ -21,7 +21,7 @@ body {
     margin:0;
     background:var(--background);
     color:var(--foreground);
-    font:14px/1.6 Geist,system-ui,sans-serif;
+    font:1rem/1.6 Geist,system-ui,sans-serif;
 }
 button,input {
     font:inherit;
@@ -94,7 +94,7 @@ p {
 }
 .brand small {
     display:block;
-    font-size:11px;
+    font-size:.8125rem;
     font-weight:400;
     color:var(--muted-foreground);
     letter-spacing:0;
@@ -109,7 +109,7 @@ p {
     padding:8px;
     border-radius:6px;
     margin-bottom:20px;
-    font-size:12px;
+    font-size:.875rem;
 }
 .workspace svg {
     width:14px;
@@ -129,7 +129,7 @@ nav {
     padding:8px 12px;
     border-radius:6px;
     color:var(--muted-foreground);
-    font-size:13px;
+    font-size:.9375rem;
     width:100%;
     text-align:left;
     background:transparent;
@@ -147,7 +147,7 @@ nav {
     margin-left:auto;
 }
 .key {
-    font-size:12px;
+    font-size:.875rem;
 }
 .end {
     width:13px;
@@ -155,7 +155,7 @@ nav {
 .section-label {
     display:block;
     color:var(--muted-foreground);
-    font-size:10px;
+    font-size:.75rem;
     letter-spacing:.08em;
     font-weight:600;
     margin:28px 12px 8px;
@@ -178,11 +178,11 @@ nav {
     color:var(--muted-foreground);
 }
 .local-note strong {
-    font-size:12px;
+    font-size:.875rem;
     font-weight:500;
 }
 .local-note p {
-    font-size:11px;
+    font-size:.8125rem;
     line-height:1.8;
     margin:6px 0 0;
 }
@@ -217,7 +217,7 @@ nav {
     align-items:center;
     gap:12px;
     color:var(--muted-foreground);
-    font-size:12px;
+    font-size:.875rem;
 }
 .breadcrumb svg {
     width:12px;
@@ -235,9 +235,9 @@ nav {
     border:1px solid var(--border);
     border-radius:6px;
     background:var(--background);
-    font-size:13px;
+    font-size:.9375rem;
     font-weight:500;
-    line-height:18px;
+    line-height:1.5;
 }
 .control:hover {
     background:var(--muted);
@@ -251,7 +251,7 @@ nav {
     opacity:.87;
 }
 .top-download {
-    font-size:12px;
+    font-size:.875rem;
     padding:6px 12px;
 }
 .top-download svg {
@@ -268,7 +268,7 @@ nav {
     display:flex;
     gap:8px;
     align-items:center;
-    font-size:12px;
+    font-size:.875rem;
     color:var(--muted-foreground);
     padding:0 20px;
     border-right:1px solid var(--border);
@@ -285,7 +285,7 @@ nav {
     margin-left:auto;
     align-self:center;
     color:var(--muted-foreground);
-    font-size:10px;
+    font-size:.75rem;
     padding:0 24px;
 }
 .content-grid {
@@ -302,7 +302,7 @@ nav {
     display:flex;
     gap:8px;
     align-items:center;
-    font:10px/1.5 GeistMono,monospace;
+    font:.75rem/1.5 GeistMono,monospace;
     letter-spacing:.08em;
     color:var(--muted-foreground);
 }
@@ -325,7 +325,7 @@ h1 span {
     color:var(--muted-foreground);
 }
 .lead {
-    font-size:16px;
+    font-size:1.125rem;
     line-height:1.8;
     margin:0 0 28px;
     letter-spacing:-.2px;
@@ -336,8 +336,9 @@ h1 span {
     gap:10px;
 }
 .platform-note {
-    font-size:11px;
+    font-size:.8125rem;
     display:flex;
+    flex-wrap:wrap;
     gap:10px;
     margin:16px 0 36px;
 }
@@ -354,9 +355,10 @@ h1 span {
 .figure-bar {
     display:flex;
     justify-content:space-between;
-    gap:16px;
+    flex-wrap:wrap;
+    gap:8px 16px;
     padding:10px 12px;
-    font-size:10px;
+    font-size:.75rem;
     border-bottom:1px solid var(--border);
 }
 .figure-bar>span {
@@ -385,7 +387,7 @@ h1 span {
     align-items:center;
     padding:10px 12px;
     color:var(--muted-foreground);
-    font-size:10px;
+    font-size:.75rem;
     border-top:1px solid var(--border);
 }
 .app-figure figcaption svg {
@@ -394,14 +396,14 @@ h1 span {
 }
 .outline {
     padding:54px 20px 0 4px;
-    font-size:11px;
+    font-size:.8125rem;
     position:sticky;
     top:56px;
     height:fit-content;
 }
 .outline .section-label {
     margin:0 0 16px;
-    font-size:9px;
+    font-size:.75rem;
 }
 .outline>a {
     display:block;
@@ -424,17 +426,17 @@ h1 span {
     color:var(--muted-foreground);
 }
 .outline-note strong {
-    font-size:11px;
+    font-size:.8125rem;
     font-weight:500;
     display:block;
     line-height:1.6;
 }
 .outline-note p {
-    font-size:11px;
+    font-size:.8125rem;
     line-height:1.7;
 }
 .outline-note a {
-    font-size:10px;
+    font-size:.75rem;
     display:flex;
     gap:4px;
     align-items:center;
@@ -451,7 +453,7 @@ h2 {
     margin:16px 0;
 }
 .section-intro {
-    font-size:14px;
+    font-size:1rem;
 }
 .steps {
     display:grid;
@@ -464,7 +466,7 @@ h2 {
     padding-top:16px;
 }
 .step-no {
-    font:9px GeistMono,monospace;
+    font:.75rem/1.5 GeistMono,monospace;
     color:var(--muted-foreground);
     display:block;
     margin-bottom:24px;
@@ -475,20 +477,20 @@ h2 {
     margin-bottom:8px;
 }
 .steps h3 {
-    font-size:16px;
+    font-size:18px;
     letter-spacing:-.03em;
     line-height:1.5;
     margin:8px 0;
 }
 .steps p {
-    font-size:12px;
-    line-height:1.9;
+    font-size:1rem;
+    line-height:1.75;
 }
 .text-link {
     display:inline-flex;
     gap:8px;
     align-items:center;
-    font-size:11px;
+    font-size:.8125rem;
     border-bottom:1px solid var(--border);
     padding-bottom:4px;
     margin-top:8px;
@@ -500,7 +502,7 @@ h2 {
     padding:60px 0;
 }
 .download-section>p {
-    font-size:13px;
+    font-size:1rem;
 }
 .download-options {
     display:flex;
@@ -509,15 +511,15 @@ h2 {
     margin-top:24px;
 }
 .download-options .control {
-    font-size:12px;
+    font-size:.875rem;
 }
 .download-options span {
-    font-size:10px;
+    font-size:.75rem;
     color:var(--muted-foreground);
     font-weight:400;
 }
 .download-section .small {
-    font-size:10px;
+    font-size:.75rem;
 }
 footer {
     display:flex;
@@ -525,7 +527,7 @@ footer {
     gap:16px;
     padding:20px 0 44px;
     border-top:1px solid var(--border);
-    font-size:10px;
+    font-size:.75rem;
     color:var(--muted-foreground);
 }
 footer a {
@@ -542,8 +544,9 @@ footer svg {
     padding:6px 16px;
     display:flex;
     justify-content:space-between;
-    gap:16px;
-    font-size:9px;
+    gap:8px 16px;
+    flex-wrap:wrap;
+    font-size:.75rem;
     color:var(--muted-foreground);
 }
 .statusbar span:first-child {
@@ -575,11 +578,11 @@ footer svg {
     border:0;
     background:transparent;
     color:var(--foreground);
-    font-size:12px;
+    font-size:.875rem;
 }
 .doc-link {
     padding-left:12px;
-    font-size:12px;
+    font-size:.875rem;
 }
 .doc-link svg {
     width:13px;
@@ -591,7 +594,7 @@ footer svg {
 }
 .doc-crumb {
     color:var(--muted-foreground);
-    font-size:11px;
+    font-size:.8125rem;
     display:flex;
     gap:8px;
     align-items:center;
@@ -606,7 +609,7 @@ footer svg {
     letter-spacing:-.045em;
 }
 .doc .lead {
-    font-size:16px;
+    font-size:1.125rem;
     line-height:1.8;
     margin-bottom:32px;
 }
@@ -616,7 +619,7 @@ footer svg {
     margin:40px 0 16px;
 }
 .doc>p {
-    font-size:14px;
+    font-size:1rem;
     line-height:1.9;
 }
 .doc strong {
@@ -637,11 +640,11 @@ footer svg {
     margin-top:2px;
 }
 .notice strong {
-    font-size:13px;
+    font-size:.9375rem;
 }
 .notice p {
     margin:4px 0 0;
-    font-size:12px;
+    font-size:.875rem;
     line-height:1.8;
 }
 .doc code,.doc kbd {
@@ -650,12 +653,12 @@ footer svg {
     border:1px solid var(--border);
     border-radius:4px;
     padding:2px 5px;
-    font-size:11px;
+    font-size:.8125rem;
 }
 .doc table {
     border-collapse:collapse;
     width:100%;
-    font-size:12px;
+    font-size:.875rem;
     margin:24px 0;
 }
 .doc th,.doc td {
@@ -669,7 +672,7 @@ footer svg {
 }
 #empty {
     padding:12px;
-    font-size:12px;
+    font-size:.875rem;
 }
 @media(min-width:1500px) {
     .landing {
@@ -731,9 +734,10 @@ footer svg {
         font-size:44px;
     }
     .lead {
-        font-size:15px;
+        font-size:1rem;
     }
     .steps {
+        grid-template-columns:1fr;
         gap:20px;
     }
     .statusbar>span:nth-child(2) {
@@ -760,7 +764,7 @@ footer svg {
     }
     .document-tabs a {
         padding:0 16px;
-        font-size:11px;
+        font-size:.8125rem;
     }
     .landing {
         padding:40px 20px 0;
@@ -771,24 +775,25 @@ footer svg {
         letter-spacing:-.05em;
     }
     .eyebrow {
-        font-size:8px;
+        flex-wrap:wrap;
+        font-size:.75rem;
         letter-spacing:.04em;
     }
     .desktop-break {
         display:none;
     }
     .platform-note {
-        font-size:9px;
+        font-size:.75rem;
         gap:7px;
     }
     .figure-status {
         display:none!important;
     }
     .figure-bar {
-        font-size:9px;
+        font-size:.75rem;
     }
     .app-figure figcaption {
-        font-size:9px;
+        font-size:.75rem;
     }
     .workflow {
         padding-top:48px;
@@ -837,13 +842,13 @@ footer svg {
         padding:28px 20px;
     }
     .doc .lead {
-        font-size:15px;
+        font-size:1rem;
     }
     .statusbar {
-        font-size:8px;
+        font-size:.75rem;
     }
     .doc table {
-        font-size:11px;
+        font-size:.8125rem;
     }
     .doc td {
         overflow-wrap:anywhere;
@@ -915,7 +920,7 @@ footer svg {
     margin-top:3px;
 }
 .empty {
-    font-size:12px;
+    font-size:.875rem;
     padding:8px 12px;
 }
 .landing-navigation {
@@ -1040,14 +1045,14 @@ footer svg {
     max-width:100%;
 }
 .doc figcaption {
-    font-size:11px;
+    font-size:.8125rem;
     color:var(--muted-foreground);
     margin-top:10px;
     text-align:center;
     line-height:1.7;
 }
 .doc code,.doc kbd {
-    font-size:12px;
+    font-size:.875rem;
     box-decoration-break:clone;
 }
 .doc kbd {
@@ -1059,7 +1064,7 @@ footer svg {
     border:1px solid var(--border);
     border-radius:8px;
     padding:16px 20px;
-    font:12px/1.9 GeistMono,monospace;
+    font:.875rem/1.9 GeistMono,monospace;
     overflow-x:auto;
     max-width:100%;
     margin:24px 0;
@@ -1101,7 +1106,7 @@ footer svg {
     background:var(--sidebar);
     padding:16px 20px;
     margin:24px 0;
-    font-size:13px;
+    font-size:.9375rem;
     line-height:1.85;
 }
 .callout.warn {
@@ -1124,7 +1129,7 @@ footer svg {
     border:1px solid var(--border);
     border-radius:8px;
     padding:16px 20px;
-    font-size:13px;
+    font-size:.9375rem;
 }
 .cards a:hover {
     background:var(--sidebar);
@@ -1135,13 +1140,13 @@ footer svg {
 }
 .cards span {
     color:var(--muted-foreground);
-    font-size:12px;
+    font-size:.875rem;
     line-height:1.8;
     display:block;
 }
 .tag {
     display:inline-block;
-    font-size:10px;
+    font-size:.75rem;
     font-weight:500;
     padding:2px 6px;
     border:1px solid var(--border);
@@ -1160,7 +1165,7 @@ footer svg {
     border:1px solid var(--border);
     border-radius:8px;
     padding:16px;
-    font-size:13px;
+    font-size:.9375rem;
 }
 .pager a:hover {
     background:var(--sidebar);
@@ -1168,7 +1173,7 @@ footer svg {
 .pager small {
     display:block;
     color:var(--muted-foreground);
-    font-size:10px;
+    font-size:.75rem;
     margin-bottom:8px;
 }
 .pager .next {
@@ -1218,7 +1223,7 @@ footer svg {
 }
 @media(max-width:460px) {
     .top-download {
-        font-size:12px;
+        font-size:.875rem;
         gap:6px;
     }
     .top-download span {
@@ -1237,10 +1242,10 @@ footer svg {
         padding:12px;
     }
     .doc figcaption {
-        font-size:10px;
+        font-size:.75rem;
     }
     .statusbar>a {
-        font-size:8px;
+        font-size:.75rem;
     }
     .outline-note {
         display:none;
