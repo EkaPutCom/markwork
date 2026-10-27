@@ -35,7 +35,9 @@ try {
                 }
                 assert.deepEqual(errors, []);
             } finally {
-                await app.close();
+                // A canceled quit can leave Electron alive on macOS after its last window closes.
+                await Promise.race([app.close().catch(() => {}), new Promise(r => setTimeout(r, 5000))]);
+                try { app.process().kill('SIGKILL'); } catch { /* already gone */ }
             }
         });
     }
