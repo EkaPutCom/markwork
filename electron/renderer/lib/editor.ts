@@ -214,7 +214,7 @@ function syntaxField(events: EditorEvents, languageLoaded: () => void): Drawing 
         // A table is a grid unless the cursor is in it (or the editor shows the source); the visual editor keeps the grid and edits its cells.
         const sel = state.selection.main;
         const selFirst = doc.lineAt(Math.min(sel.anchor, sel.head)).number - 1, selLast = doc.lineAt(Math.max(sel.anchor, sel.head)).number - 1;
-        const conflicts = conflictDecorations(doc);
+        const conflicts = conflictDecorations(doc, line => events.compareConflict(line));
         ranges.push(...conflicts.ranges);
         const grids = new Set<number>(conflicts.covered);
         const boxed = new Set<CodeBlock>();
@@ -540,6 +540,7 @@ export interface EditorEvents {
     openLink(uri: string): void;     // a link was Ctrl+clicked
     openNote(link: string): void;    // a [[wikilink]] was Ctrl+clicked: what is between the brackets
     zoomImage(image: ZoomedImage): void;     // a picture was double-clicked, or the Zoom Image command ran
+    compareConflict(line: number): void;    // compare the conflict starting at this line (from 1)
     baseDir(): string | null;        // the folder of the document: where its relative picture paths start
     noteNames(): Promise<string[]>;  // the notes a [[ may link to, relative to the folder
     run(id: string, arg?: boolean): void;    // run a command of the window (the visual editor's menus)

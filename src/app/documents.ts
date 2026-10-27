@@ -13,6 +13,19 @@ import { errorMessage, type Doc, type Page, type TextEditor, type ToastAction } 
 import type { ChooseFileOptions } from './dialogs.js';
 import type { Autosaver } from './autosave.js';
 import { below } from '../markdown/paths.js';
+import { findConflicts, resolution, type Conflict } from '../markdown/conflicts.js';
+import { unifiedDiff } from '../agent/changes.js';
+import { parseDiff, type DiffLine } from '../base/gitlog.js';
+
+export interface ConflictComparison {
+    id: number;
+    file: string;
+    current: string;
+    incoming: string;
+    currentText: string;
+    incomingText: string;
+    lines: DiffLine[];
+}
 
 export const UNTITLED = _('Untitled');
 export const HOME = _('Home');
@@ -61,6 +74,7 @@ export interface DocumentsHost<E extends TextEditor> {
     refreshHome(): void;
     openFolder(path: string): void;
     fileSaved(path: string): void;              // a new file was written through Save As: show it in the tree
+    showConflictComparison(comparison: ConflictComparison): void;
 }
 
 type MutableDoc = { -readonly [K in keyof Doc]: Doc[K] };
@@ -75,6 +89,8 @@ export class DocumentController<E extends TextEditor> {
     private parked: Doc<E> | null = null;
     private nextId = 1;
     private restoring = false;   // a tab from the last session is being reopened: do not record it as newly opened
+    private comparison: { id: number; doc: number; before: string; conflict: Conflict } | null = null;
+    private nextComparison = 1;
 
     constructor(private readonly host: DocumentsHost<E>) {}
 
@@ -99,6 +115,50 @@ export class DocumentController<E extends TextEditor> {
 
     get allPages(): readonly Page[] {
         return this.pages;
+    }
+
+    // Compare a conflict from the editor replica, including unsaved edits. The result is a read-only snapshot.
+    compareConflict(id: number, line: number): boolean {
+        const doc = this.docs.find(d => d.id === id);
+        if (!doc) return false;
+        const before = doc.editor.getText(), lines = before.split('\n');
+        const conflict = findConflicts(lines).find(c => c.start + 1 === line);
+        if (!conflict) return false;
+        const current = resolution(lines, conflict, 'current'), incoming = resolution(lines, conflict, 'incoming');
+        const text = (side: string[]) => side.length ? side.join('\n') + '\n' : '';
+        const diff = parseDiff(unifiedDiff(text(current), text(incoming), lines.length));
+        const comparisonId = this.nextComparison++;
+        this.comparison = { id: comparisonId, doc: doc.id, before, conflict };
+        this.host.showConflictComparison({ id: comparisonId, file: this.nameOf(doc), current: conflict.current, incoming: conflict.incoming,
+            currentText: text(current), incomingText: text(incoming),
+            lines: diff.length ? diff : [{ kind: 'hunk', text: `@@ -1,${current.length} +1,${incoming.length} @@` },
+                ...current.map(text => ({ kind: 'context' as const, text: ' ' + text }))] });
+        return true;
+    }
+
+    // Apply only the comparison the core offered, after the user's explicit Apply Result action.
+    applyConflictComparison(id: number, result: string): boolean {
+        const comparison = this.comparison;
+        if (!comparison || comparison.id !== id) return false;
+        const doc = this.docs.find(d => d.id === comparison.doc);
+        if (!doc) return false;
+        let accepted = true;
+        doc.editor.update(text => {
+            if (text !== comparison.before) {
+                accepted = false;
+                this.host.toast(_('The document changed. Open Compare Changes again before applying the result.'));
+                return null;
+            }
+            const lines = text.split('\n'), { start, end } = comparison.conflict;
+            const replacement = result ? result.replace(/\n$/, '').split('\n') : [];
+            return [...lines.slice(0, start), ...replacement, ...lines.slice(end + 1)].join('\n');
+        });
+        if (accepted) this.comparison = null;
+        return accepted;
+    }
+
+    closeConflictComparison(id: number): void {
+        if (this.comparison?.id === id) this.comparison = null;
     }
 
     // Create an empty document together with its editor, without activating it.
@@ -567,17 +627,21 @@ export class DocumentController<E extends TextEditor> {
         this.host.settings.activeTab = kept.findIndex(k => k.at === shown);
     }
 
-    // Reopen tabs from the settings. Files that have gone missing are skipped (not recreated).
+    // Reopen tabs from the settings. A saved list can predate a workspace switch, so only restore files inside
+    // the current work folder. Without a work folder, standalone files can still be restored.
     // true = some tabs were restored.
     restoreTabs(): boolean {
         const settings = this.host.settings;
         const saved = Array.isArray(settings.tabs) ? settings.tabs : [];
+        const root = this.host.root();
+        const belongs = (file: unknown) => !root || typeof file !== 'string' || file === HOME_TAB || insideName(root, file) !== null;
+        const candidates = Array.from(saved.entries()).filter(([, tab]) => belongs(tab?.file));
         const opened: [Doc<E>, number][] = [];
         let restored = false;
         let active: Doc<E> | Page | null = null, last: Doc<E> | Page | null = null;
         let missing = 0;
         this.restoring = true;
-        for (const [i, tab] of saved.entries()) {
+        for (const [i, tab] of candidates) {
             if (tab?.file === HOME_TAB) {
                 this.openHome();
                 last = this.pages.find(p => p.kind === 'home')!;

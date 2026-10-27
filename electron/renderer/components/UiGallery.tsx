@@ -305,7 +305,7 @@ function Overlays() {
                 </ContextMenu>
             </Row>
             <Row label="Toast">
-                <Button variant="outline" size="sm" onClick={() => toast('The note is saved')}>A notice</Button>
+                <Button variant="outline" size="sm" onClick={() => toast('The note is saved', { closeButton: true })}>A notice</Button>
                 <Button variant="outline" size="sm" onClick={() => toast('The card moved to Done', { action: { label: 'Undo', onClick: () => {} } })}>With an action</Button>
             </Row>
             <Row label="Floating">

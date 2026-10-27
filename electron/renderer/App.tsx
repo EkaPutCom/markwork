@@ -1,7 +1,7 @@
 // The window: the sidebar (or its rail), the header of the document, the editor with its tabs, the counts at the foot,
 // the Assistant beside them, and the command palette over all of it. The look is shadcn/ui's (docs/design/shadcn/).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { COMMANDS } from '../../src/app/commands.js';
 import { countWords, cpLength } from '../../src/markdown/offsets.js';
 import { EditorArea } from './components/EditorArea.js';
@@ -15,6 +15,7 @@ import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './components/Mo
 import { ReportDialog } from './components/ReportProblem.js';
 import { FieldsDialog } from './components/FieldsDialog.js';
 import { ImageViewer } from './components/ImageViewer.js';
+import { ConflictCompare } from './components/ConflictCompare.js';
 import { Chat, ChatReview } from './components/Chat.js';
 import { Collab, SendChangesDialog, TokenDialog } from './components/Collab.js';
 import { History, HistoryViewers } from './components/History.js';
@@ -214,12 +215,16 @@ function StatusBar() {
 function Notification() {
     const client = useClient();
     const { toast: notice, coreError, settings } = useStore();
+    const active = useRef<string | number | null>(null);
     useEffect(() => {
-        if (!notice) { toast.dismiss('notice'); return; }
-        toast(notice.text, {
-            id: 'notice', duration: 6000, closeButton: true,
+        if (active.current !== null) toast.dismiss(active.current);
+        if (!notice) { active.current = null; return; }
+        // A new id gives each notice its own lifetime, even while the previous one is animating out.
+        const dismiss = () => { if (client.getState().toast === notice) client.dismissToast(); };
+        active.current = toast(notice.text, {
+            duration: 6000, closeButton: true,
             action: notice.action ? { label: notice.action.label, onClick: () => client.runToast(notice.action!.token) } : undefined,
-            onDismiss: () => client.dismissToast(), onAutoClose: () => client.dismissToast(),
+            onDismiss: dismiss, onAutoClose: dismiss,
         });
     }, [notice, client]);
     useEffect(() => {
@@ -227,7 +232,7 @@ function Notification() {
         else toast.dismiss('core-error');
     }, [coreError]);
     const scheme = settings['color-scheme'];
-    return <Toaster theme={scheme === 'light' || scheme === 'dark' ? scheme : 'system'} position="bottom-center" />;
+    return <Toaster theme={scheme === 'light' || scheme === 'dark' ? scheme : 'system'} position="bottom-center" visibleToasts={1} />;
 }
 
 const INSPECTOR_KEY = 'Ctrl+Alt+i';
@@ -262,7 +267,7 @@ export function App() {
         const onKey = (event: KeyboardEvent) => {
             // A dialog has the keys to itself, and so does the report of a problem with the editor: Ctrl+Z in its note
             // would undo the very text it reports on.
-            if (client.getState().dialog || client.getState().info === 'report') return;
+            if (client.getState().dialog || client.getState().conflictComparison || client.getState().info === 'report') return;
             // Dev mode: the Editor Inspector (not a command of the core, which a normal build has no use for).
             if (window.markwork.devMode && matches(event, INSPECTOR_KEY)) {
                 event.preventDefault();
@@ -320,6 +325,7 @@ export function App() {
             <Notification />
             <Palette />
             <ImageViewer />
+            <ConflictCompare />
             <PreferencesDialog />
             <ShortcutsDialog />
             <AboutDialog />

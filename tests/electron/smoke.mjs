@@ -62,6 +62,15 @@ try {
         await page.locator('.statusbar').getByText(/words/).waitFor();
     });
 
+    await step('closing a Saved notice does not remove the next notice while the first animates out', async () => {
+        await page.keyboard.press('ControlOrMeta+s');
+        const notice = page.locator('[data-sonner-toast][data-index="0"]:not([data-removed=true])').filter({ hasText: /^Saved$/ });
+        await notice.getByRole('button', { name: 'Close toast', exact: true }).click();
+        await page.keyboard.press('ControlOrMeta+s');
+        await notice.getByRole('button', { name: 'Close toast', exact: true }).waitFor();
+        assert.equal(await notice.count(), 1, 'the new notice remains visible');
+    });
+
     await step('clicking a task box flips it, and a wrapped list item hangs under its text', async () => {
         await page.getByRole('treeitem', { name: /tasks\.md/ }).click();
         await title.getByText('tasks.md').waitFor();
@@ -147,12 +156,12 @@ try {
         await page.keyboard.press('ControlOrMeta+End');
     });
 
-    await step('a git conflict has buttons above it, and Accept Incoming keeps their side in one undo step', async () => {
+    await step('a git conflict has buttons above it, and Accept Incoming Change keeps their side in one undo step', async () => {
         await page.getByRole('treeitem', { name: /conflict\.md/ }).click();
         await title.getByText('conflict.md').waitFor();
         await editor.locator('.cm-md-conflict-bar').waitFor();
         assert.equal(await editor.locator('.cm-md-conflict').count(), 5);
-        await editor.getByRole('button', { name: 'Accept Incoming' }).click();
+        await editor.getByRole('button', { name: 'Accept Incoming Change' }).click();
         await editor.locator('.cm-md-conflict-bar').waitFor({ state: 'detached' });
         await editor.getByText('theirs').waitFor();
         assert.equal(await editor.getByText('ours').count(), 0);

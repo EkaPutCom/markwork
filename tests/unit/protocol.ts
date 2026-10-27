@@ -278,6 +278,36 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('Compare Changes sends the selected unsaved conflict as a read-only snapshot and rejects stale markers', async () => {
+        const { server, ui } = await start();
+        await ui.client.request('open.file', { name: 'note.md' });
+        await until(() => ui.active?.text.includes('# Note') === true);
+        const doc = ui.active!;
+        const text = '# Unsaved\n\n<<<<<<< HEAD\nFriday\n=======\nMonday\n>>>>>>> topic';
+        ui.type(doc, text);
+        ok((await ui.client.request('doc.compareConflict', { doc: doc.id, line: 3 })).ok, 'comparison opens');
+        await until(() => ui.last('view.conflictComparison') !== undefined);
+        const comparison = ui.last('view.conflictComparison')!.comparison as { id: number; file: string; current: string; incoming: string; lines: { kind: string; text: string }[] };
+        eq([comparison.file, comparison.current, comparison.incoming], ['note.md', 'HEAD', 'topic']);
+        ok(comparison.lines.some(l => l.kind === 'del' && l.text === '-Friday'), 'current side');
+        ok(comparison.lines.some(l => l.kind === 'add' && l.text === '+Monday'), 'incoming side');
+        eq(doc.text, text, 'opening the comparison does not edit the mirror');
+        ok(!(await ui.client.request('doc.applyConflictComparison', { comparison: -1, text: 'wrong' })).ok, 'an unoffered result is rejected');
+        ok((await ui.client.request('doc.applyConflictComparison', { comparison: comparison.id, text: 'Tuesday 🎉\n' })).ok, 'Apply Result');
+        await until(() => doc.text === '# Unsaved\n\nTuesday 🎉');
+        ui.type(doc, text);
+        await ui.client.request('doc.compareConflict', { doc: doc.id, line: 3 });
+        const next = ui.last('view.conflictComparison')!.comparison as { id: number };
+        ui.type(doc, '# Resolved\n');
+        ok(!(await ui.client.request('doc.applyConflictComparison', { comparison: next.id, text: 'stale' })).ok, 'a result cannot overwrite newer text');
+        eq(doc.text, '# Resolved\n');
+        const count = ui.log.filter(l => l.ev === 'view.conflictComparison').length;
+        ok(!(await ui.client.request('doc.compareConflict', { doc: doc.id, line: 3 })).ok, 'resolved conflict is rejected');
+        ok(!(await ui.client.request('doc.compareConflict', { doc: -1, line: 1 })).ok, 'unknown document is rejected');
+        eq(ui.log.filter(l => l.ev === 'view.conflictComparison').length, count);
+        server.dispose();
+    });
+
     await test('a folder chosen in the frontend\'s dialog opens: the core lists it and the frontend can open its files', async () => {
         const post = { toClient: (_m: Message) => {} };
         const server = new ProtocolServer(memorySettings(), m => post.toClient(m));

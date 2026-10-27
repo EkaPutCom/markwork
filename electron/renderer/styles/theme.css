@@ -387,7 +387,16 @@
 .cm-md-conflict-incoming { background: var(--cf-incoming); }
 .cm-md-conflict-incomingHead { background: var(--cf-incoming-head); }
 .cm-md-conflict-neutral { background: var(--cf-neutral); }
-.cm-md-conflict-bar { display: flex; gap: 2px; padding: 4px 0 2px; }
+.cm-md-conflict-label { color: var(--muted-foreground); font-weight: 400; }
+.cm-md-conflict-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 0 2px; }
+.conflict-merge-sources { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.conflict-merge-source, .conflict-merge-result { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.conflict-merge pre.diff { min-height: 80px; max-height: 28vh; border: 0; border-radius: 0; }
+.conflict-merge .incoming .cell.add { background: var(--cf-incoming); }
+.conflict-merge .current .cell.del { background: var(--cf-current); }
+.conflict-merge .incoming .cell.add .word { background: var(--cf-incoming-head); }
+.conflict-merge .current .cell.del .word { background: var(--cf-current-head); }
+@media (max-width: 600px) { .conflict-merge-sources { grid-template-columns: minmax(0, 1fr); } }
 .cm-md-dim { opacity: .35; }
 
 /* A code block as a box that scrolls sideways. */

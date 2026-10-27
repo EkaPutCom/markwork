@@ -7,7 +7,7 @@ import type { Board } from '../../markdown/kanban.js';
 import type { NoteEdit } from '../../markdown/noteedit.js';
 import type { CaptureView, CsvPage, KanbanView, LayoutPage, NotesView, SchemaDialogOptions, ViewDialogs, ViewScreen } from '../views.js';
 import type { FieldDef } from '../../markdown/fields.js';
-import type { DocumentDialogs } from '../documents.js';
+import type { ConflictComparison, DocumentDialogs } from '../documents.js';
 import type { ChooseFileOptions, Prompt } from '../dialogs.js';
 import type { AppDialogs, AppFrontend, DocumentTitle, FrontendDocuments, FrontendHost } from '../session.js';
 import type { Page, ToastButton } from '../document.js';
@@ -191,6 +191,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             },
             activated: (id: number) => { this.active = id; wire.notify('doc.active', { doc: id }); },
             setTitle: (id: number, title: DocumentTitle) => wire.notify('doc.title', { doc: id, title }),
+            showConflictComparison: (comparison: ConflictComparison) => wire.notify('view.conflictComparison', { comparison }),
         }, 'documents');
         this.dialogs = {
             files: {

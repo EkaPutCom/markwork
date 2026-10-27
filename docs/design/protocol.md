@@ -253,6 +253,14 @@ core → frontend   {"ev":"doc.saved","doc":3,"version":19,"file":"/home/eka/not
 
 The editor marks version 19 as unmodified. If the user typed after version 19, the document stays modified. This is the rule `Autosaver` already follows in one process: it remembers its `changes` counter before a background write and marks the document saved only if the counter did not move (`app/autosave.ts`). The version is that counter, carried over the wire.
 
+### 5.8 Comparing a conflict
+
+`doc.compareConflict` takes the open document id `doc` and the conflict marker’s one-based `line`. Frontend edits are sent before the request, and the connection preserves their order. `DocumentController` finds the complete conflict in its current editor replica and rejects an unknown document or a stale marker. The frontend supplies neither file contents nor paths.
+
+`view.conflictComparison` carries `{ comparison: { id, file, current, incoming, currentText, incomingText, lines } }`: an opaque comparison id, the document name, both marker labels, source texts with their terminal newlines, and typed diff lines for only that conflict. Diff3’s ancestor is excluded. Equal sides are sent as context lines. The frontend draws Incoming and Current sources with a locally editable Result preview.
+
+`doc.applyConflictComparison` takes `{ comparison, text }`. The id must name the core’s currently offered comparison; the frontend cannot choose a document or path. Only an explicit Apply Result sends this request. The controller uses `editor.update` and checks the original full text again inside the edit, so a queued or concurrent write is never overwritten. The result replaces only the selected conflict and is one undo step; this does not commit or push. `doc.closeConflictComparison` invalidates the offered id when the dialog is dismissed. Newer comparisons also invalidate older ids.
+
 ## 6. Views as state
 
 ### 6.1 The rule

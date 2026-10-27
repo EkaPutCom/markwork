@@ -689,7 +689,7 @@ const GROUPS = {
             await run.frame('collab', 8);
             const pull = page.locator('.pull-page');
             await collab.getByRole('button', { name: /Postpone the public release/ }).click();
-            await pull.locator('pre.diff .line.add').first().waitFor({ timeout: 15000 });
+            await pull.locator('pre.diff .cell.add').first().waitFor({ timeout: 15000 });
             await run.idle(500);
             await run.shot('collab-review');
             await run.frame('collab', 10);
@@ -709,6 +709,13 @@ const GROUPS = {
             await run.idle(800);
             await run.shot('collab-resolve');
             await run.frame('collab', 12);
+            await page.getByRole('button', { name: 'Compare Changes', exact: true }).first().click();
+            const comparison = page.getByRole('dialog', { name: 'Compare Changes', exact: true });
+            await comparison.waitFor();
+            await comparison.getByRole('button', { name: 'Accept Incoming', exact: true }).click();
+            await run.shot('collab-compare');
+            await comparison.getByRole('button', { name: 'Close comparison', exact: true }).click();
+            await comparison.waitFor({ state: 'detached' });
             // The merge is undone from its pull request, which the opened file put behind the document.
             await collab.getByRole('button', { name: /Fix the wording/ }).click();
             await pull.getByRole('button', { name: 'Abort merge' }).click();

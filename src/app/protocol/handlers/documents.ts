@@ -28,6 +28,17 @@ export function documentHandlers({ wire, session, frontend, notice, sendFiles }:
         session.host.openFile(path);
     });
     wire.on('tab.select', p => { session.documents.select(num(p.doc, 'doc')); });
+    wire.on('doc.compareConflict', p => {
+        if (!session.documents.compareConflict(num(p.doc, 'doc'), num(p.line, 'line'))) {
+            throw new RequestError('bad_request', 'that conflict is no longer in the document');
+        }
+    });
+    wire.on('doc.applyConflictComparison', p => {
+        if (!session.documents.applyConflictComparison(num(p.comparison, 'comparison'), str(p.text, 'text'))) {
+            throw new RequestError('conflict', 'The document changed. Open Compare Changes again before applying the result.');
+        }
+    });
+    wire.on('doc.closeConflictComparison', p => session.documents.closeConflictComparison(num(p.comparison, 'comparison')));
     wire.on('tab.close', async p => ({ closed: await session.documents.closeById(num(p.doc, 'doc')) }));
     // Close Others, Close to the Right, Close All of a pane: closed = false when a question about changes was cancelled.
     wire.on('tab.closeMany', async p => {

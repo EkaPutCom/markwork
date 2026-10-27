@@ -88,3 +88,5 @@ export class ProtocolScreen implements Screen {
 
 // What Home and the Programs page show, as it crosses the wire (the renderer takes the types from here).
 export type { HomeData, InstallWay, ProgramInfo, ProgramsData, SetupData };
+// The conflict sources and diff sent by view.conflictComparison; the editable result stays in the frontend until Apply.
+export type { ConflictComparison } from '../documents.js';

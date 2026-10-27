@@ -8,6 +8,7 @@ import { DocMirror } from '../../../src/app/protocol/mirror.js';
 import { RequestError, type Change, type Message } from '../../../src/app/protocol/messages.js';
 import { Connection, type Handler } from '../../../src/app/protocol/wire.js';
 import type { ChooseFileOptions, Prompt, Question } from '../../../src/app/dialogs.js';
+import type { ConflictComparison } from '../../../src/app/protocol/screen.js';
 import type { CancelSignal } from '../../../src/platform/index.js';
 import type { Board } from '../../../src/markdown/kanban.js';
 import { applyNoteEdit, type NoteEdit } from '../../../src/markdown/noteedit.js';
@@ -144,6 +145,7 @@ export interface State {
     disabled: string[];           // the commands the core says do not apply now (commands.state)
     status: { visible: boolean; counts: StatusCounts };   // the counts at the foot (view.status)
     image: ZoomedImage | null;   // the picture shown large (view.image, or a double click)
+    conflictComparison: ConflictComparison | null;
     recent: string[];                // the Recent files of the menus (recent), latest first
     programsMissing: number;         // needed programs that are missing (programs.missing): the mark on the sidebar's Programs
     prefs: PreferencesData | null;   // the Preferences dialog while it is open (view.prefs.open)
@@ -204,7 +206,7 @@ export class Client {
         ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1, format: { block: 'paragraph', marks: [] },
         source: false, panes: P.initialLayout(), palette: false, sidebar: true, width: 1100, floating: { sidebar: false, chat: false }, settings: {}, commands: [], dialog: null, image: null, recent: [], programsMissing: 0, prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
-        schema: null, csvFind: { n: 0, replace: false },
+        schema: null, csvFind: { n: 0, replace: false }, conflictComparison: null,
         history: { commits: [], more: false, note: '', changes: null, message: '', messageRev: 0 }, viewers: [],
         collab: { note: null, server: null, pulls: [] }, pull: null, pullShown: false, tokenAsk: null, sendAsk: null,
         runLogs: [], review: null, reviewShown: false, agentAsks: [], pullAsk: null, project: null, worktrees: null,
@@ -477,6 +479,19 @@ export class Client {
 
     zoomImage(image: ZoomedImage): void { this.set({ image }); }
     closeImage(): void { this.set({ image: null }); this.editor?.focus(); }
+    compareConflict(doc: number, line: number): void { void this.ask('doc.compareConflict', { doc, line }); }
+    async applyConflictComparison(id: number, text: string): Promise<boolean> {
+        const reply = await this.conn?.request('doc.applyConflictComparison', { comparison: id, text });
+        if (!reply?.ok) { this.say(reply && !reply.ok ? reply.error.message : 'The core is not connected'); return false; }
+        this.closeConflictComparison();
+        return true;
+    }
+    closeConflictComparison(): void {
+        const id = this.snapshot.conflictComparison?.id;
+        this.set({ conflictComparison: null });
+        if (id !== undefined) void this.ask('doc.closeConflictComparison', { comparison: id });
+        this.editor?.focus();
+    }
 
     // The folder of the active document, which its relative picture paths start from.
     baseDir(doc = this.snapshot.active): string | null {
@@ -1186,6 +1201,7 @@ export class Client {
             case 'view.search': this.set({ search: { ...this.snapshot.search, results: p.results as SearchResults } }); break;
             case 'view.outline': this.set({ outline: p.headings as State['outline'] }); break;
             case 'view.image': this.set({ image: { src: appUrl(p.path as string), title: String(p.path).split(/[\\/]/).pop() ?? '' } }); break;
+            case 'view.conflictComparison': this.set({ conflictComparison: p.comparison as unknown as ConflictComparison }); break;
             case 'view.history': this.set({ history: { ...this.snapshot.history, commits: p.commits as Commit[], more: p.more === true, note: String(p.note ?? '') } }); break;
             case 'view.historyChanges': this.set({ history: { ...this.snapshot.history, changes: p as unknown as HistoryChanges } }); break;
             case 'history.messageText': this.set({ history: { ...this.snapshot.history, message: p.text as string, messageRev: this.snapshot.history.messageRev + 1 } }); break;
