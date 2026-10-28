@@ -26,7 +26,7 @@ import { AssistantController, type AssistantHost } from './assistant';
 import { HistoryController, type HistoryDialogs, type HistoryHost } from './history';
 import { PreferencesController, type PreferencesDialogs, type PreferencesHost } from './preferences';
 import { OutlineController, type OutlineHost } from './outline';
-import { FilesController, isHtmlFile, isImageFile, type FilesDialogs, type FilesHost } from './files';
+import { FilesController, isHtmlFile, isImageFile, isMarkdownFile, isCsvFile, type FilesDialogs, type FilesHost } from './files';
 import { SearchController, type SearchDialogs, type SearchHost } from './search';
 import type { Board } from '../markdown/kanban';
 import type { Doc, Page, TextEditor, ToastAction, ToastButton } from './document';
@@ -519,7 +519,7 @@ export class AppSession<E extends TextEditor> {
         this.syncHistory();
     }
 
-    // A file chosen in the Files tab: an image or an HTML page goes to its viewer, anything else to a tab.
+    // A file chosen in the Files tab: preserve document and media views; other text opens read-only.
     private openFile(path: string): void {
         if (isImageFile(path)) {
             this.frontend.host.showImage(path);
@@ -529,8 +529,12 @@ export class AppSession<E extends TextEditor> {
             this.documents.openHtml(path, this.files.root);
             return;
         }
+        if (!isMarkdownFile(path) && !isCsvFile(path)) {
+            this.documents.openCode(path);
+            return;
+        }
         const active = this.documents.active;
-        if (active.file !== null && platform().paths.same(path, active.file)) return;
+        if (!this.documents.page && active.file !== null && platform().paths.same(path, active.file)) return;
         if (!this.documents.openInTab(path)) this.files.reveal(active.file);   // the highlight goes back to the file that is still open
     }
 

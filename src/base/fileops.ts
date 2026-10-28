@@ -104,11 +104,11 @@ export function copyEntry(source: string, destDir: string): string {
 }
 
 // Rename a file/folder in place. Returns the new path, or null if the name did not change.
-// Files keep an extension the tree shows (Markdown, CSV, HTML), and get .md otherwise, so they do not disappear from it.
+// Documents retain the Markdown default; code, images, and other workspace files keep the exact name entered.
 export function renameEntry(path: string, rawName: string): string | null {
     const { fs, paths } = platform();
     let name = cleanName(rawName);
-    if (!fs.isDirectory(path) && !SHOWN_EXTENSION.test(name)) name += '.md';
+    if (!fs.isDirectory(path) && SHOWN_EXTENSION.test(path) && !SHOWN_EXTENSION.test(name)) name += '.md';
     if (name === paths.basename(path)) return null;
     const target = join(paths.dirname(path), name);
     if (exists(target)) throw new Error(`“${name}” already exists in this folder.`);

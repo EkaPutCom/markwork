@@ -45,15 +45,16 @@ export interface Doc<E extends TextEditor = TextEditor> {
     readonly file: string | null;          // document path, null = never saved
 }
 
-// A tab whose contents are a view, not a text: Home, the Programs page, or an HTML file shown in its sandbox. It has an id from the same
-// numbering as the documents, so the tab row can name either. It has no editor, nothing to save, and is closed without asking.
-export type PageKind = 'home' | 'programs' | 'html';
+// A tab whose contents are a view, not a writable document: Home, Programs, sandboxed HTML, or a code snapshot.
+// It shares the document id numbering, but has no TextEditor, nothing to save, and closes without asking.
+export type PageKind = 'home' | 'programs' | 'html' | 'code';
 
 export interface Page {
     readonly id: number;
     readonly kind: PageKind;
-    readonly file: string | null;          // html: the file shown; home, programs: null
+    readonly file: string | null;          // html/code: the file shown; home, programs: null
     readonly root: string | null;          // html: the folder the page may read (the work folder, or its own folder)
+    readonly text?: string;               // code: a read-only snapshot, never a document or assistant context
 }
 
 // The part of the window every controller needs: the open documents and the work folder.

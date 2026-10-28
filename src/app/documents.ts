@@ -408,6 +408,24 @@ export class DocumentController<E extends TextEditor> {
         this.openPage({ kind: 'html', file: absolute, root: root && insideName(root, absolute) !== null ? root : folder });
     }
 
+    // Code is a page, not a document: Save, autosave, and assistant manuscript context cannot write or ingest it.
+    openCode(path: string): void {
+        const { fs, paths } = platform();
+        const absolute = paths.resolve(path);
+        const open = this.pages.find(p => p.kind === 'code' && p.file !== null && paths.same(p.file, absolute));
+        if (open) { this.activatePage(open); return; }
+        try {
+            const info = fs.info(absolute);
+            if (info.kind !== 'file') throw new Error(_('The code viewer only opens regular files, not symbolic links or special files.'));
+            if (info.size > 2 * 1024 * 1024) throw new Error(_('The code viewer supports text files up to 2 MiB.'));
+            const text = fs.readText(absolute);
+            if (/[\u0000-\u0008\u000e-\u001f\ufffd]/.test(text)) throw new Error(_('This file is binary or is not supported UTF-8 text.'));
+            this.openPage({ kind: 'code', file: absolute, root: null, text });
+        } catch (e) {
+            this.host.dialogs.showError(fmt(_('Could not open file:\n{error}'), { error: errorMessage(e) }));
+        }
+    }
+
     private openPage(spec: Omit<Page, 'id'>): void {
         const page: Page = { id: this.nextId++, ...spec };
         this.pages.push(page);
@@ -572,11 +590,17 @@ export class DocumentController<E extends TextEditor> {
             const moved = doc.file ? remapPath(doc.file, from, to) : null;
             if (moved) this.fileMoved(doc, moved);
         }
+        for (const page of [...this.pages]) {
+            if (page.kind === 'code' && page.file && remapPath(page.file, from, to)) this.closePage(page);
+        }
         this.host.settings.recentFiles = moveRecent(this.host.settings.recentFiles, from, to);
     }
 
     // Open documents at or under `path` lose their file: their contents stay in the editor, marked as unsaved.
     fileDeleted(path: string): void {
+        for (const page of [...this.pages]) {
+            if (page.kind === 'code' && page.file && remapPath(page.file, path, path)) this.closePage(page);
+        }
         for (const doc of this.docs) {
             if (doc.file && remapPath(doc.file, path, path)) this.fileGone(doc);
         }

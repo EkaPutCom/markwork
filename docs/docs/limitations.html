@@ -95,6 +95,13 @@
   <li>Sending changes: the pull request goes to the default branch of the repository, you cannot pick another. Through a fork, the server may still be making the copy when the push comes (it has not been tried on a server that does this slowly). AGit needs the server to have it turned on, and sends a description of several lines as one line.</li>
 </ul>
 
+<h2 id="code">Reading code</h2>
+<ul>
+  <li>The <a href="files.html#code">code viewer</a> opens files only from the workspace tree, as read-only snapshots. It is not an IDE: no autocomplete, diagnostics, debugger, or project/worktree browser.</li>
+  <li>Regular UTF-8 text files only, up to 2 MiB. Binary files, unsupported encodings, symbolic links, and special files are refused; unknown languages use plain text.</li>
+  <li>Close and reopen to refresh from disk. Code tabs are not restored at startup; tree moves, renames, and deletes close the affected snapshot. Code does not enter the assistant manuscript context, note links, or Search in All Notes.</li>
+</ul>
+
 <h2 id="editor">The editor and export</h2>
 <ul>
   <li>The visual editor: a code block shows its fences while the cursor is in it, a table is edited cell by cell (a cell is one line, and there is no alignment button for a column yet), and a numbered list keeps its numbers as typed. A link's address is hidden, so it is changed in Markdown (the header switch). A block is a paragraph, heading, list, quote, table, or code block, found from the blank lines between them, so a loose list (items with blank lines between them) is several blocks. Pasting HTML from a web page pastes its text, not its formatting.</li>
