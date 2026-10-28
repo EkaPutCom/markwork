@@ -80,6 +80,14 @@ A card of a Git project gets its own worktree (`src/agent/worktree.ts`, branch `
 - `docs/docs/*.html` is the complete feature documentation per topic. The navigation is built by `docs/docs/nav.js` from the `PAGES` list; a new page must be added to that list. The shared styles are in `docs/docs/docs.css`.
 - **Every new feature or change of behavior visible to the user must update the relevant docs page** (and `limitations.html` if the limit changes), and its picture through `npm run docs` when the scene shows it. A new agent feature is also added as a card on the landing page and to `docs/docs/tools.html` if it is a tool. After changing it, open the page through a local server and make sure there is no console error and no horizontal scroll at a width of 375 px.
 
+## Versioning
+
+- Markwork is in early development, starting at **`0.1.0`**. Keep releases in `0.x.y` until the core workflows, user data safety, and supported behavior are stable enough for a deliberate `1.0.0` release. Feature count alone does not justify `1.0.0`.
+- During `0.x`, increment the minor version for a feature milestone or breaking behavior change (e.g. `0.1.0` → `0.2.0`), and the patch version for backward-compatible bug fixes (e.g. `0.1.0` → `0.1.1`). There is no requirement to reach `0.9.0` before `1.0.0`.
+- Change the version only when requested or as part of an explicitly planned release, not for every commit. Keep `package.json`, the top-level version in `package-lock.json`, and `packages[''].version` in that lockfile identical; do not change dependency versions when changing the app version.
+- Use `1.0.0-beta.N` only once the scope of version 1 is settled and testing is the focus; use `1.0.0-rc.N` for final release validation. Do not create or push release tags without an explicit request.
+- Never lower a published version on the same update channel without a migration plan: installed apps normally do not treat a lower version as an update.
+
 ## Installation and the app identity
 
 - The app ID is `com.ekaput.Markwork` (the domain markwork.id). The installers are made by electron-builder from `electron-builder.yml`: AppImage and deb for Linux, dmg and zip for macOS, NSIS for Windows; the release workflow publishes them for a `v*` tag, and `electron/updater.ts` updates an installed AppImage, dmg, or Windows app from those releases.
