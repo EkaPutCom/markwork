@@ -39,7 +39,15 @@ try {
         await history.waitFor();
         await history.getByRole('button', { name: /Add line two/ }).waitFor();
         await history.getByRole('button', { name: /Create note/ }).waitFor();
-        await history.getByRole('heading', { name: 'Uncommitted (1)' }).waitFor();
+        await history.getByRole('heading', { name: 'Changes (1)' }).waitFor();
+        await history.getByRole('button', { name: 'b.md', exact: true }).waitFor();
+        const form = await history.locator('.commit-form').boundingBox();
+        const changes = await history.getByRole('heading', { name: 'Changes (1)' }).boundingBox();
+        assert.ok(form.y + form.height <= changes.y, 'the commit form is above Changes');
+        await history.getByRole('button', { name: 'Changes (1)' }).click();
+        await history.getByRole('button', { name: 'b.md', exact: true }).waitFor({ state: 'hidden' });
+        assert.equal(await history.getByLabel('Commit message').isVisible(), true, 'folding files keeps the form visible');
+        await history.getByRole('button', { name: 'Changes (1)' }).click();
         await history.getByRole('button', { name: 'b.md', exact: true }).waitFor();
     });
 
@@ -69,7 +77,7 @@ try {
     await step('the form commits the checked files, and the assistant writes the message into it', async () => {
         writeFileSync(join(notes, 'c.md'), 'third\n');
         await history.getByRole('button', { name: 'Reload history' }).click();
-        await history.getByRole('heading', { name: 'Uncommitted (1)' }).waitFor();
+        await history.getByRole('heading', { name: 'Changes (1)' }).waitFor();
         const box = history.getByLabel('Commit message');
         await history.getByRole('button', { name: 'Write the message with the assistant' }).click();
         await waitFor(async () => (await box.inputValue()).trim().length > 0);
@@ -80,7 +88,7 @@ try {
         await box.fill('Add c');
         await commit.click();
         await waitFor(() => git('log', '--format=%s', '-1') === 'Add c');
-        await history.getByText('Uncommitted (1)').waitFor({ state: 'detached' });
+        await history.getByRole('heading', { name: 'Changes (1)' }).waitFor({ state: 'detached' });
     });
 
     await step('discarding the changes to a file asks first, and a no leaves it alone', async () => {

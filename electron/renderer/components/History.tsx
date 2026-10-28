@@ -12,6 +12,8 @@ import type { Client } from '../lib/client';
 import { useClient, useStore } from '../lib/useClient';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
+import { Badge } from '../ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { IconButton } from '../ui/icon-button';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { Textarea } from '../ui/textarea';
@@ -53,32 +55,36 @@ function MessageBox({ streamed, rev, files, label, busy, onCommit, write, stop }
     return (
         <div className="commit-form">
             <div className="message-box">
-                <Textarea aria-label="Commit message" placeholder="Commit message" rows={3} value={text} disabled={writing} onChange={e => setText(e.target.value)}
+                <Textarea aria-label="Commit message" placeholder="Message (Ctrl+Enter to commit)" rows={1} value={text} disabled={writing} onChange={e => setText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void commit(); } }} />
-            </div>
-            {problem && <div className="form-error" role="alert">{problem}</div>}
-            {/* The commit button, and beside it ✨ that has the assistant write the message (■ stops it). */}
-            <div className="commit-row">
-                <Button className="flex-1" disabled={busy || writing || !text.trim() || files.length === 0} onClick={() => void commit()}>{label}</Button>
-                <IconButton variant="outline" size="icon" label={writing ? 'Stop writing' : 'Write the message with the assistant'} disabled={!writing && files.length === 0}
+                <IconButton className="message-assistant" size="icon-xs" label={writing ? 'Stop writing' : 'Write the message with the assistant'} disabled={!writing && files.length === 0}
                     onClick={() => { if (writing) stop(); else void ask(); }}>
                     <Icon name={writing ? 'media-playback-stop' : 'sparkle'} />
                 </IconButton>
             </div>
+            {problem && <div className="form-error" role="alert">{problem}</div>}
+            <Button size="sm" className="w-full" disabled={busy || writing || !text.trim() || files.length === 0} onClick={() => void commit()}><Icon name="emblem-ok" />{label}</Button>
         </div>
     );
 }
 
 function ChangeRow({ change, checked, onCheck, client }: { change: ChangedFile; checked: boolean; onCheck: (on: boolean) => void; client: Client }) {
+    const slash = change.name.lastIndexOf('/');
+    const name = change.name.slice(slash + 1);
+    const folder = slash < 0 ? '' : change.name.slice(0, slash);
     return (
-        <div className="change-row">
+        <div className="change-row" title={change.name}>
             <Checkbox checked={checked} aria-label={`Include ${change.name} in the commit`} onCheckedChange={on => onCheck(on === true)} />
-            <span className={`mark ${KIND_CLASS[change.kind]}`} aria-hidden="true">{KIND_MARK[change.kind]}</span>
-            <Button variant="ghost" size="xs" className="name justify-start font-normal text-left" onClick={() => client.openChanges(change.path)}>{change.name}</Button>
+            <Button variant="ghost" size="xs" aria-label={change.name} className="name justify-start font-normal text-left" onClick={() => client.openChanges(change.path)}>
+                <Icon name="text-x-generic" size={14} />
+                <span className="change-basename">{name}</span>
+                {folder && <span className="change-folder">{folder}</span>}
+            </Button>
             <IconButton label={`${discardLabel(change.kind)}: ${change.name}`}
                 onClick={() => void client.discardFile(change.path).then(outcome => { if (typeof outcome === 'object') client.say(outcome.error); })}>
                 <Icon name="edit-undo" />
             </IconButton>
+            <span className={`mark ${KIND_CLASS[change.kind]}`} aria-label={change.kind}>{KIND_MARK[change.kind]}</span>
         </div>
     );
 }
@@ -101,22 +107,29 @@ export function History() {
                 <IconButton label="Reload history" onClick={() => client.refreshHistory()}><Icon name="view-refresh" /></IconButton>
             </div>
             <div className="history-body">
-                {changes?.file && state && state !== 'clean' && (
+                {changed.length === 0 && changes?.file && state && state !== 'clean' && (
                     <Button variant="ghost" size="sm" className="uncommitted justify-start text-left" onClick={() => client.openChanges(changes.file!)}>
                         {state === 'untracked' ? '● New file, not committed yet' : '● Uncommitted changes'}
                     </Button>
                 )}
                 {changed.length > 0 && (
                     <section className="changes" aria-label="Uncommitted">
-                        <h3><Button variant="ghost" size="xs" className="fold" aria-expanded={!folded} onClick={() => setFolded(v => !v)}><Icon name={folded ? 'pan-end' : 'pan-down'} size={12} />Uncommitted ({changed.length})</Button></h3>
-                        {!folded && changed.map(c => (
-                            <ChangeRow key={c.path} change={c} client={client} checked={!unchecked.has(c.path)}
-                                onCheck={on => setUnchecked(old => { const next = new Set(old); if (on) next.delete(c.path); else next.add(c.path); return next; })} />
-                        ))}
                         <MessageBox streamed={history.message} rev={history.messageRev} files={chosen} busy={false}
                             label={chosen.length ? `Commit ${chosen.length} ${chosen.length === 1 ? 'file' : 'files'}` : 'Commit'}
                             onCommit={message => client.commitFiles(chosen, message)}
                             write={() => client.writeMessage(chosen)} stop={() => client.stopWriting()} />
+                        <Collapsible open={!folded} onOpenChange={open => setFolded(!open)}>
+                            <h3><CollapsibleTrigger asChild><Button variant="ghost" size="xs" className="fold w-full justify-start rounded-none" aria-label={`Changes (${changed.length})`}>
+                                <Icon name={folded ? 'pan-end' : 'pan-down'} size={12} />Changes
+                                <Badge variant="secondary" className="ml-auto tabular-nums">{changed.length}</Badge>
+                            </Button></CollapsibleTrigger></h3>
+                            <CollapsibleContent>
+                                {changed.map(c => (
+                                    <ChangeRow key={c.path} change={c} client={client} checked={!unchecked.has(c.path)}
+                                        onCheck={on => setUnchecked(old => { const next = new Set(old); if (on) next.delete(c.path); else next.add(c.path); return next; })} />
+                                ))}
+                            </CollapsibleContent>
+                        </Collapsible>
                     </section>
                 )}
                 {commits.length === 0 && history.note && <p className="empty">{history.note}</p>}
