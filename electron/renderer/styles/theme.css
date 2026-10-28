@@ -72,6 +72,7 @@
 .rail [data-slot=icon-button] { position: relative; }
 .rail [data-slot=icon-button][aria-pressed=true]::before { content: ""; position: absolute; left: -8px; top: 8px; bottom: 8px; width: 2px; border-radius: var(--radius-full); background: var(--primary); }
 .rail .grow { flex: 1; }
+.rail .rail-count { position: absolute; right: -4px; bottom: -2px; min-width: 18px; height: 18px; justify-content: center; padding: 0 4px; border-radius: var(--radius-full); font-size: var(--text-2xs); line-height: 1; font-variant-numeric: tabular-nums; }
 /* The edge of the sidebar is dragged to change its width. */
 .side-grip { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 5; }
 .side-grip:hover, .side-grip:active { background: color-mix(in oklab, var(--ring) 50%, transparent); }
@@ -834,15 +835,20 @@ pre.diff .line { white-space: pre; padding: 0 12px; min-width: max-content; } pr
 .history-body { flex: 1; overflow: auto; display: flex; flex-direction: column; min-height: 0; }
 /* "● Uncommitted changes": a flat button with the words in bold, as GTK's. */
 .uncommitted { margin: 0 8px 4px; }
-.changes { padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 2px; }
-.changes h3 { margin: 4px 0 2px; font-size: var(--text-sm); font-weight: 400; color: var(--foreground); }
-.changes h3 .fold { gap: 4px; padding: 2px 4px; font: inherit; }
-.change-row { display: flex; align-items: center; gap: 8px; min-height: 38px; padding-left: 8px; }
-.change-row .mark { font: 400 var(--text-xs) var(--font-sans); color: var(--muted-foreground) !important; width: 10px; }
-.change-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 4px; font-size: var(--text-sm); }
-.commit-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-.commit-row { display: flex; gap: 6px; }
+.changes { display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; }
+.changes h3 { margin: 0; font-size: var(--text-ui); font-weight: 500; color: var(--foreground); }
+.changes h3 .fold { gap: 4px; padding: 2px 12px; font: inherit; }
+.change-row { display: flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 8px 0 16px; }
+.change-row:hover, .change-row:focus-within { background: var(--sidebar-accent); }
+.change-row .mark { font-size: var(--text-xs); }
+.change-row .name { flex: 1; min-width: 0; gap: 6px; overflow: hidden; padding: 0 4px; font-size: var(--text-ui); }
+.change-basename { flex-shrink: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.change-folder { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted-foreground); font-size: var(--text-xs); }
+.commit-form { display: flex; flex-direction: column; gap: 8px; }
+.history .commit-form { padding: 4px 12px 0; }
 .message-box { position: relative; display: flex; }
+.message-box textarea { min-height: 36px; padding-right: 36px; font-size: var(--text-ui); }
+.message-assistant { position: absolute; right: 4px; top: 4px; }
 .form-error { color: var(--destructive); font-size: var(--text-xs); overflow-wrap: anywhere; }
 .commits { display: flex; flex-direction: column; padding: 4px 6px; gap: 2px; }
 .history .commits { padding: 6px 6px 6px 22px; gap: 0; } .history .commit { padding: 2px 8px; } .history .commit .subject { font-size: var(--text-sm); }

@@ -41,8 +41,10 @@
 
 <h2 id="uncommitted">Uncommitted changes</h2>
 <ul>
-  <li>The <em>Uncommitted changes</em> button opens the diff of the open file against HEAD.</li>
-  <li>The <em>Uncommitted (N)</em> list holds all the files that changed in the repository (M, A, D, R, U), each with a checkbox.</li>
+  <li>Click a file in <em>Changes</em> to open its diff against HEAD. A new file is shown entirely as additions.</li>
+  <li>The History icon in the activity bar shows the last loaded count of changed files, even with the panel closed. Zero hides the badge; counts above 99 display as <em>99+</em>. Refresh History to reload the count.</li>
+  <li>The commit message and full-width Commit button sit above the collapsible <em>Changes</em> list, with a badge showing the number of changed files. Folding the list keeps the commit form visible.</li>
+  <li>Each file has an inclusion checkbox, its filename followed by a muted folder path, a discard action, and its status (M, A, D, R, U). Hover a row to see its full path.</li>
   <li>Write a message and press <em>Commit N files</em> to commit several files at once. Open documents are saved first.</li>
 </ul>
 <figure><picture class="themed-media"><img data-light-src="../assets/history-diff.png" data-dark-src="../assets/dark/history-diff.png" width="1200" height="368" loading="lazy" alt="The diff window of a commit with colored added and removed lines"><noscript><img src="../assets/dark/history-diff.png" width="1200" height="368" loading="lazy" alt="The diff window of a commit with colored added and removed lines"></noscript></picture><figcaption>The diff of a commit</figcaption></figure>
