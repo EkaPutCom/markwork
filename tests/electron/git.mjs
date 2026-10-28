@@ -41,6 +41,14 @@ try {
         await history.getByRole('button', { name: /Create note/ }).waitFor();
         await history.getByRole('heading', { name: 'Changes (1)' }).waitFor();
         await history.getByRole('button', { name: 'b.md', exact: true }).waitFor();
+        const historyButton = page.getByRole('navigation', { name: 'Sidebar pages' }).getByRole('button', { name: 'History', exact: true });
+        assert.equal(await historyButton.locator('[data-slot="badge"]').textContent(), '1');
+        assert.equal(await historyButton.getAttribute('aria-description'), '1 changed file');
+        await historyButton.click();
+        await history.waitFor({ state: 'hidden' });
+        assert.equal(await historyButton.locator('[data-slot="badge"]').isVisible(), true, 'the count stays visible with the panel closed');
+        await historyButton.click();
+        await history.waitFor();
         const form = await history.locator('.commit-form').boundingBox();
         const changes = await history.getByRole('heading', { name: 'Changes (1)' }).boundingBox();
         assert.ok(form.y + form.height <= changes.y, 'the commit form is above Changes');
@@ -89,6 +97,7 @@ try {
         await commit.click();
         await waitFor(() => git('log', '--format=%s', '-1') === 'Add c');
         await history.getByRole('heading', { name: 'Changes (1)' }).waitFor({ state: 'detached' });
+        await page.locator('.rail-count').waitFor({ state: 'detached' });
     });
 
     await step('discarding the changes to a file asks first, and a no leaves it alone', async () => {

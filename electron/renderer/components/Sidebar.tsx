@@ -3,6 +3,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { IconButton } from '../ui/icon-button';
+import { Badge } from '../ui/badge';
 import { Icon, type IconName } from './Icons';
 import { useClient, useStore } from '../lib/useClient';
 import { layoutOf, SIDEBAR_WIDTH } from '../lib/client';
@@ -21,11 +22,15 @@ export function ActivityBar() {
     const state = useStore();
     const shown = layoutOf(state).sidebar.shown;
     const current = state.settings['sidebar-page'] ?? 'files';
+    const changed = state.history.changes?.changed.length ?? 0;
     return (
         <nav className="rail" aria-label="Sidebar pages">
             {PAGES.map(({ page, label, icon }) => (
-                <IconButton key={page} label={label} aria-pressed={shown && current === page} onClick={() => client.showSidebarPage(page)}>
+                <IconButton key={page} label={label} aria-pressed={shown && current === page}
+                    aria-description={page === 'history' ? `${changed} changed ${changed === 1 ? 'file' : 'files'}` : undefined}
+                    onClick={() => client.showSidebarPage(page)}>
                     <Icon name={icon} />
+                    {page === 'history' && changed > 0 && <Badge className="rail-count pointer-events-none" aria-hidden="true">{changed > 99 ? '99+' : changed}</Badge>}
                 </IconButton>
             ))}
             <span className="grow" />
