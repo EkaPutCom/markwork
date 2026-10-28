@@ -80,6 +80,7 @@ class FindBar implements Panel {
 
         this.expand = domButton({ label: 'Replace', content: iconElement('pan-end'), size: 'icon-sm', onClick: () => this.setExpanded(this.replaceRow.hidden === true) });
         this.expand.setAttribute('aria-pressed', 'false');
+        this.expand.hidden = view.state.readOnly;
 
         const arrows = el('div', 'arrows');
         arrows.append(domButton({ label: 'Previous result (Shift+Enter)', content: iconElement('chevron-up'), size: 'icon-sm', onClick: () => findPrevious(view) }),
@@ -110,6 +111,7 @@ class FindBar implements Panel {
     }
 
     setExpanded(on: boolean): void {
+        on = on && !this.view.state.readOnly;
         this.replaceRow.hidden = !on;
         this.expand.setAttribute('aria-pressed', String(on));
         this.expand.replaceChildren(iconElement(on ? 'pan-down' : 'pan-end'));

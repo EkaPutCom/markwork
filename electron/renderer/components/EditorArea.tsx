@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type DragEvent } from 'react';
 import { Home } from './Home';
 import { Programs } from './Programs';
 import { HtmlPage } from './HtmlPage';
+import { CodePage } from './CodePage';
 import { Board } from './Board';
 import { Calendar } from './Calendar';
 import { Chart } from './Chart';
@@ -109,7 +110,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
     const board = tab?.board ?? null;
     const structured = !!tab && !!board && STRUCTURED_PAGES.includes(tab.page);
     const csv = tab?.page === 'csv' && tab.csv !== null;
-    const isPage = tab?.page === 'home' || tab?.page === 'programs' || tab?.page === 'html';
+    const isPage = tab?.page === 'home' || tab?.page === 'programs' || tab?.page === 'html' || tab?.page === 'code';
     const textShown = !!tab && !structured && !csv && !isPage;
 
     const over = (e: DragEvent) => {
@@ -176,6 +177,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
                 {tab?.page === 'home' && <Home data={tab.home} />}
                 {tab?.page === 'programs' && <Programs data={tab.programs} />}
                 {tab?.page === 'html' && tab.html && <HtmlPage key={tab.id} id={tab.id} file={tab.html.file} root={tab.html.root} />}
+                {tab?.page === 'code' && tab.file && <CodePage key={tab.id} id={tab.id} pane={pane.id} file={tab.file} text={tab.code ?? ''} />}
                 {!tab && solo && <Welcome />}
                 {!tab && !solo && <div className="pane-empty"><b>No file open</b>Drag a file here, or close this pane.</div>}
                 {box && (

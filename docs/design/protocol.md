@@ -83,6 +83,12 @@ A keystroke that had to cross a process boundary before the screen changed would
 
 The GTK frontend keeps implementing `AppFrontend` directly; it does not serialize anything. To keep it honest, every message of this protocol has a matching method in the in-process interfaces, and the protocol adapter (`app/protocol/`, section 14) is a thin translation between the two. The rule that makes this work: an `AppFrontend` member may only take and return the plain data this document allows (section 4.4). Today's interfaces break that rule in a few places, listed in section 13.
 
+### Read-only code tabs
+
+A workspace tree activation of a code/text file opens a page, not a document. The core validates a regular UTF-8 text file (at most 2 MiB; no binary controls, replacement characters, symbolic links, or special files) before sending `page.open { page, kind: 'code', file, root: null, text }`. `text` is an optional field used only by code pages. The frontend displays a read-only snapshot; no `doc.open`, editable replica, `doc.edit`, autosave, or assistant manuscript context is created for it.
+
+`ViewScreen.showPageTab(id, kind)` carries either `html` or `code`, and emits `view.page { page: kind, doc: id }`; the renderer must preserve that kind instead of assuming every file page is HTML. Selection and closing use the existing page/tab lifecycle. Code tabs are not persisted; close/reopen refreshes disk contents, and tree moves/deletes close affected code snapshots.
+
 ## 4. Transport and framing
 
 ### 4.1 Lines

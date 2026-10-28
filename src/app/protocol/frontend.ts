@@ -178,7 +178,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
             },
             attachPage: (page: Page) => {
                 this.row.push(page.id);
-                wire.notify('page.open', { page: page.id, kind: page.kind, file: page.file, root: page.root });
+                wire.notify('page.open', { page: page.id, kind: page.kind, file: page.file, root: page.root, ...(page.text !== undefined ? { text: page.text } : {}) });
             },
             detachPage: (id: number) => { this.drop(id); wire.notify('page.close', { page: id }); },
             pageActivated: (id: number) => { wire.notify('page.active', { page: id }); },

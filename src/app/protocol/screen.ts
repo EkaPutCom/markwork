@@ -37,7 +37,7 @@ export class ProtocolScreen implements Screen {
     // Home and an HTML file are tabs of their own (page.open); what a tab shows is told by its id.
     showHome(data: HomeData): void { this.wire.notify('view.home', { data }); }
     showPrograms(data: ProgramsData): void { this.wire.notify('view.programs', { data }); }
-    showPageTab(id: number): void { this.wire.notify('view.page', { page: 'html', doc: id }); }
+    showPageTab(id: number, kind: 'html' | 'code'): void { this.wire.notify('view.page', { page: kind, doc: id }); }
     showText(doc: number): void { this.wire.notify('view.page', { page: 'text', doc }); }
     showPage(page: StructuredPage | 'csv'): void { this.wire.notify('view.page', { page, doc: this.active() }); }
     closeFind(): void { this.wire.notify('find.close'); }

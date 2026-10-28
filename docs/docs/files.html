@@ -41,7 +41,7 @@
 <p>The <strong>Files</strong> view has four sections, each folded or unfolded by its header:</p>
 <ul>
   <li><strong>Open Editors</strong>: the open documents, with the number open; a click shows one, and ✕ closes it. Once the editor is <a href="editor.html#panes">split</a> they are grouped by pane.</li>
-  <li><strong>The work folder</strong> (named after it): the tree of its subfolders, Markdown files, CSV tables, HTML pages, and images. While the pointer is on its header, <em>New File</em>, <em>New Folder</em>, and <em>Collapse Folders</em> appear.</li>
+  <li><strong>The work folder</strong> (named after it): the tree of its subfolders and all non-hidden files: Markdown documents, code and text files, CSV tables, HTML pages, and images. While the pointer is on its header, <em>New File</em>, <em>New Folder</em>, and <em>Collapse Folders</em> appear.</li>
   <li><strong>Outline</strong>: the headings of the open document; click to jump.</li>
   <li><strong>Timeline</strong>: the Git commits of the open file (folded at first; it is read only while it is open).</li>
 </ul>
@@ -56,6 +56,11 @@
   <li>The tree updates automatically when a file is added or deleted on disk.</li>
   <li>Hidden files and folders and <code>node_modules</code> are not shown.</li>
 </ul>
+
+<h2 id="code">Read code and text files</h2>
+<p>Click a code or other text file in the workspace tree to open a read-only tab with line numbers and syntax highlighting. Grammars load only when needed; an unknown language stays plain text. Select text to copy it, and use <em>Find</em> above the code or <kbd>Ctrl</kbd>+<kbd>F</kbd> while the code has focus to search it. The Find bar uses the same appearance and search controls as Markdown, without Replace because code tabs are read-only. The shared status bar below the editor shows the focused code pane's cursor line and column, selected character count, UTF-8 encoding, original line endings (LF, CRLF, CR, mixed, or no line breaks), and total lines. When Markdown and code are open side by side, there is only one status bar below both panes: clicking Markdown restores its word/character counts, and clicking code restores that pane's code information. The pane bottoms stay aligned; code does not have a separate footer. Columns and selection counts treat an emoji as one character, not two UTF-16 units. Typing, paste, Delete, and Save do not change the file. Markdown, CSV, HTML, and images keep their existing views.</p>
+<p>The viewer accepts regular UTF-8 text files up to 2 MiB. Binary files, unsupported encodings, symbolic links, and special files show an explanation rather than opening as text. Code is displayed, never executed.</p>
+<p>A code tab is a snapshot: close and reopen it to read changes from disk. Moving, renaming, or deleting its file through the tree closes the snapshot. These tabs are not restored at startup and do not add code to the assistant's manuscript context, note links, or Search in All Notes. Reading code from a separate project or a card's worktree is not part of this viewer.</p>
 
 <h2 id="search">Search in all notes</h2>
 <p><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> (or <em>Search in All Notes</em> in the command palette) opens the Search tab and puts the selected text in the field. Results appear as you type, grouped per file, with the matches marked; a click opens the file in a tab with the match selected.</p>

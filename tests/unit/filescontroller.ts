@@ -34,15 +34,16 @@ export async function filesControllerTests(): Promise<void> {
         const rec = recordingTree();
         const errors: string[] = [];
         const answers: (string | null)[] = [];
-        const session = new AppSession(fakeFrontend(memorySettings(), [], undefined, { fileTree: rec.tree }));
+        const frontend = fakeFrontend(memorySettings(), [], undefined, { fileTree: rec.tree });
+        const session = new AppSession(frontend);
         Object.assign(session.files.dialogs, { name: async () => answers.shift() ?? null, confirm: async () => false, error: (m: string) => { errors.push(m); } });
         session.start();
         // The files opened in tabs: a file chosen in the tree opens there (AppSession answers FilesHost.openFile).
         const opened = () => session.documents.all.map(d => d.file).filter(f => f !== null);
-        return { dir, session, files: session.files, opened, errors, answers, ...rec };
+        return { dir, session, frontend, files: session.files, opened, errors, answers, ...rec };
     };
 
-    await test('a listing shows folders first, then Markdown files, CSV tables, HTML pages, and images, in natural order; dot files and node_modules are not shown', () => {
+    await test('a listing shows folders first, then all files in natural order; dot files and node_modules are not shown', () => {
         const dir = disk.join(tmp, 'files-listing');
         for (const name of ['chapter 10.md', 'chapter 2.md', 'photo.png', 'report.html', 'old.htm', 'sales.csv', 'notes.txt', '.hidden.md']) {
             disk.mkdirs(dir);
@@ -52,8 +53,57 @@ export async function filesControllerTests(): Promise<void> {
         disk.mkdirs(disk.join(dir, 'node_modules'));
         disk.mkdirs(disk.join(dir, '.git'));
         host().symlink(disk.join(dir, 'z-folder'), disk.join(dir, 'linked'));
-        eq(listFolder(dir).map(e => [e.name, e.isDir]), [['linked', true], ['z-folder', true], ['chapter 2.md', false], ['chapter 10.md', false], ['old.htm', false], ['photo.png', false], ['report.html', false], ['sales.csv', false]]);
+        eq(listFolder(dir).map(e => [e.name, e.isDir]), [['linked', true], ['z-folder', true], ['chapter 2.md', false], ['chapter 10.md', false], ['notes.txt', false], ['old.htm', false], ['photo.png', false], ['report.html', false], ['sales.csv', false]]);
         eq(listFolder(disk.join(dir, 'gone')), [], 'a missing folder lists as empty');
+    });
+
+    await test('code opens as a read-only page outside the document set, reuses its tab, and closes when moved', async () => {
+        const { dir, session, files, opened, answers } = setup();
+        const path = disk.join(dir, 'main.ts');
+        const text = 'const emoji = "🐈";\n';
+        disk.write(path, text);
+        files.setRoot(dir);
+        session.host.fileTree.onActivate(path);
+        eq([session.documents.page?.kind, session.documents.page?.text], ['code', text]);
+        eq(opened(), [], 'code is not a manuscript document');
+        const id = session.documents.page!.id;
+        session.host.fileTree.onActivate(path);
+        eq(session.documents.page?.id, id, 'no duplicate tab');
+        ok(await session.documents.save(), 'Save is harmless for a page');
+        eq(disk.read(path), text);
+        answers.push('renamed.ts');
+        eq(await session.host.fileTree.onRename(path), disk.join(dir, 'renamed.ts'));
+        ok(!session.documents.allPages.some(p => p.id === id), 'the old snapshot closes on rename');
+        session.host.fileTree.onActivate(disk.join(dir, 'renamed.ts'));
+        eq(session.documents.page?.text, text);
+        session.documents.fileDeleted(disk.join(dir, 'renamed.ts'));
+        ok(!session.documents.allPages.some(p => p.kind === 'code'), 'deleted snapshots close');
+        const note = disk.join(dir, 'b.md');
+        session.host.fileTree.onActivate(note);
+        session.host.fileTree.onActivate(disk.join(dir, 'renamed.ts'));
+        eq(session.documents.page?.kind, 'code');
+        session.host.fileTree.onActivate(note);
+        eq(session.documents.page, null, 'the tree reactivates the Markdown document behind a code page');
+        eq(session.documents.active.file, note);
+        session.dispose();
+    });
+
+    await test('binary, non-UTF-8, oversized, symbolic-link and missing files do not open code pages', () => {
+        const { dir, session, frontend } = setup();
+        const errors: string[] = [];
+        frontend.documents.dialogs.showError = message => { errors.push(message); };
+        for (const [name, text] of [['binary.bin', 'abc\u0000def'], ['invalid.txt', '\ufffd'], ['large.txt', 'x'.repeat(2 * 1024 * 1024 + 1)]]) {
+            const path = disk.join(dir, name);
+            disk.write(path, text);
+            session.host.fileTree.onActivate(path);
+        }
+        disk.write(disk.join(dir, 'target.ts'), 'const safe = true;');
+        host().symlink(disk.join(dir, 'target.ts'), disk.join(dir, 'link.ts'));
+        session.host.fileTree.onActivate(disk.join(dir, 'link.ts'));
+        session.host.fileTree.onActivate(disk.join(dir, 'missing.txt'));
+        eq(errors.length, 5);
+        ok(!session.documents.allPages.some(p => p.kind === 'code'), 'no code pages');
+        session.dispose();
     });
 
     await test('the work folder and the folders the tree opens are sent as plain data; root answers the other controllers', () => {
@@ -135,7 +185,7 @@ export async function filesControllerTests(): Promise<void> {
         disk.write(disk.join(outside, 'notes.txt'), 'x');
         ok(await session.host.fileTree.onCopy([disk.join(outside, 'photo.png')], dir), 'copy');
         ok(await session.host.fileTree.onCopy([disk.join(outside, 'photo.png'), disk.join(outside, 'notes.txt')], dir), 'second copy');
-        eq(folders.get(dir), ['renamed', 'photo (2).png', 'photo.png'], 'a taken name gets a number');
+        eq(folders.get(dir), ['renamed', 'notes.txt', 'photo (2).png', 'photo.png'], 'a taken name gets a number');
         eq(disk.read(disk.join(dir, 'photo.png')), 'png bytes', 'copied as it is');
         session.dispose();
     });

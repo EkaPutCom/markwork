@@ -483,6 +483,22 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('a workspace code file crosses the protocol as a page snapshot, never a writable replica', async () => {
+        const { server, ui } = await start();
+        const path = disk.join(dir, 'source.ts'), text = 'export const answer = 42;\n';
+        disk.write(path, text);
+        const before = ui.log.filter(l => l.ev === 'doc.open').length;
+        ok((await ui.client.request('act.tree.activate', { path })).ok, 'activate code');
+        await until(() => ui.last('page.open')?.kind === 'code');
+        const page = ui.last('page.open')!;
+        eq([page.file, page.text], [path, text]);
+        eq(ui.log.filter(l => l.ev === 'doc.open').length, before);
+        await until(() => ui.last('view.page')?.page === 'code');
+        ok((await ui.client.request('tab.close', { doc: page.page })).ok, 'close code');
+        await until(() => ui.last('page.close')?.page === page.page);
+        server.dispose();
+    });
+
     await test('a new document is opened empty and not reset again, so what is typed into it at once stays', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });

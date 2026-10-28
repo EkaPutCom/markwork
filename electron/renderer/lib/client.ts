@@ -50,6 +50,7 @@ export interface Tab {
     csvRev: number;               // how many times it sent it
     home: HomeData | null;        // a Home tab: what the page shows (view.home)
     programs: ProgramsData | null;   // the Programs tab: what the page shows (view.programs)
+    code?: string;                              // read-only text, never sent through doc.edit
     html: { file: string; root: string } | null;   // an HTML tab: the file, and the folder it may read
     runs: Record<string, string>;   // the runs of a board's cards by card text: the status of each (view.runs)
 }
@@ -132,6 +133,7 @@ export interface State {
     toast: Toast | null;
     line: number;                 // the cursor, from 1
     column: number;
+    codeCursors: Record<number, { doc: number; line: number; column: number; selected: number }>;
     format: FormatAt;             // what the text at the cursor is, for the visual editor's toolbar
     source: boolean;              // source mode of the focused pane: no syntax is hidden
     panes: P.Layout;              // the panes of the editor area, and which has the focus
@@ -203,7 +205,7 @@ export function layoutOf(state: Pick<State, 'width' | 'sidebar' | 'settings' | '
 
 export class Client {
     private snapshot: State = {
-        ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1, format: { block: 'paragraph', marks: [] },
+        ready: false, coreError: null, root: null, files: [], tabs: [], active: 0, toast: null, line: 1, column: 1, codeCursors: {}, format: { block: 'paragraph', marks: [] },
         source: false, panes: P.initialLayout(), palette: false, sidebar: true, width: 1100, floating: { sidebar: false, chat: false }, settings: {}, commands: [], dialog: null, image: null, recent: [], programsMissing: 0, prefs: null, info: null, tree: { root: null, folders: {}, expanded: [], revealed: null }, outline: [], search: { form: { text: '', include: '', exclude: '', caseSensitive: false, wholeWord: false, regex: false }, replacement: '', replace: false, results: null, focus: 0 }, disabled: [],
         status: { visible: true, counts: { kind: 'text' } }, layout: { layout: '', structured: false },
         schema: null, csvFind: { n: 0, replace: false }, conflictComparison: null,
@@ -298,6 +300,13 @@ export class Client {
         this.syncEditors();
         this.applyModes();
         this.applyReveal();
+        // Focusing an unchanged selection does not emit moved; restore this pane's cursor in the shared bar.
+        const state = this.tab()?.page === 'text' ? this.editor?.view.state : undefined;
+        if (state) {
+            const head = state.selection.main.head, line = state.doc.lineAt(head);
+            const column = Array.from(line.text.slice(0, head - line.from)).length + 1;
+            if (line.number !== this.snapshot.line || column !== this.snapshot.column) this.set({ line: line.number, column });
+        }
     }
 
     // The user typed in a pane: the editor reports its whole text, the mirror turns it into a small edit and the core gets it
@@ -325,10 +334,18 @@ export class Client {
         if (this.cursorTimer) clearTimeout(this.cursorTimer);
         this.cursorTimer = setTimeout(() => {
             const tab = this.tab(), editor = this.editor;
-            if (!tab || !editor) return;
+            if (!tab || !editor || ['home', 'programs', 'html', 'code'].includes(tab.page)) return;
             const { offset, selection } = editor.cursor();
             this.conn?.notify('doc.cursor', { doc: tab.id, version: tab.mirror.version, offset, selection });
         }, 150);
+    }
+
+    // Code selection is screen state per pane, never a document cursor sent to the core.
+    codeMoved(pane: number, doc: number, position: { line: number; column: number; selected: number } | null): void {
+        const codeCursors = { ...this.snapshot.codeCursors };
+        if (position) codeCursors[pane] = { doc, ...position };
+        else if (codeCursors[pane]?.doc === doc) delete codeCursors[pane];
+        this.set({ codeCursors });
     }
 
     say(text: string, action: Toast['action'] = null): void { this.set({ toast: { text, action, at: Date.now() } }); }
@@ -1143,7 +1160,7 @@ export class Client {
                 const page = p.page as number, kind = p.kind as string, file = p.file as string | null;
                 this.set({ tabs: [...this.snapshot.tabs, {
                     id: page, mirror: new DocMirror(page, '', 0), name: kind === 'home' ? 'Home' : kind === 'programs' ? 'Programs' : (file?.split(/[\\/]/).pop() ?? 'Page'), file, place: null, page: kind, board: null, groupField: null, agents: true, capture: 0, csv: null, csvRev: 0,
-                    home: null, programs: null, html: kind === 'html' ? { file: file!, root: p.root as string } : null, runs: {},
+                    home: null, programs: null, code: kind === 'code' ? p.text as string : undefined, html: kind === 'html' ? { file: file!, root: p.root as string } : null, runs: {},
                 }] });
                 this.addTab(page);
                 break;

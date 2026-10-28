@@ -161,6 +161,13 @@
 .text-editor[hidden] { display: none; }
 .cm-editor { height: 100%; background: var(--background); color: var(--foreground); }
 .cm-editor.cm-focused { outline: none; }
+.code-page { display: flex; flex-direction: column; height: 100%; min-width: 0; }
+.code-page-editor { flex: 1; min-height: 0; overflow: hidden; }
+.code-page .cm-editor .cm-scroller { font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.6; padding: 0; overflow: auto; }
+.code-page .cm-editor .cm-content { flex: 1 0 auto !important; margin: 0; padding: 12px 0; }
+.code-page .cm-editor .cm-line { padding: 0 12px; }
+.code-page .cm-gutters { background: var(--background); color: var(--muted-foreground); border-right: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.code-page .cm-content:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 .cm-editor .cm-scroller { font-family: var(--font-sans); font-size: var(--text-base); line-height: 1.75; padding: 40px 0 30vh; }
 .cm-editor .cm-content { flex: 0 1 800px !important; margin: 0 auto; padding: 0 48px; caret-color: var(--foreground); }
 .cm-editor .cm-line { padding: 2px 0; }
@@ -259,7 +266,7 @@
 .welcome-page .hints li { display: flex; justify-content: space-between; padding: 4px 0; }
 
 /* The counts: no bar, only text at the foot of the editor */
-.statusbar { flex: none; min-height: 32px; display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 4px 16px; font-size: var(--text-xs); color: var(--muted-foreground); background: var(--background); }
+.statusbar { flex: none; min-height: 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 16px; padding: 4px 16px; font-size: var(--text-xs); color: var(--muted-foreground); background: var(--background); }
 
 
 /* Find and replace: the search panel of CodeMirror, as a bar of inputs */

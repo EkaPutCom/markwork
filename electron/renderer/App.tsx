@@ -71,7 +71,7 @@ function Title({ items }: { items: MenuItem[] }) {
 function SaveState() {
     const s = useStore();
     const tab = s.tabs.find(t => t.id === s.active);
-    if (!tab || tab.page === 'home' || tab.page === 'programs' || tab.page === 'html') return null;
+    if (!tab || ['home', 'programs', 'html', 'code'].includes(tab.page)) return null;
     if (tab.mirror.modified) return <span className="state"><span className="dot" aria-hidden="true" /><span className="word">Unsaved</span></span>;
     if (!tab.file) return null;
     return <span className="state"><Icon name="emblem-ok" size={12} /><span className="word">Saved</span></span>;
@@ -192,20 +192,36 @@ function StatusBar() {
     const { counts, visible } = s.status;
     const text = useMemo(() => tab && counts.kind === 'text' ? { words: countWords(tab.mirror.text), characters: cpLength(tab.mirror.text) } : null,
         [tab, tab?.mirror.version, counts.kind]);
+    const code = useMemo(() => {
+        if (tab?.page !== 'code') return null;
+        const breaks = (tab.code ?? '').match(/\r\n|\r|\n/g) ?? [];
+        const kinds = new Set(breaks);
+        const ending = kinds.size > 1 ? 'Mixed' : kinds.has('\r\n') ? 'CRLF' : kinds.has('\r') ? 'CR' : kinds.has('\n') ? 'LF' : 'No line breaks';
+        return { lines: breaks.length + 1, ending };
+    }, [tab?.code, tab?.page]);
+    const cursor = s.codeCursors[s.panes.current];
+    const position = cursor?.doc === tab?.id ? cursor : { line: 1, column: 1, selected: 0 };
     if (!tab) return <footer className="statusbar">{!s.ready ? 'Starting…' : ''}</footer>;
-    if (!visible) return <footer className="statusbar" />;
+    if (!visible && !code) return <footer className="statusbar" />;
     return (
-        <footer className="statusbar">
-            {counts.kind === 'board' && <span>{counts.lists} lists · {counts.cards} cards</span>}
-            {counts.kind === 'inbox' && <span>{counts.items} {counts.items === 1 ? 'note' : 'notes'}</span>}
-            {counts.kind === 'csv' && <span>{counts.rows} rows · {counts.columns} columns</span>}
-            {text && (
-                <>
-                    <span>{text.words} words</span>
-                    <span>{text.characters} characters</span>
-                    <span>Line {s.line}, Column {s.column}</span>
-                </>
-            )}
+        <footer className="statusbar" role="status" aria-label={code ? 'Code status' : 'Document status'}>
+            {code && <>
+                <span>Ln {position.line.toLocaleString()}, Col {position.column.toLocaleString()}</span>
+                {position.selected > 0 && <span>{position.selected.toLocaleString()} selected</span>}
+                <span className="ml-auto">UTF-8 · {code.ending} · {code.lines.toLocaleString()} lines</span>
+            </>}
+            {!code && <>
+                {counts.kind === 'board' && <span>{counts.lists} lists · {counts.cards} cards</span>}
+                {counts.kind === 'inbox' && <span>{counts.items} {counts.items === 1 ? 'note' : 'notes'}</span>}
+                {counts.kind === 'csv' && <span>{counts.rows} rows · {counts.columns} columns</span>}
+                {text && (
+                    <>
+                        <span>{text.words} words</span>
+                        <span>{text.characters} characters</span>
+                        <span>Line {s.line}, Column {s.column}</span>
+                    </>
+                )}
+            </>}
         </footer>
     );
 }
