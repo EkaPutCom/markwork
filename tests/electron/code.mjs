@@ -20,6 +20,8 @@ const errors = [];
 let failed = false;
 try {
     const page = await app.firstWindow();
+    page.setDefaultTimeout(30000);
+    page.setDefaultNavigationTimeout(30000);
     page.on('pageerror', error => errors.push(String(error)));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -254,7 +256,24 @@ try {
     failed = true;
     console.error(error);
 } finally {
-    await app.close();
+    // Electron can hang while quitting on macOS, even after every assertion passed.
+    // Bound graceful shutdown, then kill any remaining process so CI can continue.
+    const child = app.process();
+    let closeTimer;
+    try {
+        await Promise.race([
+            app.close().catch(error => console.warn('Electron close failed:', error)),
+            new Promise(resolve => {
+                closeTimer = setTimeout(() => {
+                    console.warn('Electron did not close within 5 seconds; forcing shutdown');
+                    resolve();
+                }, 5000);
+            }),
+        ]);
+    } finally {
+        clearTimeout(closeTimer);
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    }
     console.log(`${steps.length} code viewer steps, ${failed ? 'FAILED' : 'passed'}`);
 }
 if (failed) process.exitCode = 1;
