@@ -63,7 +63,7 @@ class BlockHandle {
         const add = domButton({ label: 'Add a block below', content: iconElement('list-add'), size: 'icon-xs', className: 'size-5 text-muted-foreground', onClick: () => this.addBlock() });
         const remove = domButton({ label: 'Remove block', content: iconElement('list-remove'), size: 'icon-xs', className: 'size-5 text-muted-foreground hover:text-destructive', onClick: () => this.removeBlock() });
         this.handle.className = 'cm-block-handle';
-        this.handle.append(add, remove, this.grip);
+        this.handle.append(remove, add, this.grip);
         this.marker.className = 'cm-block-drop';
         view.dom.append(this.handle, this.marker);
         this.grip.addEventListener('pointerdown', event => this.startDrag(event));
@@ -112,7 +112,7 @@ class BlockHandle {
         const pad = parseFloat(getComputedStyle(this.view.contentDOM).paddingLeft) || 0;
         const text = this.view.contentDOM.getBoundingClientRect().left - this.view.dom.getBoundingClientRect().left + pad;
         this.handle.style.display = 'flex';
-        this.handle.style.left = `${Math.max(4, text - 64)}px`;
+        this.handle.style.left = `${text - 8}px`;
         // Level with the first line of the block (a table or a tall block is only as tall as its first rows).
         this.handle.style.top = `${top + (Math.min(bottom - top, 36) - 20) / 2}px`;
     }
@@ -177,10 +177,11 @@ class BlockHandle {
         const stays = before === drag.index || before === drag.index + 1;
         const at = before < blocks.length ? this.extent(blocks[before]).top - 4 : this.extent(blocks[blocks.length - 1]).bottom + 4;
         const rect = view.contentDOM.getBoundingClientRect(), domRect = view.dom.getBoundingClientRect();
-        const pad = parseFloat(getComputedStyle(view.contentDOM).paddingLeft) || 0;
+        const style = getComputedStyle(view.contentDOM);
+        const pad = parseFloat(style.paddingLeft) || 0, right = parseFloat(style.paddingRight) || 0;
         Object.assign(this.marker.style, {
             display: stays ? 'none' : 'block', top: `${at}px`,
-            left: `${rect.left - domRect.left + pad}px`, width: `${rect.width - 2 * pad}px`,
+            left: `${rect.left - domRect.left + pad}px`, width: `${rect.width - pad - right}px`,
         });
     }
 }

@@ -214,7 +214,9 @@
 .cm-source .cm-content { color: var(--foreground); }
 
 /* The block handle: a "+" and a grip beside the block the pointer is over, and the line a dragged block lands on. */
-.cm-block-handle { position: absolute; z-index: 5; display: none; align-items: center; }
+/* Reserve room for all three controls even when the text column fills a narrow pane. */
+.cm-editor:not(.cm-source):has(> .cm-block-handle) .cm-content { padding-left: 72px; }
+.cm-block-handle { transform: translateX(-100%); position: absolute; z-index: 5; display: none; align-items: center; }
 .cm-block-dragging, .cm-block-dragging * { cursor: grabbing !important; user-select: none; }
 .cm-block-drop { position: absolute; z-index: 5; display: none; height: 2px; border-radius: var(--radius-sm); background: var(--primary); pointer-events: none; }
 
