@@ -636,6 +636,22 @@ try {
         await page.keyboard.press('ControlOrMeta+z');
         await waitFor(async () => (await docText()).includes('```zzlang\n'));
     });
+    await step('block controls stay inside the editor margin and clear of text in narrow and wide windows', async () => {
+        await setDoc('# Editor elements\n\nEvery element of the editor remains readable.\n\nLast', 0);
+        for (const width of [875, 560, 1400]) {
+            await page.setViewportSize({ width, height: 900 });
+            const line = editor.locator('.cm-line', { hasText: 'Every element' });
+            await line.hover();
+            const handle = page.locator('.cm-block-handle');
+            await handle.waitFor({ state: 'visible' });
+            assert.deepEqual(await handle.locator('button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label'))), ['Remove block', 'Add a block below', 'Drag to move the block']);
+            const controls = await handle.boundingBox(), text = await line.boundingBox();
+            const bounds = await page.locator('.cm-editor').boundingBox();
+            assert.ok(controls.x >= bounds.x, `controls stay inside the editor at ${width}px`);
+            assert.ok(controls.x + controls.width <= text.x - 4, `controls leave a gap before text at ${width}px`);
+        }
+    });
+
     await step('a block has a handle: + adds a block with the / menu, the grip drags it, and the keyboard moves it', async () => {
         await setDoc('# Plan\n\nFirst\n\n- a\n- b\n\nLast', 0);
         await editor.locator('.cm-line', { hasText: 'First' }).hover();
@@ -660,6 +676,9 @@ try {
         await page.mouse.move(g.x + 10, g.y + 60, { steps: 4 });
         await page.mouse.move(last.x + 60, last.y + last.height - 2, { steps: 8 });
         await page.locator('.cm-block-drop').waitFor({ state: 'visible' });
+        const drop = await page.locator('.cm-block-drop').boundingBox();
+        const line = await editor.locator('.cm-line', { hasText: 'Last' }).boundingBox();
+        assert.ok(Math.abs(drop.x - line.x) < 1 && Math.abs(drop.width - line.width) < 1, 'the drop marker spans the text column with unequal margins');
         await page.mouse.up();
         await waitFor(async () => (await docText()) === '# Plan\n\nFirst\n\nLast\n\n- a\n- b');
         await page.locator('.cm-block-drop').waitFor({ state: 'hidden' });
