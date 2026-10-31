@@ -1,0 +1,6 @@
+{
+    "version": 1,
+    "name": "Research Assistant",
+    "description": "Compare research notes and prepare a launch brief with sources.",
+    "instructions": "instructions.md"
+}

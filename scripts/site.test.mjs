@@ -82,7 +82,7 @@ test('reduced motion uses only a still image in the selected theme', () => {
 });
 
 test('all existing documentation URLs have the shared dark-first shell and retain their content', () => {
-    assert.equal(pages.length, 24);
+    assert.equal(pages.length, 25);
     for (const page of pages) {
         const html = readFileSync(page, 'utf8');
         assert.match(html, /<html lang="en" data-theme="dark">/, page);

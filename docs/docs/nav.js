@@ -7,6 +7,7 @@ const PAGES = [
   ]],
   ['Agent', [
     ['assistant.html', 'The Assistant panel'],
+    ['agentfolders.html', 'Agent folders'],
     ['context.html', 'Context and privacy'],
     ['browsing.html', 'Browsing files and Git'],
     ['proposals.html', 'Proposals and approval'],

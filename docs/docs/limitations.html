@@ -120,6 +120,9 @@
 </ul>
 
 <p>The complete list is in the <em>Limitations</em> section of the <a href="https://github.com/EkaPutCom/markwork#limitations">README</a>.</p>
+<h2 id="agent-folder-runtime">Agent-folder runtime</h2>
+<p>Background agent folders currently target local Linux markworkd only. An installed daemon alone is insufficient: configure its worker program, allowed roots, and a credential available to the worker. Credentials stored only in Electron's private vault are unavailable to the headless worker. Other systems use local chat while the app is open. Remote folder execution and cross-session memory are outside this implementation. See <a href="agentfolders.html">Agent folders</a> for the page itself.</p>
+<p>Worker turns start from saved files. Review checks current document buffers before writing. Stop background work before manually editing its transcript. Conversations can be inspected as Markdown; delete them from Explorer after stopping work. Installed-package launch, multiple-window approval races, and daemon/shim restart still require validation.</p>
 </main>
 <aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>
