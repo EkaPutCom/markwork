@@ -166,12 +166,16 @@ export class AssistantController<E extends TextEditor = TextEditor> {
     }
 
     // act.undo: the changes are the ones the core wrote for that ask, or the applied action of that event.
+    rememberApplied(ask: number, changes: Change[]): void { this.applied.set(ask, changes); }
+
     private undo(target: UndoTarget): string | null {
         const changes = 'ask' in target
             ? this.applied.get(target.ask)
             : this.chat.session.events.find(e => e.id === target.event && e.status === 'applied')?.changes;
         if (!changes) return 'there is nothing to undo';
-        const error = this.chat.undo(changes);
+        const journal = this.chat.session.events.flatMap(event => event.changes);
+        const current = changes.map(change => journal.find(saved => JSON.stringify(saved) === JSON.stringify(change)) ?? change);
+        const error = this.chat.undo(current);
         if (!error && 'ask' in target) this.applied.delete(target.ask);
         return error;
     }

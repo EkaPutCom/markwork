@@ -38,3 +38,37 @@ not, e.g. `"programs": {"pi": "/home/you/.local/bin/pi", "git": "/usr/bin/git"}`
 
 For a VPS, install the binary there and let the client run `ssh -T host markworkd bridge`.
 See section 10 of the design document for the systemd units and the PATH caveat (`agent_env`).
+
+## Built-in agent-folder worker
+
+The application includes `dist-electron/folder-worker.js`, a headless entry for
+agent-folder chats. The daemon still moves JSONL lines without interpreting chat
+or applying document proposals. It starts one worker turn per `folder-agent:<root>`
+lane; approval waits for the application and its existing preflight.
+
+Generate an explicit launcher after building the app:
+
+```sh
+node scripts/agent-worker-launcher.mjs /tmp/markwork-agent
+```
+
+Configure your daemon's `programs` map with `"markwork-agent": "/tmp/markwork-agent"`
+and allow the absolute agent folder in `roots`. Use a persistent launcher path
+for normal use. Restart/reload the daemon using its normal configuration workflow.
+The launcher uses Electron's bundled Node via `ELECTRON_RUN_AS_NODE`; system Node
+is not required at runtime. For an unpacked installation, pass the absolute
+Markwork executable and `resources/app.asar/dist-electron/folder-worker.js` as the
+second and third launcher arguments. Installed-package launch remains to be
+validated; do not enable background capability based only on those paths existing.
+
+The worker's `--check` reports protocol version 1, marker validity, and whether a
+credential is available, never its value. Set up the daemon user's existing
+credential source or environment deliberately; no credential goes in agent.json,
+spawn labels, initial input, or recorded commands. A key available only in the
+Electron vault cannot be used by this worker. The app falls back to local mode
+when its bounded compatibility/credential probe fails.
+
+`tests/electron/agent-worker.mjs` uses a temporary real daemon, fake model, and
+throwaway credential to test disconnect/replay, pending approval, and command
+deduplication. The latest scenario and complete npm test suite pass; packaged launch,
+multiple-window races, and extended daemon/shim recovery still need validation. No Go protocol changes are required.

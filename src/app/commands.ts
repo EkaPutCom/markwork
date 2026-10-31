@@ -48,6 +48,7 @@ export interface FrontendCommands {
 export interface CoreCommands {
     newDocument(): void;
     newBoardDocument(): void;
+    newAgent(): void;
     newInboxDocument(): void;
     newTableDocument(): void;
     newCsvTable(): void;
@@ -181,6 +182,7 @@ export const COMMANDS: readonly Command[] = [
     table('table-align-center', _('Table: Align Center'), 'align-center'),
     table('table-align-right', _('Table: Align Right'), 'align-right'),
     table('table-format', _('Table: Tidy Up'), 'format', ['Ctrl+Shift+t']),
+    command('agent-new', { label: _('New Agent…'), run: h => h.newAgent() }),
     command('kanban-new', { label: _('New Kanban Board'), run: h => h.newBoardDocument() }),
     command('inbox-new', { label: _('New Inbox'), run: h => h.newInboxDocument() }),
     command('table-new', { label: _('New Table'), run: h => h.newTableDocument() }),

@@ -20,6 +20,7 @@ import { outlineHandlers } from './handlers/outline';
 import { searchHandlers } from './handlers/search';
 import { treeHandlers } from './handlers/tree';
 import { sessionHandlers } from './handlers/session';
+import { agentFolderHandlers } from './handlers/agentfolders';
 import { chatHandlers } from './handlers/chat';
 import { historyHandlers } from './handlers/history';
 import { collabHandlers } from './handlers/collab';
@@ -57,7 +58,7 @@ export class ProtocolServer {
             sendFiles: () => this.sendFiles(),
             onDispose: stop => { this.stops.push(stop); },
         };
-        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, searchHandlers, treeHandlers, homeHandlers, programsHandlers, preferencesHandlers, chatHandlers, historyHandlers, collabHandlers, harnessHandlers, commandHandlers]) handlers(context);
+        for (const handlers of [sessionHandlers, documentHandlers, notesHandlers, outlineHandlers, searchHandlers, treeHandlers, homeHandlers, programsHandlers, preferencesHandlers, agentFolderHandlers, chatHandlers, historyHandlers, collabHandlers, harnessHandlers, commandHandlers]) handlers(context);
         this.wire.onNotice((ev, payload) => this.notices.get(ev)?.(payload));
         this.stops.push(onDiskChange(() => this.queueFiles()));
     }

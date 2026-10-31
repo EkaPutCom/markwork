@@ -8,6 +8,7 @@ import type { FolderEntry, NewKind } from '../../../src/app/protocol/tree';
 import { Icon } from './Icons';
 import { FILE_DRAG } from './Tabs';
 import { useClient, useStore } from '../lib/useClient';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from '../ui/context-menu';
 
@@ -15,7 +16,7 @@ const INTERNAL = 'application/x-markwork-path';
 
 
 const NEW_ITEMS: { kind: NewKind; label: string }[] = [
-    { kind: 'file', label: 'New File…' }, { kind: 'folder', label: 'New Folder…' }, { kind: 'board', label: 'New Kanban Board…' },
+    { kind: 'file', label: 'New File…' }, { kind: 'folder', label: 'New Folder…' }, { kind: 'agent', label: 'New Agent…' }, { kind: 'board', label: 'New Kanban Board…' },
     { kind: 'inbox', label: 'New Inbox…' }, { kind: 'table', label: 'New Table…' }, { kind: 'csv', label: 'New CSV Table…' },
 ];
 
@@ -43,7 +44,7 @@ function Row({ entry, depth, onMenu }: { entry: FolderEntry; depth: number; onMe
     const open = entry.isDir && tree.expanded.includes(entry.path);
     const active = tree.revealed === entry.path;
     const [over, setOver] = useState(false);
-    const activate = () => (entry.isDir ? client.toggleFolder(entry.path) : client.activateEntry(entry.path));
+    const activate = () => { if (entry.isDir) { client.toggleFolder(entry.path); if (entry.agent) void client.activateAgent(entry.path); } else client.activateEntry(entry.path); };
 
     // A folder takes what is dropped on it; a file takes nothing (the drop goes to the folder around it).
     const drop = (e: DragEvent) => {
@@ -71,7 +72,7 @@ function Row({ entry, depth, onMenu }: { entry: FolderEntry; depth: number; onMe
             >
                 {entry.isDir ? <Icon name={open ? 'pan-down' : 'pan-end'} size={12} className="twisty" /> : <span className="twisty" />}
                 <Icon name={entry.isDir ? 'folder' : 'text-x-generic'} className="icon" />
-                <span className="label">{entry.name}</span>
+                <span className="label">{entry.name}</span>{entry.agent && <Badge variant="outline">Agent</Badge>}
             </div>
             {open && <Folder dir={entry.path} depth={depth + 1} onMenu={onMenu} />}
         </>

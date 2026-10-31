@@ -47,9 +47,10 @@ export interface Doc<E extends TextEditor = TextEditor> {
 
 // A tab whose contents are a view, not a writable document: Home, Programs, sandboxed HTML, or a code snapshot.
 // It shares the document id numbering, but has no TextEditor, nothing to save, and closes without asking.
-export type PageKind = 'home' | 'programs' | 'html' | 'code';
+export type PageKind = 'home' | 'programs' | 'html' | 'code' | 'agent';
 
 export interface Page {
+    label?: string;
     readonly id: number;
     readonly kind: PageKind;
     readonly file: string | null;          // html/code: the file shown; home, programs: null

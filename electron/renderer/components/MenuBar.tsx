@@ -28,7 +28,7 @@ export function MenuBar() {
 
     const menus: [string, Line[]][] = [
         ['File', [
-            { id: 'new' }, { id: 'kanban-new' }, { id: 'table-new' }, { id: 'inbox-new' }, { id: 'csv-new' }, '-',
+            { id: 'new' }, { id: 'agent-new' }, { id: 'kanban-new' }, { id: 'table-new' }, { id: 'inbox-new' }, { id: 'csv-new' }, '-',
             { id: 'open' }, { id: 'open-folder' }, ...(recent.length ? [{ sub: 'Open Recent', lines: recent }] : []), '-',
             { id: 'save' }, { id: 'save-as' }, { id: 'autosave', check: true }, '-',
             { id: 'export-html' }, { id: 'send-changes' }, '-',

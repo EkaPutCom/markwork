@@ -499,6 +499,51 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
+    await test('Explorer and open.file route chat-layout transcripts to one scoped session page', async () => {
+        const folder = disk.join(dir, 'folder-agent');
+        disk.mkdirs(disk.join(folder, 'chats'));
+        disk.write(disk.join(folder, 'agent.json'), JSON.stringify({ version: 1, name: 'Folder agent', instructions: 'instructions.md' }));
+        disk.write(disk.join(folder, 'instructions.md'), 'Cite sources.');
+        const path = disk.join(folder, 'chats', 'session.md');
+        disk.write(path, '---\nlayout: chat\ntitle: "A saved chat"\n---\n\n## You\nHello from Explorer\n');
+        const { server, ui } = await start();
+        server.session.agentFolders.backgroundEnabled = false;
+        try {
+            const before = ui.log.filter(event => event.ev === 'doc.open').length;
+            ok((await ui.client.request('act.tree.activate', { path })).ok, 'tree activation');
+            await until(() => ui.last('page.open')?.kind === 'agent');
+            eq(ui.last('page.open')?.file, path);
+            eq(ui.log.filter(event => event.ev === 'doc.open').length, before);
+            ok((await ui.client.request('open.file', { name: 'folder-agent/chats/session.md' })).ok, 'open.file');
+            eq(ui.log.filter(event => event.ev === 'page.open' && event.payload.kind === 'agent').length, 1);
+            const snapshot = await ui.client.request('act.chat.sync', { folderSession: path });
+            ok(snapshot.ok, 'scoped chat sync');
+            const pageId = ui.last('page.open')?.page;
+            await ui.client.request('open.file', { name: 'note.md' });
+            const opened = await ui.client.request('act.agent.open', { session: path });
+            ok(opened.ok, 'session row request');
+            eq(ui.last('page.active')?.page, pageId);
+            ok(!(await ui.client.request('act.agent.open', { session: disk.join(tmp, 'outside.md') })).ok, 'unknown session was accepted');
+        } finally { server.dispose(); }
+    });
+
+    await test('New Agent is offered as a core command and tree creation opens a scoped chat page', async () => {
+        const { server, ui } = await start();
+        server.session.agentFolders.backgroundEnabled = false;
+        ui.answers['ask.files.name'] = { text: 'Created Agent' };
+        try {
+            const created = await ui.client.request('act.tree.create', { kind: 'agent', dir });
+            ok(created.ok, 'agent creation');
+            eq(created.path, disk.join(dir, 'Created Agent'));
+            await until(() => ui.last('page.open')?.kind === 'agent');
+            ok(disk.read(disk.join(dir, 'Created Agent', 'agent.json')).includes('instructions.md'), 'configuration not written');
+            const state = ui.last('agent.folders')?.state as { name: string };
+            eq(state.name, 'Created Agent');
+            const refused = await ui.client.request('act.tree.create', { kind: 'agent', dir: tmp });
+            ok(!refused.ok, 'an outside parent was accepted');
+        } finally { server.dispose(); }
+    });
+
     await test('a new document is opened empty and not reset again, so what is typed into it at once stays', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });

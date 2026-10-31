@@ -133,3 +133,5 @@ export class ProtocolChatPanel implements ChatPanelView {
     // The turn was stopped: the ask is withdrawn (`ask.cancel`), and the frontend closes the review without an answer.
     cancelReview(ask: number): void { this.open.get(ask)?.cancel(); }
 }
+
+export type { FolderAgentState, FolderChatEvent } from '../folderpanel';

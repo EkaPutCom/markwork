@@ -137,7 +137,7 @@ export class ChatModel {
     private timer: ReturnType<typeof setTimeout> | null = null;
     private readonly answers = new Map<number, (note: string) => void>();   // the asks waiting for the user, by proposal
 
-    constructor(private readonly link: () => ChatLink | null) {
+    constructor(private readonly link: () => ChatLink | null, private readonly newConversation?: () => void) {
         this.log.onClear = () => { void this.link()?.request('act.chat.clearLog'); };
         this.log.onChange = () => this.set({ logRev: this.snapshot.logRev + 1 });
     }
@@ -159,6 +159,9 @@ export class ChatModel {
         const reply = await this.request('act.chat.sync');
         if (!reply?.ok) return;
         if (reply.settings) this.set({ settings: reply.settings as ChatPanelSettings, models: reply.models as string[] });
+        if (reply.chat) this.restore(reply.chat as SavedChatView);
+        if (Array.isArray(reply.folderEvents)) for (const event of reply.folderEvents) this.notice(event.ev, event.payload);
+        this.set({ busy: reply.busy === true });
         this.log.apply({ reset: true, events: reply.events as TraceEvent[] });
         void this.updateContext();
     }
@@ -198,6 +201,7 @@ export class ChatModel {
     notice(ev: string, p: Record<string, unknown>): boolean {
         switch (ev) {
             case 'chat.settings': this.set({ settings: p.settings as ChatPanelSettings, models: p.models as string[] }); void this.updateContext(); return true;
+            case 'chat.error': this.note(String(p.error), true); return true;
             case 'chat.noKey':
                 this.note('There is no DeepSeek API key yet. Open the settings (gear icon), paste the key, then send again.', true);
                 this.set({ keyPrompt: this.snapshot.keyPrompt + 1 });
@@ -330,6 +334,7 @@ export class ChatModel {
     stop(): void { void this.request('act.chat.stop'); }
 
     reset(): void {
+        if (this.newConversation) { this.newConversation(); return; }
         void this.request('act.chat.reset');
         this.flush();
         this.turn = 0;
@@ -395,6 +400,11 @@ export class ChatModel {
         const reply = await this.request('act.chat.open', { path });
         const chat = reply?.ok ? reply.chat as SavedChatView | null : null;
         if (!chat) { this.note('The conversation file could not be read.', true); return false; }
+        this.restore(chat);
+        return true;
+    }
+
+    restore(chat: SavedChatView): void {
         this.flush();
         this.turn = 0;
         const entries: Entry[] = [];
@@ -407,7 +417,6 @@ export class ChatModel {
         if (chat.work) entries.push({ kind: 'work', work: chat.work });
         this.set({ entries, proposals: {}, review: null });
         void this.updateContext();
-        return true;
     }
 
     resume(): void { void this.send(RESUME); }

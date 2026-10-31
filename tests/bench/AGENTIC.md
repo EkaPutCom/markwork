@@ -97,3 +97,121 @@ at 25 blocks, 6.28 → 19.58 ms, did not repeat: the next two repetitions were 7
 7.06/8.05 ms (after). Enter new paragraph fluctuated in both directions on both snapshots
 (the snapshot before itself recorded +119% at 100 blocks). No editor regression repeated;
 the baseline was not replaced.
+
+## Agent folders — Node checkpoint, 31 October 2026
+
+`npm run bench:agentic`, 10 repetitions after 3 warm-ups, no model requests.
+
+| Operation | Size per file | Median ms | p95 ms | Maximum ms |
+| --- | ---: | ---: | ---: | ---: |
+| Plan batch | 30,000 | 3.268 | 3.884 | 3.884 |
+| Verify result | 30,000 | 0.033 | 0.071 | 0.071 |
+| Checkpoint with journal | 30,000 | 11.372 | 16.269 | 16.269 |
+| Plan batch | 480,000 | 60.859 | 69.057 | 69.057 |
+| Verify result | 480,000 | 0.384 | 0.529 | 0.529 |
+| Checkpoint with journal | 480,000 | 170.804 | 187.414 | 187.414 |
+| Summarize 200 turns | — | 1.664 | 1.742 | 1.742 |
+
+The earlier eager implementation's cold start to an agent page and 200-session
+list (100 reference phrases per stored answer, 7 fresh Electron launches) measured
+median 1198.468 ms, p95/maximum 1224.283 ms. Controllers are now loaded lazily, but
+the equivalent rerun was blocked when escalation review hit its usage limit.
+No speedup or regression claim is made from unmatched fixtures. Switching, 1,000
+records, replay, ownership contention, and memory measurements remain pending.
+The GTK numbers above are historical and are not a Node comparison baseline.
+
+## Chat layout marker — 31 October 2026
+
+After replacing agent-folder transcript flags with `layout: chat`,
+`npm run bench:agentic` (10 repetitions, 3 warm-ups, same 20-file fixtures) reports:
+
+| Operation | Characters per file | Median ms | p95 ms | Maximum ms |
+| --- | ---: | ---: | ---: | ---: |
+| Plain checkpoint | 30,000 | 1.849 | 2.042 | 2.042 |
+| Journal checkpoint | 30,000 | 12.091 | 15.838 | 15.838 |
+| Plain checkpoint | 480,000 | 1.795 | 1.929 | 1.929 |
+| Journal checkpoint | 480,000 | 181.511 | 204.055 | 204.055 |
+
+The benchmark's ordinary history fixtures retain their unmarked format; it checks
+the shared parser/serializer pipeline, not a workload consisting only of agent
+folders. Compared with the prior checkpoint samples above, journal medians rose
+6.3% and 6.3%, while plain checkpoint medians fell 2.2% and 10.8%. A single run
+does not attribute this variation to the constant-size marker check. No
+performance improvement is claimed. The chat marker is covered separately by transcript round-trip tests.
+
+## Canonical chat marker only — 31 October 2026
+
+After removing the Boolean marker fallback, `npm run bench:agentic` ran after
+the full test suite (10 repetitions, 3 warm-ups; unchanged 20-file fixtures):
+
+| Operation | Characters per file | Median ms | p95 ms | Maximum ms |
+| --- | ---: | ---: | ---: | ---: |
+| Plain checkpoint | 30,000 | 1.837 | 2.006 | 2.006 |
+| Journal checkpoint | 30,000 | 11.445 | 14.170 | 14.170 |
+| Plain checkpoint | 480,000 | 1.604 | 1.814 | 1.814 |
+| Journal checkpoint | 480,000 | 182.501 | 205.072 | 205.072 |
+
+Against the preceding samples, journal medians vary by -5.3% and +0.5%.
+These pipeline samples do not isolate the marker condition and do not establish
+an attributable speedup or regression. Canonical and unrelated marker behavior
+is checked in the transcript tests. Full `npm test` passes with 894 core tests.
+
+## Explorer transcript navigation — 31 October 2026
+
+Real Electron, a parent workspace with an ordinary notes folder and a configured
+child agent; one saved conversation and an ordinary plan document. Twenty
+activations from the plan tab through the transcript's Explorer row measured
+median 129.756 ms, p95 172.168 ms, maximum 537.954 ms. Timing includes Playwright
+click overhead and initial activation; no provider call is made. Light, dark,
+and 560-pixel screenshots have no overflow or renderer errors.
+
+This is an opening-latency check, not an isolated speedup claim. The file-routing
+hook checks bounded frontmatter before parsing a conversation, so ordinary files
+do not acquire a full transcript parse. Large-history and memory comparisons
+remain outside this measurement.
+
+Agentic pipeline recheck for this change: 10 repetitions after 3 warm-ups, 20
+files per batch. Journal checkpoints: 30,000 characters per file median 11.084
+ms, p95/maximum 11.723 ms; 480,000 characters per file median 185.645 ms,
+p95/maximum 208.274 ms. Plain checkpoints: 1.690/1.830/1.830 ms and
+1.824/1.930/1.930 ms (median/p95/maximum). Relative to the preceding journal
+samples, medians vary by -3.2% and +1.7%; this does not isolate a navigation
+regression or improvement. Full npm test passes with 897 core tests, the new
+protocol route scenario, and eight Electron agent-folder steps.
+
+## Active-tab panels and session rows — 31 October 2026
+
+Real Electron, a configured child agent and two saved chat sessions, with an
+ordinary Markdown plan beside them. Twenty alternating clicks on session rows
+measured median 111.259 ms, p95 136.275 ms, maximum 139.833 ms, including
+Playwright overhead. Both sessions retain their history and one tab each. The
+same fixture verifies ordinary Assistant for the document and Sessions for chat,
+with screenshots in light/dark and a 560-pixel floating Assistant. No renderer
+errors or horizontal overflow occurred. This is a navigation latency check, not
+an isolated speedup or regression comparison.
+
+## Long chat containment — 31 October 2026
+
+A real Electron fixture contains 25 saved turns, repeated research paragraphs,
+lists, and long fenced code lines. Same 1400 × 900 viewport before and after:
+
+| Geometry | Before | After |
+| --- | ---: | ---: |
+| Pane height px | 754 | 754 |
+| Embedded chat height px | 13,693 | 754 |
+| Body scroll height px | 13,807 | 900 |
+| Message viewport height px | 13,551 | 612 |
+| Message scroll height px | 13,551 | 13,551 |
+| Composer top px | 13,745 | 806 |
+
+Thirty alternating 100% / (100% - 4px) chat-width updates with a forced composer
+layout read measured median 1.800 ms, p95 2.700 ms, maximum 2.700 ms after the fix.
+No before/after speedup is claimed; the paired measurement demonstrates corrected
+scroll ownership. Provider/network latency, memory, and very large history
+virtualization are outside this check.
+
+The Electron regression also gates a fake provider mid-stream, verifies automatic
+follow after Send and preserved position when reading older messages, then checks
+both themes, a 560-pixel viewport, and vertically split chats. No live API is used.
+
+Validation: typecheck and full npm test pass (897 core tests and all Electron suites, including four long-chat layout steps). Logs have no app errors or stack traces.

@@ -55,7 +55,7 @@ type HostOffenders<H> = {
 type DialogOffenders<D> = { [K in keyof D & string]-?: ViewOffenders<D[K], `dialogs.${K}`> }[keyof D & string];
 
 type Frontend = AppFrontend<TextEditor>;
-type Found = HostOffenders<Frontend['host']> | ViewOffenders<Frontend['documents'], 'documents'> | DialogOffenders<AppDialogs>;
+type Found = HostOffenders<Frontend['host']> | ViewOffenders<Frontend['documents'], 'documents'> | DialogOffenders<AppDialogs> | ViewOffenders<Required<NonNullable<Frontend['folderAgents']>>, 'folderAgents'>;
 
 type KNOWN = never;
 

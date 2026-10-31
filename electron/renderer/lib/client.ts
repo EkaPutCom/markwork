@@ -1,3 +1,4 @@
+import type { FolderAgentState, FolderChatEvent, SavedChatView } from '../../../src/app/protocol/chat';
 // The renderer's side of the app protocol as a store React can subscribe to. It speaks the protocol (connection, one
 // DocMirror per document), keeps what the core shows (tabs, files, boards, toasts), and offers the actions the UI calls.
 // It holds no widgets: the editor registers itself, and the views read the snapshot.
@@ -124,6 +125,7 @@ export const SIDEBAR_WIDTH = { min: 200, max: 480, default: 280 };
 export interface Toast { text: string; action: { label: string; token: number } | null; at: number }
 
 export interface State {
+    folderAgents: FolderAgentState | null;
     ready: boolean;
     coreError: string | null;
     root: string | null;
@@ -176,7 +178,7 @@ export interface State {
 
 // The core commands this window can carry out so far; the others need dialogs or views that are not carried over yet.
 const CORE_COMMANDS = new Set(['send-changes', 'preferences', 'open-recent', 'home', 'programs', 'visual', 'focus', 'typewriter', 'new', 'open', 'open-folder', 'save', 'save-as', 'export-html', 'image', 'close-tab', 'close-all-tabs', 'next-tab', 'prev-tab',
-    'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave', 'chat', 'journal', 'journal-capture', 'journal-summary']);
+    'agent-new', 'kanban-new', 'kanban-view', 'inbox-new', 'table-new', 'csv-new', 'fields-edit', 'layout', 'sidebar', 'dark', 'autosave', 'chat', 'journal', 'journal-capture', 'journal-summary']);
 const EDITOR_COMMANDS_UNAVAILABLE = new Set<string>();
 
 export const isAvailable = (command: Command): boolean =>
@@ -211,10 +213,27 @@ export class Client {
         schema: null, csvFind: { n: 0, replace: false }, conflictComparison: null,
         history: { commits: [], more: false, note: '', changes: null, message: '', messageRev: 0 }, viewers: [],
         collab: { note: null, server: null, pulls: [] }, pull: null, pullShown: false, tokenAsk: null, sendAsk: null,
-        runLogs: [], review: null, reviewShown: false, agentAsks: [], pullAsk: null, project: null, worktrees: null,
+        folderAgents: null, runLogs: [], review: null, reviewShown: false, agentAsks: [], pullAsk: null, project: null, worktrees: null,
     };
     // The Assistant panel's state: a store of its own, because an answer streams in many small notices.
     readonly chat = new ChatModel(() => this.conn);
+    private readonly folderChats = new Map<string, ChatModel>();
+    folderChat(id: string): ChatModel {
+        let model = this.folderChats.get(id);
+        if (!model) {
+            model = new ChatModel(() => this.conn ? {
+                notify: (ev, payload) => this.conn!.notify(ev, { ...payload, folderSession: id }),
+                request: (op, payload) => this.conn!.request(op, { ...payload, folderSession: id }),
+            } : null, () => { void this.newAgentChat(); });
+            this.folderChats.set(id, model);
+        }
+        return model;
+    }
+    folderModels(): [string, ChatModel][] { return [...this.folderChats]; }
+    async newAgentChat(): Promise<void> { await this.conn?.request('act.agent.new'); }
+    async openAgentSession(session: string): Promise<void> { await this.ask('act.agent.open', { session }); }
+    async activateAgent(root: string): Promise<void> { await this.conn?.request('act.agent.activate', { root }); }
+
     private readonly waitingDialogs: Dialog[] = [];
     private schemaAnswer: ((fields: FieldDef[] | null) => void) | null = null;
     private schemaCount = 0;
@@ -1045,7 +1064,7 @@ export class Client {
             cancel?.onCancel(() => this.answerSchema(id, null));
         }));
         // A change the agent proposes: the review is the user's, and the answer is their note.
-        c.on('ask.proposal', (p, cancel) => this.chat.ask(p, listener => { cancel.onCancel(listener); }));
+        c.on('ask.proposal', (p, cancel) => (typeof p.folderSession === 'string' ? this.folderChat(p.folderSession) : this.chat).ask(p, listener => { cancel.onCancel(listener); }));
         c.on('ask.discard', async (p, cancel) => {
             const { heading, detail, accept } = discardPrompt(p.kind as ChangeKind, String(p.path));
             const { value } = await this.showDialog({ title: heading, detail, entry: null, buttons: [{ label: accept, value: 'yes', style: 'destructive' }, { label: 'Cancel', value: 'no' }] }, cancel);
@@ -1148,6 +1167,9 @@ export class Client {
     }
 
     private notice(ev: string, p: Record<string, unknown>): void {
+        if (ev === 'agent.history') { this.folderChat(p.session as string).restore(p.chat as SavedChatView); return; }
+        if (ev === 'agent.folders') { this.set({ folderAgents: p.state as FolderAgentState }); return; }
+        if (ev === 'agent.chat') { const event = p.event as FolderChatEvent; this.folderChat(p.session as string).notice(event.ev, { ...event.payload }); return; }
         if (ev.startsWith('chat.') && this.chat.notice(ev, p)) return;
         const id = p.doc as number;
         const tab = this.tab(id);

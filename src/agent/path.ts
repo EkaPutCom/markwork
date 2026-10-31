@@ -13,3 +13,17 @@ export function projectPath(root: string, file: string): string {
     }
     return current;
 }
+
+// Configuration and private storage also contain JSON/JSONL and a narrowly scoped ignore file; unlike note names,
+// these names are never normalized or given a Markdown extension.
+export function folderPath(root: string, file: string): string {
+    const parts = file.split('/');
+    if (!file || file.includes('\\') || file.includes('\0') || parts.some(p => !p || p === '.' || p === '..' || p.includes(':'))) throw Error('Invalid agent folder path');
+    const { fs, paths } = platform();
+    let current = root;
+    for (const part of parts) {
+        current = paths.join(current, part);
+        if (fs.kind(current) === 'symlink') throw Error('Agent folder path goes through a symbolic link');
+    }
+    return current;
+}

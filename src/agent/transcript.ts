@@ -22,6 +22,7 @@ import { parseWork } from './work';
 import type { Turn } from './context';
 
 export interface SavedChat {
+    layout?: 'chat';
     title: string;
     model: string;
     created: string;   // local ISO without a zone, e.g. 2026-10-04T14:20:00
@@ -56,21 +57,24 @@ export function chatFileName(created: string, title: string): string {
 
 export function serializeChat(chat: SavedChat): string {
     const head = ['---', `title: ${JSON.stringify(chat.title)}`, `model: ${chat.model}`, `created: ${chat.created}`, '---'];
+    if (chat.layout === 'chat') head.splice(4, 0, 'layout: chat');
     if (chat.work) head.splice(4, 0, `work: ${JSON.stringify(chat.work)}`);
     if (chat.events?.length) head.splice(head.length - 1, 0, `actions: ${JSON.stringify(chat.events)}`);
     const body = chat.turns.map(t => `## ${HEADINGS[t.role]}\n${t.content.replace(/\n+$/, '').split('\n').map(escapeLine).join('\n')}`);
     return `${head.join('\n')}\n\n${body.join('\n\n')}\n`;
 }
 
-// null if it is not a conversation file (without a single turn).
+// An explicit chat layout can represent an empty session; unmarked files need conversation content.
 export function parseChat(text: string): SavedChat | null {
     const lines = text.replace(/\r\n/g, '\n').split('\n');
     const { meta, start } = parseFrontmatter(lines);
     const turns = parseTurns(lines.slice(start));
     const work = parseSavedWork(meta.work);
     const events = parseSavedEvents(meta.actions);
-    if (!turns.length && !work && !events.length) return null;
+    const chatLayout = meta.layout === 'chat';
+    if (!turns.length && !work && !events.length && !chatLayout) return null;
     return {
+        ...(chatLayout ? { layout: 'chat' as const } : {}),
         title: parseTitle(meta.title) || titleFrom(turns.find(t => t.role === 'user')?.content ?? ''),
         model: meta.model ?? '',
         created: meta.created ?? '',

@@ -3,11 +3,13 @@
 // saved conversations, undoing applied changes, and composing the context. The panel (electron/renderer/components/Chat.tsx) draws what it
 // is told through ChatView and passes user actions in; tests drive this class with a fake view and provider.
 
+import { readTextFile } from '../base/files';
+import { folderPath } from './path';
 import { Cancellable } from '../base/cancel';
 import { platform } from '../platform/index';
 import { systemKeyStore, type KeyStore } from './apikey';
 import { buildContext, DEFAULT_BUDGET, findMentions, type BuiltContext, type ContextOptions, type SourceFile } from './context';
-import { deleteChat, listChats, loadChat, loadChatLog, nowStamp, saveChat, saveChatLog, titleFrom, type ChatSummary } from './chatstore';
+import { deleteChat, listChats, loadChat, loadChatLog, chatLogPath, nowStamp, saveChat, saveChatLog, titleFrom, type ChatSummary, type ChatStorage } from './chatstore';
 import { AgentTrace } from './trace';
 import { DEEPSEEK_MODELS, DeepSeek } from './deepseek';
 import type { Provider, Usage } from './provider';
@@ -29,6 +31,7 @@ export interface ChatControllerHost {
     applyChange?(change: Change): string | null;
     applyBatch?(changes: Change[]): string | null;
     git?(request: GitRequest): Promise<GitAnswer>;                         // read-only Git history tools in the work folder
+    canSave?(path: string): string | null;
     root(): string | null;                                                 // the manuscript folder; where conversation history is saved
 }
 
@@ -65,6 +68,8 @@ export class ChatController {
     makeProvider: (key: string) => Provider = key => new DeepSeek(key);
     keyStore: KeyStore = systemKeyStore;
     model = DEEPSEEK_MODELS[0];
+    storage: ChatStorage = 'assistant';
+    roleInstructions = '';
     saveChats = true;   // save every turn to <folder>/.markwork/chats
     options: ContextOptions = { activeDocument: true, selection: true, project: true };
     budget = DEFAULT_BUDGET;
@@ -73,6 +78,7 @@ export class ChatController {
     private cancellable: Cancellable | null = null;
     // The conversation currently shown on disk: its file (null = not written yet), the folder it came from, and its title.
     private chatPath: string | null = null;
+    private savedText: string | null = null;
     private chatRoot: string | null = null;
     private chatTitle = '';
     private chatCreated = '';
@@ -94,6 +100,7 @@ export class ChatController {
         this.stop();
         this.session.clear();
         this.chatPath = null;
+        this.savedText = null;
     }
 
     stop(): void {
@@ -208,12 +215,29 @@ export class ChatController {
             this.chatCreated = nowStamp();
             this.chatTitle = titleFrom(history.find(t => t.role === 'user')?.content ?? this.session.work?.goal ?? this.session.events[0]?.question ?? '');
         }
+        if (this.storage === 'agent-folder' && history.some(t => t.role === 'user')) this.chatTitle = titleFrom(history.find(t => t.role === 'user')!.content);
         try {
-            this.chatPath = saveChat(root, { title: this.chatTitle, model: this.model, created: this.chatCreated, turns: [...history], work: this.session.work, events: this.session.events }, this.chatPath);
+            this.checkSave(root);
+            this.chatPath = saveChat(root, this.savedConversation(), this.chatPath, this.storage);
+            this.savedText = readTextFile(this.chatPath);
             saveChatLog(this.chatPath, this.session.trace.jsonl());
         } catch (e) {
             this.view.saveFailed(e instanceof Error ? e.message : String(e));
         }
+    }
+
+    private savedConversation(): SavedChat {
+        return { ...(this.storage === 'agent-folder' ? { layout: 'chat' as const } : {}), title: this.chatTitle, model: this.model,
+            created: this.chatCreated, turns: [...this.session.history], work: this.session.work, events: this.session.events };
+    }
+
+    private checkSave(root: string): void {
+        if (this.storage !== 'agent-folder' || !this.chatPath) return;
+        folderPath(root, 'chats/' + platform().paths.basename(this.chatPath));
+        folderPath(root, 'chats/' + platform().paths.basename(chatLogPath(this.chatPath)));
+        const conflict = this.host.canSave?.(this.chatPath);
+        if (conflict) throw Error(conflict);
+        if (this.savedText !== null && readTextFile(this.chatPath) !== this.savedText) throw Error('The conversation file changed outside this session. Its contents were not overwritten.');
     }
 
     // Continue a saved conversation: the next turns are appended to the same file. null = the file could not be read
@@ -227,6 +251,7 @@ export class ChatController {
         this.session.events.push(...chat.events ?? []);
         this.session.trace.restore(AgentTrace.parse(loadChatLog(path)));
         this.chatPath = path;
+        this.savedText = readTextFile(path);
         this.chatRoot = this.host.root();
         this.chatTitle = chat.title;
         this.chatCreated = chat.created;
@@ -236,7 +261,7 @@ export class ChatController {
     // Saved conversations of the work folder, newest first; null = no work folder.
     chats(): ChatSummary[] | null {
         const root = this.host.root();
-        return root ? listChats(root) : null;
+        return root ? listChats(root, this.storage) : null;
     }
 
     // Move a saved conversation to the Trash. Throws on failure. Deleting the one shown starts a new file on the next turn.
@@ -251,6 +276,7 @@ export class ChatController {
     private turnInput(question: string, freshness: Freshness): TurnInput {
         return {
             question,
+            roleInstructions: this.roleInstructions,
             active: this.host.active(),
             selection: this.host.selection(),
             files: this.host.files(freshness),

@@ -568,3 +568,11 @@ systemd stops every process in the unit's cgroup when it stops or restarts the s
 ### 17.9 The client side: interrupted runs
 
 A run that still ends `lost` (a reboot, a killed shim, a protocol mismatch) reaches Markwork as an exit with `reason: "lost"`. The client turns it into an *interrupted* result instead of a plain failure when the session id is known: the card gets a note saying so, the run stays failed in the queue, and the card menu offers *Resume pi*. Resuming starts pi again in the same folder or worktree with `--session <id>` and a fixed prompt telling it that it was interrupted and should check the files and carry on (`Orchestrator.resumeInterrupted`). It is never started automatically, so a daemon that keeps dying cannot cause a restart loop. Tests: `tests/unit/daemonapp.ts`.
+
+## Agent-folder adapter
+
+`src/app/agentfolderruntime.ts` launches the trusted `markwork-agent` program for
+root-scoped chat turns. `electron/folder-worker.ts` runs the existing TypeScript
+engine and emits versioned JSONL. The daemon remains protocol-agnostic. Program
+and root allowlists apply unchanged; folder configuration cannot choose commands.
+See `markworkd/README.md` for launcher setup and current validation limits.

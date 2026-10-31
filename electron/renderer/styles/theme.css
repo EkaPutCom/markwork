@@ -743,11 +743,12 @@ input[type=checkbox]:disabled { opacity: .5; cursor: default; }
 /* The Assistant panel: on the right of the editor, with its review and log dialogs */
 .side-meta { font-size: var(--text-xs); color: var(--muted-foreground); white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-error { font-size: var(--text-ui); color: var(--destructive); white-space: pre-wrap; overflow-wrap: anywhere; }
-.chat { width: 384px; flex: none; min-width: 0; display: flex; flex-direction: column; background: var(--background); border-left: 1px solid var(--border); position: relative; }
+/* Embedded chat must shrink to its pane so message history, rather than the window, owns scrolling. */
+.chat { width: 384px; flex: none; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--background); border-left: 1px solid var(--border); position: relative; }
 .chat-head { display: flex; align-items: center; gap: 2px; height: 48px; flex: none; padding: 0 8px 0 0; border-bottom: 1px solid var(--border); }
 .chat-head .side-title { flex: 1; font-size: var(--text-sm); font-weight: 600; color: var(--foreground); }
 .chat-head [data-slot=icon-button] { color: var(--muted-foreground); }
-.chat-messages { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chat-messages { flex: 1; min-height: 0; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .chat-empty { display: flex; flex-direction: column; gap: 6px; align-items: stretch; margin-top: 4px; }
 .chat-user { align-self: flex-end; max-width: 85%; padding: 12px 16px; border-radius: var(--radius-xl); background: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; line-height: 1.5; }
 .chat-answer { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -1033,3 +1034,16 @@ pre.diff.commentable .line:hover .comment-button, .comment-button:focus-visible 
     .ins-detail { flex: none; max-height: 45%; border-left: 0; border-top: 1px solid var(--border); }
 }
 @media (max-width: 900px) { .inspector { height: 420px; } }
+
+/* The Agent page fills an ordinary tab; the right panel keeps the Assistant panel's responsive shell. */
+.chat.agent-conversation { --conversation-width: 768px; width: 100%; min-width: 0; flex: 1; border-left: 0; }
+.agent-conversation .chat-messages { padding-inline: max(16px, calc((100% - var(--conversation-width)) / 2)); }
+.agent-conversation .chat-context { width: min(var(--conversation-width), calc(100% - 32px)); align-self: center; padding-inline: 0; }
+.agent-conversation .chat-input { width: min(var(--conversation-width), calc(100% - 32px)); align-self: center; margin-inline: 0; }
+.agent-session-body { display: flex; flex-direction: column; gap: 12px; padding: 12px; flex: 1; min-height: 0; }
+.agent-session-list { display: flex; flex-direction: column; gap: 4px; overflow: auto; }
+.agent-session-row { height: auto; min-height: 48px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; white-space: normal; text-align: left; }
+.agent-session-row[aria-pressed=true] { background: var(--accent); color: var(--accent-foreground); }
+.agent-runtime { padding: 12px; border-top: 1px solid var(--border); }
+.content.float-chat .chat.agent-conversation { position: relative; inset: auto; z-index: auto; max-width: none; box-shadow: none; }
+.chat.agent-sessions { width: 280px; }

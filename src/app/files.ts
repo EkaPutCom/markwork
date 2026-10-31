@@ -29,9 +29,10 @@ export interface FolderEntry {
     name: string;
     path: string;
     isDir: boolean;
+    agent?: boolean;
 }
 
-export type NewKind = 'file' | 'folder' | 'board' | 'inbox' | 'table' | 'csv';
+export type NewKind = 'file' | 'folder' | 'board' | 'inbox' | 'table' | 'csv' | 'agent';
 
 // Subfolders first, then files; each alphabetical and case-insensitive,
 // with numbers sorted naturally ("chapter 2" before "chapter 10").
@@ -60,7 +61,7 @@ export function listFolder(path: string): FolderEntry[] {
         const full = paths.join(path, info.name);
         const kind = entryKind(full, info.kind);
         if (!kind) continue;
-        entries.push({ name: info.name, path: full, isDir: kind === 'dir' });
+        entries.push({ name: info.name, path: full, isDir: kind === 'dir', ...kind === 'dir' && fs.exists(paths.join(full, 'agent.json')) ? { agent: true } : {} });
     }
     return entries.sort(compareEntries);
 }
@@ -89,6 +90,7 @@ export interface FilesDialogs {
 
 export interface FilesHost extends DocumentHost {
     readonly fileTree: FileTreeView;
+    newAgent(parent: string): Promise<string | null>;
     openFile(path: string): void;               // a file of the tree was chosen: an editor tab, or the image viewer
     entryMoved(from: string, to: string): void;  // a file or folder was moved or renamed: open documents follow
     entryDeleted(path: string): void;            // a file or folder went to the Trash
@@ -141,6 +143,7 @@ export class FilesController {
     // ---------- What the user does ----------
 
     create(kind: NewKind, dir: string): Promise<string | null> {
+        if (kind === 'agent') return this.host.newAgent(dir).then(path => { if (path) this.refresh(dir); return path; });
         const title = kind === 'file' ? _('New File') : kind === 'board' ? _('New Kanban Board') : kind === 'inbox' ? _('New Inbox') : kind === 'table' ? _('New Table') : kind === 'csv' ? _('New CSV Table') : _('New Folder');
         return this.dialogs.name(title, kind === 'folder' ? _('Folder name') : _('File name')).then(name => this.createNamed(kind, dir, name));
     }

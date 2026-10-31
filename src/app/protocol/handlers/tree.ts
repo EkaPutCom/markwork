@@ -6,7 +6,7 @@ import type { NewKind } from '../../files';
 import { RequestError } from '../messages';
 import { str, type HandlerContext } from './context';
 
-const KINDS: readonly NewKind[] = ['file', 'folder', 'board', 'inbox', 'table', 'csv'];
+const KINDS: readonly NewKind[] = ['file', 'folder', 'board', 'inbox', 'table', 'csv', 'agent'];
 
 export function treeHandlers({ wire, session, frontend }: HandlerContext): void {
     const tree = frontend.tree;
