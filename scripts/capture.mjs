@@ -937,6 +937,82 @@ const GROUPS = {
             await run.close();
         }
     },
+
+    // A folder with agent.json: the chat and its documents share the tab strip, sessions sit on the right.
+    async agentfolders() {
+        const root = join(scratchFolder('capture-agentfolders').scratch, 'markwork-research');
+        const agent = join(root, 'research-agent');
+        put(agent, 'agent.json', '{\n    "version": 1,\n    "name": "Research Assistant",\n    "description": "Compare research notes and prepare a launch brief with sources.",\n    "instructions": "instructions.md"\n}\n');
+        put(agent, 'instructions.md', '# Research Assistant\n\nPrepare the launch brief from the Markdown files in this folder.\n\n- Cite the file and the passage for every claim.\n- Compare the plan against the meeting decisions.\n- Propose file changes and wait for Apply.\n');
+        put(agent, 'plan.md', '# Launch plan\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n- Evaluation: 30 November\n\n## Budget\n\n- Test servers: $3,000\n');
+        put(agent, 'references/meeting.md', '# Weekly meeting, 1 October\n\n## Decisions\n\n- The public release moves to **22 November**; the sync testing is not finished.\n- The budget does not change.\n- Sari prepares the release material.\n\n## Follow-up\n\n- [ ] Budi fixes the sync bug\n- [ ] Dewi schedules the beta trial\n');
+        put(agent, 'references/interviews.md', '# User interviews\n\nFive of eight users want syncing without an account. Two asked for a PDF export.\n');
+        put(agent, 'chats/.gitignore', '*\n!.gitignore\n');
+        put(agent, 'chats/2026-10-31-release-date.md', `---
+layout: chat
+title: "Which meeting decision is not in the plan?"
+model: deepseek-flash
+created: 2026-10-31T09:20:00
+---
+
+## You
+Compare \`plan.md\` with \`references/meeting.md\`. Which decision never made it into the plan?
+
+## Assistant
+One decision is still missing. \`references/meeting.md\` › *Decisions* says:
+
+> The public release moves to **22 November**; the sync testing is not finished.
+
+\`plan.md\` › *Schedule* still has:
+
+- Public release: 15 November
+
+The other decisions are already consistent: the budget stays at $3,000, the closed beta is on 20 October, and *Prepare the release material* is assigned to Sari.
+
+## You
+What else should the plan record before we call it ready?
+
+## Assistant
+Two things are worth adding to \`plan.md\` so the brief does not repeat the same gap:
+
+1. **The reason for the new date.** A reader who only sees *22 November* cannot tell that the sync testing moved it.
+2. **The follow-up owners.** Budi (the sync bug) and Dewi (the beta trial) are only in the meeting notes.
+
+Should I propose those two edits? I would add them to the *Schedule* section and leave the rest of the plan alone.
+`);
+        put(agent, 'chats/2026-10-30-launch-brief.md', '---\nlayout: chat\ntitle: "Draft the launch brief"\nmodel: deepseek-flash\ncreated: 2026-10-30T16:40:00\n---\n\n## You\nDraft a short launch brief from the plan and the interviews.\n\n## Assistant\nHere is a brief that cites only what the folder says:\n\n## Launch brief\n\nThe launch opens with a closed beta on **20 October** and a public release on **15 November**, with the evaluation on 30 November and $3,000 for test servers (\`plan.md\` › *Schedule* and *Budget*).\n\nThe interviews (\`references/interviews.md\`) say five of eight users want syncing without an account, and two asked for a PDF export.\n\nI left the release date out of the brief: the meeting notes disagree with the plan and need your decision first.\n');
+        put(agent, 'chats/2026-10-29-interviews.md', '---\nlayout: chat\ntitle: "Summarize the user interviews"\nmodel: deepseek-flash\ncreated: 2026-10-29T11:05:00\n---\n\n## You\nSummarize the interviews in three lines.\n\n## Assistant\n- Five of eight users want syncing without an account.\n- Two users asked for a PDF export.\n- Nobody mentioned the beta schedule, so the plan cannot claim it was requested.\n');
+        put(root, 'notes/reading-list.md', '# Reading list\n\n- The sync architecture article\n- Notes on writing launch briefs\n');
+        put(root, 'projects/website.md', '# Website\n\n- Move the download page to the new domain.\n');
+        const run = new Run('agentfolders', root, { settings: { 'chat-save': true, 'sidebar-sections': JSON.stringify({ outline: { open: false } }) } });
+        await run.start();
+        const { page } = run;
+        try {
+            // The tree marks the folder; activating it opens its newest chat tab and the session list.
+            await page.getByRole('treeitem', { name: /^research-agent/ }).click();
+            const chat = page.getByRole('complementary', { name: 'Agent conversation', exact: true });
+            await chat.waitFor({ timeout: 20000 });
+            await page.getByRole('complementary', { name: 'Agent sessions', exact: true }).waitFor();
+            await chat.getByText('What else should the plan record', { exact: false }).waitFor();
+            await page.getByRole('tab', { name: /Which meeting decision/ }).waitFor();
+            // A document keeps its own tab and the ordinary Assistant; the chat tab brings the sessions back.
+            await page.getByRole('treeitem', { name: /^plan\.md/ }).click();
+            await page.locator('.headerbar .title').getByText('plan.md', { exact: true }).waitFor();
+            await page.locator('.cm-content').waitFor();
+            await run.idle(400);
+            await run.shot('agent-folders-document');
+            await page.getByRole('tab', { name: /Which meeting decision/ }).click();
+            await chat.waitFor();
+            await page.evaluate(() => { const scroller = document.querySelector('.chat-messages'); if (scroller) scroller.scrollTop = 0; });
+            await run.idle(400);
+            await run.shot('agent-folders');
+        } catch (e) {
+            run.failed = true;
+            throw e;
+        } finally {
+            await run.close();
+        }
+    },
 };
 
 // ---------- The sizes in the docs ----------

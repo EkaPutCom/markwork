@@ -595,3 +595,15 @@ Where it differs from the draft above:
 - `ask.*` that are wired: `saveChanges`, `file` (open, save, folder, filters). No `tabs.order` yet.
 
 Next: the other views and asks, one controller at a time (docs/design/electron-migrasi.md); `framing.ts` for a sidecar.
+
+### Agent-folder session selection
+
+`act.agent.open` carries `{ session: <offered transcript path> }`. The core
+validates that session in the current workspace and focuses or reopens its Page.
+Do not use `id` for application data: Connection.request owns the envelope id,
+and the receiver removes it before dispatching handler parameters. The renderer
+uses its normal error-reporting request helper for session selection.
+
+The right sidebar renders Sessions only when the focused tab's core-supplied
+page kind is `agent`; other pages render the ordinary Assistant. This is a
+presentation of existing page state, not another session registry.

@@ -22,6 +22,7 @@ import { ProtocolSearch } from './search';
 import { ProtocolTree } from './tree';
 import { ProtocolPreferences, ProtocolPreferencesDialogs } from './preferences';
 import { ProtocolScreen } from './screen';
+import { ProtocolAgentFolders } from './agentfolders';
 import { ProtocolChatPanel } from './chat';
 import { ProtocolHistoryDialogs, ProtocolHistoryTab, ProtocolHistoryViewers } from './history';
 import { ProtocolHarnessDialogs, ProtocolHarnessLogs, ProtocolReviewDialogs, ProtocolReviewView, ProtocolRuns } from './harness';
@@ -90,6 +91,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
     readonly preferences: ProtocolPreferences;
     // The Assistant panel's end of the wire: `chat.*` notices out, the controller's `on*` actions in (handlers/chat.ts).
     readonly chat: ProtocolChatPanel;
+    readonly folderAgents: ProtocolAgentFolders;
     // The CSV tab's end of the wire: `act.csv.*` call its `onChange` and `onShape`.
     readonly csv: ProtocolCsv;
     // The History tab and the viewer windows' end of the wire (`act.history.*`, `act.historyViewer.*`).
@@ -110,6 +112,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
 
     constructor(readonly settings: AppSettings, private readonly wire: Wire) {
         this.asks = new Asks(wire);
+        this.folderAgents = new ProtocolAgentFolders(wire);
         const show = (page: string, b: Board, groupField: string | null, agents: boolean) => this.showNotes(page, b, groupField, agents);
         const notes = (page: string) => { const view = new ProtocolNotes(page, show, focus); this.notesViews.set(page, view); return view; };
         const focus = (page: string) => wire.notify('view.focusCapture', { doc: this.active, page });

@@ -47,7 +47,7 @@ process.parentPort.on('message', async ({ data, ports: [port] }: { data: unknown
     }
     const provider = testModel ? ((await import(/* @vite-ignore */ testModel)) as { provider: Provider }).provider : null;
     const server = new ProtocolServer(settings, message => port.postMessage(message), { settingKeys: Object.keys(SETTING_KEYS) });
-    if (provider) server.session.assistant.chat.makeProvider = () => provider;
+    if (provider) { server.session.assistant.chat.makeProvider = () => provider; server.session.agentFolders.backgroundEnabled = false; }
     if (testForge) Object.assign(server.session.collab.services, ((await import(/* @vite-ignore */ testForge)) as { services: Partial<CollabServices> }).services);
     if (testHarness) {
         const { orchestrator } = server.session.harness;

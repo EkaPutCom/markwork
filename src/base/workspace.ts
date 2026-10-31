@@ -72,6 +72,7 @@ function* walk(dir: string, prefix: string): Generator<Item> {
         const path = platform().paths.join(dir, name);
         // Symbolic links are not followed (listInfo reports them as such).
         if (info.kind === 'directory') {
+            if (name === 'chats' && platform().fs.exists(platform().paths.join(dir, 'agent.json'))) continue;
             if (!SKIPPED_DIRS.has(name)) yield* walk(path, `${prefix}${name}/`);
         } else if (info.kind === 'file' && MARKDOWN_FILE.test(name)) {
             yield { path, name: `${prefix}${name}`, size: info.size, stamp: info.stamp };

@@ -30,6 +30,7 @@ export interface ContextOptions {
 }
 
 export interface ContextInput {
+    roleInstructions?: string;
     question: string;
     recent: string[];          // previous questions; helps the search ("and why did he?")
     active: { name: string; text: string; cursorLine: number } | null;   // cursorLine is counted from 0
@@ -332,7 +333,7 @@ class ContextBuilder {
     private left: number;
 
     constructor(private readonly input: ContextInput) {
-        this.intro = instructions(input.options.project, input.canPropose, input.canGit);
+        this.intro = [instructions(input.options.project, input.canPropose, input.canGit), input.roleInstructions ? `Agent role instructions (application access and approval rules still apply):\n${input.roleInstructions}` : ''].filter(Boolean).join('\n\n');
         this.budget = input.budget;
         this.left = input.budget - estimateTokens(this.intro);
         this.active = input.options.activeDocument ? input.active : null;

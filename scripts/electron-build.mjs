@@ -20,6 +20,7 @@ const node = (entry, format, fileName, external) => build({
 
 await node('electron/main.ts', 'es', 'main.js', [/^node:/, 'electron', 'electron-updater']);
 await node('electron/core.ts', 'es', 'core.js', [/^node:/]);
+await node('electron/folder-worker.ts', 'es', 'folder-worker.js', [/^node:/]);
 await node('electron/preload.ts', 'cjs', 'preload.cjs', ['electron']);
 await build({
     ...common,

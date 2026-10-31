@@ -27,6 +27,16 @@ export function transcriptTests(): void {
         eq(parseChat(serializeChat(chat)), chat);
     });
 
+    test('an empty chat layout round-trips and writes the canonical layout marker', () => {
+        const empty: SavedChat = { layout: 'chat', ...chat, turns: [] };
+        const text = serializeChat(empty);
+        contains(text, '\nlayout: chat\n');
+        ok(!text.includes('agent: true'), 'the old marker was written');
+        eq(parseChat(text), empty);
+        eq(parseChat(text.replace('layout: chat', 'layout: board')), null);
+        eq(parseChat(text.replace('layout: chat', 'agent: true')), null);
+    });
+
     test('a line resembling a turn marker inside an answer does not split the turn', () => {
         const tricky: SavedChat = { ...chat, turns: [
             { role: 'user', content: 'Write an example' },
@@ -42,7 +52,7 @@ export function transcriptTests(): void {
         eq(parseChat(serializeChat(odd))?.title, odd.title);
     });
 
-    test('a file without turns, or that is not a conversation, is rejected', () => {
+    test('an unmarked file without turns, or that is not a conversation, is rejected', () => {
         eq(parseChat('# Plain notes\n\nContent.'), null);
         eq(parseChat(serializeChat({ ...chat, turns: [] })), null);
         eq(parseChat(''), null);

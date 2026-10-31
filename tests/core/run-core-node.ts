@@ -15,7 +15,7 @@ import { nodePlatformTests } from '../unit/nodeplatform';
 setRoot(import.meta.url);
 
 try {
-    const focus = opt('only-worktrees') ? 'worktrees' : opt('only-daemon') ? 'daemon' : 'all';
+    const focus = opt('only-agent-folders') ? 'agent-folders' : opt('only-worktrees') ? 'worktrees' : opt('only-daemon') ? 'daemon' : 'all';
     await runCoreTests(focus);
     // What only the Node runtime has (its settings store and translations).
     if (focus === 'all') await nodePlatformTests();

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent folders · Markwork Documentation</title>
+<meta name="description" content="A folder with agent.json runs its own Markwork agent: instructions in Markdown, chat sessions beside editable documents, and every file change waiting for Apply.">
+
+
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script>
+<link rel="stylesheet" href="../web/tokens.css">
+<link rel="stylesheet" href="../web/site.css">
+<link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../web/icons.js" defer></script>
+<script src="../web/site.js" defer></script>
+<script src="nav.js" defer></script>
+</head>
+<body data-page="docs">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
+<button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
+<div class="page-shell">
+<header class="topbar" id="site-header"></header>
+<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid">
+<main class="doc" id="main-content" tabindex="-1">
+<p class="eyebrow">Agent</p>
+<h1>Agent folders</h1>
+<p class="lead">A folder can define its own agent: instructions in Markdown, documents that stay editable, and independent conversations that sit beside the documents in the same tab strip.</p>
+
+<p>Every other folder in Markwork has one Assistant panel that follows the open document. An <em>agent folder</em> works the other way around: the agent belongs to the folder, keeps several conversations, and its chat opens as a tab next to your notes. This page covers the marker file, the layout of the page, sessions, the approval boundary, and the background runtime.</p>
+
+<h2 id="agent-json">A folder that defines an agent</h2>
+<p>An exact <code>agent.json</code> file at the root of a folder marks it as an agent. The file is ordinary JSON, next to the notes you already keep there:</p>
+<pre><code>{
+    "version": 1,
+    "name": "Research Assistant",
+    "description": "Compare research notes and prepare a launch brief with sources.",
+    "instructions": "instructions.md"
+}</code></pre>
+<p><code>version</code>, <code>name</code>, and <code>instructions</code> are required; <code>description</code> is optional. Instructions are a normal Markdown file inside the folder, so they open in the editor with Visual and Code modes, autosave, and undo like any other document. A folder without the marker keeps the existing behavior and the ordinary Assistant.</p>
+<p>A marker that cannot be read is shown as a configuration error, with the file still editable, instead of silently starting a request. Paths are resolved inside the agent folder: an absolute path, a <code>..</code> segment, or a path into the conversation storage is rejected.</p>
+
+<h2 id="agent-page">The Agent page</h2>
+<p>Opening an agent folder selects its newest conversation. The Explorer stays on the left, the conversation opens centrally, and the right panel lists the sessions of this folder. Selecting an agent folder inside a larger workspace keeps the ordinary sibling folders visible; only the agent's own folder becomes its context.</p>
+<figure><picture class="themed-media"><img data-light-src="../assets/agent-folders.png" data-dark-src="../assets/dark/agent-folders.png" width="1280" height="780" loading="lazy" alt="The Agent page of a research agent: the workspace tree with notes, projects, and research-agent on the left, a chat tab and a Markdown tab in the center, and three sessions on the right"><noscript><img src="../assets/dark/agent-folders.png" width="1280" height="780" loading="lazy" alt="The Agent page of a research agent: the workspace tree on the left, a chat tab and a Markdown tab in the center, and three sessions on the right"></noscript></picture><figcaption>The chat and the plan share the tab strip; the session list belongs to the focused chat tab</figcaption></figure>
+<p>Chat tabs and Markdown tabs live in the same strip. A document opens with the normal editor, its save state, undo history, and dirty indicator; closing a chat tab does not delete its session or stop work that is running.</p>
+<p>Conversation text and the composer share a centered column capped at 768 pixels, with responsive gutters on smaller windows. Long history scrolls inside the conversation, while the window header, the tabs, and the composer stay in view, including in split panes. Reading earlier messages keeps your scroll position when new output arrives; sending a new question follows the latest output.</p>
+<p>The right panel follows the focused tab: a chat shows <em>Sessions</em>, and a document or any other layout shows the ordinary Assistant. That way a note keeps the Assistant you already know, and a conversation always has its own list.</p>
+<figure><picture class="themed-media"><img data-light-src="../assets/agent-folders-document.png" data-dark-src="../assets/dark/agent-folders-document.png" width="1280" height="780" loading="lazy" alt="The same workspace with plan.md focused in the visual editor, the chat tab still in the tab strip, and the ordinary Assistant on the right"><noscript><img src="../assets/dark/agent-folders-document.png" width="1280" height="780" loading="lazy" alt="The same workspace with a Markdown document focused and the ordinary Assistant on the right"></noscript></picture><figcaption>A document stays a document: the visual editor, the toolbar, and the ordinary Assistant</figcaption></figure>
+
+<h2 id="instructions">Instructions and scope</h2>
+<p>The referenced Markdown file supplies the role instructions. They are counted in the context budget like any other part of it, and a change to the file takes effect on the next turn; a turn that is already running keeps the revision it started with. Editing the instructions never changes what the agent is allowed to do.</p>
+<p>The context is the agent folder: its Markdown files and any file you attach explicitly. Inspecting a document in another tab does not quietly add it to the next question. Ordinary sibling folders, and the conversations in <code>chats/</code>, are outside the agent's search and proposals.</p>
+
+<h2 id="sessions">Sessions and history</h2>
+<p>One folder defines one agent with many independent sessions. Each conversation keeps its own transcript, work plan, proposals, and recovery state; a new chat starts from the instructions and the folder, never from another session's history.</p>
+<p>Sessions are saved as Markdown in the visible <code>chats/</code> folder of the agent, and the file carries <code>layout: chat</code> in its frontmatter, including an empty session. The directory is created when the first session is saved and is ignored by Git by default through its own <code>chats/.gitignore</code>; delete that file if you want to track conversations. The ordinary Assistant keeps its history in <code>.markwork/chats</code> as before.</p>
+<ul>
+  <li><em>New chat</em> opens another session in a new tab; the previous one keeps running if it was running.</li>
+  <li>Selecting a session row focuses its tab, or reopens it when the tab was closed, without duplicating it.</li>
+  <li><em>Stop</em> is an explicit action of a session. Switching tabs or closing a chat never stops a turn.</li>
+  <li>A turn that is already running holds the folder's turn slot; further requests wait in a queue instead of running twice at once.</li>
+  <li>Selecting a <code>layout: chat</code> transcript in Explorer opens the matching chat. Opening it never sends a message, and an unsaved transcript draft stays in the editor until you save and reopen it.</li>
+</ul>
+
+<h2 id="review">Review and approval</h2>
+<p>The approval boundary does not change in an agent folder. The agent reads freely and proposes a change; the review window shows the diff with the reason, and the files change only after you press <em>Apply</em> (a batch may be applied partially). An applied proposal can be undone through the same checks, and a proposal that no longer matches the current file is refused instead of overwriting your edits. See <a href="proposals.html">Proposals and approval</a>.</p>
+<p>Closing the window, losing the connection, or replaying a conversation never grants approval. A proposal waits for you.</p>
+
+<h2 id="background">Background work</h2>
+<p>Without a background runtime the chat runs while Markwork is open, and the session panel says so. On Linux, a compatible <code>markworkd</code> with the <code>markwork-agent</code> program, an allowed folder, and a credential the worker can reach lets a started turn continue after the window closes; pending proposals still wait for Apply. Credentials kept only in the application's private vault are not available to the worker. The setup and its current limits are in the <a href="limitations.html#agent-folder-runtime">Limitations</a> page and <code>markworkd/README.md</code> in the repository.</p>
+
+<h2 id="creating">Creating an agent folder</h2>
+<p>Choose <em>File</em> → <em>New Agent…</em> (or <em>New Agent…</em> from the command palette, or right-click a folder in Explorer). The dialog asks for a name and creates the folder with an <code>agent.json</code>, an <code>instructions.md</code> you can edit, and a <code>chats/</code> folder that appears only once a session is saved. The new agent opens directly, so you can write the instructions and start the first conversation.</p>
+<p>Any folder that already contains a valid <code>agent.json</code> is an agent: copying that file into a folder of notes is enough to make the folder its own agent, without a <code>.markwork</code> directory.</p>
+
+<h2 id="example">Example workspace</h2>
+<p>The repository's <code>example/</code> folder mixes ordinary <code>notes/</code> and <code>projects/</code> folders with a <code>research-agent/</code>. Run <code>npm start -- example</code> and select <strong>research-agent</strong> in Explorer, or open <code>example/research-agent</code> directly. It ships without a conversation, so the first chat is yours.</p>
+</main>
+<aside class="outline" id="toc" aria-label="On this page"></aside>
+</div>
+<div class="statusbar" id="site-status"></div>
+</div>
+</body>
+</html>

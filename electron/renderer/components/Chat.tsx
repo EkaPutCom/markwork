@@ -246,7 +246,7 @@ function PastRow({ action }: { action: PastAction }) {
 const CONTEXT_PARTS: [keyof ContextOptions, string][] = [['activeDocument', 'Open document'], ['selection', 'Selection'], ['project', 'Other files in the folder']];
 const KIND_LABEL: Record<string, string> = { map: 'Map', active: 'Document', selection: 'Selection', mention: 'Attachment', excerpt: 'Excerpt' };
 
-function ContextButton() {
+function ContextButton({ agent = false }: { agent?: boolean }) {
     const client = useClient();
     const chat = useChat();
     const [open, setOpen] = useState(false);
@@ -260,7 +260,7 @@ function ContextButton() {
                 </Button>
             }>
                 {settings && <>
-                    {CONTEXT_PARTS.map(([key, text]) => (
+                    {agent ? <p className="side-meta">Agent instructions and files from its folder. Attachments are explicit.</p> : CONTEXT_PARTS.map(([key, text]) => (
                         <Label key={key} className="chat-check"><Checkbox aria-label={text} checked={settings.options[key]} onCheckedChange={on => client.chat.setOptions({ ...settings.options, [key]: on === true })} />{text}</Label>
                     ))}
                     <Separator />
@@ -297,7 +297,7 @@ function HistoryButton() {
 
 const SOURCES = { env: 'from the DEEPSEEK_API_KEY environment variable', keyring: 'in the system keyring', file: 'in a file in ~/.config/markwork' };
 
-function SettingsButton({ forceOpen }: { forceOpen: number }) {
+function SettingsButton({ forceOpen, agent = false }: { forceOpen: number; agent?: boolean }) {
     const client = useClient();
     const { settings, key, models } = useChat();
     const [open, setOpen] = useState(false);
@@ -323,7 +323,7 @@ function SettingsButton({ forceOpen }: { forceOpen: number }) {
                     </Select>
                 </div>
                 <Label className="chat-check"><Checkbox aria-label="Thinking mode" checked={settings.thinking} onCheckedChange={on => client.chat.setThinking(on === true)} />Thinking mode</Label>
-                <Label className="chat-check"><Checkbox aria-label="Save conversation history" checked={settings.saveChats} onCheckedChange={on => client.chat.setSaveChats(on === true)} />Save conversation history</Label>
+                <Label className="chat-check"><Checkbox disabled={agent} aria-label="Save conversation history" checked={settings.saveChats} onCheckedChange={on => client.chat.setSaveChats(on === true)} />Save conversation history</Label>
             </>}
         </PanelPopover>
     );
@@ -331,7 +331,7 @@ function SettingsButton({ forceOpen }: { forceOpen: number }) {
 
 // ---------- The panel ----------
 
-export function Chat() {
+export function Chat({ embedded = false, title = 'Assistant' }: { embedded?: boolean; title?: string }) {
     const client = useClient();
     const chat = useChat();
     const { entries, busy, draft, keyPrompt } = chat;
@@ -355,19 +355,19 @@ export function Chat() {
 
     const send = () => { if (draft.trim() && !busy) { stick.current = true; void model.send(draft); } };
     return (
-        <aside className="chat" aria-label="Assistant">
+        <aside className={embedded ? 'chat agent-conversation' : 'chat'} aria-label={embedded ? 'Agent conversation' : 'Assistant'}>
             <div className="chat-head">
-                <span className="side-title">Assistant</span>
+                <span className="side-title">{title}</span>
                 <IconButton size="icon-xs" label="New conversation" onClick={() => model.reset()}><Icon name="edit-clear" /></IconButton>
                 <IconButton size="icon-xs" label="Agent log" onClick={() => model.openLog(true)}><Icon name="utilities-terminal" /></IconButton>
-                <HistoryButton />
-                <SettingsButton forceOpen={keyPrompt} />
+                {!embedded && <HistoryButton />}
+                <SettingsButton forceOpen={keyPrompt} agent={embedded} />
             </div>
             <div className="chat-messages" ref={scroller} role="log" aria-live="polite"
                 onScroll={e => { const el = e.currentTarget; stick.current = el.scrollHeight - el.clientHeight - el.scrollTop < 24; }}>
                 {entries.length === 0 && (
                     <div className="chat-empty">
-                        <p className="side-meta">Ask or request help with anything about your work. The assistant reads the open document and relevant excerpts from other files in the folder.</p>
+                        <p className="side-meta">{embedded ? 'Ask this agent about the files in its folder. File changes are proposed for your approval.' : 'Ask or request help with anything about your work. The assistant reads the open document and relevant excerpts from other files in the folder.'}</p>
                         {SUGGESTIONS.map(s => <Button key={s} variant="outline" className="h-auto justify-start whitespace-normal px-3 py-2 text-left font-normal" onClick={() => { model.setDraft(s); model.focusInput(); }}>{s}</Button>)}
                     </div>
                 )}
@@ -384,7 +384,7 @@ export function Chat() {
                     }
                 })}
             </div>
-            <ContextButton />
+            <ContextButton agent={embedded} />
             <div className="chat-input">
                 <Textarea ref={input} rows={2} aria-label="Ask the Assistant" className="min-h-0 border-0 bg-transparent p-1 shadow-none focus-visible:ring-0 dark:bg-transparent" placeholder="Ask a question" value={draft}
                     onChange={e => model.setDraft(e.target.value)}

@@ -3,6 +3,7 @@
 // (project.ts) and do not show in the Files tree, so history does not get mixed with the manuscript.
 
 import { fileExists, readTextFile, trashFile, writeTextFile } from '../base/files';
+import { folderPath } from './path';
 import { platform } from '../platform/index';
 import { chatFileName, parseChat, serializeChat, titleFrom, type SavedChat } from './transcript';
 
@@ -17,7 +18,8 @@ export interface ChatSummary {
 
 const join = (...parts: string[]) => platform().paths.join(...parts);
 
-export const chatsDir = (root: string): string => join(root, '.markwork', 'chats');
+export type ChatStorage = 'assistant' | 'agent-folder';
+export const chatsDir = (root: string, storage: ChatStorage = 'assistant'): string => storage === 'agent-folder' ? folderPath(root, 'chats') : join(root, '.markwork', 'chats');
 
 // Current local time to record in the file, e.g. 2026-10-04T14:20:00.
 export function nowStamp(): string {
@@ -28,12 +30,27 @@ export function nowStamp(): string {
 
 export { titleFrom };
 
+// A visible chats directory can predate agent activation. Never adopt unrelated notes or linked storage.
+export function ensureAgentChatStorage(root: string): void {
+    const dir = chatsDir(root, 'agent-folder');
+    if (!platform().fs.exists(dir)) return;
+    for (const entry of platform().fs.listInfo(dir)) {
+        const path = folderPath(root, 'chats/' + entry.name);
+        if (entry.kind !== 'file') throw Error('The chats folder contains an unsupported entry: ' + entry.name);
+        if (entry.name === '.gitignore') continue;
+        if (entry.name.endsWith('.md') && loadChat(path)) continue;
+        const paired = entry.name.endsWith('.log.jsonl') ? entry.name.replace(/\.log\.jsonl$/, '.md') : entry.name.endsWith('.md.worker.json') ? entry.name.replace(/\.worker\.json$/, '') : '';
+        if (paired && loadChat(folderPath(root, 'chats/' + paired))) continue;
+        throw Error('The chats folder contains a file that is not an agent conversation: ' + entry.name);
+    }
+}
+
 // Save a conversation. path = an existing file (overwritten); null = create a new file. Returns its path.
-export function saveChat(root: string, chat: SavedChat, path: string | null): string {
-    const dir = chatsDir(root);
+export function saveChat(root: string, chat: SavedChat, path: string | null, storage: ChatStorage = 'assistant'): string {
+    const dir = chatsDir(root, storage);
     platform().fs.makeDirs(dir, 0o755);
     // History contains manuscript quotes: do not get committed by accident. Delete this file to allow it.
-    const ignore = join(root, '.markwork', '.gitignore');
+    const ignore = storage === 'agent-folder' ? folderPath(root, 'chats/.gitignore') : join(root, '.markwork', '.gitignore');
     if (!fileExists(ignore)) writeTextFile(ignore, '*\n');
     let target = path;
     if (!target) {
@@ -73,8 +90,8 @@ export function loadChat(path: string): SavedChat | null {
 }
 
 // Conversations in the folder, newest first. Files that are not conversations are skipped.
-export function listChats(root: string): ChatSummary[] {
-    const dir = chatsDir(root);
+export function listChats(root: string, storage: ChatStorage = 'assistant'): ChatSummary[] {
+    const dir = chatsDir(root, storage);
     const found: ChatSummary[] = [];
     let names: string[] = [];
     try {
@@ -84,7 +101,10 @@ export function listChats(root: string): ChatSummary[] {
     }
     for (const name of names) {
         if (!name.endsWith('.md')) continue;
-        const path = join(dir, name);
+        let path = join(dir, name);
+        if (storage === 'agent-folder') {
+            try { path = folderPath(root, 'chats/' + name); } catch { continue; }
+        }
         const chat = loadChat(path);
         if (chat) found.push({ path, title: chat.title, created: chat.created, turns: chat.turns.length });
     }

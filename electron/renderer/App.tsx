@@ -1,3 +1,4 @@
+import { AgentSessions, AgentReviews } from './components/AgentFolder';
 // The window: the sidebar (or its rail), the header of the document, the editor with its tabs, the counts at the foot,
 // the Assistant beside them, and the command palette over all of it. The look is shadcn/ui's (docs/design/shadcn/).
 
@@ -53,7 +54,7 @@ function Title({ items }: { items: MenuItem[] }) {
     return (
         <nav className="title" aria-label="Breadcrumb" title={place ?? undefined}>
             {crumbs.map((crumb, i) => <span key={i} className="contents">{<span className="crumb">{crumb}</span>}{separator}</span>)}
-            {tab.page === 'home' || tab.page === 'programs' ? <span className="name">{tab.name}</span> : (
+            {tab.page === 'home' || tab.page === 'programs' || tab.page === 'agent' ? <span className="name">{tab.name}</span> : (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="title-button" aria-label="Document Menu">
@@ -71,7 +72,7 @@ function Title({ items }: { items: MenuItem[] }) {
 function SaveState() {
     const s = useStore();
     const tab = s.tabs.find(t => t.id === s.active);
-    if (!tab || ['home', 'programs', 'html', 'code'].includes(tab.page)) return null;
+    if (!tab || ['home', 'programs', 'html', 'code', 'agent'].includes(tab.page)) return null;
     if (tab.mirror.modified) return <span className="state"><span className="dot" aria-hidden="true" /><span className="word">Unsaved</span></span>;
     if (!tab.file) return null;
     return <span className="state"><Icon name="emblem-ok" size={12} /><span className="word">Saved</span></span>;
@@ -330,7 +331,7 @@ export function App() {
                             {inspecting && <Inspector onClose={() => setInspecting(false)} />}
                             <StatusBar />
                         </div>
-                        {panels.chat.shown && <Chat />}
+                        {panels.chat.shown && (state.tabs.find(tab => tab.id === state.active)?.page === 'agent' ? <AgentSessions /> : <Chat />)}
                         {/* A floating panel closes when the content beside it is clicked; the header stays in reach. */}
                         {((panels.sidebar.floats && panels.sidebar.shown) || (panels.chat.floats && panels.chat.shown)) &&
                             <div className="float-backdrop" aria-hidden="true" onMouseDown={() => client.closeFloating()} />}
@@ -348,6 +349,7 @@ export function App() {
             <ReportDialog />
             <FieldsDialog />
             <ChatReview />
+            <AgentReviews />
             <LogViewer />
             <RunLogs />
             <AgentAsks />

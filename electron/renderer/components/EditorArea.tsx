@@ -1,3 +1,4 @@
+import { AgentConversation } from './AgentFolder';
 import { Fragment, useEffect, useRef, useState, type DragEvent } from 'react';
 import { Home } from './Home';
 import { Programs } from './Programs';
@@ -110,7 +111,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
     const board = tab?.board ?? null;
     const structured = !!tab && !!board && STRUCTURED_PAGES.includes(tab.page);
     const csv = tab?.page === 'csv' && tab.csv !== null;
-    const isPage = tab?.page === 'home' || tab?.page === 'programs' || tab?.page === 'html' || tab?.page === 'code';
+    const isPage = tab?.page === 'home' || tab?.page === 'programs' || tab?.page === 'html' || tab?.page === 'code' || tab?.page === 'agent';
     const textShown = !!tab && !structured && !csv && !isPage;
 
     const over = (e: DragEvent) => {
@@ -174,6 +175,7 @@ function Pane({ pane, solo }: { pane: PaneData; solo: boolean }) {
                 <div ref={host} className="text-editor" hidden={!textShown} />
                 {structured && tab && board && <StructuredPage key={`${tab.id}:${tab.page}`} tab={tab} board={board} />}
                 {csv && tab && <Csv key={tab.id} text={tab.csv!} rev={tab.csvRev} find={current ? csvFind : { n: 0, replace: false }} />}
+                {tab?.page === 'agent' && tab.file && <AgentConversation key={tab.id} id={tab.file} />}
                 {tab?.page === 'home' && <Home data={tab.home} />}
                 {tab?.page === 'programs' && <Programs data={tab.programs} />}
                 {tab?.page === 'html' && tab.html && <HtmlPage key={tab.id} id={tab.id} file={tab.html.file} root={tab.html.root} />}

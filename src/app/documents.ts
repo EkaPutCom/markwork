@@ -14,6 +14,9 @@ import type { ChooseFileOptions } from './dialogs';
 import type { Autosaver } from './autosave';
 import { below } from '../markdown/paths';
 import { findConflicts, resolution, type Conflict } from '../markdown/conflicts';
+import { projectPath } from '../agent/path';
+import { loadAgentFolder } from '../agent/folder';
+import { loadChat } from '../agent/chatstore';
 import { unifiedDiff } from '../agent/changes';
 import { parseDiff, type DiffLine } from '../base/gitlog';
 
@@ -73,6 +76,7 @@ export interface DocumentsHost<E extends TextEditor> {
     tabOrder(): number[];                       // tab ids (documents and pages) in the order of the tab row
     refreshHome(): void;
     openFolder(path: string): void;
+    openConversation?(path: string, text: string): boolean; // a validated transcript can open as a session page
     fileSaved(path: string): void;              // a new file was written through Save As: show it in the tree
     showConflictComparison(comparison: ConflictComparison): void;
 }
@@ -189,7 +193,7 @@ export class DocumentController<E extends TextEditor> {
 
     // Tab name/title for a page.
     nameOfPage(page: Page): string {
-        return page.file ? platform().paths.basename(page.file) : page.kind === 'programs' ? PROGRAMS : HOME;
+        return page.kind === 'agent' ? page.label ?? 'Agent' : page.file ? platform().paths.basename(page.file) : page.kind === 'programs' ? PROGRAMS : HOME;
     }
 
     // A document without a file and without changes has no contents that need to be kept,
@@ -347,6 +351,7 @@ export class DocumentController<E extends TextEditor> {
         }
         const text = this.read(absolute);
         if (text === null) return false;
+        if (this.host.openConversation?.(absolute, text)) return true;
         this.show(absolute, text);
         return true;
     }
@@ -361,11 +366,13 @@ export class DocumentController<E extends TextEditor> {
         }
         const open = this.docs.find(d => d.file !== null && platform().paths.same(d.file, absolute));
         if (open) {
-            this.activate(open);
+            if (!open.editor.isModified() && this.host.openConversation?.(absolute, open.editor.getText())) this.remove(open);
+            else this.activate(open);
             return true;
         }
         const text = this.read(absolute);
         if (text === null) return false;
+        if (this.host.openConversation?.(absolute, text)) return true;
         this.activate(this.isPristine(this.current) ? this.current : this.add());
         this.show(absolute, text);
         return true;
@@ -394,6 +401,17 @@ export class DocumentController<E extends TextEditor> {
         const open = this.pages.find(p => p.kind === 'programs');
         if (open) this.activatePage(open);
         else this.openPage({ kind: 'programs', file: null, root: null });
+    }
+
+    openAgent(root: string, id: string, title: string): void {
+        const open = this.pages.find(p => p.kind === 'agent' && p.file === id);
+        if (open) this.activatePage(open);
+        else this.openPage({ kind: 'agent', root, file: id, label: title });
+    }
+
+    renameAgent(id: string, title: string): void {
+        const page = this.pages.find(p => p.kind === 'agent' && p.file === id);
+        if (page) { page.label = title; this.host.refreshTitle(page.id); }
     }
 
     // Show an HTML file in its own tab, or switch to the tab it already has. root = the folder the page may read.
@@ -644,11 +662,43 @@ export class DocumentController<E extends TextEditor> {
             const doc = this.docs.find(d => d.id === id);
             if (doc?.file) kept.push({ tab: { file: doc.file, cursor: doc.editor.cursorOffset }, at: doc });
             const page = this.pages.find(p => p.id === id);
+            if (page?.kind === 'agent' && page.file) kept.push({ tab: { file: 'markwork:agent:' + encodeURIComponent(page.file), cursor: 0 }, at: page });
             if (page?.kind === 'home') kept.push({ tab: { file: HOME_TAB, cursor: 0 }, at: page });
         }
         this.host.settings.tabs = kept.map(k => k.tab);
         const shown = this.shown ?? this.current;
         this.host.settings.activeTab = kept.findIndex(k => k.at === shown);
+    }
+
+    private restoreBelongs(file: unknown, root: string | null): boolean {
+        if (!root || typeof file !== 'string' || file === HOME_TAB) return true;
+        return file.startsWith('markwork:agent:') || insideName(root, file) !== null;
+    }
+
+    private restoreAgentTab(marker: string, root: string | null): Page | null {
+        try {
+            const id = decodeURIComponent(marker.slice('markwork:agent:'.length));
+            const folder = platform().paths.dirname(platform().paths.dirname(id));
+            if (!root || folder !== root && insideName(root, folder) === null) return null;
+            if (loadAgentFolder(folder).kind !== 'agent') return null;
+            const safe = projectPath(folder, 'chats/' + platform().paths.basename(id));
+            if (!platform().paths.same(safe, id)) return null;
+            const chat = loadChat(id);
+            if (!chat) return null;
+            this.openAgent(folder, id, chat.title);
+            return this.pages.find(p => p.kind === 'agent' && p.file === id) ?? null;
+        } catch { return null; }
+    }
+
+    private restoreTab(file: unknown, root: string | null): Doc<E> | Page | null {
+        if (typeof file !== 'string') return null;
+        if (file.startsWith('markwork:agent:')) return this.restoreAgentTab(file, root);
+        if (file === HOME_TAB) {
+            this.openHome();
+            return this.pages.find(p => p.kind === 'home') ?? null;
+        }
+        if (!fileExists(file) || platform().fs.isDirectory(file)) return null;
+        return this.openInTab(file) ? this.shown ?? this.current : null;
     }
 
     // Reopen tabs from the settings. A saved list can predate a workspace switch, so only restore files inside
@@ -658,7 +708,7 @@ export class DocumentController<E extends TextEditor> {
         const settings = this.host.settings;
         const saved = Array.isArray(settings.tabs) ? settings.tabs : [];
         const root = this.host.root();
-        const belongs = (file: unknown) => !root || typeof file !== 'string' || file === HOME_TAB || insideName(root, file) !== null;
+        const belongs = (file: unknown) => this.restoreBelongs(file, root);
         const candidates = Array.from(saved.entries()).filter(([, tab]) => belongs(tab?.file));
         const opened: [Doc<E>, number][] = [];
         let restored = false;
@@ -666,16 +716,9 @@ export class DocumentController<E extends TextEditor> {
         let missing = 0;
         this.restoring = true;
         for (const [i, tab] of candidates) {
-            if (tab?.file === HOME_TAB) {
-                this.openHome();
-                last = this.pages.find(p => p.kind === 'home')!;
-            } else if (typeof tab?.file !== 'string' || !fileExists(tab.file) || platform().fs.isDirectory(tab.file)) {
-                missing++;
-                continue;
-            } else if (this.openInTab(tab.file)) {
-                opened.push([this.current, Number(tab.cursor) || 0]);
-                last = this.current;
-            } else continue;
+            last = this.restoreTab(tab?.file, root);
+            if (!last) { missing++; continue; }
+            if ('editor' in last) opened.push([last, Number(tab.cursor) || 0]);
             restored = true;
             if (i === settings.activeTab) active = last;
         }
