@@ -10,6 +10,10 @@ The mockup uses the current application shell as shown in `docs/assets/files.png
 
 Agreed layout: **folder tree on the left, chat in the center, session list on the right**. Preserve Markwork's existing shell, navigation, header, document tabs, Geist typography, zinc theme, primitives, and responsive panel behavior. An agent folder changes the workspace's default tab, not the identity of the application. Chat sessions and editable Markdown files share the existing document tab strip.
 
+## Pi replacement experiment
+
+The [pi-based replacement plan](agent-folders-pi-plan.md) supersedes this document's future custom-engine direction, not its description of the currently implemented behavior. Its [Phase 0 local spike](agent-folders-pi-phase0.md) proves native pi streaming, session resume, revised instructions, shell/research/report writing, and Stop. It is separate developer tooling, explicitly unsandboxed and manually activated. The application's existing worker and Apply boundaries remain unchanged until replacement implementation.
+
 ## 1. Product behavior
 
 A folder containing a valid `agent.json` opens an Agent page when activated. Opening that folder as the work folder selects its chat by default; activating it inside a parent workspace keeps the existing workspace tree visible. One folder defines one agent, with many independent chat sessions. Its documents supply shared reference material; each conversation retains its own transcript, work plan, proposals, and recovery state.

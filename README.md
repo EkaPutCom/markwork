@@ -82,6 +82,8 @@ Read `AGENTS.md` before contributing. Branch names use `type/short-kebab-case-de
 | `npm run build` | Check the types and the layer rules, then build the app into `dist-electron/` |
 | `npm run typecheck` | Only check the types (the core without Node's types, the core's tests and the Node port, the Electron app) and the layer rules |
 | `npm test` | The core's tests on Node, then the Electron app's tests (below) |
+| `npm run test:pi-folder-spike` | Deterministic fake-process tests for the Phase 0 pi RPC experiment; no model or network |
+| `npm run spike:pi-folder -- --activate --live --provider NAME --model ID` | Manually activated, unsandboxed local pi experiment; uses real authentication/quota, not the app runtime ([decisions and evidence](docs/design/agent-folders-pi-phase0.md)) |
 | `npm run test:core:node` | The core's tests on Node (`tests/core/core-tests.ts` through `tests/core/run-core-node.ts`) |
 | `npm run test:electron` | Build, then drive the real app with Playwright under Xvfb (`tests/electron/*.mjs`) |
 | `npm run electron:dist` | Build the installers for the system it runs on into `release/` (electron-builder, `electron-builder.yml`) |
@@ -94,7 +96,7 @@ Read `AGENTS.md` before contributing. Branch names use `type/short-kebab-case-de
 | `npm run bench:agentic` | Measure the cost of batches, verification, and checkpoints |
 | `npm run pot` | Make the translation template `po/markwork.pot` from the files in `po/POTFILES.in` |
 
-The live tests and the benchmarks are not part of `npm test`.
+The live tests, the live pi folder spike, and the benchmarks are not part of `npm test`. The spike's fake-process tests are included. The proposed pi-based Agent Folder replacement has only passed its standalone Phase 0 gate; it is not enabled in the application. See [the plan](docs/design/agent-folders-pi-plan.md) and [Phase 0 findings](docs/design/agent-folders-pi-phase0.md).
 
 ### Releases
 
