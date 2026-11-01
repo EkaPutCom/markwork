@@ -230,7 +230,10 @@ export class Client {
         return model;
     }
     folderModels(): [string, ChatModel][] { return [...this.folderChats]; }
-    async newAgentChat(): Promise<void> { await this.conn?.request('act.agent.new'); }
+    async enableFolderAgent(root: string): Promise<void> { await this.ask('act.agent.enable', { root }); }
+    async restoreFolderSession(session: string): Promise<void> { await this.ask('act.agent.recover', { session }); }
+    async resolveFolderConflict(path: string, choice: 'reload' | 'keep'): Promise<void> { await this.ask('act.agent.resolve', { path, choice }); }
+    async newAgentChat(): Promise<void> { await this.ask('act.agent.new'); }
     async openAgentSession(session: string): Promise<void> { await this.ask('act.agent.open', { session }); }
     async activateAgent(root: string): Promise<void> { await this.conn?.request('act.agent.activate', { root }); }
 
@@ -974,6 +977,7 @@ export class Client {
     // shown (commands.state).
     enabled(command: Command): boolean {
         if (!isAvailable(command) || this.snapshot.disabled.includes(command.id)) return false;
+        if (command.id === 'agent-new' && this.snapshot.folderAgents?.canCreate === false) return false;
         return command.scope === 'always' || this.snapshot.tabs.length > 0;
     }
 

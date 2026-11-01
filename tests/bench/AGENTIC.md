@@ -215,3 +215,48 @@ follow after Send and preserved position when reading older messages, then check
 both themes, a 560-pixel viewport, and vertically split chats. No live API is used.
 
 Validation: typecheck and full npm test pass (897 core tests and all Electron suites, including four long-chat layout steps). Logs have no app errors or stack traces.
+
+## Local pi Agent Folders — 1 November 2026
+
+These are new-runtime baselines, not an old/new speedup comparison. Linux, Node v24.21.0, local temporary disk; 3 warmups + 20 repetitions in `tests/unit/pirpc.ts` (`folder pi measurement`). No provider/network is used in the benchmark.
+
+| Operation | Median ms | p95 ms | Maximum ms |
+| --- | ---: | ---: | ---: |
+| Load/validate 200 bindings | 0.904 | 1.171 | 1.428 |
+| List 200 bindings | 0.024 | 0.041 | 0.060 |
+| Read/verify ~18 KB history | 0.692 | 1.086 | 1.805 |
+| Checked projection and atomic 200-binding index write | 6.975 | 7.751 | 8.232 |
+| Append per-turn provenance | 0.102 | 0.182 | 0.251 |
+| Decode/dispatch 1,000 RPC events | 1.728 | 2.242 | 2.734 |
+| Electron switch to 50-turn history, including Playwright | 150.465 | 167.948 | 172.972 |
+
+The Electron sample uses `tests/electron/agentchat-layout.mjs` with a fake native pi runtime, 3 warmups + 20 switches. CDP renderer heap snapshot: 16,809,164 bytes (~16.0 MiB); this is not a leak/growth measurement. Concurrent full-suite runs vary and are not CI timing thresholds. Trace logs retain at most 2,000 events, pending UI replay at most 1,024 coalesced events, and readable projection strings at most 2 × 1024² UTF-16 units. No Markdown/editor algorithm changed and no benchmark baseline was replaced.
+
+A separate explicitly activated **real in-app** pi smoke fetched example.com and IANA with curl, analyzed HTML with Python, wrote a sourced report and memory, resumed the exact native session with revised instructions, and stopped a requested sleep before the next write. Research turn 71,757 ms; UI Stop 123.36 ms; 37,189 cumulative assistant-reported tokens over its turns. Default tests never use this live path. Billing/cost and research correctness beyond these retrieved sources were not audited; this is not a web-search evaluation. Full evidence/commands and unsandboxed limitations: `docs/design/agent-folders-pi-phase1.md`.
+
+Unmeasured: large native-history replay, long-duration memory growth, maximum-session stress, packaged and non-Linux live pi, background recovery and intentionally detached children. Ordinary Assistant checkpoint data above remains a different workload; there is no equivalent regression/speedup claim.
+
+## Research formatting and Explorer output discovery (working tree)
+
+The fix adds safe GFM tables/ordered and task markers to the shared chat renderer and metadata-only workspace output discovery to FilesController. Tool completion refreshes loaded agent folders and expands parents of new/changed reports without changing selection or opening documents. Discovery skips links/hidden/dependency folders and stops at 1,000 entries or eight directory levels; an incomplete inventory is not used to infer outputs. Normal loaded-folder refresh remains available. This is added functionality/cost, not a speedup claim.
+
+Linux, Node v24.21.0, local temporary disk, 3 warmups + 20 samples in the core tests:
+
+| Workload | Median ms | p95 ms | Maximum ms |
+| --- | ---: | ---: | ---: |
+| Safe chat HTML for a 200-row, three-column research table, including inline emphasis/code and escaped pipes | 2.711 | 3.240 | 3.316 |
+| Refresh/discover outputs with 200 existing workspace files, one new nested report per iteration (23 iterations, including warmups) | 18.369 | 26.454 | 29.362 |
+
+These core measurements do not include browser table layout, large-table DOM growth, real provider/runtime startup or large remote filesystems. Prior samples were 2.529/4.367/4.855 ms for rendering and 15.938/30.823/32.788 ms for discovery; filesystem/CPU scheduling varies. Tests do not assert timing thresholds. Electron verifies the two-row research table and visible nested output with a fake shell tool in light, dark and 560 px layouts; screenshots are not a browser performance benchmark. No paid model/network was used for this fix.
+
+`npm run bench:compare` used the unchanged baseline's 100 mixed blocks (~30 KB) and 10 repetitions, then was repeated three times. Last repeat:
+
+| Existing Markdown workload | Median ms | p95 ms | Maximum ms | Median vs baseline |
+| --- | ---: | ---: | ---: | ---: |
+| markdownToHtml | 11.79 | 15.66 | 15.66 | +5% |
+| parseInline per line | 3.52 | 4.46 | 4.46 | −3% |
+| findTables | 0.18 | 0.34 | 0.34 | −18% |
+| parseTable + renderTable | 2.06 | 2.58 | 2.58 | +14% |
+| parseBoard + serializeBoard | 0.10 | 0.32 | 0.32 | +29% |
+
+These existing benchmark functions were not edited. Table medians ranged from 1.67 to 2.06 ms across the repeats (−7% to +14%); the board delta is about 0.02 ms against its 0.08 ms baseline and ranged from +15% to +29%. The positive deltas are recorded, not hidden or used to replace the baseline; these small-run results do not establish a code-level regression or improvement. Full large-table browser layout, maximum-budget discovery and Windows/macOS timing remain unmeasured.

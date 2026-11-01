@@ -1,3 +1,4 @@
+import { piRpcTests } from '../unit/pirpc';
 import { agentFolderTests } from '../unit/agentfolders';
 // The tests of the core (markdown/, agent/, forge/, the base modules, the orchestrator, the daemon client) and of the
 // application layer's pure parts. They reach the runtime only through the platform port and the test host; Node runs them
@@ -73,7 +74,7 @@ export type CoreFocus = 'all' | 'worktrees' | 'daemon' | 'agent-folders';
 
 // Runs the tests one module after another; a module whose tests wait is awaited before the next starts.
 export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
-    if (focus === 'agent-folders') { await agentFolderTests(); return; }
+    if (focus === 'agent-folders') { await piRpcTests(); await agentFolderTests(); return; }
     if (focus === 'worktrees') {
         harnessTests();
         await worktreeTests();
@@ -123,6 +124,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await preferencesTests();
     await workspaceTests();
     await chatControllerTests();
+    await piRpcTests();
     await agentFolderTests();
     await agentTests();
     await apiKeyTests();

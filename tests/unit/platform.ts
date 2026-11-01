@@ -26,6 +26,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
             exists: path => files.has(path),
             remove: path => { if (!files.delete(path)) throw new Error(`no ${path}`); },
             makeDirs: () => {},
+            createDir: () => true,
             setMode: (path, mode) => { modes.set(path, mode); },
             list: () => [],
             kind: path => files.has(path) ? 'file' : 'missing',
@@ -47,6 +48,7 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
             basename: path => path.slice(path.lastIndexOf('/') + 1),
             isAbsolute: path => path.startsWith('/'),
             same: (a, b) => a === b,
+            dataDir: () => '/data',
             configDir: () => '/config',
             homeDir: () => '/home/test',
             runtimeDir: () => '/run',
@@ -64,6 +66,8 @@ function fakePlatform(options: { env?: Record<string, string>; keyring?: boolean
         processes: { run: async () => null, spawn: () => { throw new Error('no processes in this fake'); }, findProgram: () => null, launch: () => false, openTerminal: () => false, hostName: () => 'fake' },
         env: name => options.env?.[name] ?? null,
         realName: () => null,
+        newId: () => '00000000-0000-4000-8000-000000000000',
+        hash: text => text,
         monotonicMs: () => 0,
     };
     return { fake, files, modes, ring };

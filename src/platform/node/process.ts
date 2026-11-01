@@ -58,12 +58,13 @@ function run({ argv, cwd, env = {}, timeoutMs = 120000, lostMs = 5000 }: RunRequ
 }
 
 // Lines are split only at LF, matching pi's JSONL framing.
-function lineSplitter(onLine: (text: string) => void): { push(chunk: string): void; end(): void } {
+function lineSplitter(onLine: (text: string) => void, max = Infinity): { push(chunk: string): void; end(): void } {
     let rest = '';
     return {
         push(chunk) {
             const parts = (rest + chunk).split('\n');
             rest = parts.pop()!;
+            if (rest.length > max || parts.some(line => line.length > max)) throw Error('Process output exceeded the record limit');
             for (const line of parts) onLine(line);
         },
         end() { if (rest) onLine(rest); rest = ''; },
@@ -94,13 +95,17 @@ function spawn(argv: string[], cwd: string, handlers: ChildHandlers): ChildProce
         closeInput();
         handlers.exit(status, stderr);
     };
-    const out = lineSplitter(text => handlers.line(text));
+    const out = lineSplitter(text => handlers.line(text), handlers.maxLineLength);
     const err = lineSplitter(text => { stderr = `${stderr}${text}\n`.slice(-STDERR_TAIL); });
     const read = (stream: NodeJS.ReadableStream, lines: ReturnType<typeof lineSplitter>) => {
         let open = true;
         const close = () => { if (!open) return; open = false; lines.end(); done(); };
         stream.setEncoding('utf8');
-        stream.on('data', (chunk: string) => { if (open) lines.push(chunk); });
+        stream.on('data', (chunk: string) => {
+            if (!open) return;
+            try { lines.push(chunk); }
+            catch { stderr = 'Process output exceeded the record limit'; child.kill('SIGKILL'); open = false; done(); }
+        });
         stream.on('end', close);
         stream.on('error', close);
         return close;
@@ -117,7 +122,7 @@ function spawn(argv: string[], cwd: string, handlers: ChildHandlers): ChildProce
     });
     return {
         write: line => {
-            if (!inputOpen || exited) return false;
+            if (!inputOpen || exited || child.stdin.writableLength > 1024 * 1024) return false;
             try { child.stdin.write(`${line}\n`); return true; } catch { closeInput(); return false; }
         },
         closeInput,

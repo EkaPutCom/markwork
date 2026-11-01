@@ -12,7 +12,8 @@ try { execFileSync('go', ['version'], { stdio: 'ignore' }); } catch { console.lo
 const scratch = mkdtempSync(join(tmpdir(), 'markwork-folder-worker-'));
 const root = join(scratch, 'agent'), chats = join(root, 'chats');
 mkdirSync(chats, { recursive: true });
-writeFileSync(join(root, 'agent.json'), JSON.stringify({ version: 1, name: 'Background test', instructions: 'instructions.md' }));
+mkdirSync(join(root, 'workspace'), { recursive: true });
+writeFileSync(join(root, 'agent.json'), JSON.stringify({ version: 2, id: '8eb7ae49-d03b-411a-91e8-fcc069b54878', runtime: 'pi', name: 'Background test', instructions: 'instructions.md' }));
 writeFileSync(join(root, 'instructions.md'), 'Use only these references and propose every change.');
 writeFileSync(join(root, 'plan.md'), '# Plan\n\nShip 15 November\n');
 writeFileSync(join(chats, 'worker.md'), '---\nlayout: chat\ntitle: "Background test"\nmodel: deepseek-flash\ncreated: 2026-10-31\n---\n\n');

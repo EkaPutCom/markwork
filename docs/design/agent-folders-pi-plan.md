@@ -1,8 +1,8 @@
 # Plan: persistent folder agents powered by pi
 
-Status: proposed; no runtime behavior is changed by this document. This plan supersedes the custom-engine execution direction in [agent-folders.md](agent-folders.md), while retaining compatible UI and lifecycle requirements.
+Status: Phase 1 local runtime implemented; see [the implementation and validation record](agent-folders-pi-phase1.md). Background execution, legacy code retirement and security hardening remain Phases 2–4. This plan supersedes the custom-engine execution direction in [agent-folders.md](agent-folders.md), while retaining compatible UI and lifecycle requirements.
 
-Phase 0 local spike: **passed** on 1 November 2026. See [the runnable experiment, decisions, evidence, and remaining limits](agent-folders-pi-phase0.md). This does not enable pi-based Agent Folders in the application; Phase 1 and later gates remain pending.
+Phase 0 local spike: **passed** on 1 November 2026. See [the runnable experiment, decisions, evidence, and remaining limits](agent-folders-pi-phase0.md). Phase 1 now enables explicitly activated local pi Agent Folders in the application. Later phase gates remain pending.
 
 ## 1. Goal and agreed decisions
 

@@ -94,7 +94,7 @@ export function describeContext(built: BuiltContext): string {
 }
 
 // The line of the status card: what the agent is doing, or how the turn ended.
-export function statusLine(a: AnswerView): string {
+export function statusLine(a: AnswerView, agent = false): string {
     const n = a.steps.length;
     switch (a.phase) {
         case 'thinking': return 'Thinking…';
@@ -103,20 +103,20 @@ export function statusLine(a: AnswerView): string {
             const running = a.steps.findLast(s => !s.summary);
             return running ? `${running.label} · step ${n}` : 'Thinking…';
         }
-        case 'done': return n ? plural(n, 'lookup', 'lookups') : 'Answered';
+        case 'done': return n ? (agent ? plural(n, 'tool call', 'tool calls') : plural(n, 'lookup', 'lookups')) : 'Answered';
         case 'stopped': return n ? `Stopped after step ${n}` : a.text.trim() ? 'Stopped' : 'Stopped before any answer';
         case 'failed': return 'Something went wrong';
     }
 }
 
 // "10 in (4 from cache) · 5 out · 2 lookups · 1 change applied"
-export function usageLine(outcome: Extract<TurnOutcome, { usage: unknown }>): string {
+export function usageLine(outcome: Extract<TurnOutcome, { usage: unknown }>, agent = false): string {
     const u = outcome.usage;
     if (!u) return '';
     return [
         u.cached ? `${fmtTokens(u.prompt)} in (${fmtTokens(u.cached)} from cache)` : `${fmtTokens(u.prompt)} in`,
         `${fmtTokens(u.completion)} out`,
-        ...outcome.toolCalls ? [plural(outcome.toolCalls, 'lookup', 'lookups')] : [],
+        ...outcome.toolCalls ? [agent ? plural(outcome.toolCalls, 'tool call', 'tool calls') : plural(outcome.toolCalls, 'lookup', 'lookups')] : [],
         ...outcome.applied ? [plural(outcome.applied, 'change applied', 'changes applied')] : [],
     ].join(' · ');
 }

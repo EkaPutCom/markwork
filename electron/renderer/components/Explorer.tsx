@@ -16,7 +16,7 @@ const INTERNAL = 'application/x-markwork-path';
 
 
 const NEW_ITEMS: { kind: NewKind; label: string }[] = [
-    { kind: 'file', label: 'New File…' }, { kind: 'folder', label: 'New Folder…' }, { kind: 'agent', label: 'New Agent…' }, { kind: 'board', label: 'New Kanban Board…' },
+    { kind: 'file', label: 'New File…' }, { kind: 'folder', label: 'New Folder…' }, { kind: 'agent', label: 'New Agent… (in workspace agents/)' }, { kind: 'board', label: 'New Kanban Board…' },
     { kind: 'inbox', label: 'New Inbox…' }, { kind: 'table', label: 'New Table…' }, { kind: 'csv', label: 'New CSV Table…' },
 ];
 
@@ -24,11 +24,12 @@ const NEW_ITEMS: { kind: NewKind; label: string }[] = [
 // and Move to Trash. `target` is null for the work folder itself.
 function TreeMenu({ target, root }: { target: FolderEntry | null; root: string }) {
     const client = useClient();
+    const { folderAgents } = useStore();
     // New things go into the folder clicked, or next to the file clicked.
     const dir = !target ? root : target.isDir ? target.path : target.path.slice(0, Math.max(target.path.lastIndexOf('/'), target.path.lastIndexOf('\\')));
     return (
         <ContextMenuContent className="min-w-52">
-            {NEW_ITEMS.map(i => <ContextMenuItem key={i.kind} onSelect={() => client.createEntry(i.kind, dir)}>{i.label}</ContextMenuItem>)}
+            {NEW_ITEMS.map(i => <ContextMenuItem key={i.kind} disabled={i.kind === 'agent' && folderAgents?.canCreate === false} onSelect={() => client.createEntry(i.kind, dir)}>{i.label}</ContextMenuItem>)}
             {target && <>
                 <ContextMenuSeparator />
                 <ContextMenuItem onSelect={() => client.renameEntry(target.path)}>Rename…<ContextMenuShortcut>F2</ContextMenuShortcut></ContextMenuItem>

@@ -5,10 +5,41 @@ import { cellHtml } from '../../src/markdown/inlinehtml';
 import { chatBlocks } from '../../src/markdown/chatblocks';
 import { chatHtml } from '../../src/markdown/chathtml';
 import { NOTE_URI } from '../../src/markdown/inlineruns';
-import { section, test, eq, ok, contains } from '../core/framework';
+import { platform } from '../../src/platform/index';
+import { section, test, eq, ok, contains, say } from '../core/framework';
 
 export function inlineHtmlTests(): void {
     section('Inline runs and HTML');
+    test('chat tables use shared GFM cells, alignment and safe inline formatting', () => {
+        const html = chatHtml('| CVE | Risk | Score |\n| :--- | :---: | ---: |\n| **CVE-1** | escaped \\| pipe | `9.8` |');
+        contains(html, '<table>'); contains(html, '<thead>'); contains(html, '<strong>CVE-1</strong>');
+        contains(html, 'escaped | pipe'); contains(html, '<code>9.8</code>'); contains(html, 'md-align-center'); contains(html, 'md-align-right');
+        ok(!html.includes(':---'), 'separator leaked');
+        const unsafe = chatHtml('| Header |\n| --- |\n| <img src=x onerror=alert(1)> |');
+        ok(!unsafe.includes('<img'), 'raw HTML executed'); contains(unsafe, '&lt;img');
+    });
+    test('streamed table prefixes stay readable until the separator completes and code pipes stay code', () => {
+        ok(!chatHtml('| A | B |\n| ').includes('<table>'), 'premature table');
+        contains(chatHtml('| A | B |\n| --- | --- |'), '<table>');
+        const code = chatHtml('````md\n| A | B |\n| --- | --- |\n```\nstill code\n````\nafter');
+        ok(!code.includes('<table>'), 'fenced table rendered'); contains(code, '```\nstill code'); contains(code, '<p class="md-line">after</p>');
+    });
+    test('chat preserves numbered and task markers and recognizes rules before bullets', () => {
+        const html = chatHtml('3. Third\n4) Fourth\n- [x] Done\n- [ ] Pending\n- - -');
+        contains(html, 'data-marker="3."'); contains(html, 'data-marker="4)"');
+        contains(html, 'data-marker="☑"'); contains(html, 'data-marker="☐"'); contains(html, '<hr');
+    });
+    test('chat table render baseline: 200 research rows, 3 warmups and 20 samples', () => {
+        const text = '| CVE | Risk | Source |\n| --- | --- | --- |\n' + Array.from({ length: 200 }, (_, i) => `| **CVE-${i}** | High risk with \\| escaped pipe | https://example.com/${i} |`).join('\n');
+        const times: number[] = [];
+        for (let i = 0; i < 23; i++) {
+            const start = platform().monotonicMs(), html = chatHtml(text);
+            if (i >= 3) times.push(platform().monotonicMs() - start);
+            eq((html.match(/<tr>/g) || []).length, 201);
+        }
+        times.sort((a, b) => a - b);
+        say('  Chat table baseline (200 rows, ms): ' + JSON.stringify({ median: times[10], p95: times[18], max: times[19] }));
+    });
 
     test('inlineRuns: markers are dropped and styles merged (bold inside italic)', () => {
         eq(inlineRuns('a **b** *c **d***'), [

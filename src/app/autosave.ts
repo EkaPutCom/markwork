@@ -13,6 +13,7 @@ const AUTOSAVE_DELAY_MS = 1000;
 export interface AutosaveHost {
     readonly settings: AppSettings;
     docs(): readonly Doc[];
+    canSaveDocument?(doc: Doc): boolean;
     toast(message: string, action?: ToastAction): void;
 }
 
@@ -67,7 +68,7 @@ export class Autosaver {
     inBackground(doc: Doc, done: () => void = () => {}): boolean {
         this.cancel(doc);
         const path = doc.file;
-        if (!doc.editor.isModified() || !this.host.settings.autosave || !path) return false;
+        if (!doc.editor.isModified() || !this.host.settings.autosave || !path || this.host.canSaveDocument?.(doc) === false) return false;
         const state = this.state(doc), changes = state.changes;
         writeTextFileAsync(path, doc.editor.getText(), error => {
             if (error) {
@@ -85,7 +86,7 @@ export class Autosaver {
     now(doc: Doc): boolean {
         this.cancel(doc);
         if (!doc.editor.isModified()) return true;
-        if (!this.host.settings.autosave || !doc.file) return false;
+        if (!this.host.settings.autosave || !doc.file || this.host.canSaveDocument?.(doc) === false) return false;
         try {
             writeTextFile(doc.file, doc.editor.getText());
         } catch (e) {

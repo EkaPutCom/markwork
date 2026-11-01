@@ -1,6 +1,6 @@
 # Agent folders: design and implementation plan
 
-Status: implemented; packaged launch and extended recovery validation remain pending. The local controller, shared chat tabs, visible session storage, scoped protocol, and Linux headless-worker adapter are implemented. The [interactive HTML mockup](mockups/agent-folder.html) remains the design reference.
+Status: historical custom-engine design, superseded for application execution by [local pi Agent Folders (Phase 1)](agent-folders-pi-phase1.md). Shared tabs and navigation remain; the worker/approval/background descriptions below are historical, not the current folder runtime. The [interactive HTML mockup](mockups/agent-folder.html) remains the design reference.
 
 The runnable fixture is [`example/`](../../example/README.md), with an agent folder next to ordinary `notes/` and `projects/` folders. `npm start -- example/research-agent` opens the agent directly.
 
@@ -12,7 +12,7 @@ Agreed layout: **folder tree on the left, chat in the center, session list on th
 
 ## Pi replacement experiment
 
-The [pi-based replacement plan](agent-folders-pi-plan.md) supersedes this document's future custom-engine direction, not its description of the currently implemented behavior. Its [Phase 0 local spike](agent-folders-pi-phase0.md) proves native pi streaming, session resume, revised instructions, shell/research/report writing, and Stop. It is separate developer tooling, explicitly unsandboxed and manually activated. The application's existing worker and Apply boundaries remain unchanged until replacement implementation.
+The [pi-based replacement plan](agent-folders-pi-plan.md) supersedes this document's future custom-engine direction, not its description of the currently implemented behavior. Its [Phase 0 local spike](agent-folders-pi-phase0.md) proves native pi streaming, session resume, revised instructions, shell/research/report writing, and Stop. It is separate developer tooling, explicitly unsandboxed and manually activated. The application now uses the local pi adapter with explicit unsandboxed activation and direct tools, not the custom worker or per-tool Apply. The ordinary Assistant retains Apply. Old folder worker code remains only for the separate Phase 3 retirement; it is not an execution fallback.
 
 ## 1. Product behavior
 

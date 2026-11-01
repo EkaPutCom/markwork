@@ -37,9 +37,10 @@ try {
         await chat.waitFor();
         await page.getByRole('complementary', { name: 'Agent sessions', exact: true }).getByText('Research Assistant', { exact: true }).waitFor();
         console.log(`  New Agent submit to chat: ${(performance.now() - started).toFixed(1)} ms`);
-        const root = join(notes, 'Research Assistant');
-        assert.deepEqual(JSON.parse(readFileSync(join(root, 'agent.json'), 'utf8')), { version: 1, name: 'Research Assistant', instructions: 'instructions.md' });
-        assert.ok(readFileSync(join(root, 'instructions.md'), 'utf8').includes('press Apply'));
+        const root = join(notes, 'agents', 'Research Assistant');
+        const config = JSON.parse(readFileSync(join(root, 'agent.json'), 'utf8'));
+        assert.equal(config.version, 2); assert.equal(config.runtime, 'pi'); assert.match(config.id, /^[a-f0-9-]{36}$/);
+        assert.ok(readFileSync(join(root, 'instructions.md'), 'utf8').includes('without Apply'));
         assert.equal(readFileSync(join(root, 'chats', '.gitignore'), 'utf8'), '*\n');
         const saved = readdirSync(join(root, 'chats')).filter(file => file.endsWith('.md'));
         assert.equal(saved.length, 1);
@@ -62,14 +63,15 @@ try {
             await page.screenshot({ animations: 'disabled', path: join(out, `new-agent-created-${theme}.png`) });
         }
     });
-    await step('Explorer creates an agent inside the folder whose context menu was opened', async () => {
+    await step('Explorer always creates directly in workspace agents even from another selected folder', async () => {
         await page.getByRole('treeitem', { name: 'projects', exact: true }).click({ button: 'right' });
-        await page.getByRole('menuitem', { name: 'New Agent…', exact: true }).click();
+        await page.getByRole('menuitem', { name: 'New Agent… (in workspace agents/)', exact: true }).click();
         await dialog.getByLabel('Folder name').fill('Project Agent');
         await dialog.getByLabel('Folder name').press('Enter');
         await dialog.waitFor({ state: 'detached' });
         await page.getByRole('complementary', { name: 'Agent sessions', exact: true }).getByText('Project Agent', { exact: true }).waitFor();
-        assert.ok(existsSync(join(notes, 'projects', 'Project Agent', 'agent.json')));
+        assert.ok(existsSync(join(notes, 'agents', 'Project Agent', 'agent.json')));
+        assert.equal(existsSync(join(notes, 'projects', 'Project Agent')), false);
         assert.equal(existsSync(join(notes, 'Project Agent')), false);
     });
     await step('the palette offers New Agent and cancelling writes no folder', async () => {

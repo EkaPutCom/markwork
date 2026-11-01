@@ -26,7 +26,7 @@ export interface FolderChatPayload {
     update?: TraceUpdate;
 }
 export interface FolderChatEvent { ev: string; payload: FolderChatPayload }
-export interface FolderSessionSummary { id: string; title: string; root: string; busy: boolean; waiting: boolean; queued: boolean }
+export interface FolderSessionSummary { id: string; title: string; root: string; busy: boolean; waiting: boolean; queued: boolean; interrupted?: boolean }
 export interface FolderAgentState {
     root: string | null;
     name: string;
@@ -34,6 +34,9 @@ export interface FolderAgentState {
     sessions: FolderSessionSummary[];
     runtime: 'local' | 'checking' | 'background' | 'reconnecting';
     runtimeDetail: string;
+    activated?: boolean;
+    canCreate?: boolean;
+    conflicts?: { path: string; name: string }[];
 }
 export interface FolderAgentView {
     show(state: FolderAgentState): void;
@@ -63,7 +66,7 @@ export class FolderPanel implements ChatPanelView {
     onSaveKey!: ChatPanelView['onSaveKey'];
     onForgetKey!: ChatPanelView['onForgetKey'];
     shown: ChatPanelSettings | null = null;
-    readonly models = DEEPSEEK_MODELS;
+    models: readonly string[] = DEEPSEEK_MODELS;
     readonly events: FolderChatEvent[] = [];
     readonly trace = new TraceReplica();
     base: SavedChat | null = null;
@@ -76,8 +79,16 @@ export class FolderPanel implements ChatPanelView {
 
     private emit(ev: string, payload: FolderChatPayload = {}): void {
         const event = { ev, payload };
-        if (this.busy && ev !== 'chat.log') this.events.push(event);
+        if (this.busy && ev !== 'chat.log') this.retain(event);
         this.view.event(this.id, event);
+    }
+    private retain(event: FolderChatEvent): void {
+        const { ev, payload } = event;
+        const prior = [...this.events].reverse().find(item => item.ev === ev && item.payload.turn === payload.turn && item.payload.step?.id === payload.step?.id);
+        if (prior && (ev === 'chat.text' || ev === 'chat.reasoning')) prior.payload.delta = ((prior.payload.delta ?? '') + (payload.delta ?? '')).slice(-1048576);
+        else if (prior && ev === 'chat.tool') prior.payload = payload;
+        else this.events.push({ ev, payload: { ...payload } });
+        if (this.events.length > 1024) this.events.splice(1, 1);
     }
     setWaiting(waiting: boolean): void { this.waiting = waiting; this.changed(); }
     receive(ev: string, payload: FolderChatPayload): void {

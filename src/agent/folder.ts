@@ -5,7 +5,9 @@ import { cleanNewName } from './changes';
 import { folderPath } from './path';
 
 export interface AgentFolderConfig {
-    version: 1;
+    version: 2;
+    id: string;
+    runtime: 'pi';
     name: string;
     description: string;
     instructions: string;
@@ -23,17 +25,24 @@ function descriptionOf(value: unknown): string {
     return value;
 }
 
+function identity(config: Record<string, unknown>): string {
+    if (config.version !== 2 || config.runtime !== 'pi') throw Error('This agent requires a new version 2 pi configuration. Existing folders are not migrated.');
+    if (typeof config.id !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(config.id)) throw Error('Agent id must be a stable UUID');
+    if (Object.keys(config).some(key => !['version', 'id', 'runtime', 'name', 'description', 'instructions'].includes(key))) throw Error('Unsupported agent configuration field');
+    return config.id;
+}
+
 export function parseAgentFolder(text: string): AgentFolderConfig {
     if (text.length > 16384) throw Error('agent.json is larger than 16 KB');
     const value: unknown = JSON.parse(text);
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('agent.json must contain an object');
     const config = value as Record<string, unknown>;
-    if (config.version !== 1) throw Error('agent.json requires version 1');
+    const id = identity(config);
     if (typeof config.name !== 'string' || !config.name.trim() || config.name.length > 120) throw Error('Agent name must contain 1–120 characters');
     const description = descriptionOf(config.description);
     const file = config.instructions;
     if (typeof file !== 'string' || cleanNewName(file) !== file || isAgentReserved(file) || !file.toLowerCase().endsWith('.md')) throw Error('Instructions must name a Markdown file inside the agent folder');
-    return { version: 1, name: config.name.trim(), description, instructions: file };
+    return { version: 2, id, runtime: 'pi', name: config.name.trim(), description, instructions: file };
 }
 
 export function loadAgentFolder(root: string): AgentFolderDefinition {
@@ -47,6 +56,8 @@ export function loadAgentFolder(root: string): AgentFolderDefinition {
         if (fs.info(file).size > 32768) throw Error('Agent instructions are larger than 32 KB');
         const instructions = readTextFile(file);
         folderPath(root, 'chats');
+        const workspace = folderPath(root, 'workspace');
+        if (fs.kind(workspace) !== 'directory') throw Error('The agent workspace directory is missing');
         return { kind: 'agent', config, instructions };
     } catch (e) {
         return { kind: 'invalid', error: e instanceof Error ? e.message : String(e) };

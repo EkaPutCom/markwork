@@ -1,328 +1,281 @@
 import { createAgentFolder } from '../../src/app/agentfoldercreate';
+import { FOLDER_ACTIVATION_NOTICE } from '../../src/app/agentfolders';
+import { FolderStore } from '../../src/agent/folderstore';
+import { FolderTurnQueue } from '../../src/agent/folderqueue';
+import { parseAgentFolder, loadAgentFolder } from '../../src/agent/folder';
 import { platform } from '../../src/platform/index';
 import { host } from '../core/host';
-import { COMMANDS, type FrontendCommands } from '../../src/app/commands';
-import { FolderTurnQueue } from '../../src/agent/folderqueue';
-import { ensureAgentChatStorage } from '../../src/agent/chatstore';
-import { FolderWorker, type WorkerOutput } from '../../src/agent/folderworker';
-import { parseAgentFolder, loadAgentFolder } from '../../src/agent/folder';
-import { saveChat, listChats } from '../../src/agent/chatstore';
-import { WorkspaceRepository } from '../../src/base/workspace';
 import { AppSession } from '../../src/app/session';
-import { memorySettings, fakeFrontend, quiet } from './appsession';
-import { section, test, eq, ok, tmp, disk, until } from '../core/framework';
+import { memorySettings, fakeFrontend } from './appsession';
+import { fakeFolderPi } from './fakefolderpi';
+import { section, test, eq, ok, tmp, disk, until, say } from '../core/framework';
 
-const CONFIG = JSON.stringify({ version: 1, name: 'Research Assistant', instructions: 'instructions.md' });
-function root(name: string): string {
-    const folder = disk.join(tmp, 'agent-folder-' + name);
-    disk.mkdirs(folder);
-    return folder;
-}
+function root(name: string): string { const folder = disk.join(tmp, 'pi-folder-' + name); disk.mkdirs(folder); return folder; }
+function config(): string { return JSON.stringify({ version: 2, id: platform().newId(), runtime: 'pi', name: 'Research Assistant', instructions: 'instructions.md' }); }
 function fixture(name: string): string {
     const folder = root(name);
-    disk.write(disk.join(folder, 'agent.json'), CONFIG);
+    disk.write(disk.join(folder, 'agent.json'), config());
     disk.write(disk.join(folder, 'instructions.md'), 'Cite sources before making claims.');
-    disk.write(disk.join(folder, 'plan.md'), '# Plan\n\nShip 15 November\n');
+    disk.mkdirs(disk.join(folder, 'workspace'));
+    disk.write(disk.join(folder, 'workspace', 'plan.md'), '# Plan\n\nShip 15 November\n');
     return folder;
+}
+function sessionFor(folder: string) {
+    const settings = memorySettings(); settings.welcomed = true; settings.autosave = false;
+    const frontend = fakeFrontend(settings, []);
+    frontend.dialogs.files.confirm = async () => true;
+    const session = new AppSession(frontend), fake = fakeFolderPi();
+    session.agentFolders.runtime = fake.runtime;
+    session.start(); session.open(folder);
+    return { session, fake, frontend, settings };
 }
 
 export async function agentFolderTests(): Promise<void> {
-    section('Agent folders');
-    await test('New Agent creates a complete definition with private chats and never overwrites an existing folder', () => {
-        const workspace = root('create-definition');
+    section('Pi Agent folders');
+    await test('new shell outputs expand their parents without opening a document or changing tree selection', async () => {
+        const folder = fixture('output-tree'), { session, frontend } = sessionFor(folder);
+        const shown = new Map<string, string[]>(), expanded: string[] = [];
+        let revealed = false;
+        const watch = platform().fs.watchDir;
+        platform().fs.watchDir = () => { throw Error('Unwatchable fixture'); };
+        frontend.host.fileTree.showFolder = (dir, entries) => shown.set(dir, entries.map(entry => entry.name));
+        frontend.host.fileTree.expand = dir => expanded.push(dir);
+        frontend.host.fileTree.reveal = () => { revealed = true; };
+        try {
+            await session.agentFolders.enable(folder); eq(expanded, []);
+            const id = session.agentFolders.state().sessions[0].id;
+            await session.agentFolders.find(id).panel.onSend('write report');
+            const workspace = disk.join(folder, 'workspace');
+            ok(shown.get(workspace)?.includes('report.md'), 'new output missing'); ok(expanded.includes(workspace), 'workspace stayed collapsed');
+            const output = disk.join(workspace, 'output', 'research'); disk.mkdirs(output); disk.write(disk.join(output, 'cve.md'), '# Sources');
+            session.files.refreshAgent(folder);
+            ok(expanded.includes(output) && shown.get(output)?.includes('cve.md'), 'nested shell output hidden');
+            eq(revealed, false, 'file creation changed selection');
+            expanded.length = 0; session.files.refreshAgent(folder); eq(expanded, [], 'unchanged inventory re-expanded folders');
+            disk.write(disk.join(output, 'cve.md'), '# Updated evidence for the source'); session.files.refreshAgent(folder);
+            ok(expanded.includes(output), 'updated existing report stayed hidden'); expanded.length = 0;
+            const outside = root('outside-output'); disk.write(disk.join(outside, 'private.md'), '# Private');
+            host().symlink(outside, disk.join(workspace, 'linked'));
+            for (const name of ['.private', 'node_modules']) { const dir = disk.join(workspace, name); disk.mkdirs(dir); disk.write(disk.join(dir, 'hidden.md'), '# Hidden'); }
+            session.files.refreshAgent(folder); eq(expanded, [], 'discovery followed links or hidden/dependency folders');
+        } finally { platform().fs.watchDir = watch; session.dispose(); }
+    });
+    await test('incomplete output inventories do not expand guessed paths but loaded folders still refresh', async () => {
+        const folder = fixture('output-limit'), { session, frontend } = sessionFor(folder), workspace = disk.join(folder, 'workspace');
+        const expanded: string[] = [], shown = new Map<string, string[]>();
+        frontend.host.fileTree.expand = dir => expanded.push(dir);
+        frontend.host.fileTree.showFolder = (dir, entries) => shown.set(dir, entries.map(entry => entry.name));
+        try {
+            await session.agentFolders.enable(folder); frontend.host.fileTree.onOpenFolder(workspace);
+            const bulk = disk.join(workspace, 'bulk'); disk.mkdirs(bulk);
+            for (let i = 0; i < 1001; i++) disk.write(disk.join(bulk, `entry-${i}.md`), 'Large inventory');
+            disk.write(disk.join(workspace, 'new.md'), '# New'); session.files.refreshAgent(folder);
+            eq(expanded, [], 'partial inventory inferred outputs'); ok(shown.get(workspace)?.includes('new.md'), 'normal loaded-folder refresh stopped');
+        } finally { session.dispose(); }
+    });
+    await test('agent output discovery baseline: 200 existing files and new nested reports', async () => {
+        const folder = fixture('output-perf'), workspace = disk.join(folder, 'workspace');
+        for (let i = 0; i < 200; i++) disk.write(disk.join(workspace, `note-${i}.md`), '# Existing');
+        const { session } = sessionFor(folder), times: number[] = [];
+        try {
+            await session.agentFolders.enable(folder);
+            for (let i = 0; i < 23; i++) {
+                const dir = disk.join(workspace, 'output-' + i); disk.mkdirs(dir); disk.write(disk.join(dir, 'report.md'), '# New');
+                const start = platform().monotonicMs(); session.files.refreshAgent(folder);
+                if (i >= 3) times.push(platform().monotonicMs() - start);
+            }
+            times.sort((a, b) => a - b);
+            say('  Agent tree discovery baseline (200 files, ms): ' + JSON.stringify({ median: times[10], p95: times[18], max: times[19] }));
+        } finally { session.dispose(); }
+    });
+    await test('new agents are version 2 stable identities directly under the root agents directory', () => {
+        const workspace = root('create');
         const path = createAgentFolder(workspace, workspace, ' Research Agent ');
+        eq(path, disk.join(workspace, 'agents', 'Research Agent'));
         const definition = loadAgentFolder(path);
         eq(definition.kind, 'agent');
-        if (definition.kind === 'agent') eq(definition.config.name, 'Research Agent');
-        ok(disk.read(disk.join(path, 'instructions.md')).includes('press Apply'), 'starter instructions omit approval');
+        if (definition.kind === 'agent') { eq(definition.config.runtime, 'pi'); ok(definition.config.id.length === 36, 'missing UUID'); }
+        ok(disk.read(disk.join(path, 'instructions.md')).includes('without Apply'), 'wrong approval boundary');
         eq(disk.read(disk.join(path, 'chats', '.gitignore')), '*\n');
-        eq(disk.exists(disk.join(path, '.markwork')), false);
-        disk.write(disk.join(path, 'keep.md'), 'User content');
+        eq(platform().fs.kind(disk.join(path, 'workspace')), 'directory');
         let rejected = false;
         try { createAgentFolder(workspace, workspace, 'Research Agent'); } catch { rejected = true; }
-        ok(rejected, 'existing folder was reused');
-        eq(disk.read(disk.join(path, 'keep.md')), 'User content');
-        eq(platform().fs.list(workspace), ['Research Agent']);
+        ok(rejected, 'collision overwritten');
+        eq(platform().fs.list(workspace), ['agents']);
     });
-    await test('New Agent rejects unsafe names, outside parents and symlinked parents before writing', () => {
-        const workspace = root('create-paths'), outside = root('create-outside');
+    await test('creation rejects unsafe names, forged parents, nesting, files and symlink escapes', () => {
+        const workspace = root('paths'), outside = root('outside');
         for (const name of ['', '..', '../escape', '..\\escape', '.hidden', 'A:B', 'CON', 'name.', 'a'.repeat(121)]) {
-            let rejected = false;
-            try { createAgentFolder(workspace, workspace, name); } catch { rejected = true; }
-            ok(rejected, name);
+            let rejected = false; try { createAgentFolder(workspace, workspace, name); } catch { rejected = true; } ok(rejected, name);
         }
-        let rejected = false;
-        try { createAgentFolder(workspace, outside, 'Escaped'); } catch { rejected = true; }
-        ok(rejected, 'outside parent accepted');
-        const link = disk.join(workspace, 'linked'); host().symlink(outside, link);
-        rejected = false;
-        try { createAgentFolder(workspace, link, 'Escaped'); } catch { rejected = true; }
-        ok(rejected, 'symbolic link parent accepted');
-        eq(disk.exists(disk.join(outside, 'Escaped')), false);
-        eq(platform().fs.list(workspace), ['linked']);
+        for (const parent of [outside, disk.join(workspace, 'projects', 'agents')]) {
+            let rejected = false; try { createAgentFolder(workspace, parent, 'Bad'); } catch { rejected = true; } ok(rejected, parent);
+        }
+        host().symlink(outside, disk.join(workspace, 'agents'));
+        let rejected = false; try { createAgentFolder(workspace, workspace, 'Bad'); } catch { rejected = true; } ok(rejected, 'symlink accepted');
+        eq(disk.exists(disk.join(outside, 'Bad')), false);
+        const fileRoot = root('agents-file'); disk.write(disk.join(fileRoot, 'agents'), 'Keep');
+        rejected = false; try { createAgentFolder(fileRoot, fileRoot, 'Bad'); } catch { rejected = true; } ok(rejected, 'file replaced');
+        eq(disk.read(disk.join(fileRoot, 'agents')), 'Keep');
+        const agent = fixture('nested'); rejected = false;
+        try { createAgentFolder(agent, agent, 'Bad'); } catch { rejected = true; } ok(rejected, 'agent inside agent');
     });
-    await test('a failed scaffold write does not publish a partial agent folder', () => {
-        const workspace = root('create-failure'), fs = platform().fs, original = fs.writeText;
-        fs.writeText = (path, text) => {
-            if (path.endsWith('instructions.md')) throw Error('Simulated write failure');
-            original.call(fs, path, text);
-        };
+    await test('failed scaffold writes do not publish partial agents or remove unknown user contents', () => {
+        const workspace = root('failure'), fs = platform().fs, original = fs.writeText;
+        fs.writeText = (path, text) => { if (path.endsWith('instructions.md')) throw Error('Simulated failure'); original.call(fs, path, text); };
         let rejected = false;
-        try { createAgentFolder(workspace, workspace, 'Failed Agent'); } catch { rejected = true; }
+        try { createAgentFolder(workspace, workspace, 'Failed'); } catch { rejected = true; }
         finally { fs.writeText = original; }
-        ok(rejected, 'write failure was hidden');
-        eq(platform().fs.list(workspace), []);
+        ok(rejected, 'failure hidden'); eq(platform().fs.list(disk.join(workspace, 'agents')), []);
     });
-    await test('the tree New Agent action opens its first chat and preserves the existing document draft', async () => {
-        const workspace = root('create-flow'), settings = memorySettings(); settings.welcomed = true; settings.autosave = false;
-        const note = disk.join(workspace, 'note.md'); disk.write(note, '# Note');
-        const frontend = fakeFrontend(settings, []), errors: string[] = [];
-        frontend.dialogs.files.name = async (title, label) => { eq([title, label], ['New Agent', 'Folder name']); return 'Writer'; };
-        frontend.dialogs.files.error = error => { errors.push(error); };
-        const session = new AppSession(frontend);
-        let calls = 0; session.assistant.chat.makeProvider = () => { calls++; throw Error('Opening an agent must not call a model'); };
-        try {
-            session.start(); session.open(workspace); session.documents.openInTab(note);
-            const draft = session.documents.active; draft.editor.replaceText('# Unsaved note');
-            const created = await session.host.fileTree.onCreate('agent', workspace);
-            eq(created, disk.join(workspace, 'Writer'));
-            eq(session.documents.page?.kind, 'agent');
-            const id = session.documents.page!.file!;
-            ok(disk.read(id).includes('layout: chat'), 'first chat is not canonical');
-            eq(session.agentFolders.state().name, 'Writer');
-            eq(session.agentFolders.find(id).assistant.chat.session.history.length, 0);
-            eq([draft.editor.getText(), draft.editor.isModified(), calls], ['# Unsaved note', true, 0]);
-            eq(errors, []);
-        } finally { session.dispose(); }
-    });
-    await test('cancelling New Agent or changing the workspace while naming writes nothing', async () => {
-        const workspace = root('create-cancel'), other = root('create-switched');
-        const frontend = fakeFrontend(memorySettings(), []), errors: string[] = [];
-        frontend.dialogs.files.error = error => { errors.push(error); };
-        const session = new AppSession(frontend);
-        try {
-            session.start(); session.open(workspace);
-            eq(await session.files.create('agent', workspace), null);
-            let answer!: (name: string) => void;
-            frontend.dialogs.files.name = () => new Promise(resolve => { answer = resolve; });
-            const pending = session.files.create('agent', workspace);
-            session.files.setRoot(other); answer('Wrong Workspace');
-            eq(await pending, null);
-            ok(errors.some(error => error.includes('workspace changed')), 'stale creation was not reported');
-            eq(platform().fs.list(workspace), []); eq(platform().fs.list(other), []);
-        } finally { session.dispose(); }
-    });
-    await test('the New Agent command chooses a parent folder when there is no workspace', async () => {
-        const workspace = root('create-command'), frontend = fakeFrontend(memorySettings(), []);
-        let choices = 0;
-        frontend.documents.dialogs.chooseFile = async options => { ok(options.selectFolder, 'not a folder chooser'); choices++; return workspace; };
-        frontend.dialogs.files.name = async () => 'Menu Agent';
-        const session = new AppSession(frontend);
-        try {
-            session.start();
-            COMMANDS.find(command => command.id === 'agent-new')!.run(session.commands(quiet<FrontendCommands>({})));
-            await until(() => session.documents.page?.kind === 'agent');
-            eq(choices, 1);
-            eq(session.files.root, workspace);
-            eq(loadAgentFolder(disk.join(workspace, 'Menu Agent')).kind, 'agent');
-        } finally { session.dispose(); }
-    });
-    await test('turns queue per folder, independent folders progress, and Stop removes queued work', async () => {
-        const queue = new FolderTurnQueue(), order: string[] = [];
-        let release!: () => void;
-        const first = queue.run('one', 'a', async () => { order.push('a'); await new Promise<void>(resolve => { release = resolve; }); });
-        const second = queue.run('one', 'b', async () => { order.push('b'); });
-        const cancelled = queue.run('one', 'c', async () => { order.push('c'); });
-        await queue.run('two', 'd', async () => { order.push('d'); });
-        eq(order, ['a', 'd']);
-        ok(queue.cancel('c'), 'queued request not cancelled');
-        release(); await Promise.all([first, second, cancelled]);
-        eq(order, ['a', 'd', 'b']);
-    });
-    await test('an unrelated chats directory cannot be adopted as conversation storage', () => {
-        const folder = fixture('collision');
-        disk.mkdirs(disk.join(folder, 'chats'));
-        disk.write(disk.join(folder, 'chats', 'notes.md'), '# Personal notes');
-        let rejected = false;
-        try { ensureAgentChatStorage(folder); } catch { rejected = true; }
-        ok(rejected, 'unrelated notes were adopted');
-        eq(disk.read(disk.join(folder, 'chats', 'notes.md')), '# Personal notes');
-    });
-    await test('a child agent keeps ordinary sibling files outside its source and rejects unknown sessions', () => {
-        const workspace = root('parent'), folder = disk.join(workspace, 'agent');
-        disk.mkdirs(folder);
-        disk.write(disk.join(folder, 'agent.json'), CONFIG);
-        disk.write(disk.join(folder, 'instructions.md'), 'Cite sources.');
-        disk.write(disk.join(folder, 'inside.md'), 'Inside agent');
-        disk.write(disk.join(workspace, 'outside.md'), 'Outside agent');
-        const settings = memorySettings(); settings.welcomed = true;
-        const session = new AppSession(fakeFrontend(settings, []));
-        try {
-            session.start(); session.open(workspace);
-            ok(session.agentFolders.activate(folder), 'child agent not activated');
-            const id = session.agentFolders.newChat()!;
-            eq(session.agentFolders.find(id).assistant.chat.host.files!('fresh').map(f => f.name), ['inside.md']);
-            let rejected = false;
-            try { session.agentFolders.find(disk.join(workspace, 'outside.md')); } catch { rejected = true; }
-            ok(rejected, 'unoffered session accepted');
-        } finally { session.dispose(); }
-    });
-    await test('only an explicit versioned marker opts in; invalid instructions cannot choose external paths', () => {
-        eq(loadAgentFolder(root('ordinary')), { kind: 'ordinary' });
-        eq(parseAgentFolder(CONFIG).name, 'Research Assistant');
-        for (const instructions of ['/etc/passwd', '../secret.md', 'chats/session.md', 'agent.json']) {
-            let rejected = false;
-            try { parseAgentFolder(JSON.stringify({ version: 1, name: 'Agent', instructions })); } catch { rejected = true; }
-            ok(rejected, instructions);
+    await test('old markers, executable configuration, traversal and malformed definitions start no runtime', () => {
+        const valid = JSON.parse(config());
+        for (const value of [{ ...valid, version: 1 }, { ...valid, id: '../escape' }, { ...valid, program: '/bin/sh' }, { ...valid, instructions: '../secret.md' }, { ...valid, instructions: 'chats/a.md' }]) {
+            let rejected = false; try { parseAgentFolder(JSON.stringify(value)); } catch { rejected = true; } ok(rejected, JSON.stringify(value));
         }
-        const folder = fixture('invalid');
-        disk.write(disk.join(folder, 'agent.json'), '{');
-        eq(loadAgentFolder(folder).kind, 'invalid');
+        const folder = fixture('invalid'); disk.write(disk.join(folder, 'agent.json'), '{');
+        const { session, fake } = sessionFor(folder);
+        try { ok(!!session.agentFolders.state().error, 'invalid configuration hidden'); eq(fake.launches.length, 0); }
+        finally { session.dispose(); }
     });
-    await test('agent chats use visible storage, ordinary Assistant history keeps its previous location', () => {
-        const folder = fixture('storage');
-        const data = { title: 'A conversation', model: 'test', created: '2026-10-31T10:00:00', turns: [{ role: 'user' as const, content: 'Hello' }] };
-        const path = saveChat(folder, data, null, 'agent-folder');
-        eq(disk.dirname(path), disk.join(folder, 'chats'));
-        const empty = saveChat(folder, { ...data, layout: 'chat', turns: [] }, null, 'agent-folder');
-        ok(disk.read(empty).includes('layout: chat'), 'missing chat layout marker');
-        eq(listChats(folder, 'agent-folder').length, 2);
-        eq(disk.exists(disk.join(folder, '.markwork')), false);
-        saveChat(folder, data, null);
-        eq(listChats(folder).length, 1);
-        eq(disk.exists(disk.join(folder, 'chats', '.gitignore')), true);
-    });
-    await test('transcripts never enter workspace retrieval while a normal chats directory remains a normal folder', () => {
-        const folder = fixture('sources');
-        disk.mkdirs(disk.join(folder, 'chats'));
-        disk.write(disk.join(folder, 'chats', 'private.md'), 'Private conversation');
-        const ordinary = disk.join(folder, 'ordinary');
-        disk.mkdirs(disk.join(ordinary, 'chats'));
-        disk.write(disk.join(ordinary, 'chats', 'note.md'), 'Ordinary reference');
-        const repository = new WorkspaceRepository();
-        try { eq(repository.files(folder).map(f => f.name), ['instructions.md', 'ordinary/chats/note.md', 'plan.md']); }
-        finally { repository.close(); }
-    });
-    await test('chat pages coexist with editable documents and restoring tabs keeps their identity', async () => {
-        const folder = fixture('tabs'), settings = memorySettings();
-        settings.welcomed = true;
-        const session = new AppSession(fakeFrontend(settings, []));
-        session.start();
-        session.open(folder);
-        const state = session.agentFolders.state();
-        eq(state.name, 'Research Assistant');
-        eq(session.documents.page?.kind, 'agent');
-        const id = state.sessions[0].id;
-        ok(disk.read(id).includes('layout: chat'), 'new chat did not use the chat layout');
-        session.documents.openInTab(disk.join(folder, 'plan.md'));
-        session.documents.active.editor.setText('# Unsaved document');
-        session.agentFolders.open(id);
-        eq(session.documents.active.editor.getText(), '# Unsaved document');
-        eq(session.documents.allPages.filter(p => p.kind === 'agent').length, 1);
-        session.documents.rememberTabs();
-        session.dispose();
-        const restored = new AppSession(fakeFrontend(settings, []));
-        restored.start();
-        restored.open(null);
-        eq(restored.documents.page?.kind, 'agent');
-        eq(restored.agentFolders.state().sessions[0].id, id);
-        restored.dispose();
-    });
-    await test('opening chat-layout files uses session tabs and restores plain file paths as chat', () => {
-        const workspace = root('open-transcript-parent'), folder = disk.join(workspace, 'research');
-        disk.mkdirs(folder);
-        disk.write(disk.join(folder, 'agent.json'), CONFIG);
-        disk.write(disk.join(folder, 'instructions.md'), 'Cite sources.');
-        const path = saveChat(folder, { layout: 'chat', title: 'From Explorer', model: 'test', created: '2026-10-31', turns: [] }, null, 'agent-folder');
-        const settings = memorySettings(); settings.welcomed = true;
-        const session = new AppSession(fakeFrontend(settings, []));
-        session.start(); session.open(workspace);
-        session.documents.openInTab(path);
-        eq(session.documents.page?.file, path);
-        eq(session.documents.page?.kind, 'agent');
-        session.documents.openInTab(path);
-        eq(session.documents.allPages.filter(page => page.file === path).length, 1);
-        eq(session.documents.all.filter(doc => doc.file === path).length, 0);
-        const ordinary = disk.join(workspace, 'ordinary.md');
-        disk.write(ordinary, '---\nlayout: chat\n---\n\n## You\nOrdinary file');
-        session.documents.openInTab(ordinary);
-        eq(session.documents.page, null);
-        eq(session.documents.active.file, ordinary);
-        session.dispose();
-        settings.tabs = [{ file: path, cursor: 0 }]; settings.activeTab = 0;
-        const restored = new AppSession(fakeFrontend(settings, []));
+    await test('opening, editing instructions, and creating chats never activate or launch pi', async () => {
+        const folder = fixture('activation'), { session, fake, frontend } = sessionFor(folder);
         try {
-            restored.start(); restored.open(null);
-            eq(restored.documents.page?.kind, 'agent');
-            eq(restored.documents.page?.file, path);
-            eq(restored.documents.all.filter(doc => doc.file === path).length, 0);
-        } finally { restored.dispose(); }
-    });
-    await test('an edited transcript stays in its document until saved and explicitly reopened', async () => {
-        const folder = fixture('edited-transcript'), settings = memorySettings(); settings.welcomed = true;
-        const session = new AppSession(fakeFrontend(settings, []));
-        try {
-            session.start(); session.open(folder);
-            const file = disk.join(folder, 'chats', 'manual.md');
-            disk.write(file, '## You\nA draft\n');
-            session.documents.openInTab(file);
-            const editor = session.documents.active.editor;
-            editor.replaceText('---\nlayout: chat\n---\n\n## You\nAn edited draft\n');
-            session.documents.openInTab(file);
-            eq(session.documents.page, null);
-            ok(editor.isModified(), 'the unsaved transcript was discarded');
-            await session.documents.save();
-            session.documents.openInTab(file);
-            eq(session.documents.page?.kind, 'agent');
-            eq(session.documents.page?.file, file);
-            eq(session.documents.all.filter(doc => doc.file === file).length, 0);
-            eq(session.agentFolders.find(file).assistant.chat.session.history[0].content, 'An edited draft');
+            const id = session.agentFolders.state().sessions[0].id;
+            eq(session.agentFolders.state().activated, false); eq(fake.launches.length, 0);
+            disk.write(disk.join(folder, 'instructions.md'), 'New role'); session.agentFolders.activate(folder);
+            let rejected = false; try { await session.agentFolders.find(id).panel.onSend('Hello'); } catch { rejected = true; } ok(rejected, 'implicit activation');
+            frontend.dialogs.files.confirm = async (_message, detail) => { eq(detail, FOLDER_ACTIVATION_NOTICE); return false; };
+            eq(await session.agentFolders.enable(folder), false); eq(fake.launches.length, 0);
+            frontend.dialogs.files.confirm = async () => true;
+            ok(await session.agentFolders.enable(folder), 'not activated'); eq(fake.launches.length, 0);
+            await session.agentFolders.find(id).panel.onSend('Hello');
+            eq(fake.prompts, ['Hello']); eq(fake.launches[0].cwd, disk.join(folder, 'workspace'));
+            ok(session.agentFolders.snapshot(id).turns.some(t => t.content === 'Echo: Hello'), 'missing native answer');
         } finally { session.dispose(); }
     });
-    await test('headless work persists and deduplicates commands without exposing credentials', async () => {
-        const folder = fixture('worker'), events: WorkerOutput[] = [];
-        const path = saveChat(folder, { layout: 'chat', title: 'Worker', model: 'test', created: '2026-10-31', turns: [] }, null, 'agent-folder');
-        let calls = 0;
-        const worker = new FolderWorker(folder, disk.join(path).split(/[\\/]/).pop()!, event => events.push(event), () => ({ async chat(request) {
-            calls++;
-            ok(request.messages[0].content.includes('Cite sources before making claims.'), 'role instructions missing');
-            request.onText('A headless answer');
-            return { usage: null, cancelled: false, reasoning: '', toolCalls: [] };
-        } }));
-        worker.chat.keyStore = { get: async () => ({ key: 'private-test-key', source: 'env' }), set: async () => 'env', clear: async () => {} };
+    await test('native sessions isolate history, preserve identity and use updated instruction snapshots', async () => {
+        const folder = fixture('native'), { session, fake } = sessionFor(folder);
         try {
-            const command = JSON.stringify({ id: 'once', op: 'send', text: 'Hello' });
-            await worker.command(command); await worker.command(command);
-            eq(calls, 1);
-            ok(events.some(event => event.event === 'done'), 'no completion');
-            ok(!JSON.stringify(events).includes('private-test-key'), 'credential leaked');
-            ok(disk.read(path).includes('A headless answer'), 'history not persisted');
-            ok(disk.read(path).includes('layout: chat'), 'worker omitted the chat layout');
-            ok(!disk.read(path).includes('agent: true'), 'worker wrote the legacy marker');
-        } finally { worker.dispose(); }
+            await session.agentFolders.enable(folder);
+            const a = session.agentFolders.state().sessions[0].id;
+            await session.agentFolders.find(a).panel.onSend('First token');
+            const b = session.agentFolders.newChat()!;
+            await session.agentFolders.find(b).panel.onSend('Second token');
+            disk.write(disk.join(folder, 'instructions.md'), 'Revision two.');
+            const store = session.agentFolders.find(a).pi.store;
+            store.update(session.agentFolders.find(a).pi.chatId, { title: 'Named conversation' });
+            await session.agentFolders.find(a).panel.onSend('history');
+            eq(session.agentFolders.snapshot(a).title, 'Named conversation');
+            const turns = disk.read(disk.join(store.directory, 'turns.jsonl')).trim().split('\n').map(line => JSON.parse(line));
+            eq(turns.length, 3); eq(turns[0].instructionRevision, turns[1].instructionRevision);
+            ok(turns[0].instructionRevision !== turns[2].instructionRevision, 'turn revisions were not recorded');
+            eq(turns[0].native, turns[2].native); ok(turns[0].chat !== turns[1].chat, 'turn provenance lost chat identity');
+            ok(!JSON.stringify(turns).includes('First token'), 'runtime metadata copied user prompts');
+            const history = session.agentFolders.snapshot(a).turns.map(t => t.content).join('\n');
+            ok(history.includes('First token') && !history.includes('Second token'), 'sessions leaked');
+            ok(fake.instructions[2].includes('Revision two.') && !fake.instructions[2].includes('Cite sources before'), 'stale instructions');
+            eq(fake.launches[2].argv.includes('--session'), true);
+            ok(fake.launches.every(launch => launch.argv.includes('--no-extensions')), 'unreviewed resources loaded');
+            eq(disk.read(a).includes('layout: chat'), true);
+        } finally { session.dispose(); }
     });
-    await test('a headless proposal waits for actual approved contents and never applies itself', async () => {
-        const folder = fixture('worker-review'), events: WorkerOutput[] = [];
-        const path = saveChat(folder, { layout: 'chat', title: 'Worker review', model: 'test', created: '2026-10-31', turns: [] }, null, 'agent-folder');
-        const worker = new FolderWorker(folder, path.split(/[\\/]/).pop()!, event => events.push(event), () => ({ async chat(request) {
-            if (!request.messages.some(message => message.role === 'tool')) return { usage: null, cancelled: false, reasoning: '', toolCalls: [{ id: 'edit', name: 'edit_file', arguments: JSON.stringify({ name: 'plan', old_text: '15 November', new_text: '22 November', reason: 'Approved schedule' }) }] };
-            request.onText('The proposal was reviewed.');
-            return { usage: null, cancelled: false, reasoning: '', toolCalls: [] };
-        } }));
-        worker.chat.keyStore = { get: async () => ({ key: 'test', source: 'env' }), set: async () => 'env', clear: async () => {} };
+    await test('tool writes bypass Apply and known credential fields are redacted from bounded logs', async () => {
+        const folder = fixture('writes'), { session } = sessionFor(folder);
         try {
-            const running = worker.command(JSON.stringify({ id: 'send', op: 'send', text: 'Change the date' }));
-            await until(() => events.some(event => event.event === 'proposal'));
-            const ask = Number(events.find(event => event.event === 'proposal')!.data.ask);
-            eq(disk.read(disk.join(folder, 'plan.md')), '# Plan\n\nShip 15 November\n');
-            let rejected = false;
-            try { await worker.command(JSON.stringify({ id: 'forged', op: 'decision', ask, result: { applied: true } })); } catch { rejected = true; }
-            ok(rejected, 'a claimed approval was trusted without actual contents');
-            disk.write(disk.join(folder, 'plan.md'), '# Plan\n\nShip 22 November\n');
-            await worker.command(JSON.stringify({ id: 'approved', op: 'decision', ask, result: { applied: true } }));
-            await running;
-            ok(events.some(event => event.event === 'done'), 'worker did not continue');
-        } finally { worker.dispose(); }
+            await session.agentFolders.enable(folder);
+            const id = session.agentFolders.state().sessions[0].id;
+            await session.agentFolders.find(id).panel.onSend('write report');
+            ok(disk.read(disk.join(folder, 'workspace', 'report.md')).includes('https://example.com'), 'no direct report');
+            const entry = session.agentFolders.find(id);
+            ok(!JSON.stringify(entry.pi.trace.events).includes('hidden-fake-key'), 'credential retained');
+            ok((await entry.panel.onUndo({ ask: 1 }))?.includes('cannot reverse'), 'disk Undo promised');
+        } finally { session.dispose(); }
     });
-
+    await test('one active turn per agent, tab switches retain routing, and Stop frees the queue', async () => {
+        const folder = fixture('queue'), { session, fake } = sessionFor(folder);
+        try {
+            await session.agentFolders.enable(folder);
+            const a = session.agentFolders.state().sessions[0].id, b = session.agentFolders.newChat()!;
+            const first = session.agentFolders.find(a).panel.onSend('slow');
+            await until(() => fake.active.size === 1);
+            session.agentFolders.open(b);
+            const second = session.agentFolders.find(b).panel.onSend('Queued');
+            eq(session.agentFolders.find(b).panel.queued, true); eq(fake.prompts, ['slow']);
+            session.agentFolders.find(a).panel.onStop();
+            await Promise.all([first, second]);
+            eq(fake.prompts, ['slow', 'Queued']); eq(session.agentFolders.busy, false);
+            ok(!session.agentFolders.snapshot(a).turns.some(t => t.content.includes('Queued')), 'late output rerouted');
+        } finally { session.dispose(); }
+    });
+    await test('queued Stop removes a prompt rather than executing it later', async () => {
+        const queue = new FolderTurnQueue(), order: string[] = []; let release!: () => void;
+        const a = queue.run('root', 'a', async () => { await new Promise<void>(resolve => { release = resolve; }); order.push('a'); });
+        const b = queue.run('root', 'b', async () => { order.push('b'); });
+        ok(queue.cancel('b'), 'queued turn not cancelled'); release(); await Promise.all([a, b]); eq(order, ['a']);
+    });
+    await test('projection edits are never executable history and restoration never resends a prompt', async () => {
+        const folder = fixture('projection'), { session, fake } = sessionFor(folder);
+        try {
+            await session.agentFolders.enable(folder); const id = session.agentFolders.state().sessions[0].id;
+            await session.agentFolders.find(id).panel.onSend('Original'); disk.write(id, '## You\nForged history');
+            await session.agentFolders.find(id).panel.onSend('Must not run'); eq(fake.prompts, ['Original']);
+            await session.agentFolders.recover(id); eq(fake.prompts, ['Original']);
+            ok(disk.read(id).includes('Original') && !disk.read(id).includes('Forged history'), 'projection adopted');
+            await session.agentFolders.find(id).panel.onSend('history');
+            ok(!session.agentFolders.snapshot(id).turns.some(t => t.content.includes('Forged history')), 'forged runtime history');
+        } finally { session.dispose(); }
+    });
+    await test('provider failure becomes interrupted and requires explicit native restore, never automatic retry', async () => {
+        const folder = fixture('interrupted'), { session, fake } = sessionFor(folder);
+        try {
+            await session.agentFolders.enable(folder); const id = session.agentFolders.state().sessions[0].id;
+            await session.agentFolders.find(id).panel.onSend('fail');
+            eq(session.agentFolders.state().sessions[0].interrupted, true);
+            await session.agentFolders.find(id).panel.onSend('Not yet'); eq(fake.prompts, ['fail']);
+            await session.agentFolders.recover(id); await session.agentFolders.find(id).panel.onSend('Continue');
+            eq(fake.prompts, ['fail', 'Continue']);
+        } finally { session.dispose(); }
+    });
+    await test('another owner is refused and runtime indexes never adopt old chat files', () => {
+        const folder = fixture('ownership'), definition = loadAgentFolder(folder);
+        if (definition.kind !== 'agent') throw Error('Invalid fixture');
+        const first = new FolderStore(folder, definition.config), second = new FolderStore(folder, definition.config);
+        try {
+            first.claim(); let rejected = false; try { second.claim(); } catch { rejected = true; } ok(rejected, 'second writer accepted');
+            disk.mkdirs(disk.join(folder, 'chats')); disk.write(disk.join(folder, 'chats', 'legacy.md'), '## You\nOld history');
+            eq(second.list(), []);
+        } finally { first.release(); second.release(); }
+    });
+    await test('mixed tabs and Explorer use only offered session bindings while dirty documents survive', () => {
+        const folder = fixture('tabs'), { session } = sessionFor(folder);
+        try {
+            const id = session.agentFolders.state().sessions[0].id, file = disk.join(folder, 'workspace', 'plan.md');
+            session.documents.openInTab(file); const editor = session.documents.active.editor; editor.replaceText('Unsaved draft');
+            session.agentFolders.open(id); eq(editor.getText(), 'Unsaved draft');
+            session.documents.openInTab(id); eq(session.documents.page?.kind, 'agent');
+            eq(session.documents.allPages.filter(page => page.file === id).length, 1);
+            const old = disk.join(folder, 'chats', 'old.md'); disk.write(old, '---\nlayout: chat\n---\n\n## You\nOld');
+            session.documents.openInTab(old); eq(session.documents.page, null);
+            let rejected = false; try { session.agentFolders.find(old); } catch { rejected = true; } ok(rejected, 'unoffered id accepted');
+        } finally { session.dispose(); }
+    });
+    await test('external disk changes refresh clean documents, preserve drafts, and gate explicit save and autosave', async () => {
+        const folder = fixture('disk'), { session, settings } = sessionFor(folder);
+        try {
+            const file = disk.join(folder, 'workspace', 'plan.md');
+            session.documents.openInTab(file); const doc = session.documents.active;
+            await session.agentFolders.enable(folder);
+            disk.write(file, 'External clean change'); session.folderDisk.refresh(folder); session.folderDisk.observe(doc);
+            eq(doc.editor.getText(), 'External clean change');
+            doc.editor.replaceText('My unsaved draft');
+            disk.write(file, 'External conflict'); session.folderDisk.refresh(folder);
+            eq(doc.editor.getText(), 'My unsaved draft'); eq(session.folderDisk.canSave(doc), false);
+            eq(await session.documents.save(), false);
+            settings.autosave = true; eq(session.autosaver.now(doc), false); eq(session.autosaver.inBackground(doc), false);
+            eq(disk.read(file), 'External conflict');
+            await session.agentFolders.resolve(file, 'keep'); eq(session.folderDisk.canSave(doc), true);
+            eq(await session.documents.save(), true); eq(disk.read(file), 'My unsaved draft');
+        } finally { session.dispose(); }
+    });
 }

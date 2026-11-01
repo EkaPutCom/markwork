@@ -1,3 +1,4 @@
+import { FolderDiskController } from './folderdisk';
 import { AgentFoldersController } from './agentfolders';
 import type { FolderAgentView } from './folderpanel';
 // The application session: builds the feature controllers of app/ and owns them, given one frontend. The frontend (the
@@ -43,7 +44,7 @@ export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & 
 type SessionProvided = 'harness' | 'journal' | 'homePage' | 'programsPage' | 'setup' | 'workspace' | 'active' | 'page' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
     | 'fileBack' | 'newDocument' | 'showDocument' | 'saveAll' | 'showChat' | 'boardShown' | 'updateBoardFile' | 'record' | 'agentHost' | 'runs'
     | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted' | 'settings' | 'toast' | 'boardNow' | 'commitBoard'
-    | 'newAgent' | 'openFile' | 'projectName' | 'isActive' | 'refreshTree' | 'filesMoved' | 'showPull' | 'showReview' | 'showRuns';
+    | 'canSaveDocument' | 'newAgent' | 'openFile' | 'projectName' | 'isActive' | 'refreshTree' | 'filesMoved' | 'showPull' | 'showReview' | 'showRuns';
 
 // How a document's tab and the window are titled. The frontend adds its own mark for unsaved changes, since its editor
 // knows them first.
@@ -68,7 +69,7 @@ export type FrontendHost<E extends TextEditor> = Omit<ControllerHost<E>, Session
 
 // What the frontend's tabs do when the documents change; the rest of what follows a document is the session's.
 export type FrontendDocuments<E extends TextEditor> = Omit<DocumentsHost<E>, 'autosaver' | 'refreshHome' | 'root' | 'settings' | 'toast'
-    | 'createEditor' | 'contentChanged' | 'refreshTitle' | 'openFolder' | 'openConversation' | 'fileSaved'> & {
+    | 'canSaveDocument' | 'createEditor' | 'contentChanged' | 'refreshTitle' | 'openFolder' | 'openConversation' | 'fileSaved'> & {
     setTitle(id: number, title: DocumentTitle): void;
 };
 
@@ -119,6 +120,7 @@ export class AppSession<E extends TextEditor> {
     readonly documents: DocumentController<E>;
     readonly assistant: AssistantController<E>;
     readonly agentFolders: AgentFoldersController<E>;
+    readonly folderDisk: FolderDiskController<E>;
     private opened = false;
     readonly history: HistoryController<E>;
     // The work folder and the Files tab; created first, since every other controller asks for the folder.
@@ -138,6 +140,7 @@ export class AppSession<E extends TextEditor> {
         // Feature controllers: created before the first document, whose buffer already queues autosaves.
         this.files = new FilesController(host, dialogs.files);
         this.autosaver = new Autosaver(host);
+        this.folderDisk = new FolderDiskController(host, () => this.agentFolders?.refresh());
         this.journal = new JournalController(host, dialogs.journal);
         this.collab = new CollabController(host, dialogs.collab);
         this.pulls = new PullReviewController(host, { provider: () => this.collab.provider(), changed: () => void this.collab.refresh(), session: () => this.collab.session() }, dialogs.pulls);
@@ -175,6 +178,7 @@ export class AppSession<E extends TextEditor> {
         this.preferences = new PreferencesController(host, dialogs.preferences);
         this.documents = new DocumentController(Object.create(frontend.documents, {
             autosaver: { get: () => this.autosaver },
+            canSaveDocument: { value: (doc: Doc<E>) => this.folderDisk.canSave(doc) },
             refreshHome: { value: () => this.refreshHome() },
             root: { value: () => this.files.root },
             settings: { value: this.settings },
@@ -190,7 +194,19 @@ export class AppSession<E extends TextEditor> {
         }) as DocumentsHost<E>);
         this.agentFolders = new AgentFoldersController(host, frontend.folderAgents ?? {
             show: () => {}, event: () => {}, review: async () => ({ note: '' }), cancelReview: () => {},
-        }, { open: (root, id, title) => this.documents.openAgent(root, id, title), rename: (id, title) => this.documents.renameAgent(id, title) }, this.assistant.chat, frontend.folderAgents ? () => this.harness.hub.connection('local') : undefined);
+        }, {
+            open: (root, id, title) => this.documents.openAgent(root, id, title), rename: (id, title) => this.documents.renameAgent(id, title),
+            diskChanged: root => {
+                const workspace = this.files.root;
+                if (!workspace || !platform().paths.same(root, workspace) && insideName(workspace, root) === null) return;
+                this.folderDisk.start(root);
+                this.files.refresh(workspace);
+                this.files.refreshAgent(root);
+            },
+            conflicts: root => this.folderDisk.conflicts(root),
+            resolve: (path, choice) => this.folderDisk.resolve(path, choice),
+            reset: () => this.folderDisk.dispose(),
+        }, dialogs.files);
         // Where agents run decides what is needed, and on an SSH machine where pi and git are looked for.
         this.stops.push(this.settings.onChanged(['harness-machine', 'machines', 'machine-projects'], () => {
             if (this.programs.wasChecked) void this.programs.check();
@@ -216,6 +232,7 @@ export class AppSession<E extends TextEditor> {
             active: value((): Doc<E> => this.documents.active),
             page: value((): Page | null => this.documents.page),
             docs: value((): readonly Doc<E>[] => this.documents.all),
+            canSaveDocument: value((doc: Doc<E>) => this.folderDisk.canSave(doc)),
             openInTab: value((path: string) => this.documents.openInTab(path)),
             write: value((path: string, text: string) => this.documents.write(path, text)),
             fileMoved: value((doc: Doc<E>, path: string) => this.documents.fileMoved(doc, path)),
@@ -379,10 +396,10 @@ export class AppSession<E extends TextEditor> {
         if (this.agentFolders.busy) {
             const choice = await this.frontend.dialogs.harness.closeAgents({ children: 1, detachable: 0, queued: 0 });
             if (choice === 'cancel') return false;
-            this.agentFolders.stop();
+            await this.agentFolders.stopAndWait();
         }
         const go = await this.harness.confirmClose();
-        if (go) this.documents.rememberTabs();
+        if (go) { this.documents.rememberTabs(); await this.agentFolders.shutdown(); }
         return go;
     }
 
@@ -395,7 +412,7 @@ export class AppSession<E extends TextEditor> {
         if (root && root !== absolute && this.agentFolders.busy) {
             const choice = await this.frontend.dialogs.harness.closeAgents({ children: 1, detachable: 0, queued: 0 });
             if (choice === 'cancel') return false;
-            this.agentFolders.stop();
+            await this.agentFolders.stopAndWait();
         }
         if (root && root !== absolute && !await this.documents.closeOutside(absolute)) return false;
         return this.applyFolder(absolute, show);
@@ -459,6 +476,7 @@ export class AppSession<E extends TextEditor> {
     edited(id: number): void {
         const doc = this.docById(id);
         if (!doc) return;
+        this.folderDisk.observe(doc);
         this.views.queueReload(doc);
         this.autosaver.edited(doc);
     }
@@ -535,6 +553,7 @@ export class AppSession<E extends TextEditor> {
     private activated(id: number): void {
         const doc = this.docById(id);
         if (!doc) return;
+        this.folderDisk.observe(doc);
         this.frontend.documents.activated(id);
         this.outline.show(doc);
         this.views.sync();

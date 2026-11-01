@@ -4,6 +4,13 @@ import { str, type HandlerContext } from './context';
 
 export function agentFolderHandlers({ wire, session }: HandlerContext): void {
     wire.on('act.agent.sync', () => ({ state: session.agentFolders.state() }));
+    wire.on('act.agent.enable', async p => ({ enabled: await session.agentFolders.enable(str(p.root, 'root')) }));
+    wire.on('act.agent.recover', async p => { await session.agentFolders.recover(str(p.session, 'session')); return {}; });
+    wire.on('act.agent.resolve', async p => {
+        if (p.choice !== 'reload' && p.choice !== 'keep') throw new RequestError('bad_request', 'Choose reload or keep');
+        await session.agentFolders.resolve(str(p.path, 'path'), p.choice);
+        return {};
+    });
     wire.on('act.agent.new', () => ({ id: session.agentFolders.newChat() }));
     wire.on('act.agent.open', p => ({ opened: session.agentFolders.open(str(p.session, 'session')) }));
     wire.on('act.agent.activate', p => {
