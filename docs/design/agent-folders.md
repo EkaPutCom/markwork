@@ -1,6 +1,6 @@
 # Agent folders: design and implementation plan
 
-Status: implemented; packaged launch and extended recovery validation remain pending. The local controller, shared chat tabs, visible session storage, scoped protocol, and Linux headless-worker adapter are implemented. The [interactive HTML mockup](mockups/agent-folder.html) remains the design reference.
+Status: historical custom-engine design, superseded for application execution by pi Agent Folders ([Phase 1 local](agent-folders-pi-phase1.md), [Phase 2 background/recovery](agent-folders-pi-phase2.md)). Shared tabs and navigation remain; the worker/approval/background descriptions below are historical, not the current folder runtime. The [interactive HTML mockup](mockups/agent-folder.html) remains the design reference.
 
 The runnable fixture is [`example/`](../../example/README.md), with an agent folder next to ordinary `notes/` and `projects/` folders. `npm start -- example/research-agent` opens the agent directly.
 
@@ -9,6 +9,10 @@ Validation on 31 October: typecheck/layer/UI checks pass; all 897 core tests and
 The mockup uses the current application shell as shown in `docs/assets/files.png` and `assistant-poster.png`, with menu bar, vertical activity rail, Explorer sections, shared header, document tabs, Visual/Code controls, formatting toolbar, and Geist typography. The session panel is the proposed addition.
 
 Agreed layout: **folder tree on the left, chat in the center, session list on the right**. Preserve Markwork's existing shell, navigation, header, document tabs, Geist typography, zinc theme, primitives, and responsive panel behavior. An agent folder changes the workspace's default tab, not the identity of the application. Chat sessions and editable Markdown files share the existing document tab strip.
+
+## Pi replacement experiment
+
+The [pi-based replacement plan](agent-folders-pi-plan.md) supersedes this document's future custom-engine direction, not its description of the currently implemented behavior. Its [Phase 0 local spike](agent-folders-pi-phase0.md) proves native pi streaming, session resume, revised instructions, shell/research/report writing, and Stop. It is separate developer tooling, explicitly unsandboxed and manually activated. The application now uses the local pi adapter with explicit unsandboxed activation and direct tools, not the custom worker or per-tool Apply. The ordinary Assistant retains Apply. Old folder worker code remains only for the separate Phase 3 retirement; it is not an execution fallback.
 
 ## 1. Product behavior
 

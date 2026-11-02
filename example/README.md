@@ -1,33 +1,39 @@
 # Example workspace
 
-Open this directory to see ordinary folders beside an agent folder:
+Open this directory to see ordinary folders beside a new-format pi agent:
 
 ```sh
 npm start -- example
 ```
 
-Select **research-agent** in Explorer to open its chat and session list. Its
-`agent.json` references the editable `instructions.md`. The `notes` and `projects`
-folders are ordinary Markdown folders and stay outside this agent's context.
+Select **research-agent** in Explorer, or run `npm start -- example/research-agent`.
+Its version-2 `agent.json` has a stable UUID and points at editable `instructions.md`.
+Source documents live in `research-agent/workspace/`, pi's working directory.
 
-To start directly in the agent folder:
+Install exactly **pi 1.4.0** and authenticate it in a terminal. Select **Activate pi
+agent** in Sessions and read the notice. This is trusted-local, unsandboxed use:
+pi writes files, runs commands and accesses the network directly, without Apply.
+The working directory is not a filesystem boundary. Use backups/version control;
+editor Undo cannot reverse arbitrary tool effects. Do not put sensitive data here
+without understanding that tools and providers can receive it.
 
-```sh
-npm start -- example/research-agent
-```
-
-Configure your model credential in Assistant settings, then try:
+Try:
 
 - “Compare plan.md with references/meeting.md. What needs updating?”
-- “Propose updating the release date to match the meeting decision.”
-- “Prepare a short launch brief with citations.”
+- “Update the release date to match the meeting decision.”
+- “Write a sourced launch brief to output/brief.md and save reusable facts in memory.md.”
 
-Review the proposed diff and press **Apply** to change a file. Markdown files
-remain editable in normal document tabs. **New chat** opens an independent
-conversation; its history is saved in `research-agent/chats/`. Conversations are
-ignored by Git by default. Selecting a saved `layout: chat` transcript from Explorer opens that conversation in its chat tab. The example ships without a fabricated conversation.
+Markdown stays editable in normal tabs. **New chat** has an independent native
+session; sessions share workspace memory, not their entire histories. One turn
+runs at a time per agent, with other sessions queued. Closing a chat tab does not
+stop it; **Stop** is explicit. Avoid editing the same files while pi works; disk
+conflicts preserve unsaved drafts and need explicit resolution before saving.
 
-Without a configured background worker, chat runs while Markwork is open. On
-Linux, a compatible `markworkd` with an allowed `markwork-agent` program, this
-folder allowed as a root, and a worker-accessible credential can continue started
-work after the window closes. Pending file changes still require Apply.
+Native sessions live in Markwork's durable application data. `chats/*.md` are
+readable projections, ignored by Git, not executable history. The example ships
+without fabricated sessions. Do not reuse this example UUID for a second active
+copy on the same machine: use **New Agent…** to create another identity.
+
+Local pi runs while Markwork is open. Background pi/markworkd support is deferred;
+there is no fallback to the old folder worker. The ordinary Assistant still uses
+its existing proposal/Apply behavior and credential settings.

@@ -14,6 +14,7 @@ import { pathToFileURL } from 'node:url';
 import gifenc from 'gifenc';
 import { repo, scratchFolder, launchApp } from '../tests/electron/support.mjs';
 import { LAUNCH, RESEARCH, SCHEDULE } from './capture/forge.mjs';
+import { seedFolderAgent } from '../tests/electron/folderpi.mjs';
 
 const { GIFEncoder, applyPalette, quantize } = gifenc;   // a CommonJS package
 const OUTPUT = process.env.MARKWORK_OUT ?? join(repo, 'docs', 'assets');
@@ -942,13 +943,11 @@ const GROUPS = {
     async agentfolders() {
         const root = join(scratchFolder('capture-agentfolders').scratch, 'markwork-research');
         const agent = join(root, 'research-agent');
-        put(agent, 'agent.json', '{\n    "version": 1,\n    "name": "Research Assistant",\n    "description": "Compare research notes and prepare a launch brief with sources.",\n    "instructions": "instructions.md"\n}\n');
-        put(agent, 'instructions.md', '# Research Assistant\n\nPrepare the launch brief from the Markdown files in this folder.\n\n- Cite the file and the passage for every claim.\n- Compare the plan against the meeting decisions.\n- Propose file changes and wait for Apply.\n');
-        put(agent, 'plan.md', '# Launch plan\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n- Evaluation: 30 November\n\n## Budget\n\n- Test servers: $3,000\n');
-        put(agent, 'references/meeting.md', '# Weekly meeting, 1 October\n\n## Decisions\n\n- The public release moves to **22 November**; the sync testing is not finished.\n- The budget does not change.\n- Sari prepares the release material.\n\n## Follow-up\n\n- [ ] Budi fixes the sync bug\n- [ ] Dewi schedules the beta trial\n');
-        put(agent, 'references/interviews.md', '# User interviews\n\nFive of eight users want syncing without an account. Two asked for a PDF export.\n');
-        put(agent, 'chats/.gitignore', '*\n!.gitignore\n');
-        put(agent, 'chats/2026-10-31-release-date.md', `---
+        put(agent, 'workspace/memory.md', '# Memory\nCite source files for release decisions.');
+        put(agent, 'workspace/plan.md', '# Launch plan\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n- Evaluation: 30 November\n\n## Budget\n\n- Test servers: $3,000\n');
+        put(agent, 'workspace/references/meeting.md', '# Weekly meeting, 1 October\n\n## Decisions\n\n- The public release moves to **22 November**; the sync testing is not finished.\n- The budget does not change.\n- Sari prepares the release material.\n\n## Follow-up\n\n- [ ] Budi fixes the sync bug\n- [ ] Dewi schedules the beta trial\n');
+        put(agent, 'workspace/references/interviews.md', '# User interviews\n\nFive of eight users want syncing without an account. Two asked for a PDF export.\n');
+        const fixtureChat = `---
 layout: chat
 title: "Which meeting decision is not in the plan?"
 model: deepseek-flash
@@ -959,15 +958,19 @@ created: 2026-10-31T09:20:00
 Compare \`plan.md\` with \`references/meeting.md\`. Which decision never made it into the plan?
 
 ## Assistant
-One decision is still missing. \`references/meeting.md\` › *Decisions* says:
+One decision is still missing from \`plan.md\`:
 
-> The public release moves to **22 November**; the sync testing is not finished.
+| Topic | Meeting decision | Current plan |
+| :--- | :--- | :--- |
+| **Public release** | **22 November** | 15 November |
+| Budget | $3,000 | $3,000 |
+| Closed beta | 20 October | 20 October |
 
-\`plan.md\` › *Schedule* still has:
+\`references/meeting.md\` › *Decisions* explains the new date:
 
-- Public release: 15 November
+> The sync testing is not finished.
 
-The other decisions are already consistent: the budget stays at $3,000, the closed beta is on 20 October, and *Prepare the release material* is assigned to Sari.
+The other decisions are consistent. *Prepare the release material* is assigned to Sari.
 
 ## You
 What else should the plan record before we call it ready?
@@ -978,13 +981,16 @@ Two things are worth adding to \`plan.md\` so the brief does not repeat the same
 1. **The reason for the new date.** A reader who only sees *22 November* cannot tell that the sync testing moved it.
 2. **The follow-up owners.** Budi (the sync bug) and Dewi (the beta trial) are only in the meeting notes.
 
-Should I propose those two edits? I would add them to the *Schedule* section and leave the rest of the plan alone.
-`);
-        put(agent, 'chats/2026-10-30-launch-brief.md', '---\nlayout: chat\ntitle: "Draft the launch brief"\nmodel: deepseek-flash\ncreated: 2026-10-30T16:40:00\n---\n\n## You\nDraft a short launch brief from the plan and the interviews.\n\n## Assistant\nHere is a brief that cites only what the folder says:\n\n## Launch brief\n\nThe launch opens with a closed beta on **20 October** and a public release on **15 November**, with the evaluation on 30 November and $3,000 for test servers (\`plan.md\` › *Schedule* and *Budget*).\n\nThe interviews (\`references/interviews.md\`) say five of eight users want syncing without an account, and two asked for a PDF export.\n\nI left the release date out of the brief: the meeting notes disagree with the plan and need your decision first.\n');
-        put(agent, 'chats/2026-10-29-interviews.md', '---\nlayout: chat\ntitle: "Summarize the user interviews"\nmodel: deepseek-flash\ncreated: 2026-10-29T11:05:00\n---\n\n## You\nSummarize the interviews in three lines.\n\n## Assistant\n- Five of eight users want syncing without an account.\n- Two users asked for a PDF export.\n- Nobody mentioned the beta schedule, so the plan cannot claim it was requested.\n');
+Those facts belong in the *Schedule* section. pi can update files directly after activation; review the disk changes and keep backups.
+`;
         put(root, 'notes/reading-list.md', '# Reading list\n\n- The sync architecture article\n- Notes on writing launch briefs\n');
         put(root, 'projects/website.md', '# Website\n\n- Move the download page to the new domain.\n');
         const run = new Run('agentfolders', root, { settings: { 'chat-save': true, 'sidebar-sections': JSON.stringify({ outline: { open: false } }) } });
+        // This is fixture construction, never application history import: only the indexed fake native chat routes.
+        const parts = fixtureChat.split(/^## (You|Assistant)\n/m);
+        const messages = [];
+        for (let i = 1; i < parts.length; i += 2) messages.push({ role: parts[i] === 'You' ? 'user' : 'assistant', content: parts[i + 1].trim() });
+        seedFolderAgent({ scratch: run.scratch, notes: agent, title: 'Which meeting decision is not in the plan?', messages });
         await run.start();
         const { page } = run;
         try {
@@ -996,6 +1002,7 @@ Should I propose those two edits? I would add them to the *Schedule* section and
             await chat.getByText('What else should the plan record', { exact: false }).waitFor();
             await page.getByRole('tab', { name: /Which meeting decision/ }).waitFor();
             // A document keeps its own tab and the ordinary Assistant; the chat tab brings the sessions back.
+            await page.getByRole('treeitem', { name: 'workspace', exact: true }).click();
             await page.getByRole('treeitem', { name: /^plan\.md/ }).click();
             await page.locator('.headerbar .title').getByText('plan.md', { exact: true }).waitFor();
             await page.locator('.cm-content').waitFor();

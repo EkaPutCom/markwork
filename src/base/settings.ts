@@ -58,6 +58,8 @@ export class AppSettings {
     set chatModel(value: string) { this.set('chat-model', value); }
     get chatThinking(): boolean { return this.bool('chat-thinking'); }
     set chatThinking(value: boolean) { this.set('chat-thinking', value); }
+    get folderBackground(): Record<string, string> { return this.map('folder-background'); }
+    set folderBackground(value: Record<string, string>) { this.set('folder-background', value); }
     get chatSave(): boolean { return this.bool('chat-save'); }
     set chatSave(value: boolean) { this.set('chat-save', value); }
     get typewriter(): boolean { return this.bool('typewriter'); }

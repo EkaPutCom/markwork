@@ -2,32 +2,20 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { launchApp, scratchFolder, stepper } from './support.mjs';
+import { seedFolderAgent } from './folderpi.mjs';
+import { performance } from 'node:perf_hooks';
+import { launchApp, scratchFolder, stepper, testModule } from './support.mjs';
 
 const { scratch, notes } = scratchFolder('agentchat-layout');
 const gate = join(scratch, 'continue-stream');
-const model = join(scratch, 'model.mjs');
+
 const paragraph = 'The plan and meeting notes describe a launch moved to 22 November. Compare the sources before proposing an update. ';
 const answer = '### Research finding\n\n' + paragraph.repeat(12) + '\n\n- Compare references.\n- Review the proposed update.\n\n```text\n' + 'long_reference_'.repeat(80) + '\n```\n';
-mkdirSync(join(notes, 'chats'));
-writeFileSync(join(notes, 'agent.json'), JSON.stringify({ version: 1, name: 'Research Assistant', instructions: 'instructions.md' }));
-writeFileSync(join(notes, 'instructions.md'), 'Cite sources.');
-writeFileSync(join(notes, 'chats', 'long.md'), '---\nlayout: chat\ntitle: "Long research conversation"\nmodel: deepseek-flash\ncreated: 2026-10-31\n---\n\n' +
-    Array.from({ length: 25 }, (_, i) => `## You\nResearch question ${i + 1}\n\n## Assistant\n${answer}`).join('\n'));
-writeFileSync(model, `import { existsSync } from 'node:fs';
-export const provider = { async chat(request) {
-    request.onText('Stream checkpoint\\n\\n' + ${JSON.stringify(answer)});
-    const started = Date.now();
-    while (!existsSync(${JSON.stringify(gate)}) && !request.cancellable?.cancelled) {
-        if (Date.now() - started > 15000) throw Error('The layout test did not release the stream');
-        await new Promise(resolve => setTimeout(resolve, 20));
-    }
-    if (!request.cancellable?.cancelled) request.onText('\\n\\nFinal streamed paragraph.');
-    return { usage: null, cancelled: request.cancellable?.cancelled === true, reasoning: '', toolCalls: [] };
-} };`);
+seedFolderAgent({ scratch, notes, title: 'Long research conversation', messages: Array.from({ length: 25 }, (_, i) => [
+    { role: 'user', content: `Research question ${i + 1}` }, { role: 'assistant', content: [{ type: 'text', text: answer }], stopReason: 'stop' },
+]).flat() });
 const { step, steps } = stepper({ echo: true });
-const app = await launchApp({ scratch, notes, env: { DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: pathToFileURL(model).href } });
+const app = await launchApp({ scratch, notes, env: { MARKWORK_TEST_PI: testModule('folderpi.mjs'), MARKWORK_TEST_PI_GATE: gate, MARKWORK_TEST_PI_ANSWER: answer } });
 let failed = false;
 let page;
 try {
@@ -69,7 +57,7 @@ try {
         await chats.waitFor({ timeout: 15000 });
         await chats.locator('.chat-assistant').nth(24).waitFor();
         await page.setViewportSize({ width: 1400, height: 900 });
-        await chats.getByLabel('Ask the Assistant').focus();
+        await chats.getByLabel('Message', { exact: true }).focus();
         await check();
         await chats.locator('.chat-messages').evaluate(el => new Promise(resolve => {
             if (el.scrollTop === 0) { resolve(); return; }
@@ -80,8 +68,10 @@ try {
         await check();
     });
     await step('streaming follows new output but preserves a user reading earlier messages', async () => {
-        await chats.getByLabel('Ask the Assistant').fill('Continue the research');
-        await chats.getByLabel('Ask the Assistant').press('Enter');
+        await page.getByRole('button', { name: 'Activate pi agent', exact: true }).click();
+        await page.getByRole('alertdialog', { name: 'Activate pi agent?', exact: true }).getByRole('button', { name: 'Activate pi agent', exact: true }).click();
+        await chats.getByLabel('Message', { exact: true }).fill('Continue the research');
+        await chats.getByLabel('Message', { exact: true }).press('Enter');
         await chats.getByText('Stream checkpoint', { exact: true }).waitFor();
         await page.waitForFunction(() => { const el = document.querySelector('.agent-conversation .chat-messages'); return el.scrollHeight - el.clientHeight - el.scrollTop < 2; });
         await check();
@@ -96,6 +86,19 @@ try {
         await chats.getByRole('button', { name: 'Send', exact: true }).waitFor();
         assert.equal(await chats.locator('.chat-messages').evaluate(el => el.scrollTop), 0, 'streaming pulled the user away from older messages');
         await check();
+    });
+    await step('measure long-history tab switching and renderer heap without a provider', async () => {
+        await page.getByRole('treeitem', { name: 'instructions.md', exact: true }).click();
+        const measurements = [];
+        for (let i = 0; i < 23; i++) {
+            await page.getByRole('tab', { name: /instructions\.md/ }).click();
+            const start = performance.now(); await page.getByRole('tab', { name: /Long research conversation/ }).click();
+            await chats.locator('.chat-input textarea').waitFor();
+            if (i >= 3) measurements.push(performance.now() - start);
+        }
+        measurements.sort((a, b) => a - b);
+        const cdp = await page.context().newCDPSession(page), heap = await cdp.send('Runtime.getHeapUsage'); await cdp.detach();
+        console.log('  Long-history UI baseline: ' + JSON.stringify({ medianMs: measurements[10], p95Ms: measurements[18], maxMs: measurements[19], rendererHeapBytes: heap.usedSize, historyTurns: 50, repetitions: 20 }));
     });
     await step('long history stays contained in both themes, a narrow window, and split panes', async () => {
         const out = process.env.MARKWORK_LONG_CHAT_OUT;

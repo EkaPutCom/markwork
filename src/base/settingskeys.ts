@@ -21,6 +21,7 @@ export const SETTING_KEYS = {
     chat: { type: 'b', default: false },                // assistant panel open
     'chat-model': { type: 's', default: 'deepseek-flash' },
     'chat-thinking': { type: 'b', default: false },     // model thinking mode (more thorough, slower)
+    'folder-background': { type: 'a{ss}', default: {} }, // agent UUID → selected local background root; never prompts or credentials
     'chat-save': { type: 'b', default: true },          // save conversation history in folder/.markwork/chats
 
     'forge-poll-seconds': { type: 'u', default: 60 },   // how often to look for new pull requests (Preferences offers 30 to 3600)

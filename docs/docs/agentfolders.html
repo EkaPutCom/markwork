@@ -1,88 +1,69 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent folders · Markwork Documentation</title>
-<meta name="description" content="A folder with agent.json runs its own Markwork agent: instructions in Markdown, chat sessions beside editable documents, and every file change waiting for Apply.">
-
-
-<meta name="color-scheme" content="dark light">
-<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
-<script src="../web/theme.js"></script>
-<link rel="stylesheet" href="../web/tokens.css">
-<link rel="stylesheet" href="../web/site.css">
+<meta name="description" content="Persistent local pi agents: native sessions, shared workspace memory, direct file and shell tools, and explicit unsandboxed activation.">
+<meta name="color-scheme" content="dark light"><link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script><link rel="stylesheet" href="../web/tokens.css"><link rel="stylesheet" href="../web/site.css">
 <link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
-<script src="../web/icons.js" defer></script>
-<script src="../web/site.js" defer></script>
-<script src="nav.js" defer></script>
+<script src="../web/icons.js" defer></script><script src="../web/site.js" defer></script><script src="nav.js" defer></script>
 </head>
 <body data-page="docs">
 <a class="skip-link" href="#main-content">Skip to content</a>
 <aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
 <button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
-<div class="page-shell">
-<header class="topbar" id="site-header"></header>
-<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
-<div class="content-grid">
-<main class="doc" id="main-content" tabindex="-1">
-<p class="eyebrow">Agent</p>
-<h1>Agent folders</h1>
-<p class="lead">A folder can define its own agent: instructions in Markdown, documents that stay editable, and independent conversations that sit beside the documents in the same tab strip.</p>
-
-<p>Every other folder in Markwork has one Assistant panel that follows the open document. An <em>agent folder</em> works the other way around: the agent belongs to the folder, keeps several conversations, and its chat opens as a tab next to your notes. This page covers the marker file, the layout of the page, sessions, the approval boundary, and the background runtime.</p>
-
-<h2 id="agent-json">A folder that defines an agent</h2>
-<p>An exact <code>agent.json</code> file at the root of a folder marks it as an agent. The file is ordinary JSON, next to the notes you already keep there:</p>
+<div class="page-shell"><header class="topbar" id="site-header"></header><nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
+<div class="content-grid"><main class="doc" id="main-content" tabindex="-1">
+<p class="eyebrow">Agent</p><h1>Agent folders</h1>
+<p class="lead">A persistent pi agent with editable instructions, a shared workspace and memory, and independent conversations beside your documents.</p>
+<p>Agent Folder chat uses <strong>pi 1.4.0</strong>, not the built-in Assistant engine. Pi owns authentication, providers, the model loop, tools, native history, context and compaction. Markwork owns identity, tabs, the session list, queues and process lifecycle. The ordinary Assistant and pi kanban cards keep their existing approval and review behavior.</p>
+<h2 id="creating">Create or open an agent</h2>
+<p>Choose <em>File → New Agent…</em>, the command palette, or <em>New Agent… (in workspace agents/)</em> in Explorer. Regardless of the selected folder, creation always goes directly into <code>&lt;workspace-root&gt;/agents/&lt;name&gt;/</code>. Existing files, collisions, symbolic links and nesting are refused. When the opened root is itself an agent, New Agent is unavailable; open an ordinary workspace to create another one.</p>
+<pre><code>agents/research-agent/
+├── agent.json
+├── instructions.md
+├── workspace/          # pi's working directory; files and shared memory
+└── chats/              # readable projections, ignored by Git
+</code></pre>
+<p>You can open an existing agent directly, or select it in a larger workspace. Its exact root marker uses the new format:</p>
 <pre><code>{
-    "version": 1,
+    "version": 2,
+    "id": "86fd0cd4-bc30-41b5-a877-43f9284345b6",
+    "runtime": "pi",
     "name": "Research Assistant",
-    "description": "Compare research notes and prepare a launch brief with sources.",
     "instructions": "instructions.md"
 }</code></pre>
-<p><code>version</code>, <code>name</code>, and <code>instructions</code> are required; <code>description</code> is optional. Instructions are a normal Markdown file inside the folder, so they open in the editor with Visual and Code modes, autosave, and undo like any other document. A folder without the marker keeps the existing behavior and the ordinary Assistant.</p>
-<p>A marker that cannot be read is shown as a configuration error, with the file still editable, instead of silently starting a request. Paths are resolved inside the agent folder: an absolute path, a <code>..</code> segment, or a path into the conversation storage is rejected.</p>
-
-<h2 id="agent-page">The Agent page</h2>
-<p>Opening an agent folder selects its newest conversation. The Explorer stays on the left, the conversation opens centrally, and the right panel lists the sessions of this folder. Selecting an agent folder inside a larger workspace keeps the ordinary sibling folders visible; only the agent's own folder becomes its context.</p>
-<figure><picture class="themed-media"><img data-light-src="../assets/agent-folders.png" data-dark-src="../assets/dark/agent-folders.png" width="1280" height="780" loading="lazy" alt="The Agent page of a research agent: the workspace tree with notes, projects, and research-agent on the left, a chat tab and a Markdown tab in the center, and three sessions on the right"><noscript><img src="../assets/dark/agent-folders.png" width="1280" height="780" loading="lazy" alt="The Agent page of a research agent: the workspace tree on the left, a chat tab and a Markdown tab in the center, and three sessions on the right"></noscript></picture><figcaption>The chat and the plan share the tab strip; the session list belongs to the focused chat tab</figcaption></figure>
-<p>Chat tabs and Markdown tabs live in the same strip. A document opens with the normal editor, its save state, undo history, and dirty indicator; closing a chat tab does not delete its session or stop work that is running.</p>
-<p>Conversation text and the composer share a centered column capped at 768 pixels, with responsive gutters on smaller windows. Long history scrolls inside the conversation, while the window header, the tabs, and the composer stay in view, including in split panes. Reading earlier messages keeps your scroll position when new output arrives; sending a new question follows the latest output.</p>
-<p>The right panel follows the focused tab: a chat shows <em>Sessions</em>, and a document or any other layout shows the ordinary Assistant. That way a note keeps the Assistant you already know, and a conversation always has its own list.</p>
-<figure><picture class="themed-media"><img data-light-src="../assets/agent-folders-document.png" data-dark-src="../assets/dark/agent-folders-document.png" width="1280" height="780" loading="lazy" alt="The same workspace with plan.md focused in the visual editor, the chat tab still in the tab strip, and the ordinary Assistant on the right"><noscript><img src="../assets/dark/agent-folders-document.png" width="1280" height="780" loading="lazy" alt="The same workspace with a Markdown document focused and the ordinary Assistant on the right"></noscript></picture><figcaption>A document stays a document: the visual editor, the toolbar, and the ordinary Assistant</figcaption></figure>
-
-<h2 id="instructions">Instructions and scope</h2>
-<p>The referenced Markdown file supplies the role instructions. They are counted in the context budget like any other part of it, and a change to the file takes effect on the next turn; a turn that is already running keeps the revision it started with. Editing the instructions never changes what the agent is allowed to do.</p>
-<p>The context is the agent folder: its Markdown files and any file you attach explicitly. Inspecting a document in another tab does not quietly add it to the next question. Ordinary sibling folders, and the conversations in <code>chats/</code>, are outside the agent's search and proposals.</p>
-
-<h2 id="sessions">Sessions and history</h2>
-<p>One folder defines one agent with many independent sessions. Each conversation keeps its own transcript, work plan, proposals, and recovery state; a new chat starts from the instructions and the folder, never from another session's history.</p>
-<p>Sessions are saved as Markdown in the visible <code>chats/</code> folder of the agent, and the file carries <code>layout: chat</code> in its frontmatter, including an empty session. The directory is created when the first session is saved and is ignored by Git by default through its own <code>chats/.gitignore</code>; delete that file if you want to track conversations. The ordinary Assistant keeps its history in <code>.markwork/chats</code> as before.</p>
+<p>The stable UUID identifies the agent independently of its name. Optional <code>description</code> is supported; unknown fields and executable hooks are rejected. The Markdown instructions and <code>workspace/</code> must exist. Invalid or missing configuration never starts a model. Version-1 agents and their transcripts are not migrated, adopted or executed; their files are not deleted. Do not copy an existing agent's UUID into another folder: create a new identity instead.</p>
+<h2 id="activation">Activate explicitly: trusted local use only</h2>
+<p>Install exactly pi 1.4.0 on the execution machine and authenticate through pi using a terminal. Agent Folders do not copy or use the ordinary Assistant's API key. Select <em>Activate pi agent</em> in Sessions and accept the notice before sending. Opening a folder, opening a chat or editing instructions alone does not execute pi. Activation is not remembered across application restarts or workspace switches.</p>
+<p><strong>No sandbox. No per-tool Apply.</strong> Pi runs with your account's permissions. File changes, shell commands and network requests happen directly. <code>workspace/</code> is the working directory, not an enforced access boundary: tools can reach other files, configuration, transcripts, account-readable secrets, localhost and private services. Data can leave through the provider or tools. Internet text can contain prompt injection. Avoid sensitive data and use version control or backups; editor Undo cannot reverse arbitrary commands, deletions or network effects.</p>
+<p>Extensions, MCP, skills, prompt templates, themes and automatic context-file discovery are disabled for this launch. Built-in <code>read</code>, <code>bash</code>, <code>edit</code> and <code>write</code> remain available. These launch choices are not filesystem or network isolation. No code is automatically installed on a folder's request.</p>
+<h2 id="agent-page">Chat and documents together</h2>
+<figure><picture class="themed-media"><img data-light-src="../assets/agent-folders.png" data-dark-src="../assets/dark/agent-folders.png" width="1280" height="780" loading="lazy" alt="Local pi Agent Folder with a conversation, document tabs, and the Sessions activation notice"><noscript><img src="../assets/dark/agent-folders.png" width="1280" height="780" loading="lazy" alt="Agent Folder conversation and Sessions"></noscript></picture><figcaption>A chat tab and editable documents share the workspace; Sessions shows the local execution boundary.</figcaption></figure>
+<p>The Explorer stays on the left; chats and normal Markdown documents share the tab strip. A document retains its normal save state and undo history. Focusing a chat shows Sessions on the right; focusing a document shows the ordinary Assistant. Long history scrolls within the conversation while the composer and window chrome remain visible, including narrow windows and split panes. New output does not pull you away from earlier messages you are reading. Chat renders headings, inline styles, numbered/bulleted lists, task markers, quotes, fenced code and GFM tables with aligned columns; wide tables scroll inside the message. Raw HTML is escaped and remote images do not load automatically.</p>
+<figure><picture class="themed-media"><img data-light-src="../assets/agent-folders-document.png" data-dark-src="../assets/dark/agent-folders-document.png" width="1280" height="780" loading="lazy" alt="An editable Markdown document beside an Agent Folder chat tab with the ordinary Assistant on the right"><noscript><img src="../assets/dark/agent-folders-document.png" width="1280" height="780" loading="lazy" alt="Markdown document and the ordinary Assistant"></noscript></picture><figcaption>The ordinary Assistant still uses proposals and Apply; pi Agent Folder chat does not.</figcaption></figure>
+<h2 id="sessions">Independent native sessions</h2>
 <ul>
-  <li><em>New chat</em> opens another session in a new tab; the previous one keeps running if it was running.</li>
-  <li>Selecting a session row focuses its tab, or reopens it when the tab was closed, without duplicating it.</li>
-  <li><em>Stop</em> is an explicit action of a session. Switching tabs or closing a chat never stops a turn.</li>
-  <li>A turn that is already running holds the folder's turn slot; further requests wait in a queue instead of running twice at once.</li>
-  <li>Selecting a <code>layout: chat</code> transcript in Explorer opens the matching chat. Opening it never sends a message, and an unsaved transcript draft stays in the editor until you save and reopen it.</li>
+<li><em>New chat</em> creates a separate native session, sharing instructions and workspace memory, not another chat's entire conversation.</li>
+<li>Session rows focus or reopen the same tab. Switching or closing a chat tab does not stop its work or delete its history.</li>
+<li>Only one turn runs per agent. Requests from other sessions queue; different agents have separate slots. A queued session's Stop cancels that queued request.</li>
+<li><em>Stop</em> clears pi's queued input and aborts the active session. It does not undo completed operations or guarantee that intentionally detached programs terminate.</li>
+<li>Streaming text, tool calls, results and errors stay attached to their originating chat. Logs are bounded and known credential fields are redacted; arbitrary output may still disclose secrets.</li>
 </ul>
-
-<h2 id="review">Review and approval</h2>
-<p>The approval boundary does not change in an agent folder. The agent reads freely and proposes a change; the review window shows the diff with the reason, and the files change only after you press <em>Apply</em> (a batch may be applied partially). An applied proposal can be undone through the same checks, and a proposal that no longer matches the current file is refused instead of overwriting your edits. See <a href="proposals.html">Proposals and approval</a>.</p>
-<p>Closing the window, losing the connection, or replaying a conversation never grants approval. A proposal waits for you.</p>
-
-<h2 id="background">Background work</h2>
-<p>Without a background runtime the chat runs while Markwork is open, and the session panel says so. On Linux, a compatible <code>markworkd</code> with the <code>markwork-agent</code> program, an allowed folder, and a credential the worker can reach lets a started turn continue after the window closes; pending proposals still wait for Apply. Credentials kept only in the application's private vault are not available to the worker. The setup and its current limits are in the <a href="limitations.html#agent-folder-runtime">Limitations</a> page and <code>markworkd/README.md</code> in the repository.</p>
-
-<h2 id="creating">Creating an agent folder</h2>
-<p>Choose <em>File</em> → <em>New Agent…</em> (or <em>New Agent…</em> from the command palette, or right-click a folder in Explorer). The dialog asks for a name and creates the folder with an <code>agent.json</code>, an <code>instructions.md</code> you can edit, and a <code>chats/</code> folder that appears only once a session is saved. The new agent opens directly, so you can write the instructions and start the first conversation.</p>
-<p>Any folder that already contains a valid <code>agent.json</code> is an agent: copying that file into a folder of notes is enough to make the folder its own agent, without a <code>.markwork</code> directory.</p>
-
+<p>Native pi sessions and exact chat/session bindings live in durable application data under <code>markwork/folder-agents/&lt;agent-id&gt;/</code>, not in the portable workspace or a cache. Each turn resumes the exact bound native file; it never implicitly resumes the latest session. Model and thinking options use pi's available models and authentication.</p>
+<p><code>chats/&lt;chat-id&gt;.md</code> is only a readable projection with <code>layout: chat</code>. Only indexed new-format chats route to a chat tab. Unbound or old Markdown remains an ordinary document, not executable history. Edited projections cannot inject conversation state or trusted approvals. <em>Restore native session</em> explicitly rebuilds a projection from native history without resending a prompt or replaying tools; it is required after interrupted/unknown outcomes. Session deletion is not implemented.</p>
+<h2 id="instructions">Instructions, memory and research</h2>
+<p>Edit <code>instructions.md</code> as a normal document. Before a turn starts, its saved revision is captured in an immutable SHA-256 snapshot and appended to pi's system instructions. A fresh local RPC process resumes the same native session per turn, so changed instructions replace the previous active prefix without duplicating it. Changes during a running turn apply to the next turn. Application-managed turn provenance records the chat, native file and instruction revision for each attempted turn, without copying prompt text or credentials; it does not authorize replay.</p>
+<p>Ask pi to keep useful facts in <code>workspace/memory.md</code> or a curated memory directory. Memory is ordinary agent-maintained content shared between sessions, not an automatic concatenation of all files and chats. Research can use installed shell programs such as curl and Python; shell access does not supply a search engine or browser. Ask for source URLs, access dates, supporting evidence and uncertainty in reports. Missing programs, credentials or provider failures are shown as failures, not silently replaced with the Assistant.</p>
+<h2 id="disk">External changes and unsaved drafts</h2>
+<p>Explorer and clean open documents refresh after pi's tool/disk changes. Loaded agent subfolders refresh too, even when filesystem watches are unavailable. New or updated output files under <code>workspace/</code> automatically expand their parent folders, including nested output directories, without opening a file or changing the selected tab/tree row. This uses metadata, never file contents or a guessed path from shell output. Automatic discovery skips symbolic links, hidden folders and <code>node_modules</code>, and stops beyond 1,000 entries or eight nested directory levels; use ordinary tree navigation for larger workspaces. A dirty editor buffer is never silently replaced. If disk and draft diverge, Sessions shows <em>Disk conflicts</em> and saving that document is paused. <em>Use disk version</em> explicitly discards the unsaved draft; <em>Keep draft for saving</em> explicitly allows the draft to overwrite disk on Save/autosave. Both ask for confirmation. Save a copy if you need both versions. Avoid editing the same files while pi works: native shell writes do not honor an editor lock.</p>
+<h2 id="background">Local lifecycle and recovery limits</h2>
+<p>Local execution runs while Markwork is open. On Linux, activate the agent and choose <strong>Use background pi</strong> to select configured local markworkd instead. This is explicit: unavailable background execution never falls back to local execution or the old custom worker. Pi must be installed as the daemon’s allowed <code>pi</code> program, and its workspace must be allowed as a working directory. Authenticate pi 1.4.0 in that account; the Assistant’s credentials are never forwarded. Version and authentication are checked before each new prompt. These checks do not test provider connectivity or enforce a sandbox.</p>
+<p>Closing Markwork or switching workspaces asks about active work. <strong>Keep Them Going</strong> detaches background runs; local runs stop and unsubmitted queued messages remain saved drafts, never an automatic background queue. Closing a chat tab alone does not stop work. Reopening the workspace reattaches registered runs without resending their prompts; no new model work starts merely by opening a folder. Completed background pi may remain idle until Markwork reconnects and closes its RPC process.</p>
+<p><strong>Reconnect original run</strong> observes the same run. If it is lost, ended, missing, or its startup outcome is unknown, inspect the result and use <strong>Stop original run</strong> where necessary (also available when streaming observation failed), then explicitly <strong>Restore native session</strong>. Recovery reads native history and does not rerun prompts or tools. An unreachable daemon never counts as proof that a run stopped. A stale runtime owner after an application crash requires manual inspection and removal of the runtime <code>owner/</code> directory only after confirming its window is gone; never remove a live owner. Runtime drafts and daemon logs may contain conversation/tool text in plaintext under your account. Back them up and protect them like native history.</p>
+<p>A runtime owner directory refuses competing writers from another window. After an application crash, inspect the native session and any surviving process, then remove the stale runtime <code>owner/</code> directory before explicit recovery. Never remove a live owner's directory. Unknown outcomes are not automatically resent. This is fail-closed local ownership, not a multi-machine lease or a crash-proof process supervisor.</p>
 <h2 id="example">Example workspace</h2>
-<p>The repository's <code>example/</code> folder mixes ordinary <code>notes/</code> and <code>projects/</code> folders with a <code>research-agent/</code>. Run <code>npm start -- example</code> and select <strong>research-agent</strong> in Explorer, or open <code>example/research-agent</code> directly. It ships without a conversation, so the first chat is yours.</p>
-</main>
-<aside class="outline" id="toc" aria-label="On this page"></aside>
-</div>
-<div class="statusbar" id="site-status"></div>
-</div>
-</body>
-</html>
+<p>Run <code>npm start -- example</code> and select <strong>research-agent</strong>, or open <code>example/research-agent</code> directly. Configure pi, accept activation and compare the plan and meeting notes inside <code>workspace/</code>. The example ships without fabricated native history. See <a href="limitations.html#agent-folder-runtime">runtime limitations</a> before relying on it.</p>
+</main><aside class="outline" id="toc" aria-label="On this page"></aside></div><div class="statusbar" id="site-status"></div></div>
+</body></html>

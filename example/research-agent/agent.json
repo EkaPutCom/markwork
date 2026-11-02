@@ -1,5 +1,7 @@
 {
-    "version": 1,
+    "version": 2,
+    "id": "86fd0cd4-bc30-41b5-a877-43f9284345b6",
+    "runtime": "pi",
     "name": "Research Assistant",
     "description": "Compare research notes and prepare a launch brief with sources.",
     "instructions": "instructions.md"

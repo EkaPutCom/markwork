@@ -226,6 +226,10 @@ export const nodeFiles: FileSystem = {
     exists: path => existsSync(path),   // follows a symbolic link
     remove: path => { if (lstatSync(path).isDirectory()) rmdirSync(path); else rmSync(path); },   // a file or an empty folder
     makeDirs: (path, mode) => { mkdirSync(path, { recursive: true, mode }); },
+    createDir: (path, mode) => {
+        try { mkdirSync(path, { mode }); return true; }
+        catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false; throw error; }
+    },
     setMode: (path, mode) => chmodSync(path, mode),
     list: dir => readdirSync(dir),
     kind,

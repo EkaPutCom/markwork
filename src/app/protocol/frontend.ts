@@ -199,7 +199,7 @@ export class ProtocolFrontend implements AppFrontend<ProtocolEditor> {
         this.dialogs = {
             files: {
                 name: (title: string, label: string, value?: string) => this.asks.text('ask.files.name', { title, label, value }),
-                confirm: (message: string, detail: string) => this.asks.question('ask.files.confirm', { message, detail, accept: 'Move to Trash', destructive: true }),
+                confirm: (message: string, detail: string, accept = 'Move to Trash', destructive = true) => this.asks.question('ask.files.confirm', { message, detail, accept, destructive }),
                 error: (message: string) => { wire.notify('toast', { text: message, action: null }); },
             },
             views: this.viewDialogs(),

@@ -52,7 +52,7 @@ function PanelPopover({ open, onOpenChange, trigger, label, side = 'bottom', chi
 
 // ---------- The answer ----------
 
-function TurnStatus({ answer }: { answer: AnswerView }) {
+function TurnStatus({ answer, agent = false }: { answer: AnswerView; agent?: boolean }) {
     const client = useClient();
     const [open, setOpen] = useState(false);
     const running = answer.phase === 'thinking' || answer.phase === 'step' || answer.phase === 'writing';
@@ -64,7 +64,7 @@ function TurnStatus({ answer }: { answer: AnswerView }) {
             <div className="top">
                 <Button variant="ghost" className="head font-normal" aria-expanded={open} onClick={() => setOpen(v => !v)}>
                     {running ? <Spinner aria-hidden="true" className="size-3.5" /> : icon && <Icon name={icon} size={14} className={answer.phase === 'done' ? 'done-icon' : undefined} />}
-                    <span className="label">{statusLine(answer)}</span>
+                    <span className="label">{statusLine(answer, agent)}</span>
                     <span className="time">{formatMs(elapsed)}</span>
                     <Icon name={open ? 'pan-down' : 'pan-end'} size={12} />
                 </Button>
@@ -130,14 +130,14 @@ function ActionBar({ answer }: { answer: AnswerView }) {
     );
 }
 
-function Answer({ answer }: { answer: AnswerView }) {
+function Answer({ answer, agent = false }: { answer: AnswerView; agent?: boolean }) {
     const live = answer.question !== null;
     const finished = answer.outcome !== null || !live;
     const outcome = answer.outcome;
-    const footer = outcome && !('error' in outcome) && !outcome.cancelled ? usageLine(outcome) : '';
+    const footer = outcome && !('error' in outcome) && !outcome.cancelled ? usageLine(outcome, agent) : '';
     return (
         <div className="chat-answer">
-            {live && <TurnStatus answer={answer} />}
+            {live && <TurnStatus answer={answer} agent={agent} />}
             {answer.work && <WorkList {...answer.work} elapsed={answer.work.elapsed} />}
             {answer.cards.map(ask => <ProposalCard key={ask} ask={ask} />)}
             {answer.text && <div className="chat-assistant md" dangerouslySetInnerHTML={{ __html: chatHtml(answer.text) }} />}
@@ -256,17 +256,17 @@ function ContextButton({ agent = false }: { agent?: boolean }) {
         <div className="chat-context">
             <PanelPopover open={open && !!settings} onOpenChange={setOpen} label="Context" side="top" trigger={
                 <Button variant="ghost" size="xs" className="font-normal text-muted-foreground">
-                    Context{built ? ` · ≈${fmtTokens(built.tokens)} tokens` : ''}<Icon name="pan-down" size={12} />
+                    {agent ? 'pi context' : 'Context'}{!agent && built ? ` · ≈${fmtTokens(built.tokens)} tokens` : ''}<Icon name="pan-down" size={12} />
                 </Button>
             }>
                 {settings && <>
-                    {agent ? <p className="side-meta">Agent instructions and files from its folder. Attachments are explicit.</p> : CONTEXT_PARTS.map(([key, text]) => (
+                    {agent ? <p className="side-meta">pi owns native history, instructions, compaction, and tool context. Tools may send file content to the model provider. The workspace is not an enforced access boundary.</p> : CONTEXT_PARTS.map(([key, text]) => (
                         <Label key={key} className="chat-check"><Checkbox aria-label={text} checked={settings.options[key]} onCheckedChange={on => client.chat.setOptions({ ...settings.options, [key]: on === true })} />{text}</Label>
                     ))}
                     <Separator />
-                    {built && !built.items.length && <div className="side-meta">No document context is being sent.</div>}
+                    {!agent && built && !built.items.length && <div className="side-meta">No document context is being sent.</div>}
                     {built?.items.map((item, i) => <div key={i} className="part">{KIND_LABEL[item.kind]}: {item.label} · {fmtTokens(item.tokens)}</div>)}
-                    {built && <div className="side-meta">Total ≈{fmtTokens(built.tokens)} tokens of the {fmtTokens(settings.budget)} budget</div>}
+                    {!agent && built && <div className="side-meta">Total ≈{fmtTokens(built.tokens)} tokens of the {fmtTokens(settings.budget)} budget</div>}
                     {built?.unknownMentions.map(m => <div key={m} className="side-meta">File @{m} was not found in the project folder.</div>)}
                 </>}
             </PanelPopover>
@@ -304,11 +304,11 @@ function SettingsButton({ forceOpen, agent = false }: { forceOpen: number; agent
     const [text, setText] = useState('');
     const [error, setError] = useState('');
     useEffect(() => { if (forceOpen > 0) setOpen(true); }, [forceOpen]);
-    useEffect(() => { if (open) void client.chat.keyStatus(); }, [open, client]);
+    useEffect(() => { if (open && !agent) void client.chat.keyStatus(); }, [open, client, agent]);
     return (
         <PanelPopover open={open && !!settings} onOpenChange={setOpen} label="Assistant settings" trigger={<IconButton size="icon-xs" label="Assistant settings"><Icon name="emblem-system" /></IconButton>}>
             {settings && <>
-                <div className="field-title">DeepSeek API key</div>
+                {agent ? <p className="side-meta">Authentication and defaults come from pi on this machine. Run pi to sign in. No Assistant API key is copied to the agent.</p> : <><div className="field-title">DeepSeek API key</div>
                 <div className="side-meta" role="status">{key === undefined ? '' : key ? `A key is set ${SOURCES[key]}.` : 'No key yet.'}</div>
                 <Input type="password" autoComplete="off" aria-label="API key" placeholder="Paste the key" value={text} onChange={e => setText(e.target.value)} />
                 {error && <div className="chat-error">{error}</div>}
@@ -316,7 +316,7 @@ function SettingsButton({ forceOpen, agent = false }: { forceOpen: number; agent
                     <Button size="sm" disabled={!text.trim()} onClick={async () => { const e = await client.chat.saveKey(text.trim()); setError(e ?? ''); if (!e) setText(''); }}>Save</Button>
                     {key && key !== 'env' && <Button variant="outline" size="sm" onClick={() => void client.chat.forgetKey()}>Forget</Button>}
                 </div>
-                <Separator />
+                <Separator /></>}
                 <div className="chat-check justify-between"><span>Model</span>
                     <Select value={settings.model} aria-label="Model" onChange={e => client.chat.setModel(e.target.value)}>
                         {(models.length ? models : [settings.model]).map(m => <option key={m} value={m}>{m}</option>)}
@@ -367,14 +367,14 @@ export function Chat({ embedded = false, title = 'Assistant' }: { embedded?: boo
                 onScroll={e => { const el = e.currentTarget; stick.current = el.scrollHeight - el.clientHeight - el.scrollTop < 24; }}>
                 {entries.length === 0 && (
                     <div className="chat-empty">
-                        <p className="side-meta">{embedded ? 'Ask this agent about the files in its folder. File changes are proposed for your approval.' : 'Ask or request help with anything about your work. The assistant reads the open document and relevant excerpts from other files in the folder.'}</p>
+                        <p className="side-meta">{embedded ? 'This pi agent writes files and memory directly, runs commands, and accesses the network without Apply. Activation in Sessions is required before first use. No sandbox or guaranteed editor Undo. Avoid editing the same files while it works.' : 'Ask or request help with anything about your work. The assistant reads the open document and relevant excerpts from other files in the folder.'}</p>
                         {SUGGESTIONS.map(s => <Button key={s} variant="outline" className="h-auto justify-start whitespace-normal px-3 py-2 text-left font-normal" onClick={() => { model.setDraft(s); model.focusInput(); }}>{s}</Button>)}
                     </div>
                 )}
                 {entries.map((e, i) => {
                     switch (e.kind) {
                         case 'user': return <div key={i} className="chat-user">{e.text}</div>;
-                        case 'answer': return <Answer key={i} answer={e.answer} />;
+                        case 'answer': return <Answer key={i} answer={e.answer} agent={embedded} />;
                         case 'note': return <div key={i} className={e.error ? 'chat-error' : 'side-meta'}>{e.text}</div>;
                         case 'work': return (
                             <div key={i}><WorkList work={e.work} running={false} />
@@ -386,7 +386,7 @@ export function Chat({ embedded = false, title = 'Assistant' }: { embedded?: boo
             </div>
             <ContextButton agent={embedded} />
             <div className="chat-input">
-                <Textarea ref={input} rows={2} aria-label="Ask the Assistant" className="min-h-0 border-0 bg-transparent p-1 shadow-none focus-visible:ring-0 dark:bg-transparent" placeholder="Ask a question" value={draft}
+                <Textarea ref={input} rows={2} aria-label={embedded ? 'Message' : 'Ask the Assistant'} className="min-h-0 border-0 bg-transparent p-1 shadow-none focus-visible:ring-0 dark:bg-transparent" placeholder="Ask a question" value={draft}
                     onChange={e => model.setDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
                 <IconButton variant={busy ? 'destructive' : 'default'} size="icon-sm" label={busy ? 'Stop' : 'Send'} shortcut={busy ? undefined : 'Enter'}

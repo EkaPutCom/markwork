@@ -2,27 +2,45 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { seedFolderAgent } from './folderpi.mjs';
 import { launchApp, scratchFolder, testModule, stepper, waitFor } from './support.mjs';
 const { scratch, notes } = scratchFolder('agent-folders');
-writeFileSync(join(notes, 'agent.json'), JSON.stringify({ version: 1, name: 'Research Assistant', instructions: 'instructions.md' }));
-writeFileSync(join(notes, 'instructions.md'), '# Research Assistant\n\nCite sources.\n');
+seedFolderAgent({ scratch, notes });
 writeFileSync(join(notes, 'plan.md'), '# Plan\n\nShip 15 November\n');
 const { step, steps } = stepper({ echo: true });
-const app = await launchApp({ scratch, notes, env: { DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('model.mjs') } });
+const app = await launchApp({ scratch, notes, settings: { autosave: false, welcomed: true }, env: { DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('model.mjs'), MARKWORK_TEST_PI: testModule('folderpi.mjs') } });
 let failed = false;
 let page;
 try {
     page = await app.firstWindow();
+    await page.setViewportSize({ width: 1400, height: 900 });
+    const out = process.env.MARKWORK_AGENT_OUT; if (out) mkdirSync(out, { recursive: true });
     const errors = [];
     page.on('pageerror', error => errors.push(String(error)));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
     const chat = page.getByRole('complementary', { name: 'Agent conversation', exact: true });
-    const input = chat.getByLabel('Ask the Assistant');
+    const input = chat.getByLabel('Message', { exact: true });
     await step('agent folder opens its chat tab centrally and sessions on the right', async () => {
         await chat.waitFor({ timeout: 15000 });
         await page.getByRole('complementary', { name: 'Agent sessions', exact: true }).waitFor();
         await page.getByRole('tab', { name: /New chat/ }).waitFor();
         assert.equal(existsSync(join(notes, '.markwork')), false);
+        await page.getByRole('menuitem', { name: 'File', exact: true }).click();
+        assert.equal(await page.getByRole('menuitem', { name: 'New Agent…', exact: true }).isDisabled(), true);
+        await page.keyboard.press('Escape');
+    });
+    await step('pi requires an explicit unsandboxed activation before the first prompt', async () => {
+        await page.getByRole('button', { name: 'Activate pi agent', exact: true }).click();
+        const confirmation = page.getByRole('alertdialog', { name: 'Activate pi agent?', exact: true });
+        await confirmation.waitFor();
+        await confirmation.getByText(/workspace is not a sandbox/).waitFor();
+        if (out) {
+            for (const theme of ['light', 'dark']) { await page.emulateMedia({ colorScheme: theme }); await page.screenshot({ animations: 'disabled', path: join(out, 'activation-' + theme + '.png') }); }
+            await page.setViewportSize({ width: 560, height: 800 }); await page.screenshot({ animations: 'disabled', path: join(out, 'activation-narrow.png') });
+            await page.setViewportSize({ width: 1400, height: 900 });
+        }
+        await confirmation.getByRole('button', { name: 'Activate pi agent', exact: true }).click();
+        await confirmation.waitFor({ state: 'detached' });
     });
     await step('the model answer and history belong to this session', async () => {
         await input.fill('Hello agent'); await input.press('Enter');
@@ -80,18 +98,47 @@ try {
         await chat.getByText('Echo: Hello agent', { exact: true }).waitFor();
         assert.equal(await page.getByRole('tab', { name: /Hello agent/ }).count(), 1);
     });
-    await step('proposals require Apply and Undo checks the current document buffer', async () => {
-        await input.fill('bump the date'); await input.press('Enter');
-        const review = page.getByRole('dialog', { name: /Agent proposal/ });
-        await review.waitFor();
-        assert.match(readFileSync(join(notes, 'plan.md'), 'utf8'), /15 November/);
-        await review.getByRole('button', { name: 'Apply', exact: true }).click();
-        await review.waitFor({ state: 'detached' });
-        await chat.getByText(/^Proposal answered:/).waitFor();
-        await chat.getByRole('button', { name: 'Undo', exact: true }).last().click();
+    await step('pi writes directly with visible tools while disk conflicts preserve unsaved drafts', async () => {
+        await input.fill('write report'); await input.press('Enter');
+        await chat.getByText('Echo: write report', { exact: true }).waitFor();
+        assert.match(readFileSync(join(notes, 'workspace', 'report.md'), 'utf8'), /https:\/\/example.com/);
+        assert.equal(await page.getByRole('dialog', { name: /Agent proposal/ }).count(), 0);
+        writeFileSync(join(notes, 'plan.md'), '# External disk version');
+        const conflicts = page.getByRole('region', { name: 'Disk conflicts', exact: true });
+        await conflicts.waitFor();
+        if (out) await page.screenshot({ animations: 'disabled', path: join(out, 'disk-conflict.png') });
         await page.getByRole('tab', { name: /plan\.md/ }).click();
-        assert.match(await page.locator('.cm-content').innerText(), /15 November/);
+        assert.match(await page.locator('.cm-content').innerText(), /More notes\./);
         await page.getByRole('tab', { name: /Hello agent/ }).click();
+        await conflicts.getByRole('button', { name: 'Use disk version', exact: true }).click();
+        const confirm = page.getByRole('alertdialog', { name: 'Use disk version?', exact: true });
+        await confirm.getByRole('button', { name: 'Use disk version', exact: true }).click();
+        await conflicts.waitFor({ state: 'detached' });
+        await page.getByRole('tab', { name: /plan\.md/ }).click();
+        await page.locator('.cm-content').getByText('External disk version', { exact: true }).waitFor();
+        await page.getByRole('tab', { name: /Hello agent/ }).click();
+    });
+    await step('research tables render and nested shell outputs appear without a manual tree expansion', async () => {
+        await input.fill('research table'); await input.press('Enter');
+        const table = chat.getByRole('table'); await table.waitFor();
+        assert.equal(await table.getByRole('columnheader').count(), 4);
+        assert.equal(await table.getByRole('cell', { name: 'CVE-2026-0001', exact: true }).count(), 1);
+        assert.equal(await table.locator('strong').innerText(), 'CVE-2026-0001');
+        assert.equal(await table.locator('td.md-align-right code').innerText(), '9.8');
+        await page.getByRole('treeitem', { name: 'cve-report.md', exact: true }).waitFor();
+        assert.equal(await page.getByRole('tab', { name: /Hello agent/ }).getAttribute('aria-selected'), 'true');
+        if (out) {
+            const notice = page.getByRole('button', { name: 'Close toast' });
+            if (await notice.isVisible()) { await notice.click(); await notice.waitFor({ state: 'hidden' }); }
+            for (const theme of ['light', 'dark']) {
+                await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+                await page.screenshot({ animations: 'disabled', path: join(out, 'research-table-' + theme + '.png') });
+            }
+            await page.setViewportSize({ width: 560, height: 800 });
+            await page.screenshot({ animations: 'disabled', path: join(out, 'research-table-narrow.png') });
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'table overflowed the window');
+            await page.setViewportSize({ width: 1400, height: 900 });
+        }
     });
     await step('switching a streaming session keeps it working and another session queues independently', async () => {
         await input.fill('slow'); await input.press('Enter');
@@ -99,11 +146,23 @@ try {
         await page.getByRole('tab', { name: /New chat/ }).click();
         await input.fill('Queued question'); await input.press('Enter');
         await page.getByText('Queued', { exact: true }).waitFor();
-        await page.getByRole('tab', { name: /Hello agent/ }).click();
+        await page.getByRole('button', { name: 'Close Hello agent', exact: true }).click();
+        await page.getByRole('complementary', { name: 'Agent sessions', exact: true }).getByRole('button', { name: /Hello agent.*Working/ }).click();
         await chat.getByRole('button', { name: 'Stop', exact: true }).click();
         await page.getByRole('tab', { name: /Queued question/ }).waitFor();
         await page.getByRole('tab', { name: /Queued question/ }).click();
         await chat.getByText('Echo: Queued question', { exact: true }).waitFor();
+    });
+    await step('explicit native restore replaces a tampered readable projection without replaying tools', async () => {
+        const projection = readdirSync(join(notes, 'chats')).find(name => name.endsWith('.md') && readFileSync(join(notes, 'chats', name), 'utf8').includes('Queued question'));
+        assert.ok(projection); writeFileSync(join(notes, 'chats', projection), '# FORGED HISTORY');
+        await page.getByRole('button', { name: 'Restore native session', exact: true }).click();
+        const confirm = page.getByRole('alertdialog', { name: 'Restore native session?', exact: true });
+        await confirm.getByRole('button', { name: 'Restore native session', exact: true }).click();
+        await chat.getByText('Echo: Queued question', { exact: true }).waitFor();
+        await waitFor(() => readFileSync(join(notes, 'chats', projection), 'utf8').includes('Echo: Queued question'));
+        assert.match(readFileSync(join(notes, 'chats', projection), 'utf8'), /Echo: Queued question/);
+        assert.equal(await chat.getByText('FORGED HISTORY', { exact: true }).count(), 0);
     });
     if (process.env.MARKWORK_AGENT_OUT) {
         mkdirSync(process.env.MARKWORK_AGENT_OUT, { recursive: true });

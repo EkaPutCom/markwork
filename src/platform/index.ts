@@ -59,6 +59,7 @@ export interface FileSystem {
     exists(path: string): boolean;
     remove(path: string): void;
     makeDirs(path: string, mode: number): void;
+    createDir(path: string, mode: number): boolean;   // exclusive; false when the entry already exists
     setMode(path: string, mode: number): void;
     list(dir: string): string[];      // the names of a folder's entries, in no particular order
     kind(path: string): EntryKind;    // 'missing' only when nothing is there; any other error (no permission) throws
@@ -85,6 +86,7 @@ export interface Paths {
     // Whether two paths name the same place: separators and . / .. parts do not count, and on macOS and Windows neither does
     // letter case (their file systems are case-insensitive by default). Use it, not ===, to find an open file by its path.
     same(a: string, b: string): boolean;
+    dataDir(): string;                // durable per-user application data, not a runtime/cache directory
     configDir(): string;              // the per-user configuration folder (~/.config on Linux)
     homeDir(): string;
     runtimeDir(): string;             // the per-user folder for sockets and other runtime files ($XDG_RUNTIME_DIR on Linux)
@@ -111,6 +113,7 @@ export interface RunResult { status: number; out: string; err: string }
 // A long-running program spoken to line by line: commands to its stdin, its stdout read as lines (LF only). exit gets the
 // exit code (128 + signal for a signal) and the tail of stderr, once, after both outputs are drained.
 export interface ChildHandlers {
+    maxLineLength?: number;           // reject an overlong stdout record before buffering it indefinitely
     line(text: string): void;
     exit(status: number, stderr: string): void;
 }
@@ -193,6 +196,8 @@ export interface Platform {
     readonly translations: Translations;
     env(name: string): string | null;
     realName(): string | null;        // the user's full name, when the system knows it
+    newId(): string;                  // random UUID for durable identities, not inferred from titles or paths
+    hash(text: string): string;       // SHA-256 of UTF-8 text
     monotonicMs(): number;            // a clock that only moves forward, in milliseconds; for measuring durations
 }
 

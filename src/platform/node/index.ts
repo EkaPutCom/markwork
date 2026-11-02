@@ -2,6 +2,7 @@
 // that the core runs on Node, and it is what a frontend whose core runs in Node (an Electron main
 // process, or a sidecar next to Tauri or GPUI) starts from.
 
+import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
@@ -97,6 +98,7 @@ export const nodePlatform: Platform = {
         basename: path => basename(path),
         isAbsolute: path => isAbsolute(path),
         same: (a, b) => samePath(os, a, b, resolve),
+        dataDir: () => dirs().data,
         configDir: () => dirs().config,
         homeDir: () => homedir(),
         runtimeDir: () => dirs().runtime,
@@ -110,5 +112,7 @@ export const nodePlatform: Platform = {
     translations: catalogTranslations(userCatalog()),
     env: name => process.env[name] ?? null,
     realName,
+    newId: () => randomUUID(),
+    hash: text => createHash('sha256').update(text).digest('hex'),
     monotonicMs: () => performance.now(),
 };

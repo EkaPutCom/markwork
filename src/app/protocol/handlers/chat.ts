@@ -29,7 +29,7 @@ export function chatHandlers({ wire, session, frontend }: HandlerContext): void 
     const selected = (p: Record<string, unknown>) => {
         if (typeof p.folderSession === 'string') {
             const entry = session.agentFolders.find(p.folderSession);
-            return { panel: entry.panel, chat: entry.assistant.chat, folder: entry };
+            return { panel: entry.panel, chat: null, folder: entry };
         }
         return { panel: frontend.chat, chat: session.assistant.chat, folder: null };
     };
@@ -38,9 +38,10 @@ export function chatHandlers({ wire, session, frontend }: HandlerContext): void 
     // The frontend connected (or came back): the settings the panel shows and the agent log as it is now.
     wire.on('act.chat.sync', p => {
         const choice = selected(p);
-        return { settings: choice.panel.shown, models: choice.panel.models, events: choice.folder?.background?.active ? [...choice.folder.panel.trace.events] : [...choice.chat.session.trace.events],
+        return { settings: choice.panel.shown, models: choice.panel.models, events: choice.folder ? [...choice.folder.pi.trace.events] : [...choice.chat!.session.trace.events],
             chat: choice.folder ? savedChatView(choice.folder.panel.busy && choice.folder.panel.base ? choice.folder.panel.base : session.agentFolders.snapshot(choice.folder.id)) : undefined,
-            folderEvents: choice.folder?.panel.events, busy: choice.chat.busy || choice.folder?.panel.busy === true };
+            draft: choice.folder && !choice.folder.panel.busy && choice.folder.pi.store.get(choice.folder.pi.chatId).status === 'idle' ? choice.folder.pi.store.draft(choice.folder.pi.chatId) : undefined,
+            folderEvents: choice.folder?.panel.events, busy: choice.chat?.busy === true || choice.folder?.panel.busy === true };
     });
 
     // The reply comes when the turn is over; the turn itself is told by `chat.*` notices.

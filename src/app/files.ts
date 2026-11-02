@@ -66,6 +66,33 @@ export function listFolder(path: string): FolderEntry[] {
     return entries.sort(compareEntries);
 }
 
+// Bounded metadata-only discovery for shell tools, whose completion events need not name their outputs.
+// Never follow links or hidden/dependency folders, and do not infer new files from a truncated inventory.
+function workspaceFiles(root: string): Map<string, string> | null {
+    const { fs, paths } = platform(), files = new Map<string, string>();
+    const pending = [{ dir: root, depth: 0 }];
+    let count = 0;
+    while (pending.length) {
+        const { dir, depth } = pending.pop()!;
+        let entries;
+        try { if (fs.kind(dir) !== 'directory') continue; entries = fs.list(dir); } catch { continue; }
+        if (entries.length > 1000 - count) return null;
+        count += entries.length;
+        for (const name of entries) {
+            if (name.startsWith('.') || SKIPPED_FOLDERS.has(name)) continue;
+            const path = paths.join(dir, name);
+            let info;
+            try { info = fs.info(path); } catch { continue; }
+            if (info.kind === 'file') files.set(path, info.stamp);
+            else if (info.kind === 'directory') {
+                if (depth >= 8) return null;
+                pending.push({ dir: path, depth: depth + 1 });
+            }
+        }
+    }
+    return files;
+}
+
 // The tree as this controller drives it. It draws the folders it is sent and reports what the user did.
 export interface FileTreeView {
     onOpenFolder: (dir: string) => void;                          // a folder needs its contents (first opened)
@@ -84,7 +111,7 @@ export interface FileTreeView {
 // The questions about files; a test replaces them with immediate answers.
 export interface FilesDialogs {
     name(title: string, label: string, value?: string): Promise<string | null>;
-    confirm(message: string, detail: string): Promise<boolean>;
+    confirm(message: string, detail: string, accept?: string, destructive?: boolean): Promise<boolean>;
     error(message: string): void;
 }
 
@@ -99,6 +126,7 @@ export interface FilesHost extends DocumentHost {
 export class FilesController {
     root: string | null = null;
     private readonly open = new Map<string, (() => void) | null>();   // folders the tree shows → stops watching them
+    private readonly agentFiles = new Map<string, Map<string, string>>();
     private readonly pending = new Map<string, () => void>();          // folders whose refresh waits → cancels it
 
     constructor(private readonly host: FilesHost, readonly dialogs: FilesDialogs) {
@@ -116,6 +144,7 @@ export class FilesController {
     setRoot(path: string | null): void {
         for (const dir of [...this.open.keys()]) this.close(dir);
         this.root = path;
+        this.agentFiles.clear();
         this.host.fileTree.showRoot(path, path ? listFolder(path) : []);
         if (path) this.watch(path);
     }
@@ -129,6 +158,26 @@ export class FilesController {
             if (platform().paths.dirname(other) === dir && !kept.has(other)) this.close(other);
         }
         this.host.fileTree.showFolder(dir, entries);
+    }
+
+    refreshAgent(root: string): void {
+        const { paths } = platform();
+        for (const dir of [...this.open.keys()]) if (paths.same(dir, root) || insideName(root, dir) !== null) this.refresh(dir);
+        const files = workspaceFiles(paths.join(root, 'workspace')), before = this.agentFiles.get(root);
+        if (!files) { this.agentFiles.delete(root); return; }
+        this.agentFiles.set(root, files);
+        if (!before) return;
+        const directories = new Set<string>();
+        for (const [file, stamp] of files) if (before.get(file) !== stamp) this.outputParents(file, directories);
+        for (const dir of [...directories].sort((a, b) => a.length - b.length)) {
+            this.openFolder(dir);
+            this.host.fileTree.expand(dir);
+        }
+    }
+
+    private outputParents(file: string, directories: Set<string>): void {
+        const { paths } = platform();
+        for (let dir = paths.dirname(file); this.root && !paths.same(this.root, dir) && insideName(this.root, dir) !== null; dir = paths.dirname(dir)) directories.add(dir);
     }
 
     reveal(path: string | null): void {

@@ -9,6 +9,7 @@
 // A card may link notes in the Markwork work folder with [[Note]] (in its title or notes). The contents of those notes
 // are copied into the prompt as context, because the harness works in another project folder and cannot read them.
 
+import { piCommand, parsePiRecord } from './pirpc';
 import { platform } from '../platform/index';
 import { cardMeta, type Board, type Card, type Position } from '../markdown/kanban';
 import { AgentTrace, prettyArguments } from './trace';
@@ -40,9 +41,9 @@ export const HARNESSES: Record<string, HarnessSpec> = {
 // The user's answer to a harness request. cancelled = skip (dialog) or end without replying (question).
 export type HarnessReply = { value: string } | { confirmed: boolean } | { cancelled: true };
 
-export const rpcGetState = (): string => JSON.stringify({ id: 'markwork-state', type: 'get_state' });
-export const rpcPrompt = (message: string, id: string): string => JSON.stringify({ id, type: 'prompt', message });
-export const rpcSteer = (message: string): string => JSON.stringify({ id: 'markwork-steer', type: 'steer', message });
+export const rpcGetState = (): string => piCommand('get_state', 'markwork-state');
+export const rpcPrompt = (message: string, id: string): string => piCommand('prompt', id, { message });
+export const rpcSteer = (message: string): string => piCommand('steer', 'markwork-steer', { message });
 export const rpcUiResponse = (id: string, reply: HarnessReply): string => JSON.stringify({ type: 'extension_ui_response', id, ...reply });
 
 // ---------- Requests from the harness ----------
@@ -297,7 +298,7 @@ export class PiReader {
         const text = raw.replace(/\r$/, '');
         if (!text.trim()) return null;
         let e: PiEvent;
-        try { e = JSON.parse(text) as PiEvent; } catch { this.trace.add('note', 'pi output', text); return null; }
+        try { e = parsePiRecord(text) as PiEvent; } catch { this.trace.add('note', 'pi output', text); return null; }
         const type = typeof e?.type === 'string' ? e.type : '';
         // The type comes from pi's output: only the table's own entries, never an inherited property.
         return Object.hasOwn(this.handlers, type) ? this.handlers[type](e) ?? null : null;

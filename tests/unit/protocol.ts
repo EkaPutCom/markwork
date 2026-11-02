@@ -1,6 +1,9 @@
 // The app protocol without a window: changes in code points, the replica of a document, and a ProtocolServer driven by a
 // scripted frontend (DocMirror) over an in-memory line.
 
+import { platform } from '../../src/platform/index';
+import { FolderStore } from '../../src/agent/folderstore';
+import { loadAgentFolder } from '../../src/agent/folder';
 import { applyChanges, diffChanges } from '../../src/app/protocol/changes';
 import { DocMirror } from '../../src/app/protocol/mirror';
 import { ProtocolEditor, headingsOf } from '../../src/app/protocol/replica';
@@ -499,22 +502,25 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Explorer and open.file route chat-layout transcripts to one scoped session page', async () => {
+    await test('Explorer and open.file route only indexed pi projections to one scoped session page', async () => {
         const folder = disk.join(dir, 'folder-agent');
         disk.mkdirs(disk.join(folder, 'chats'));
-        disk.write(disk.join(folder, 'agent.json'), JSON.stringify({ version: 1, name: 'Folder agent', instructions: 'instructions.md' }));
+        disk.write(disk.join(folder, 'agent.json'), JSON.stringify({ version: 2, id: platform().newId(), runtime: 'pi', name: 'Folder agent', instructions: 'instructions.md' }));
         disk.write(disk.join(folder, 'instructions.md'), 'Cite sources.');
-        const path = disk.join(folder, 'chats', 'session.md');
-        disk.write(path, '---\nlayout: chat\ntitle: "A saved chat"\n---\n\n## You\nHello from Explorer\n');
+        disk.mkdirs(disk.join(folder, 'workspace'));
+        const definition = loadAgentFolder(folder);
+        if (definition.kind !== 'agent') throw Error('Invalid fixture');
+        const store = new FolderStore(folder, definition.config);
+        const binding = store.create(), path = store.path(binding.id);
+        store.release();
         const { server, ui } = await start();
-        server.session.agentFolders.backgroundEnabled = false;
         try {
             const before = ui.log.filter(event => event.ev === 'doc.open').length;
             ok((await ui.client.request('act.tree.activate', { path })).ok, 'tree activation');
             await until(() => ui.last('page.open')?.kind === 'agent');
             eq(ui.last('page.open')?.file, path);
             eq(ui.log.filter(event => event.ev === 'doc.open').length, before);
-            ok((await ui.client.request('open.file', { name: 'folder-agent/chats/session.md' })).ok, 'open.file');
+            ok((await ui.client.request('open.file', { name: 'folder-agent/chats/' + platform().paths.basename(path) })).ok, 'open.file');
             eq(ui.log.filter(event => event.ev === 'page.open' && event.payload.kind === 'agent').length, 1);
             const snapshot = await ui.client.request('act.chat.sync', { folderSession: path });
             ok(snapshot.ok, 'scoped chat sync');
@@ -524,19 +530,27 @@ export async function protocolTests(): Promise<void> {
             ok(opened.ok, 'session row request');
             eq(ui.last('page.active')?.page, pageId);
             ok(!(await ui.client.request('act.agent.open', { session: disk.join(tmp, 'outside.md') })).ok, 'unknown session was accepted');
+            ui.answers['ask.files.confirm'] = { answer: true };
+            ok((await ui.client.request('act.agent.enable', { root: folder })).enabled, 'activate folder');
+            ok(!(await ui.client.request('act.agent.execution', { root: folder, mode: 'arbitrary' })).ok, 'invalid execution mode');
+            ok(!(await ui.client.request('act.agent.execution', { root: dir, mode: 'background' })).ok, 'unoffered agent root');
+            ok((await ui.client.request('act.agent.execution', { root: folder, mode: 'background' })).ok, 'select background without submitting work');
+            ok(!(await ui.client.request('act.agent.reconnect', { root: dir })).ok, 'forged reconnect root');
+            ok((await ui.client.request('act.agent.reconnect', { root: folder })).ok, 'idle reconnect creates no run');
+            ok(!(await ui.client.request('act.agent.stopOriginal', { session: path })).ok, 'no original run was offered');
+            ok((await ui.client.request('act.agent.execution', { root: folder, mode: 'local' })).ok, 'return to local while idle');
         } finally { server.dispose(); }
     });
 
     await test('New Agent is offered as a core command and tree creation opens a scoped chat page', async () => {
         const { server, ui } = await start();
-        server.session.agentFolders.backgroundEnabled = false;
         ui.answers['ask.files.name'] = { text: 'Created Agent' };
         try {
             const created = await ui.client.request('act.tree.create', { kind: 'agent', dir });
             ok(created.ok, 'agent creation');
-            eq(created.path, disk.join(dir, 'Created Agent'));
+            eq(created.path, disk.join(dir, 'agents', 'Created Agent'));
             await until(() => ui.last('page.open')?.kind === 'agent');
-            ok(disk.read(disk.join(dir, 'Created Agent', 'agent.json')).includes('instructions.md'), 'configuration not written');
+            ok(disk.read(disk.join(dir, 'agents', 'Created Agent', 'agent.json')).includes('instructions.md'), 'configuration not written');
             const state = ui.last('agent.folders')?.state as { name: string };
             eq(state.name, 'Created Agent');
             const refused = await ui.client.request('act.tree.create', { kind: 'agent', dir: tmp });

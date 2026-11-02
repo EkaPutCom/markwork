@@ -4,6 +4,8 @@ Status: v1 implemented in `markworkd/` (Go, standard library only, no third-part
 
 `markworkd` is a small supervisor daemon, one per machine (the desktop and any VPS). It owns the agent processes that Markwork orchestrates, so a run keeps going when the Markwork window is closed, and Markwork can reconnect to it later, locally or over SSH.
 
+Pi Agent Folders now use the same protocol directly through `src/app/folderdaemon.ts` and `folderdaemonprocess.ts`; no Go changes or worker semantics are added. Their execution-machine preflight, durable run reservation, non-retried writes, reattachment and explicit lost-run recovery are documented in [the Phase 2 record](agent-folders-pi-phase2.md). This path is local Linux; the existing card/worktree SSH path remains separate.
+
 ## 1. Goals and non-goals
 
 Goals

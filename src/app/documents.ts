@@ -54,6 +54,7 @@ export interface DocumentsHost<E extends TextEditor> {
     readonly dialogs: DocumentDialogs;
     createEditor(id: number): E;                // the editor for a new document (a replica of the frontend's, over the protocol)
     readonly autosaver: Autosaver;
+    canSaveDocument?(doc: Doc<E>): boolean;
     root(): string | null;
     toast(message: string, action?: ToastAction): void;
     // A new document: connect its editor, and add its page and tab. Called before it joins the list, so the
@@ -511,6 +512,11 @@ export class DocumentController<E extends TextEditor> {
     // ---------- Saving ----------
 
     write(path: string, text: string): boolean {
+        const doc = this.docs.find(item => item.file && platform().paths.same(item.file, path));
+        if (doc && this.host.canSaveDocument?.(doc) === false) {
+            this.host.dialogs.showError('Resolve the disk conflict from the agent Sessions panel before saving. Your draft has not been overwritten.');
+            return false;
+        }
         try {
             writeTextFile(path, text);
             return true;

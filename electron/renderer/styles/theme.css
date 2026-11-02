@@ -755,6 +755,17 @@ input[type=checkbox]:disabled { opacity: .5; cursor: default; }
 .chat-assistant { user-select: text; overflow-wrap: anywhere; line-height: 1.6; }
 .md .md-line { margin: 0 0 6px; } .md .md-heading { font-weight: 600; color: var(--heading); margin: 12px 0 4px; } .md .md-h1 { font-size: 1.25em; } .md .md-h2 { font-size: 1.12em; }
 .md .md-bullet { position: relative; padding-left: 16px; margin: 2px 0; } .md .md-bullet::before { content: '•'; position: absolute; left: 4px; color: var(--muted-foreground); }
+.md .md-bullet[data-marker] { padding-left: 28px; }
+.md .md-bullet[data-marker]::before { content: attr(data-marker); }
+.md .md-table-scroll { max-width: 100%; overflow-x: auto; margin: 8px 0; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.md .md-table-scroll:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.md .md-table-scroll table { width: 100%; border-collapse: collapse; }
+.md .md-table-scroll :is(th, td) { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; min-width: 8em; overflow-wrap: anywhere; }
+.md .md-table-scroll th { background: var(--muted); font-weight: 600; }
+.md .md-table-scroll tbody tr:last-child td { border-bottom: 0; }
+.md .md-align-left { text-align: left; }
+.md .md-align-center { text-align: center; }
+.md .md-align-right { text-align: right; }
 .md .md-bullet[data-depth="1"] { margin-left: 16px; } .md .md-bullet[data-depth="2"] { margin-left: 32px; }
 .md .md-quote { margin: 4px 0; padding-left: 12px; border-left: 2px solid var(--border); color: var(--quote-fg); font-style: italic; }
 .md .md-rule { border: 0; border-top: 1px solid var(--border); } .md .md-code { background: var(--code-bg); border-radius: var(--radius-md); padding: 8px 12px; font: var(--text-xs) var(--font-mono); overflow: auto; margin: 4px 0; }
