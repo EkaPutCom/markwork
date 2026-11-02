@@ -231,6 +231,9 @@ export class Client {
     }
     folderModels(): [string, ChatModel][] { return [...this.folderChats]; }
     async enableFolderAgent(root: string): Promise<void> { await this.ask('act.agent.enable', { root }); }
+    async folderExecution(root: string, mode: 'local' | 'background'): Promise<void> { await this.ask('act.agent.execution', { root, mode }); }
+    async reconnectFolder(root: string): Promise<void> { await this.ask('act.agent.reconnect', { root }); }
+    async stopOriginalFolderRun(session: string): Promise<void> { await this.ask('act.agent.stopOriginal', { session }); }
     async restoreFolderSession(session: string): Promise<void> { await this.ask('act.agent.recover', { session }); }
     async resolveFolderConflict(path: string, choice: 'reload' | 'keep'): Promise<void> { await this.ask('act.agent.resolve', { path, choice }); }
     async newAgentChat(): Promise<void> { await this.ask('act.agent.new'); }

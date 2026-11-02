@@ -4,6 +4,12 @@ A small supervisor daemon for the agent processes that Markwork orchestrates, so
 window is closed (or the SSH link to a VPS drops) and Markwork can reconnect and replay everything it missed.
 Go, standard library only. Each agent runs under a small helper of its own (a *shim*), so the agents also survive the daemon being restarted or crashing; the next daemon takes them over (design section 17, `"shims": false` turns it off). The design and the wire protocol are in [docs/design/markworkd.md](../docs/design/markworkd.md).
 
+## Pi Agent Folders
+
+Markwork’s explicitly selected local-Linux background mode runs **pi 1.4.0 directly**, not the historical `markwork-agent` worker. Add an allowed `programs.pi` executable and the agent’s `workspace/` to `roots`, then authenticate pi in the daemon account. Markwork checks version and `pi auth check --json --no-refresh` there before new prompts; it never forwards Assistant credentials. The daemon only transports records and knows nothing about pi sessions or approvals.
+
+Roots constrain working directories, not pi tool access: this mode is unsandboxed. Configure record/log limits for pi JSON; truncated streams require explicit recovery. Markwork reserves an exact run ID before spawn, follows numbered output, never retries uncertain stdin writes, and can detach on close. Unsubmitted queues remain application drafts. A completed pi process may remain idle until reattachment closes it. See [Phase 2 setup, ownership and recovery](../docs/design/agent-folders-pi-phase2.md), including manual stale-owner handling and unverified packaged/live-provider limits.
+
 ## Build and test
 
 ```bash

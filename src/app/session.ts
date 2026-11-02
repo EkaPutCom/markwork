@@ -206,7 +206,7 @@ export class AppSession<E extends TextEditor> {
             conflicts: root => this.folderDisk.conflicts(root),
             resolve: (path, choice) => this.folderDisk.resolve(path, choice),
             reset: () => this.folderDisk.dispose(),
-        }, dialogs.files);
+        }, dialogs.files, frontend.openers);
         // Where agents run decides what is needed, and on an SSH machine where pi and git are looked for.
         this.stops.push(this.settings.onChanged(['harness-machine', 'machines', 'machine-projects'], () => {
             if (this.programs.wasChecked) void this.programs.check();
@@ -393,13 +393,14 @@ export class AppSession<E extends TextEditor> {
     // are still working were dealt with, and the tabs are remembered for the next launch.
     async closeRequest(): Promise<boolean> {
         if (!await this.documents.confirmDiscardAll()) return false;
+        let keepFolders = false;
         if (this.agentFolders.busy) {
-            const choice = await this.frontend.dialogs.harness.closeAgents({ children: 1, detachable: 0, queued: 0 });
+            const choice = await this.frontend.dialogs.harness.closeAgents(this.agentFolders.activity());
             if (choice === 'cancel') return false;
-            await this.agentFolders.stopAndWait();
+            keepFolders = choice !== 'stop';
         }
         const go = await this.harness.confirmClose();
-        if (go) { this.documents.rememberTabs(); await this.agentFolders.shutdown(); }
+        if (go) { this.documents.rememberTabs(); await this.agentFolders.shutdown(keepFolders); }
         return go;
     }
 
@@ -410,9 +411,9 @@ export class AppSession<E extends TextEditor> {
         const absolute = platform().paths.resolve(path);
         const root = this.files.root;
         if (root && root !== absolute && this.agentFolders.busy) {
-            const choice = await this.frontend.dialogs.harness.closeAgents({ children: 1, detachable: 0, queued: 0 });
+            const choice = await this.frontend.dialogs.harness.closeAgents(this.agentFolders.activity());
             if (choice === 'cancel') return false;
-            await this.agentFolders.stopAndWait();
+            await this.agentFolders.shutdown(choice !== 'stop');
         }
         if (root && root !== absolute && !await this.documents.closeOutside(absolute)) return false;
         return this.applyFolder(absolute, show);

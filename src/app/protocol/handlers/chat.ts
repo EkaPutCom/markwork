@@ -40,6 +40,7 @@ export function chatHandlers({ wire, session, frontend }: HandlerContext): void 
         const choice = selected(p);
         return { settings: choice.panel.shown, models: choice.panel.models, events: choice.folder ? [...choice.folder.pi.trace.events] : [...choice.chat!.session.trace.events],
             chat: choice.folder ? savedChatView(choice.folder.panel.busy && choice.folder.panel.base ? choice.folder.panel.base : session.agentFolders.snapshot(choice.folder.id)) : undefined,
+            draft: choice.folder && !choice.folder.panel.busy && choice.folder.pi.store.get(choice.folder.pi.chatId).status === 'idle' ? choice.folder.pi.store.draft(choice.folder.pi.chatId) : undefined,
             folderEvents: choice.folder?.panel.events, busy: choice.chat?.busy === true || choice.folder?.panel.busy === true };
     });
 

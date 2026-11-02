@@ -45,6 +45,8 @@ export function AgentSessions() {
                 <p className="text-sm font-medium">{state.name}</p>
                 {state.error && <p role="alert" className="text-sm text-destructive">{state.error}</p>}
                 {!state.activated && <div className="flex flex-col gap-2"><p className="text-xs text-muted-foreground">Not activated. pi can write files, run commands, and access the network without Apply. The workspace is not a sandbox.</p><Button size="sm" disabled={!!state.error} onClick={() => void client.enableFolderAgent(state.root!)}>Activate pi agent</Button></div>}
+                {state.activated && <Button variant="outline" size="sm" disabled={state.sessions.some(session => session.busy)} onClick={() => void client.folderExecution(state.root!, state.runtime === 'local' ? 'background' : 'local')}>{state.runtime === 'local' ? 'Use background pi' : 'Use local pi'}</Button>}
+                {state.runtime !== 'local' && <Button variant="outline" size="sm" disabled={state.sessions.some(session => session.busy)} onClick={() => void client.reconnectFolder(state.root!)}>Reconnect original run</Button>}
                 <Button variant="outline" size="sm" disabled={!!state.error} onClick={() => void client.newAgentChat()}><Icon name="list-add" />New chat</Button>
                 <div className="agent-session-list">
                     {state.sessions.map(session => (
@@ -55,10 +57,11 @@ export function AgentSessions() {
                         </Button>
                     ))}
                 </div>
+                {selected && state.sessions.some(session => session.id === selected && session.backgroundRun) && <Button variant="outline" size="sm" onClick={() => void client.stopOriginalFolderRun(selected)}>Stop original run</Button>}
                 {state.activated && selected && <Button variant="outline" size="sm" disabled={state.sessions.some(session => session.busy)} onClick={() => void client.restoreFolderSession(selected)}>Restore native session</Button>}
                 {!!state.conflicts?.length && <section className="flex flex-col gap-3" aria-label="Disk conflicts"><p role="alert" className="text-sm text-destructive">Disk changes conflict with unsaved drafts. Saves are paused.</p>{state.conflicts.map(conflict => <div key={conflict.path} className="flex flex-col gap-2"><span className="text-ui break-all">{conflict.name}</span><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => void client.resolveFolderConflict(conflict.path, 'reload')}>Use disk version</Button><Button variant="outline" size="sm" onClick={() => void client.resolveFolderConflict(conflict.path, 'keep')}>Keep draft for saving</Button></div></div>)}</section>}
             </div>
-            <div className="agent-runtime text-xs text-muted-foreground" role="status"><p>{state.runtime === 'background' ? 'Background available · markworkd connected' : state.runtime === 'reconnecting' ? 'Reconnecting to markworkd…' : state.runtime === 'checking' ? 'Checking background runtime…' : 'Runs while Markwork is open'}</p><p>{state.runtimeDetail}</p><Button variant="link" size="xs" onClick={() => client.openPrograms()}>Programs</Button></div>
+            <div className="agent-runtime text-xs text-muted-foreground" role="status"><p>{state.runtime === 'background' ? 'Background mode · local markworkd' : state.runtime === 'reconnecting' ? 'Reconnecting to markworkd…' : state.runtime === 'checking' ? 'Checking background runtime…' : 'Runs while Markwork is open'}</p><p>{state.runtimeDetail}</p><Button variant="link" size="xs" onClick={() => client.openPrograms()}>Programs</Button></div>
         </aside>
     );
 }

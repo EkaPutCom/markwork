@@ -530,6 +530,15 @@ export async function protocolTests(): Promise<void> {
             ok(opened.ok, 'session row request');
             eq(ui.last('page.active')?.page, pageId);
             ok(!(await ui.client.request('act.agent.open', { session: disk.join(tmp, 'outside.md') })).ok, 'unknown session was accepted');
+            ui.answers['ask.files.confirm'] = { answer: true };
+            ok((await ui.client.request('act.agent.enable', { root: folder })).enabled, 'activate folder');
+            ok(!(await ui.client.request('act.agent.execution', { root: folder, mode: 'arbitrary' })).ok, 'invalid execution mode');
+            ok(!(await ui.client.request('act.agent.execution', { root: dir, mode: 'background' })).ok, 'unoffered agent root');
+            ok((await ui.client.request('act.agent.execution', { root: folder, mode: 'background' })).ok, 'select background without submitting work');
+            ok(!(await ui.client.request('act.agent.reconnect', { root: dir })).ok, 'forged reconnect root');
+            ok((await ui.client.request('act.agent.reconnect', { root: folder })).ok, 'idle reconnect creates no run');
+            ok(!(await ui.client.request('act.agent.stopOriginal', { session: path })).ok, 'no original run was offered');
+            ok((await ui.client.request('act.agent.execution', { root: folder, mode: 'local' })).ok, 'return to local while idle');
         } finally { server.dispose(); }
     });
 

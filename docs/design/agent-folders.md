@@ -1,6 +1,6 @@
 # Agent folders: design and implementation plan
 
-Status: historical custom-engine design, superseded for application execution by [local pi Agent Folders (Phase 1)](agent-folders-pi-phase1.md). Shared tabs and navigation remain; the worker/approval/background descriptions below are historical, not the current folder runtime. The [interactive HTML mockup](mockups/agent-folder.html) remains the design reference.
+Status: historical custom-engine design, superseded for application execution by pi Agent Folders ([Phase 1 local](agent-folders-pi-phase1.md), [Phase 2 background/recovery](agent-folders-pi-phase2.md)). Shared tabs and navigation remain; the worker/approval/background descriptions below are historical, not the current folder runtime. The [interactive HTML mockup](mockups/agent-folder.html) remains the design reference.
 
 The runnable fixture is [`example/`](../../example/README.md), with an agent folder next to ordinary `notes/` and `projects/` folders. `npm start -- example/research-agent` opens the agent directly.
 

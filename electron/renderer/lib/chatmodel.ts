@@ -160,6 +160,7 @@ export class ChatModel {
         if (!reply?.ok) return;
         if (reply.settings) this.set({ settings: reply.settings as ChatPanelSettings, models: reply.models as string[] });
         if (reply.chat) this.restore(reply.chat as SavedChatView);
+        if (typeof reply.draft === 'string' && reply.draft) this.setDraft(reply.draft);
         if (Array.isArray(reply.folderEvents)) for (const event of reply.folderEvents) this.notice(event.ev, event.payload);
         this.set({ busy: reply.busy === true });
         this.log.apply({ reset: true, events: reply.events as TraceEvent[] });

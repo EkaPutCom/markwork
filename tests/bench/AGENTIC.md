@@ -260,3 +260,17 @@ These core measurements do not include browser table layout, large-table DOM gro
 | parseBoard + serializeBoard | 0.10 | 0.32 | 0.32 | +29% |
 
 These existing benchmark functions were not edited. Table medians ranged from 1.67 to 2.06 ms across the repeats (−7% to +14%); the board delta is about 0.02 ms against its 0.08 ms baseline and ranged from +15% to +29%. The positive deltas are recorded, not hidden or used to replace the baseline; these small-run results do not establish a code-level regression or improvement. Full large-table browser layout, maximum-budget discovery and Windows/macOS timing remain unmeasured.
+
+## Pi background execution and recovery (Phase 2)
+
+Commit subject: `feat(agent): support background pi folder execution`.
+
+New end-to-end workload: real local markworkd, deterministic executable pi (no provider/credentials/network), native resume, version/authentication probes in the execution account, 1,000 streamed text updates, checked projection/index writes and confirmed daemon shutdown. Linux Node v24.21.0, temporary local disk; 3 warmups + 20 measured turns in `tests/unit/folderdaemon.ts`. Native history grows to about 50 short user/assistant messages. Initial complete run median/p95/max: **185.574 / 191.675 / 194.658 ms**. This includes the fixture’s 20 ms gate polling and process startup; it is not isolated streaming throughput.
+
+Final full-suite run: **226.817 / 241.318 / 265.627 ms** (median/p95/max), about **+22% median** relative to the initial new-workload sample. An immediate focused rerun of the same built code/fixture (`--only-agent-folders`) measured **184.639 / 198.370 / 198.671 ms**. Earlier complete runs were 185.094/194.791/199.159 and 186.587/192.712/192.980 ms. The higher full-suite sample is retained rather than replaced; differing suite context/scheduling prevents attributing it to a controlled code regression or improvement. No timing threshold or baseline was adjusted.
+
+This is added background functionality/cost, not a speedup or an equivalent comparison against the Phase 1 in-memory 1,000-event microbenchmark. The daemon creates bounded version/auth probes per new turn and retains their records under ordinary retention policy. Stream cursors are coalesced every 500 ms rather than rewriting the index for every token. Fresh application recovery rebuilds a single-turn UI from that original run’s records; normal link reconnect starts after the last delivered sequence. No existing benchmark baseline was changed and no Markdown/editor runtime algorithm was changed.
+
+Real-daemon tests also prove once-only submission across close/reopen, continued file creation, competing-owner refusal, stale-reader refresh, queued drafts, unavailable auth and explicit lost-run recovery. The Electron scenario closes a real window, permits a report to finish while closed, reopens native history and verifies only one submitted prompt. Screenshot layout is checked, not performance-profiled.
+
+Unmeasured: maximum-size/native-history replay, sustained heap growth, maximum concurrent agents, packaged live launch, real-provider daemon authentication, non-Linux/SSH folder execution, deliberate state deletion and detached descendants. Generic daemon/shim restart tests are not a pi-specific restart experiment. No speedup claim is made, so the performance-learning journey is unchanged.

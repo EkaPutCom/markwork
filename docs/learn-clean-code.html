@@ -189,8 +189,8 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
     <p class="lede">Clean code here means one practical thing: a change can be made by reading a small part of the code, and the build tells you when a change breaks a rule. Every chapter below starts from a real problem in Markwork (once a GTK 4 + GJS workbench, now an Electron app, in TypeScript), shows the code before and after, and states how we checked that the behavior did not change.</p>
     <div class="kpis">
       <div class="kpi"><div class="what">Highest cyclomatic complexity of a function</div><div class="big">15</div><div class="from">from 132 (<code>ChatSession.ask</code>) · limit checked by the build</div></div>
-      <div class="kpi"><div class="what">Functions in src/ and scripts/</div><div class="big">4,502</div><div class="from">median 1 · mean 2.44 · 90% at 6 or less</div></div>
-      <div class="kpi"><div class="what">Import cycles between modules</div><div class="big">0</div><div class="from">184 modules · 510 runtime imports</div></div>
+      <div class="kpi"><div class="what">Functions in src/ and scripts/</div><div class="big">4,590</div><div class="from">median 1 · mean 2.45 · 90% at 6 or less</div></div>
+      <div class="kpi"><div class="what">Import cycles between modules</div><div class="big">0</div><div class="from">186 modules · 518 runtime imports</div></div>
       <div class="kpi"><div class="what">Modules that write a document's file in-process</div><div class="big">1</div><div class="from">from 5 · the others call named operations</div></div>
     </div>
     <ul class="toc">
@@ -206,6 +206,16 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
   </div>
 </div>
 
+<section class="chapter" id="background-pi-ownership">
+<h2>Separate the observer’s lifetime from the process owner</h2>
+<p>Phase 2 (<code>feat(agent): support background pi folder execution</code>): previously the window owned a local pi child and had to stop it before releasing the agent. Now FolderDaemonPi owns daemon preflight and exact run identity, FolderDaemonProcess owns one numbered subscription and non-retried write queue, and local markworkd owns process lifetime. FolderPiSession reuses the chat presentation rather than adding another model loop. Its preparation is separate from turn observation so each function remains within the existing complexity limit, without new exceptions.</p>
+<pre><code>Before: window → local RPC child → close means stop
+After:  window → exact-run observer → daemon-owned pi
+        Keep closes observation, not execution
+        Restore reads native state, never resends the prompt</code></pre>
+<p>Durable identity is reserved before spawn. An owner refreshes its previously read index only after acquiring the exclusive lock, preventing a stale window from erasing a detached reservation. Queued drafts are data, not an automatic execution queue. No Go protocol or lower-to-upper dependency was added. Real-daemon and Electron tests prove actual close/reopen, result recovery, one submission, competing-window refusal and explicit recovery after lost work.</p>
+<p>Fresh measurement: 4,590 functions, median 1, mean 2.45, p90 6, maximum 15; distribution 4,095/394/101; 186 core modules, 518 runtime imports and zero cycles. Hero and distribution table use these values; older chapters retain historical data. This is a lifecycle capability, not a behavior-preserving refactor or a speedup. Installed packages, real-provider daemon auth, maximum replay and long-lived heap are unverified. Lesson: persist execution identity before external effects, and do not confuse replaying observations with repeating commands.</p>
+</section>
 <section class="chapter" id="local-pi-ownership">
 <h2>Replace execution ownership, not the whole chat UI</h2>
 <p>Phase 1 local pi Agent Folders (working tree, 1 November): the previous controller constructed AssistantController/custom-worker execution for every folder chat. It mixed a persistent agent's identity with an Assistant turn and a portable Markdown history. The new <code>AgentFoldersController</code> owns activation/routing/queues; <code>FolderPiSession</code> adapts native pi events to FolderPanel; <code>FolderStore</code> owns exact native bindings and readable projection hashes. The shared codec and platform process framing are reused from the card path without adopting card/worktree lifecycle. Runtime I/O stays behind platform(); no layer exceptions were added.</p>
@@ -287,9 +297,9 @@ const rules = [
   <div class="scroll-x"><table>
     <thead><tr><th>Complexity</th><th>Meaning</th><th class="num">Markwork functions</th></tr></thead>
     <tbody>
-      <tr><td>1–5</td><td>simple; easy to read and test</td><td class="num">4,018</td></tr>
-      <tr><td>6–10</td><td>fine; McCabe's own limit (1976)</td><td class="num">388</td></tr>
-      <tr><td>11–15</td><td>worth a second look; Markwork's build limit</td><td class="num">96</td></tr>
+      <tr><td>1–5</td><td>simple; easy to read and test</td><td class="num">4,095</td></tr>
+      <tr><td>6–10</td><td>fine; McCabe's own limit (1976)</td><td class="num">394</td></tr>
+      <tr><td>11–15</td><td>worth a second look; Markwork's build limit</td><td class="num">101</td></tr>
       <tr><td>above 15</td><td>refused by the build</td><td class="num">0</td></tr>
     </tbody>
   </table></div>
@@ -639,13 +649,14 @@ if (open) host.fileMoved(open, to);</code></pre></div>
   <h3>Read-only code: preserve the document boundary</h3>
   <p>A code reader needs text on screen, but not a writable document. Previously every non-image, non-HTML file activated from the tree would go through the document editor. The tree now lists all non-hidden files, and <code>AppSession.openFile()</code> routes non-document text to <code>DocumentController.openCode()</code>. It validates the file through the platform port and opens a <code>Page</code> snapshot instead of a <code>Doc</code>. The renderer uses a separate read-only CodeMirror instance with no write callbacks; the existing document editor and assistant manuscript set remain unchanged.</p>
   <p>The existing host method changes from <code>showPageTab(id)</code>, implicitly HTML, to <code>showPageTab(id, kind)</code>, where kind is HTML or code. The protocol carries that discriminator and the optional snapshot text as plain data. The core still decides what may be opened; the renderer only draws it. No new controller or layer exception is needed. The viewer reuses the existing <code>FindBar</code> rather than introducing a second search UI; that panel hides Replace and refuses expansion when its editor is read-only. Tests in <code>filescontroller.ts</code> and <code>protocol.ts</code> protect the page/document separation, file limits, and lifecycle; <code>tests/electron/code.mjs</code> checks highlighting, Find, and read-only typing/paste/Save. Lesson: sharing an editor library does not require sharing write authority.</p>
-  <p>The current measurement uses the same AST complexity counter as <code>scripts/layers.mjs</code>: 4,502 functions in <code>src/</code> and <code>scripts/</code>, median 1, mean 2.44, p90 6, maximum 15; 184 core modules, 510 local runtime imports, and no import cycles. The hero and complexity distribution above use this measurement; the before/after refactor tables remain historical evidence. A 30,001-line viewer check measures opening and viewport virtualization, not an IDE workload or cross-platform performance.</p>
+  <p>The current measurement uses the same AST complexity counter as <code>scripts/layers.mjs</code>: 4,590 functions in <code>src/</code> and <code>scripts/</code>, median 1, mean 2.45, p90 6, maximum 15; 186 core modules, 518 local runtime imports, and no import cycles. The hero and complexity distribution above use this measurement; the before/after refactor tables remain historical evidence. A 30,001-line viewer check measures opening and viewport virtualization, not an IDE workload or cross-platform performance.</p>
   <h3 id="shared-status">One status bar, focused-pane data</h3>
   <p>The first code viewer put its own footer inside <code>CodePage</code> and hid the window's existing <code>StatusBar</code>. That worked with one editor, but split panes had two possible footer owners: focusing Markdown brought back the global bar while code still kept its local footer, so their content bottoms no longer aligned.</p>
   <p>The shared <code>StatusBar</code> in <code>App.tsx</code> now owns the only footer for both Markdown and code. <code>CodePage</code> draws only the reader and reports selection coordinates through <code>Client.codeMoved()</code>; the renderer store keeps those coordinates by pane id with a matching tab id, and removes them when the viewer unmounts. This is local screen state, not a writable document cursor: no <code>doc.cursor</code> message is sent for code. The status bar selects the focused pane's data and caches file metadata by snapshot text, rather than rescanning it on every cursor movement. Focusing a text pane restores its existing cursor even when no selection-change event fires, and a pending document-cursor timer refuses non-document pages. Markdown's existing counts and core-controlled structured-document counts remain unchanged.</p>
   <p><code>tests/electron/code.mjs</code> opens the same code in two panes with different selections, then Markdown beside code; it checks focus restoration, exactly one footer outside both panes, aligned pane bottoms, and no code metadata in Markdown status. Screenshots cover both themes and narrow windows. A fresh AST/import measurement leaves the hero and distribution table unchanged: 4,290 functions, median 1, mean 2.45, p90 6, maximum 15; 179 core modules, 492 local runtime imports, and zero cycles. Lesson: share the container and its placement, while keeping each pane's transient data scoped to that pane.</p>
   <h3>The journey</h3>
   <ol class="timeline-steps">
+    <li><span class="h">Phase 2</span><span><a href="#background-pi-ownership">Pi background ownership</a>: separate process lifetime from observation, reserve identity before effects, refresh stale indexes under the exclusive owner. Commit: <code>feat(agent): support background pi folder execution</code>.</span></li>
     <li><span class="h">working tree</span><span><a href="#local-pi-ownership">Local pi ownership</a>: bounded core-owned output discovery and shared GFM chat rendering; separate folder identity/queues, native-session storage, RPC execution and disk/editor coordination; retain the ordinary Assistant and card lifecycle, with no new layer exceptions.</span></li>
     <li><span class="h">Working tree</span><span>DocumentsHost.openConversation delegates validated transcript routing to the app controller; ordinary editors and chat pages retain their owners.</span></li>
     <li><span class="h">Working tree</span><span>Agent folders: application-owned session controllers, plain-data FolderAgentView, shared chat rendering, and a headless engine; no new layer exceptions. Final validation pending.</span></li>

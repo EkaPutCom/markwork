@@ -1,4 +1,6 @@
 // Folder identity, routing, explicit activation, and queues belong to the application, not a ChatController.
+import { DaemonHub, LOCAL_MACHINE, type Openers } from '../orchestrator/hub';
+import { FolderDaemonPi } from './folderdaemon';
 import { createAgentFolder } from './agentfoldercreate';
 import type { FilesDialogs } from './files';
 import type { AssistantHost } from './assistant';
@@ -41,17 +43,72 @@ export class AgentFoldersController<E extends TextEditor> {
     private watched = '';
     private name = '';
     private error = '';
+    private readonly hub: DaemonHub;
+    private readonly background = new Map<string, FolderDaemonPi>();
+    private readonly attaching = new Set<string>();
 
-    constructor(private readonly host: AssistantHost<E>, private readonly view: FolderAgentView, private readonly tabs: AgentFolderTabs, private readonly dialogs: FilesDialogs) {}
+    constructor(private readonly host: AssistantHost<E>, private readonly view: FolderAgentView, private readonly tabs: AgentFolderTabs, private readonly dialogs: FilesDialogs, openers?: Openers) {
+        this.hub = new DaemonHub({ machines: () => ({}), daemonCommand: () => '' }, openers);
+        this.hub.onState(() => this.show());
+    }
+
+    private runtimeFor(store: FolderStore, chat: string): FolderPiRuntime {
+        if (store.execution === 'local') return this.runtime;
+        const key = store.path(chat);
+        let runtime = this.background.get(key);
+        if (!runtime) { runtime = new FolderDaemonPi(this.hub.connection(LOCAL_MACHINE), store, chat); this.background.set(key, runtime); }
+        return runtime;
+    }
+
+    async execution(root: string, mode: 'local' | 'background'): Promise<void> {
+        if (root !== this.root || !this.enabled.has(root) || this.busy) throw Error('Activate this agent and wait for idle before changing execution');
+        const store = this.stores.get(root)!, epoch = this.epoch;
+        if (!await this.dialogs.confirm('Change pi execution?', mode === 'background' ? 'Use local markworkd. Authenticate pi 1.4.0 in the daemon account and allow pi, workspace and runtime storage in daemon configuration. Background work can continue after closing Markwork. Tools still run unsandboxed without Apply. No local fallback is used.' : 'Local work stops when Markwork closes.', 'Change execution', false)) return;
+        if (epoch !== this.epoch || root !== this.root || this.busy) throw Error('The selected agent changed. Choose execution again.');
+        store.setExecution(mode);
+        const registry = this.host.settings.folderBackground;
+        if (mode === 'background') registry[store.config.id] = root; else delete registry[store.config.id];
+        this.host.settings.folderBackground = registry;
+        this.show();
+    }
+
+    async reconnect(root: string): Promise<void> {
+        const store = this.stores.get(root);
+        if (!store || store.execution !== 'background' || this.attaching.has(root) || this.queue.busy(root)) return;
+        this.attaching.add(root);
+        try {
+            store.claim();
+            this.loadStore(root, store.config);
+            for (const binding of store.list().filter(chat => chat.run)) {
+                const entry = this.find(store.path(binding.id));
+                entry.panel.busyChanged(true);
+                try { await this.queue.run(root, entry.id, () => entry.pi.reconnect()); }
+                finally { entry.panel.busyChanged(false); }
+            }
+        } finally { this.attaching.delete(root); this.show(); }
+    }
+
+    private trackBackground(workspace: string): void {
+        for (const [id, root] of Object.entries(this.host.settings.folderBackground)) {
+            if (!platform().paths.same(root, workspace) && insideName(workspace, root) === null) continue;
+            try {
+                const definition = loadAgentFolder(root);
+                if (definition.kind !== 'agent' || definition.config.id !== id) continue;
+                this.loadStore(root, definition.config);
+                void this.reconnect(root).catch(error => this.host.toast(String(error)));
+            } catch (error) { this.host.toast(String(error)); }
+        }
+    }
 
     state(): FolderAgentState {
         const root = this.root;
-        return { root, name: this.name, error: this.error, runtime: 'local', canCreate: !this.workspace || !platform().fs.exists(platform().paths.join(this.workspace, 'agent.json')), activated: !!root && this.enabled.has(root),
-            runtimeDetail: 'pi 1.4.0 · Native sessions · Direct writes without Apply · No sandbox. Local execution stops when Markwork closes. Background pi support is not available yet.',
+        const background = !!root && this.stores.get(root)?.execution === 'background';
+        return { root, name: this.name, error: this.error, runtime: background ? ['connecting', 'waiting', 'failed'].includes(this.hub.state(LOCAL_MACHINE)?.state ?? '') ? 'reconnecting' : 'background' : 'local', canCreate: !this.workspace || !platform().fs.exists(platform().paths.join(this.workspace, 'agent.json')), activated: !!root && this.enabled.has(root),
+            runtimeDetail: background ? 'pi 1.4.0 · Local markworkd · Direct writes · No sandbox. Version and authentication are checked before each new prompt. Running work can continue after closing. Queued prompts remain drafts; unknown outcomes require explicit recovery.' : 'pi 1.4.0 · Native sessions · Direct writes without Apply · No sandbox. Local execution stops when Markwork closes.',
             conflicts: root ? this.tabs.conflicts(root) : [],
             sessions: [...this.known].filter(([, item]) => item.root === root).map(([id, item]) => {
                 const entry = this.conversations.get(id), binding = this.stores.get(item.root)?.get(item.chatId);
-                return { id, root: item.root, title: binding?.title || item.title, busy: entry?.panel.busy ?? false, waiting: false, queued: entry?.panel.queued ?? false, interrupted: binding?.status !== 'idle' };
+                return { id, root: item.root, title: binding?.title || item.title, busy: entry?.panel.busy ?? false, waiting: false, queued: entry?.panel.queued ?? false, interrupted: binding?.status !== 'idle', backgroundRun: !!binding?.run };
             }) };
     }
     private show(): void { this.view.show(this.state()); }
@@ -59,7 +116,9 @@ export class AgentFoldersController<E extends TextEditor> {
 
     folderChanged(root: string): boolean {
         if (root !== this.workspace) { this.dispose(); this.workspace = root; this.root = null; this.name = ''; this.error = ''; }
-        return this.activate(root);
+        const activated = this.activate(root);
+        this.trackBackground(root);
+        return activated;
     }
 
     activate(root: string, _probe = true): boolean {
@@ -110,7 +169,9 @@ export class AgentFoldersController<E extends TextEditor> {
         try {
             const yes = await this.dialogs.confirm('Activate pi agent?', FOLDER_ACTIVATION_NOTICE, 'Activate pi agent', false);
             if (!yes || epoch !== this.epoch || root !== this.root) return false;
-            this.stores.get(root)!.claim();
+            const store = this.stores.get(root)!;
+            store.claim();
+            this.loadStore(root, store.config);
             this.enabled.add(root);
             this.tabs.diskChanged(root);
             this.show();
@@ -173,7 +234,7 @@ export class AgentFoldersController<E extends TextEditor> {
         const panel = new FolderPanel(id, this.view, () => this.show());
         const pi = new FolderPiSession(store, known.chatId, panel, this.view, () => {
             if (epoch === this.epoch) { this.tabs.rename(id, store.get(known.chatId).title); this.show(); }
-        }, () => { if (epoch === this.epoch) this.tabs.diskChanged(known.root); }, () => this.runtime);
+        }, () => { if (epoch === this.epoch) this.tabs.diskChanged(known.root); }, () => this.runtimeFor(store, known.chatId));
         const entry = { id, root: known.root, title: known.title, panel, pi, sending: false };
         this.connectPanel(entry);
         return entry;
@@ -210,6 +271,8 @@ export class AgentFoldersController<E extends TextEditor> {
         const entry = this.find(id), { root, panel } = entry;
         if (!this.enabled.has(root)) throw Error('Activate pi agent before sending. Tools run without individual approval.');
         if (entry.sending || panel.busy) throw Error('This session is already working or queued');
+        if (!this.queue.busy(root) && entry.pi.store.list().some(chat => chat.run)) throw Error('Reconnect or explicitly recover the original background run before sending');
+        entry.pi.store.saveDraft(entry.pi.chatId, text);
         const epoch = this.epoch;
         entry.sending = true;
         panel.queued = this.queue.busy(root);
@@ -223,6 +286,16 @@ export class AgentFoldersController<E extends TextEditor> {
                 await entry.pi.send(text);
             });
         } finally { entry.sending = false; panel.queued = false; panel.busyChanged(false); }
+    }
+
+    async stopOriginal(id: string): Promise<void> {
+        const entry = this.find(id), epoch = this.epoch;
+        if (!entry.pi.detachable) throw Error('This conversation has no reserved background run');
+        if (!await this.dialogs.confirm('Stop original background run?', 'Stop the exact recorded daemon run. Completed tools cannot be undone. Restore native history explicitly before sending another prompt.', 'Stop original run', true)) return;
+        if (epoch !== this.epoch) return;
+        entry.pi.stop();
+        await entry.pi.waitIdle();
+        this.show();
     }
 
     async recover(id: string): Promise<void> {
@@ -245,15 +318,24 @@ export class AgentFoldersController<E extends TextEditor> {
         this.tabs.resolve(path, choice); this.show();
     }
     snapshot(id: string): SavedChat { return this.find(id).pi.view; }
-    get busy(): boolean { return [...this.conversations.values()].some(entry => entry.panel.busy); }
-    get detachable(): boolean { return false; }
+    activity(): { children: number; detachable: number; queued: number } {
+        const entries = [...this.conversations.values()];
+        return { children: entries.filter(entry => entry.panel.busy && !entry.panel.queued && !entry.pi.detachable).length,
+            detachable: entries.filter(entry => entry.pi.detachable).length, queued: entries.filter(entry => entry.panel.queued).length };
+    }
+    get busy(): boolean { const a = this.activity(); return a.children + a.detachable + a.queued > 0; }
+    get detachable(): boolean { return this.activity().detachable > 0; }
     stop(): void { this.queue.clear(); for (const entry of this.conversations.values()) entry.pi.stop(); }
     async stopAndWait(): Promise<void> {
         this.stop();
         await Promise.all([...this.conversations.values()].map(entry => entry.pi.waitIdle()));
     }
-    async shutdown(): Promise<void> {
-        await this.stopAndWait();
+    async shutdown(keep = false): Promise<void> {
+        if (keep) {
+            this.queue.clear();
+            for (const entry of this.conversations.values()) if (entry.pi.detachable) entry.pi.detach(); else entry.pi.stop();
+            await Promise.all([...this.conversations.values()].map(entry => entry.pi.waitIdle()));
+        } else await this.stopAndWait();
         for (const store of this.stores.values()) store.release();
     }
     dispose(): void {
@@ -261,8 +343,10 @@ export class AgentFoldersController<E extends TextEditor> {
         this.epoch++; this.watchStop?.(); this.watchStop = null; this.refreshStop?.(); this.watched = ''; this.queue.clear(); this.enabled.clear();
         const stores = [...this.stores.values()], sessions = [...this.conversations.values()];
         // Keep ownership until every local child has shut down. Another window must not become a competing writer.
+        for (const entry of sessions) if (entry.pi.detachable) entry.pi.detach();
         void Promise.all(sessions.map(entry => entry.pi.dispose())).then(() => { for (const store of stores) store.release(); })
             .catch(error => this.host.toast('Agent shutdown or ownership release failed: ' + String(error)));
+        this.hub.dispose(); this.background.clear(); this.attaching.clear();
         this.conversations.clear(); this.known.clear(); this.stores.clear();
     }
 }

@@ -26,7 +26,7 @@ export interface FolderChatPayload {
     update?: TraceUpdate;
 }
 export interface FolderChatEvent { ev: string; payload: FolderChatPayload }
-export interface FolderSessionSummary { id: string; title: string; root: string; busy: boolean; waiting: boolean; queued: boolean; interrupted?: boolean }
+export interface FolderSessionSummary { id: string; title: string; root: string; busy: boolean; waiting: boolean; queued: boolean; interrupted?: boolean; backgroundRun?: boolean }
 export interface FolderAgentState {
     root: string | null;
     name: string;

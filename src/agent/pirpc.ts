@@ -10,6 +10,7 @@ const RECORD_LIMIT = 8 * 1024 * 1024;
 export class PiRpc {
     private child: ChildProcess | null = null;
     private seq = 0;
+    private readonly instance = platform().newId();
     private failure: Error | null = null;
     private readonly pending = new Map<string, { resolve(value: PiRecord): void; reject(error: Error): void }>();
     private readonly listeners = new Set<(event: PiRecord) => void>();
@@ -60,7 +61,7 @@ export class PiRpc {
 
     command(type: string, fields: object = {}, ms = 30000): Promise<PiRecord> {
         if (this.failure) return Promise.reject(this.failure);
-        const id = `mw-pi-${++this.seq}`;
+        const id = `mw-pi-${this.instance}-${++this.seq}`;
         return new Promise((resolve, reject) => {
             const end = (error: Error | null, value: PiRecord = {}) => {
                 stop();
@@ -75,6 +76,14 @@ export class PiRpc {
     }
 
     async prompt(message: string): Promise<boolean> {
+        return this.waitSettled(async () => {
+            const accepted = await this.command('prompt', { message });
+            if (accepted.disposition !== 'started') throw Error(`pi did not start this turn (${accepted.disposition})`);
+        });
+    }
+
+    // Reattaching observes the original run; start only subscribes, never submits a prompt.
+    async waitSettled(start: () => Promise<void>, ms = 600000): Promise<boolean> {
         let finish!: (aborted: boolean) => void, reject!: (error: Error) => void;
         const settled = new Promise<boolean>((yes, no) => { finish = yes; reject = no; });
         void settled.catch(() => {});
@@ -85,13 +94,14 @@ export class PiRpc {
             if (event.type === 'agent_settled') failure ? reject(Error(failure)) : finish(event.aborted === true);
         });
         const failed = this.onFailure(reject);
-        const timeout = platform().scheduler.idleAfter(600000, () => reject(Error('pi exceeded its ten-minute turn deadline; inspect the native session before continuing')));
+        const timeout = platform().scheduler.idleAfter(ms, () => reject(Error('pi observation deadline exceeded; inspect the original run before continuing')));
         try {
-            const accepted = await this.command('prompt', { message });
-            if (accepted.disposition !== 'started') throw Error(`pi did not start this turn (${accepted.disposition})`);
+            await start();
             return await settled;
         } finally { off(); failed(); timeout(); }
     }
+
+    disconnect(): void { this.closed = true; this.fail(Error('Detached from pi; the original run is retained')); }
 
     async stop(): Promise<void> { await this.command('clear_queue'); await this.command('abort'); }
 
