@@ -143,7 +143,7 @@ try {
         await dialog.getByRole('textbox').fill('printer met at ten');
         await dialog.getByRole('button', { name: 'Add', exact: true }).click();
         const folder = join(notes, 'journal');
-        await waitFor(() => existsSync(folder) && readdirSync(folder).some(name => readFileSync(join(folder, name), 'utf8').includes('printer met at ten')));
+        await waitFor(() => existsSync(folder) && readdirSync(folder).some(name => name.endsWith('.md') && readFileSync(join(folder, name), 'utf8').includes('printer met at ten')));
         await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
         await page.getByRole('menuitem', { name: /Summarize Journal/ }).click();
         await panel.locator('.chat-user', { hasText: 'Close the day' }).last().waitFor();
