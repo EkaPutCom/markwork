@@ -152,9 +152,18 @@ try {
     assert.deepEqual(errors, []);
 } catch (error) { failed = true; console.error(error); }
 finally {
+    // Cleanup is not a graceful-close assertion: Electron can leave app.close pending on macOS.
     const child = app.process();
-    await app.close().catch(error => { failed = true; console.error(error); });
-    if (child.exitCode === null) child.kill('SIGKILL');
+    let closeTimer;
+    try {
+        await Promise.race([
+            app.close().catch(error => { failed = true; console.error(error); }),
+            new Promise(resolve => { closeTimer = setTimeout(resolve, 5000); }),
+        ]);
+    } finally {
+        clearTimeout(closeTimer);
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    }
     console.log(`${steps.length} pi Assistant steps, ${failed ? 'FAILED' : 'passed'}`);
 }
 if (failed) process.exitCode = 1;
