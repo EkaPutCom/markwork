@@ -232,8 +232,9 @@ try {
         await row(/renamed\.md/).focus();
         await page.keyboard.press('Delete');
         await dialog.getByRole('button', { name: 'Move to Trash' }).click();
-        // The Recycle Bin on Windows goes through a PowerShell that can take seconds to start on a cold runner.
-        await waitFor(() => !existsSync(join(notes, 'projects', 'renamed.md')), 20000);
+        // The Windows PowerShell operation has a 30-second watchdog; do not time out before that bounded result.
+        await waitFor(() => !existsSync(join(notes, 'projects', 'renamed.md')), 35000,
+            () => page.locator('[data-sonner-toast] [data-title]').allTextContents());
         await row(/renamed\.md/).waitFor({ state: 'detached' });
         // A refusal is told, not swallowed.
         await rightClickBelowTree();
