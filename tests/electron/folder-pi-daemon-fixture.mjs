@@ -31,8 +31,9 @@ createInterface({ input: process.stdin }).on('line', line => {
         timer = setInterval(() => {
             if (!existsSync('continue')) return;
             clearInterval(timer); timer = null;
-            writeFileSync('report.md', '# Completed while the window was closed\n');
             messages.push({ role: 'assistant', content: 'Background report completed.' }); writeFileSync(file, JSON.stringify(messages));
+            // The report is also the test's completion gate; native history must be readable before reopening.
+            writeFileSync('report.md', '# Completed while the window was closed\n');
             send({ type: 'tool_execution_end', toolCallId: 'write-report', toolName: 'bash', result: { content: [{ type: 'text', text: 'Saved report.md' }] } });
             send({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'Background report completed.' } });
             send({ type: 'agent_end' }); send({ type: 'agent_settled' });
