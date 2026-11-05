@@ -1,5 +1,5 @@
 // The daemon owns pi's lifetime. Identity/native history stay in FolderStore; no prompt is replayed here.
-import { PiRpc, PI_VERSION, type PiRecord } from '../agent/pirpc';
+import { PiRpc, type PiRecord } from '../agent/pirpc';
 import type { FolderStore } from '../agent/folderstore';
 import { DaemonError, parseExit } from '../agent/daemon/protocol';
 import type { DaemonConnection } from '../agent/daemon/connection';
@@ -14,8 +14,6 @@ export class FolderDaemonPi implements FolderPiRuntime {
     constructor(private readonly conn: DaemonConnection, private readonly store: FolderStore, private readonly chat: string) {}
 
     async discover(): Promise<string> {
-        const output = await this.probe(['--version']);
-        if (output.trim() !== PI_VERSION) throw Error('Background Agent Folders require pi 1.4.0 on the execution machine');
         return 'pi';
     }
 

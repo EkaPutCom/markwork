@@ -1,4 +1,4 @@
-import { PiRpc } from '../../src/agent/pirpc';
+import { PiRpc, discoverPi } from '../../src/agent/pirpc';
 import { FolderStore } from '../../src/agent/folderstore';
 import { serializeChat } from '../../src/agent/transcript';
 import { AgentTrace, MAX_EVENTS } from '../../src/agent/trace';
@@ -8,6 +8,18 @@ import { section, test, eq, ok, tmp, disk, say } from '../core/framework';
 
 export async function piRpcTests(): Promise<void> {
     section('Shared pi RPC transport');
+    await test('local discovery accepts installed pi without probing its version and still rejects missing pi', async () => {
+        const processes = platform().processes, find = processes.findProgram, run = processes.run;
+        try {
+            processes.findProgram = () => 'installed-pi';
+            processes.run = async () => { throw Error('Discovery must not run a version probe'); };
+            eq(await discoverPi(), 'installed-pi');
+            processes.findProgram = () => null;
+            let message = '';
+            try { await discoverPi(); } catch (error) { message = String(error); }
+            ok(message.includes('pi is not installed'), 'missing pi was accepted');
+        } finally { processes.findProgram = find; processes.run = run; }
+    });
     await test('native prompt completion before acknowledgement is observed and agent_end alone is not terminal', async () => {
         let handlers!: ChildHandlers, settled = false;
         const writes: string[] = [];

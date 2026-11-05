@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } fr
 import { join, basename } from 'node:path';
 import { createInterface } from 'node:readline';
 const args = process.argv.slice(2);
-if (args.includes('--version')) { console.log('1.4.0'); process.exit(0); }
+// Runtime startup must not depend on a version probe.
+if (args.includes('--version')) process.exit(1);
 if (args[0] === 'auth') { appendFileSync('auth-args', JSON.stringify(args) + '\n'); console.log(JSON.stringify({ status: existsSync('deny-auth') ? 'not_ready' : 'ready', provider: 'fixture' })); process.exit(0); }
 const arg = name => args[args.indexOf(name) + 1];
 const directory = arg('--session-dir');
