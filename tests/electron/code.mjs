@@ -42,6 +42,48 @@ try {
         assert.equal(await page.locator('.statusbar').count(), 1, 'one shared footer');
         assert.equal(await page.locator('.code-page footer').count(), 0, 'no separate code footer');
     });
+    await step('selected code opens a reviewable Assistant draft without sending or writing', async () => {
+        const ask = page.getByRole('button', { name: 'Ask Assistant', exact: true });
+        assert.equal(await ask.isDisabled(), true);
+        const code = page.getByRole('textbox', { name: 'Code: main.ts' });
+        await code.click();
+        await page.keyboard.press(`${mod}+Home`);
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('Home');
+        await page.keyboard.press('Shift+End');
+        await waitFor(async () => await ask.isEnabled());
+        const start = performance.now();
+        await ask.click();
+        const input = page.getByRole('textbox', { name: 'Ask the Assistant', exact: true });
+        await input.waitFor();
+        await waitFor(async () => (await input.inputValue()).includes('export function greet'));
+        console.log(`  performance: selection to Assistant draft ${(performance.now() - start).toFixed(1)} ms`);
+        assert.ok((await input.inputValue()).includes('main.ts, lines 2–2'));
+        assert.ok(!(await input.inputValue()).includes('Hello,'), 'unselected code is not attached');
+        await waitFor(async () => input.evaluate(element => element === document.activeElement));
+        const firstDraft = await input.inputValue();
+        await input.fill('Explain this function');
+        await ask.click();
+        await waitFor(async () => (await input.inputValue()).startsWith('Explain this function\n\n'));
+        assert.ok((await input.inputValue()).endsWith(firstDraft), 'existing question preserved');
+        assert.equal(readFileSync(join(notes, 'main.ts'), 'utf8'), source);
+        if (process.env.MARKWORK_CODE_SCREENSHOTS) {
+            mkdirSync(process.env.MARKWORK_CODE_SCREENSHOTS, { recursive: true });
+            for (const [theme, width] of [['light', 1280], ['dark', 1280], ['dark', 560]]) {
+                await page.emulateMedia({ colorScheme: theme });
+                await page.evaluate(() => { delete document.documentElement.dataset.theme; });
+                await page.setViewportSize({ width, height: 800 });
+                if (width < 900) await ask.click();
+                await input.waitFor();
+                await input.evaluate(element => { element.scrollTop = 0; });
+                await page.screenshot({ path: join(process.env.MARKWORK_CODE_SCREENSHOTS, `ask-code-${theme}-${width}.png`), animations: 'disabled' });
+            }
+            await page.setViewportSize({ width: 1280, height: 800 });
+        }
+        if (!(await input.isVisible())) await ask.click();
+        await input.fill('');
+        await page.keyboard.press(`${mod}+Shift+a`);
+    });
     await step('typing, paste, delete, and Save cannot change a code file', async () => {
         const code = page.getByRole('textbox', { name: 'Code: main.ts' });
         await code.click();

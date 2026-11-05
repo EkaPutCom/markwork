@@ -28,7 +28,11 @@
 <main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Agent</p>
 <h1>History, journal, and log</h1>
-<p class="lead">Your conversations and decisions are saved as Markdown in the work folder, and every step of the agent can be watched live.</p>
+<p class="lead">Pi native sessions are authoritative. Readable projections are presentation, not executable history. Tool activity remains visible in the Agent log.</p>
+<h2 id="pi-history">Workspace Assistant sessions</h2>
+<p>The clock lists indexed native pi conversations for the opened workspace. New conversation creates an independent session; the newest is shown when a workspace opens. Opening a conversation does not rerun its prompt or tools. Native history, provenance and checked readable projections are retained under <code>&lt;dataDir&gt;/markwork/assistant-pi/&lt;workspace-hash&gt;/</code>. There is no history-off switch or session deletion control. Old <code>.markwork/chats</code> files are not imported, continued or deleted.</p>
+<p>After activation, <strong>Restore native session</strong> explicitly repairs a projection or interrupted state from native pi history without resending work. Never remove a runtime ownership lock while another window/process owns it. The ordinary Assistant is local-only; use <a href="agentfolders.html">Agent Folders</a> for optional markworkd background execution. Unknown outcomes are never automatically replayed.</p>
+<details><summary>Historical custom-engine conversation and action-journal format</summary>
 
 <h2 id="conversations">Conversation history per folder</h2>
 <p>Every conversation is written as one Markdown file in <code>&lt;work folder&gt;/.markwork/chats/</code>, e.g. <code>2026-10-04-is-there-a-meeting-decision-not-yet-in-the-plan.md</code>. The file is updated after every turn and at action checkpoints.</p>
@@ -54,9 +58,10 @@
 </table></div>
 <p>The work plan is restored too, together with the <em>Resume work</em> button. Unsaved editor changes still follow the editor's save rules.</p>
 
+</details>
 <h2 id="agent-log">The agent log</h2>
 <p>The terminal button in the panel header opens the <em>Agent log</em> window: a tree of every turn on the left and the details of the selected step on the right, updated live while the agent works.</p>
-<figure><picture class="themed-media"><img data-light-src="../assets/agent-log.png" data-dark-src="../assets/dark/agent-log.png" width="980" height="652" loading="lazy" alt="The Agent log window: a tree of one turn with its six model rounds and the tool calls set_work, propose_batch, and verify_work on the left, and the details of the selected step on the right"><noscript><img src="../assets/dark/agent-log.png" width="980" height="652" loading="lazy" alt="The Agent log window: a tree of one turn with its six model rounds and the tool calls set_work, propose_batch, and verify_work on the left, and the details of the selected step on the right"></noscript></picture><figcaption>The agent log of one job: 6 model rounds and 5 tool calls</figcaption></figure>
+<figure><picture class="themed-media"><img data-light-src="../assets/agent-log.png" data-dark-src="../assets/dark/agent-log.png" width="980" height="652" loading="lazy" alt="The Agent log window: a tree of one turn with its six model rounds and the tool calls set_work, propose_batch, and verify_work on the left, and the details of the selected step on the right"><noscript><img src="../assets/dark/agent-log.png" width="980" height="652" loading="lazy" alt="The Agent log window: a tree of one turn with its six model rounds and the tool calls set_work, propose_batch, and verify_work on the left, and the details of the selected step on the right"></noscript></picture><figcaption>The pi tool log, with arguments, outcome and native event details</figcaption></figure>
 
 <ul>
   <li>Model rounds: the number of messages, the tools offered, and the tokens in/cached/out</li>
@@ -65,7 +70,7 @@
   <li>Errors and stops</li>
 </ul>
 <p>Folding a round hides its steps. Selecting a step shows its metrics (duration, result size, share of the turn's time, tokens) and the tabs <em>Summary</em>, <em>Arguments</em>, <em>Result</em>, and <em>Raw</em>; the detail follows the newest step until you pick one yourself.</p>
-<p>The filters <em>All</em>, <em>Tools</em>, <em>Reasoning</em>, and <em>Model</em>, plus the <em>Copy all</em> and <em>Clear</em> buttons. The log keeps at most 2,000 events and is not sent to the model. For the assistant it is saved next to the conversation (<code>.markwork/chats/&lt;name&gt;.log.jsonl</code>) and comes back when you reopen that conversation; <em>New conversation</em> empties the view. The pi log only exists while the app runs. The same window is used for the <a href="orchestrator.html#log">pi log</a>.</p>
+<p>The filters <em>All</em>, <em>Tools</em>, <em>Reasoning</em>, and <em>Model</em>, plus the <em>Copy all</em> and <em>Clear</em> buttons. The log keeps at most 2,000 events and is not sent to the model. Pi presentation logs exist only while the app runs; native history remains on disk. <em>New conversation</em> clears the view. They are not legacy <code>.log.jsonl</code> sidecars. The same window is used for the <a href="orchestrator.html#log">pi log</a>.</p>
 <h2 id="chat-layout">Agent-folder transcripts</h2>
 <p>Agent-folder conversations use <code>layout: chat</code> in the Markdown frontmatter and live in the agent's visible <code>chats/</code> directory. The explicit layout also identifies an empty conversation. The session list appears only for a focused chat tab; other tabs show the Assistant. Selecting a session row focuses or reopens that conversation without duplicating its tab. Select a transcript in Explorer to open the matching agent chat, provided it is in that configured agent’s <code>chats/</code> directory. Opening it does not send a message. Other Markdown files remain normal editable documents; an unsaved transcript draft is preserved until saved and reopened. History without a layout marker remains readable when it contains conversation turns. See <a href="agentfolders.html">Agent folders</a> for the folder that owns these sessions.</p>
 </main>

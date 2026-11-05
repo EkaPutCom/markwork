@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EditorState, StateEffect } from '@codemirror/state';
 import { EditorView, drawSelection, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap } from '@codemirror/commands';
@@ -15,9 +15,11 @@ import { Button } from '../ui/button';
 export function CodePage({ id, pane, file, text }: { id: number; pane: number; file: string; text: string }) {
     const client = useClient();
     const host = useRef<HTMLDivElement>(null), editor = useRef<EditorView | null>(null);
+    const [hasSelection, setHasSelection] = useState(false);
     const name = file.split(/[\\/]/).pop() ?? file;
     const language = LanguageDescription.matchFilename(languages, name);
     useEffect(() => {
+        setHasSelection(false);
         const view = new EditorView({ parent: host.current!, state: EditorState.create({ doc: text, extensions: [
             EditorState.readOnly.of(true), EditorView.editable.of(false),
             EditorView.contentAttributes.of({ tabindex: '0', role: 'textbox', 'aria-label': `Code: ${name}`, 'aria-readonly': 'true' }),
@@ -25,6 +27,7 @@ export function CodePage({ id, pane, file, text }: { id: number; pane: number; f
             EditorView.updateListener.of(update => {
                 if (!update.selectionSet) return;
                 const { head, from, to } = update.state.selection.main;
+                setHasSelection(from !== to);
                 const line = update.state.doc.lineAt(head);
                 client.codeMoved(pane, id, { line: line.number, column: Array.from(line.text.slice(0, head - line.from)).length + 1,
                     selected: from === to ? 0 : Array.from(update.state.sliceDoc(from, to)).length });
@@ -43,7 +46,11 @@ export function CodePage({ id, pane, file, text }: { id: number; pane: number; f
         <div className="flex items-center gap-2 border-b px-3 py-2 text-xs text-muted-foreground">
             <Badge variant="secondary">Read-only</Badge>
             <span>{language?.name ?? 'Plain text'}</span>
-            <Button className="ml-auto" variant="ghost" size="xs" onClick={() => { if (editor.current) { openSearchPanel(editor.current); } }}>Find</Button>
+            <Button className="ml-auto" variant="ghost" size="xs" disabled={!hasSelection} onClick={() => {
+                const selection = editor.current?.state.selection.main;
+                if (selection && !selection.empty) void client.askCodeSelection(id, selection.from, selection.to);
+            }}>Ask Assistant</Button>
+            <Button variant="ghost" size="xs" onClick={() => { if (editor.current) { openSearchPanel(editor.current); } }}>Find</Button>
         </div>
         <div ref={host} className="code-page-editor" />
     </div>;

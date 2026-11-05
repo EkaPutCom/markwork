@@ -130,8 +130,7 @@ export class JournalController {
         return true;
     }
 
-    // Close the day: open the journal, then ask the Assistant to propose a summary. The proposal is still reviewed in the
-    // review window like any other agent change; nothing is written without approval.
+    // Close the day through the explicitly activated pi Assistant; its normal direct-write boundary applies.
     // Returns the Promise of the question to the Assistant (for tests), or null if it did not run.
     summarize(): Promise<void> | null {
         const chat = this.host.chat;
@@ -144,8 +143,9 @@ export class JournalController {
         const name = this.host.projectName(this.host.active().file);
         this.host.showChat();
         return filling.then(() => chat.ask(
-            `Close the day: read the journal ${name} (the active document), then propose a short summary under the heading "## Summary" with insert_text: ` +
-            'what was finished, what got in the way, and what continues tomorrow. Use only the contents of the journal and the files it links; do not change other sections.'));
+            `Close the day: read the journal ${name} (the active document), then write a short summary under the heading "## Summary": ` +
+            'what was finished, what got in the way, and what continues tomorrow. Use only the contents of the journal and the files it links; do not change other sections.'))
+            .catch(error => { this.host.toast(errorMessage(error)); });
     }
 
     // Today's journal row on Home.

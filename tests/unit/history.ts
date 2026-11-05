@@ -230,7 +230,7 @@ export async function historyControllerTests(): Promise<void> {
         disk.write(a, V2 + 'three\n');
         history.show(a, root);
         await until(() => lastChanges().changed.length === 1);
-        const chat = session.assistant.chat;
+        const chat = session.commitWriter;
         chat.keyStore = KEY;
         const prompts: string[] = [];
         let stop: Cancellable | undefined;

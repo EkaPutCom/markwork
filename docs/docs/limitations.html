@@ -32,16 +32,16 @@
 
 <h2 id="agent">Agent</h2>
 <ul>
-  <li>The ordinary Assistant uses DeepSeek. Pi Agent Folders use pi's configured providers and authentication.</li>
-  <li>There is no automatic contradiction check yet; contradictions can be asked about through the chat.</li>
-  <li>The ordinary Assistant proposes Markdown changes. Explicitly activated pi Agent Folders and card harnesses can run shell commands; Agent Folders write directly without Apply and have no sandbox.</li>
-  <li>A batch has at most 20 actions. Moving a file does not update links in other files; the agent must propose that separately.</li>
-  <li>The search is keyword-based (BM25), not meaning-based; <code>search_text</code> does not recognize synonyms.</li>
-  <li>The Git tools only read what has been committed.</li>
-  <li><code>edit_note</code> and <code>edit_schema</code> rewrite a structured document through its model, so blank lines and the order of a note's own text are normalized like in the app; <code>edit_schema</code> does not rename a field or change the type of one that notes use.</li>
-  <li>Undo restores a deleted file from the journal snapshot, not from the Trash.</li>
-  <li>The conversation history cannot be searched from the panel yet; search the files in <code>.markwork/chats/</code>.</li>
-  <li>The token estimate is rough (3 characters per token).</li>
+  <li>The workspace Assistant and Agent Folders require pi 1.4.0 and use pi's providers/authentication. They have no old-engine fallback or API-key editor.</li>
+  <li>Activation allows direct file, shell and network tools without per-action Apply or sandboxing. A workspace cwd is not an access boundary. Tools can reach other files, credentials and private networks; do not use sensitive data without understanding the risk.</li>
+  <li>There is no guaranteed Undo/rollback for shell or disk writes. Stop does not undo completed commands or guarantee termination of detached descendants.</li>
+  <li>Pi tools read disk, not unsaved buffers. Only the current file name, selected Markdown text and explicitly attached code snippets accompany questions. No legacy BM25/context switches, @filename expansion, proposal tools or automatic verification journal is offered.</li>
+  <li>Dirty drafts are preserved and saving is gated by explicit conflict resolution, but shell tools do not honor a hard editor lock.</li>
+  <li>The ordinary Assistant is local-only, one active turn at a time. It cannot switch conversations while busy. Closing/switching workspace asks to stop. Background execution remains an Agent Folder capability.</li>
+  <li>Native sessions and checked projections are kept in private application data. There is no old-history import, session deletion or history-off option. Old .markwork/chats files are not deleted. Interrupted sessions require explicit native restore without prompt replay; stale crash ownership can require manual inspection.</li>
+  <li>Prompt text plus editor context is limited to 128,000 characters. No provider token-cost estimate is promised. Tool output discovery is limited to 1,000 entries and eight levels; larger folders keep ordinary tree navigation.</li>
+  <li>The separate Git commit-message generator remains read-only DeepSeek and uses its own Markwork credential service, normally configured with DEEPSEEK_API_KEY. It is not Assistant chat.</li>
+  <li>Real-provider pi Assistant behavior, packaged launch and non-Linux live operation are not verified by the deterministic tests.</li>
 </ul>
 
 <h2 id="harness">External harness</h2>
@@ -97,7 +97,7 @@
 
 <h2 id="code">Reading code</h2>
 <ul>
-  <li>The <a href="files.html#code">code viewer</a> opens files only from the workspace tree, as read-only snapshots. It is not an IDE: no autocomplete, diagnostics, debugger, or project/worktree browser.</li>
+  <li>The <a href="files.html#code">code viewer</a> opens files only from the workspace tree, as read-only snapshots. Selected code can be attached to an Assistant draft with <em>Ask Assistant</em>, but code files stay outside Markdown Search in All Notes; after Send, pi's independent disk tools can read and change them. It is not an IDE: no autocomplete, diagnostics, debugger, or project/worktree browser.</li>
   <li>Regular UTF-8 text files only, up to 2 MiB. Binary files, unsupported encodings, symbolic links, and special files are refused; unknown languages use plain text.</li>
   <li>Close and reopen to refresh from disk. Code tabs are not restored at startup; tree moves, renames, and deletes close the affected snapshot. Code does not enter the assistant manuscript context, note links, or Search in All Notes.</li>
 </ul>

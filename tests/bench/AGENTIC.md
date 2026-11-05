@@ -274,3 +274,27 @@ This is added background functionality/cost, not a speedup or an equivalent comp
 Real-daemon tests also prove once-only submission across close/reopen, continued file creation, competing-owner refusal, stale-reader refresh, queued drafts, unavailable auth and explicit lost-run recovery. The Electron scenario closes a real window, permits a report to finish while closed, reopens native history and verifies only one submitted prompt. Screenshot layout is checked, not performance-profiled.
 
 Unmeasured: maximum-size/native-history replay, sustained heap growth, maximum concurrent agents, packaged live launch, real-provider daemon authentication, non-Linux/SSH folder execution, deliberate state deletion and detached descendants. Generic daemon/shim restart tests are not a pi-specific restart experiment. No speedup claim is made, so the performance-learning journey is unchanged.
+
+## Native pi workspace Assistant
+
+Commit subject: `feat(assistant): use native pi for workspace conversations`.
+
+This replaces the ordinary Assistant's custom model loop, not the Markdown algorithms. `PiAssistantController` shares local `FolderPiSession`/`PiRpc`, native session binding, checked projection writes and `FolderDiskController` with Agent Folders. Direct read/bash/edit/write follow explicit unsandboxed activation; no per-action approval or old-engine fallback remains in production workspace chat. The legacy agentic/GTK baselines above are not equivalent comparisons.
+
+Linux, Node v24.21.0; no provider credentials/network, no real-provider latency. Both new workloads use 3 warmups and 20 samples:
+
+| Workload | Median ms | p95 ms | Maximum ms |
+| --- | ---: | ---: | ---: |
+| Controller: fake native resume, prompt, tool/text events, projection/index writes (full suite) | 18.799 | 21.768 | 38.750 |
+| Same controller workload, preceding focused core run | 19.587 | 28.398 | 29.790 |
+| Same controller workload, earlier run | 27.993 | 45.584 | 48.301 |
+| Electron: Playwright Send through rendered native answer (full suite, active code tab; no stale editor context) | 105.9 | 124.0 | 127.8 |
+| Electron: repeated final screenshot run (same final payload) | 99.5 | 113.6 | 130.8 |
+| Electron: earlier run with old editor-reference attachment behavior | 221.8 | 283.5 | 382.6 |
+| Electron same workload with screenshot instrumentation present | 323.6 | 435.1 | 438.5 |
+
+The controller fixture includes a deliberate 5 ms asynchronous settlement, shared with functional tests. History grows across turns. The Electron fixture adds its own asynchronous streaming gate. Chromium rendering, input routing, RPC, context metadata, projection persistence and tree refresh are included in browser numbers; initial pi discovery/auth and real-provider latency are not. The samples have different scopes and scheduling, not a controlled old/new comparison. The early browser runs differ by about +46% median. The final code-tab workload no longer appends stale hidden Markdown editor metadata, so its lower timing is also not an equivalent old/new payload comparison. All observations are retained, not hidden, attributed to a proven isolated cause or used to adjust a baseline. There is no speedup claim or baseline update.
+
+Correctness checks cover explicit activation and expiry, no legacy credential/history import, fresh application/native resume without prompt replay, projection tampering/repair, independent sessions, model settings, Stop, code-selection drafts, direct disk output and dirty-buffer conflicts. New output inventory remains bounded to 1,000 entries/eight levels, skipping hidden/dependency folders and links. Native history is durable; the UI tool feed is bounded in-memory presentation rather than a second history authority.
+
+Unmeasured: real-provider quality/latency/cost, maximum context/history replay and sustained heap, packaged launch, non-Linux live execution, private-network/secrets isolation (no sandbox is promised), full concurrent-editor behavior, and reliable termination of detached shell descendants. Stop does not roll back completed effects. No Markdown/editor runtime algorithm was changed, so the Markdown benchmark and editor interaction trace were not repeated for this runtime migration.

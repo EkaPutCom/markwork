@@ -59,7 +59,7 @@
 <p>The activity log is stored in <code>.markwork/activity/YYYY-MM-DD.jsonl</code> in the work folder (ignored by Git through <code>.markwork/.gitignore</code>, and not browsed by the agent).</p>
 
 <h2 id="summary">The end-of-day summary</h2>
-<p>The command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) → <em>Summarize Journal with Assistant</em> opens today's journal, opens the <a href="assistant.html">Assistant</a> panel, and asks it to propose a summary under <em>Summary</em>: what was finished, what blocked, and what continues tomorrow. The proposal appears in the <a href="proposals.html">review window</a> like any other agent change, so nothing is written before you press <em>Apply</em>. It needs a DeepSeek API key.</p>
+<p>The command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) → <em>Summarize Journal with Assistant</em> opens today's journal and asks the explicitly activated <a href="assistant.html">pi Assistant</a> to write a summary under <em>Summary</em>: what was finished, what blocked, and what continues tomorrow. Pi uses direct tools without an Apply dialog. It requires pi authentication and explicit workspace activation; unsaved drafts are preserved through the Assistant's disk-conflict controls.</p>
 
 <h2 id="home">On Home</h2>
 <p>Home shows the <em>Today's journal</em> row with the number of notes in the journal and the activity recorded today (including what has not been merged into the file yet). Click the row to open the journal, or the + button for a quick capture.</p>

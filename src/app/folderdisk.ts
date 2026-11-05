@@ -64,7 +64,7 @@ export class FolderDiskController<E extends TextEditor> {
     }
 
     private conflict(observed: Observed, disk: string | null): void {
-        if (!observed.conflict) this.host.toast('A file changed on disk while you were editing. Your draft is preserved. Resolve the conflict from the agent Sessions panel before saving.');
+        if (!observed.conflict) this.host.toast('A file changed on disk while you were editing. Your draft is preserved. Resolve the conflict from the Assistant or agent Sessions panel before saving.');
         observed.conflict = true;
         observed.disk = disk;
         this.changed();
@@ -79,7 +79,7 @@ export class FolderDiskController<E extends TextEditor> {
 
     conflicts(root: string): { path: string; name: string }[] {
         const open = new Set(this.host.docs().map(doc => doc.id));
-        return [...this.observed].filter(([id, item]) => open.has(id) && item.root === root && item.conflict).map(([, item]) => ({ path: item.path, name: insideName(root, item.path) || item.path }));
+        return [...this.observed].filter(([id, item]) => open.has(id) && insideName(root, item.path) !== null && item.conflict).map(([, item]) => ({ path: item.path, name: insideName(root, item.path) || item.path }));
     }
 
     resolve(path: string, choice: 'reload' | 'keep'): void {

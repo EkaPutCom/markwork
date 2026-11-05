@@ -12,6 +12,7 @@ import { appSessionTests } from '../unit/appsession';
 import { protocolTests } from '../unit/protocol';
 import { noteEditTests } from '../unit/noteedit';
 import { assistantTests } from '../unit/assistant';
+import { assistantPiTests } from '../unit/assistantpi';
 import { historyControllerTests } from '../unit/history';
 import { discardTests } from '../unit/discard';
 import { appSettingsTests } from '../unit/appsettings';
@@ -145,6 +146,7 @@ export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
     await protocolTests();
     await noteEditTests();
     await assistantTests();
+    await assistantPiTests();
     await historyControllerTests();
     await discardTests();
     appSettingsTests();

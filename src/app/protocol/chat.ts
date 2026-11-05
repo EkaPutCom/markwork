@@ -15,7 +15,7 @@ import type { TraceEvent } from '../../agent/trace';
 import type { KeySource } from '../../agent/apikey';
 import { describeChange, diffPreview, unifiedDiff, type Change } from '../../agent/changes';
 import { parseDiff, type DiffLine } from '../../base/gitlog';
-import { DEEPSEEK_MODELS } from '../../agent/models';
+import type { FolderChatPayload } from '../folderpanel';
 import { Cancellable } from '../../base/cancel';
 import { _, fmt } from '../../base/i18n';
 import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk, UndoTarget } from '../assistant';
@@ -107,8 +107,11 @@ export class ProtocolChatPanel implements ChatPanelView {
     constructor(private readonly wire: Wire, private readonly asks: Asks) {}
 
     // The models the setting can take go with the settings: the panel's choice is among them.
-    readonly models: readonly string[] = DEEPSEEK_MODELS;
-    setSettings(settings: ChatPanelSettings): void { this.shown = settings; this.wire.notify('chat.settings', { settings, models: this.models }); }
+    models: readonly string[] = ['pi default'];
+    receive(ev: string, payload: FolderChatPayload & { chat?: SavedChat }): void {
+        this.wire.notify(ev, ev === 'chat.history' ? { chat: savedChatView(payload.chat!) } : { ...payload });
+    }
+    setSettings(settings: ChatPanelSettings): void { this.shown = settings; this.models = settings.pi?.models ?? this.models; this.wire.notify('chat.settings', { settings, models: this.models }); }
     noKey(): void { this.wire.notify('chat.noKey'); }
     saveFailed(error: string): void { this.wire.notify('chat.saveFailed', { error }); }
     busyChanged(busy: boolean): void { this.wire.notify('chat.busy', { busy }); }

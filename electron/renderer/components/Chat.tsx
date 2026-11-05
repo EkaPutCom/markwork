@@ -53,11 +53,9 @@ function PanelPopover({ open, onOpenChange, trigger, label, side = 'bottom', chi
 // ---------- The answer ----------
 
 function TurnStatus({ answer, agent = false }: { answer: AnswerView; agent?: boolean }) {
-    const client = useClient();
     const [open, setOpen] = useState(false);
     const running = answer.phase === 'thinking' || answer.phase === 'step' || answer.phase === 'writing';
     const elapsed = useElapsed(answer.startedAt, answer.endedAt);
-    const retry = answer.phase === 'failed' || answer.phase === 'stopped';
     const icon: IconName | null = answer.phase === 'done' ? 'emblem-ok' : answer.phase === 'stopped' ? 'media-playback-stop' : answer.phase === 'failed' ? 'dialog-warning' : null;
     return (
         <div className={`chat-status ${answer.phase}`}>
@@ -68,7 +66,6 @@ function TurnStatus({ answer, agent = false }: { answer: AnswerView; agent?: boo
                     <span className="time">{formatMs(elapsed)}</span>
                     <Icon name={open ? 'pan-down' : 'pan-end'} size={12} />
                 </Button>
-                {retry && answer.question && <Button variant="ghost" size="sm" onClick={() => void client.chat.send(answer.question!)}>Retry</Button>}
             </div>
             {open && (
                 <div className="details">
@@ -119,12 +116,9 @@ function WorkList({ work, running, elapsed }: { work: WorkState; running: boolea
 function ActionBar({ answer }: { answer: AnswerView }) {
     const client = useClient();
     const [copied, setCopied] = useState(false);
-    const [inserted, setInserted] = useState<string | null>(null);
     return (
         <div className="chat-actions">
             <Button variant="ghost" size="xs" onClick={() => { void navigator.clipboard.writeText(answer.text); setCopied(true); }}><Icon name="edit-copy" size={14} /><span>{copied ? 'Copied' : 'Copy'}</span></Button>
-            <Button variant="ghost" size="xs" onClick={async () => setInserted(await client.chat.insert(answer.text) ? 'Inserted' : 'Open a note first')}><Icon name="insert-text" size={14} /><span>{inserted ?? 'Insert into note'}</span></Button>
-            {answer.question && <Button variant="ghost" size="xs" onClick={() => void client.chat.send(answer.question!)}><Icon name="view-refresh" size={14} /><span>Retry</span></Button>}
             <Button variant="ghost" size="xs" onClick={() => client.chat.openLog(true)}><Icon name="utilities-terminal" size={14} /><span>Log</span></Button>
         </div>
     );
@@ -288,42 +282,28 @@ function HistoryButton() {
                     <Button variant="ghost" className="open h-auto items-stretch font-normal text-left" onClick={async () => { if (await client.chat.openChat(c.path)) setOpen(false); }}>
                         <span className="title">{c.title}</span><span className="side-meta">{c.created.replace('T', ' ').slice(0, 16)} · {c.turns} {c.turns === 1 ? 'turn' : 'turns'}</span>
                     </Button>
-                    <IconButton size="icon-xs" label={`Delete ${c.title}`} onClick={() => void client.chat.deleteChat(c.path)}><Icon name="window-close" size={12} /></IconButton>
+
                 </div>
             ))}
         </PanelPopover>
     );
 }
 
-const SOURCES = { env: 'from the DEEPSEEK_API_KEY environment variable', keyring: 'in the system keyring', file: 'in a file in ~/.config/markwork' };
-
-function SettingsButton({ forceOpen, agent = false }: { forceOpen: number; agent?: boolean }) {
+function SettingsButton() {
     const client = useClient();
-    const { settings, key, models } = useChat();
+    const { settings, models } = useChat();
     const [open, setOpen] = useState(false);
-    const [text, setText] = useState('');
-    const [error, setError] = useState('');
-    useEffect(() => { if (forceOpen > 0) setOpen(true); }, [forceOpen]);
-    useEffect(() => { if (open && !agent) void client.chat.keyStatus(); }, [open, client, agent]);
     return (
         <PanelPopover open={open && !!settings} onOpenChange={setOpen} label="Assistant settings" trigger={<IconButton size="icon-xs" label="Assistant settings"><Icon name="emblem-system" /></IconButton>}>
             {settings && <>
-                {agent ? <p className="side-meta">Authentication and defaults come from pi on this machine. Run pi to sign in. No Assistant API key is copied to the agent.</p> : <><div className="field-title">DeepSeek API key</div>
-                <div className="side-meta" role="status">{key === undefined ? '' : key ? `A key is set ${SOURCES[key]}.` : 'No key yet.'}</div>
-                <Input type="password" autoComplete="off" aria-label="API key" placeholder="Paste the key" value={text} onChange={e => setText(e.target.value)} />
-                {error && <div className="chat-error">{error}</div>}
-                <div className="row">
-                    <Button size="sm" disabled={!text.trim()} onClick={async () => { const e = await client.chat.saveKey(text.trim()); setError(e ?? ''); if (!e) setText(''); }}>Save</Button>
-                    {key && key !== 'env' && <Button variant="outline" size="sm" onClick={() => void client.chat.forgetKey()}>Forget</Button>}
-                </div>
-                <Separator /></>}
+                <p className="side-meta">Authentication and defaults come from pi on this machine. Run pi to sign in. Markwork does not copy its DeepSeek credentials to pi. Available models are loaded when a session connects.</p>
                 <div className="chat-check justify-between"><span>Model</span>
                     <Select value={settings.model} aria-label="Model" onChange={e => client.chat.setModel(e.target.value)}>
                         {(models.length ? models : [settings.model]).map(m => <option key={m} value={m}>{m}</option>)}
                     </Select>
                 </div>
                 <Label className="chat-check"><Checkbox aria-label="Thinking mode" checked={settings.thinking} onCheckedChange={on => client.chat.setThinking(on === true)} />Thinking mode</Label>
-                <Label className="chat-check"><Checkbox disabled={agent} aria-label="Save conversation history" checked={settings.saveChats} onCheckedChange={on => client.chat.setSaveChats(on === true)} />Save conversation history</Label>
+                <Label className="chat-check"><Checkbox disabled aria-label="Save conversation history" checked={settings.saveChats} onCheckedChange={on => client.chat.setSaveChats(on === true)} />Save conversation history</Label>
             </>}
         </PanelPopover>
     );
@@ -334,7 +314,8 @@ function SettingsButton({ forceOpen, agent = false }: { forceOpen: number; agent
 export function Chat({ embedded = false, title = 'Assistant' }: { embedded?: boolean; title?: string }) {
     const client = useClient();
     const chat = useChat();
-    const { entries, busy, draft, keyPrompt } = chat;
+    const { entries, busy, draft, settings } = chat;
+    const pi = settings?.pi;
     const input = useRef<HTMLTextAreaElement>(null);
     const scroller = useRef<HTMLDivElement>(null);
     const stick = useRef(true);
@@ -361,20 +342,32 @@ export function Chat({ embedded = false, title = 'Assistant' }: { embedded?: boo
                 <IconButton size="icon-xs" label="New conversation" onClick={() => model.reset()}><Icon name="edit-clear" /></IconButton>
                 <IconButton size="icon-xs" label="Agent log" onClick={() => model.openLog(true)}><Icon name="utilities-terminal" /></IconButton>
                 {!embedded && <HistoryButton />}
-                <SettingsButton forceOpen={keyPrompt} agent={embedded} />
+                <SettingsButton />
             </div>
+            {!embedded && <div className="flex flex-col gap-2 border-b p-3 text-xs text-muted-foreground">
+                <p>pi · Direct file, shell and network tools · No Apply or sandbox. Local work stops when Markwork closes.</p>
+                {!pi?.root ? <p>Open a work folder to use the pi Assistant.</p> : !pi.activated ? <Button size="sm" variant="outline" onClick={() => void model.activate()}>Activate pi Assistant</Button> : <span role="status">pi Assistant activated</span>}
+                {pi?.activated && pi.interrupted && !busy && <Button size="sm" variant="outline" onClick={() => void model.recover()}>Restore native session</Button>}
+                {pi?.conflicts.map(conflict => <div key={conflict.path} className="flex flex-col gap-1.5" role="alert">
+                    <span>{conflict.name}: changed on disk; your draft is preserved.</span>
+                    <div className="flex gap-2">
+                        <Button size="xs" variant="outline" onClick={() => void model.resolve(conflict.path, 'reload')}>Use disk version</Button>
+                        <Button size="xs" variant="outline" onClick={() => void model.resolve(conflict.path, 'keep')}>Keep draft for saving</Button>
+                    </div>
+                </div>)}
+            </div>}
             <div className="chat-messages" ref={scroller} role="log" aria-live="polite"
                 onScroll={e => { const el = e.currentTarget; stick.current = el.scrollHeight - el.clientHeight - el.scrollTop < 24; }}>
                 {entries.length === 0 && (
                     <div className="chat-empty">
-                        <p className="side-meta">{embedded ? 'This pi agent writes files and memory directly, runs commands, and accesses the network without Apply. Activation in Sessions is required before first use. No sandbox or guaranteed editor Undo. Avoid editing the same files while it works.' : 'Ask or request help with anything about your work. The assistant reads the open document and relevant excerpts from other files in the folder.'}</p>
+                        <p className="side-meta">{embedded ? 'This pi agent writes files and memory directly, runs commands, and accesses the network without Apply. Activation in Sessions is required before first use. No sandbox or guaranteed editor Undo. Avoid editing the same files while it works.' : 'Ask pi about your workspace, request research, or ask for file changes. The current file name and editor selection accompany your question. Unsaved text is not automatically saved or replaced. Use backups or version control for direct tool writes.'}</p>
                         {SUGGESTIONS.map(s => <Button key={s} variant="outline" className="h-auto justify-start whitespace-normal px-3 py-2 text-left font-normal" onClick={() => { model.setDraft(s); model.focusInput(); }}>{s}</Button>)}
                     </div>
                 )}
                 {entries.map((e, i) => {
                     switch (e.kind) {
                         case 'user': return <div key={i} className="chat-user">{e.text}</div>;
-                        case 'answer': return <Answer key={i} answer={e.answer} agent={embedded} />;
+                        case 'answer': return <Answer key={i} answer={e.answer} agent />;
                         case 'note': return <div key={i} className={e.error ? 'chat-error' : 'side-meta'}>{e.text}</div>;
                         case 'work': return (
                             <div key={i}><WorkList work={e.work} running={false} />
@@ -384,13 +377,13 @@ export function Chat({ embedded = false, title = 'Assistant' }: { embedded?: boo
                     }
                 })}
             </div>
-            <ContextButton agent={embedded} />
+            <ContextButton agent />
             <div className="chat-input">
                 <Textarea ref={input} rows={2} aria-label={embedded ? 'Message' : 'Ask the Assistant'} className="min-h-0 border-0 bg-transparent p-1 shadow-none focus-visible:ring-0 dark:bg-transparent" placeholder="Ask a question" value={draft}
                     onChange={e => model.setDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
                 <IconButton variant={busy ? 'destructive' : 'default'} size="icon-sm" label={busy ? 'Stop' : 'Send'} shortcut={busy ? undefined : 'Enter'}
-                    disabled={!busy && !draft.trim()} onClick={() => busy ? model.stop() : send()}><Icon name={busy ? 'media-playback-stop' : 'go-up'} /></IconButton>
+                    disabled={!busy && (!draft.trim() || (!embedded && (!pi?.activated || pi.interrupted)))} onClick={() => busy ? model.stop() : send()}><Icon name={busy ? 'media-playback-stop' : 'go-up'} /></IconButton>
             </div>
         </aside>
     );

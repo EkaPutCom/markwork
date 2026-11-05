@@ -160,10 +160,10 @@ export class FilesController {
         this.host.fileTree.showFolder(dir, entries);
     }
 
-    refreshAgent(root: string): void {
+    refreshAgent(root: string, workdir = platform().paths.join(root, 'workspace')): void {
         const { paths } = platform();
         for (const dir of [...this.open.keys()]) if (paths.same(dir, root) || insideName(root, dir) !== null) this.refresh(dir);
-        const files = workspaceFiles(paths.join(root, 'workspace')), before = this.agentFiles.get(root);
+        const files = workspaceFiles(workdir), before = this.agentFiles.get(root);
         if (!files) { this.agentFiles.delete(root); return; }
         this.agentFiles.set(root, files);
         if (!before) return;

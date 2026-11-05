@@ -28,7 +28,10 @@
 <main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Reference</p>
 <h1>Agent tool list</h1>
-<p class="lead">The built-in Assistant's Markwork tools. Read tools run right away; proposal tools always wait for your approval in the review window.</p>
+<p class="lead">The workspace Assistant and Agent Folders now use pi's standard tools: <code>read</code>, <code>bash</code>, <code>edit</code>, and <code>write</code>.</p>
+<p>Explicit activation grants direct filesystem, shell and network access without per-tool Apply or sandboxing. The cwd is the workspace root for the Assistant and <code>workspace/</code> for Agent Folders. Tools may access other account-readable files, secrets and private services. Use backups/version control and review tool outcomes. See <a href="assistant.html">the pi Assistant guide</a>.</p>
+<p>The Markwork-specific read/proposal/control registry below is historical and is not offered in pi chat. The separate card/worktree review flow remains available.</p>
+<details><summary>Historical Markwork tool registry (retained source/worker tests, not pi chat)</summary>
 <p><a href="agentfolders.html">Pi Agent Folders</a> use a separate runtime with pi's standard read, bash, edit and write tools. After explicit trusted-local activation, those tools execute directly without per-tool Apply or a sandbox; they are not the proposal tools listed here.</p>
 
 <h2 id="read">Read tools</h2>
@@ -83,6 +86,7 @@
   <li>The read and proposal tools are only offered when the <em>Other files in the folder</em> switch is on and a work folder is open.</li>
   <li>One question runs at most 10 model rounds; the last round has no tools.</li>
 </ul>
+</details>
 </main>
 <aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>

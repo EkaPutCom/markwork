@@ -616,6 +616,14 @@ export class Client {
         this.set({ floating });
         if (panel === 'chat' && open) this.chat.focusInput();
     }
+    async askCodeSelection(doc: number, from: number, to: number): Promise<void> {
+        const reply = await this.conn?.request('act.chat.codeSelection', { doc, from, to });
+        if (!reply?.ok || typeof reply.draft !== 'string') return;
+        const draft = this.chat.getState().draft;
+        this.chat.setDraft(draft ? `${draft}\n\n${reply.draft}` : reply.draft);
+        this.run('chat', true);
+        this.chat.focusInput();
+    }
     closeFloating(): void {
         const { floating } = this.snapshot;
         if (floating.sidebar || floating.chat) this.set({ floating: { sidebar: false, chat: false } });

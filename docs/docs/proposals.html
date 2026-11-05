@@ -28,7 +28,9 @@
 <main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Agent</p>
 <h1>Proposals and approval</h1>
-<p class="lead">The ordinary Assistant never writes by itself. Every file action becomes a proposal with a diff that you review; files are only touched after you press <em>Apply</em>.</p>
+<p class="lead">The workspace Assistant now uses pi with direct tools. It no longer has per-action proposals, Apply/Reject, or proposal Undo.</p>
+<p>Before first use in a workspace/window, press <strong>Activate pi Assistant</strong> and accept the unsandboxed file/shell/network access notice. After activation, tools can write without individual approval. Stop does not undo completed effects; use backups and version control. Dirty buffers are preserved with explicit disk-conflict controls. See <a href="assistant.html">the current Assistant guide</a>. Card/worktree review and confirmation before merge are unchanged.</p>
+<details><summary>Historical custom-engine proposal flow (not used by pi chat)</summary>
 <p>This page describes the built-in Assistant, not <a href="agentfolders.html">pi Agent Folders</a>. Activated folder agents execute file/shell/network tools directly without individual Apply or a sandbox. Their arbitrary effects have no guaranteed editor Undo.</p>
 
 <figure><picture class="themed-media"><img data-light-src="../assets/proposal-diff.png" data-dark-src="../assets/dark/proposal-diff.png" width="1200" height="342" loading="lazy" alt="The review window of an agent proposal: a one-line diff of the release date with the Reject and Apply buttons"><noscript><img src="../assets/dark/proposal-diff.png" width="1200" height="342" loading="lazy" alt="The review window of an agent proposal: a one-line diff of the release date with the Reject and Apply buttons"></noscript></picture><figcaption>The review window: the release date changes from 15 to 22 November</figcaption></figure>
@@ -86,6 +88,7 @@
   <li><code>delete_list</code> only applies to an empty list so that cards do not disappear with it.</li>
   <li>The proposal tools only exist when the <em>Other files in the folder</em> switch is on.</li>
 </ul>
+</details>
 </main>
 <aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>

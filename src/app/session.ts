@@ -25,7 +25,11 @@ import { ViewController, type ViewDialogs, type ViewHost } from './views';
 import { NoteLinks, type NoteHost } from './notes';
 import { DocumentController, type DocumentsHost } from './documents';
 import type { AgentWriteHost } from './agentwrites';
-import { AssistantController, type AssistantHost } from './assistant';
+import type { AssistantHost } from './assistant';
+import { PiAssistantController } from './assistantpi';
+import { systemKeyStore } from '../agent/apikey';
+import { DeepSeek } from '../agent/deepseek';
+import type { WriterSources } from './history';
 import { HistoryController, type HistoryDialogs, type HistoryHost } from './history';
 import { PreferencesController, type PreferencesDialogs, type PreferencesHost } from './preferences';
 import { OutlineController, type OutlineHost } from './outline';
@@ -118,7 +122,8 @@ export class AppSession<E extends TextEditor> {
     readonly views: ViewController<E>;
     readonly notes: NoteLinks;
     readonly documents: DocumentController<E>;
-    readonly assistant: AssistantController<E>;
+    readonly assistant: PiAssistantController<E>;
+    readonly commitWriter: WriterSources = { keyStore: systemKeyStore, makeProvider: key => new DeepSeek(key), model: () => this.settings.chatModel };
     readonly agentFolders: AgentFoldersController<E>;
     readonly folderDisk: FolderDiskController<E>;
     private opened = false;
@@ -140,7 +145,7 @@ export class AppSession<E extends TextEditor> {
         // Feature controllers: created before the first document, whose buffer already queues autosaves.
         this.files = new FilesController(host, dialogs.files);
         this.autosaver = new Autosaver(host);
-        this.folderDisk = new FolderDiskController(host, () => this.agentFolders?.refresh());
+        this.folderDisk = new FolderDiskController(host, () => { this.agentFolders?.refresh(); this.assistant?.refresh(); });
         this.journal = new JournalController(host, dialogs.journal);
         this.collab = new CollabController(host, dialogs.collab);
         this.pulls = new PullReviewController(host, { provider: () => this.collab.provider(), changed: () => void this.collab.refresh(), session: () => this.collab.session() }, dialogs.pulls);
@@ -164,15 +169,13 @@ export class AppSession<E extends TextEditor> {
         });
         this.views = new ViewController(host, dialogs.views);
         this.notes = new NoteLinks(host);
-        this.assistant = new AssistantController(host, {
-            nameOf: doc => this.documents.nameOf(doc),
-            canInsert: () => !this.views.structuredMode && !this.views.pageMode,
+        this.assistant = new PiAssistantController(host, dialogs.files, {
+            changed: root => { this.folderDisk.start(root); this.files.refresh(root); this.files.refreshAgent(root, root); },
+            conflicts: root => this.folderDisk.conflicts(root),
+            resolve: (path, choice) => this.folderDisk.resolve(path, choice),
         });
-        // The commit message writer uses the Assistant's key and model, read each time it starts.
-        this.history = new HistoryController(host, dialogs.history, () => {
-            const { chat } = this.assistant;
-            return { keyStore: chat.keyStore, makeProvider: key => chat.makeProvider(key), model: () => chat.model };
-        });
+        // Commit-message generation is a separate read-only DeepSeek service, not the chat runtime.
+        this.history = new HistoryController(host, dialogs.history, () => this.commitWriter);
         this.search = new SearchController(host, dialogs.search);
         this.outline = new OutlineController(host);
         this.preferences = new PreferencesController(host, dialogs.preferences);
@@ -393,6 +396,10 @@ export class AppSession<E extends TextEditor> {
     // are still working were dealt with, and the tabs are remembered for the next launch.
     async closeRequest(): Promise<boolean> {
         if (!await this.documents.confirmDiscardAll()) return false;
+        if (this.assistant.busy) {
+            if (!await this.frontend.dialogs.files.confirm('Stop pi Assistant and close?', 'Local pi work stops when Markwork closes. Completed file and shell effects cannot be undone.', 'Stop Assistant and close', false)) return false;
+            await this.assistant.shutdown();
+        }
         let keepFolders = false;
         if (this.agentFolders.busy) {
             const choice = await this.frontend.dialogs.harness.closeAgents(this.agentFolders.activity());
@@ -410,6 +417,10 @@ export class AppSession<E extends TextEditor> {
     async openFolder(path: string, show = true): Promise<boolean> {
         const absolute = platform().paths.resolve(path);
         const root = this.files.root;
+        if (root && root !== absolute && this.assistant.busy) {
+            if (!await this.frontend.dialogs.files.confirm('Stop pi Assistant and switch workspace?', 'The Assistant must stop before switching workspace. Completed tools cannot be undone.', 'Stop Assistant and switch', false)) return false;
+            await this.assistant.shutdown();
+        }
         if (root && root !== absolute && this.agentFolders.busy) {
             const choice = await this.frontend.dialogs.harness.closeAgents(this.agentFolders.activity());
             if (choice === 'cancel') return false;
@@ -431,6 +442,7 @@ export class AppSession<E extends TextEditor> {
         this.settings.folder = absolute;
         this.harness.folderChanged();
         if (this.agentFolders.folderChanged(absolute) && this.opened) this.openAgentDefault();
+        this.assistant.folderChanged(absolute);
         const page = this.documents.page;
         if (page?.kind === 'home') this.refreshTitle(page.id);
         this.refreshHome();

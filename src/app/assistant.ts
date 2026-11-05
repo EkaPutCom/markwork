@@ -5,6 +5,7 @@
 // core to apply some of them while the ask is open, and answers with its note; the result the agent sees is what the
 // core wrote, never what the panel claims.
 
+import type { FolderChatPayload } from './folderpanel';
 import { agentGit } from '../base/git';
 import { ChatController, type ChatView, type TurnOutcome, type TurnView } from '../agent/chatcontroller';
 import type { KeySource } from '../agent/apikey';
@@ -34,7 +35,16 @@ export interface ProposalAnswer {
 }
 
 // What the panel shows of the settings that live in the core.
+export interface AssistantPiState {
+    root: string | null;
+    activated: boolean;
+    models: string[];
+    interrupted: boolean;
+    conflicts: { path: string; name: string }[];
+}
+
 export interface ChatPanelSettings {
+    pi?: AssistantPiState;
     model: string;
     thinking: boolean;
     saveChats: boolean;
@@ -68,6 +78,9 @@ export interface ChatPanelView {
     onKeyStatus: () => Promise<KeySource | null>;
     onSaveKey: (key: string) => Promise<KeySource>;
     onForgetKey: () => Promise<void>;
+
+    // Pi session presentation; native history is never reconstructed from the renderer.
+    receive(ev: string, payload: FolderChatPayload & { chat?: SavedChat }): void;
 
     // What the controller shows.
     setSettings(settings: ChatPanelSettings): void;
