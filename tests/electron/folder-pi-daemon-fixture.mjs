@@ -23,8 +23,9 @@ createInterface({ input: process.stdin }).on('line', line => {
     else if (c.type === 'get_available_models') reply(c, { models: [model] });
     else if (c.type === 'get_messages') reply(c, { messages });
     else if (c.type === 'prompt') {
-        appendFileSync('submitted', c.message + '\n');
         messages.push({ role: 'user', content: c.message }); writeFileSync(file, JSON.stringify(messages));
+        // Tests may kill the process as soon as submission is observed; publish only after the native snapshot is written.
+        appendFileSync('submitted', c.message + '\n');
         reply(c, { disposition: 'started' });
         if (c.message.startsWith('burst')) for (let i = 0; i < 1000; i++) send({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'x' } });
         send({ type: 'tool_execution_start', toolCallId: 'write-report', toolName: 'bash', args: { command: 'wait for gate; write report' } });

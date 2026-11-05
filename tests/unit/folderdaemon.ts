@@ -79,6 +79,8 @@ export async function folderDaemonTests(): Promise<void> {
             const client = await connection.ready(), run = entry.pi.store.get(entry.pi.chatId).run!.id;
             await client.stop(run); await within(sending, 20000);
             eq(entry.pi.store.get(entry.pi.chatId).status, 'interrupted');
+            const native = JSON.parse(disk.read(entry.pi.store.get(entry.pi.chatId).native!)) as { role: string; content: string }[];
+            ok(native.some(message => message.role === 'user' && message.content.includes('interrupt this exact run')), 'observed submission must survive an immediate process stop');
             const before = disk.read(disk.join(workspace, 'submitted'));
             await app.agentFolders.reconnect(folder);
             eq(entry.pi.store.get(entry.pi.chatId).run?.id, run);
