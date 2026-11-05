@@ -453,8 +453,12 @@ try {
         // A selection in the cell is the text's: the menu shows, and Bold wraps it. The cell can be without the focus for
         // a frame after the undo (a slow runner was), and a selection made then never reaches the text, so it waits for it.
         await waitFor(() => page.evaluate(() => document.activeElement?.matches('.cm-md-cell') ?? false), 10000, state);
-        await cell.evaluate(td => { const t = td.lastChild; getSelection().setBaseAndExtent(t, 1, t, 4); });
-        await page.keyboard.press('Shift+ArrowRight');
+        const word = await cell.evaluate(td => {
+            const range = document.createRange(); range.setStart(td.lastChild, 2); range.setEnd(td.lastChild, 3);
+            const box = range.getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+        });
+        // A real pointer selection supersedes Undo's pending caret restoration; a synthetic DOM range does not.
+        await page.mouse.dblclick(word.x, word.y);
         // The toolbar can still describe the previous bold cell selection while selectionchange is pending.
         await waitFor(async () => {
             const selected = await page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); });

@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { readdirSync, rmSync } from 'node:fs';
+import { readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
@@ -26,10 +26,14 @@ let files = [];
 try { files = readdirSync(folder).filter(f => f.endsWith('.mwrepro.json')).sort(); } catch { /* no folder: no repros yet */ }
 
 if (files.length) {
-    const app = await launchApp({ scratch, notes, env: { MARKWORK_DEV: '1' } });
+    writeFileSync(join(notes, 'ready.md'), '# Repro fixture\n');
+    const app = await launchApp({ scratch, notes, settings: { welcomed: true, home: false }, env: { MARKWORK_DEV: '1' } });
     try {
         const page = await app.firstWindow();
         await page.setViewportSize({ width: 1400, height: 900 });
+        // Inspector hello only proves the bridge is ready; opening a core-owned file also proves the app is connected.
+        await page.getByRole('treeitem', { name: /ready\.md/ }).click({ timeout: 30000 });
+        await page.locator('.text-editor:not([hidden]) .cm-content').waitFor({ timeout: 30000 });
         const pid = ['--pid', String(await app.evaluate(() => process.pid))];
         await waitFor(async () => (await cli(...pid, 'hello')).answer?.ready === true, 30000);
         for (const file of files) {
