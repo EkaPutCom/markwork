@@ -455,9 +455,13 @@ try {
         await waitFor(() => page.evaluate(() => document.activeElement?.matches('.cm-md-cell') ?? false), 10000, state);
         await cell.evaluate(td => { const t = td.lastChild; getSelection().setBaseAndExtent(t, 1, t, 4); });
         await page.keyboard.press('Shift+ArrowRight');
-        await waitFor(async () => (await page.getByRole('toolbar', { name: 'Format the selection' }).count()) === 1, 10000, state);
+        // The toolbar can still describe the previous bold cell selection while selectionchange is pending.
+        await waitFor(async () => {
+            const selected = await page.evaluate(() => { const v = document.querySelector('.cm-content').cmTile.view, m = v.state.selection.main; return v.state.sliceDoc(m.from, m.to); });
+            return selected === 'loud' && await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed') === 'false';
+        }, 10000, state);
         await toolbar.getByRole('button', { name: /^Bold/ }).click();
-        await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()));
+        await waitFor(async () => /make \*\*this\*\* \*\*loud\*\*/.test(await docText()), 10000, state);
         assert.equal(await page.evaluate(() => document.activeElement.matches('.cm-md-cell')), true, 'the cell keeps the focus');
         assert.equal(await cell.textContent(), 'make this loud');
         assert.equal(await toolbar.getByRole('button', { name: /^Bold/ }).getAttribute('aria-pressed'), 'true', 'Bold is pressed for a bold selection in a cell');
