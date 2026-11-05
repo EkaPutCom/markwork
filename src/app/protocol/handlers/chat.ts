@@ -31,21 +31,43 @@ export function chatHandlers({ wire, session, frontend }: HandlerContext): void 
             const entry = session.agentFolders.find(p.folderSession);
             return { panel: entry.panel, chat: null, folder: entry };
         }
-        return { panel: frontend.chat, chat: session.assistant.chat, folder: null };
+        return { panel: frontend.chat, chat: session.assistant, folder: null };
     };
     const panel = (p: Record<string, unknown>) => selected(p).panel;
 
     // The frontend connected (or came back): the settings the panel shows and the agent log as it is now.
     wire.on('act.chat.sync', p => {
         const choice = selected(p);
-        return { settings: choice.panel.shown, models: choice.panel.models, events: choice.folder ? [...choice.folder.pi.trace.events] : [...choice.chat!.session.trace.events],
-            chat: choice.folder ? savedChatView(choice.folder.panel.busy && choice.folder.panel.base ? choice.folder.panel.base : session.agentFolders.snapshot(choice.folder.id)) : undefined,
+        return { settings: choice.panel.shown, models: choice.panel.models, events: choice.folder ? [...choice.folder.pi.trace.events] : [...(choice.chat!.panel.trace.events)],
+            chat: choice.folder ? savedChatView(choice.folder.panel.busy && choice.folder.panel.base ? choice.folder.panel.base : session.agentFolders.snapshot(choice.folder.id)) : savedChatView(choice.chat!.busy && choice.chat!.panel.base ? choice.chat!.panel.base : choice.chat!.snapshot()),
             draft: choice.folder && !choice.folder.panel.busy && choice.folder.pi.store.get(choice.folder.pi.chatId).status === 'idle' ? choice.folder.pi.store.draft(choice.folder.pi.chatId) : undefined,
-            folderEvents: choice.folder?.panel.events, busy: choice.chat?.busy === true || choice.folder?.panel.busy === true };
+            folderEvents: choice.folder?.panel.events ?? choice.chat!.panel.events, busy: choice.chat?.busy === true || choice.folder?.panel.busy === true };
+    });
+
+    wire.on('act.chat.activate', () => session.assistant.activate());
+    wire.on('act.chat.recover', () => session.assistant.recover());
+    wire.on('act.chat.resolve', p => {
+        if (p.choice !== 'reload' && p.choice !== 'keep') throw new RequestError('bad_request', 'choose reload or keep');
+        return session.assistant.resolve(str(p.path, 'path'), p.choice);
     });
 
     // The reply comes when the turn is over; the turn itself is told by `chat.*` notices.
     wire.on('act.chat.send', async p => { await panel(p).onSend(str(p.text, 'text')); });
+    // Read only the snapshot already opened by the core, never a renderer-supplied path or text.
+    wire.on('act.chat.codeSelection', p => {
+        const page = session.documents.allPages.find(page => page.id === num(p.doc, 'doc'));
+        if (page?.kind !== 'code' || page.text === undefined || !page.file) throw new RequestError('stale', 'that code page is no longer open');
+        const from = num(p.from, 'from'), to = num(p.to, 'to');
+        const text = page.text.replace(/\r\n?/g, '\n'); // CodeMirror normalizes line endings.
+        if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to <= from || to > text.length) {
+            throw new RequestError('bad_request', 'select a non-empty code range');
+        }
+        const selected = text.slice(from, to);
+        const first = text.slice(0, from).split('\n').length, last = first + selected.split('\n').length - 1;
+        const fence = '`'.repeat(Array.from(selected.matchAll(/`+/g)).reduce((size, m) => Math.max(size, m[0].length + 1), 3));
+        const name = page.file.split(/[\\/]/).pop()!;
+        return { draft: `Code from ${name}, lines ${first}–${last}:\n\n${fence}\n${selected}\n${fence}\n\n` };
+    });
     wire.on('act.chat.stop', p => { panel(p).onStop(); });
     wire.on('act.chat.reset', p => { panel(p).onReset(); });
     wire.on('act.chat.preview', async p => ({ built: await panel(p).onPreview(str(p.draft, 'draft')) }));

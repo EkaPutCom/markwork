@@ -28,7 +28,11 @@
 <main class="doc" id="main-content" tabindex="-1">
 <p class="eyebrow">Agent</p>
 <h1>Context and privacy</h1>
-<p class="lead">The model only knows what is sent. Markwork builds the context automatically from the workspace, shows it to you, and gives you switches to limit it.</p>
+<p class="lead">The Assistant now uses pi's native sessions, tools and compaction. Explicit activation allows filesystem, shell and network access without per-tool approval or sandboxing.</p>
+<h2 id="pi-context">Current pi context</h2>
+<p>The current editor file name and selected Markdown text accompany your question. Select code and press Ask Assistant to add a reviewable snippet. Other files are read from disk by pi tools, not from unsaved buffers. Native history is retained in application data and supplied by pi; it is not reconstructed from editable Markdown projections. Content can leave the machine through the model provider and through shell/network tools. The working directory and prompts are not enforcement boundaries. Run pi to manage provider credentials; Markwork does not copy the old DeepSeek key.</p>
+<p>The former manuscript builder, @filename expansion, three context switches, and their budget percentages below are <strong>historical</strong>, not controls of the pi Assistant. Read <a href="assistant.html">the current Assistant guide</a> for activation, editor conflicts and recovery.</p>
+<details><summary>Historical custom-engine context (not used by pi chat)</summary>
 
 <h2 id="automatic">The automatically built context</h2>
 <p>Every question builds a new context, because the manuscript can change between questions. The order of priority:</p>
@@ -66,6 +70,7 @@
 
 <h2 id="cache">Prefix cache</h2>
 <p>The context is split so that the DeepSeek prefix cache is used: the instructions, the project map, and the active document are in a stable system message; the selection, the cursor, the attachments, and the relevant excerpts are in the user message. The part served from the cache is shown in the token details of every answer.</p>
+</details>
 </main>
 <aside class="outline" id="toc" aria-label="On this page"></aside>
 </div>

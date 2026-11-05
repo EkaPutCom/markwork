@@ -48,10 +48,11 @@ process.parentPort.on('message', async ({ data, ports: [port] }: { data: unknown
     }
     const provider = testModel ? ((await import(/* @vite-ignore */ testModel)) as { provider: Provider }).provider : null;
     const server = new ProtocolServer(settings, message => port.postMessage(message), { settingKeys: Object.keys(SETTING_KEYS) });
-    if (provider) server.session.assistant.chat.makeProvider = () => provider;
+    if (provider) server.session.commitWriter.makeProvider = () => provider;
     if (process.env.MARKWORK_TEST_PI) {
         const fake = await import(/* @vite-ignore */ process.env.MARKWORK_TEST_PI);
         server.session.agentFolders.runtime = fake.createRuntime(PiRpc, platform());
+        server.session.assistant.runtime = fake.createRuntime(PiRpc, platform());
     }
     if (testForge) Object.assign(server.session.collab.services, ((await import(/* @vite-ignore */ testForge)) as { services: Partial<CollabServices> }).services);
     if (testHarness) {

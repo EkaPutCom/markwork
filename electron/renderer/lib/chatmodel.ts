@@ -201,6 +201,7 @@ export class ChatModel {
 
     notice(ev: string, p: Record<string, unknown>): boolean {
         switch (ev) {
+            case 'chat.history': this.restore(p.chat as SavedChatView); return true;
             case 'chat.settings': this.set({ settings: p.settings as ChatPanelSettings, models: p.models as string[] }); void this.updateContext(); return true;
             case 'chat.error': this.note(String(p.error), true); return true;
             case 'chat.noKey':
@@ -336,11 +337,22 @@ export class ChatModel {
 
     reset(): void {
         if (this.newConversation) { this.newConversation(); return; }
-        void this.request('act.chat.reset');
-        this.flush();
-        this.turn = 0;
-        this.set({ entries: [], proposals: {}, review: null });
-        void this.updateContext();
+        void this.request('act.chat.reset').then(reply => {
+            if (reply && !reply.ok) this.note(reply.error.message, true);
+        });
+    }
+
+    async activate(): Promise<void> {
+        const reply = await this.request('act.chat.activate');
+        if (reply && !reply.ok) this.note(reply.error.message, true);
+    }
+    async recover(): Promise<void> {
+        const reply = await this.request('act.chat.recover');
+        if (reply && !reply.ok) this.note(reply.error.message, true);
+    }
+    async resolve(path: string, choice: 'reload' | 'keep'): Promise<void> {
+        const reply = await this.request('act.chat.resolve', { path, choice });
+        if (reply && !reply.ok) this.note(reply.error.message, true);
     }
 
     insert(text: string): Promise<boolean> {

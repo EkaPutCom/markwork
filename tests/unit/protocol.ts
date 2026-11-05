@@ -7,6 +7,8 @@ import { loadAgentFolder } from '../../src/agent/folder';
 import { applyChanges, diffChanges } from '../../src/app/protocol/changes';
 import { DocMirror } from '../../src/app/protocol/mirror';
 import { ProtocolEditor, headingsOf } from '../../src/app/protocol/replica';
+import { fakeFolderPi } from './fakefolderpi';
+import { AssistantController } from '../../src/app/assistant';
 import { ProtocolServer } from '../../src/app/protocol/server';
 import { Connection } from '../../src/app/protocol/wire';
 import { unwiredTouched } from '../../src/app/protocol/unwired';
@@ -488,7 +490,7 @@ export async function protocolTests(): Promise<void> {
 
     await test('a workspace code file crosses the protocol as a page snapshot, never a writable replica', async () => {
         const { server, ui } = await start();
-        const path = disk.join(dir, 'source.ts'), text = 'export const answer = 42;\n';
+        const path = disk.join(dir, 'source.ts'), text = '// 🐈\r\nexport const answer = ` ``` `;\r\n';
         disk.write(path, text);
         const before = ui.log.filter(l => l.ev === 'doc.open').length;
         ok((await ui.client.request('act.tree.activate', { path })).ok, 'activate code');
@@ -497,9 +499,52 @@ export async function protocolTests(): Promise<void> {
         eq([page.file, page.text], [path, text]);
         eq(ui.log.filter(l => l.ev === 'doc.open').length, before);
         await until(() => ui.last('view.page')?.page === 'code');
+        const normalized = text.replace(/\r\n/g, '\n');
+        const draft = await ui.client.request('act.chat.codeSelection', { doc: page.page, from: 6, to: normalized.length - 1 });
+        eq(draft.draft, 'Code from source.ts, lines 2–2:\n\n````\nexport const answer = ` ``` `;\n````\n\n');
+        for (const [from, to] of [[0, 0], [-1, 4], [0, 999], [0.5, 4]]) {
+            const bad = await ui.client.request('act.chat.codeSelection', { doc: page.page, from, to });
+            ok(!bad.ok && bad.error.code === 'bad_request', 'invalid range refused');
+        }
+        const emoji = await ui.client.request('act.chat.codeSelection', { doc: page.page, from: 3, to: 5 });
+        ok(String(emoji.draft).includes('🐈'), 'UTF-16 range keeps emoji');
+        eq(disk.read(path), text, 'snapshot selection never writes');
         ok((await ui.client.request('tab.close', { doc: page.page })).ok, 'close code');
+        const stale = await ui.client.request('act.chat.codeSelection', { doc: page.page, from: 0, to: 1 });
+        ok(!stale.ok && stale.error.code === 'stale', 'closed snapshot refused');
         await until(() => ui.last('page.close')?.page === page.page);
         server.dispose();
+    });
+
+    await test('ordinary Assistant protocol requires activation and uses native pi, not the legacy key or proposal engine', async () => {
+        const { server, ui } = await start();
+        const fake = fakeFolderPi();
+        server.session.assistant.runtime = fake.runtime;
+        try {
+            ok(!(await ui.client.request('act.chat.send', { text: 'hello' })).ok, 'unactivated send rejected');
+            ui.answers['ask.files.confirm'] = { answer: false };
+            ok((await ui.client.request('act.chat.activate')).ok, 'activation may be cancelled');
+            eq(fake.prompts.length, 0);
+            ui.answers['ask.files.confirm'] = { answer: true };
+            ok((await ui.client.request('act.chat.activate')).ok, 'activation');
+            const sync = await ui.client.request('act.chat.sync');
+            ok((sync.settings as { pi: { activated: boolean } }).pi.activated, 'pi state reaches the renderer');
+            ok(!(await ui.client.request('act.chat.key', { action: 'save', key: 'do-not-copy' })).ok, 'old key API cannot configure pi');
+            ok((await ui.client.request('act.chat.send', { text: 'hello pi' })).ok, 'pi send');
+            ok(fake.prompts[0].startsWith('hello pi'), 'native prompt');
+            ok(ui.log.some(event => event.ev === 'chat.text'), 'streamed answer');
+            const chats = (await ui.client.request('act.chat.chats')).chats as { path: string }[];
+            ok(chats.length > 0, 'native bindings listed');
+            const bad = await ui.client.request('act.chat.open', { path: disk.join(dir, 'source.ts') });
+            ok(!bad.ok, 'forged session path refused');
+            const before = fake.prompts.length;
+            await ui.client.request('act.chat.reset');
+            const opened = await ui.client.request('act.chat.open', { path: chats.at(-1)!.path });
+            ok(opened.ok && !!opened.chat, 'listed native session opens');
+            eq(fake.prompts.length, before, 'opening never resubmits work');
+            ok(typeof (await ui.client.request('act.proposal.apply', { ask: 123, chosen: null })).error === 'string', 'no Apply capability');
+            ok(!(await ui.client.request('act.chat.resolve', { path: 'forged', choice: 'keep' })).ok, 'forged conflict refused');
+        } finally { await server.session.assistant.shutdown(); server.dispose(); }
     });
 
     await test('Explorer and open.file route only indexed pi projections to one scoped session page', async () => {
@@ -929,7 +974,9 @@ export async function protocolTests(): Promise<void> {
         await ui.client.request('start', { path: chatDir });
         await until(() => ui.last('view.files') !== undefined);
         await ui.client.request('open.file', { name: 'plan.md' });
-        const { chat } = server.session.assistant;
+        // Explicit legacy worker fixture; production Assistant routing uses pi only.
+        const controller = new AssistantController(server.session.host, { nameOf: doc => server.session.documents.nameOf(doc), canInsert: () => !server.session.views.pageMode });
+        const { chat } = controller;
         chat.keyStore = KEY;
         disk.write(disk.join(chatDir, 'notes.md'), 'Release 15 November\n');
         return { server, ui, chat, settings };
@@ -970,7 +1017,7 @@ export async function protocolTests(): Promise<void> {
         const end = noticesOf(ui, 'chat.end')[0].outcome as { cancelled: boolean; text: string; usage: { prompt: number } };
         eq([end.cancelled, end.text, end.usage.prompt], [false, 'Hello there', 10]);
         eq(noticesOf(ui, 'chat.context').length, 1, 'the context that was sent');
-        await until(() => noticesOf(ui, 'chat.log').length > 0);
+        await until(() => noticesOf(ui, 'chat.log').some(p => (p.update as { events: { kind: string }[] }).events.some(e => e.kind === 'turn')));
         const events = (noticesOf(ui, 'chat.log').flatMap(p => (p.update as { events: { kind: string }[] }).events));
         ok(events.some(e => e.kind === 'turn'), 'the agent log follows the turn');
         server.dispose();
@@ -1234,7 +1281,7 @@ export async function protocolTests(): Promise<void> {
     await test('the commit message is written by the assistant and streams as history.messageText; the reply says how it ended', async () => {
         const { server, ui, b } = await startGit();
         await until(() => listLength(ui, 'view.historyChanges', 'changed') === 1);
-        const { chat } = server.session.assistant;
+        const chat = server.session.commitWriter;
         chat.keyStore = KEY;
         chat.makeProvider = () => scripted(null, 'Add the b note');
         const result = (await ui.client.request('act.history.write', { files: [b] })).result as { ok: boolean; message: string };

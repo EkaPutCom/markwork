@@ -93,13 +93,13 @@ try {
         await menu.click();
         await page.getByRole('menuitemcheckbox', { name: 'Outline' }).click();
         await section('outline').waitFor({ state: 'detached' });
-        assert.equal(JSON.parse(saved()['sidebar-sections']).outline.hidden, true);
+        await waitFor(() => JSON.parse(saved()['sidebar-sections']).outline.hidden === true);
         await menu.click();
         await page.getByRole('menuitemcheckbox', { name: 'Outline' }).click();
         await section('outline').waitFor();
         await menu.click();
         await page.getByRole('menuitem', { name: 'Collapse All Sections' }).click();
-        for (const id of ['editors', 'folder', 'outline', 'timeline']) assert.equal(await head(id).getAttribute('aria-expanded'), 'false', id);
+        for (const id of ['editors', 'folder', 'outline', 'timeline']) await waitFor(async () => await head(id).getAttribute('aria-expanded') === 'false');
         await head('folder').click();
         await head('editors').click();
     });

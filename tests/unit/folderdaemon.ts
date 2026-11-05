@@ -60,6 +60,8 @@ export async function folderDaemonTests(): Promise<void> {
             stale.claim(); eq(stale.get(entry.pi.chatId).run?.id, run, 'stale reader lost the durable run reservation'); stale.release();
             disk.write(disk.join(workspace, 'continue'), 'go');
             await until(() => disk.exists(disk.join(workspace, 'report.md')), 10000);
+            const native = JSON.parse(disk.read(entry.pi.store.get(entry.pi.chatId).native!)) as { role: string; content: string }[];
+            ok(native.some(message => message.role === 'assistant' && message.content === 'Background report completed.'), 'observed report must have a complete native snapshot before reopening');
             const second = make();
             await until(() => !second.agentFolders.busy && second.agentFolders.state().sessions.length > 0, 20000);
             const restored = second.agentFolders.find(id);
@@ -79,6 +81,8 @@ export async function folderDaemonTests(): Promise<void> {
             const client = await connection.ready(), run = entry.pi.store.get(entry.pi.chatId).run!.id;
             await client.stop(run); await within(sending, 20000);
             eq(entry.pi.store.get(entry.pi.chatId).status, 'interrupted');
+            const native = JSON.parse(disk.read(entry.pi.store.get(entry.pi.chatId).native!)) as { role: string; content: string }[];
+            ok(native.some(message => message.role === 'user' && message.content.includes('interrupt this exact run')), 'observed submission must survive an immediate process stop');
             const before = disk.read(disk.join(workspace, 'submitted'));
             await app.agentFolders.reconnect(folder);
             eq(entry.pi.store.get(entry.pi.chatId).run?.id, run);

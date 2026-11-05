@@ -2,6 +2,7 @@
 // for the Assistant panel, and a scripted provider proposes changes. The panel only sees plain data and reports; what is written,
 // and what the agent is told, is decided by the core.
 
+import { AssistantController } from '../../src/app/assistant';
 import { AppSession } from '../../src/app/session';
 import type { ChatPanelSettings, ChatPanelView, ProposalAnswer, ProposalAsk } from '../../src/app/assistant';
 import type { KeyStore } from '../../src/agent/apikey';
@@ -58,8 +59,13 @@ export async function assistantTests(): Promise<void> {
         const session = new AppSession(fakeFrontend(settings, [], makeEditor, { chatPanel: rec.panel }));
         session.files.root = root;   // the work folder without the Files tab: nothing is listed or watched
         session.start();
-        session.assistant.chat.keyStore = KEY;
-        return { session, root, settings, chat: session.assistant.chat, ...rec };
+        // Retained proposal-engine tests exercise the legacy worker, not the pi workspace Assistant.
+        rec.shown.length = 0;
+        const controller = new AssistantController(session.host, { nameOf: doc => session.documents.nameOf(doc), canInsert: () => !session.views.structuredMode && !session.views.pageMode });
+        controller.chat.keyStore = KEY;
+        const dispose = session.dispose.bind(session);
+        session.dispose = () => { controller.dispose(); dispose(); };
+        return { session, root, settings, chat: controller.chat, ...rec };
     };
     const read = (root: string, file: string) => disk.read(disk.join(root, file));
     const edit = (name: string) => ({ name, old_text: '15 November', new_text: '22 November', reason: 'the meeting moved it' });

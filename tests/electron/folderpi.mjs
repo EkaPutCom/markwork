@@ -38,8 +38,9 @@ export function createRuntime(PiRpc, _platform) {
                 send({ type: 'agent_end' }); send({ type: 'agent_settled', aborted: false });
             };
             const prompt = text => {
+                const task = text.split('\n')[0];
                 running = true; streamed = ''; messages.push({ role: 'user', content: text }); save(); send({ type: 'agent_start' });
-                if (text === 'slow') { delta('Working on a slow task.'); return; }
+                if (task === 'slow') { delta('Working on a slow task.'); return; }
                 if (text === 'Continue the research' && process.env.MARKWORK_TEST_PI_GATE) {
                     const partial = 'Stream checkpoint\n\n' + process.env.MARKWORK_TEST_PI_ANSWER;
                     delta(partial);
@@ -58,9 +59,9 @@ export function createRuntime(PiRpc, _platform) {
                     send({ type: 'tool_execution_end', toolName: 'bash', toolCallId: 'research', result: { content: [{ type: 'text', text: 'Created output/research/cve-report.md' }] }, isError: false });
                     complete(report); return;
                 }
-                if (text === 'write report') {
+                if (task === 'write report') {
                     send({ type: 'tool_execution_start', toolName: 'bash', toolCallId: 'write', args: { command: 'write report.md' } });
-                    writeFileSync(join(cwd, 'report.md'), '# Research report\n\nhttps://example.com\n');
+                    writeFileSync(join(cwd, 'report.md'), '# Research report\n\nhttps://example.com\n\nRevision ' + messages.filter(message => message.role === 'user' && String(message.content).startsWith('write report')).length + '\n');
                     send({ type: 'tool_execution_end', toolName: 'bash', toolCallId: 'write', result: { content: [{ type: 'text', text: 'Wrote report.md' }] }, isError: false });
                 }
                 complete('Echo: ' + text);

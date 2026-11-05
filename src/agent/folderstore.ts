@@ -18,14 +18,17 @@ export interface FolderChatBinding {
 }
 interface FolderIndex { version: 1; root: string; chats: FolderChatBinding[]; execution?: 'local' | 'background' }
 
-export class FolderStore {
+export class FolderStore<C extends Pick<AgentFolderConfig, 'id'> = AgentFolderConfig> {
     readonly directory: string;
     private data: FolderIndex;
     private owner = '';
 
-    constructor(readonly root: string, readonly config: AgentFolderConfig) {
+    private readonly projectionRoot: string;
+
+    constructor(readonly root: string, readonly config: C, storage?: { directory: string; projections: string }) {
         const { fs, paths } = platform();
-        this.directory = paths.join(paths.dataDir(), 'markwork', 'folder-agents', config.id);
+        this.directory = storage?.directory ?? paths.join(paths.dataDir(), 'markwork', 'folder-agents', config.id);
+        this.projectionRoot = storage?.projections ?? root;
         const index = paths.join(this.directory, 'index.json');
         this.data = { version: 1, root, chats: [] };
         if (fs.kind(index) !== 'missing') this.data = this.readIndex(index);
@@ -95,7 +98,7 @@ export class FolderStore {
         writeTextFile(platform().paths.join(this.directory, 'draft-' + this.get(id).id + '.txt'), text);
     }
     clearDraft(id: string): void { this.saveDraft(id, ''); }
-    path(id: string): string { return folderPath(this.root, 'chats/' + this.get(id).id + '.md'); }
+    path(id: string): string { return folderPath(this.projectionRoot, 'chats/' + this.get(id).id + '.md'); }
     get(id: string): FolderChatBinding {
         const chat = this.data.chats.find(item => item.id === id);
         if (!chat) throw Error('That pi conversation is not available');
@@ -140,7 +143,7 @@ export class FolderStore {
         this.claim();
         if (this.data.chats.length >= 1000) throw Error('This agent has reached the 1,000-session limit');
         const chat: FolderChatBinding = { id: platform().newId(), title: 'New chat', created: new Date().toISOString(), native: null, projectionHash: '', status: 'idle' };
-        const path = folderPath(this.root, 'chats/' + chat.id + '.md');
+        const path = folderPath(this.projectionRoot, 'chats/' + chat.id + '.md');
         if (platform().fs.exists(path)) throw Error('Conversation projection already exists');
         this.data.chats.push(chat);
         try { this.project(chat.id, { layout: 'chat', title: chat.title, created: chat.created, model: 'pi', turns: [] }); }
@@ -184,7 +187,7 @@ export class FolderStore {
         this.claim();
         const chat = this.get(id), { fs, paths } = platform();
         if (chat.projectionHash && !restore) this.assertProjection(id);
-        const dir = folderPath(this.root, 'chats');
+        const dir = folderPath(this.projectionRoot, 'chats');
         fs.makeDirs(dir, 0o755);
         const ignore = paths.join(dir, '.gitignore');
         if (!fs.exists(ignore)) writeTextFile(ignore, '*\n');

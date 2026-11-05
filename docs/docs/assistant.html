@@ -1,79 +1,42 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Assistant panel · Markwork Documentation</title>
-<meta name="description" content="The Markwork Assistant panel: ask, request a plan, or request changes from the DeepSeek agent, with streamed answers and token details.">
-
-
-<meta name="color-scheme" content="dark light">
-<link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
-<script src="../web/theme.js"></script>
-<link rel="stylesheet" href="../web/tokens.css">
-<link rel="stylesheet" href="../web/site.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The pi Assistant · Markwork Documentation</title>
+<meta name="description" content="Activate the Markwork pi Assistant for workspace questions, selected code, direct file and shell tools, and native conversations.">
+<meta name="color-scheme" content="dark light"><link rel="icon" href="../web/favicon.svg" type="image/svg+xml">
+<script src="../web/theme.js"></script><link rel="stylesheet" href="../web/tokens.css"><link rel="stylesheet" href="../web/site.css">
 <link rel="preload" href="../web/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
-<script src="../web/icons.js" defer></script>
-<script src="../web/site.js" defer></script>
-<script src="nav.js" defer></script>
+<script src="../web/icons.js" defer></script><script src="../web/site.js" defer></script><script src="nav.js" defer></script>
 </head>
 <body data-page="docs">
 <a class="skip-link" href="#main-content">Skip to content</a>
 <aside class="sidebar" id="site-sidebar" aria-label="Website navigation"><a class="brand" href="../index.html"><span class="monogram">M</span>Markwork</a><a class="nav-row" href="../docs/">Documentation</a></aside>
 <button id="nav-backdrop" class="nav-backdrop" aria-label="Close navigation" hidden></button>
-<div class="page-shell">
-<header class="topbar" id="site-header"></header>
-<nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav>
-<div class="content-grid">
+<div class="page-shell"><header class="topbar" id="site-header"></header><nav class="document-tabs" id="site-tabs" aria-label="Open pages"></nav><div class="content-grid">
 <main class="doc" id="main-content" tabindex="-1">
-<p class="eyebrow">Agent</p>
-<h1>The Assistant panel</h1>
-<p class="lead">The place where you work with the agent: ask questions, request a plan, or request changes in plain language.</p>
-
-<figure><picture class="themed-media"><img data-light-src="../assets/assistant.gif" data-dark-src="../assets/dark/assistant.gif" width="900" height="548" loading="lazy" alt="Animation of the Assistant panel answering a question about meeting decisions that have not made it into the launch plan" data-light-poster="../assets/assistant-poster.png" data-dark-poster="../assets/dark/assistant-poster.png"><noscript><img src="../assets/dark/assistant.gif" width="900" height="548" loading="lazy" alt="Animation of the Assistant panel answering a question about meeting decisions that have not made it into the launch plan"></noscript></picture><figcaption>The agent browses the meeting notes and the plan, then points out the release date that is out of sync</figcaption></figure>
-
-<h2 id="agent-folders">Agent folders</h2>
-<p>A folder with <code>agent.json</code> runs its own agent: instructions in Markdown, conversations that share the tab strip with your documents, and an independent session list on the right. <a href="agentfolders.html">Agent folders</a> explains the marker file, the page layout, the session storage, and the background runtime.</p>
-
-<h2 id="open">Opening the panel</h2>
-<p>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> or the Assistant button (the sparkles) in the header. The panel appears on the right side and is remembered the next time the app opens. <kbd>Enter</kbd> sends the message, <kbd>Shift</kbd>+<kbd>Enter</kbd> makes a new line.</p>
-<p>The panel header has these buttons:</p>
-<ul>
-  <li><strong>Clock</strong>: the list of conversations saved in this folder (<a href="history.html">Conversation history</a>)</li>
-  <li><strong>Broom</strong>: a new conversation</li>
-  <li><strong>Terminal</strong>: the <em>Agent log</em> window (<a href="history.html#agent-log">Agent log</a>)</li>
-  <li><strong>Gear</strong>: the API key, the model, thinking mode, and the switch for saving history</li>
-</ul>
-
-<h2 id="model">Model and thinking mode</h2>
-<p>The agent uses a DeepSeek model: <code>deepseek-flash</code> (the default) or <code>deepseek-v4-pro</code>, chosen in the panel settings. The <em>Deep thinking</em> checkbox turns on a thinking mode that is more thorough but slower and more expensive. The model's thinking process can be opened from the status card above the answer and is not saved to the conversation file.</p>
-
-<h2 id="answers">Answers</h2>
-<ul>
-  <li>The answer streams as it is made. Headings, emphasis, inline code, numbered/bulleted lists, task markers, quotes, fenced code and GFM tables render as formatted text. Tables preserve column alignment and scroll within the message if needed. Raw HTML is escaped; images do not load automatically.</li>
-  <li>Quotes name the file and the line number, e.g. <code>meeting-1-oct.md:12</code>.</li>
-  <li>While the agent works, one status card above the answer shows what it is doing (<em>Thinking…</em>, the current lookup and its step number, <em>Writing the answer…</em>) with a clock and a <em>Stop</em> button in the send button's place. When the answer is done it shrinks to <em>2 lookups</em> and the duration; open it to see the context that was sent, every lookup (e.g. <em>Searching text “Raka” → 3 lines</em>), and the thinking process. If you stop the turn or it fails, the card says so and offers <em>Retry</em>.</li>
-  <li>Under a finished answer: <em>Copy</em>, <em>Insert into note</em> (puts the answer at the cursor of the open note as one undo step), <em>Retry</em>, and <em>Log</em> (opens the agent log).</li>
-  <li>Below the answer are the details of the context that was sent and the token usage, including the part served from the cache.</li>
-  <li>The <em>Stop</em> button cancels the answer in progress; the result is sent back to the model so that it does not insist.</li>
-</ul>
-
-<h2 id="asking-for-action">Asking for action</h2>
-<p>When you ask for a change, the agent calls a proposal tool. The review window opens automatically, and a compact status card remains in the panel with a <em>Review changes</em> button. See <a href="proposals.html">Proposals and approval</a>.</p>
-<p>Examples of suitable requests:</p>
-<ul>
-  <li>“Write a summary of the competitor research in the research folder.”</li>
-  <li>“Replace every ‘Raka’ with ‘Rakai’ in the meeting notes.”</li>
-  <li>“Add the card ‘Prepare the demo’ to the Plan list with the tag #release.”</li>
-  <li>“When was the release date changed and by whom?” (answered from the Git history)</li>
-</ul>
-
-<h2 id="reliability">Connection reliability</h2>
-<p>Connection failures, HTTP 429, and 5xx errors are retried at most twice, only if no text has been shown yet. Authentication errors are not retried. A stream that is cut off before it finishes is treated as failed, and an incomplete tool call is not executed.</p>
-</main>
-<aside class="outline" id="toc" aria-label="On this page"></aside>
-</div>
-<div class="statusbar" id="site-status"></div>
-</div>
-</body>
-</html>
+<p class="eyebrow">Agent</p><h1>The pi Assistant</h1>
+<p class="lead">Ask about your workspace or selected code, research sources, and request changes through pi's native tools.</p>
+<figure><picture class="themed-media"><img data-light-src="../assets/assistant-pi.png" data-dark-src="../assets/dark/assistant-pi.png" width="1280" height="780" loading="lazy" alt="The activated pi Assistant beside selected TypeScript code, with a reviewable question draft"><noscript><img src="../assets/dark/assistant-pi.png" width="1280" height="780" loading="lazy" alt="The activated pi Assistant beside selected code"></noscript></picture><figcaption>Ask Assistant puts the selected code, file name and lines in a draft before Send.</figcaption></figure>
+<h2 id="open">Open and activate</h2>
+<p>Install <strong>pi 1.4.0</strong> and sign in using pi in a terminal on this machine. Open a work folder, then press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> or the Assistant button. Press <strong>Activate pi Assistant</strong> and read the notice. Opening a folder or panel alone does not call a model. Activation applies only to this workspace and window; another workspace requires its own activation.</p>
+<p><strong>Direct tools, no sandbox:</strong> once activated, pi may read and change files, run shell commands and access the network without individual Apply/Reject. The workspace is its working directory, not an enforced boundary. Tools may reach other files, secrets, localhost and private networks, and send content to providers or other destinations. Use trusted data, backups and version control. Stop cannot undo completed commands or guarantee termination of detached descendants.</p>
+<h2 id="code-selection">Ask about selected code</h2>
+<p>Open a code file from Explorer and select the relevant part with the mouse or keyboard. Press <strong>Ask Assistant</strong> above the viewer. The button is disabled without a selection. The snippet, file name and line range are appended to your existing draft. Add a question, review it, then Send. Ask Assistant itself neither changes the file nor calls a provider. Code tabs remain read-only; after Send, pi's separate disk tools can change files as requested.</p>
+<h2 id="context">Editor context</h2>
+<p>The current editor file name and selected Markdown text accompany a question. A code-viewer snippet is attached explicitly through Ask Assistant. Other files are read by pi's tools from disk, not from unsaved buffers. Save or explicitly quote a draft if you need pi to see it. There is no legacy BM25 builder, <code>@filename</code> attachment expansion, context-size estimate or three-switch manuscript filter. The <em>pi context</em> popover explains native history, instructions and compaction.</p>
+<h2 id="model">Models and authentication</h2>
+<p>The gear opens settings. Authentication and defaults come from pi; the old Assistant API-key editor is gone. Available models load when a session connects. Select a configured model or change Thinking mode while idle. Native history is always retained; there is no Save-history toggle. Markwork does not copy its old DeepSeek credentials into pi. The separate read-only Git commit-message generator still uses DeepSeek and <code>DEEPSEEK_API_KEY</code>.</p>
+<h2 id="answers">Answers and tools</h2>
+<p>Answers stream as formatted Markdown, including fenced code and tables. Tool status and the Agent log show pi activity. Copy and Log are available on answers. There is no legacy Apply/Reject/Undo, Insert into note, or one-click Retry in pi chat. To request another operation, write a new message. <kbd>Enter</kbd> sends; <kbd>Shift</kbd>+<kbd>Enter</kbd> adds a line. Stop cancels active local work without reversing completed effects.</p>
+<h2 id="asking-for-action">File changes and drafts</h2>
+<p>Pi uses <code>read</code>, <code>bash</code>, <code>edit</code> and <code>write</code>. Clean open documents and Explorer refresh after tool activity. New/updated output discovery is bounded to 1,000 entries and eight levels and skips hidden/dependency folders and links. Dirty drafts survive external writes. A conflict blocks Save/autosave until you confirm <em>Use disk version</em> or <em>Keep draft for saving</em> in the Assistant. Save a copy first if you need both versions. Shell writes do not obey a hard editor lock.</p>
+<h2 id="history">Conversations and recovery</h2>
+<p>New conversation creates an independent native session; the clock lists only indexed pi conversations for this workspace. The newest conversation is shown on workspace open. Opening a conversation never replays its prompt or tools. Native history and checked Markdown projections live under <code>&lt;dataDir&gt;/markwork/assistant-pi/&lt;workspace-hash&gt;/</code>, not in the workspace. Legacy <code>.markwork/chats</code> files are not imported, continued, or deleted. Session deletion is not offered here.</p>
+<p>An interrupted or failed turn requires <strong>Restore native session</strong> after activation. Restoration reads authoritative native history and repairs the projection; it does not resend anything. After an application crash, an ownership lock may require manual inspection and removal before explicit recovery. Do not delete runtime state while a process owns it.</p>
+<h2 id="reliability">Local lifecycle</h2>
+<p>The ordinary Assistant runs locally. Closing Markwork or switching workspace while it works asks to stop it. It does not silently continue in markworkd. For explicitly selected background execution, use an <a href="agentfolders.html">Agent Folder</a>. Card/worktree review and confirmed merge are unchanged. Missing pi, authentication failures, interrupted sessions and rejected RPC commands produce visible errors; there is no fallback to the old engine.</p>
+<h2 id="agent-folders">Agent Folders</h2>
+<p>Agent Folders share the pi execution adapter but keep separate identities, instructions, native sessions, chat tabs, memory and optional local-Linux background execution. The workspace Assistant needs no <code>agent.json</code>. See <a href="agentfolders.html">Agent Folders</a>.</p>
+</main><aside class="outline" id="toc" aria-label="On this page"></aside></div><div class="statusbar" id="site-status"></div></div>
+</body></html>

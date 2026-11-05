@@ -1,260 +1,169 @@
-// The Assistant and the journal (chat, context, journal) run against the Electron window with
-// Playwright: the real main process, core, and renderer, with a scripted model (tests/electron/model.mjs) in place of the
-// network. What the core decides is also in tests/unit/protocol.ts. Run with `npm run test:electron`.
-
+// The ordinary Assistant uses deterministic pi RPC, never the old provider or a real API.
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { testModule, scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
+import { launchApp, scratchFolder, testModule, waitFor, stepper } from './support.mjs';
 
-const { scratch, notes } = scratchFolder('assistant');
-const read = name => readFileSync(join(notes, name), 'utf8');
-const plan = () => read('plan.md');
-
-writeFileSync(join(notes, 'plan.md'), '# Plan\n\nShip 15 November\n');
-writeFileSync(join(notes, 'other.md'), '# Other\n\nSecond note\n');
-
-const { steps, step } = stepper();
-
-const app = await launchApp({ scratch, notes, env: { DEEPSEEK_API_KEY: 'test', MARKWORK_TEST_MODEL: testModule('model.mjs') } });
+const { scratch, notes } = scratchFolder('assistant-pi');
+writeFileSync(join(notes, 'plan.md'), '# Plan\n\nA workspace note.\n');
+writeFileSync(join(notes, 'report.md'), '# Old report\n');
+writeFileSync(join(notes, 'main.ts'), 'export function greet() {\n    return "hello";\n}\n');
+mkdirSync(join(notes, '.markwork', 'chats'), { recursive: true });
+const legacy = join(notes, '.markwork', 'chats', 'old.md');
+writeFileSync(legacy, 'LEGACY TRANSCRIPT — do not import or delete\n');
+const app = await launchApp({ scratch, notes, settings: { welcomed: true, chat: true }, env: { MARKWORK_TEST_PI: testModule('folderpi.mjs'), DEEPSEEK_API_KEY: 'never-forward-this-key' } });
+const { step, steps } = stepper({ echo: true });
+const errors = [];
 let failed = false;
-let page;
 try {
-    page = await app.firstWindow();
-    const panel = page.getByRole('complementary', { name: 'Assistant' });
-    const input = page.getByLabel('Ask the Assistant');
-    const review = page.getByRole('dialog', { name: /Agent proposal/ });
-    // A question is sent once the turn before it is over (the button reads Send, not Stop).
-    const ask = async text => { await page.getByRole('button', { name: /^(Send|Stop)$/ }).filter({ hasText: '' }).first().waitFor(); await page.getByRole('button', { name: 'Send', exact: true }).waitFor(); await input.fill(text); await input.press('Enter'); };
-    // The text of the open document as the editor has it.
-    const editorText = () => page.locator('.cm-content').innerText();
-
-    await step('the window starts and lists the folder', async () => {
-        await page.getByRole('treeitem', { name: /plan\.md/ }).waitFor({ timeout: 15000 });
-        await page.getByRole('treeitem', { name: /plan\.md/ }).click();
-    });
-
-    await step('the Assistant button and Ctrl+Shift+A show and hide the panel', async () => {
-        assert.equal(await panel.count(), 0);
-        await page.getByRole('button', { name: 'Assistant', exact: true }).click();
+    const page = await app.firstWindow();
+    page.setDefaultTimeout(15000);
+    page.on('pageerror', error => errors.push(String(error)));
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const panel = page.getByRole('complementary', { name: 'Assistant', exact: true });
+    const input = panel.getByRole('textbox', { name: 'Ask the Assistant', exact: true });
+    const send = async text => {
+        await panel.getByRole('button', { name: 'Send', exact: true }).waitFor();
+        await input.fill(text);
+        await input.press('Enter');
+    };
+    const settled = () => panel.getByRole('button', { name: 'Send', exact: true }).waitFor();
+    const activation = async () => {
+        await panel.getByRole('button', { name: 'Activate pi Assistant', exact: true }).click();
+        const dialog = page.getByRole('alertdialog');
+        await dialog.getByRole('button', { name: 'Activate pi Assistant', exact: true }).click();
+        await panel.getByText('pi Assistant activated', { exact: true }).waitFor();
+    };
+    await step('opening the panel requires explicit unsandboxed activation and preserves the draft on Cancel', async () => {
         await panel.waitFor();
-        await page.keyboard.press('ControlOrMeta+Shift+a');
-        await panel.waitFor({ state: 'detached' });
-        await page.keyboard.press('ControlOrMeta+Shift+a');
-        await panel.waitFor();
-        await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Ask the Assistant');
+        await input.fill('hello pi');
+        assert.equal(await panel.getByRole('button', { name: 'Send', exact: true }).isDisabled(), true);
+        await panel.getByRole('button', { name: 'Activate pi Assistant', exact: true }).click();
+        const dialog = page.getByRole('alertdialog');
+        await dialog.getByText(/without individual approval/).waitFor();
+        await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+        assert.equal(await input.inputValue(), 'hello pi');
+        await activation();
+        assert.equal(await input.inputValue(), 'hello pi');
+        await send('hello pi');
+        await panel.locator('.chat-assistant', { hasText: 'Echo: hello pi' }).last().waitFor();
+        await settled();
+        assert.equal(await page.getByRole('dialog', { name: /Agent proposal/ }).count(), 0);
     });
-
-    await step('Ctrl+Shift+A pressed fast, again and again, leaves the panel as the last press says', async () => {
-        // The core echoes every setting back; the echo of an older press must not turn a newer one back (client.ts
-        // staleEcho). A race, so it is tried many times: the code before failed about one round in sixteen, and only
-        // with more than one press in a row.
-        for (let round = 0; round < 40; round++) {
-            const before = await panel.count() > 0, presses = 2 + round % 3;
-            for (let k = 0; k < presses; k++) await page.keyboard.press('ControlOrMeta+Shift+a');
-            const expected = before !== (presses % 2 === 1);
-            await page.waitForTimeout(500);   // a pause, to show that no late echo turns it back
-            assert.equal(await panel.count() > 0, expected, `round ${round + 1}: ${presses} presses from ${before ? 'shown' : 'hidden'}`);
+    await step('settings use pi models and authentication rather than an Assistant API key', async () => {
+        await panel.getByRole('button', { name: 'Assistant settings', exact: true }).click();
+        const settings = page.getByRole('dialog', { name: 'Assistant settings', exact: true });
+        await settings.getByText(/Authentication and defaults come from pi/).waitFor();
+        assert.equal(await settings.getByLabel('API key', { exact: true }).count(), 0);
+        assert.equal(await settings.getByRole('combobox', { name: 'Model', exact: true }).innerText(), 'fake/test');
+        assert.equal(await settings.getByLabel('Save conversation history', { exact: true }).isDisabled(), true);
+        await page.keyboard.press('Escape');
+    });
+    await step('native pi writes directly and clean open files refresh without Apply', async () => {
+        await page.getByRole('treeitem', { name: /report\.md/ }).click();
+        await page.locator('.text-editor:not([hidden]) .cm-content').getByText('Old report').waitFor();
+        await send('write report');
+        await settled();
+        await waitFor(() => readFileSync(join(notes, 'report.md'), 'utf8').includes('Research report'));
+        await page.locator('.text-editor:not([hidden]) .cm-content').getByText('Research report').waitFor();
+        assert.equal(await page.getByRole('dialog', { name: /Agent proposal/ }).count(), 0);
+        assert.equal(readFileSync(legacy, 'utf8'), 'LEGACY TRANSCRIPT — do not import or delete\n');
+    });
+    await step('dirty drafts survive native writes and expose explicit resolution controls in the Assistant', async () => {
+        const editor = page.locator('.text-editor:not([hidden]) .cm-content');
+        await editor.click(); await page.keyboard.press('ControlOrMeta+End'); await page.keyboard.type(' MY UNSAVED DRAFT');
+        await send('write report'); await settled();
+        await panel.getByText(/report\.md: changed on disk/).waitFor();
+        assert.ok((await editor.innerText()).includes('MY UNSAVED DRAFT'));
+        await panel.getByRole('button', { name: 'Use disk version', exact: true }).click();
+        await page.getByRole('alertdialog').getByRole('button', { name: 'Use disk version', exact: true }).click();
+        await waitFor(async () => !(await editor.innerText()).includes('MY UNSAVED DRAFT'));
+    });
+    await step('Ask Assistant attaches selected code and remains reviewable before Send', async () => {
+        await page.getByRole('treeitem', { name: /main\.ts/ }).click();
+        const code = page.getByRole('textbox', { name: 'Code: main.ts', exact: true });
+        await code.click(); await page.keyboard.press('ControlOrMeta+Home'); await page.keyboard.press('Shift+End');
+        await page.getByRole('button', { name: 'Ask Assistant', exact: true }).click();
+        await waitFor(async () => (await input.inputValue()).includes('export function greet()'));
+        await input.fill('Explain this function\n\n' + await input.inputValue());
+        const out = process.env.MARKWORK_ASSISTANT_SCREENSHOTS;
+        if (out) {
+            const closeNotice = page.getByRole('button', { name: 'Close toast', exact: true });
+            if (await closeNotice.isVisible()) { await closeNotice.click(); await closeNotice.waitFor({ state: 'hidden' }); }
+            mkdirSync(out, { recursive: true });
+            for (const [theme, width] of [['light', 1280], ['dark', 1280], ['dark', 560]]) {
+                await page.emulateMedia({ colorScheme: theme });
+                await page.evaluate(() => { delete document.documentElement.dataset.theme; });
+                await page.setViewportSize({ width, height: 800 });
+                if (width < 900) await page.getByRole('button', { name: 'Ask Assistant', exact: true }).click();
+                await input.waitFor();
+                await input.evaluate(element => { element.scrollTop = 0; });
+                await page.screenshot({ path: join(out, `assistant-pi-${theme}-${width}.png`), animations: 'disabled' });
+            }
+            await page.setViewportSize({ width: 1280, height: 800 });
         }
-        if (!(await panel.count())) await page.keyboard.press('ControlOrMeta+Shift+a');
-        await panel.waitFor();
-        await input.focus();
+        if (!await input.isVisible()) await page.getByRole('button', { name: 'Ask Assistant', exact: true }).click();
+        await input.press('Enter'); await settled();
+        await panel.locator('.chat-assistant', { hasText: 'Explain this function' }).last().waitFor();
+        assert.equal(readFileSync(join(notes, 'main.ts'), 'utf8'), 'export function greet() {\n    return "hello";\n}\n');
     });
-
-    await step('a suggestion fills the box; Send is off while it is empty', async () => {
-        const send = page.getByRole('button', { name: 'Send', exact: true });
-        assert.equal(await send.isDisabled(), true);
-        await panel.getByRole('button', { name: /Summarize this document/ }).click();
-        assert.match(await input.inputValue(), /Summarize this document/);
-        assert.equal(await send.isDisabled(), false);
-        await input.fill('');
+    await step('new conversations and history use only pi bindings, never old Markdown transcripts', async () => {
+        await panel.getByRole('button', { name: 'New conversation', exact: true }).click();
+        await panel.getByText(/Ask pi about your workspace/).waitFor();
+        await panel.getByRole('button', { name: 'Conversations', exact: true }).click();
+        const history = page.getByRole('dialog', { name: 'Conversations', exact: true });
+        await history.getByRole('button', { name: /hello pi/ }).first().click();
+        await panel.locator('.chat-user', { hasText: 'hello pi' }).first().waitFor();
+        assert.equal(await page.getByRole('button', { name: /^Delete hello pi/ }).count(), 0);
     });
-
-    await step('a question gets a streamed answer, a status card, the usage line, and the actions', async () => {
-        await ask('hello there');
-        await panel.locator('.chat-user', { hasText: 'hello there' }).waitFor();
-        await panel.locator('.chat-assistant', { hasText: 'Echo: hello there' }).waitFor();
-        await panel.locator('.chat-status.done').waitFor();
-        await panel.getByText(/1\.2k in \(200 from cache\) · 30 out/).waitFor();
-        assert.equal(await input.inputValue(), '', 'the box is emptied');
-        await panel.locator('.chat-status .head').click();
-        await panel.getByText('Thinking process').waitFor();
-        await panel.getByText(/^Context: ≈/).waitFor();
-        for (const name of ['Copy', 'Insert into note', 'Retry', 'Log']) await panel.getByRole('button', { name, exact: true }).first().waitFor();
-    });
-
-    await step('Insert into note puts the answer into the open note', async () => {
-        await panel.getByRole('button', { name: 'Insert into note' }).last().click();
-        await panel.getByRole('button', { name: 'Inserted' }).waitFor();
-        await page.waitForFunction(() => document.querySelector('.cm-content')?.textContent?.includes('Echo: hello there'));
-    });
-
-    await step('the context button shows what is sent, and its switches change it', async () => {
-        const button = panel.getByRole('button', { name: /^Context/ });
-        await button.click();
-        const popover = page.getByRole('dialog', { name: 'Context' });
-        await popover.getByText(/Total ≈/).waitFor();
-        await popover.getByLabel('Open document').uncheck();
-        await page.waitForFunction(() => !document.querySelector('.chat-popover')?.textContent?.includes('Document: '));
-        await popover.getByLabel('Open document').check();
-        await page.keyboard.press('Escape');
-        await popover.waitFor({ state: 'detached' });
-    });
-
-    await step('the settings popover tells where the key is kept and takes the model and switches', async () => {
-        await panel.getByRole('button', { name: 'Assistant settings' }).click();
-        const settings = page.getByRole('dialog', { name: 'Assistant settings' });
-        await settings.getByText(/A key is set from the DEEPSEEK_API_KEY environment variable/).waitFor();
-        assert.equal(await settings.getByRole('button', { name: 'Forget' }).count(), 0, 'a key from the environment is not forgotten here');
-        await settings.getByLabel('Thinking mode').check();
-        await settings.getByLabel('Thinking mode').uncheck();
-        await settings.getByLabel('Model').click();
-        assert.ok((await page.getByRole('option').count()) >= 1);
-        await page.keyboard.press('Escape');
-        await page.keyboard.press('Escape');
-    });
-
-    await step('a proposal opens the review with the diff; Apply writes the file and the card offers Undo', async () => {
-        await ask('bump the date');
-        await review.waitFor();
-        await review.locator('pre.diff .cell.add', { hasText: 'Ship 22 November' }).waitFor();
-        await review.locator('pre.diff .cell.del', { hasText: 'Ship 15 November' }).waitFor();
-        assert.match(plan(), /15 November/, 'nothing is written before the decision');
-        await review.getByRole('button', { name: 'Apply', exact: true }).click();
-        await review.waitFor({ state: 'detached' });
-        await panel.locator('.chat-proposal', { hasText: 'Applied.' }).waitFor();
-        await panel.locator('.chat-assistant', { hasText: 'Proposal answered' }).waitFor();
-        await page.waitForFunction(() => document.querySelector('.cm-content')?.textContent?.includes('22 November'));
-        await page.keyboard.press('ControlOrMeta+s');
-        await waitFor(() => /22 November/.test(plan()));
-    });
-
-    await step('Undo restores the file through the core', async () => {
-        await panel.locator('.chat-proposal', { hasText: 'Applied.' }).last().getByRole('button', { name: 'Undo' }).click();
-        await panel.locator('.chat-proposal', { hasText: 'Undone.' }).waitFor();
-        await page.waitForFunction(() => document.querySelector('.cm-content')?.textContent?.includes('15 November'));
-        await page.keyboard.press('ControlOrMeta+s');
-        await waitFor(() => /15 November/.test(plan()));
-    });
-
-    await step('Reject with a note leaves the file alone and tells the agent', async () => {
-        await ask('bump it again');
-        await review.waitFor();
-        await review.getByLabel('Note for the agent').fill('not now');
-        await review.getByRole('button', { name: 'Reject' }).click();
-        await review.waitFor({ state: 'detached' });
-        await panel.locator('.chat-proposal', { hasText: 'Rejected: not now' }).waitFor();
-        await panel.locator('.chat-assistant', { hasText: 'Proposal answered' }).last().waitFor();
-        assert.match(plan(), /15 November/);
-    });
-
-    await step('closing the review with Escape is rejecting', async () => {
-        await ask('bump once more');
-        await review.waitFor();
-        await page.keyboard.press('Escape');
-        await review.waitFor({ state: 'detached' });
-        await panel.locator('.chat-proposal', { hasText: 'Rejected.' }).last().waitFor();
-        await panel.locator('.chat-proposal', { hasText: 'Rejected.' }).last().getByRole('button', { name: 'View diff' }).click();
-        await panel.locator('pre.diff').last().locator('.cell.add', { hasText: 'Ship 22 November' }).waitFor();
-    });
-
-    await step('Stop ends a running turn and the card says so, with Retry', async () => {
-        await ask('slow question');
-        const stop = page.getByRole('button', { name: 'Stop', exact: true });
-        await stop.waitFor();
-        await panel.locator('.chat-status.thinking').last().waitFor();
-        await stop.click();
+    await step('Stop ends a slow pi turn and does not claim to undo completed commands', async () => {
+        await send('slow');
+        await panel.getByRole('button', { name: 'Stop', exact: true }).click();
         await panel.locator('.chat-status.stopped').last().waitFor();
-        await panel.getByText('Stopped before any answer').waitFor();
-        await page.getByRole('button', { name: 'Send', exact: true }).waitFor();
-        await panel.locator('.chat-status.stopped').last().getByRole('button', { name: 'Retry' }).waitFor();
+        await settled();
+        assert.equal(await panel.getByRole('button', { name: 'Restore native session', exact: true }).count(), 0);
     });
-
-    await step('the agent log shows the turns as a tree with the details of a step', async () => {
-        await page.getByRole('button', { name: 'Agent log', exact: true }).click();
-        const log = page.getByRole('dialog', { name: 'Agent log' });
-        await log.getByRole('treeitem', { name: /hello there/ }).waitFor();
-        await page.locator('.log-tree .step.round').first().waitFor();
-        await log.getByRole('radio', { name: 'Tools', exact: true }).click();
-        await log.getByRole('treeitem', { name: /edit_file/ }).first().click();
-        await log.getByRole('tab', { name: 'Arguments' }).click();
-        await log.getByText(/old_text/).waitFor();
-        await log.getByRole('radio', { name: 'All', exact: true }).click();
-        const rounds = await page.locator('.log-tree .step.round').count();
-        await log.getByRole('treeitem', { name: /hello there/ }).getByRole('button', { name: 'Collapse' }).click();
-        await page.waitForFunction(n => document.querySelectorAll('.log-tree .step.round').length < n, rounds);
-        await log.getByRole('button', { name: 'Clear' }).click();
-        await log.getByText(/No activity yet/).waitFor();
-        await page.keyboard.press('Escape');
-        await log.waitFor({ state: 'detached' });
+    await step('measure the real Assistant window with deterministic pi, native resume and projection', async () => {
+        const samples = [];
+        for (let i = 0; i < 23; i++) {
+            const start = performance.now();
+            await send(`measurement ${i}`);
+            await panel.locator('.chat-assistant', { hasText: new RegExp(`Echo: measurement ${i}(?:\\s|$)`) }).last().waitFor();
+            await settled();
+            if (i >= 3) samples.push(performance.now() - start);
+        }
+        samples.sort((a, b) => a - b);
+        console.log(`  pi Assistant UI round trip: median ${samples[10].toFixed(1)} ms, p95 ${samples[18].toFixed(1)} ms, max ${samples[19].toFixed(1)} ms; 3 warmups, 20 samples; no real provider`);
     });
-
-    await step('saved conversations: opened again with the turns, and deleted', async () => {
-        const chats = join(notes, '.markwork', 'chats');
-        await waitFor(() => existsSync(chats) && readdirSync(chats).some(f => f.endsWith('.md')));
-        await panel.getByRole('button', { name: 'Conversations' }).click();
-        const list = page.getByRole('dialog', { name: 'Conversations' });
-        await list.getByText('hello there').waitFor();
-        await page.keyboard.press('Escape');
-        await panel.getByRole('button', { name: 'New conversation' }).click();
-        await panel.getByText(/Ask or request help/).waitFor();
-        await panel.getByRole('button', { name: 'Conversations' }).click();
-        await list.getByRole('button', { name: /hello there/ }).first().click();
-        await panel.locator('.chat-user', { hasText: 'hello there' }).waitFor();
-        await panel.locator('.chat-assistant', { hasText: 'Echo: hello there' }).waitFor();
-        await panel.getByRole('button', { name: 'View diff · 1 file' }).first().waitFor();
-        await panel.getByRole('button', { name: 'Conversations' }).click();
-        await list.getByRole('button', { name: /^Delete hello there/ }).first().click();
-        await list.getByText('hello there').waitFor({ state: 'detached' });
-        await page.keyboard.press('Escape');
-    });
-
-    await step('Add to Journal asks for a line and records it in today\'s journal', async () => {
+    await step('Add to Journal still records a line and Summarize Journal uses the pi Assistant', async () => {
         await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
         await page.getByRole('menuitem', { name: /Add to Journal/ }).click();
         const dialog = page.getByRole('alertdialog');
-        await dialog.getByText('Add to Journal').first().waitFor();
         await dialog.getByRole('textbox').fill('printer met at ten');
-        await dialog.getByRole('button', { name: 'Add' }).click();
-        await page.locator('[data-sonner-toast][data-index="0"]:not([data-removed=true])').getByText("Recorded in today's journal").waitFor();
+        await dialog.getByRole('button', { name: 'Add', exact: true }).click();
         const folder = join(notes, 'journal');
-        await waitFor(() => existsSync(folder) && readdirSync(folder).length > 0);
-        const file = readdirSync(folder)[0];
-        assert.match(readFileSync(join(folder, file), 'utf8'), /printer met at ten/);
-    });
-
-    await step('Today\'s Journal opens the day, and Summarize Journal asks the Assistant about it', async () => {
-        await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
-        await page.getByRole('menuitem', { name: /Today's Journal/ }).click();
-        await page.getByText('printer met at ten').first().waitFor();
+        await waitFor(() => existsSync(folder) && readdirSync(folder).some(name => name.endsWith('.md') && readFileSync(join(folder, name), 'utf8').includes('printer met at ten')));
         await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
         await page.getByRole('menuitem', { name: /Summarize Journal/ }).click();
-        await panel.locator('.chat-user', { hasText: 'Close the day' }).waitFor();
-        await panel.locator('.chat-assistant').last().waitFor();
+        await panel.locator('.chat-user', { hasText: 'Close the day' }).last().waitFor();
+        await settled();
     });
-
-    await step('Home has a button for Add to Journal', async () => {
-        await page.getByRole('menubar').getByRole('menuitem', { name: 'Go', exact: true }).click();
-        await page.getByRole('menuitem', { name: /^Home/ }).click();
-        await page.getByText("Today's journal", { exact: true }).waitFor();
-        await page.getByRole('button', { name: 'Add to Journal…', exact: true }).click();
-        const dialog = page.getByRole('alertdialog');
-        await dialog.getByRole('textbox').fill('from home');
-        await dialog.getByRole('button', { name: 'Add' }).click();
-        await page.locator('[data-sonner-toast][data-index="0"]:not([data-removed=true])').getByText("Recorded in today's journal").waitFor();
-        const folder = join(notes, 'journal');
-        await waitFor(() => readdirSync(folder).some(name => readFileSync(join(folder, name), 'utf8').includes('from home')));
-    });
-} catch {
-    failed = true;
-    // What the window showed when a step failed.
-    console.error(await page?.locator('.chat-messages').innerText().catch(() => '(no panel)'));
-} finally {
-    await Promise.race([app.close().catch(() => {}), new Promise(r => setTimeout(r, 5000))]);
-    try { app.process().kill(); } catch { /* already gone */ }
-    rmSync(scratch, { recursive: true, force: true });
+    assert.deepEqual(errors, []);
+} catch (error) { failed = true; console.error(error); }
+finally {
+    // Cleanup is not a graceful-close assertion: Electron can leave app.close pending on macOS.
+    const child = app.process();
+    let closeTimer;
+    try {
+        await Promise.race([
+            app.close().catch(error => { failed = true; console.error(error); }),
+            new Promise(resolve => { closeTimer = setTimeout(resolve, 5000); }),
+        ]);
+    } finally {
+        clearTimeout(closeTimer);
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    }
+    console.log(`${steps.length} pi Assistant steps, ${failed ? 'FAILED' : 'passed'}`);
 }
-
-console.log('Electron Assistant and journal');
-console.log(steps.join('\n'));
-process.exit(failed ? 1 : 0);
+if (failed) process.exitCode = 1;

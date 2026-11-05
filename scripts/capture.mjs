@@ -12,7 +12,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFi
 import { join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import gifenc from 'gifenc';
-import { repo, scratchFolder, launchApp } from '../tests/electron/support.mjs';
+import { repo, scratchFolder, launchApp, waitFor } from '../tests/electron/support.mjs';
 import { LAUNCH, RESEARCH, SCHEDULE } from './capture/forge.mjs';
 import { seedFolderAgent } from '../tests/electron/folderpi.mjs';
 
@@ -40,9 +40,6 @@ const WORK = {
     'tasks.md': '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Prepare the release material #marketing [due:: 2026-11-10]\n- [ ] Write the release notes #docs\n\n## In Progress\n\n- [ ] Fix the sync bug #bug #important [due:: 2026-10-25]\n\n## Done\n\n- [x] Redesign the home page #design\n',
     'ideas.md': '# Ideas\n\nA PDF export feature.\n',
 };
-const ASK_READ = 'Is there a meeting decision that has not made it into the launch plan yet?';
-const ASK_ACT = 'Yes, update the release date and move the release material card to In Progress.';
-const ASK_WORK = 'Sync the release schedule with the meeting decisions, and then make sure nothing is left behind.';
 
 const DOC = `# Product Meeting Notes
 
@@ -154,7 +151,7 @@ class Run {
         mkdirSync(config, { recursive: true });
         writeFileSync(join(config, 'settings.json'), JSON.stringify({ welcomed: true, home: false, 'color-scheme': THEME, sidebar: true, chat: false, 'forge-notify': false, ...this.settings }));
         // HOME is the folder's parent, so the window names the folder ~/name rather than a temporary path.
-        this.app = await launchApp({ scratch: this.scratch, notes: this.folder, env: { HOME: dirname(this.folder), DEEPSEEK_API_KEY: 'example', MARKWORK_TEST_MODEL: module('model.mjs'), ...this.env } });
+        this.app = await launchApp({ scratch: this.scratch, notes: this.folder, env: { HOME: dirname(this.folder), DEEPSEEK_API_KEY: 'example', MARKWORK_TEST_MODEL: module('model.mjs'), MARKWORK_TEST_PI: pathToFileURL(join(repo, 'tests/electron/folderpi.mjs')).href, ...this.env } });
         this.page = await this.app.firstWindow();
         await this.app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0].setContentSize(w, h), [WIDTH, HEIGHT]);
         await this.page.waitForFunction(([w, h]) => window.innerWidth === w && window.innerHeight === h, [WIDTH, HEIGHT]);
@@ -309,11 +306,17 @@ class Run {
     // The Assistant: a question asked, and its answer waited for.
     get chat() { return this.page.getByRole('complementary', { name: 'Assistant' }); }
     async ask(question) {
+        const activate = this.chat.getByRole('button', { name: 'Activate pi Assistant', exact: true });
+        if (await activate.isVisible()) {
+            await activate.click();
+            await this.page.getByRole('alertdialog').getByRole('button', { name: 'Activate pi Assistant', exact: true }).click();
+            await this.chat.getByText('pi Assistant activated', { exact: true }).waitFor();
+        }
         const send = this.page.getByRole('button', { name: 'Send', exact: true });
         await send.waitFor();
         await this.page.getByLabel('Ask the Assistant').fill(question);
         await send.click();
-        await this.page.getByRole('button', { name: 'Stop', exact: true }).waitFor().catch(() => {});
+        await this.chat.locator('.chat-user', { hasText: question }).last().waitFor();
     }
     answered() { return this.page.getByRole('button', { name: 'Send', exact: true }).waitFor({ timeout: 30000 }); }
     async newConversation() { await this.chat.getByRole('button', { name: 'New conversation' }).click(); await this.idle(200); }
@@ -447,122 +450,52 @@ const GROUPS = {
         }
     },
 
-    // The Assistant: an answer from the folder, proposals reviewed and applied, the tree, tabs, conversations, the context, a plan of work, and the agent log.
+    // Native pi Assistant, using deterministic RPC with no real credentials or model calls.
     async assistant() {
-        const { root, run } = workRun('assistant');
+        const { root } = workRun('assistant');
+        put(root, 'main.ts', 'export function greet(name: string) {\n    return `Hello, ${name}`;\n}\n');
+        const run = new Run('assistant', root, { env: { MARKWORK_TEST_PI: pathToFileURL(join(repo, 'tests/electron/folderpi.mjs')).href } });
         await run.start();
         const { page } = run;
         try {
-            // The Assistant answers from the folder.
-            await run.panel('sidebar', true);
             await run.open('plans/launch.md');
             await run.panel('chat', true);
-            await run.frame('assistant', 4);
-            await run.ask(ASK_READ);
-            await run.record('assistant', run.answered());
-            await run.frame('assistant', 10);
-
-            // It proposes changes; each is reviewed, applied, and the answer says what was done.
-            await run.newConversation();
-            await run.ask(ASK_ACT);
-            const review = page.getByRole('dialog', { name: /Agent proposal/ });
-            for (const [name, hold] of [['proposal-diff', 6], ['proposal-kanban', 0]]) {
-                await run.record('agent', review.waitFor({ timeout: 30000 }));
-                await run.idle(300);
-                await run.frame('agent', 8);
-                await run.shot(name, review);
-                await review.getByRole('button', { name: 'Apply', exact: true }).click();
-                await review.waitFor({ state: 'detached' });
-                if (hold) { await run.idle(400); await run.frame('agent', hold); }
-            }
-            await run.record('agent', run.answered());
-            await run.idle(600);
-            await run.frame('agent', 14);
-            await run.shot('agent-done');
+            await run.chat.getByRole('button', { name: 'Activate pi Assistant', exact: true }).click();
+            await page.getByRole('alertdialog').waitFor();
+            await run.shot('assistant-activation');
+            await page.getByRole('alertdialog').getByRole('button', { name: 'Activate pi Assistant', exact: true }).click();
+            await run.chat.getByText('pi Assistant activated', { exact: true }).waitFor();
+            await run.open('main.ts');
+            const code = page.getByRole('textbox', { name: 'Code: main.ts', exact: true });
+            await code.click(); await page.keyboard.press('ControlOrMeta+Home'); await page.keyboard.press('Shift+End');
+            await page.getByRole('button', { name: 'Ask Assistant', exact: true }).click();
+            const input = page.getByLabel('Ask the Assistant');
+            await waitFor(async () => (await input.inputValue()).includes('export function greet'));
+            await input.fill('Explain this function and suggest clearer naming.\n\n' + await input.inputValue());
+            await input.evaluate(element => { element.scrollTop = 0; });
+            await run.shot('assistant-pi');
             await run.ogImage('og-image');
-
-            // The folder tree, with the sample contents back as they were.
-            for (const [rel, text] of Object.entries(WORK)) put(root, rel, text);
-            await run.panel('chat', false);
-            await run.open('research/competitors.md');
-            await run.open('plans/launch.md');
-            await run.shot('files');
-
-            // Several tabs, one with unsaved changes.
-            await run.command('Autosave');   // off, so the tab with the typing shows that it is not saved
-            for (const rel of ['notes/meeting-1-oct.md', 'research/users.md', 'plans/launch.md']) await run.open(rel, { keep: true });
-            const end = await page.evaluate(() => document.querySelector('.cm-content').cmTile.view.state.doc.length);
-            await run.insert('\n## Risks\n\nThe sync bug could push back the public release.\n', end);
-            await run.scrollTop();
-            await run.cursorTo(0);
-            await run.shot('tab');
-            await page.keyboard.press('ControlOrMeta+s');
-            await run.command('Autosave');
-
-            // Earlier conversations in the history list.
-            await run.panel('chat', true);
-            for (const question of ['Summarize this week\'s meeting notes', 'List the launch risks']) {
-                await run.newConversation();
-                await run.ask(question);
-                await run.answered();
-            }
-            await run.newConversation();
-            await run.ask(ASK_READ);
-            await run.answered();
-            await run.chat.getByRole('button', { name: 'Conversations' }).click();
+            await input.fill('write report'); await input.press('Enter');
+            await run.chat.locator('.chat-assistant', { hasText: 'Echo: write report' }).last().waitFor();
+            await run.chat.getByRole('button', { name: 'Send', exact: true }).waitFor();
+            await run.shot('assistant-direct');
+            await run.chat.getByRole('button', { name: 'Conversations', exact: true }).click();
             await page.getByRole('dialog', { name: 'Conversations' }).waitFor();
             await run.shot('chat-history');
             await page.keyboard.press('Escape');
-
-            // What is sent as context, with a selection in the plan.
-            await page.evaluate(() => {
-                const view = document.querySelector('.cm-content').cmTile.view, text = view.state.doc.toString();
-                view.dispatch({ selection: { anchor: text.indexOf('- Public release'), head: text.indexOf('15 November') + '15 November'.length } });
-                view.focus();
-            });
-            await run.idle(400);
-            await run.chat.getByRole('button', { name: /^Context/ }).click();
+            await run.chat.getByRole('button', { name: /pi context/ }).click();
             await page.getByRole('dialog', { name: 'Context' }).waitFor();
             await run.shot('context');
             await page.keyboard.press('Escape');
-
-            // A plan of work, a batch reviewed in part, and the result checked.
-            for (const [rel, text] of Object.entries(WORK)) put(root, rel, text);
-            await run.cursorTo(0);
-            await run.panel('sidebar', false);
-            await run.newConversation();
-            await run.frame('work', 4);
-            await run.ask(ASK_WORK);
-            await run.record('work', review.waitFor({ timeout: 30000 }));
-            await run.frame('work', 8);
-            const picks = review.getByRole('checkbox');
-            await picks.nth(2).uncheck();
-            await review.getByLabel('Note for the agent').fill('I will write the 8 October meeting notes myself');
-            await run.shot('proposal-batch', review);
-            await picks.nth(2).check();
-            await review.getByLabel('Note for the agent').fill('');
-            await review.getByRole('button', { name: 'Apply', exact: true }).click();
-            await run.record('work', run.answered());
-            await run.idle(600);
-            await run.frame('work', 16);
-            await run.shot('work');
-            await page.locator('.chat-messages').evaluate(el => { el.scrollTop = 0; });
-            await run.shot('plan', run.chat);
-
-            // The agent log of that work.
-            await run.chat.getByRole('button', { name: 'Agent log' }).click();
-            const log = page.getByRole('dialog', { name: 'Agent log' });
-            await log.getByRole('treeitem').first().waitFor();
-            await run.shot('agent-log', log);
+            await run.chat.getByRole('button', { name: 'Agent log', exact: true }).click();
+            await page.getByRole('dialog', { name: 'Agent log' }).waitFor();
+            await run.shot('agent-log', page.getByRole('dialog', { name: 'Agent log' }));
             await page.keyboard.press('Escape');
             await run.panel('chat', false);
-
-        } catch (e) {
-            run.failed = true;
-            throw e;
-        } finally {
-            await run.close();
-        }
+            await run.open('plans/launch.md');
+            await run.shot('files'); await run.shot('tab');
+        } catch (error) { run.failed = true; throw error; }
+        finally { await run.close(); }
     },
 
     // The small tools: a picture enlarged, search, a CSV table, an HTML page, the command palette, and Preferences.

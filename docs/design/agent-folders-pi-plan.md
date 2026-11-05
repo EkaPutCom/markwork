@@ -14,7 +14,7 @@ An Agent Folder is the home of a persistent personal agent/bot, not a folder-sco
 - Initial delivery prioritizes a working trusted-local prototype. Sandboxing, scoped capability enforcement, and network isolation are not prerequisites.
 - The workspace is the intended working directory, not an enforced filesystem boundary in the initial release.
 - markworkd remains a protocol-agnostic supervisor and transport.
-- The ordinary Assistant and existing pi card workflow retain their current behavior and approval boundaries.
+- Original phase scope kept the ordinary Assistant unchanged. A subsequent explicit user decision supersedes that boundary: workspace chat now shares `FolderPiSession`/`PiRpc`, pi authentication/models/native sessions and direct read/bash/edit/write, with workspace/window activation and no per-action Apply or old-engine fallback. It is local-only and stores private bindings outside the workspace, without importing/deleting old chats. Agent Folder identities/background execution remain separate; card/worktree review before merge is unchanged. See [the current Assistant guide](../docs/assistant.html) and [protocol](protocol.md).
 - Backward compatibility for the old Agent Folder implementation is not a requirement. Do not build legacy readers, automatic migration, schema compatibility, or fallback execution paths for it. This does not authorize deleting existing user files.
 
 An agent is not a session or process. Its identity and memory persist when pi stops. Independent sessions share the workspace and curated memory, not their entire conversation histories.
