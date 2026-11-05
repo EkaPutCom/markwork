@@ -42,7 +42,7 @@ export async function folderDaemonTests(): Promise<void> {
     const connection = new DaemonConnection({ name: 'folder-test-inspector', open: () => openSocketLink(socket), backoffMs: [20] });
     try {
         await until(() => disk.exists(socket), 10000);
-        await test('app close detaches the exact run; reopening replays events without repeating its prompt', async () => {
+        await test('background pi starts without version support; app close/reopen retains the exact run and prompt', async () => {
             const first = make(); await first.agentFolders.enable(folder);
             await first.agentFolders.execution(folder, 'background');
             const id = first.agentFolders.state().sessions[0].id, entry = first.agentFolders.find(id);

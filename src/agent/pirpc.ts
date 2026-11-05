@@ -4,7 +4,6 @@ import { platform, type ChildProcess, type Processes } from '../platform/index';
 export type PiRecord = Record<string, any>;
 export const parsePiRecord = (line: string): PiRecord => JSON.parse(line.replace(/\r$/, ''));
 export const piCommand = (type: string, id: string, fields: object = {}): string => JSON.stringify({ id, type, ...fields });
-export const PI_VERSION = '1.4.0';
 const RECORD_LIMIT = 8 * 1024 * 1024;
 
 export class PiRpc {
@@ -118,8 +117,6 @@ export class PiRpc {
 
 export async function discoverPi(): Promise<string> {
     const program = platform().processes.findProgram('pi');
-    if (!program) throw Error('pi is not installed. Install pi 1.4.0 and authenticate using pi before activating this agent.');
-    const version = await platform().processes.run({ argv: [program, '--version'], cwd: platform().paths.homeDir(), timeoutMs: 15000 });
-    if (version?.status !== 0 || version.out.trim() !== PI_VERSION) throw Error('Agent Folders require pi 1.4.0. Check the installed version and try again.');
+    if (!program) throw Error('pi is not installed. Install pi and authenticate using pi before activating this agent.');
     return program;
 }

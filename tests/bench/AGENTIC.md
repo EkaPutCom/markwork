@@ -298,3 +298,9 @@ The controller fixture includes a deliberate 5 ms asynchronous settlement, share
 Correctness checks cover explicit activation and expiry, no legacy credential/history import, fresh application/native resume without prompt replay, projection tampering/repair, independent sessions, model settings, Stop, code-selection drafts, direct disk output and dirty-buffer conflicts. New output inventory remains bounded to 1,000 entries/eight levels, skipping hidden/dependency folders and links. Native history is durable; the UI tool feed is bounded in-memory presentation rather than a second history authority.
 
 Unmeasured: real-provider quality/latency/cost, maximum context/history replay and sustained heap, packaged launch, non-Linux live execution, private-network/secrets isolation (no sandbox is promised), full concurrent-editor behavior, and reliable termination of detached shell descendants. Stop does not roll back completed effects. No Markdown/editor runtime algorithm was changed, so the Markdown benchmark and editor interaction trace were not repeated for this runtime migration.
+
+## Pi version validation removal — 5 November 2026
+
+Local discovery no longer spawns `pi --version`; background startup no longer creates a version-probe daemon run. Authentication, native binding and RPC checks remain. The real-daemon deterministic 1,000-event workload (3 warmups + 20 measured turns, native resume and projection I/O) measured median/p95/max **165.990 / 176.212 / 186.008 ms** in the full suite. The historical initial sample was 185.574 / 191.675 / 194.658 ms, but these are different runs without a controlled before/after environment: no speedup or regression is inferred. The fixture explicitly refuses `--version`.
+
+This checks the affected background execution path, not Markdown/editor throughput, provider latency, real pi release compatibility, non-Linux execution or sustained memory use. No benchmark baseline changed.

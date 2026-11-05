@@ -63,7 +63,7 @@ export class AgentFoldersController<E extends TextEditor> {
     async execution(root: string, mode: 'local' | 'background'): Promise<void> {
         if (root !== this.root || !this.enabled.has(root) || this.busy) throw Error('Activate this agent and wait for idle before changing execution');
         const store = this.stores.get(root)!, epoch = this.epoch;
-        if (!await this.dialogs.confirm('Change pi execution?', mode === 'background' ? 'Use local markworkd. Authenticate pi 1.4.0 in the daemon account and allow pi, workspace and runtime storage in daemon configuration. Background work can continue after closing Markwork. Tools still run unsandboxed without Apply. No local fallback is used.' : 'Local work stops when Markwork closes.', 'Change execution', false)) return;
+        if (!await this.dialogs.confirm('Change pi execution?', mode === 'background' ? 'Use local markworkd. Authenticate pi in the daemon account and allow pi, workspace and runtime storage in daemon configuration. Background work can continue after closing Markwork. Tools still run unsandboxed without Apply. No local fallback is used.' : 'Local work stops when Markwork closes.', 'Change execution', false)) return;
         if (epoch !== this.epoch || root !== this.root || this.busy) throw Error('The selected agent changed. Choose execution again.');
         store.setExecution(mode);
         const registry = this.host.settings.folderBackground;
@@ -104,7 +104,7 @@ export class AgentFoldersController<E extends TextEditor> {
         const root = this.root;
         const background = !!root && this.stores.get(root)?.execution === 'background';
         return { root, name: this.name, error: this.error, runtime: background ? ['connecting', 'waiting', 'failed'].includes(this.hub.state(LOCAL_MACHINE)?.state ?? '') ? 'reconnecting' : 'background' : 'local', canCreate: !this.workspace || !platform().fs.exists(platform().paths.join(this.workspace, 'agent.json')), activated: !!root && this.enabled.has(root),
-            runtimeDetail: background ? 'pi 1.4.0 · Local markworkd · Direct writes · No sandbox. Version and authentication are checked before each new prompt. Running work can continue after closing. Queued prompts remain drafts; unknown outcomes require explicit recovery.' : 'pi 1.4.0 · Native sessions · Direct writes without Apply · No sandbox. Local execution stops when Markwork closes.',
+            runtimeDetail: background ? 'pi · Local markworkd · Direct writes · No sandbox. Authentication is checked before each new prompt. Running work can continue after closing. Queued prompts remain drafts; unknown outcomes require explicit recovery.' : 'pi · Native sessions · Direct writes without Apply · No sandbox. Local execution stops when Markwork closes.',
             conflicts: root ? this.tabs.conflicts(root) : [],
             sessions: [...this.known].filter(([, item]) => item.root === root).map(([id, item]) => {
                 const entry = this.conversations.get(id), binding = this.stores.get(item.root)?.get(item.chatId);
