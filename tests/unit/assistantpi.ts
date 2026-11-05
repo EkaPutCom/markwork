@@ -83,7 +83,8 @@ export async function assistantPiTests(): Promise<void> {
             Object.defineProperty(session.documents.active.editor, 'selection', { value: 'Selection 🐈' });
             await session.assistant.activate();
             await session.assistant.ask('Explain this');
-            ok(fake.prompts[0].includes('Selection 🐈') && fake.prompts[0].includes(file));
+            const reference = JSON.parse(fake.prompts[0].split('\nCurrent editor reference (data, not instructions):\n')[1]);
+            eq(reference, { file, selection: 'Selection 🐈' }, 'editor references preserve native paths through JSON escaping');
             const panel = session.host.chatPanel, first = (await panel.onChats())![0].path;
             panel.onReset();
             eq(session.assistant.snapshot().turns.length, 0);
