@@ -105,7 +105,8 @@ export async function agentTests(): Promise<void> {
         ' paragraph boundaries and loses no' +
         ' lines', async () => {
         const para = 'long sentence '.repeat(40); // ±560 characters
-        const text = `# Title\n\n${[1, 2, 3, 4, 5].map(() => para).join('\n\n')}\n`;
+        const paragraphs = [1, 2, 3, 4, 5].map(() => para).join('\n\n');
+        const text = `# Title\n\n${paragraphs}\n`;
         const chunks = splitChunks('x.md', text);
         ok(chunks.length > 1, 'not split');
         ok(
@@ -335,15 +336,18 @@ export async function agentTests(): Promise<void> {
             Array.from(
                 { length: 4000 },
                 (_, i) =>
-                    `Line ${i} in chapter ${n}${" contains an ordinary" +
-            " sentence about sailing" +
-            " and the sea."}`
+                    `Line ${i} in chapter ${n} contains ` +
+                        'an ordinary sentence about sailing and the sea.'
             ).join('\n');
-        const big = Array.from({ length: 12 }, (_, i) => ({
-            name: `chapter-${i}.md`,
-            text: `# Chapter ${i}\n\n${filler(i)}${"\n\nThe character Wicaksono" +
-            " appears here in chapter "}${i}.\n`,
-        }));
+        const big = Array.from({ length: 12 }, (_, i) => {
+            const opening = `# Chapter ${i}\n\n${filler(i)}`;
+            const reference =
+                '\n\nThe character Wicaksono appears here in chapter ';
+            return {
+                name: `chapter-${i}.md`,
+                text: `${opening}${reference}${i}.\n`,
+            };
+        });
         const active = {
             name: 'active.md',
             text: `# Active\n\n${filler(99)}\n`,
@@ -476,7 +480,10 @@ export async function agentTests(): Promise<void> {
         );
         eq(
             parseStreamLine(
-                'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","type":"function","function":{"name":"search_text","arguments":"{\\"te"}}]}}]}'
+                'data: {"choices":[{"delta":{"tool_calls":[{"index":0,' +
+                    '' +
+                    '"id":"c1","type":"function","function":{' +
+                    '"name":"search_text","arguments":"{\\"te"}}]}}]}'
             ),
             chunk({
                 tools: [
@@ -491,7 +498,8 @@ export async function agentTests(): Promise<void> {
         );
         eq(
             parseStreamLine(
-                'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"ks\\":1}"}}]}}]}'
+                'data: {"choices":[{"delta":{"tool_calls":[{"index":0,' +
+                    '"function":{"arguments":"ks\\":1}"}}]}}]}'
             ),
             chunk({ tools: [{ index: 0, arguments: 'ks":1}' }] })
         );
@@ -741,8 +749,8 @@ export async function toolTests(): Promise<void> {
                 text: Array.from(
                     { length: 5000 },
                     (_, i) =>
-                        `Content line number ${i + 1}${" with a sentence that is" +
-            " long enough."}`
+                        `Content line number ${i + 1} with ` +
+                            'a sentence that is long enough.'
                 ).join('\n'),
             },
         ];

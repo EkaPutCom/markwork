@@ -54,10 +54,12 @@ export async function folderDaemonTests(): Promise<void> {
     });
     if (built?.status !== 0)
         throw Error(built?.err || 'Could not build daemon');
-    disk.write(
-        launcher,
-        `#!/bin/sh\nexec '${platform().processes.findProgram('node')}' '${disk.join(ROOT, 'tests/electron/folder-pi-daemon-fixture.mjs')}' "$@"\n`
+    const node = platform().processes.findProgram('node');
+    const fixture = disk.join(
+        ROOT,
+        'tests/electron/folder-pi-daemon-fixture.mjs'
     );
+    disk.write(launcher, `#!/bin/sh\nexec '${node}' '${fixture}' "$@"\n`);
     platform().fs.setMode(launcher, 0o755);
     const config = disk.join(dir, 'config.json');
     disk.write(
@@ -287,8 +289,9 @@ export async function folderDaemonTests(): Promise<void> {
             }
             times.sort((a, b) => a - b);
             say(
-                `${"  background 1000-event" +
-            " turn median/p95/max ms: "}${times[10].toFixed(3)} / ${times[18].toFixed(3)} / ${times[19].toFixed(3)}`
+                '  background 1000-event turn median/p95/max ms: ' +
+                    `${times[10].toFixed(3)} / ${times[18].toFixed(3)} / ` +
+                    `${times[19].toFixed(3)}`
             );
             app.dispose();
         });

@@ -71,8 +71,12 @@ export async function deepseekTests(): Promise<void> {
         if (mode === 'tools') {
             // Two tools, their arguments arrive in pieces and interleaved by
             // index.
-            const delta = (tool_calls: object[]) =>
-                `data: ${JSON.stringify({ choices: [{ delta: { tool_calls } }] })}`;
+            const delta = (tool_calls: object[]) => {
+                const data = JSON.stringify({
+                    choices: [{ delta: { tool_calls } }],
+                });
+                return `data: ${data}`;
+            };
             const lines = [
                 'data:' +
                     ' {"choices":[{"delta":{"reasoning_cont' +

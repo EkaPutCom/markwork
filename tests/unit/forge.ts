@@ -48,7 +48,11 @@ function fakeForge(
     const seen: HttpRequest[] = [];
     const transport: Transport = async (request) => {
         seen.push(request);
-        const key = `${request.method} ${request.url.replace('https://git.example.org/api/v1/repos/eka/notes', '')}`;
+        const path = request.url.replace(
+            'https://git.example.org/api/v1/repos/eka/notes',
+            ''
+        );
+        const key = `${request.method} ${path}`;
         const answer = answers[key];
         if (!answer)
             return {

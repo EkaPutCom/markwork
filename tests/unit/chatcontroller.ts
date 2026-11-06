@@ -58,9 +58,13 @@ function recordingView() {
                 },
                 end: (outcome) => {
                     outcomes.push(outcome);
-                    log.push(
-                        `end ${'error' in outcome ? `error ${outcome.error}` : outcome.cancelled ? 'cancelled' : text}`
-                    );
+                    const result =
+                        'error' in outcome
+                            ? `error ${outcome.error}`
+                            : outcome.cancelled
+                              ? 'cancelled'
+                              : text;
+                    log.push(`end ${result}`);
                 },
             };
         },

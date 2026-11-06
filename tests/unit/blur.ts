@@ -80,8 +80,12 @@ export function blurTests(): void {
         }
         // What may keep its letters and digits: list numbers, fences with their
         // language, schemes, and field keys.
-        const syntax =
-            /^[ \t>]*\d+[.)]|^[ \t>]*(`{3,}|~{3,})\w*|\b[a-z]+:\/\/|\[[\w-]+::/gm;
+        const syntax = new RegExp(
+            '^[ \\t>]*\\d+[.)]|' +
+                '^[ \\t>]*(`{3,}|~{3,})\\w*|' +
+                '\\b[a-z]+:\\/\\/|\\[[\\w-]+::',
+            'gm'
+        );
         eq(
             blurred.replace(syntax, '').match(/[a-wyzA-WYZ1-9]/g),
             null,

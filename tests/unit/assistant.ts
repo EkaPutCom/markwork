@@ -95,9 +95,13 @@ function recordingPanel() {
             log.push(`turn ${turn} ${question}`);
         },
         turnEnd: (turn, outcome) => {
-            log.push(
-                `end ${turn} ${'error' in outcome ? outcome.error : outcome.cancelled ? 'cancelled' : 'ok'}`
-            );
+            const result =
+                'error' in outcome
+                    ? outcome.error
+                    : outcome.cancelled
+                      ? 'cancelled'
+                      : 'ok';
+            log.push(`end ${turn} ${result}`);
         },
         review: (ask) => {
             asks.push(ask);

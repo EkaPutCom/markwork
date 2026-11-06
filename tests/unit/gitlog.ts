@@ -16,7 +16,19 @@ const record = (
     subject: string,
     ...files: string[]
 ) =>
-    `\x1e${hash}\x1f${short}\x1f${author}\x1f${time}\x1f${subject}\n\n${files.join('\n')}\n`;
+    '\x1e' +
+    hash +
+    '\x1f' +
+    short +
+    '\x1f' +
+    author +
+    '\x1f' +
+    time +
+    '\x1f' +
+    subject +
+    '\n\n' +
+    files.join('\n') +
+    '\n';
 
 export function gitLogTests(): void {
     section('Git history (parser)');
