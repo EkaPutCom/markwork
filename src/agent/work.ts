@@ -98,5 +98,12 @@ export function workText(work: WorkState): string {
         failed: 'failed',
         complete: 'finished and verified',
     }[work.status];
-    return `Work: ${work.goal} (${status})\n${work.steps.map((s) => `- [${s.status === 'done' ? 'x' : ' '}] ${s.text}${s.status === 'blocked' ? ' — blocked' : ''}`).join('\n')}\n${work.note}`;
+    const steps = work.steps
+        .map((step) => {
+            const marker = step.status === 'done' ? 'x' : ' ';
+            const blocked = step.status === 'blocked' ? ' — blocked' : '';
+            return `- [${marker}] ${step.text}${blocked}`;
+        })
+        .join('\n');
+    return `Work: ${work.goal} (${status})\n${steps}\n${work.note}`;
 }

@@ -388,9 +388,8 @@ async function takeFiles(
     )?.trim();
     if (both)
         return fail(
-            `${both.split('\n').join(', ')} changed on ${wt.base}${" too; merge everything," +
-            " or ask the agent to" +
-            " update its branch"}`
+            `${both.split('\n').join(', ')} changed on ${wt.base} too; ` +
+                'merge everything, or ask the agent to update its branch'
         );
     const removed = files
         .filter((f) => f.status === 'deleted')
@@ -456,7 +455,9 @@ export function commentsReply(comments: readonly LineComment[]): string {
     if (!comments.length) return '';
     const items = comments.map(
         (c) =>
-            `- ${c.path}${c.line ? `:${c.line}` : ''} (\`${c.quote.trim().slice(0, 120)}\`): ${c.text.trim()}`
+            `- ${c.path}${c.line ? `:${c.line}` : ''} ` +
+            `(\`${c.quote.trim().slice(0, 120)}\`): ` +
+            c.text.trim()
     );
     return [
         'Please address these review comments on your changes:',

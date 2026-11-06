@@ -93,7 +93,8 @@ export const formatMs = (ms: number): string =>
         ? `${ms} ms`
         : ms < 60000
           ? `${(ms / 1000).toFixed(1)} s`
-          : `${Math.floor(ms / 60000)} min ${Math.round((ms % 60000) / 1000)} s`;
+          : `${Math.floor(ms / 60000)} min ` +
+              `${Math.round((ms % 60000) / 1000)} s`;
 export const formatSize = (chars: number): string =>
     chars < 1024 ? `${chars} B` : `${(chars / 1024).toFixed(1)} KB`;
 export const formatCount = (n: number): string =>

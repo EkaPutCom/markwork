@@ -46,8 +46,8 @@ export const MAX_EVENTS = 2000;
 
 const clip = (text: string): string =>
     text.length > MAX_DETAIL
-        ? `${text.slice(0, MAX_DETAIL)}\n… (${text.length - MAX_DETAIL}${" more characters" +
-            " truncated)"}`
+        ? `${text.slice(0, MAX_DETAIL)}\n… (${text.length - MAX_DETAIL} ` +
+            'more characters truncated)'
         : text;
 
 // Tool arguments are raw JSON from the model; shown neatly if valid, as is if
@@ -288,7 +288,12 @@ export class AgentTrace {
 
     // One event as plain text, to copy or export.
     static format(e: TraceEvent): string {
-        const head = `[${e.time.slice(11)}]${e.round ? ` round ${e.round} ·` : ''} ${e.title}${e.ms !== undefined ? ` (${e.ms} ms)` : ''}${e.status === 'failed' ? ' — FAILED' : ''}`;
+        const round = e.round ? ` round ${e.round} ·` : '';
+        const duration = e.ms !== undefined ? ` (${e.ms} ms)` : '';
+        const failure = e.status === 'failed' ? ' — FAILED' : '';
+        const head =
+            `[${e.time.slice(11)}]${round} ${e.title}` +
+            `${duration}${failure}`;
         const parts = [
             head,
             e.args !== undefined ? `Arguments:\n${e.args}` : '',

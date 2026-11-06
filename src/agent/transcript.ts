@@ -87,10 +87,14 @@ export function serializeChat(chat: SavedChat): string {
             0,
             `actions: ${JSON.stringify(chat.events)}`
         );
-    const body = chat.turns.map(
-        (t) =>
-            `## ${HEADINGS[t.role]}\n${t.content.replace(/\n+$/, '').split('\n').map(escapeLine).join('\n')}`
-    );
+    const body = chat.turns.map((t) => {
+        const content = t.content
+            .replace(/\n+$/, '')
+            .split('\n')
+            .map(escapeLine)
+            .join('\n');
+        return `## ${HEADINGS[t.role]}\n${content}`;
+    });
     return `${head.join('\n')}\n\n${body.join('\n\n')}\n`;
 }
 
