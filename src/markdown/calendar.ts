@@ -1,9 +1,12 @@
-// What a `layout: calendar` document shows: every note on the day of one of its date fields, and the notes that have no
-// date yet. The model is the same as a board's or a list's (kanban.ts), so the same file can be shown as any of them.
+// What a `layout: calendar` document shows: every note on the day of one of its
+// date fields, and the notes that have no
+// date yet. The model is the same as a board's or a list's (kanban.ts), so the
+// same file can be shown as any of them.
 //
 //   ---
 //   layout: calendar
-//   date: due                        ← optional; the date field to place notes by (default `due`, else the first date field)
+// date: due                        ← optional; the date field to place notes by
+// (default `due`, else the first date field)
 //   fields:
 //     due: date
 //   ---
@@ -13,56 +16,95 @@
 import type { DateValue, FieldDef } from './fields';
 import { readItem, writeField } from './fields';
 import { optionOf } from './layout';
-import { boardSchema, setCardField, type Board, type Card, type Position } from './kanban';
+import {
+    boardSchema,
+    setCardField,
+    type Board,
+    type Card,
+    type Position,
+} from './kanban';
 import { dayNumber } from './dates';
 
 export interface CalendarItem {
     at: Position;
     card: Card;
     title: string;
-    date: string;           // "YYYY-MM-DD"
-    time: string | null;    // "HH:MM"
+    date: string; // "YYYY-MM-DD"
+    time: string | null; // "HH:MM"
 }
 
 export interface CalendarData {
-    key: string | null;                    // the date field notes are placed by; null if the document has none
-    byDate: Map<string, CalendarItem[]>;   // notes with a date, a day's notes without a time first, then in time order
+    key: string | null; // the date field notes are placed by; null if the document has none
+    byDate: Map<string, CalendarItem[]>; // notes with a date, a day's notes without a time first, then in time order
     undated: { at: Position; card: Card; title: string }[];
 }
 
-// The date field the calendar places notes by: `date:` if it names a date field, else `due`, else the first date field.
-export function dateField(board: Board, schema: FieldDef[] = boardSchema(board), option = 'date', fallback = 'due'): FieldDef | null {
-    const dates = schema.filter(f => f.type === 'date' && !f.multiple);
+// The date field the calendar places notes by: `date:` if it names a date field,
+// else `due`, else the first date field.
+export function dateField(
+    board: Board,
+    schema: FieldDef[] = boardSchema(board),
+    option = 'date',
+    fallback = 'due'
+): FieldDef | null {
+    const dates = schema.filter((f) => f.type === 'date' && !f.multiple);
     const wanted = optionOf(board.head.join('\n'), option);
-    return dates.find(f => f.key === wanted) ?? dates.find(f => f.key === fallback) ?? dates[0] ?? null;
+    return (
+        dates.find((f) => f.key === wanted) ??
+        dates.find((f) => f.key === fallback) ??
+        dates[0] ??
+        null
+    );
 }
 
-// The date and time a note has in `def`, or null if it has none (or a value that is not a real date).
+// The date and time a note has in `def`, or null if it has none (or a value that
+// is not a real date).
 export function dateOf(card: Card, def: FieldDef): DateValue | null {
     const parsed = readItem(card.text, [def]).fields[def.key];
-    if (!parsed?.ok || Array.isArray(parsed.value) || typeof parsed.value !== 'object' || !('date' in parsed.value)) return null;
+    if (
+        !parsed?.ok ||
+        Array.isArray(parsed.value) ||
+        typeof parsed.value !== 'object' ||
+        !('date' in parsed.value)
+    )
+        return null;
     return dayNumber(parsed.value.date) === null ? null : parsed.value;
 }
 
-export function calendarData(board: Board, schema: FieldDef[] = boardSchema(board)): CalendarData {
+export function calendarData(
+    board: Board,
+    schema: FieldDef[] = boardSchema(board)
+): CalendarData {
     const def = dateField(board, schema);
     const byDate = new Map<string, CalendarItem[]>();
     const undated: CalendarData['undated'] = [];
-    board.columns.forEach((column, c) => column.cards.forEach((card, index) => {
-        const at = { column: c, index };
-        const title = readItem(card.text, schema).title;
-        const value = def ? dateOf(card, def) : null;
-        if (!value) { undated.push({ at, card, title }); return; }
-        const day = byDate.get(value.date) ?? [];
-        day.push({ at, card, title, date: value.date, time: value.time });
-        byDate.set(value.date, day);
-    }));
-    for (const day of byDate.values()) day.sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
+    board.columns.forEach((column, c) =>
+        column.cards.forEach((card, index) => {
+            const at = { column: c, index };
+            const title = readItem(card.text, schema).title;
+            const value = def ? dateOf(card, def) : null;
+            if (!value) {
+                undated.push({ at, card, title });
+                return;
+            }
+            const day = byDate.get(value.date) ?? [];
+            day.push({ at, card, title, date: value.date, time: value.time });
+            byDate.set(value.date, day);
+        })
+    );
+    for (const day of byDate.values())
+        day.sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
     return { key: def?.key ?? null, byDate, undated };
 }
 
-// The note at `at` placed on `date` (a time it already has is kept); an empty `date` takes it off the calendar.
-export function moveToDate(board: Board, at: Position, date: string, schema: FieldDef[] = boardSchema(board)): Board {
+// The note at `at` placed on `date` (a time it already has is kept); an empty
+// `date` takes it off the calendar.
+export function moveToDate(
+    board: Board,
+    at: Position,
+    date: string,
+    schema: FieldDef[] = boardSchema(board)
+): Board {
     const def = dateField(board, schema);
     const card = board.columns[at.column]?.cards[at.index];
     if (!def || !card) return board;
@@ -73,7 +115,14 @@ export function moveToDate(board: Board, at: Position, date: string, schema: Fie
 }
 
 // A note added on `date` (from the calendar): text with the date field set.
-export function textForDate(text: string, date: string, board: Board, schema: FieldDef[] = boardSchema(board)): string {
+export function textForDate(
+    text: string,
+    date: string,
+    board: Board,
+    schema: FieldDef[] = boardSchema(board)
+): string {
     const def = dateField(board, schema);
-    return def && dayNumber(date) !== null ? writeField(text, def, { date, time: null }) : text;
+    return def && dayNumber(date) !== null
+        ? writeField(text, def, { date, time: null })
+        : text;
 }

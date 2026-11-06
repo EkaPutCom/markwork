@@ -1,18 +1,37 @@
-// The editor commands as text → edit: bold and the other markers, links, blocks, line prefixes, headings, Enter and Tab in
-// lists and quotes, and the table commands. Each takes the text and the selection and returns the changes to make and the
-// selection after them; an editor (CodeMirror) only reads its text and applies the result, so every
-// frontend edits the same way. Offsets are UTF-16 units of the given text, the unit of JavaScript strings; an editor that
+// The editor commands as text → edit: bold and the other markers, links, blocks,
+// line prefixes, headings, Enter and Tab in
+// lists and quotes, and the table commands. Each takes the text and the
+// selection and returns the changes to make and the
+// selection after them; an editor (CodeMirror) only reads its text and applies
+// the result, so every
+// frontend edits the same way. Offsets are UTF-16 units of the given text, the
+// unit of JavaScript strings; an editor that
 // counts otherwise converts at its edge.
 
 import { RE, type InlineTag } from './syntax';
 import { parseInline } from './inline';
 import {
-    cellIndexAt, cellStart, deleteColumn, deleteRow, findTables, insertColumn, insertRow,
-    parseTable, renderRow, renderTable, setAlign, splitRow, type Align, type Table, type TableRange,
+    cellIndexAt,
+    cellStart,
+    deleteColumn,
+    deleteRow,
+    findTables,
+    insertColumn,
+    insertRow,
+    parseTable,
+    renderRow,
+    renderTable,
+    setAlign,
+    splitRow,
+    type Align,
+    type Table,
+    type TableRange,
 } from './table';
 
-// The text a command reads and its selection: anchor is where the selection started, head is the cursor. Without a
-// selection the two are equal. The text may be the whole document or a part of it (the lines around the selection);
+// The text a command reads and its selection: anchor is where the selection
+// started, head is the cursor. Without a
+// selection the two are equal. The text may be the whole document or a part of
+// it (the lines around the selection);
 // the offsets of the result are then relative to that part too.
 export interface TextState {
     readonly text: string;
@@ -20,7 +39,8 @@ export interface TextState {
     readonly head: number;
 }
 
-// Replace from..to of the original text with insert. The changes of one edit are sorted and do not overlap, and their
+// Replace from..to of the original text with insert. The changes of one edit are
+// sorted and do not overlap, and their
 // offsets all refer to the text before the edit.
 export interface TextChange {
     readonly from: number;
@@ -33,7 +53,8 @@ export interface Selection {
     readonly head: number;
 }
 
-// What a command does: the changes, then the selection in the text after them. No changes = only the selection moves
+// What a command does: the changes, then the selection in the text after them.
+// No changes = only the selection moves
 // (or nothing does).
 export interface TextEdit {
     readonly changes: readonly TextChange[];
@@ -42,8 +63,12 @@ export interface TextEdit {
 
 // ---------- Applying an edit ----------
 
-export function applyChanges(text: string, changes: readonly TextChange[]): string {
-    let out = '', at = 0;
+export function applyChanges(
+    text: string,
+    changes: readonly TextChange[]
+): string {
+    let out = '',
+        at = 0;
     for (const c of changes) {
         out += text.slice(at, c.from) + c.insert;
         at = c.to;
@@ -51,9 +76,14 @@ export function applyChanges(text: string, changes: readonly TextChange[]): stri
     return out + text.slice(at);
 }
 
-// Where a position of the text before the changes ends up after them. A position inside a replaced range, or at an
-// insertion, moves to the end of the inserted text, the way a text editor moves its cursor.
-export function mapPosition(pos: number, changes: readonly TextChange[]): number {
+// Where a position of the text before the changes ends up after them. A position
+// inside a replaced range, or at an
+// insertion, moves to the end of the inserted text, the way a text editor moves
+// its cursor.
+export function mapPosition(
+    pos: number,
+    changes: readonly TextChange[]
+): number {
     let shift = 0;
     for (const c of changes) {
         if (pos < c.from) break;
@@ -66,29 +96,48 @@ export function mapPosition(pos: number, changes: readonly TextChange[]): number
 const cursorAt = (pos: number): Selection => ({ anchor: pos, head: pos });
 
 // The changes with the selection carried along by them.
-function withSelection(state: TextState, changes: readonly TextChange[]): TextEdit {
-    return { changes, selection: { anchor: mapPosition(state.anchor, changes), head: mapPosition(state.head, changes) } };
+function withSelection(
+    state: TextState,
+    changes: readonly TextChange[]
+): TextEdit {
+    return {
+        changes,
+        selection: {
+            anchor: mapPosition(state.anchor, changes),
+            head: mapPosition(state.head, changes),
+        },
+    };
 }
 
 // Handled, but nothing changes.
-export const unchanged = (state: TextState): TextEdit => ({ changes: [], selection: { anchor: state.anchor, head: state.head } });
+export const unchanged = (state: TextState): TextEdit => ({
+    changes: [],
+    selection: { anchor: state.anchor, head: state.head },
+});
 
 // ---------- Lines ----------
 
-const lineStart = (text: string, pos: number): number => pos === 0 ? 0 : text.lastIndexOf('\n', pos - 1) + 1;
+const lineStart = (text: string, pos: number): number =>
+    pos === 0 ? 0 : text.lastIndexOf('\n', pos - 1) + 1;
 
 function lineEnd(text: string, pos: number): number {
     const i = text.indexOf('\n', pos);
     return i < 0 ? text.length : i;
 }
 
-// The line around pos: its text and where it starts and ends (before its newline).
-function lineAround(text: string, pos: number): { line: string; start: number; end: number } {
-    const start = lineStart(text, pos), end = lineEnd(text, pos);
+// The line around pos: its text and where it starts and ends (before its
+// newline).
+function lineAround(
+    text: string,
+    pos: number
+): { line: string; start: number; end: number } {
+    const start = lineStart(text, pos),
+        end = lineEnd(text, pos);
     return { line: text.slice(start, end), start, end };
 }
 
-// Offset of the start of line n (0-based); past the last line: the end of the text.
+// Offset of the start of line n (0-based); past the last line: the end of the
+// text.
 function offsetOfLine(text: string, n: number): number {
     let at = 0;
     for (let i = 0; i < n; i++) {
@@ -101,7 +150,12 @@ function offsetOfLine(text: string, n: number): number {
 
 function lineNumberAt(text: string, pos: number): number {
     let n = 0;
-    for (let i = text.indexOf('\n'); i >= 0 && i < pos; i = text.indexOf('\n', i + 1)) n++;
+    for (
+        let i = text.indexOf('\n');
+        i >= 0 && i < pos;
+        i = text.indexOf('\n', i + 1)
+    )
+        n++;
     return n;
 }
 
@@ -109,39 +163,97 @@ function lineNumberAt(text: string, pos: number): number {
 
 // ---------- Inline formats ----------
 
-// The format each marker stands for, and the formats of the parser's tags (a bold italic span is both).
+// The format each marker stands for, and the formats of the parser's tags (a
+// bold italic span is both).
 type Format = 'bold' | 'italic' | 'strike' | 'mark' | 'code';
-const FORMAT_OF: Record<string, Format> = { '**': 'bold', '__': 'bold', '*': 'italic', '_': 'italic', '~~': 'strike', '==': 'mark', '`': 'code' };
+const FORMAT_OF: Record<string, Format> = {
+    '**': 'bold',
+    __: 'bold',
+    '*': 'italic',
+    _: 'italic',
+    '~~': 'strike',
+    '==': 'mark',
+    '`': 'code',
+};
 const FORMATS_OF: Partial<Record<InlineTag, readonly Format[]>> = {
-    bold: ['bold'], italic: ['italic'], bolditalic: ['bold', 'italic'], strike: ['strike'], mark: ['mark'], code: ['code'],
+    bold: ['bold'],
+    italic: ['italic'],
+    bolditalic: ['bold', 'italic'],
+    strike: ['strike'],
+    mark: ['mark'],
+    code: ['code'],
 };
 
 // A formatted span of a line: its text is a–b, its markers open–a and b–close.
-interface Span { tag: InlineTag; open: number; a: number; b: number; close: number }
+interface Span {
+    tag: InlineTag;
+    open: number;
+    a: number;
+    b: number;
+    close: number;
+}
 
-// The inline formats of a line (offsets in the line). A heading's, quote's, or list item's prefix is not inline text.
-function inlineOf(line: string): { tags: [InlineTag, number, number][]; spans: Span[] } {
+// The inline formats of a line (offsets in the line). A heading's, quote's, or
+// list item's prefix is not inline text.
+function inlineOf(line: string): {
+    tags: [InlineTag, number, number][];
+    spans: Span[];
+} {
     const prefix = lineKindOf(line).prefix;
-    const tags = parseInline(line.slice(prefix)).tags.map(([tag, a, b]): [InlineTag, number, number] => [tag, a + prefix, b + prefix]);
-    const opens = new Map<number, number>(), closes = new Map<number, number>();
-    for (const [tag, a, b] of tags) if (tag === 'marker') { opens.set(b, a); closes.set(a, b); }
+    const tags = parseInline(line.slice(prefix)).tags.map(
+        ([tag, a, b]): [InlineTag, number, number] => [
+            tag,
+            a + prefix,
+            b + prefix,
+        ]
+    );
+    const opens = new Map<number, number>(),
+        closes = new Map<number, number>();
+    for (const [tag, a, b] of tags)
+        if (tag === 'marker') {
+            opens.set(b, a);
+            closes.set(a, b);
+        }
     const spans: Span[] = [];
     for (const [tag, a, b] of tags) {
-        const open = opens.get(a), close = closes.get(b);
-        if (FORMATS_OF[tag] && open !== undefined && close !== undefined) spans.push({ tag, open, a, b, close });
+        const open = opens.get(a),
+            close = closes.get(b);
+        if (FORMATS_OF[tag] && open !== undefined && close !== undefined)
+            spans.push({ tag, open, a, b, close });
     }
     return { tags, spans };
 }
 
-// A selection taken in to what it shows: past the markers of formats at its ends, then past spaces (a format ends at a
-// letter). The visual editor hides the markers, so "the word" and "the word with its ** around it" are the same selection.
-function shownPart(line: string, spans: readonly Span[], from: number, to: number): [number, number] {
-    // The start past a marker that begins there, the end before one that ends there.
-    const past = (s: Span, at: number, end: number) => s.open === at && s.a <= end ? s.a : s.b === at && s.close <= end ? s.close : at;
-    const before = (s: Span, at: number, start: number) => s.close === at && s.b >= start ? s.b : s.a === at && s.open >= start ? s.open : at;
+// A selection taken in to what it shows: past the markers of formats at its
+// ends, then past spaces (a format ends at a
+// letter). The visual editor hides the markers, so "the word" and "the word with
+// its ** around it" are the same selection.
+function shownPart(
+    line: string,
+    spans: readonly Span[],
+    from: number,
+    to: number
+): [number, number] {
+    // The start past a marker that begins there, the end before one that ends
+    // there.
+    const past = (s: Span, at: number, end: number) =>
+        s.open === at && s.a <= end
+            ? s.a
+            : s.b === at && s.close <= end
+              ? s.close
+              : at;
+    const before = (s: Span, at: number, start: number) =>
+        s.close === at && s.b >= start
+            ? s.b
+            : s.a === at && s.open >= start
+              ? s.open
+              : at;
     for (let moved = true; moved && from < to;) {
         const was = [from, to];
-        for (const s of spans) { from = past(s, from, to); to = before(s, to, from); }
+        for (const s of spans) {
+            from = past(s, from, to);
+            to = before(s, to, from);
+        }
         moved = from !== was[0] || to !== was[1];
     }
     while (from < to && /\s/.test(line[from])) from++;
@@ -149,185 +261,384 @@ function shownPart(line: string, spans: readonly Span[], from: number, to: numbe
     return [from, to];
 }
 
-const hasFormat = (tag: InlineTag, format: Format): boolean => FORMATS_OF[tag]?.includes(format) ?? false;
+const hasFormat = (tag: InlineTag, format: Format): boolean =>
+    FORMATS_OF[tag]?.includes(format) ?? false;
 
-// The inline formats (bold, italic, strike, code, link, mark) of what is shown at a cursor or a selection on one line
-// (offsets in the line): a cursor at either end of a span types into it; a selection has a format when all it shows has it.
-export function inlineFormatsAt(line: string, from: number, to: number): string[] {
+// The inline formats (bold, italic, strike, code, link, mark) of what is shown
+// at a cursor or a selection on one line
+// (offsets in the line): a cursor at either end of a span types into it; a
+// selection has a format when all it shows has it.
+export function inlineFormatsAt(
+    line: string,
+    from: number,
+    to: number
+): string[] {
     const { tags, spans } = inlineOf(line);
     const [f, t] = from === to ? [from, to] : shownPart(line, spans, from, to);
     const found = new Set<string>();
     for (const [tag, a, b] of tags) {
         if (tag === 'marker' || f < a || t > b) continue;
-        for (const format of FORMATS_OF[tag] ?? [tag === 'link' ? 'link' : '']) if (format) found.add(format);
+        for (const format of FORMATS_OF[tag] ?? [tag === 'link' ? 'link' : ''])
+            if (format) found.add(format);
     }
     return [...found].sort();
 }
 
 // A marker's text without the format taken off: `***` without bold is `*`.
-const without = (marker: string, length: number, opening: boolean): string => opening ? marker.slice(length) : marker.slice(0, marker.length - length);
+const without = (marker: string, length: number, opening: boolean): string =>
+    opening ? marker.slice(length) : marker.slice(0, marker.length - length);
 
-// Text with a format around it, the spaces at its ends left outside (`**a **` would not be bold).
+// Text with a format around it, the spaces at its ends left outside (`**a **`
+// would not be bold).
 function around(text: string, open: string, close: string): string {
     if (!open || !text.trim()) return text;
-    const lead = /^\s*/.exec(text)![0], trail = /\s*$/.exec(text)![0];
-    return lead + open + text.slice(lead.length, text.length - trail.length) + close + trail;
+    const lead = /^\s*/.exec(text)![0],
+        trail = /\s*$/.exec(text)![0];
+    return (
+        lead +
+        open +
+        text.slice(lead.length, text.length - trail.length) +
+        close +
+        trail
+    );
 }
 
-// Toggle a format on what a one-line selection shows, as a word processor does: when all of it has the format, the
-// format comes off it (a span split around it when the selection is part of it); otherwise all of it gets the format,
-// joined with the spans of that format it touches. null: not a format the line's parser knows, or nothing is shown.
-function toggleFormat(line: string, from: number, to: number, marker: string): { from: number; to: number; insert: string; text: [number, number]; added: boolean } | null {
+// Toggle a format on what a one-line selection shows, as a word processor does:
+// when all of it has the format, the
+// format comes off it (a span split around it when the selection is part of it);
+// otherwise all of it gets the format,
+// joined with the spans of that format it touches. null: not a format the line's
+// parser knows, or nothing is shown.
+function toggleFormat(
+    line: string,
+    from: number,
+    to: number,
+    marker: string
+): {
+    from: number;
+    to: number;
+    insert: string;
+    text: [number, number];
+    added: boolean;
+} | null {
     const format = FORMAT_OF[marker];
     if (!format) return null;
     const { spans } = inlineOf(line);
     const [f, t] = shownPart(line, spans, from, to);
     if (f >= t) return null;
-    const mine = spans.filter(s => hasFormat(s.tag, format)).sort((x, y) => x.open - y.open);
-    const inside = mine.find(s => s.a <= f && t <= s.b);
+    const mine = spans
+        .filter((s) => hasFormat(s.tag, format))
+        .sort((x, y) => x.open - y.open);
+    const inside = mine.find((s) => s.a <= f && t <= s.b);
     if (inside) {
-        // The span becomes up to three: before the selection and after it with the format, the selection without.
-        const open = line.slice(inside.open, inside.a), close = line.slice(inside.b, inside.close);
+        // The span becomes up to three: before the selection and after it with
+        // the format, the selection without.
+        const open = line.slice(inside.open, inside.a),
+            close = line.slice(inside.b, inside.close);
         const before = around(line.slice(inside.a, f), open, close);
-        const middle = around(line.slice(f, t), without(open, marker.length, true), without(close, marker.length, false));
+        const middle = around(
+            line.slice(f, t),
+            without(open, marker.length, true),
+            without(close, marker.length, false)
+        );
         const lead = middle.length - middle.trimStart().length;
-        const start = inside.open + before.length + lead + without(open, marker.length, true).length;
+        const start =
+            inside.open +
+            before.length +
+            lead +
+            without(open, marker.length, true).length;
         return {
-            from: inside.open, to: inside.close, insert: before + middle + around(line.slice(t, inside.b), open, close),
-            text: [start, start + (t - f)], added: false,
+            from: inside.open,
+            to: inside.close,
+            insert:
+                before + middle + around(line.slice(t, inside.b), open, close),
+            text: [start, start + (t - f)],
+            added: false,
         };
     }
-    // Spans of the format the selection overlaps join it: their markers go, and one pair goes around all of it.
-    let a = f, b = t;
+    // Spans of the format the selection overlaps join it: their markers go, and
+    // one pair goes around all of it.
+    let a = f,
+        b = t;
     for (let grown = true; grown;) {
         grown = false;
-        for (const s of mine) if (s.a < b && s.b > a && (s.open < a || s.close > b)) { a = Math.min(a, s.open); b = Math.max(b, s.close); grown = true; }
+        for (const s of mine)
+            if (s.a < b && s.b > a && (s.open < a || s.close > b)) {
+                a = Math.min(a, s.open);
+                b = Math.max(b, s.close);
+                grown = true;
+            }
     }
-    let inner = '', at = a;
+    let inner = '',
+        at = a;
     for (const s of mine) {
         if (s.open < a || s.close > b) continue;
-        const open = line.slice(s.open, s.a), close = line.slice(s.b, s.close);
-        inner += line.slice(at, s.open) + without(open, marker.length, true) + line.slice(s.a, s.b) + without(close, marker.length, false);
+        const open = line.slice(s.open, s.a),
+            close = line.slice(s.b, s.close);
+        inner +=
+            line.slice(at, s.open) +
+            without(open, marker.length, true) +
+            line.slice(s.a, s.b) +
+            without(close, marker.length, false);
         at = s.close;
     }
     inner += line.slice(at, b);
-    return { from: a, to: b, insert: marker + inner + marker, text: [a, a + marker.length * 2 + inner.length], added: true };
+    return {
+        from: a,
+        to: b,
+        insert: marker + inner + marker,
+        text: [a, a + marker.length * 2 + inner.length],
+        added: true,
+    };
 }
 
-// A cursor inside a span of the format (or at either end of its text) takes the format off the whole span, as the Bold
-// button of a word processor does for a word; the cursor stays before the same letter. null: the cursor is in no such span.
-function unwrapAt(line: string, at: number, marker: string): { from: number; to: number; insert: string; cursor: number } | null {
+// A cursor inside a span of the format (or at either end of its text) takes the
+// format off the whole span, as the Bold
+// button of a word processor does for a word; the cursor stays before the same
+// letter. null: the cursor is in no such span.
+function unwrapAt(
+    line: string,
+    at: number,
+    marker: string
+): { from: number; to: number; insert: string; cursor: number } | null {
     const format = FORMAT_OF[marker];
-    const span = format && inlineOf(line).spans.find(s => hasFormat(s.tag, format) && s.a < s.b && s.a <= at && at <= s.b);
+    const span =
+        format &&
+        inlineOf(line).spans.find(
+            (s) =>
+                hasFormat(s.tag, format) && s.a < s.b && s.a <= at && at <= s.b
+        );
     const toggled = span ? toggleFormat(line, span.a, span.b, marker) : null;
-    return toggled && { from: toggled.from, to: toggled.to, insert: toggled.insert, cursor: toggled.text[0] + at - span!.a };
+    return (
+        toggled && {
+            from: toggled.from,
+            to: toggled.to,
+            insert: toggled.insert,
+            cursor: toggled.text[0] + at - span!.a,
+        }
+    );
 }
 
-// Wrap the selection with a marker, e.g. ** for bold. If the selection is already wrapped, the marker is removed.
-// Without a selection: insert a pair of markers and put the cursor in between. The selected text stays selected, with
-// the cursor at its start; the selection is never empty in between (on X11 an empty one would clear the primary selection).
-// On one line the formats are what the line shows (toggleFormat): the same selection with or without its hidden markers.
+// Wrap the selection with a marker, e.g. ** for bold. If the selection is
+// already wrapped, the marker is removed.
+// Without a selection: insert a pair of markers and put the cursor in between.
+// The selected text stays selected, with
+// the cursor at its start; the selection is never empty in between (on X11 an
+// empty one would clear the primary selection).
+// On one line the formats are what the line shows (toggleFormat): the same
+// selection with or without its hidden markers.
 export function wrap(state: TextState, left: string, right = left): TextEdit {
-    const from = Math.min(state.anchor, state.head), to = Math.max(state.anchor, state.head);
+    const from = Math.min(state.anchor, state.head),
+        to = Math.max(state.anchor, state.head);
     const { line, start, end } = lineAround(state.text, from);
     if (from === to) {
-        const unwrapped = left === right ? unwrapAt(line, from - start, left) : null;
-        if (unwrapped) return { changes: [{ from: start + unwrapped.from, to: start + unwrapped.to, insert: unwrapped.insert }], selection: cursorAt(start + unwrapped.cursor) };
-        return { changes: [{ from, to, insert: left + right }], selection: cursorAt(from + left.length) };
+        const unwrapped =
+            left === right ? unwrapAt(line, from - start, left) : null;
+        if (unwrapped)
+            return {
+                changes: [
+                    {
+                        from: start + unwrapped.from,
+                        to: start + unwrapped.to,
+                        insert: unwrapped.insert,
+                    },
+                ],
+                selection: cursorAt(start + unwrapped.cursor),
+            };
+        return {
+            changes: [{ from, to, insert: left + right }],
+            selection: cursorAt(from + left.length),
+        };
     }
-    const toggled = left === right && to <= end ? toggleFormat(line, from - start, to - start, left) : null;
+    const toggled =
+        left === right && to <= end
+            ? toggleFormat(line, from - start, to - start, left)
+            : null;
     if (toggled) {
         const [a, b] = toggled.text;
         return {
-            changes: [{ from: start + toggled.from, to: start + toggled.to, insert: toggled.insert }],
+            changes: [
+                {
+                    from: start + toggled.from,
+                    to: start + toggled.to,
+                    insert: toggled.insert,
+                },
+            ],
             selection: { anchor: start + b, head: start + a },
         };
     }
     const txt = state.text.slice(from, to);
-    if (txt.length >= left.length + right.length && txt.startsWith(left) && txt.endsWith(right)) {
+    if (
+        txt.length >= left.length + right.length &&
+        txt.startsWith(left) &&
+        txt.endsWith(right)
+    ) {
         return {
-            changes: [{ from, to: from + left.length, insert: '' }, { from: to - right.length, to, insert: '' }],
+            changes: [
+                { from, to: from + left.length, insert: '' },
+                { from: to - right.length, to, insert: '' },
+            ],
             selection: { anchor: to - left.length - right.length, head: from },
         };
     }
     return {
-        changes: [{ from, to: from, insert: left }, { from: to, to, insert: right }],
+        changes: [
+            { from, to: from, insert: left },
+            { from: to, to, insert: right },
+        ],
         selection: { anchor: to + left.length + right.length, head: from },
     };
 }
 
-// Selected text → [text](), selected URL → [](url). The cursor is placed in the empty part.
+// Selected text → [text](), selected URL → [](url). The cursor is placed in the
+// empty part.
 export function link(state: TextState): TextEdit {
-    const from = Math.min(state.anchor, state.head), to = Math.max(state.anchor, state.head);
-    if (from === to) return { changes: [{ from, to, insert: '[]()' }], selection: cursorAt(from + 1) };
+    const from = Math.min(state.anchor, state.head),
+        to = Math.max(state.anchor, state.head);
+    if (from === to)
+        return {
+            changes: [{ from, to, insert: '[]()' }],
+            selection: cursorAt(from + 1),
+        };
     const txt = state.text.slice(from, to);
     const isUrl = /^(https?:|mailto:)/.test(txt);
     const insert = isUrl ? `[](${txt})` : `[${txt}]()`;
-    return { changes: [{ from, to, insert }], selection: cursorAt(isUrl ? from + 1 : from + insert.length - 1) };
+    return {
+        changes: [{ from, to, insert }],
+        selection: cursorAt(isUrl ? from + 1 : from + insert.length - 1),
+    };
 }
 
-// Insert a block (code block, table) at the cursor and put the cursor between before and after. On a line that has
+// Insert a block (code block, table) at the cursor and put the cursor between
+// before and after. On a line that has
 // text, a blank line comes first.
-export function block(state: TextState, before: string, after: string): TextEdit {
+export function block(
+    state: TextState,
+    before: string,
+    after: string
+): TextEdit {
     const lead = lineAround(state.text, state.head).line.trim() ? '\n\n' : '';
     return {
-        changes: [{ from: state.head, to: state.head, insert: lead + before + after }],
+        changes: [
+            { from: state.head, to: state.head, insert: lead + before + after },
+        ],
         selection: cursorAt(state.head + lead.length + before.length),
     };
 }
 
-// Add/remove a line prefix ("> ", "- ", "1. ") on all selected lines. If all lines already have the prefix, the prefix
+// Add/remove a line prefix ("> ", "- ", "1. ") on all selected lines. If all
+// lines already have the prefix, the prefix
 // is removed. "1. " numbers the lines.
-export function togglePrefix(state: TextState, pattern: RegExp, prefix: string): TextEdit {
-    const from = Math.min(state.anchor, state.head), to = Math.max(state.anchor, state.head);
+export function togglePrefix(
+    state: TextState,
+    pattern: RegExp,
+    prefix: string
+): TextEdit {
+    const from = Math.min(state.anchor, state.head),
+        to = Math.max(state.anchor, state.head);
     const start = lineStart(state.text, from);
     const lines = state.text.slice(start, lineEnd(state.text, to)).split('\n');
-    const remove = lines.every(l => pattern.test(l));
+    const remove = lines.every((l) => pattern.test(l));
     const changes: TextChange[] = [];
     let at = start;
     lines.forEach((line, i) => {
-        if (remove) changes.push({ from: at, to: at + pattern.exec(line)![0].length, insert: '' });
-        else changes.push({ from: at, to: at, insert: prefix === '1. ' ? `${i + 1}. ` : prefix });
+        if (remove)
+            changes.push({
+                from: at,
+                to: at + pattern.exec(line)![0].length,
+                insert: '',
+            });
+        else
+            changes.push({
+                from: at,
+                to: at,
+                insert: prefix === '1. ' ? `${i + 1}. ` : prefix,
+            });
         at += line.length + 1;
     });
     return withSelection(state, changes);
 }
 
-// Make the selected lines a level 1–6 heading, whatever they were; level 0 or the same level = plain paragraph.
+// Make the selected lines a level 1–6 heading, whatever they were; level 0 or
+// the same level = plain paragraph.
 export function heading(state: TextState, level: number): TextEdit {
-    return setLineKind(state, level > 0 ? `h${Math.min(level, 6)}` as LineKind : 'paragraph');
+    return setLineKind(
+        state,
+        level > 0 ? (`h${Math.min(level, 6)}` as LineKind) : 'paragraph'
+    );
 }
 
-// What a line is, for the visual editor's style menu and its / menu: a paragraph, a heading, a quote, or a list item.
-export type LineKind = 'paragraph' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote' | 'bullet' | 'numbered' | 'task';
+// What a line is, for the visual editor's style menu and its / menu: a
+// paragraph, a heading, a quote, or a list item.
+export type LineKind =
+    | 'paragraph'
+    | 'h1'
+    | 'h2'
+    | 'h3'
+    | 'h4'
+    | 'h5'
+    | 'h6'
+    | 'quote'
+    | 'bullet'
+    | 'numbered'
+    | 'task';
 
-// The kind of a line, the length of the prefix that makes it that kind, and the indent a list item keeps.
-export function lineKindOf(line: string): { kind: LineKind; prefix: number; indent: string } {
+// The kind of a line, the length of the prefix that makes it that kind, and the
+// indent a list item keeps.
+export function lineKindOf(line: string): {
+    kind: LineKind;
+    prefix: number;
+    indent: string;
+} {
     const h = RE.heading.exec(line);
-    if (h) return { kind: `h${h[1].length}` as LineKind, prefix: h[0].length, indent: '' };
+    if (h)
+        return {
+            kind: `h${h[1].length}` as LineKind,
+            prefix: h[0].length,
+            indent: '',
+        };
     const q = RE.quote.exec(line);
     if (q) return { kind: 'quote', prefix: q[0].length, indent: '' };
     const l = RE.list.exec(line);
-    if (l) return { kind: l[4] ? 'task' : /\d/.test(l[2]) ? 'numbered' : 'bullet', prefix: l[0].length, indent: l[1] };
+    if (l)
+        return {
+            kind: l[4] ? 'task' : /\d/.test(l[2]) ? 'numbered' : 'bullet',
+            prefix: l[0].length,
+            indent: l[1],
+        };
     return { kind: 'paragraph', prefix: 0, indent: '' };
 }
 
-// Make every selected line one kind, replacing the prefix it has ("- " becomes "1. ", not "1. - "). When all of them
-// are that kind already, they become paragraphs. A list item keeps its indent; a numbered list counts from 1.
+// Make every selected line one kind, replacing the prefix it has ("- " becomes
+// "1. ", not "1. - "). When all of them
+// are that kind already, they become paragraphs. A list item keeps its indent; a
+// numbered list counts from 1.
 export function setLineKind(state: TextState, kind: LineKind): TextEdit {
-    const from = Math.min(state.anchor, state.head), to = Math.max(state.anchor, state.head);
+    const from = Math.min(state.anchor, state.head),
+        to = Math.max(state.anchor, state.head);
     const start = lineStart(state.text, from);
     const lines = state.text.slice(start, lineEnd(state.text, to)).split('\n');
     const now = lines.map(lineKindOf);
-    const target = now.every(k => k.kind === kind) ? 'paragraph' : kind;
+    const target = now.every((k) => k.kind === kind) ? 'paragraph' : kind;
     const changes: TextChange[] = [];
     let at = start;
     lines.forEach((line, i) => {
         const { prefix, indent } = now[i];
-        const insert = target === 'paragraph' ? '' : target === 'quote' ? '> '
-            : target.startsWith('h') ? `${'#'.repeat(Number(target[1]))} `
-            : indent + (target === 'numbered' ? `${i + 1}. ` : target === 'task' ? '- [ ] ' : '- ');
-        if (line.slice(0, prefix) !== insert) changes.push({ from: at, to: at + prefix, insert });
+        const insert =
+            target === 'paragraph'
+                ? ''
+                : target === 'quote'
+                  ? '> '
+                  : target.startsWith('h')
+                    ? `${'#'.repeat(Number(target[1]))} `
+                    : indent +
+                      (target === 'numbered'
+                          ? `${i + 1}. `
+                          : target === 'task'
+                            ? '- [ ] '
+                            : '- ');
+        if (line.slice(0, prefix) !== insert)
+            changes.push({ from: at, to: at + prefix, insert });
         at += line.length + 1;
     });
     return withSelection(state, changes);
@@ -336,7 +647,10 @@ export function setLineKind(state: TextState, kind: LineKind): TextEdit {
 // ---------- Lists and quotes ----------
 
 // Is line lineNo inside a ``` code block?
-export function isInCodeBlock(lines: readonly string[], lineNo: number): boolean {
+export function isInCodeBlock(
+    lines: readonly string[],
+    lineNo: number
+): boolean {
     let open: string | null = null;
     for (let i = 0; i < lineNo && i < lines.length; i++) {
         const m = RE.fence.exec(lines[i]);
@@ -347,7 +661,8 @@ export function isInCodeBlock(lines: readonly string[], lineNo: number): boolean
     return open !== null;
 }
 
-// The prefix the next item of a list line continues with: "9. a" → "10. ", "- [x] a" → "- [ ] ".
+// The prefix the next item of a list line continues with: "9. a" → "10. ", "-
+// [x] a" → "- [ ] ".
 function nextItemPrefix(quote: string, item: RegExpExecArray): string {
     const num = parseInt(item[2]);
     const marker = isNaN(num) ? item[2] : `${num + 1}${item[2].slice(-1)}`;
@@ -366,37 +681,76 @@ export function continueBlock(state: TextState): TextEdit | null {
     const rest = line.slice(quote.length);
     const item = RE.list.exec(rest);
     if (item && !rest.slice(item[0].length).trim()) {
-        return withSelection(state, [{ from: start, to: end, insert: quote.replace(/[ \t]*>[ \t]?$/, '') }]);
+        return withSelection(state, [
+            {
+                from: start,
+                to: end,
+                insert: quote.replace(/[ \t]*>[ \t]?$/, ''),
+            },
+        ]);
     }
-    if (!item && quote && !rest.trim()) return withSelection(state, [{ from: start, to: end, insert: '' }]);
+    if (!item && quote && !rest.trim())
+        return withSelection(state, [{ from: start, to: end, insert: '' }]);
     if (!item && !quote) return null;
-    const prefix = item ? nextItemPrefix(quote, item) : quote.endsWith(' ') ? quote : `${quote} `;
-    return withSelection(state, [{ from: state.head, to: state.head, insert: `\n${prefix}` }]);
+    const prefix = item
+        ? nextItemPrefix(quote, item)
+        : quote.endsWith(' ')
+          ? quote
+          : `${quote} `;
+    return withSelection(state, [
+        { from: state.head, to: state.head, insert: `\n${prefix}` },
+    ]);
 }
 
-// Tab / Shift+Tab on a list line: increase or decrease the indentation by 4 spaces; null if not a list line.
-export function indentListItem(state: TextState, outdent: boolean): TextEdit | null {
+// Tab / Shift+Tab on a list line: increase or decrease the indentation by 4
+// spaces; null if not a list line.
+export function indentListItem(
+    state: TextState,
+    outdent: boolean
+): TextEdit | null {
     const { line, start } = lineAround(state.text, state.head);
     if (!RE.list.test(line.replace(/^(?:[ \t]*>[ \t]?)+/, ''))) return null;
-    if (!outdent) return withSelection(state, [{ from: start, to: start, insert: '    ' }]);
+    if (!outdent)
+        return withSelection(state, [
+            { from: start, to: start, insert: '    ' },
+        ]);
     const indent = /^( {1,4}|\t)/.exec(line);
-    return indent ? withSelection(state, [{ from: start, to: start + indent[0].length, insert: '' }]) : unchanged(state);
+    return indent
+        ? withSelection(state, [
+              { from: start, to: start + indent[0].length, insert: '' },
+          ])
+        : unchanged(state);
 }
 
 // ---------- Tables ----------
 //
-// The table commands read the whole document (a table is found from its first line), so they take the whole text.
+// The table commands read the whole document (a table is found from its first
+// line), so they take the whole text.
 
 export type TableCommand =
-    | 'row-below' | 'row-above' | 'col-right' | 'col-left' | 'delete-row' | 'delete-col'
-    | 'align-left' | 'align-center' | 'align-right' | 'format';
+    | 'row-below'
+    | 'row-above'
+    | 'col-right'
+    | 'col-left'
+    | 'delete-row'
+    | 'delete-col'
+    | 'align-left'
+    | 'align-center'
+    | 'align-right'
+    | 'format';
 
 // Why a table command could not run; the frontend words it.
-export type TableFailure = 'not-in-table' | 'row-above-header' | 'delete-header' | 'delete-last-column';
+export type TableFailure =
+    | 'not-in-table'
+    | 'row-above-header'
+    | 'delete-header'
+    | 'delete-last-column';
 
-export type TableResult = { ok: true; edit: TextEdit } | { ok: false; reason: TableFailure };
+export type TableResult =
+    { ok: true; edit: TextEdit } | { ok: false; reason: TableFailure };
 
-// Cursor position inside a table. Rows are counted "logically": 0 = header (the separator row is considered part of
+// Cursor position inside a table. Rows are counted "logically": 0 = header (the
+// separator row is considered part of
 // the header), 1 = first body row, etc.
 interface Where {
     table: TableRange;
@@ -406,82 +760,150 @@ interface Where {
     columns: number;
 }
 
-const lineOfRow = (table: TableRange, row: number): number => table.start + (row === 0 ? 0 : row + 1);
+const lineOfRow = (table: TableRange, row: number): number =>
+    table.start + (row === 0 ? 0 : row + 1);
 const lastRow = (table: TableRange): number => table.end - table.start - 1;
 
 function whereIsCursor(state: TextState): Where | null {
     const lines = state.text.split('\n');
     const line = lineNumberAt(state.text, state.head);
-    const table = findTables(lines).find(t => line >= t.start && line <= t.end);
+    const table = findTables(lines).find(
+        (t) => line >= t.start && line <= t.end
+    );
     if (!table) return null;
     const columns = splitRow(lines[table.start]).length;
     return {
-        table, lines, columns,
+        table,
+        lines,
+        columns,
         row: line <= table.start + 1 ? 0 : line - table.start - 1,
-        col: Math.min(cellIndexAt(lines[line], state.head - lineStart(state.text, state.head)), columns - 1),
+        col: Math.min(
+            cellIndexAt(
+                lines[line],
+                state.head - lineStart(state.text, state.head)
+            ),
+            columns - 1
+        ),
     };
 }
 
-// The changes, then the cursor at the start of the contents of cell col on line `line` of the text after them. A row
+// The changes, then the cursor at the start of the contents of cell col on line
+// `line` of the text after them. A row
 // with fewer cells: the end of the row.
-function toCell(state: TextState, changes: readonly TextChange[], line: number, col: number): TextEdit {
+function toCell(
+    state: TextState,
+    changes: readonly TextChange[],
+    line: number,
+    col: number
+): TextEdit {
     const text = applyChanges(state.text, changes);
     const start = offsetOfLine(text, line);
-    return { changes, selection: cursorAt(start + cellStart(text.slice(start, lineEnd(text, start)), col)) };
+    return {
+        changes,
+        selection: cursorAt(
+            start + cellStart(text.slice(start, lineEnd(text, start)), col)
+        ),
+    };
 }
 
 // Replace lines start..end with newLines.
-function replaceLines(text: string, start: number, end: number, newLines: readonly string[]): TextChange {
-    return { from: offsetOfLine(text, start), to: lineEnd(text, offsetOfLine(text, end)), insert: newLines.join('\n') };
+function replaceLines(
+    text: string,
+    start: number,
+    end: number,
+    newLines: readonly string[]
+): TextChange {
+    return {
+        from: offsetOfLine(text, start),
+        to: lineEnd(text, offsetOfLine(text, end)),
+        insert: newLines.join('\n'),
+    };
 }
 
 // One blank row below the table's last row.
-function appendRow(text: string, table: TableRange, columns: number): TextChange {
+function appendRow(
+    text: string,
+    table: TableRange,
+    columns: number
+): TextChange {
     const at = lineEnd(text, offsetOfLine(text, table.end));
-    return { from: at, to: at, insert: `\n${renderRow(Array<string>(columns).fill(''))}` };
+    return {
+        from: at,
+        to: at,
+        insert: `\n${renderRow(Array<string>(columns).fill(''))}`,
+    };
 }
 
-// Tab / Shift+Tab: move to the next / previous cell. In the last cell, Tab adds a new row. null if the cursor is not in
+// Tab / Shift+Tab: move to the next / previous cell. In the last cell, Tab adds
+// a new row. null if the cursor is not in
 // a table (the key is not handled).
-export function tabInTable(state: TextState, backward: boolean): TextEdit | null {
+export function tabInTable(
+    state: TextState,
+    backward: boolean
+): TextEdit | null {
     const at = whereIsCursor(state);
     if (!at) return null;
     const { table, row, col, columns } = at;
-    let toRow = row, toCol = col;
+    let toRow = row,
+        toCol = col;
     if (!backward) {
         if (col + 1 < columns) toCol = col + 1;
-        else { toRow = row + 1; toCol = 0; }
+        else {
+            toRow = row + 1;
+            toCol = 0;
+        }
     } else if (col > 0) {
         toCol = col - 1;
     } else if (row > 0) {
         toRow = row - 1;
         toCol = columns - 1;
     } else {
-        return unchanged(state);  // first cell: there is nothing before it
+        return unchanged(state); // first cell: there is nothing before it
     }
-    const changes = toRow > lastRow(table) ? [appendRow(state.text, table, columns)] : [];
+    const changes =
+        toRow > lastRow(table) ? [appendRow(state.text, table, columns)] : [];
     return toCell(state, changes, lineOfRow(table, toRow), toCol);
 }
 
-// Enter: move to the same cell in the next row (a new row if already on the last row). On an empty last body row,
-// Enter deletes that row and leaves the table, like Enter on an empty list item. null if not in a table.
+// Enter: move to the same cell in the next row (a new row if already on the last
+// row). On an empty last body row,
+// Enter deletes that row and leaves the table, like Enter on an empty list item.
+// null if not in a table.
 export function enterInTable(state: TextState): TextEdit | null {
     const at = whereIsCursor(state);
     if (!at) return null;
     const { table, lines, row, col, columns } = at;
-    if (row > 0 && row === lastRow(table) && splitRow(lines[table.end]).every(c => c.text === '')) {
+    if (
+        row > 0 &&
+        row === lastRow(table) &&
+        splitRow(lines[table.end]).every((c) => c.text === '')
+    ) {
         const below = lines[table.end + 1];
-        // A blank line below the table already: delete the row with its line break, and the cursor moves to that line.
-        const change = below !== undefined && below.trim() === ''
-            ? { from: offsetOfLine(state.text, table.end) - 1, to: lineEnd(state.text, offsetOfLine(state.text, table.end)), insert: '' }
-            : replaceLines(state.text, table.end, table.end, ['']);   // leave a blank line as a separator
+        // A blank line below the table already: delete the row with its line
+        // break, and the cursor moves to that line.
+        const change =
+            below !== undefined && below.trim() === ''
+                ? {
+                      from: offsetOfLine(state.text, table.end) - 1,
+                      to: lineEnd(
+                          state.text,
+                          offsetOfLine(state.text, table.end)
+                      ),
+                      insert: '',
+                  }
+                : replaceLines(state.text, table.end, table.end, ['']); // leave a blank line as a separator
         return toCell(state, [change], table.end, 0);
     }
-    const changes = row + 1 > lastRow(table) ? [appendRow(state.text, table, columns)] : [];
+    const changes =
+        row + 1 > lastRow(table) ? [appendRow(state.text, table, columns)] : [];
     return toCell(state, changes, lineOfRow(table, row + 1), col);
 }
 
-const ALIGN_OF: Partial<Record<TableCommand, Align>> = { 'align-left': 'left', 'align-center': 'center', 'align-right': 'right' };
+const ALIGN_OF: Partial<Record<TableCommand, Align>> = {
+    'align-left': 'left',
+    'align-center': 'center',
+    'align-right': 'right',
+};
 
 interface Transformed {
     model: Table;
@@ -490,35 +912,76 @@ interface Transformed {
 }
 
 // The table after a command, and the cell the cursor goes to.
-function transform(model: Table, command: TableCommand, at: Where): Transformed | TableFailure {
+function transform(
+    model: Table,
+    command: TableCommand,
+    at: Where
+): Transformed | TableFailure {
     const { row, col, columns } = at;
-    const body = row - 1;   // index into model.rows; -1 = header
+    const body = row - 1; // index into model.rows; -1 = header
     switch (command) {
-        case 'row-below': return { model: insertRow(model, body + 1), row: row + 1, col };
-        case 'row-above': return row === 0 ? 'row-above-header' : { model: insertRow(model, body), row, col };
+        case 'row-below':
+            return { model: insertRow(model, body + 1), row: row + 1, col };
+        case 'row-above':
+            return row === 0
+                ? 'row-above-header'
+                : { model: insertRow(model, body), row, col };
         case 'delete-row': {
             if (row === 0) return 'delete-header';
             const after = deleteRow(model, body);
             return { model: after, row: Math.min(row, after.rows.length), col };
         }
-        case 'col-right': return { model: insertColumn(model, col + 1), row, col: col + 1 };
-        case 'col-left': return { model: insertColumn(model, col), row, col };
+        case 'col-right':
+            return { model: insertColumn(model, col + 1), row, col: col + 1 };
+        case 'col-left':
+            return { model: insertColumn(model, col), row, col };
         case 'delete-col':
-            return columns <= 1 ? 'delete-last-column' : { model: deleteColumn(model, col), row, col: Math.min(col, columns - 2) };
-        case 'format': return { model, row, col };
-        default: return { model: setAlign(model, col, ALIGN_OF[command] ?? null), row, col };
+            return columns <= 1
+                ? 'delete-last-column'
+                : {
+                      model: deleteColumn(model, col),
+                      row,
+                      col: Math.min(col, columns - 2),
+                  };
+        case 'format':
+            return { model, row, col };
+        default:
+            return {
+                model: setAlign(model, col, ALIGN_OF[command] ?? null),
+                row,
+                col,
+            };
     }
 }
 
-// Runs a command on the table at the cursor. The result is always a tidied table (column widths equalized), because
+// Runs a command on the table at the cursor. The result is always a tidied table
+// (column widths equalized), because
 // adding or deleting columns changes their widths.
-export function runTableCommand(state: TextState, command: TableCommand): TableResult {
+export function runTableCommand(
+    state: TextState,
+    command: TableCommand
+): TableResult {
     const at = whereIsCursor(state);
     if (!at) return { ok: false, reason: 'not-in-table' };
     const { table, lines } = at;
-    const done = transform(parseTable(lines.slice(table.start, table.end + 1)), command, at);
+    const done = transform(
+        parseTable(lines.slice(table.start, table.end + 1)),
+        command,
+        at
+    );
     if (typeof done === 'string') return { ok: false, reason: done };
-    const change = replaceLines(state.text, table.start, table.end, renderTable(done.model));
-    const after = { start: table.start, end: table.start + done.model.rows.length + 1 };
-    return { ok: true, edit: toCell(state, [change], lineOfRow(after, done.row), done.col) };
+    const change = replaceLines(
+        state.text,
+        table.start,
+        table.end,
+        renderTable(done.model)
+    );
+    const after = {
+        start: table.start,
+        end: table.start + done.model.rows.length + 1,
+    };
+    return {
+        ok: true,
+        edit: toCell(state, [change], lineOfRow(after, done.row), done.col),
+    };
 }

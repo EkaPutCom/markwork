@@ -8,13 +8,14 @@ export interface PathOps {
 }
 
 export type ImageSource =
-    | { kind: 'url'; url: string }
-    | { kind: 'path'; path: string };
+    { kind: 'url'; url: string } | { kind: 'path'; path: string };
 
 // Schemed URLs and absolute paths stay as written. Relative paths are
 // percent-decoded and joined to baseDir.
 export function imageSource(
-    url: string, baseDir: string, paths: PathOps
+    url: string,
+    baseDir: string,
+    paths: PathOps
 ): ImageSource {
     if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return { kind: 'url', url };
     return {
