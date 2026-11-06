@@ -84,7 +84,8 @@ export async function agentTests(): Promise<void> {
         );
     });
 
-    await test('splitChunks cuts per heading with the heading path and line numbers', async () => {
+    await test('splitChunks cuts per heading with the' +
+        ' heading path and line numbers', async () => {
         const chunks = splitChunks('chapter-1.md', CH1);
         eq(
             chunks.map((c) => c.heading),
@@ -100,7 +101,9 @@ export async function agentTests(): Promise<void> {
         contains(chunks[1].text, 'Laras carried a letter');
     });
 
-    await test('splitChunks splits a long section at paragraph boundaries and loses no lines', async () => {
+    await test('splitChunks splits a long section at' +
+        ' paragraph boundaries and loses no' +
+        ' lines', async () => {
         const para = 'long sentence '.repeat(40); // ±560 characters
         const text = `# Title\n\n${[1, 2, 3, 4, 5].map(() => para).join('\n\n')}\n`;
         const chunks = splitChunks('x.md', text);
@@ -129,7 +132,9 @@ export async function agentTests(): Promise<void> {
         eq(tokenize('Chapter 12 and 7'), ['12', '7']);
     });
 
-    await test('rankChunks puts the most relevant chunk on top and drops the ones that do not match', async () => {
+    await test('rankChunks puts the most relevant' +
+        ' chunk on top and drops the ones that' +
+        ' do not match', async () => {
         const chunks = [
             ...splitChunks('chapter-1.md', CH1),
             ...splitChunks('chapter-3.md', CH3),
@@ -145,7 +150,9 @@ export async function agentTests(): Promise<void> {
 
     section('Assistant: building the context');
 
-    await test('the whole active document goes into the system part, the question does not', async () => {
+    await test('the whole active document goes into' +
+        ' the system part, the question does' +
+        ' not', async () => {
         const b = buildContext(input());
         contains(b.system, '<active_document>\n');
         contains(b.system, 'Captain Hasan');
@@ -161,14 +168,18 @@ export async function agentTests(): Promise<void> {
         );
     });
 
-    await test('system is identical between questions (a stable prefix for the cache) as long as the manuscript is the same', async () => {
+    await test('system is identical between questions' +
+        ' (a stable prefix for the cache) as' +
+        ' long as the manuscript is the same', async () => {
         const a = buildContext(input({ question: 'Who is Laras?' }));
         const b = buildContext(input({ question: 'Where is that island?' }));
         eq(a.system, b.system);
         ok(a.note !== b.note, 'the extra context should follow the question');
     });
 
-    await test('relevant excerpts from other files go into the extra context, irrelevant ones do not', async () => {
+    await test('relevant excerpts from other files go' +
+        ' into the extra context, irrelevant' +
+        ' ones do not', async () => {
         const b = buildContext(
             input({ question: 'Who carried the letter from the village?' })
         );
@@ -184,7 +195,8 @@ export async function agentTests(): Promise<void> {
         );
     });
 
-    await test('a follow-up question uses the previous question to search ("and he?")', async () => {
+    await test('a follow-up question uses the previous' +
+        ' question to search ("and he?")', async () => {
         const b = buildContext(
             input({
                 question: 'Then why was he disappointed?',
@@ -194,7 +206,8 @@ export async function agentTests(): Promise<void> {
         contains(b.note, 'chapter-3.md');
     });
 
-    await test('the selection and cursor position are in the extra context', async () => {
+    await test('the selection and cursor position are' +
+        ' in the extra context', async () => {
         const b = buildContext(
             input({ selection: 'The storm hit on the third night.' })
         );
@@ -208,7 +221,8 @@ export async function agentTests(): Promise<void> {
         );
     });
 
-    await test('an @mention attaches a whole file; unknown ones are reported', async () => {
+    await test('an @mention attaches a whole file;' +
+        ' unknown ones are reported', async () => {
         const b = buildContext(
             input({
                 question: 'Compare with @chapter-3 and @missing',
@@ -223,7 +237,10 @@ export async function agentTests(): Promise<void> {
         );
     });
 
-    await test('numbered manuscript lines in the active document, excerpts, and attachments (the original numbers, including in the cursor window)', async () => {
+    await test('numbered manuscript lines in the' +
+        ' active document, excerpts, and' +
+        ' attachments (the original numbers,' +
+        ' including in the cursor window)', async () => {
         const b = buildContext(
             input({
                 question: 'Who carried the letter from the village?',
@@ -253,7 +270,9 @@ export async function agentTests(): Promise<void> {
         contains(w.system, '2503│ Line 2500 in chapter 99.');
     });
 
-    await test('the instructions do not tell the model to ask the writer to attach files (with or without tools)', async () => {
+    await test('the instructions do not tell the model' +
+        ' to ask the writer to attach files' +
+        ' (with or without tools)', async () => {
         const withTools = buildContext(input());
         const without = buildContext(
             input({
@@ -276,7 +295,8 @@ export async function agentTests(): Promise<void> {
         );
     });
 
-    await test('options turned off: without the active document, selection, or project', async () => {
+    await test('options turned off: without the active' +
+        ' document, selection, or project', async () => {
         const none = buildContext(
             input({
                 selection: 'x',
@@ -300,14 +320,17 @@ export async function agentTests(): Promise<void> {
         eq(none.items, []);
     });
 
-    await test('the project map contains the file list with headings and marks the open file', async () => {
+    await test('the project map contains the file list' +
+        ' with headings and marks the open file', async () => {
         const b = buildContext(input());
         contains(b.system, '- chapter-1.md · ');
         contains(b.system, 'Chapter 1: The Harbor | The Meeting');
         contains(b.system, '- chapter-2.md (currently open)');
     });
 
-    await test('the token budget is not exceeded on a large book; the active document is truncated around the cursor', async () => {
+    await test('the token budget is not exceeded on a' +
+        ' large book; the active document is' +
+        ' truncated around the cursor', async () => {
         const filler = (n: number) =>
             Array.from(
                 { length: 4000 },
@@ -346,7 +369,9 @@ export async function agentTests(): Promise<void> {
         contains(b.note, 'Wicaksono');
     });
 
-    await test('matchMention: full name, without extension, or path suffix; findMentions reads @ in text', async () => {
+    await test('matchMention: full name, without' +
+        ' extension, or path suffix;' +
+        ' findMentions reads @ in text', async () => {
         const files = [
             { name: 'chapter/01-start.md', text: '' },
             { name: 'notes.md', text: '' },
@@ -363,7 +388,9 @@ export async function agentTests(): Promise<void> {
         );
     });
 
-    await test('buildMessages trims the oldest history in pairs and attaches the context only to the last message', async () => {
+    await test('buildMessages trims the oldest history' +
+        ' in pairs and attaches the context' +
+        ' only to the last message', async () => {
         const built = buildContext(input());
         const turn = (i: number) => [
             { role: 'user' as const, content: `ask ${i} ${'x'.repeat(300)}` },
@@ -410,7 +437,9 @@ export async function agentTests(): Promise<void> {
 
     section('Assistant: the SSE stream and errors');
 
-    await test('parseStreamLine reads text, reasoning, usage, tool fragments, and [DONE]; it ignores the rest', async () => {
+    await test('parseStreamLine reads text, reasoning,' +
+        ' usage, tool fragments, and [DONE]; it' +
+        ' ignores the rest', async () => {
         const chunk = (over: object) => ({
             kind: 'chunk',
             text: '',
@@ -427,13 +456,18 @@ export async function agentTests(): Promise<void> {
         );
         eq(
             parseStreamLine(
-                'data: {"choices":[{"delta":{"reasoning_content":"hmm","content":null}}]}'
+                'data:' +
+                    ' {"choices":[{"delta":{"reasoning_cont' +
+                    'ent":"hmm","content":null}}]}'
             ),
             chunk({ reasoning: 'hmm' })
         );
         eq(
             parseStreamLine(
-                'data: {"choices":[],"usage":{"prompt_tokens":100,"completion_tokens":20,"prompt_cache_hit_tokens":64}}'
+                'data:' +
+                    ' {"choices":[],"usage":{"prompt_tokens' +
+                    '":100,"completion_tokens":20,"prompt_c' +
+                    'ache_hit_tokens":64}}'
             ),
             chunk({ usage: { prompt: 100, cached: 64, completion: 20 } })
         );
@@ -464,13 +498,17 @@ export async function agentTests(): Promise<void> {
         eq(parseStreamLine('data: {broken'), null);
         eq(
             parseStreamLine(
-                'data: {"choices":[{"delta":{"role":"assistant","content":""}}]}'
+                'data:' +
+                    ' {"choices":[{"delta":{"role":"assista' +
+                    'nt","content":""}}]}'
             ),
             null
         );
     });
 
-    await test('httpErrorMessage explains common statuses and includes the server message', async () => {
+    await test('httpErrorMessage explains common' +
+        ' statuses and includes the server' +
+        ' message', async () => {
         contains(
             httpErrorMessage(
                 401,
@@ -504,7 +542,10 @@ export async function agentTests(): Promise<void> {
         },
     });
 
-    await test('ask streams the answer, saves the history, and the next question carries the history without the old context', async () => {
+    await test('ask streams the answer, saves the' +
+        ' history, and the next question' +
+        ' carries the history without the old' +
+        ' context', async () => {
         const session = new ChatSession();
         const seen: ChatRequest[] = [];
         const chunks: string[] = [];
@@ -568,7 +609,9 @@ export async function agentTests(): Promise<void> {
 
 export async function apiKeyTests(): Promise<void> {
     section('Assistant: API key');
-    await test('the DEEPSEEK_API_KEY environment variable takes precedence over other storage', async () => {
+    await test('the DEEPSEEK_API_KEY environment' +
+        ' variable takes precedence over other' +
+        ' storage', async () => {
         const before = platform().env('DEEPSEEK_API_KEY');
         host().setenv('DEEPSEEK_API_KEY', '  sk-from-env \n');
         try {
@@ -596,7 +639,8 @@ export async function toolTests(): Promise<void> {
 
     section('Assistant: browsing tools');
 
-    await test('list_files names all files together with their headings', async () => {
+    await test('list_files names all files together' +
+        ' with their headings', async () => {
         const r = runTool('list_files', '', files);
         contains(r.content, '- chapter-1.md · ');
         contains(r.content, 'notes/characters.md');
@@ -604,11 +648,15 @@ export async function toolTests(): Promise<void> {
         eq(r.summary, '4 files');
     });
 
-    await test('search_text: exact occurrences with the file name and line number, case-insensitive', async () => {
+    await test('search_text: exact occurrences with' +
+        ' the file name and line number,' +
+        ' case-insensitive', async () => {
         const r = runTool('search_text', '{"text":"laras"}', files);
         contains(
             r.content,
-            'chapter-1.md:7: On the pier, Raka met Laras. Laras carried a letter from the village.'
+            'chapter-1.md:7: On the pier, Raka met' +
+                ' Laras. Laras carried a letter from' +
+                ' the village.'
         );
         contains(r.content, 'chapter-2.md:7: The storm hit');
         contains(r.content, 'notes/characters.md:3: - Laras: letter carrier');
@@ -628,7 +676,8 @@ export async function toolTests(): Promise<void> {
         );
     });
 
-    await test('search_text limits the number of lines and reports the rest', async () => {
+    await test('search_text limits the number of lines' +
+        ' and reports the rest', async () => {
         const many = [
             {
                 name: 'x.md',
@@ -647,7 +696,9 @@ export async function toolTests(): Promise<void> {
         );
     });
 
-    await test('search_documents returns the most relevant chunk together with its location', async () => {
+    await test('search_documents returns the most' +
+        ' relevant chunk together with its' +
+        ' location', async () => {
         const r = runTool(
             'search_documents',
             '{"query":"island without a name"}',
@@ -662,7 +713,9 @@ export async function toolTests(): Promise<void> {
         );
     });
 
-    await test('read_file: with line numbers, can be a range, knows the total number of lines', async () => {
+    await test('read_file: with line numbers, can be a' +
+        ' range, knows the total number of' +
+        ' lines', async () => {
         const all = runTool('read_file', '{"name":"chapter-3"}', files);
         contains(all.content, '[chapter-3.md, lines 1–');
         contains(all.content, '1│ # Chapter 3: The Island');
@@ -677,7 +730,8 @@ export async function toolTests(): Promise<void> {
         eq(part.summary, 'lines 5–6');
     });
 
-    await test('read_file truncates a long file and points to its continuation', async () => {
+    await test('read_file truncates a long file and' +
+        ' points to its continuation', async () => {
         const long = [
             {
                 name: 'long.md',
@@ -702,7 +756,8 @@ export async function toolTests(): Promise<void> {
         );
     });
 
-    await test('errors are returned as text the model can understand, and are not thrown', async () => {
+    await test('errors are returned as text the model' +
+        ' can understand, and are not thrown', async () => {
         contains(
             runTool('read_file', '{"name":"characters"}', files).content,
             ''
@@ -766,7 +821,9 @@ export async function toolTests(): Promise<void> {
         ...over,
     });
 
-    await test('the model asks for a tool, the result is sent back, then the model answers; the history contains only Q&A', async () => {
+    await test('the model asks for a tool, the result' +
+        ' is sent back, then the model answers;' +
+        ' the history contains only Q&A', async () => {
         const calls: ChatRequest[] = [];
         const snapshots: ChatMessage[][] = [];
         const provider: Provider = {
@@ -838,7 +895,9 @@ export async function toolTests(): Promise<void> {
         eq(session.history[1].content, 'Let me check first.\n\nLaras.');
     });
 
-    await test('the active document can also be browsed with the buffer contents, not the disk version', async () => {
+    await test('the active document can also be' +
+        ' browsed with the buffer contents, not' +
+        ' the disk version', async () => {
         let seen = '';
         const provider: Provider = {
             async chat(req) {
@@ -873,7 +932,8 @@ export async function toolTests(): Promise<void> {
         contains(seen, 'A new version that is not saved yet.');
     });
 
-    await test('without permission for other files no tools are given', async () => {
+    await test('without permission for other files no' +
+        ' tools are given', async () => {
         const seen: ChatRequest['tools'][] = [];
         const provider: Provider = {
             async chat(req) {
@@ -899,7 +959,9 @@ export async function toolTests(): Promise<void> {
         eq(seen, [undefined]);
     });
 
-    await test('rounds are limited to MAX_ROUNDS and the last round has no tools, so it always ends with an answer', async () => {
+    await test('rounds are limited to MAX_ROUNDS and' +
+        ' the last round has no tools, so it' +
+        ' always ends with an answer', async () => {
         let rounds = 0,
             lastHadTools = true;
         const provider: Provider = {
@@ -929,7 +991,9 @@ export async function toolTests(): Promise<void> {
         eq(r.toolCalls, MAX_ROUNDS - 1);
     });
 
-    await test('reading budget per question: a tool result that exceeds it is replaced by a "budget exhausted" message', async () => {
+    await test('reading budget per question: a tool' +
+        ' result that exceeds it is replaced by' +
+        ' a "budget exhausted" message', async () => {
         const big = {
             name: 'large.md',
             text: Array.from(
@@ -971,7 +1035,8 @@ export async function toolTests(): Promise<void> {
         contains(outcomes[outcomes.length - 1], 'The reading budget');
     });
 
-    await test('cancelled halfway: the text fragment is kept and the loop stops', async () => {
+    await test('cancelled halfway: the text fragment' +
+        ' is kept and the loop stops', async () => {
         let calls = 0;
         const provider: Provider = {
             async chat(req) {
@@ -987,7 +1052,8 @@ export async function toolTests(): Promise<void> {
         eq(session.history.length, 2);
     });
 
-    await test('toApiMessage: the message shape in the API (tools and reasoning)', async () => {
+    await test('toApiMessage: the message shape in the' +
+        ' API (tools and reasoning)', async () => {
         eq(
             toApiMessage({ role: 'tool', toolCallId: 'c1', content: 'result' }),
             { role: 'tool', tool_call_id: 'c1', content: 'result' }
