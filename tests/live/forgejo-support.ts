@@ -130,6 +130,7 @@ export async function putFile(
     );
     check(
         done.status === 200 || done.status === 201,
-        `could not write ${path}: HTTP ${done.status} ${errorMessage(done.json?.message ?? '')}`
+        `could not write ${path}: HTTP ${done.status} ` +
+            errorMessage(done.json?.message ?? '')
     );
 }

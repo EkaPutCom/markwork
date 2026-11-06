@@ -205,7 +205,8 @@ const SCENARIOS: Scenario[] = [
                 ...(value(text, 'Write spec', 'priority') === '"high"'
                     ? []
                     : [
-                          `Write spec priority is ${value(text, 'Write spec', 'priority')}`,
+                          `Write spec priority is ` +
+                              `${value(text, 'Write spec', 'priority')}`,
                       ]),
                 ...structuredIssues(text).map((i) => i.text),
             ];
@@ -255,7 +256,8 @@ const SCENARIOS: Scenario[] = [
                 ...(value(text, 'Release material', 'priority') === '"low"'
                     ? []
                     : [
-                          `priority is ${value(text, 'Release material', 'priority')}`,
+                          `priority is ` +
+                              `${value(text, 'Release material', 'priority')}`,
                       ]),
                 ...(/- \[x\] Book venue/.test(text)
                     ? []
@@ -358,15 +360,18 @@ async function runScenario(
             sc.expectTool &&
             !tools.includes(sc.expectTool) &&
             !tools.includes('propose_batch')
-                ? ` (note: ${sc.expectTool} was not used; tools: ${[...new Set(tools)].join(', ') || 'none'})`
+                ? ` (note: ${sc.expectTool} was not used; tools: ` +
+                    `${[...new Set(tools)].join(', ') || 'none'})`
                 : '';
         say(
-            `  ${problems.length ? RED : GREEN}${problems.length ? '✗' : '✓'} ${sc.name}: ${proposals} proposals, ${secs} s${used}${RESET}`
+            `  ${problems.length ? RED : GREEN}${problems.length ? '✗' : '✓'}` +
+                ` ${sc.name}: ${proposals} proposals, ${secs} s${used}${RESET}`
         );
         for (const p of problems) say(`      ${RED}${p}${RESET}`);
         if (problems.length)
             say(
-                `      ${DIM}answer: ${r.text.trim().slice(0, 300).replace(/\n/g, ' ')}${RESET}`
+                `      ${DIM}answer: ` +
+                    `${r.text.trim().slice(0, 300).replace(/\n/g, ' ')}${RESET}`
             );
         return problems.length === 0;
     } catch (e) {
@@ -388,8 +393,8 @@ export async function liveStructured(
     for (const sc of SCENARIOS)
         if (!(await runScenario(sc, provider, model, thinking))) failures++;
     say(
-        `${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length}${" structured scenarios" +
-            " passed"}${RESET}`
+        `${failures ? RED : GREEN}${SCENARIOS.length - failures}/` +
+            `${SCENARIOS.length} structured scenarios passed${RESET}`
     );
     return failures;
 }

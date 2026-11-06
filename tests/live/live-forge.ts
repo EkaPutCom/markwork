@@ -81,7 +81,8 @@ async function step<T>(
     } catch (e) {
         failed++;
         say(
-            `  ${RED}✗ ${name}${RESET}\n    ${errorMessage(e).split('\n').join('\n    ')}`
+            `  ${RED}✗ ${name}${RESET}\n    ` +
+                errorMessage(e).split('\n').join('\n    ')
         );
         return undefined;
     }
@@ -137,7 +138,10 @@ async function readChecks(): Promise<PullRequest | undefined> {
         async () =>
             check(
                 clean && conflicting,
-                `got ${JSON.stringify(pulls?.map((p) => [p.number, p.mergeable]))}`
+                'got ' +
+                    JSON.stringify(
+                        pulls?.map((p) => [p.number, p.mergeable])
+                    )
             )
     );
     const pull = clean ?? pulls?.[0];

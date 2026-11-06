@@ -120,7 +120,10 @@ export async function liveAgentic(
                     board === original['tasks.md'] &&
                     session.work?.status !== 'complete';
             say(
-                `${passed ? GREEN : RED}${passed ? '✓' : '✗'} agentic ${decision}: ${proposals} proposals, ${r.applied} changes, status ${session.work?.status ?? 'no plan'}${RESET}`
+                `${passed ? GREEN : RED}${passed ? '✓' : '✗'} ` +
+                    `agentic ${decision}: ${proposals} proposals, ` +
+                    `${r.applied} changes, status ` +
+                    `${session.work?.status ?? 'no plan'}${RESET}`
             );
             if (!passed) failures++;
         } catch (e) {

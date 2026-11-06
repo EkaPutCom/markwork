@@ -129,7 +129,8 @@ async function main(): Promise<boolean> {
     const thinking = opt('thinking');
     const provider = new DeepSeek(found.key);
     say(
-        `${DIM}Model ${model}, thinking ${thinking ? 'on' : 'off'}, key from ${found.source}, ${book.length} files${RESET}`
+        `${DIM}Model ${model}, thinking ${thinking ? 'on' : 'off'}, ` +
+            `key from ${found.source}, ${book.length} files${RESET}`
     );
 
     let failures = 0;
@@ -179,8 +180,12 @@ async function main(): Promise<boolean> {
                 1e6
             ).toFixed(1);
             say(`  A: ${r.text.trim().split('\n').join('\n     ')}`);
+            const usage = r.usage
+                ? `${r.usage.prompt} in (${r.usage.cached} cached) / ` +
+                    `${r.usage.completion} out`
+                : 'no usage';
             say(
-                `  ${DIM}${secs} s · ${r.toolCalls} lookups · ${r.usage ? `${r.usage.prompt} in (${r.usage.cached} cached) / ${r.usage.completion} out` : 'no usage'}${RESET}`
+                `  ${DIM}${secs} s · ${r.toolCalls} lookups · ${usage}${RESET}`
             );
             const problems: string[] = [];
             if (!r.text.trim()) problems.push('empty answer');
@@ -207,8 +212,8 @@ async function main(): Promise<boolean> {
                         ] ?? '';
                     if (!sc.cite.test(line))
                         problems.push(
-                            `the citation ${name}:${n}${" points to the wrong line" +
-            " (“"}${line.slice(0, 40)}”)`
+                            `the citation ${name}:${n} points to the wrong ` +
+                                `line (“${line.slice(0, 40)}”)`
                         );
                 }
                 if (!cites.length) problems.push('no line number citation');
@@ -223,7 +228,8 @@ async function main(): Promise<boolean> {
         }
     }
     say(
-        `\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} scenarios passed${RESET}`
+        `\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/` +
+            `${SCENARIOS.length} scenarios passed${RESET}`
     );
     failures += await liveCommitMessage(provider, model);
     if (opt('agentic'))

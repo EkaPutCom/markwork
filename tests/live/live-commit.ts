@@ -28,6 +28,12 @@ const PLAN =
         ' November.\nThe beta opens two weeks' +
         ' before.\n';
 
+const INDONESIAN_CHANGE = new RegExp(
+    '\\b(ubah|ganti|perbaiki|samakan|sesuaikan|umur|usia|' +
+        'warna|kapal|raka)',
+    'i'
+);
+
 const SCENARIOS: CommitScenario[] = [
     {
         name: 'one file, English history with a "docs:" prefix',
@@ -55,7 +61,7 @@ const SCENARIOS: CommitScenario[] = [
         },
         check: [
             [
-                /\b(ubah|ganti|perbaiki|samakan|sesuaikan|umur|usia|warna|kapal|raka)/i,
+                INDONESIAN_CHANGE,
                 'written in Indonesian, about the change',
             ],
         ],
@@ -147,7 +153,9 @@ export async function liveCommitMessage(
                 problems.push(`failed (${result.reason}): ${result.message}`);
             } else {
                 say(
-                    `  “${result.message}”  ${DIM}${secs} s · ${updates} updates${result.cancelled ? ' · stopped' : ''}${RESET}`
+                    `  “${result.message}”  ${DIM}${secs} s · ` +
+                        `${updates} updates` +
+                        `${result.cancelled ? ' · stopped' : ''}${RESET}`
                 );
                 const msg = result.message;
                 if (sc.stopAfter) {
@@ -179,8 +187,8 @@ export async function liveCommitMessage(
         }
     }
     say(
-        `\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length}${" commit message scenarios" +
-            " passed"}${RESET}`
+        `\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/` +
+            `${SCENARIOS.length} commit message scenarios passed${RESET}`
     );
     return failures;
 }
