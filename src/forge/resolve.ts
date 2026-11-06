@@ -64,7 +64,8 @@ export async function preflight(
         'HEAD',
     ]);
     if (branch !== base)
-        return `Switch this folder to the branch ${base} first (it is on ${branch ?? 'no branch'}).`;
+        return `${"Switch this folder to the" +
+            " branch "}${base} first (it is on ${branch ?? 'no branch'}).`;
     if (await out(git, folder, ['rev-parse', '-q', '--verify', 'MERGE_HEAD']))
         return 'A merge is already in progress in this' +
             ' folder. Finish or abort it first.';
@@ -168,7 +169,10 @@ export async function startLocalMerge(
     ]);
     if (forward?.status !== 0)
         return failed(
-            `Your ${merge.base} has changes the server does not have, or the other way round: bring them together first. (${reason(forward)})`
+            `Your ${merge.base}${" has changes the server" +
+            " does not have, or the" +
+            " other way round: bring" +
+            " them together first. ("}${reason(forward)})`
         );
     const head = await out(git, merge.folder, ['rev-parse', 'HEAD']);
     const fetched = await git(
@@ -224,7 +228,8 @@ export async function finishLocalMerge(
         const left = await conflictedFiles(git, merge.folder);
         if (left.length)
             return failed(
-                `Git still sees conflicts in ${left.length} file${left.length === 1 ? '' : 's'}.`
+                `${"Git still sees conflicts" +
+            " in "}${left.length} file${left.length === 1 ? '' : 's'}.`
             );
         const committed = await git(merge.folder, ['commit', '--no-edit']);
         if (committed?.status !== 0)
@@ -237,7 +242,8 @@ export async function finishLocalMerge(
     );
     if (pushed?.status !== 0)
         return failed(
-            `Could not push: ${reason(pushed)}. The merge is committed in this folder.`
+            `Could not push: ${reason(pushed)}${". The merge is committed" +
+            " in this folder."}`
         );
     return { ok: true };
 }

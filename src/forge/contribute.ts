@@ -148,7 +148,8 @@ export async function ownCopy(
     if (!existing) return ctx.provider.fork();
     return existing.isFork
         ? existing
-        : `${login}/${ctx.repo.repo} exists and is not a fork of this repository`;
+        : `${login}/${ctx.repo.repo}${" exists and is not a fork" +
+            " of this repository"}`;
 }
 
 async function push(

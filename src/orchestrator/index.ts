@@ -448,7 +448,10 @@ export class Orchestrator {
         if (previous?.result?.sessionId && previous.worktree?.path === wt.path)
             return this.resume(previous, text);
         const isolation = this.isolation(project, folder);
-        const prompt = `${buildPrompt(card, project, boardName, [], wt)}\n\nYou worked on this card before; your changes are in this worktree. The user reviewed them:\n\n${text}`;
+        const prompt = `${buildPrompt(card, project, boardName, [], wt)}${"\n\nYou worked on this card" +
+            " before; your changes are" +
+            " in this worktree. The" +
+            " user reviewed them:\n\n"}${text}`;
         const where = fmt(_('Worktree: {path}\nBranch {branch} from {base}'), {
             path: wt.cwd,
             branch: wt.branch,

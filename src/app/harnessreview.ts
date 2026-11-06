@@ -638,8 +638,15 @@ export class HarnessReviewController {
         const c = this.current;
         if (!c?.review.conflicts?.length) return;
         this.continueWith(
-            `The branch ${c.wt.base} moved on since you started, and merging your branch into it would conflict in ${c.review.conflicts.join(', ')}. ` +
-                `Merge ${c.wt.base} into your branch (git merge ${c.wt.base}), resolve the conflicts so both changes are kept, run the checks again, and commit.`
+            `The branch ${c.wt.base}${" moved on since you" +
+            " started, and merging" +
+            " your branch into it" +
+            " would conflict in "}${c.review.conflicts.join(', ')}. ` +
+                `Merge ${c.wt.base}${" into your branch (git" +
+            " merge "}${c.wt.base}${"), resolve the conflicts" +
+            " so both changes are" +
+            " kept, run the checks" +
+            " again, and commit."}`
         );
     }
 

@@ -54,7 +54,10 @@ export function pushFailure(run: GitRun | null, branch: string): string {
     if (
         /non-fast-forward|\[rejected\]|fetch first|already exists/i.test(said)
     ) {
-        return `the branch ${branch} already exists on the server with other commits; rename it or delete it there first`;
+        return `the branch ${branch}${" already exists on the" +
+            " server with other" +
+            " commits; rename it or" +
+            " delete it there first"}`;
     }
     if (
         /\b401\b|authentication failed|invalid credentials|bad credentials/i.test(
@@ -71,7 +74,9 @@ export function pushFailure(run: GitRun | null, branch: string): string {
             said
         )
     )
-        return `the server cannot be reached from where the repository is (${said.split('\n').pop()?.trim()})`;
+        return `${"the server cannot be" +
+            " reached from where the" +
+            " repository is ("}${said.split('\n').pop()?.trim()})`;
     return said.split('\n')[0] || `git exited with ${run.status}`;
 }
 
@@ -197,7 +202,8 @@ async function viaBranch(
                 ? `a pull request for ${request.branch} may already exist (${e.message})`
                 : text(e);
         return fail(
-            `The branch ${request.branch} was pushed, but the pull request was not opened: ${detail}`,
+            `The branch ${request.branch}${" was pushed, but the pull" +
+            " request was not opened: "}${detail}`,
             true
         );
     }
