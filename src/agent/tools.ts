@@ -198,7 +198,10 @@ function searchDocuments(
                 c.text.length > MAX_SNIPPET_CHARS
                     ? `${c.text.slice(0, MAX_SNIPPET_CHARS)} […]`
                     : c.text;
-            return `[${c.file} › ${c.heading || 'start of file'} · lines ${c.start + 1}–${c.end + 1}]\n${text}`;
+            return (
+                `[${c.file} › ${c.heading || 'start of file'} · ` +
+                `lines ${c.start + 1}–${c.end + 1}]\n${text}`
+            );
         })
         .join('\n\n');
     const { text, clipped } = clip(body, MAX_RESULT_TOKENS);
@@ -244,14 +247,16 @@ function searchText(
     }
     if (!total)
         return {
-            content: `The text "${needle}" was not found${only ? ` in ${only}` : ''}.`,
+            content:
+                `The text "${needle}" was not found` +
+                `${only ? ` in ${only}` : ''}.`,
             summary: 'not found',
         };
     const more =
         total > lines.length
-            ? `\n[… ${total - lines.length}${" more occurrences not" +
-            " shown; narrow with the" +
-            " file parameter …]"}`
+            ? `\n[… ${total - lines.length} more occurrences not shown; ` +
+                'narrow with the file ' +
+                'parameter …]'
             : '';
     return {
         content: `${total} lines contain "${needle}":\n${lines.join('\n')}${more}`,
@@ -363,9 +368,11 @@ const DESCRIBE: Record<string, (a: Record<string, unknown>) => string> = {
     list_files: () => 'Viewing the file list',
     search_documents: (a) => `Searching “${asString(a.query)}”`,
     search_text: (a) =>
-        `Searching text “${asString(a.text)}”${asString(a.file) ? ` in ${asString(a.file)}` : ''}`,
+        `Searching text “${asString(a.text)}”` +
+        `${asString(a.file) ? ` in ${asString(a.file)}` : ''}`,
     read_file: (a) =>
-        `Reading ${asString(a.name) || 'file'}${asInt(a.from_line) ? ` (from line ${asInt(a.from_line)})` : ''}`,
+        `Reading ${asString(a.name) || 'file'}` +
+        `${asInt(a.from_line) ? ` (from line ${asInt(a.from_line)})` : ''}`,
     create_file: (a) => `Proposing new file ${asString(a.name)}`,
     edit_file: (a) => `Proposing changes to ${asString(a.name)}`,
     describe_schema: (a) =>
