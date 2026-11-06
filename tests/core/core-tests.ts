@@ -1,9 +1,12 @@
 import { piRpcTests } from '../unit/pirpc';
 import { folderDaemonTests } from '../unit/folderdaemon';
 import { agentFolderTests } from '../unit/agentfolders';
-// The tests of the core (markdown/, agent/, forge/, the base modules, the orchestrator, the daemon client) and of the
-// application layer's pure parts. They reach the runtime only through the platform port and the test host; Node runs them
-// (run-core-node.ts). The Electron window has its own tests (tests/electron/*.mjs).
+// The tests of the core (markdown/, agent/, forge/, the base modules, the
+// orchestrator, the daemon client) and of the
+// application layer's pure parts. They reach the runtime only through the
+// platform port and the test host; Node runs them
+// (run-core-node.ts). The Electron window has its own tests
+// (tests/electron/*.mjs).
 
 import { inlineTests } from '../unit/inline';
 import { inlineHtmlTests } from '../unit/inlinehtml';
@@ -74,9 +77,15 @@ import { programsTests } from '../unit/programs';
 
 export type CoreFocus = 'all' | 'worktrees' | 'daemon' | 'agent-folders';
 
-// Runs the tests one module after another; a module whose tests wait is awaited before the next starts.
+// Runs the tests one module after another; a module whose tests wait is awaited
+// before the next starts.
 export async function runCoreTests(focus: CoreFocus = 'all'): Promise<void> {
-    if (focus === 'agent-folders') { await piRpcTests(); await agentFolderTests(); await folderDaemonTests(); return; }
+    if (focus === 'agent-folders') {
+        await piRpcTests();
+        await agentFolderTests();
+        await folderDaemonTests();
+        return;
+    }
     if (focus === 'worktrees') {
         harnessTests();
         await worktreeTests();

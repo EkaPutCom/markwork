@@ -5,7 +5,8 @@
 //
 // ---
 // layout: chart
-// by: created                      ← optional; the date field to count notes per
+// by: created                      ← optional; the date field to count notes
+// per
 // period by (default `created`)
 // group: status                    ← optional; the select field for the donut
 // (default the first select field)
@@ -90,7 +91,8 @@ export const DEFAULT_CHARTS: readonly ChartItem[] = [
     { kind: 'tags' },
 ];
 
-// The date fields a bar can count by and the select fields a donut can split by.
+// The date fields a bar can count by and the select fields a donut can split
+// by.
 export const dateFields = (schema: FieldDef[]): FieldDef[] =>
     schema.filter((f) => f.type === 'date' && !f.multiple);
 export const selectFields = (schema: FieldDef[]): FieldDef[] =>

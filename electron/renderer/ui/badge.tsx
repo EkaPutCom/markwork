@@ -10,17 +10,32 @@ export const badgeVariants = cva(
     {
         variants: {
             variant: {
-                default: 'border-transparent bg-primary text-primary-foreground',
-                secondary: 'border-transparent bg-secondary text-secondary-foreground',
-                destructive: 'border-transparent bg-destructive text-destructive-foreground dark:bg-destructive/60',
+                default:
+                    'border-transparent bg-primary text-primary-foreground',
+                secondary:
+                    'border-transparent bg-secondary text-secondary-foreground',
+                destructive:
+                    'border-transparent bg-destructive text-destructive-foreground dark:bg-destructive/60',
                 outline: 'text-foreground',
             },
         },
         defaultVariants: { variant: 'default' },
-    },
+    }
 );
 
-export function Badge({ className, variant, asChild = false, ...props }: ComponentProps<'span'> & VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+export function Badge({
+    className,
+    variant,
+    asChild = false,
+    ...props
+}: ComponentProps<'span'> &
+    VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
     const Comp = asChild ? Slot.Root : 'span';
-    return <Comp data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props} />;
+    return (
+        <Comp
+            data-slot="badge"
+            className={cn(badgeVariants({ variant }), className)}
+            {...props}
+        />
+    );
 }

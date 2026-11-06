@@ -1,6 +1,7 @@
 // Git conflict markers in a text: where each conflict is, and what a choice
 // turns it into. Pure functions over lines,
-// so they run in unit tests; electron/renderer/lib/conflicts.ts draws the result
+// so they run in unit tests; electron/renderer/lib/conflicts.ts draws the
+// result
 // and applies the choice.
 //
 // <<<<<<< HEAD            start   (current: what is in the folder)
@@ -17,7 +18,8 @@ export interface Conflict {
     base: number | null;
     mid: number;
     end: number;
-    // what follows the marker on the first and last line (a branch name, a commit)
+    // what follows the marker on the first and last line (a branch name, a
+    // commit)
     current: string;
     incoming: string;
 }
@@ -29,7 +31,8 @@ const BASE = /^\|{7}(?: .*)?\r?$/;
 const MID = /^={7}\r?$/;
 const END = /^>{7}(?: (.*))?\r?$/;
 
-// The marker lines are short and start with a fixed character, so most lines are
+// The marker lines are short and start with a fixed character, so most lines
+// are
 // rejected by one character check.
 const mayBeMarker = (line: string): boolean => {
     const c = line.charCodeAt(0);

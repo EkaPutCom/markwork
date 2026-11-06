@@ -13,7 +13,8 @@ import { RE, startsTable } from './syntax';
 
 export type Align = 'left' | 'center' | 'right' | null;
 
-// Line range of a table in the document (inclusive): header row … last body row.
+// Line range of a table in the document (inclusive): header row … last body
+// row.
 export interface TableRange {
     start: number;
     end: number;
@@ -30,9 +31,11 @@ export interface Table {
 
 // ---------- Recognizing table blocks ----------
 
-// Last body row of the table whose header is at line `start` (separator at start
+// Last body row of the table whose header is at line `start` (separator at
+// start
 // + 1).
-// The table ends at a blank line, a line without a pipe, or the start of another
+// The table ends at a blank line, a line without a pipe, or the start of
+// another
 // block.
 export function tableEnd(lines: string[], start: number): number {
     let end = start + 1;
@@ -86,7 +89,8 @@ export function findTables(lines: string[]): TableRange[] {
 export interface CellSpan {
     // cell contents without surrounding spaces; raw Markdown (\| stays)
     text: string;
-    // start position of the contents in the line (UTF-16); empty cell: a sensible cursor position
+    // start position of the contents in the line (UTF-16); empty cell: a
+    // sensible cursor position
     start: number;
     end: number;
 }
@@ -342,9 +346,11 @@ export function setAlign(table: Table, col: number, align: Align): Table {
 // smallest column width (pixels) when the table has to be narrowed
 const MIN_COLUMN = 56;
 
-// Column widths so that they fit in `available`. Columns that are already narrow
+// Column widths so that they fit in `available`. Columns that are already
+// narrow
 // are left alone,
-// the remaining space is divided evenly among the wide columns (their text wraps
+// the remaining space is divided evenly among the wide columns (their text
+// wraps
 // onto the next line).
 export function fitColumns(natural: number[], available: number): number[] {
     const widths = [...natural];

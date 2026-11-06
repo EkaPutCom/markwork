@@ -1,11 +1,13 @@
 // DBML (dbdiagram.io schema language) to Mermaid ER diagram converter.
 //
-// The diagram is drawn by electron/renderer/lib/dbmldiagram.ts; the rewriting as
+// The diagram is drawn by electron/renderer/lib/dbmldiagram.ts; the rewriting
+// as
 // a Mermaid `erDiagram` is for the HTML export.
 // Here there is DBML parsing and that rewriting. Supported: Table
 // (alias, column settings pk/unique/not null/note/ref, indexes, Note), Ref
 // (single line
-// and block, relations > < - <>), and Enum/TableGroup/Project which are skipped.
+// and block, relations > < - <>), and Enum/TableGroup/Project which are
+// skipped.
 //
 // Syntax errors are thrown as a DbmlError containing the line number.
 

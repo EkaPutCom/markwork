@@ -4,12 +4,12 @@ import { execFileSync } from 'node:child_process';
 import { dirname } from 'node:path';
 import { createInterface } from 'node:readline';
 
-const usage = 'Usage: node scripts/line-length.mjs ' +
+const usage =
+    'Usage: node scripts/line-length.mjs ' +
     '[--max N] [--summary] [--tracked | -- <file>...]';
 
 function maximum(value) {
-    if (!/^\d+$/.test(value ?? '') ||
-        !Number.isSafeInteger(Number(value))) {
+    if (!/^\d+$/.test(value ?? '') || !Number.isSafeInteger(Number(value))) {
         throw new Error('--max requires a non-negative safe integer.');
     }
     return Number(value);
@@ -23,8 +23,7 @@ function parseArgs(args) {
         if (!positional && arg === '--') positional = true;
         else if (!positional && arg === '--max') {
             options.max = maximum(args[++i]);
-        }
-        else if (!positional && arg === '--tracked') options.tracked = true;
+        } else if (!positional && arg === '--tracked') options.tracked = true;
         else if (!positional && arg === '--summary') options.summary = true;
         else if (!positional && arg.startsWith('-')) {
             throw new Error(`Unknown option: ${arg}`);
@@ -48,10 +47,12 @@ function validateOptions(options) {
 }
 
 function trackedFiles() {
-    const output = execFileSync('git', [
-        'ls-files', '-z', '--', 'src', 'electron', 'tests', 'scripts',
-    ], { encoding: 'utf8' });
-    return output.split('\0').filter(file => {
+    const output = execFileSync(
+        'git',
+        ['ls-files', '-z', '--', 'src', 'electron', 'tests', 'scripts'],
+        { encoding: 'utf8' }
+    );
+    return output.split('\0').filter((file) => {
         if (/^src\/.*\.ts$/.test(file)) return true;
         if (/^electron\/.*\.tsx?$/.test(file)) return true;
         if (/^tests\/.*\.(ts|mjs)$/.test(file)) return true;
@@ -97,11 +98,13 @@ function printSummary(counts, checked) {
 
 async function main() {
     if (process.argv.length === 3 && process.argv[2] === '--help') {
-        console.log(`${usage}\n` +
-            'Counts Unicode code points, excluding line endings.\n' +
-            '--tracked checks scoped Git files (default maximum: 80).\n' +
-            '--summary writes violation counts to stderr.\n' +
-            'Exit status: 0 success, 1 violations, 2 argument or file error.');
+        console.log(
+            `${usage}\n` +
+                'Counts Unicode code points, excluding line endings.\n' +
+                '--tracked checks scoped Git files (default maximum: 80).\n' +
+                '--summary writes violation counts to stderr.\n' +
+                'Exit status: 0 success, 1 violations, 2 argument or file error.'
+        );
         return;
     }
     const options = parseArgs(process.argv.slice(2));
@@ -122,7 +125,7 @@ async function main() {
     if (options.summary) printSummary(counts, files.length);
 }
 
-main().catch(error => {
+main().catch((error) => {
     console.error(`${error.message}\n${usage}`);
     process.exitCode = 2;
 });

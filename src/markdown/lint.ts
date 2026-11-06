@@ -116,7 +116,8 @@ class Scanner {
         return true;
     }
 
-    // A table starting at line i: rows whose cell count differs from the header,
+    // A table starting at line i: rows whose cell count differs from the
+    // header,
     // and its links. Returns its last line.
     private table(i: number): number {
         const lines = this.lines;
@@ -195,7 +196,8 @@ export function resolveLink(from: string, target: string): string | null {
     return parts.join('/');
 }
 
-// Issues in `after` that are not in `before` (counted per key, so the same issue
+// Issues in `after` that are not in `before` (counted per key, so the same
+// issue
 // twice still counts).
 export function newIssues(before: Issue[], after: Issue[]): Issue[] {
     const seen = new Map<string, number>();

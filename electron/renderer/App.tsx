@@ -1,6 +1,8 @@
 import { AgentSessions, AgentReviews } from './components/AgentFolder';
-// The window: the sidebar (or its rail), the header of the document, the editor with its tabs, the counts at the foot,
-// the Assistant beside them, and the command palette over all of it. The look is shadcn/ui's (docs/design/shadcn/).
+// The window: the sidebar (or its rail), the header of the document, the editor
+// with its tabs, the counts at the foot,
+// the Assistant beside them, and the command palette over all of it. The look
+// is shadcn/ui's (docs/design/shadcn/).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { COMMANDS } from '../../src/app/commands';
@@ -12,7 +14,11 @@ import { FilesView } from './components/FilesView';
 import { Search } from './components/Search';
 import { Palette } from './components/Palette';
 import { DialogLayer } from './components/Dialog';
-import { AboutDialog, PreferencesDialog, ShortcutsDialog } from './components/Modals';
+import {
+    AboutDialog,
+    PreferencesDialog,
+    ShortcutsDialog,
+} from './components/Modals';
 import { ReportDialog } from './components/ReportProblem';
 import { FieldsDialog } from './components/FieldsDialog';
 import { ImageViewer } from './components/ImageViewer';
@@ -32,7 +38,14 @@ import { IconButton } from './ui/icon-button';
 import { Toaster } from './ui/sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import {
-    DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuShortcut,
+    DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { cn } from './lib/utils';
 import { forgetInput } from './lib/inspect/recorder';
@@ -41,24 +54,52 @@ import { layoutOf } from './lib/client';
 import { EditingMode, STRUCTURED_PAGES } from './components/EditingMode';
 import { currentPane } from './lib/panes';
 
-// The title of the header: where the document is, as a breadcrumb, and its name, which is the Document Menu button
-// (Save, Save As, Autosave, Export, the recent files). Home and an empty window have a plain title.
+// The title of the header: where the document is, as a breadcrumb, and its
+// name, which is the Document Menu button
+// (Save, Save As, Autosave, Export, the recent files). Home and an empty window
+// have a plain title.
 function Title({ items }: { items: MenuItem[] }) {
     const s = useStore();
-    const tab = s.tabs.find(t => t.id === s.active);
-    if (!tab) return <nav className="title" aria-label="Breadcrumb"><span className="name">Markwork</span></nav>;
-    // Where the document is, as the core words it (~ for the home folder); a page (Home, an HTML file) is not saved.
-    const place = tab.place ?? (tab.file ? tab.file.replace(/[\\/][^\\/]*$/, '') : null);
+    const tab = s.tabs.find((t) => t.id === s.active);
+    if (!tab)
+        return (
+            <nav className="title" aria-label="Breadcrumb">
+                <span className="name">Markwork</span>
+            </nav>
+        );
+    // Where the document is, as the core words it (~ for the home folder); a
+    // page (Home, an HTML file) is not saved.
+    const place =
+        tab.place ?? (tab.file ? tab.file.replace(/[\\/][^\\/]*$/, '') : null);
     const crumbs = place ? place.split(/[\\/]/).filter(Boolean).slice(-2) : [];
     const separator = <Icon name="pan-end" size={14} />;
     return (
-        <nav className="title" aria-label="Breadcrumb" title={place ?? undefined}>
-            {crumbs.map((crumb, i) => <span key={i} className="contents">{<span className="crumb">{crumb}</span>}{separator}</span>)}
-            {tab.page === 'home' || tab.page === 'programs' || tab.page === 'agent' ? <span className="name">{tab.name}</span> : (
+        <nav
+            className="title"
+            aria-label="Breadcrumb"
+            title={place ?? undefined}
+        >
+            {crumbs.map((crumb, i) => (
+                <span key={i} className="contents">
+                    {<span className="crumb">{crumb}</span>}
+                    {separator}
+                </span>
+            ))}
+            {tab.page === 'home' ||
+            tab.page === 'programs' ||
+            tab.page === 'agent' ? (
+                <span className="name">{tab.name}</span>
+            ) : (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="title-button" aria-label="Document Menu">
-                            <span className="name">{tab.name}</span><Icon name="pan-down" size={14} />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="title-button"
+                            aria-label="Document Menu"
+                        >
+                            <span className="name">{tab.name}</span>
+                            <Icon name="pan-down" size={14} />
                         </Button>
                     </DropdownMenuTrigger>
                     <MenuContent items={items} align="start" />
@@ -68,45 +109,117 @@ function Title({ items }: { items: MenuItem[] }) {
     );
 }
 
-// Whether the document has changes not saved yet: a badge with words, not only a dot.
+// Whether the document has changes not saved yet: a badge with words, not only
+// a dot.
 function SaveState() {
     const s = useStore();
-    const tab = s.tabs.find(t => t.id === s.active);
-    if (!tab || ['home', 'programs', 'html', 'code', 'agent'].includes(tab.page)) return null;
-    if (tab.mirror.modified) return <span className="state"><span className="dot" aria-hidden="true" /><span className="word">Unsaved</span></span>;
+    const tab = s.tabs.find((t) => t.id === s.active);
+    if (
+        !tab ||
+        ['home', 'programs', 'html', 'code', 'agent'].includes(tab.page)
+    )
+        return null;
+    if (tab.mirror.modified)
+        return (
+            <span className="state">
+                <span className="dot" aria-hidden="true" />
+                <span className="word">Unsaved</span>
+            </span>
+        );
     if (!tab.file) return null;
-    return <span className="state"><Icon name="emblem-ok" size={12} /><span className="word">Saved</span></span>;
+    return (
+        <span className="state">
+            <Icon name="emblem-ok" size={12} />
+            <span className="word">Saved</span>
+        </span>
+    );
 }
 
-// One line of a menu: a command (with the argument it runs with), a heading over what follows, or a separator. A line
-// with an icon can be the one chosen (`checked`, the layout shown); a `check` line is an on/off setting with its box.
-interface MenuItem { id: string; label?: string; keys?: string; arg?: string; heading?: boolean; icon?: IconName; checked?: boolean; check?: boolean; enabled?: boolean }
+// One line of a menu: a command (with the argument it runs with), a heading
+// over what follows, or a separator. A line
+// with an icon can be the one chosen (`checked`, the layout shown); a `check`
+// line is an on/off setting with its box.
+interface MenuItem {
+    id: string;
+    label?: string;
+    keys?: string;
+    arg?: string;
+    heading?: boolean;
+    icon?: IconName;
+    checked?: boolean;
+    check?: boolean;
+    enabled?: boolean;
+}
 
-// The lines of a menu of the header, in shadcn's DropdownMenu. The focus is not given back to the menu's button when it
-// closes, since the command chosen may have moved it (to the editor, to a dialog).
-function MenuContent({ items, align = 'end', className }: { items: MenuItem[]; align?: 'start' | 'center' | 'end'; className?: string }) {
+// The lines of a menu of the header, in shadcn's DropdownMenu. The focus is not
+// given back to the menu's button when it
+// closes, since the command chosen may have moved it (to the editor, to a
+// dialog).
+function MenuContent({
+    items,
+    align = 'end',
+    className,
+}: {
+    items: MenuItem[];
+    align?: 'start' | 'center' | 'end';
+    className?: string;
+}) {
     const client = useClient();
-    const run = (item: { id: string; arg?: string }) => { if (item.id === 'open-folder') void client.openFolder(); else client.run(item.id, item.arg); };
+    const run = (item: { id: string; arg?: string }) => {
+        if (item.id === 'open-folder') void client.openFolder();
+        else client.run(item.id, item.arg);
+    };
     return (
-        <DropdownMenuContent align={align} className={cn('min-w-56', className)} onCloseAutoFocus={e => e.preventDefault()}>
-            {items.map((item, i) => item.id === '-' ? <DropdownMenuSeparator key={i} />
-                : item.heading ? <DropdownMenuLabel key={item.label}>{item.label}</DropdownMenuLabel>
-                : item.check !== undefined && item.check !== false ? (
-                    <DropdownMenuCheckboxItem key={`${item.id}:${item.arg ?? ''}`} checked={item.checked === true} disabled={item.enabled === false}
-                        onSelect={() => run(item)}>
-                        {item.label}{item.keys && <DropdownMenuShortcut>{label(item.keys)}</DropdownMenuShortcut>}
+        <DropdownMenuContent
+            align={align}
+            className={cn('min-w-56', className)}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+            {items.map((item, i) =>
+                item.id === '-' ? (
+                    <DropdownMenuSeparator key={i} />
+                ) : item.heading ? (
+                    <DropdownMenuLabel key={item.label}>
+                        {item.label}
+                    </DropdownMenuLabel>
+                ) : item.check !== undefined && item.check !== false ? (
+                    <DropdownMenuCheckboxItem
+                        key={`${item.id}:${item.arg ?? ''}`}
+                        checked={item.checked === true}
+                        disabled={item.enabled === false}
+                        onSelect={() => run(item)}
+                    >
+                        {item.label}
+                        {item.keys && (
+                            <DropdownMenuShortcut>
+                                {label(item.keys)}
+                            </DropdownMenuShortcut>
+                        )}
                     </DropdownMenuCheckboxItem>
                 ) : (
-                    <DropdownMenuItem key={`${item.id}:${item.arg ?? ''}`} title={item.arg} className={item.checked ? 'checked' : undefined} disabled={item.enabled === false}
-                        onSelect={() => run(item)}>
-                        {item.icon && <Icon name={item.icon} />}<span className="flex-1">{item.label}</span>{item.keys && <DropdownMenuShortcut>{label(item.keys)}</DropdownMenuShortcut>}
+                    <DropdownMenuItem
+                        key={`${item.id}:${item.arg ?? ''}`}
+                        title={item.arg}
+                        className={item.checked ? 'checked' : undefined}
+                        disabled={item.enabled === false}
+                        onSelect={() => run(item)}
+                    >
+                        {item.icon && <Icon name={item.icon} />}
+                        <span className="flex-1">{item.label}</span>
+                        {item.keys && (
+                            <DropdownMenuShortcut>
+                                {label(item.keys)}
+                            </DropdownMenuShortcut>
+                        )}
                     </DropdownMenuItem>
-                ))}
+                )
+            )}
         </DropdownMenuContent>
     );
 }
 
-// The layouts the layout button offers, with the name and the icon it shows for each; '' is the text view.
+// The layouts the layout button offers, with the name and the icon it shows for
+// each; '' is the text view.
 const LAYOUTS: { layout: string; name: string; icon: IconName }[] = [
     { layout: 'table', name: 'Table', icon: 'x-office-spreadsheet' },
     { layout: 'board', name: 'Board', icon: 'view-dual' },
@@ -117,68 +230,159 @@ const LAYOUTS: { layout: string; name: string; icon: IconName }[] = [
     { layout: 'chart', name: 'Chart', icon: 'view-sort-descending' },
     { layout: '', name: 'Text', icon: 'text-x-generic' },
 ];
-// What the layout button shows: the page on screen (an inbox is drawn as a list).
-const PAGE_LAYOUT: Record<string, string> = { board: 'board', list: 'list', inbox: 'list', table: 'table', calendar: 'calendar', timeline: 'timeline', gallery: 'gallery', chart: 'chart' };
-const shownLayout = (layout: string, page: string, structured: boolean) => LAYOUTS.find(l => l.layout === (PAGE_LAYOUT[page] ?? (structured ? layout : ''))) ?? LAYOUTS[LAYOUTS.length - 1];
+// What the layout button shows: the page on screen (an inbox is drawn as a
+// list).
+const PAGE_LAYOUT: Record<string, string> = {
+    board: 'board',
+    list: 'list',
+    inbox: 'list',
+    table: 'table',
+    calendar: 'calendar',
+    timeline: 'timeline',
+    gallery: 'gallery',
+    chart: 'chart',
+};
+const shownLayout = (layout: string, page: string, structured: boolean) =>
+    LAYOUTS.find(
+        (l) => l.layout === (PAGE_LAYOUT[page] ?? (structured ? layout : ''))
+    ) ?? LAYOUTS[LAYOUTS.length - 1];
 
 function HeaderBar() {
     const client = useClient();
     const s = useStore();
     const panels = layoutOf(s);
-    const tab = s.tabs.find(t => t.id === s.active);
-    const keyOf = (id: string) => COMMANDS.find(c => c.id === id)?.keys[0];
-    // A command of the table as a menu line, left out when this window cannot carry it out.
-    const entry = (id: string, text?: string, extra: Partial<MenuItem> = {}): MenuItem[] => {
-        const command = COMMANDS.find(c => c.id === id);
-        if (!command?.label || (id !== 'open-folder' && !client.enabled(command))) return [];
-        return [{ id, label: text ?? command.label.replace(/…$/, ''), keys: keyOf(id), ...extra }];
+    const tab = s.tabs.find((t) => t.id === s.active);
+    const keyOf = (id: string) => COMMANDS.find((c) => c.id === id)?.keys[0];
+    // A command of the table as a menu line, left out when this window cannot
+    // carry it out.
+    const entry = (
+        id: string,
+        text?: string,
+        extra: Partial<MenuItem> = {}
+    ): MenuItem[] => {
+        const command = COMMANDS.find((c) => c.id === id);
+        if (
+            !command?.label ||
+            (id !== 'open-folder' && !client.enabled(command))
+        )
+            return [];
+        return [
+            {
+                id,
+                label: text ?? command.label.replace(/…$/, ''),
+                keys: keyOf(id),
+                ...extra,
+            },
+        ];
     };
-    const named = (id: string, extra: Partial<MenuItem> = {}): MenuItem[] => entry(id, COMMANDS.find(c => c.id === id)?.label ?? undefined, extra);
+    const named = (id: string, extra: Partial<MenuItem> = {}): MenuItem[] =>
+        entry(id, COMMANDS.find((c) => c.id === id)?.label ?? undefined, extra);
     const recent: MenuItem[] = s.recent.length
-        ? [{ id: '-' }, { id: 'recent', label: 'Recent', heading: true }, ...s.recent.map(path => ({ id: 'open-recent', label: path.split(/[\\/]/).pop(), arg: path }))]
+        ? [
+              { id: '-' },
+              { id: 'recent', label: 'Recent', heading: true },
+              ...s.recent.map((path) => ({
+                  id: 'open-recent',
+                  label: path.split(/[\\/]/).pop(),
+                  arg: path,
+              })),
+          ]
         : [];
     // The document's menu: what is done to the document itself.
     const documentItems: MenuItem[] = [
-        ...named('save'), ...named('save-as'), ...named('autosave', { check: true, checked: s.settings.autosave === true }),
-        { id: '-' }, ...named('export-html'), ...recent,
-    ];
-    // The layout menu: a row for each layout with its icon, the one shown marked, then the view modes as checks.
-    const shown = tab ? shownLayout(s.layout.layout ?? '', tab.page, s.layout.structured) : LAYOUTS[LAYOUTS.length - 1];
-    const layoutItems: MenuItem[] = [
-        ...LAYOUTS.flatMap(({ layout, name, icon }): MenuItem[] => [...layout === '' ? [{ id: '-' }] : [], { id: 'layout', arg: layout, label: name, icon, checked: shown.layout === layout }]),
+        ...named('save'),
+        ...named('save-as'),
+        ...named('autosave', {
+            check: true,
+            checked: s.settings.autosave === true,
+        }),
         { id: '-' },
-        ...named('visual', { check: true, checked: s.settings.visual !== false }),
+        ...named('export-html'),
+        ...recent,
+    ];
+    // The layout menu: a row for each layout with its icon, the one shown
+    // marked, then the view modes as checks.
+    const shown = tab
+        ? shownLayout(s.layout.layout ?? '', tab.page, s.layout.structured)
+        : LAYOUTS[LAYOUTS.length - 1];
+    const layoutItems: MenuItem[] = [
+        ...LAYOUTS.flatMap(({ layout, name, icon }): MenuItem[] => [
+            ...(layout === '' ? [{ id: '-' }] : []),
+            {
+                id: 'layout',
+                arg: layout,
+                label: name,
+                icon,
+                checked: shown.layout === layout,
+            },
+        ]),
+        { id: '-' },
+        ...named('visual', {
+            check: true,
+            checked: s.settings.visual !== false,
+        }),
         ...named('source', { check: true, checked: s.source }),
         ...named('focus', { check: true, checked: s.settings.focus === true }),
-        ...named('typewriter', { check: true, checked: s.settings.typewriter === true }),
+        ...named('typewriter', {
+            check: true,
+            checked: s.settings.typewriter === true,
+        }),
     ];
     return (
         <header className={`headerbar${panels.compact ? ' compact' : ''}`}>
-            <IconButton label="Toggle Sidebar" aria-pressed={panels.sidebar.shown} onClick={() => client.toggleSidebar()}>
+            <IconButton
+                label="Toggle Sidebar"
+                aria-pressed={panels.sidebar.shown}
+                onClick={() => client.toggleSidebar()}
+            >
                 <Icon name="sidebar-show" />
             </IconButton>
             <span className="vsep" aria-hidden="true" />
             <Title items={documentItems} />
             <SaveState />
             <span className="spacer" />
-            {tab && !s.pullShown && !s.reviewShown && ['text', 'csv', ...STRUCTURED_PAGES].includes(tab.page) && <EditingMode tab={tab} pane={currentPane(s.panes)} />}
+            {tab &&
+                !s.pullShown &&
+                !s.reviewShown &&
+                ['text', 'csv', ...STRUCTURED_PAGES].includes(tab.page) && (
+                    <EditingMode tab={tab} pane={currentPane(s.panes)} />
+                )}
             {tab && s.layout.layout !== null && (
                 <DropdownMenu>
                     <Tooltip>
                         <DropdownMenuTrigger asChild>
                             <TooltipTrigger asChild>
-                                <Button variant="outline" size="sm" aria-label="Layout">
-                                    <Icon name={shown.icon} /><span className="label-text">{shown.name}</span><Icon name="pan-down" className="text-muted-foreground" />
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    aria-label="Layout"
+                                >
+                                    <Icon name={shown.icon} />
+                                    <span className="label-text">
+                                        {shown.name}
+                                    </span>
+                                    <Icon
+                                        name="pan-down"
+                                        className="text-muted-foreground"
+                                    />
                                 </Button>
                             </TooltipTrigger>
                         </DropdownMenuTrigger>
                         <TooltipContent>Layout</TooltipContent>
                     </Tooltip>
-                    <MenuContent items={layoutItems} className="layout-menu min-w-52" />
+                    <MenuContent
+                        items={layoutItems}
+                        className="layout-menu min-w-52"
+                    />
                 </DropdownMenu>
             )}
             <span className="vsep" aria-hidden="true" />
-            <IconButton label="Assistant" shortcut="Ctrl+Shift+A" aria-pressed={panels.chat.shown} onClick={() => client.run('chat')}>
+            <IconButton
+                label="Assistant"
+                shortcut="Ctrl+Shift+A"
+                aria-pressed={panels.chat.shown}
+                onClick={() => client.run('chat')}
+            >
                 <Icon name="chat-message-new" />
             </IconButton>
         </header>
@@ -188,68 +392,149 @@ function HeaderBar() {
 // The counts at the foot of the editor: no bar, only the numbers.
 function StatusBar() {
     const s = useStore();
-    const tab = s.tabs.find(t => t.id === s.active);
-    // The text's counts are the window's own (it has the text); the others come from the core (view.status).
+    const tab = s.tabs.find((t) => t.id === s.active);
+    // The text's counts are the window's own (it has the text); the others come
+    // from the core (view.status).
     const { counts, visible } = s.status;
-    const text = useMemo(() => tab && counts.kind === 'text' ? { words: countWords(tab.mirror.text), characters: cpLength(tab.mirror.text) } : null,
-        [tab, tab?.mirror.version, counts.kind]);
+    const text = useMemo(
+        () =>
+            tab && counts.kind === 'text'
+                ? {
+                      words: countWords(tab.mirror.text),
+                      characters: cpLength(tab.mirror.text),
+                  }
+                : null,
+        [tab, tab?.mirror.version, counts.kind]
+    );
     const code = useMemo(() => {
         if (tab?.page !== 'code') return null;
         const breaks = (tab.code ?? '').match(/\r\n|\r|\n/g) ?? [];
         const kinds = new Set(breaks);
-        const ending = kinds.size > 1 ? 'Mixed' : kinds.has('\r\n') ? 'CRLF' : kinds.has('\r') ? 'CR' : kinds.has('\n') ? 'LF' : 'No line breaks';
+        const ending =
+            kinds.size > 1
+                ? 'Mixed'
+                : kinds.has('\r\n')
+                  ? 'CRLF'
+                  : kinds.has('\r')
+                    ? 'CR'
+                    : kinds.has('\n')
+                      ? 'LF'
+                      : 'No line breaks';
         return { lines: breaks.length + 1, ending };
     }, [tab?.code, tab?.page]);
     const cursor = s.codeCursors[s.panes.current];
-    const position = cursor?.doc === tab?.id ? cursor : { line: 1, column: 1, selected: 0 };
-    if (!tab) return <footer className="statusbar">{!s.ready ? 'Starting…' : ''}</footer>;
+    const position =
+        cursor?.doc === tab?.id ? cursor : { line: 1, column: 1, selected: 0 };
+    if (!tab)
+        return (
+            <footer className="statusbar">{!s.ready ? 'Starting…' : ''}</footer>
+        );
     if (!visible && !code) return <footer className="statusbar" />;
     return (
-        <footer className="statusbar" role="status" aria-label={code ? 'Code status' : 'Document status'}>
-            {code && <>
-                <span>Ln {position.line.toLocaleString()}, Col {position.column.toLocaleString()}</span>
-                {position.selected > 0 && <span>{position.selected.toLocaleString()} selected</span>}
-                <span className="ml-auto">UTF-8 · {code.ending} · {code.lines.toLocaleString()} lines</span>
-            </>}
-            {!code && <>
-                {counts.kind === 'board' && <span>{counts.lists} lists · {counts.cards} cards</span>}
-                {counts.kind === 'inbox' && <span>{counts.items} {counts.items === 1 ? 'note' : 'notes'}</span>}
-                {counts.kind === 'csv' && <span>{counts.rows} rows · {counts.columns} columns</span>}
-                {text && (
-                    <>
-                        <span>{text.words} words</span>
-                        <span>{text.characters} characters</span>
-                        <span>Line {s.line}, Column {s.column}</span>
-                    </>
-                )}
-            </>}
+        <footer
+            className="statusbar"
+            role="status"
+            aria-label={code ? 'Code status' : 'Document status'}
+        >
+            {code && (
+                <>
+                    <span>
+                        Ln {position.line.toLocaleString()}, Col{' '}
+                        {position.column.toLocaleString()}
+                    </span>
+                    {position.selected > 0 && (
+                        <span>
+                            {position.selected.toLocaleString()} selected
+                        </span>
+                    )}
+                    <span className="ml-auto">
+                        UTF-8 · {code.ending} · {code.lines.toLocaleString()}{' '}
+                        lines
+                    </span>
+                </>
+            )}
+            {!code && (
+                <>
+                    {counts.kind === 'board' && (
+                        <span>
+                            {counts.lists} lists · {counts.cards} cards
+                        </span>
+                    )}
+                    {counts.kind === 'inbox' && (
+                        <span>
+                            {counts.items}{' '}
+                            {counts.items === 1 ? 'note' : 'notes'}
+                        </span>
+                    )}
+                    {counts.kind === 'csv' && (
+                        <span>
+                            {counts.rows} rows · {counts.columns} columns
+                        </span>
+                    )}
+                    {text && (
+                        <>
+                            <span>{text.words} words</span>
+                            <span>{text.characters} characters</span>
+                            <span>
+                                Line {s.line}, Column {s.column}
+                            </span>
+                        </>
+                    )}
+                </>
+            )}
         </footer>
     );
 }
 
-// The core's notices, as Sonner toasts: the store keeps one at a time (a new one takes the place of the last), with an
-// action when the core offers one; the core's own failure stays until the window is reloaded.
+// The core's notices, as Sonner toasts: the store keeps one at a time (a new
+// one takes the place of the last), with an
+// action when the core offers one; the core's own failure stays until the
+// window is reloaded.
 function Notification() {
     const client = useClient();
     const { toast: notice, coreError, settings } = useStore();
     const active = useRef<string | number | null>(null);
     useEffect(() => {
         if (active.current !== null) toast.dismiss(active.current);
-        if (!notice) { active.current = null; return; }
-        // A new id gives each notice its own lifetime, even while the previous one is animating out.
-        const dismiss = () => { if (client.getState().toast === notice) client.dismissToast(); };
+        if (!notice) {
+            active.current = null;
+            return;
+        }
+        // A new id gives each notice its own lifetime, even while the previous
+        // one is animating out.
+        const dismiss = () => {
+            if (client.getState().toast === notice) client.dismissToast();
+        };
         active.current = toast(notice.text, {
-            duration: 6000, closeButton: true,
-            action: notice.action ? { label: notice.action.label, onClick: () => client.runToast(notice.action!.token) } : undefined,
-            onDismiss: dismiss, onAutoClose: dismiss,
+            duration: 6000,
+            closeButton: true,
+            action: notice.action
+                ? {
+                      label: notice.action.label,
+                      onClick: () => client.runToast(notice.action!.token),
+                  }
+                : undefined,
+            onDismiss: dismiss,
+            onAutoClose: dismiss,
         });
     }, [notice, client]);
     useEffect(() => {
-        if (coreError) toast.error(coreError, { id: 'core-error', duration: Infinity, dismissible: false });
+        if (coreError)
+            toast.error(coreError, {
+                id: 'core-error',
+                duration: Infinity,
+                dismissible: false,
+            });
         else toast.dismiss('core-error');
     }, [coreError]);
     const scheme = settings['color-scheme'];
-    return <Toaster theme={scheme === 'light' || scheme === 'dark' ? scheme : 'system'} position="bottom-center" visibleToasts={1} />;
+    return (
+        <Toaster
+            theme={scheme === 'light' || scheme === 'dark' ? scheme : 'system'}
+            position="bottom-center"
+            visibleToasts={1}
+        />
+    );
 }
 
 const INSPECTOR_KEY = 'Ctrl+Alt+i';
@@ -270,38 +555,56 @@ export function App() {
         return () => window.removeEventListener('resize', resize);
     }, [client]);
 
-    // Escape closes a floating panel, unless something inside took the key (a popover, a suggestion list).
+    // Escape closes a floating panel, unless something inside took the key (a
+    // popover, a suggestion list).
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape' && !event.defaultPrevented && !client.getState().dialog) client.closeFloating();
+            if (
+                event.key === 'Escape' &&
+                !event.defaultPrevented &&
+                !client.getState().dialog
+            )
+                client.closeFloating();
         };
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
     }, [client]);
 
-    // Every key of the command table, for the commands this window carries out. Captured before the editor sees it.
+    // Every key of the command table, for the commands this window carries out.
+    // Captured before the editor sees it.
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
-            // A dialog has the keys to itself, and so does the report of a problem with the editor: Ctrl+Z in its note
+            // A dialog has the keys to itself, and so does the report of a
+            // problem with the editor: Ctrl+Z in its note
             // would undo the very text it reports on.
-            if (client.getState().dialog || client.getState().conflictComparison || client.getState().info === 'report') return;
-            // Dev mode: the Editor Inspector (not a command of the core, which a normal build has no use for).
+            if (
+                client.getState().dialog ||
+                client.getState().conflictComparison ||
+                client.getState().info === 'report'
+            )
+                return;
+            // Dev mode: the Editor Inspector (not a command of the core, which
+            // a normal build has no use for).
             if (window.markwork.devMode && matches(event, INSPECTOR_KEY)) {
                 event.preventDefault();
                 event.stopPropagation();
-                if (client.currentEditor) forgetInput(client.currentEditor.view.state);
-                setInspecting(on => !on);
+                if (client.currentEditor)
+                    forgetInput(client.currentEditor.view.state);
+                setInspecting((on) => !on);
                 return;
             }
             // Dev mode: the UI Gallery (components/UiGallery.tsx).
             if (window.markwork.devMode && matches(event, UI_GALLERY_KEY)) {
                 event.preventDefault();
                 event.stopPropagation();
-                setGallery(on => !on);
+                setGallery((on) => !on);
                 return;
             }
             for (const command of COMMANDS) {
-                if (command.keys.some(k => matches(event, k)) && client.enabled(command)) {
+                if (
+                    command.keys.some((k) => matches(event, k)) &&
+                    client.enabled(command)
+                ) {
                     event.preventDefault();
                     event.stopPropagation();
                     client.run(command.id);
@@ -315,26 +618,56 @@ export function App() {
 
     return (
         <div className="workbench">
-            <div className="titlebar"><MenuBar /></div>
-            <div className={`shell${panels.sidebar.floats ? ' float-sidebar' : ''}`}>
+            <div className="titlebar">
+                <MenuBar />
+            </div>
+            <div
+                className={`shell${panels.sidebar.floats ? ' float-sidebar' : ''}`}
+            >
                 <ActivityBar />
                 {panels.sidebar.shown && (
                     <SideShell>
-                        {page === 'search' ? <Search /> : page === 'history' ? <History /> : page === 'collab' ? <Collab /> : <FilesView />}
+                        {page === 'search' ? (
+                            <Search />
+                        ) : page === 'history' ? (
+                            <History />
+                        ) : page === 'collab' ? (
+                            <Collab />
+                        ) : (
+                            <FilesView />
+                        )}
                     </SideShell>
                 )}
                 <div className="main">
                     <HeaderBar />
-                    <div className={`content${panels.chat.floats ? ' float-chat' : ''}`}>
+                    <div
+                        className={`content${panels.chat.floats ? ' float-chat' : ''}`}
+                    >
                         <div className="editor-group">
                             <EditorArea />
-                            {inspecting && <Inspector onClose={() => setInspecting(false)} />}
+                            {inspecting && (
+                                <Inspector
+                                    onClose={() => setInspecting(false)}
+                                />
+                            )}
                             <StatusBar />
                         </div>
-                        {panels.chat.shown && (state.tabs.find(tab => tab.id === state.active)?.page === 'agent' ? <AgentSessions /> : <Chat />)}
+                        {panels.chat.shown &&
+                            (state.tabs.find((tab) => tab.id === state.active)
+                                ?.page === 'agent' ? (
+                                <AgentSessions />
+                            ) : (
+                                <Chat />
+                            ))}
                         {/* A floating panel closes when the content beside it is clicked; the header stays in reach. */}
-                        {((panels.sidebar.floats && panels.sidebar.shown) || (panels.chat.floats && panels.chat.shown)) &&
-                            <div className="float-backdrop" aria-hidden="true" onMouseDown={() => client.closeFloating()} />}
+                        {((panels.sidebar.floats && panels.sidebar.shown) ||
+                            (panels.chat.floats && panels.chat.shown)) && (
+                            <div
+                                className="float-backdrop"
+                                aria-hidden="true"
+                                onMouseDown={() => client.closeFloating()}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

@@ -47,14 +47,16 @@ import {
 
 export interface Card {
     done: boolean | null; // null = plain item without a checkbox ("- text")
-    // first line of the card, raw Markdown (including #tag and [key:: value] fields)
+    // first line of the card, raw Markdown (including #tag and [key:: value]
+    // fields)
     text: string;
     // notes: continuation lines of the card, without indentation
     notes: string[];
 }
 
 export interface Column {
-    // the `##` heading; '' = the unnamed group before the first heading (only ever the first)
+    // the `##` heading; '' = the unnamed group before the first heading (only
+    // ever the first)
     title: string;
     intro: string[]; // plain lines before the first card (e.g. "**Complete**")
     cards: Card[];
@@ -111,7 +113,8 @@ export function parseColumn(title: string, lines: string[]): Column {
         } else if (current && INDENTED.test(line)) {
             current.notes.push(line.replace(/^( {2}|\t)/, ''));
         } else if (!line.trim()) {
-            // A blank line in the middle of a card's notes is kept; otherwise it
+            // A blank line in the middle of a card's notes is kept; otherwise
+            // it
             // is only a separator.
             if (current && INDENTED.test(nextNonBlank(lines, i + 1) ?? ''))
                 current.notes.push('');
@@ -123,7 +126,8 @@ export function parseColumn(title: string, lines: string[]): Column {
     return column;
 }
 
-// Index of the first line that starts the content: a `##` heading or a top-level
+// Index of the first line that starts the content: a `##` heading or a
+// top-level
 // list item, not counting the
 // frontmatter (its own bullets, such as `tags:\n- a`, are not items). -1 if
 // there is none.
@@ -363,7 +367,8 @@ export function moveColumn(board: Board, from: number, to: number): Board {
 
 // ---------- Card content ----------
 
-// The typed fields every card understands. A document-specific schema (fields.ts
+// The typed fields every card understands. A document-specific schema
+// (fields.ts
 // `parseSchema`) can add more.
 export const DUE_FIELD: FieldDef = {
     key: 'due',
@@ -398,7 +403,8 @@ export function cardMeta(text: string): CardMeta {
     };
 }
 
-// Split card text into title, tags, and due date (date with time if present) for
+// Split card text into title, tags, and due date (date with time if present)
+// for
 // the
 // edit form; composeCard puts them back together.
 export interface CardParts {
@@ -419,7 +425,8 @@ const isFieldsOnly = (head: string): boolean => {
     return layout !== null && layout !== 'board';
 };
 
-// The fields of a document: what it declares in its frontmatter `fields:` block,
+// The fields of a document: what it declares in its frontmatter `fields:`
+// block,
 // and for a board also the two every
 // card understands (due and agent). A list has only the fields it declares.
 export function boardSchema(board: Board): FieldDef[] {
@@ -535,7 +542,8 @@ export function composeCard(
 
 export const AGENT_NAME = /^[a-z][a-z0-9_-]*$/;
 
-// Assign the card to harness `agent` (replaces the old assignment, or removes it
+// Assign the card to harness `agent` (replaces the old assignment, or removes
+// it
 // if null) without touching the rest of its text.
 export function assignCard(text: string, agent: string | null): string {
     return writeField(text, AGENT_FIELD, agent);

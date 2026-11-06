@@ -1,5 +1,7 @@
-// shadcn/ui Toggle: a button that stays pressed. Its variants are shared with ToggleGroup. The pressed look follows
-// aria-pressed (a Toggle, a multiple ToggleGroup) or aria-checked (a single one) rather than shadcn's data-state=on: a
+// shadcn/ui Toggle: a button that stays pressed. Its variants are shared with
+// ToggleGroup. The pressed look follows
+// aria-pressed (a Toggle, a multiple ToggleGroup) or aria-checked (a single
+// one) rather than shadcn's data-state=on: a
 // Tooltip around it sets its own data-state on the same element.
 
 import type { ComponentProps } from 'react';
@@ -13,7 +15,8 @@ export const toggleVariants = cva(
         variants: {
             variant: {
                 default: 'bg-transparent',
-                outline: 'border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground',
+                outline:
+                    'border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground',
             },
             size: {
                 default: 'h-9 min-w-9 px-2',
@@ -23,9 +26,21 @@ export const toggleVariants = cva(
             },
         },
         defaultVariants: { variant: 'default', size: 'default' },
-    },
+    }
 );
 
-export function Toggle({ className, variant, size, ...props }: ComponentProps<typeof TogglePrimitive.Root> & VariantProps<typeof toggleVariants>) {
-    return <TogglePrimitive.Root data-slot="toggle" className={cn(toggleVariants({ variant, size, className }))} {...props} />;
+export function Toggle({
+    className,
+    variant,
+    size,
+    ...props
+}: ComponentProps<typeof TogglePrimitive.Root> &
+    VariantProps<typeof toggleVariants>) {
+    return (
+        <TogglePrimitive.Root
+            data-slot="toggle"
+            className={cn(toggleVariants({ variant, size, className }))}
+            {...props}
+        />
+    );
 }

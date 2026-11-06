@@ -1,6 +1,7 @@
 // Turns inline Markdown text into HTML for a renderer in a web page: <strong>,
 // <em>, <s>, <code>, <mark>, and a
-// span.md-link for a link's text. Every character of the text is escaped, so the
+// span.md-link for a link's text. Every character of the text is escaped, so
+// the
 // result is safe to set as innerHTML; the
 // only attribute value that is not fixed is the href of a [[note]] link, and it
 // is escaped too. Colors are the page's:

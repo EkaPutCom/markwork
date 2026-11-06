@@ -13,7 +13,8 @@
 // the order the field lists them, then the
 // values the notes have when the field lists no options, and first a column
 // without a title for the notes that have no value (only
-// when there are any). A change made on the derived board is written back to the
+// when there are any). A change made on the derived board is written back to
+// the
 // notes (`ungroupBoard`): moving a note
 // to another column sets its field, an edited note keeps its edit, a new note
 // gets the value of its column, a deleted
@@ -108,7 +109,8 @@ interface Now {
 const usable = (title: string, known: Set<string>): boolean =>
     title === '' || known.has(title) || OPTION_TEXT.test(title);
 
-// The cards of the derived board before the change, with where each came from in
+// The cards of the derived board before the change, with where each came from
+// in
 // the source.
 function cardsBefore(before: Grouped): Was[] {
     return before.board.columns.flatMap((column, c) =>

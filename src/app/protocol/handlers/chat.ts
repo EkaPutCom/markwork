@@ -1,6 +1,9 @@
-// The Assistant panel: what the user did in it (docs/design/protocol.md 6.5). The panel's `on*` actions are the controller's
-// (app/assistant.ts); this file checks what arrives and passes it on. A path to a saved conversation must be one the
-// core listed, and a proposal is named by the number the core gave it, never sent back as changes.
+// The Assistant panel: what the user did in it (docs/design/protocol.md 6.5).
+// The panel's `on*` actions are the controller's
+// (app/assistant.ts); this file checks what arrives and passes it on. A path to
+// a saved conversation must be one the
+// core listed, and a proposal is named by the number the core gave it, never
+// sent back as changes.
 
 import { RequestError } from '../messages';
 import type { ContextOptions } from '../../../agent/context';
@@ -9,13 +12,18 @@ import { savedChatView } from '../chat';
 import { num, str, type HandlerContext } from './context';
 
 const flag = (v: unknown, what: string): boolean => {
-    if (typeof v !== 'boolean') throw new RequestError('bad_request', `${what} must be true or false`);
+    if (typeof v !== 'boolean')
+        throw new RequestError('bad_request', `${what} must be true or false`);
     return v;
 };
 
 function optionsOf(value: unknown): ContextOptions {
     const o = value as Partial<ContextOptions> | undefined;
-    return { activeDocument: flag(o?.activeDocument, 'activeDocument'), selection: flag(o?.selection, 'selection'), project: flag(o?.project, 'project') };
+    return {
+        activeDocument: flag(o?.activeDocument, 'activeDocument'),
+        selection: flag(o?.selection, 'selection'),
+        project: flag(o?.project, 'project'),
+    };
 }
 
 function targetOf(value: unknown): UndoTarget {
@@ -25,7 +33,11 @@ function targetOf(value: unknown): UndoTarget {
     throw new RequestError('bad_request', 'target is missing');
 }
 
-export function chatHandlers({ wire, session, frontend }: HandlerContext): void {
+export function chatHandlers({
+    wire,
+    session,
+    frontend,
+}: HandlerContext): void {
     const selected = (p: Record<string, unknown>) => {
         if (typeof p.folderSession === 'string') {
             const entry = session.agentFolders.find(p.folderSession);
@@ -35,79 +47,186 @@ export function chatHandlers({ wire, session, frontend }: HandlerContext): void 
     };
     const panel = (p: Record<string, unknown>) => selected(p).panel;
 
-    // The frontend connected (or came back): the settings the panel shows and the agent log as it is now.
-    wire.on('act.chat.sync', p => {
+    // The frontend connected (or came back): the settings the panel shows and
+    // the agent log as it is now.
+    wire.on('act.chat.sync', (p) => {
         const choice = selected(p);
-        return { settings: choice.panel.shown, models: choice.panel.models, events: choice.folder ? [...choice.folder.pi.trace.events] : [...(choice.chat!.panel.trace.events)],
-            chat: choice.folder ? savedChatView(choice.folder.panel.busy && choice.folder.panel.base ? choice.folder.panel.base : session.agentFolders.snapshot(choice.folder.id)) : savedChatView(choice.chat!.busy && choice.chat!.panel.base ? choice.chat!.panel.base : choice.chat!.snapshot()),
-            draft: choice.folder && !choice.folder.panel.busy && choice.folder.pi.store.get(choice.folder.pi.chatId).status === 'idle' ? choice.folder.pi.store.draft(choice.folder.pi.chatId) : undefined,
-            folderEvents: choice.folder?.panel.events ?? choice.chat!.panel.events, busy: choice.chat?.busy === true || choice.folder?.panel.busy === true };
+        return {
+            settings: choice.panel.shown,
+            models: choice.panel.models,
+            events: choice.folder
+                ? [...choice.folder.pi.trace.events]
+                : [...choice.chat!.panel.trace.events],
+            chat: choice.folder
+                ? savedChatView(
+                      choice.folder.panel.busy && choice.folder.panel.base
+                          ? choice.folder.panel.base
+                          : session.agentFolders.snapshot(choice.folder.id)
+                  )
+                : savedChatView(
+                      choice.chat!.busy && choice.chat!.panel.base
+                          ? choice.chat!.panel.base
+                          : choice.chat!.snapshot()
+                  ),
+            draft:
+                choice.folder &&
+                !choice.folder.panel.busy &&
+                choice.folder.pi.store.get(choice.folder.pi.chatId).status ===
+                    'idle'
+                    ? choice.folder.pi.store.draft(choice.folder.pi.chatId)
+                    : undefined,
+            folderEvents:
+                choice.folder?.panel.events ?? choice.chat!.panel.events,
+            busy:
+                choice.chat?.busy === true ||
+                choice.folder?.panel.busy === true,
+        };
     });
 
     wire.on('act.chat.activate', () => session.assistant.activate());
     wire.on('act.chat.recover', () => session.assistant.recover());
-    wire.on('act.chat.resolve', p => {
-        if (p.choice !== 'reload' && p.choice !== 'keep') throw new RequestError('bad_request', 'choose reload or keep');
+    wire.on('act.chat.resolve', (p) => {
+        if (p.choice !== 'reload' && p.choice !== 'keep')
+            throw new RequestError('bad_request', 'choose reload or keep');
         return session.assistant.resolve(str(p.path, 'path'), p.choice);
     });
 
-    // The reply comes when the turn is over; the turn itself is told by `chat.*` notices.
-    wire.on('act.chat.send', async p => { await panel(p).onSend(str(p.text, 'text')); });
-    // Read only the snapshot already opened by the core, never a renderer-supplied path or text.
-    wire.on('act.chat.codeSelection', p => {
-        const page = session.documents.allPages.find(page => page.id === num(p.doc, 'doc'));
-        if (page?.kind !== 'code' || page.text === undefined || !page.file) throw new RequestError('stale', 'that code page is no longer open');
-        const from = num(p.from, 'from'), to = num(p.to, 'to');
-        const text = page.text.replace(/\r\n?/g, '\n'); // CodeMirror normalizes line endings.
-        if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to <= from || to > text.length) {
-            throw new RequestError('bad_request', 'select a non-empty code range');
+    // The reply comes when the turn is over; the turn itself is told by
+    // `chat.*` notices.
+    wire.on('act.chat.send', async (p) => {
+        await panel(p).onSend(str(p.text, 'text'));
+    });
+    // Read only the snapshot already opened by the core, never a
+    // renderer-supplied path or text.
+    wire.on('act.chat.codeSelection', (p) => {
+        const page = session.documents.allPages.find(
+            (page) => page.id === num(p.doc, 'doc')
+        );
+        if (page?.kind !== 'code' || page.text === undefined || !page.file)
+            throw new RequestError('stale', 'that code page is no longer open');
+        const from = num(p.from, 'from'),
+            to = num(p.to, 'to');
+        // CodeMirror normalizes line endings.
+        const text = page.text.replace(/\r\n?/g, '\n');
+        if (
+            !Number.isInteger(from) ||
+            !Number.isInteger(to) ||
+            from < 0 ||
+            to <= from ||
+            to > text.length
+        ) {
+            throw new RequestError(
+                'bad_request',
+                'select a non-empty code range'
+            );
         }
         const selected = text.slice(from, to);
-        const first = text.slice(0, from).split('\n').length, last = first + selected.split('\n').length - 1;
-        const fence = '`'.repeat(Array.from(selected.matchAll(/`+/g)).reduce((size, m) => Math.max(size, m[0].length + 1), 3));
+        const first = text.slice(0, from).split('\n').length,
+            last = first + selected.split('\n').length - 1;
+        const fence = '`'.repeat(
+            Array.from(selected.matchAll(/`+/g)).reduce(
+                (size, m) => Math.max(size, m[0].length + 1),
+                3
+            )
+        );
         const name = page.file.split(/[\\/]/).pop()!;
-        return { draft: `Code from ${name}, lines ${first}–${last}:\n\n${fence}\n${selected}\n${fence}\n\n` };
+        return {
+            draft: `Code from ${name}, lines ${first}–${last}:\n\n${fence}\n${selected}\n${fence}\n\n`,
+        };
     });
-    wire.on('act.chat.stop', p => { panel(p).onStop(); });
-    wire.on('act.chat.reset', p => { panel(p).onReset(); });
-    wire.on('act.chat.preview', async p => ({ built: await panel(p).onPreview(str(p.draft, 'draft')) }));
-    wire.on('act.chat.options', p => { panel(p).onOptions(optionsOf(p.options)); });
-    wire.on('act.chat.clearLog', p => { panel(p).onClearLog(); });
+    wire.on('act.chat.stop', (p) => {
+        panel(p).onStop();
+    });
+    wire.on('act.chat.reset', (p) => {
+        panel(p).onReset();
+    });
+    wire.on('act.chat.preview', async (p) => ({
+        built: await panel(p).onPreview(str(p.draft, 'draft')),
+    }));
+    wire.on('act.chat.options', (p) => {
+        panel(p).onOptions(optionsOf(p.options));
+    });
+    wire.on('act.chat.clearLog', (p) => {
+        panel(p).onClearLog();
+    });
 
-    wire.on('act.chat.chats', async p => ({ chats: await panel(p).onChats() }));
-    const listed = async (path: string, p: Record<string, unknown>): Promise<string> => {
-        if (!(await panel(p).onChats())?.some(c => c.path === path)) throw new RequestError('stale', 'that conversation is not in the list');
+    wire.on('act.chat.chats', async (p) => ({
+        chats: await panel(p).onChats(),
+    }));
+    const listed = async (
+        path: string,
+        p: Record<string, unknown>
+    ): Promise<string> => {
+        if (!(await panel(p).onChats())?.some((c) => c.path === path))
+            throw new RequestError(
+                'stale',
+                'that conversation is not in the list'
+            );
         return path;
     };
-    wire.on('act.chat.open', async p => {
-        const chat = await panel(p).onOpenChat(await listed(str(p.path, 'path'), p));
+    wire.on('act.chat.open', async (p) => {
+        const chat = await panel(p).onOpenChat(
+            await listed(str(p.path, 'path'), p)
+        );
         return { chat: chat ? savedChatView(chat) : null };
     });
-    wire.on('act.chat.delete', async p => ({ error: await panel(p).onDeleteChat(await listed(str(p.path, 'path'), p)) }));
+    wire.on('act.chat.delete', async (p) => ({
+        error: await panel(p).onDeleteChat(
+            await listed(str(p.path, 'path'), p)
+        ),
+    }));
 
-    wire.on('act.proposal.apply', async p => {
-        const chosen = p.chosen === null || p.chosen === undefined ? null : Array.isArray(p.chosen) ? p.chosen.map(i => num(i, 'chosen')) : undefined;
-        if (chosen === undefined) throw new RequestError('bad_request', 'chosen must be a list of numbers');
+    wire.on('act.proposal.apply', async (p) => {
+        const chosen =
+            p.chosen === null || p.chosen === undefined
+                ? null
+                : Array.isArray(p.chosen)
+                  ? p.chosen.map((i) => num(i, 'chosen'))
+                  : undefined;
+        if (chosen === undefined)
+            throw new RequestError(
+                'bad_request',
+                'chosen must be a list of numbers'
+            );
         return { error: await panel(p).onApply(num(p.ask, 'ask'), chosen) };
     });
-    wire.on('act.chat.undo', async p => ({ error: await panel(p).onUndo(targetOf(p.target)) }));
-    wire.on('act.chat.insert', async p => ({ inserted: await panel(p).onInsert(str(p.text, 'text')) }));
+    wire.on('act.chat.undo', async (p) => ({
+        error: await panel(p).onUndo(targetOf(p.target)),
+    }));
+    wire.on('act.chat.insert', async (p) => ({
+        inserted: await panel(p).onInsert(str(p.text, 'text')),
+    }));
 
-    wire.on('act.chat.model', p => { panel(p).onModel(str(p.model, 'model')); });
-    wire.on('act.chat.thinking', p => { panel(p).onThinking(flag(p.thinking, 'thinking')); });
-    wire.on('act.chat.save', p => { panel(p).onSaveChats(flag(p.save, 'save')); });
+    wire.on('act.chat.model', (p) => {
+        panel(p).onModel(str(p.model, 'model'));
+    });
+    wire.on('act.chat.thinking', (p) => {
+        panel(p).onThinking(flag(p.thinking, 'thinking'));
+    });
+    wire.on('act.chat.save', (p) => {
+        panel(p).onSaveChats(flag(p.save, 'save'));
+    });
 
-    // The API key: its source, saved, or forgotten. The key itself is never sent back.
-    wire.on('act.chat.key', async p => {
+    // The API key: its source, saved, or forgotten. The key itself is never
+    // sent back.
+    wire.on('act.chat.key', async (p) => {
         switch (p.action) {
-            case 'status': return { source: await panel(p).onKeyStatus() };
+            case 'status':
+                return { source: await panel(p).onKeyStatus() };
             case 'save': {
                 const key = str(p.key, 'key').trim();
-                if (!key) throw new RequestError('bad_request', 'the key is empty');
+                if (!key)
+                    throw new RequestError('bad_request', 'the key is empty');
                 return { source: await panel(p).onSaveKey(key) };
             }
-            case 'forget': await panel(p).onForgetKey(); return { source: null };
-            default: throw new RequestError('bad_request', 'action must be status, save, or forget');
+            case 'forget':
+                await panel(p).onForgetKey();
+                return { source: null };
+            default:
+                throw new RequestError(
+                    'bad_request',
+                    'action must be status, save, or forget'
+                );
         }
     });
 }

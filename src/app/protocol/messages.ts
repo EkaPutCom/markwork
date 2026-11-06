@@ -1,14 +1,17 @@
-// The shapes that cross the line between the core and a frontend (docs/design/protocol.md, section 4.2). Plain data only:
-// the same objects are posted over a MessagePort, or written as JSON lines for a sidecar.
+// The shapes that cross the line between the core and a frontend
+// (docs/design/protocol.md, section 4.2). Plain data only:
+// the same objects are posted over a MessagePort, or written as JSON lines for
+// a sidecar.
 //
 //   request  { id, op, ...params }        answered by a reply
-//   reply    { re, ok, ...result }        or { re, ok: false, error: { code, message }, ...extra }
+// reply    { re, ok, ...result }        or { re, ok: false, error: { code,
+// message }, ...extra }
 //   notice   { ev, ...payload }           no reply
 
 import type { CancelSignal } from '../../platform/index';
 
 export interface Change {
-    from: number;      // code points from the start of the text, before the change
+    from: number; // code points from the start of the text, before the change
     to: number;
     insert: string;
 }
@@ -20,27 +23,50 @@ export interface ProtocolError {
 
 export type Message =
     | { id: string; op: string; [field: string]: unknown }
-    | { re: string; ok: boolean; error?: ProtocolError; [field: string]: unknown }
+    | {
+          re: string;
+          ok: boolean;
+          error?: ProtocolError;
+          [field: string]: unknown;
+      }
     | { ev: string; [field: string]: unknown };
 
-export type Reply = { ok: true; [field: string]: unknown } | { ok: false; error: ProtocolError; [field: string]: unknown };
+export type Reply =
+    | { ok: true; [field: string]: unknown }
+    | { ok: false; error: ProtocolError; [field: string]: unknown };
 
-export const isRequest = (m: Message): m is Extract<Message, { id: string }> => 'id' in m;
-export const isReply = (m: Message): m is Extract<Message, { re: string }> => 're' in m;
+export const isRequest = (m: Message): m is Extract<Message, { id: string }> =>
+    'id' in m;
+export const isReply = (m: Message): m is Extract<Message, { re: string }> =>
+    're' in m;
 
-// A handler refuses a request with a code the other side can act on (conflict, stale, unknown_op, …).
+// A handler refuses a request with a code the other side can act on (conflict,
+// stale, unknown_op, …).
 export class RequestError extends Error {
-    constructor(readonly code: string, message: string, readonly extra: Record<string, unknown> = {}) {
+    constructor(
+        readonly code: string,
+        message: string,
+        readonly extra: Record<string, unknown> = {}
+    ) {
         super(message);
     }
 }
 
-// What the replica and the server need from the connection: send a notice, or send a request and wait for its reply. A
-// request given a `cancel` signal is withdrawn when it fires (`ask.cancel`, section 7): it is answered `cancelled` at once,
+// What the replica and the server need from the connection: send a notice, or
+// send a request and wait for its reply. A
+// request given a `cancel` signal is withdrawn when it fires (`ask.cancel`,
+// section 7): it is answered `cancelled` at once,
 // and an answer that arrives later is dropped.
 export interface Wire {
     notify(ev: string, payload?: Record<string, unknown>): void;
-    request(op: string, payload?: Record<string, unknown>, cancel?: CancelSignal): Promise<Reply>;
+    request(
+        op: string,
+        payload?: Record<string, unknown>,
+        cancel?: CancelSignal
+    ): Promise<Reply>;
 }
 
-export const CANCELLED: Reply = { ok: false, error: { code: 'cancelled', message: 'the question was withdrawn' } };
+export const CANCELLED: Reply = {
+    ok: false,
+    error: { code: 'cancelled', message: 'the question was withdrawn' },
+};

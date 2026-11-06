@@ -13,7 +13,8 @@
 //
 // ## Activity
 //
-// - 10:42 Card “Release material” → In Progress in [[tasks]]              ← from
+// - 10:42 Card “Release material” → In Progress in [[tasks]]              ←
+// from
 // the activity log and git
 // - 16:05 Commit `dd831a6` Speed up opening…
 //
@@ -66,14 +67,16 @@ export function clock(date: Date): string {
 
 interface Span {
     head: number; // index of the section heading line
-    // index of the line after the section content (the next heading, or the document length)
+    // index of the line after the section content (the next heading, or the
+    // document length)
     end: number;
 }
 
 const FENCE = /^\s*(```|~~~)/;
 const TOP_HEADING = /^#{1,2}\s/;
 
-// Section "## <heading>" (case-insensitive); ends at the next level 1–2 heading.
+// Section "## <heading>" (case-insensitive); ends at the next level 1–2
+// heading.
 // Lines inside code blocks are skipped.
 function findSection(lines: string[], heading: string): Span | null {
     const want = heading.toLowerCase();
@@ -95,7 +98,8 @@ function findSection(lines: string[], heading: string): Span | null {
     return head >= 0 ? { head, end: lines.length } : null;
 }
 
-// Index after the last non-blank line in the section (right after the heading if
+// Index after the last non-blank line in the section (right after the heading
+// if
 // the section is empty).
 function lastFilled(lines: string[], span: Span): number {
     let at = span.end;
@@ -103,7 +107,8 @@ function lastFilled(lines: string[], span: Span): number {
     return at;
 }
 
-// Append a line to the end of the section content; a missing section is created.
+// Append a line to the end of the section content; a missing section is
+// created.
 // A new Activity section is placed
 // before Summary so the template order is kept; other sections go at the end of
 // the document.
@@ -135,7 +140,8 @@ function appendToSection(
     return [...lines.slice(0, at), ...insert, ...gap, ...rest].join('\n');
 }
 
-// Quick capture: "- HH:MM text" at the end of the Notes section. Newlines in the
+// Quick capture: "- HH:MM text" at the end of the Notes section. Newlines in
+// the
 // text are replaced with spaces (one note = one bullet).
 export function addNote(text: string, time: string, note: string): string {
     const line = note.replace(/\s*\n\s*/g, ' ').trim();

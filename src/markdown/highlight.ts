@@ -13,10 +13,12 @@
 // headings  list of headings for the outline: { level, text, line }
 // lines     document contents per line
 // images    images to display: { line, url, alt }
-// codeBlocks contents of code blocks together with their language, to be colored
+// codeBlocks contents of code blocks together with their language, to be
+// colored
 // tables    line range of each table, to be rendered as a grid
 // starts    offset (code point) of the start of each line
-// reparsed  line ranges that were re-parsed (other lines gave the same result as
+// reparsed  line ranges that were re-parsed (other lines gave the same result
+// as
 // before)
 // spans     styles per line
 //
@@ -322,7 +324,8 @@ function merge<T>(
     };
 }
 
-// Markers are ordered by their line, so the old section boundary is found with a
+// Markers are ordered by their line, so the old section boundary is found with
+// a
 // binary search.
 // Markers after the parsed section are shifted in place: the old snapshot is no
 // longer used
@@ -704,7 +707,8 @@ class LineParser<T> {
         });
     }
 
-    // Inside a code block: no other formatting, look for the closing fence. Also
+    // Inside a code block: no other formatting, look for the closing fence.
+    // Also
     // opens a block. true = handled.
     private codeFence({ i, text, off, end, nl }: Row): boolean {
         const m = RE.fence.exec(text);
@@ -763,7 +767,8 @@ class LineParser<T> {
         else this.body(row, this.quote(row));
     }
 
-    // An ATX heading: the marker (length pl) of level lvl is hidden; the text is
+    // An ATX heading: the marker (length pl) of level lvl is hidden; the text
+    // is
     // formatted and listed in the outline.
     private heading({ i, text, off, end }: Row, pl: number, lvl: number): void {
         this.apply(`h${lvl}` as SyntaxName, off, end); // lvl is always 1–6

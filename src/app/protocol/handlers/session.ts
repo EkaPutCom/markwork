@@ -1,5 +1,7 @@
-// Starting the conversation and the settings (docs/design/protocol.md, 4.5, 8, and 9.2). The `hello` reply carries the
-// command table and every setting; after that a setting changed on either side is one `setting` notice.
+// Starting the conversation and the settings (docs/design/protocol.md, 4.5, 8,
+// and 9.2). The `hello` reply carries the
+// command table and every setting; after that a setting changed on either side
+// is one `setting` notice.
 
 import type { SettingValue } from '../../../platform/index';
 import { RequestError } from '../messages';
@@ -8,25 +10,43 @@ import { str, type HandlerContext } from './context';
 
 export const PROTOCOL_VERSION = 1;
 
-export function sessionHandlers({ wire, session, settingKeys, notice, onDispose }: HandlerContext): void {
+export function sessionHandlers({
+    wire,
+    session,
+    settingKeys,
+    notice,
+    onDispose,
+}: HandlerContext): void {
     const { store } = session.settings;
-    const known = (key: string) => settingKeys.length === 0 || settingKeys.includes(key);
+    const known = (key: string) =>
+        settingKeys.length === 0 || settingKeys.includes(key);
 
-    wire.on('hello', p => {
-        if (p.proto !== PROTOCOL_VERSION) throw new RequestError('proto', `this core speaks protocol ${PROTOCOL_VERSION}`);
+    wire.on('hello', (p) => {
+        if (p.proto !== PROTOCOL_VERSION)
+            throw new RequestError(
+                'proto',
+                `this core speaks protocol ${PROTOCOL_VERSION}`
+            );
         return {
-            proto: PROTOCOL_VERSION, core: 'markwork',
+            proto: PROTOCOL_VERSION,
+            core: 'markwork',
             commands: commandTable(),
-            settings: Object.fromEntries(settingKeys.map(key => [key, store.get(key)])),
+            settings: Object.fromEntries(
+                settingKeys.map((key) => [key, store.get(key)])
+            ),
         };
     });
 
-    // The window is closing: the core asks about every changed document (ask.saveChanges), then says whether it may.
-    wire.on('app.close', async () => ({ allowed: await session.closeRequest() }));
+    // The window is closing: the core asks about every changed document
+    // (ask.saveChanges), then says whether it may.
+    wire.on('app.close', async () => ({
+        allowed: await session.closeRequest(),
+    }));
 
-    // A setting the frontend changed (a toggle in its menu, the sidebar it closed). A key the core does not have is
+    // A setting the frontend changed (a toggle in its menu, the sidebar it
+    // closed). A key the core does not have is
     // reported, not written.
-    notice('setting', p => {
+    notice('setting', (p) => {
         const key = str(p.key, 'key');
         if (!known(key) || p.value === undefined) {
             wire.notify('error', { message: `No such setting: ${key}` });
@@ -35,13 +55,20 @@ export function sessionHandlers({ wire, session, settingKeys, notice, onDispose 
         try {
             store.set(key, p.value as SettingValue);
         } catch (e) {
-            wire.notify('error', { message: e instanceof Error ? e.message : String(e) });
+            wire.notify('error', {
+                message: e instanceof Error ? e.message : String(e),
+            });
         }
     });
 
-    // Every change, whoever made it: the frontend draws from the core's values. Its own change comes back too; a window
-    // that has set the key again since skips that echo (renderer client.ts staleEcho).
-    onDispose(session.settings.onChanged(null, key => {
-        if (known(key)) wire.notify('setting', { key, value: store.get(key) });
-    }));
+    // Every change, whoever made it: the frontend draws from the core's values.
+    // Its own change comes back too; a window
+    // that has set the key again since skips that echo (renderer client.ts
+    // staleEcho).
+    onDispose(
+        session.settings.onChanged(null, (key) => {
+            if (known(key))
+                wire.notify('setting', { key, value: store.get(key) });
+        })
+    );
 }

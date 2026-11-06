@@ -1,4 +1,5 @@
-// Search and replace across several documents (the Search panel in the sidebar).
+// Search and replace across several documents (the Search panel in the
+// sidebar).
 // Pure string → data functions.
 
 export interface SearchOptions {
@@ -170,7 +171,8 @@ function expand(template: string, args: unknown[]): string {
 
 const GLOB_CHARS = /[.+^${}()|[\]\\]/g;
 
-// One glob as a regular expression over a path relative to the folder. A pattern
+// One glob as a regular expression over a path relative to the folder. A
+// pattern
 // without a slash ("*.md", "drafts")
 // matches a file name or a folder name at any depth; one with a slash
 // ("agenda/**") is anchored at the folder.

@@ -7,7 +7,8 @@
 // written exactly as it was read (its
 // quoting, spacing, and extra cells), so saving after a one-cell edit changes
 // one line in a diff, not the whole file.
-// The delimiter, the line ending, the byte order mark, and whether the file ends
+// The delimiter, the line ending, the byte order mark, and whether the file
+// ends
 // with a line break are kept too.
 
 import { replaceMatches } from './search';
@@ -76,7 +77,8 @@ function detectDelimiter(text: string): Delimiter {
     return best;
 }
 
-// Up to `limit` records of `text` (all when 0), each with the text it came from.
+// Up to `limit` records of `text` (all when 0), each with the text it came
+// from.
 // Quotes may hold delimiters and line
 // breaks; a doubled quote inside them is a quote. A line break ends a record:
 // \r\n, \n, or a lone \r.
@@ -242,7 +244,8 @@ export function deleteRow(table: CsvTable, row: number): CsvTable {
     );
 }
 
-// A column at index `at` with the header `name` and empty cells; every record is
+// A column at index `at` with the header `name` and empty cells; every record
+// is
 // written again (they all gain a cell).
 export function insertColumn(
     table: CsvTable,
@@ -279,7 +282,8 @@ export function deleteColumn(table: CsvTable, column: number): CsvTable {
 
 // Row `from` moved so it ends at index `to` (of the rows as they are after the
 // move); the header stays first and rows keep their
-// text, so a move is a diff of the lines that changed place. The same table when
+// text, so a move is a diff of the lines that changed place. The same table
+// when
 // nothing moves.
 export function moveRow(table: CsvTable, from: number, to: number): CsvTable {
     const last = table.rows.length - 1,
@@ -338,7 +342,8 @@ function matches(cell: string, pattern: RegExp): boolean {
     return pattern.test(cell);
 }
 
-// Every match in cell (row, column) replaced; the same table when there is none.
+// Every match in cell (row, column) replaced; the same table when there is
+// none.
 // With `regex` the replacement may use $1, $&.
 export function replaceInCell(
     table: CsvTable,

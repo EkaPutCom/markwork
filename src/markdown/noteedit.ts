@@ -4,11 +4,14 @@
 // moment, so an edit that arrives after the
 // text changed (an undo, a harness run that moved another card) could only
 // overwrite that change or be dropped; an
-// operation is applied again to the board as it is now (docs/design/protocol.md,
+// operation is applied again to the board as it is now
+// (docs/design/protocol.md,
 // section 6.3). The view applies the
-// same operation to its own board at once, so a drag does not wait for the core.
+// same operation to its own board at once, so a drag does not wait for the
+// core.
 //
-// A card is named by its position and its text. When the card at the position is
+// A card is named by its position and its text. When the card at the position
+// is
 // no longer that text, it is looked for
 // by its text, in its column first; found once, the edit applies there; found
 // never or more than once, the edit is
@@ -56,13 +59,15 @@ export interface ColumnRef {
 // the edit is applied, from the card as it is then, so the fields the dialog
 // does not show are kept.
 export interface CardForm {
-    // a board's card (with its due date and agent), or a note of a list, a table, or a layout
+    // a board's card (with its due date and agent), or a note of a list, a
+    // table, or a layout
     kind: 'card' | 'note';
     title: string;
     tags: string[];
     due: string; // a card's; '' for a note
     agent: string; // a card's; '' = not assigned
-    // the document's fields as the dialog showed them; an empty text removes one
+    // the document's fields as the dialog showed them; an empty text removes
+    // one
     fields: { field: FieldDef; text: string }[];
 }
 
@@ -289,7 +294,8 @@ function withField(
     );
 }
 
-// A new section at the end with the note moved into it; a name that is already a
+// A new section at the end with the note moved into it; a name that is already
+// a
 // section (ignoring case) moves the
 // note into that one instead of making a second.
 function intoSection(board: Board, at: Position, title: string): Board {

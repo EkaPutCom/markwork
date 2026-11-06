@@ -1,27 +1,49 @@
-// Tests for throwing away uncommitted changes (git.ts discardChanges) against a real repository.
+// Tests for throwing away uncommitted changes (git.ts discardChanges) against a
+// real repository.
 
 import { discardChanges, repoChanges, runGit } from '../../src/base/git';
-import { section, test, eq, ok, contains, within, tmp, disk } from '../core/framework';
+import {
+    section,
+    test,
+    eq,
+    ok,
+    contains,
+    within,
+    tmp,
+    disk,
+} from '../core/framework';
 
 export async function discardTests(): Promise<void> {
     section('Discarding uncommitted changes');
     const repo = disk.join(tmp, 'discard');
     disk.mkdirs(repo);
     const sh = async (...args: string[]) => {
-        const run = await within(runGit(repo, ['-c', 'user.name=Tester', '-c', 'user.email=tester@example.com', ...args]));
-        if (run?.status !== 0) throw new Error(`git ${args.join(' ')}: ${run?.err}`);
+        const run = await within(
+            runGit(repo, [
+                '-c',
+                'user.name=Tester',
+                '-c',
+                'user.email=tester@example.com',
+                ...args,
+            ])
+        );
+        if (run?.status !== 0)
+            throw new Error(`git ${args.join(' ')}: ${run?.err}`);
         return run.out.trim();
     };
     const at = (name: string) => disk.join(repo, name);
     const write = (name: string, text: string) => disk.write(at(name), text);
     const read = (name: string) => disk.read(at(name));
     const exists = (name: string) => disk.exists(at(name));
-    const discard = async (names: string[]) => within(discardChanges(names.map(at)));
+    const discard = async (names: string[]) =>
+        within(discardChanges(names.map(at)));
     await sh('init', '-q', '-b', 'main');
-    for (const name of ['a.md', 'b.md', 'c.md', 'd.md']) write(name, `# ${name}\n`);
+    for (const name of ['a.md', 'b.md', 'c.md', 'd.md'])
+        write(name, `# ${name}\n`);
     await sh('add', '-A');
     await sh('commit', '-q', '-m', 'First');
-    const status = () => sh('status', '--porcelain=v1', '--untracked-files=all');
+    const status = () =>
+        sh('status', '--porcelain=v1', '--untracked-files=all');
 
     await test('a modified file goes back to the last commit, in the working tree and in the index', async () => {
         write('a.md', '# a.md\nedited\n');
@@ -42,7 +64,10 @@ export async function discardTests(): Promise<void> {
         write('new-staged.md', 'y\n');
         await sh('add', 'new-staged.md');
         eq((await discard(['new-untracked.md', 'new-staged.md'])).ok, true);
-        ok(!exists('new-untracked.md') && !exists('new-staged.md'), 'a new file is still there');
+        ok(
+            !exists('new-untracked.md') && !exists('new-staged.md'),
+            'a new file is still there'
+        );
         eq(await status(), '');
     });
     await test('only the files that were named are touched', async () => {

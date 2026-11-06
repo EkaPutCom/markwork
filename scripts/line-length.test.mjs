@@ -7,9 +7,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const script = new URL('./line-length.mjs', import.meta.url);
-const run = (...args) => spawnSync(
-    process.execPath, [fileURLToPath(script), ...args], { encoding: 'utf8' }
-);
+const run = (...args) =>
+    spawnSync(process.execPath, [fileURLToPath(script), ...args], {
+        encoding: 'utf8',
+    });
 
 test('counts Unicode, blank lines, CRLF and an unterminated last line', () => {
     const folder = mkdtempSync(join(tmpdir(), 'line-length-'));
@@ -19,8 +20,10 @@ test('counts Unicode, blank lines, CRLF and an unterminated last line', () => {
         const result = run(file);
         assert.equal(result.status, 0);
         assert.equal(result.stderr, '');
-        assert.equal(result.stdout,
-            `${file}:1: 3\n${file}:2: 0\n${file}:3: 2\n${file}:4: 1\n`);
+        assert.equal(
+            result.stdout,
+            `${file}:1: 3\n${file}:2: 0\n${file}:3: 2\n${file}:4: 1\n`
+        );
         const filtered = run('--max', '2', file);
         assert.equal(filtered.status, 1);
         assert.equal(filtered.stdout, `${file}:1: 3\n`);
@@ -47,8 +50,13 @@ test('counts Unicode, blank lines, CRLF and an unterminated last line', () => {
 
 test('validates arguments and offers help', () => {
     const invalid = [
-        [], ['--max'], ['--max', '-1'], ['--max', '1.5'],
-        ['--max', '9007199254740992'], ['--unknown'], ['--summary', 'x'],
+        [],
+        ['--max'],
+        ['--max', '-1'],
+        ['--max', '1.5'],
+        ['--max', '9007199254740992'],
+        ['--unknown'],
+        ['--summary', 'x'],
         ['--tracked', 'x'],
     ];
     for (const args of invalid) {
@@ -58,9 +66,11 @@ test('validates arguments and offers help', () => {
 });
 
 test('audits tracked source files and summarizes violations', () => {
-    const result = spawnSync(process.execPath, [
-        fileURLToPath(script), '--tracked', '--summary', '--max', '0',
-    ], { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+    const result = spawnSync(
+        process.execPath,
+        [fileURLToPath(script), '--tracked', '--summary', '--max', '0'],
+        { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 }
+    );
     assert.equal(result.status, 1);
     assert.match(result.stdout, /src\/.*\.ts:\d+: \d+/);
     assert.match(result.stderr, /Violations: \d+; files: \d+\/\d+/);

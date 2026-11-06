@@ -47,108 +47,150 @@ process.stdin.on('data', chunk => {
 
 async function withClient(run, options = {}) {
     const client = new SpikeRpc(process.execPath, ['-e', fake], options);
-    try { await run(client); }
-    finally { await client.close(); }
+    try {
+        await run(client);
+    } finally {
+        await client.close();
+    }
 }
 
 test('manual spike refuses execution without explicit activation', () => {
-    const result = spawnSync(process.execPath, ['scripts/pi-folder-spike.mjs'], { encoding: 'utf8' });
+    const result = spawnSync(
+        process.execPath,
+        ['scripts/pi-folder-spike.mjs'],
+        { encoding: 'utf8' }
+    );
     assert.equal(result.status, 2);
     assert.match(result.stderr, /NOT a sandbox/);
     assert.equal(result.stdout, '');
 });
 
-test('correlates concurrent commands by unique IDs', () => withClient(async client => {
-    const results = await Promise.all([client.command('first'), client.command('second')]);
-    assert.deepEqual(results, [{ echoed: 'first' }, { echoed: 'second' }]);
-}));
+test('correlates concurrent commands by unique IDs', () =>
+    withClient(async (client) => {
+        const results = await Promise.all([
+            client.command('first'),
+            client.command('second'),
+        ]);
+        assert.deepEqual(results, [{ echoed: 'first' }, { echoed: 'second' }]);
+    }));
 
-test('LF framing preserves Unicode separators and split UTF-8', () => withClient(async client => {
-    assert.equal(await client.command('unicode'), 'a\u2028b\u2029🌱');
-}));
+test('LF framing preserves Unicode separators and split UTF-8', () =>
+    withClient(async (client) => {
+        assert.equal(await client.command('unicode'), 'a\u2028b\u2029🌱');
+    }));
 
-test('subscribes before prompting, including completion before acknowledgement', () => withClient(async client => {
-    await client.prompt('fast');
-    assert.equal(client.listeners.size, 0);
-}));
+test('subscribes before prompting, including completion before acknowledgement', () =>
+    withClient(async (client) => {
+        await client.prompt('fast');
+        assert.equal(client.listeners.size, 0);
+    }));
 
-test('agent_end is not completion', () => withClient(async client => {
-    const ended = client.waitFor(event => event.type === 'agent_end');
-    let done = false;
-    const turn = client.prompt('hold').then(() => { done = true; });
-    await ended.promise;
-    await client.command('barrier');
-    assert.equal(done, false);
-    await client.command('settle');
-    await turn;
-}));
+test('agent_end is not completion', () =>
+    withClient(async (client) => {
+        const ended = client.waitFor((event) => event.type === 'agent_end');
+        let done = false;
+        const turn = client.prompt('hold').then(() => {
+            done = true;
+        });
+        await ended.promise;
+        await client.command('barrier');
+        assert.equal(done, false);
+        await client.command('settle');
+        await turn;
+    }));
 
-test('provider failure after acceptance is not success', () => withClient(async client => {
-    await assert.rejects(client.prompt('fail'), /provider failed/);
-    assert.equal(client.listeners.size, 0);
-}));
+test('provider failure after acceptance is not success', () =>
+    withClient(async (client) => {
+        await assert.rejects(client.prompt('fail'), /provider failed/);
+        assert.equal(client.listeners.size, 0);
+    }));
 
-test('handled prompt does not wait for a nonexistent run', () => withClient(async client => {
-    await assert.rejects(client.prompt('handled'), /Unexpected disposition/);
-    assert.equal(client.listeners.size, 0);
-}));
+test('handled prompt does not wait for a nonexistent run', () =>
+    withClient(async (client) => {
+        await assert.rejects(
+            client.prompt('handled'),
+            /Unexpected disposition/
+        );
+        assert.equal(client.listeners.size, 0);
+    }));
 
-test('Stop clears queued work before abort', () => withClient(async client => {
-    const commands = [];
-    client.onEvent(event => { if (event?.type === 'response') commands.push(event.command); });
-    const settled = client.waitFor(event => event.type === 'agent_settled');
-    await client.stop();
-    assert.equal((await settled.promise).aborted, true);
-    assert.deepEqual(commands, ['clear_queue', 'abort']);
-}));
+test('Stop clears queued work before abort', () =>
+    withClient(async (client) => {
+        const commands = [];
+        client.onEvent((event) => {
+            if (event?.type === 'response') commands.push(event.command);
+        });
+        const settled = client.waitFor(
+            (event) => event.type === 'agent_settled'
+        );
+        await client.stop();
+        assert.equal((await settled.promise).aborted, true);
+        assert.deepEqual(commands, ['clear_queue', 'abort']);
+    }));
 
-test('command rejection is reported', () => withClient(async client => {
-    await assert.rejects(client.command('reject'), /rejected/);
-}));
+test('command rejection is reported', () =>
+    withClient(async (client) => {
+        await assert.rejects(client.command('reject'), /rejected/);
+    }));
 
-test('unknown command outcome times out without retry', () => withClient(async client => {
-    await client.command('ready');
-    await assert.rejects(client.command('silent', {}, 25), /outcome unknown/);
-    assert.equal(client.sequence, 2);
-    assert.equal(client.pending.size, 0);
-}));
+test('unknown command outcome times out without retry', () =>
+    withClient(async (client) => {
+        await client.command('ready');
+        await assert.rejects(
+            client.command('silent', {}, 25),
+            /outcome unknown/
+        );
+        assert.equal(client.sequence, 2);
+        assert.equal(client.pending.size, 0);
+    }));
 
-test('malformed stdout fails pending requests', () => withClient(async client => {
-    await assert.rejects(client.command('malformed'), SyntaxError);
-}));
+test('malformed stdout fails pending requests', () =>
+    withClient(async (client) => {
+        await assert.rejects(client.command('malformed'), SyntaxError);
+    }));
 
-test('unexpected exit fails pending commands', () => withClient(async client => {
-    await assert.rejects(client.command('exit'), /pi exited/);
-}));
+test('unexpected exit fails pending commands', () =>
+    withClient(async (client) => {
+        await assert.rejects(client.command('exit'), /pi exited/);
+    }));
 
 test('missing executable fails promptly', async () => {
     const client = new SpikeRpc('/nonexistent/markwork-pi-phase0', []);
-    try { await assert.rejects(client.command('get_state'), /ENOENT/); }
-    finally { await client.close(); }
+    try {
+        await assert.rejects(client.command('get_state'), /ENOENT/);
+    } finally {
+        await client.close();
+    }
 });
 
+test('oversized unterminated records fail instead of growing indefinitely', () =>
+    withClient(async (client) => {
+        await assert.rejects(client.command('oversize'), /exceeds 8 MiB/);
+    }));
 
-test('oversized unterminated records fail instead of growing indefinitely', () => withClient(async client => {
-    await assert.rejects(client.command('oversize'), /exceeds 8 MiB/);
-}));
+test('event deadlines release subscriptions', () =>
+    withClient(async (client) => {
+        const wait = client.waitFor(() => false, 25);
+        await assert.rejects(wait.promise, /event deadline/);
+        assert.equal(client.listeners.size, 0);
+    }));
 
-test('event deadlines release subscriptions', () => withClient(async client => {
-    const wait = client.waitFor(() => false, 25);
-    await assert.rejects(wait.promise, /event deadline/);
-    assert.equal(client.listeners.size, 0);
-}));
-
-test('transport measurement: 20 batches of 1,000 events after 3 warmups', () => withClient(async client => {
-    const samples = [];
-    let delivered = 0;
-    const off = client.onEvent(event => { if (event?.type === 'message_update') delivered++; });
-    for (let i = 0; i < 23; i++) {
-        const before = performance.now();
-        await client.command('flood');
-        if (i >= 3) samples.push(performance.now() - before);
-    }
-    off();
-    assert.equal(delivered, 23_000);
-    samples.sort((a, b) => a - b);
-    console.log(`Spike JSONL parse/delivery, 1000 events: median=${samples[10].toFixed(3)}ms p95=${samples[18].toFixed(3)}ms max=${samples[19].toFixed(3)}ms`);
-}));
+test('transport measurement: 20 batches of 1,000 events after 3 warmups', () =>
+    withClient(async (client) => {
+        const samples = [];
+        let delivered = 0;
+        const off = client.onEvent((event) => {
+            if (event?.type === 'message_update') delivered++;
+        });
+        for (let i = 0; i < 23; i++) {
+            const before = performance.now();
+            await client.command('flood');
+            if (i >= 3) samples.push(performance.now() - before);
+        }
+        off();
+        assert.equal(delivered, 23_000);
+        samples.sort((a, b) => a - b);
+        console.log(
+            `Spike JSONL parse/delivery, 1000 events: median=${samples[10].toFixed(3)}ms p95=${samples[18].toFixed(3)}ms max=${samples[19].toFixed(3)}ms`
+        );
+    }));

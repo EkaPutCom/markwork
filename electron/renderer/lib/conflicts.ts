@@ -1,68 +1,143 @@
-// Git conflict markers as a choice: each side of a conflict gets a background, and a
-// row of buttons above it keeps the current lines, the incoming lines, or both. Where the conflicts are and what a choice turns
-// one into is markdown/conflicts.ts; here is the drawing and the one transaction that applies a choice.
+// Git conflict markers as a choice: each side of a conflict gets a background,
+// and a
+// row of buttons above it keeps the current lines, the incoming lines, or both.
+// Where the conflicts are and what a choice turns
+// one into is markdown/conflicts.ts; here is the drawing and the one
+// transaction that applies a choice.
 
 import { Decoration, WidgetType, type EditorView } from '@codemirror/view';
 import type { Text } from '@codemirror/state';
-import { findConflicts, resolution, roles, type Choice, type Conflict } from '../../../src/markdown/conflicts';
+import {
+    findConflicts,
+    resolution,
+    roles,
+    type Choice,
+    type Conflict,
+} from '../../../src/markdown/conflicts';
 import { domButton } from '../ui/dom';
 
-const CHOICES: { choice: Choice | 'compare'; label: string; tip: (c: Conflict) => string }[] = [
-    { choice: 'current', label: 'Accept Current Change', tip: c => `Keep the lines from ${c.current || 'the current side'} and drop the other side` },
-    { choice: 'incoming', label: 'Accept Incoming Change', tip: c => `Keep the lines from ${c.incoming || 'the incoming side'} and drop the other side` },
-    { choice: 'both', label: 'Accept Both Changes', tip: () => 'Keep both sides, the current lines first' },
-    { choice: 'compare', label: 'Compare Changes', tip: () => 'Compare the current and incoming versions without changing the document' },
+const CHOICES: {
+    choice: Choice | 'compare';
+    label: string;
+    tip: (c: Conflict) => string;
+}[] = [
+    {
+        choice: 'current',
+        label: 'Accept Current Change',
+        tip: (c) =>
+            `Keep the lines from ${c.current || 'the current side'} and drop the other side`,
+    },
+    {
+        choice: 'incoming',
+        label: 'Accept Incoming Change',
+        tip: (c) =>
+            `Keep the lines from ${c.incoming || 'the incoming side'} and drop the other side`,
+    },
+    {
+        choice: 'both',
+        label: 'Accept Both Changes',
+        tip: () => 'Keep both sides, the current lines first',
+    },
+    {
+        choice: 'compare',
+        label: 'Compare Changes',
+        tip: () =>
+            'Compare the current and incoming versions without changing the document',
+    },
 ];
 
-// Replace the whole conflict, markers included, by a choice: one undo step, the cursor at its start.
-export function choose(view: EditorView, conflict: Conflict, choice: Choice): void {
+// Replace the whole conflict, markers included, by a choice: one undo step, the
+// cursor at its start.
+export function choose(
+    view: EditorView,
+    conflict: Conflict,
+    choice: Choice
+): void {
     const { doc } = view.state;
     const lines = doc.toString().split('\n');
     const replacement = resolution(lines, conflict, choice);
     const from = doc.line(conflict.start + 1).from;
     const atEnd = conflict.end + 1 >= doc.lines;
     const to = atEnd ? doc.length : doc.line(conflict.end + 2).from;
-    const insert = replacement.join('\n') + (!atEnd && replacement.length ? '\n' : '');
-    view.dispatch({ changes: { from, to, insert }, selection: { anchor: from }, scrollIntoView: true, userEvent: 'input' });
+    const insert =
+        replacement.join('\n') + (!atEnd && replacement.length ? '\n' : '');
+    view.dispatch({
+        changes: { from, to, insert },
+        selection: { anchor: from },
+        scrollIntoView: true,
+        userEvent: 'input',
+    });
     view.focus();
 }
 
 class ConflictBar extends WidgetType {
-    constructor(private readonly conflict: Conflict, private readonly onCompare: (line: number) => void) { super(); }
+    constructor(
+        private readonly conflict: Conflict,
+        private readonly onCompare: (line: number) => void
+    ) {
+        super();
+    }
 
     override eq(other: ConflictBar): boolean {
-        const a = this.conflict, b = other.conflict;
-        return a.start === b.start && a.mid === b.mid && a.end === b.end && a.current === b.current && a.incoming === b.incoming;
+        const a = this.conflict,
+            b = other.conflict;
+        return (
+            a.start === b.start &&
+            a.mid === b.mid &&
+            a.end === b.end &&
+            a.current === b.current &&
+            a.incoming === b.incoming
+        );
     }
 
     override toDOM(view: EditorView): HTMLElement {
         const bar = document.createElement('div');
         bar.className = 'cm-md-conflict-bar';
         for (const { choice, label, tip } of CHOICES) {
-            // A text button has no title (ui.md "Tooltip and title"); what it keeps is said to a screen reader.
-            const button = domButton({ label, size: 'xs', onClick: () => {
-                // The position may have moved since the widget was made: find this conflict again by its place.
-                const now = findConflicts(view.state.doc.toString().split('\n'));
-                const at = view.state.doc.lineAt(view.posAtDOM(bar)).number;
-                const found = now.find(c => c.start + 1 >= at - 1 && c.start + 1 <= at + 1) ?? now.find(c => c.start === this.conflict.start);
-                if (found) {
-                    if (choice === 'compare') this.onCompare(found.start + 1);
-                    else choose(view, found, choice);
-                }
-            } });
+            // A text button has no title (ui.md "Tooltip and title"); what it
+            // keeps is said to a screen reader.
+            const button = domButton({
+                label,
+                size: 'xs',
+                onClick: () => {
+                    // The position may have moved since the widget was made:
+                    // find this conflict again by its place.
+                    const now = findConflicts(
+                        view.state.doc.toString().split('\n')
+                    );
+                    const at = view.state.doc.lineAt(view.posAtDOM(bar)).number;
+                    const found =
+                        now.find(
+                            (c) =>
+                                c.start + 1 >= at - 1 && c.start + 1 <= at + 1
+                        ) ?? now.find((c) => c.start === this.conflict.start);
+                    if (found) {
+                        if (choice === 'compare')
+                            this.onCompare(found.start + 1);
+                        else choose(view, found, choice);
+                    }
+                },
+            });
             button.setAttribute('aria-description', tip(this.conflict));
             bar.append(button);
         }
         return bar;
     }
 
-    override ignoreEvent(): boolean { return true; }
+    override ignoreEvent(): boolean {
+        return true;
+    }
 }
 
-// A label beside the branch name is a decoration, so copying, saving, and resolving keep Git's original text.
+// A label beside the branch name is a decoration, so copying, saving, and
+// resolving keep Git's original text.
 class ConflictLabel extends WidgetType {
-    constructor(private readonly label: string) { super(); }
-    override eq(other: ConflictLabel): boolean { return this.label === other.label; }
+    constructor(private readonly label: string) {
+        super();
+    }
+    override eq(other: ConflictLabel): boolean {
+        return this.label === other.label;
+    }
     override toDOM(): HTMLElement {
         const label = document.createElement('span');
         label.className = 'cm-md-conflict-label';
@@ -74,14 +149,25 @@ class ConflictLabel extends WidgetType {
 const roleLines = new Map<string, Decoration>();
 const roleLine = (role: string) => {
     let d = roleLines.get(role);
-    if (!d) roleLines.set(role, d = Decoration.line({ class: `cm-md-conflict cm-md-conflict-${role}` }));
+    if (!d)
+        roleLines.set(
+            role,
+            (d = Decoration.line({
+                class: `cm-md-conflict cm-md-conflict-${role}`,
+            }))
+        );
     return d;
 };
 
-// The decorations for the conflicts of a text, and the lines (from 0) they cover, which keep no Markdown styling: the markers
+// The decorations for the conflicts of a text, and the lines (from 0) they
+// cover, which keep no Markdown styling: the markers
 // `=======` and `>>>>>>>` are not a heading underline and a quote here.
-export function conflictDecorations(doc: Text, compare: (line: number) => void): { ranges: ReturnType<Decoration['range']>[]; covered: Set<number> } {
-    const ranges: ReturnType<Decoration['range']>[] = [], covered = new Set<number>();
+export function conflictDecorations(
+    doc: Text,
+    compare: (line: number) => void
+): { ranges: ReturnType<Decoration['range']>[]; covered: Set<number> } {
+    const ranges: ReturnType<Decoration['range']>[] = [],
+        covered = new Set<number>();
     const text = doc.toString();
     if (!text.includes('<<<<<<<')) return { ranges, covered };
     const conflicts = findConflicts(text.split('\n'));
@@ -90,9 +176,25 @@ export function conflictDecorations(doc: Text, compare: (line: number) => void):
         covered.add(line);
     }
     for (const c of conflicts) {
-        ranges.push(Decoration.widget({ widget: new ConflictBar(c, compare), block: true, side: -1 }).range(doc.line(c.start + 1).from));
-        ranges.push(Decoration.widget({ widget: new ConflictLabel('Current Change'), side: 1 }).range(doc.line(c.start + 1).to));
-        ranges.push(Decoration.widget({ widget: new ConflictLabel('Incoming Change'), side: 1 }).range(doc.line(c.end + 1).to));
+        ranges.push(
+            Decoration.widget({
+                widget: new ConflictBar(c, compare),
+                block: true,
+                side: -1,
+            }).range(doc.line(c.start + 1).from)
+        );
+        ranges.push(
+            Decoration.widget({
+                widget: new ConflictLabel('Current Change'),
+                side: 1,
+            }).range(doc.line(c.start + 1).to)
+        );
+        ranges.push(
+            Decoration.widget({
+                widget: new ConflictLabel('Incoming Change'),
+                side: 1,
+            }).range(doc.line(c.end + 1).to)
+        );
     }
     return { ranges, covered };
 }

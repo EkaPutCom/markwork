@@ -21,10 +21,12 @@
 // layout: chart        ← counts and charts over the notes (`by:`, `group:`)
 // ---
 //
-// `layout: board` can also say `group: status` to make the columns the values of
+// `layout: board` can also say `group: status` to make the columns the values
+// of
 // a select field.
 //
-// Any other value, or no `layout:` line, is an ordinary document. Other one-line
+// Any other value, or no `layout:` line, is an ordinary document. Other
+// one-line
 // options sit beside it (`add:`, see
 // inbox.ts) and are read with `optionOf`. Pure TypeScript.
 
@@ -66,7 +68,8 @@ export const isGallery = (text: string): boolean =>
     layoutOf(text) === 'gallery';
 export const isChart = (text: string): boolean => layoutOf(text) === 'chart';
 
-// Any of the layouts: the text is shown as a board, a list, a table, a calendar,
+// Any of the layouts: the text is shown as a board, a list, a table, a
+// calendar,
 // a timeline, a gallery, or a chart.
 export const isStructured = (text: string): boolean => layoutOf(text) !== null;
 

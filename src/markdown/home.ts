@@ -1,4 +1,5 @@
-// Data for the Home page: due dates from kanban boards, unprocessed inbox items,
+// Data for the Home page: due dates from kanban boards, unprocessed inbox
+// items,
 // recent files,
 // and a time-based greeting. Pure TypeScript; the window reads files and
 // settings.
@@ -28,7 +29,8 @@ export interface Task {
     at: Position;
     // card text when read, to make sure the card has not changed before writing
     card: string;
-    // the card has a checkbox ("- [ ]"); without it, unchecking restores a plain bullet
+    // the card has a checkbox ("- [ ]"); without it, unchecking restores a
+    // plain bullet
     box: boolean;
     title: string;
     project: string | null;

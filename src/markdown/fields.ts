@@ -1,6 +1,7 @@
 // Typed fields on a Markdown item (a kanban card or an inbox note).
 //
-// A document declares its fields in the frontmatter, one line per field as `key:
+// A document declares its fields in the frontmatter, one line per field as
+// `key:
 // type(arguments)`:
 //
 // ---
@@ -270,7 +271,8 @@ export function addOption(text: string, key: string, option: string): string {
     return lines.join('\n');
 }
 
-// The declared option closest to `input`: equal ignoring case, or one typo away.
+// The declared option closest to `input`: equal ignoring case, or one typo
+// away.
 // Used to offer an existing
 // option before a new one is added.
 export function nearestOption(def: FieldDef, input: string): string | null {
@@ -387,7 +389,8 @@ function splitList(raw: string): string[] {
     return parts.map((p) => p.trim()).filter(Boolean);
 }
 
-// The value of `raw` (the text between `::` and `]`, already unquoted) for field
+// The value of `raw` (the text between `::` and `]`, already unquoted) for
+// field
 // `def`.
 export function parseValue(def: FieldDef, raw: string): Parsed {
     const text = raw.trim();
@@ -510,7 +513,8 @@ export function readItem(text: string, schema: FieldDef[]): Item {
     return item;
 }
 
-// `text` with the field `def.key` set to `value`, or removed if `value` is null.
+// `text` with the field `def.key` set to `value`, or removed if `value` is
+// null.
 // Only that field changes:
 // the rest of the line stays as it was. A field that is not in the text yet is
 // added at the end.
@@ -529,7 +533,8 @@ export function writeField(
         .join(' ');
 }
 
-// `text` with field `def` set from what a user typed: empty removes the field, a
+// `text` with field `def` set from what a user typed: empty removes the field,
+// a
 // valid value is written in
 // its normal form, and a value that does not fit leaves the text as it was.
 export function setField(text: string, def: FieldDef, raw: string): string {
@@ -554,7 +559,8 @@ export interface FieldChip {
     key: string;
     text: string;
     type: FieldType | null; // null = a key that is not in the schema
-    // select: the index of the chosen option, for its color when it has none of its own
+    // select: the index of the chosen option, for its color when it has none of
+    // its own
     option: number | null;
     color: OptionColor | null; // select: the color chosen for the option
     invalid: string | null; // why the value does not fit its field
@@ -654,7 +660,8 @@ export function applyDefaults(
 
 export type NameProblem = 'empty' | 'invalid' | 'taken';
 
-// Why `name` cannot be a new field name, or null. `taken` lists the names in use
+// Why `name` cannot be a new field name, or null. `taken` lists the names in
+// use
 // (compared ignoring case).
 export function fieldNameProblem(
     name: string,

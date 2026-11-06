@@ -41,7 +41,8 @@ export interface CalendarData {
     undated: { at: Position; card: Card; title: string }[];
 }
 
-// The date field the calendar places notes by: `date:` if it names a date field,
+// The date field the calendar places notes by: `date:` if it names a date
+// field,
 // else `due`, else the first date field.
 export function dateField(
     board: Board,
@@ -59,7 +60,8 @@ export function dateField(
     );
 }
 
-// The date and time a note has in `def`, or null if it has none (or a value that
+// The date and time a note has in `def`, or null if it has none (or a value
+// that
 // is not a real date).
 export function dateOf(card: Card, def: FieldDef): DateValue | null {
     const parsed = readItem(card.text, [def]).fields[def.key];

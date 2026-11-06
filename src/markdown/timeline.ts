@@ -1,4 +1,5 @@
-// What a `layout: timeline` document shows: one row per note with a bar from its
+// What a `layout: timeline` document shows: one row per note with a bar from
+// its
 // start date to its end date. The model is
 // the same as a board's or a list's (kanban.ts), so the same file can be shown
 // as any of them.
@@ -16,7 +17,8 @@
 // due: date
 // ---
 //
-// A note with only one of the two dates is a one-day marker; a note with neither
+// A note with only one of the two dates is a one-day marker; a note with
+// neither
 // has a row but no bar. Dragging a bar
 // shifts both dates, dragging an edge changes one. Pure TypeScript.
 

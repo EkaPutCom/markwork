@@ -1,4 +1,5 @@
-// What a `layout: table` document shows: the columns, the order of the rows, and
+// What a `layout: table` document shows: the columns, the order of the rows,
+// and
 // the rows themselves. The model is the
 // same as a board's or a list's (kanban.ts), so the same file can be shown as
 // any of them.
@@ -34,7 +35,8 @@ export interface TableRow {
 
 // The columns to show, in order. `columns: [a, b]` lists them by name (`title`,
 // `section`, or a field); a name that
-// is none of those is left out. Without it: the title, every declared field, and
+// is none of those is left out. Without it: the title, every declared field,
+// and
 // the section when any group has a title.
 export function tableColumns(
     board: Board,
@@ -69,7 +71,8 @@ export function sortSpec(board: Board): SortSpec | null {
     return key ? { key, desc } : null;
 }
 
-// What to compare for one cell: a number or a string, or null if the note has no
+// What to compare for one cell: a number or a string, or null if the note has
+// no
 // usable value (those go last).
 function sortKey(
     row: TableRow,

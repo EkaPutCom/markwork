@@ -88,7 +88,8 @@ export function resolveWikiLink(
     )[0];
 }
 
-// Relative path for a new note from a target that does not exist yet, or null if
+// Relative path for a new note from a target that does not exist yet, or null
+// if
 // the name is unsafe.
 // A target without a folder is created next to the document that links to it; a
 // target with a folder is relative to the project.
@@ -125,7 +126,8 @@ export function wikiTargetFor(file: string, files: string[]): string {
 
 // The part being typed after an unclosed [[ in the text before the cursor, or
 // null.
-// Suggestions stop after '|' (alias) and '#' (section) because neither is a file
+// Suggestions stop after '|' (alias) and '#' (section) because neither is a
+// file
 // name.
 export function wikiQuery(beforeCursor: string): string | null {
     const open = beforeCursor.lastIndexOf('[[');

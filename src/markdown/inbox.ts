@@ -1,6 +1,7 @@
 // The notes of a `layout: list` document (an inbox, a reading list, …). The
 // model is the same as a board's
-// (kanban.ts): the notes before the first `##` heading are one unnamed group and
+// (kanban.ts): the notes before the first `##` heading are one unnamed group
+// and
 // every heading starts another, so a
 // document can be shown as a board or as a list without being converted.
 // Frontmatter marks the document (layout.ts):
@@ -19,7 +20,8 @@
 // item note (indented)           ← an indented line = item note
 // - [x] Workbench name idea #markwork [created:: 2026-10-07 09:10]
 //
-// One item = one list bullet; the `created` field (see fields.ts) is the capture
+// One item = one list bullet; the `created` field (see fields.ts) is the
+// capture
 // time. Items without a time are
 // still valid. Pure TypeScript; all operations return a new board.
 
@@ -69,7 +71,8 @@ const emptyGroup = (): Column => ({
     outro: [],
 });
 
-// Where a new note goes: `add: top` (the default) or `add: bottom`, and `add-to:
+// Where a new note goes: `add: top` (the default) or `add: bottom`, and
+// `add-to:
 // Name` for the group of that name
 // instead of the first (top) or last (bottom) group of the document.
 export interface AddTarget {
@@ -105,11 +108,13 @@ function targetGroup(columns: Column[], target: AddTarget): number {
           : columns.length - 1;
 }
 
-// A new note, put where the document says (see addTarget; at the very top of the
+// A new note, put where the document says (see addTarget; at the very top of
+// the
 // first group by default; a group
 // without a name is made if there is none), with the default of every field of
 // the document that the text does not
-// set itself (the capture time, for a list that declares `created: date = now`).
+// set itself (the capture time, for a list that declares `created: date =
+// now`).
 export function captureItem(
     board: Board,
     text: string,

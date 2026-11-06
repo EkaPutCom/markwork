@@ -1,4 +1,5 @@
-// The editor commands as text → edit: bold and the other markers, links, blocks,
+// The editor commands as text → edit: bold and the other markers, links,
+// blocks,
 // line prefixes, headings, Enter and Tab in
 // lists and quotes, and the table commands. Each takes the text and the
 // selection and returns the changes to make and the
@@ -39,7 +40,8 @@ export interface TextState {
     readonly head: number;
 }
 
-// Replace from..to of the original text with insert. The changes of one edit are
+// Replace from..to of the original text with insert. The changes of one edit
+// are
 // sorted and do not overlap, and their
 // offsets all refer to the text before the edit.
 export interface TextChange {
@@ -76,7 +78,8 @@ export function applyChanges(
     return out + text.slice(at);
 }
 
-// Where a position of the text before the changes ends up after them. A position
+// Where a position of the text before the changes ends up after them. A
+// position
 // inside a replaced range, or at an
 // insertion, moves to the end of the inserted text, the way a text editor moves
 // its cursor.
@@ -226,7 +229,8 @@ function inlineOf(line: string): {
 
 // A selection taken in to what it shows: past the markers of formats at its
 // ends, then past spaces (a format ends at a
-// letter). The visual editor hides the markers, so "the word" and "the word with
+// letter). The visual editor hides the markers, so "the word" and "the word
+// with
 // its ** around it" are the same selection.
 function shownPart(
     line: string,
@@ -305,9 +309,11 @@ function around(text: string, open: string, close: string): string {
 
 // Toggle a format on what a one-line selection shows, as a word processor does:
 // when all of it has the format, the
-// format comes off it (a span split around it when the selection is part of it);
+// format comes off it (a span split around it when the selection is part of
+// it);
 // otherwise all of it gets the format,
-// joined with the spans of that format it touches. null: not a format the line's
+// joined with the spans of that format it touches. null: not a format the
+// line's
 // parser knows, or nothing is shown.
 function toggleFormat(
     line: string,
@@ -611,7 +617,8 @@ export function lineKindOf(line: string): {
 
 // Make every selected line one kind, replacing the prefix it has ("- " becomes
 // "1. ", not "1. - "). When all of them
-// are that kind already, they become paragraphs. A list item keeps its indent; a
+// are that kind already, they become paragraphs. A list item keeps its indent;
+// a
 // numbered list counts from 1.
 export function setLineKind(state: TextState, kind: LineKind): TextEdit {
     const from = Math.min(state.anchor, state.head),
@@ -865,9 +872,11 @@ export function tabInTable(
     return toCell(state, changes, lineOfRow(table, toRow), toCol);
 }
 
-// Enter: move to the same cell in the next row (a new row if already on the last
+// Enter: move to the same cell in the next row (a new row if already on the
+// last
 // row). On an empty last body row,
-// Enter deletes that row and leaves the table, like Enter on an empty list item.
+// Enter deletes that row and leaves the table, like Enter on an empty list
+// item.
 // null if not in a table.
 export function enterInTable(state: TextState): TextEdit | null {
     const at = whereIsCursor(state);
@@ -891,8 +900,8 @@ export function enterInTable(state: TextState): TextEdit | null {
                       ),
                       insert: '',
                   }
-                // leave a blank line as a separator
-                : replaceLines(state.text, table.end, table.end, ['']);
+                : // leave a blank line as a separator
+                  replaceLines(state.text, table.end, table.end, ['']);
         return toCell(state, [change], table.end, 0);
     }
     const changes =
@@ -955,7 +964,8 @@ function transform(
     }
 }
 
-// Runs a command on the table at the cursor. The result is always a tidied table
+// Runs a command on the table at the cursor. The result is always a tidied
+// table
 // (column widths equalized), because
 // adding or deleting columns changes their widths.
 export function runTableCommand(

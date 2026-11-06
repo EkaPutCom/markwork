@@ -1,5 +1,7 @@
-// The test host: what the test framework and the tests need from the runtime beyond the platform port (the command
-// line, output, the environment, a fake HTTP server). host-node.ts fills it; every test entry point
+// The test host: what the test framework and the tests need from the runtime
+// beyond the platform port (the command
+// line, output, the environment, a fake HTTP server). host-node.ts fills it;
+// every test entry point
 // installs one right after the platform, before anything imports framework.ts.
 
 // One request to the fake server. Header names are lower case.
@@ -10,7 +12,8 @@ export interface FakeRequest {
     body: string;
 }
 
-// The answer to a request. A reply that has not ended when the handler returns is streamed (chunked): what was written
+// The answer to a request. A reply that has not ended when the handler returns
+// is streamed (chunked): what was written
 // is sent at once, and later writes and end() continue it.
 export interface FakeReply {
     status(code: number): void;
@@ -30,12 +33,16 @@ export interface TestHost {
     print(text: string): void;
     makeTempDir(): string;
     setenv(name: string, value: string | null): void;
-    pathOfUrl(url: string): string;          // a file: URL (import.meta.url) as a path
-    // What the port does not offer because the app never needs it, but tests do to set up a case.
+    pathOfUrl(url: string): string; // a file: URL (import.meta.url) as a path
+    // What the port does not offer because the app never needs it, but tests do
+    // to set up a case.
     symlink(target: string, path: string): void;
-    modified(path: string): number;          // the modification time, in microseconds since the epoch
+    // the modification time, in microseconds since the epoch
+    modified(path: string): number;
     setModified(path: string, us: number): void;
-    serve(handler: (request: FakeRequest, reply: FakeReply) => void): Promise<FakeServer>;
+    serve(
+        handler: (request: FakeRequest, reply: FakeReply) => void
+    ): Promise<FakeServer>;
     exit(code: number): never;
 }
 
@@ -46,6 +53,9 @@ export function setHost(host: TestHost): void {
 }
 
 export function host(): TestHost {
-    if (!current) throw new Error('No test host installed: the entry point must import tests/core/host-node.js first');
+    if (!current)
+        throw new Error(
+            'No test host installed: the entry point must import tests/core/host-node.js first'
+        );
     return current;
 }

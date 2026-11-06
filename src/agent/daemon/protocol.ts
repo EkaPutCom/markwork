@@ -1,18 +1,28 @@
-// The wire format of markworkd (see docs/design/markworkd.md): newline-delimited JSON. Pure: no GI, no I/O.
+// The wire format of markworkd (see docs/design/markworkd.md):
+// newline-delimited JSON. Pure: no GI, no I/O.
 
 export const PROTOCOL_VERSION = 1;
 
 export type RunState = 'queued' | 'running' | 'exited';
-export type ExitReason = 'exited' | 'signaled' | 'stopped' | 'canceled' | 'start_failed' | 'idle_timeout' | 'log_limit' | 'lost';
+export type ExitReason =
+    | 'exited'
+    | 'signaled'
+    | 'stopped'
+    | 'canceled'
+    | 'start_failed'
+    | 'idle_timeout'
+    | 'log_limit'
+    | 'lost';
 export type RecordKind = 'start' | 'in' | 'out' | 'exit';
 
 // One entry of a run's log. The daemon numbers them 1, 2, 3, ... without gaps.
 export interface DaemonRecord {
     seq: number;
-    ts: number;           // Unix milliseconds
+    ts: number; // Unix milliseconds
     kind: RecordKind;
     line: string;
-    truncated?: boolean;  // a single line longer than the daemon's limit: only its start is kept
+    // a single line longer than the daemon's limit: only its start is kept
+    truncated?: boolean;
 }
 
 export interface ExitInfo {
@@ -24,11 +34,12 @@ export interface ExitInfo {
 
 export interface SpawnSpec {
     run: string;
-    program: string;      // a name the daemon resolves, never a path
+    program: string; // a name the daemon resolves, never a path
     args: string[];
     cwd: string;
     lane?: string;
-    lane_slots?: number;  // how many runs of the lane may run at once with this one (default 1)
+    // how many runs of the lane may run at once with this one (default 1)
+    lane_slots?: number;
     env?: Record<string, string>;
     labels?: Record<string, string>;
     initial_input?: string[];
@@ -54,20 +65,62 @@ export interface RunSummary {
     queue_position: number;
 }
 
-export interface HelloResult { proto: number; daemon: string; machine: string; pid: number; features: string[] }
-export interface InfoResult { daemon: string; machine: string; pid: number; started_at: number; state_dir: string; queued: number; running: number; exited: number; max_active_runs: number }
-export interface SpawnResult { run: string; state: RunState; position: number; existing?: boolean }
-export interface SubscribeResult { first_seq: number; last_seq: number; state: RunState }
-export interface StderrResult { text: string; head_dropped: boolean }
-export interface ListFilter { state?: RunState; lane?: string; labels?: Record<string, string> }
+export interface HelloResult {
+    proto: number;
+    daemon: string;
+    machine: string;
+    pid: number;
+    features: string[];
+}
+export interface InfoResult {
+    daemon: string;
+    machine: string;
+    pid: number;
+    started_at: number;
+    state_dir: string;
+    queued: number;
+    running: number;
+    exited: number;
+    max_active_runs: number;
+}
+export interface SpawnResult {
+    run: string;
+    state: RunState;
+    position: number;
+    existing?: boolean;
+}
+export interface SubscribeResult {
+    first_seq: number;
+    last_seq: number;
+    state: RunState;
+}
+export interface StderrResult {
+    text: string;
+    head_dropped: boolean;
+}
+export interface ListFilter {
+    state?: RunState;
+    lane?: string;
+    labels?: Record<string, string>;
+}
 
 // A state change of a run, from watch.
-export interface StateEvent { run: string; state: RunState; exit?: ExitInfo; last_seq: number }
+export interface StateEvent {
+    run: string;
+    state: RunState;
+    exit?: ExitInfo;
+    last_seq: number;
+}
 
-// A failed request, or a connection that ended. `code` is the daemon's error code, or one of ours
+// A failed request, or a connection that ended. `code` is the daemon's error
+// code, or one of ours
 // (connection_closed, timeout).
 export class DaemonError extends Error {
-    constructor(readonly code: string, message: string, readonly supported?: number[]) {
+    constructor(
+        readonly code: string,
+        message: string,
+        readonly supported?: number[]
+    ) {
         super(message);
         this.name = 'DaemonError';
     }
@@ -79,20 +132,31 @@ export type Frame =
     | { type: 'reply'; re: string; ok: boolean; body: Record<string, unknown> }
     | { type: 'event'; ev: string; body: Record<string, unknown> };
 
-// Parses one line from the daemon. Anything that is not one of our frames (a login banner, noise) gives null.
+// Parses one line from the daemon. Anything that is not one of our frames (a
+// login banner, noise) gives null.
 export function parseFrame(line: string): Frame | null {
     const text = line.trim();
     if (!text.startsWith('{')) return null;
     let body: unknown;
-    try { body = JSON.parse(text); } catch { return null; }
-    if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+    try {
+        body = JSON.parse(text);
+    } catch {
+        return null;
+    }
+    if (typeof body !== 'object' || body === null || Array.isArray(body))
+        return null;
     const o = body as Record<string, unknown>;
-    if (typeof o.re === 'string') return { type: 'reply', re: o.re, ok: o.ok === true, body: o };
+    if (typeof o.re === 'string')
+        return { type: 'reply', re: o.re, ok: o.ok === true, body: o };
     if (typeof o.ev === 'string') return { type: 'event', ev: o.ev, body: o };
     return null;
 }
 
-export function encodeRequest(id: string, op: string, params: object = {}): string {
+export function encodeRequest(
+    id: string,
+    op: string,
+    params: object = {}
+): string {
     return JSON.stringify({ ...params, id, op });
 }
 
@@ -101,7 +165,11 @@ export function replyError(body: Record<string, unknown>): DaemonError {
     const e = body.error;
     if (typeof e === 'object' && e !== null) {
         const o = e as Record<string, unknown>;
-        return new DaemonError(String(o.code ?? 'internal'), String(o.message ?? 'request failed'), Array.isArray(o.supported) ? o.supported.map(Number) : undefined);
+        return new DaemonError(
+            String(o.code ?? 'internal'),
+            String(o.message ?? 'request failed'),
+            Array.isArray(o.supported) ? o.supported.map(Number) : undefined
+        );
     }
     return new DaemonError('internal', 'request failed');
 }
@@ -111,11 +179,14 @@ export function parseExit(line: string): ExitInfo {
     try {
         const o = JSON.parse(line) as ExitInfo;
         if (typeof o?.reason === 'string') return o;
-    } catch { /* fall through */ }
+    } catch {
+        /* fall through */
+    }
     return { reason: 'exited', error: 'unreadable exit record' };
 }
 
-// The shell-style status of a finished run: the exit code, 128 + signal for a signal, 127 when it never started.
+// The shell-style status of a finished run: the exit code, 128 + signal for a
+// signal, 127 when it never started.
 export function exitStatus(exit: ExitInfo): number {
     if (exit.reason === 'start_failed') return 127;
     if (exit.code !== undefined) return exit.code;

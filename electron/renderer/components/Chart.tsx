@@ -1,9 +1,24 @@
-// The chart page: numbers and charts over the notes. The panels are the ones `charts:` names, in that order; the button
-// at the top right moves, removes, and adds panels and picks their fields, and the core writes the list to the frontmatter.
-// The charts are SVG drawn here from the model (markdown/chart.ts), so the colors are never the only information.
+// The chart page: numbers and charts over the notes. The panels are the ones
+// `charts:` names, in that order; the button
+// at the top right moves, removes, and adds panels and picks their fields, and
+// the core writes the list to the frontmatter.
+// The charts are SVG drawn here from the model (markdown/chart.ts), so the
+// colors are never the only information.
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { barData, chartData, chartItems, dateFields, donutData, NO_VALUE, selectFields, type ChartData, type ChartItem, type Period, type Slice } from '../../../src/markdown/chart';
+import {
+    barData,
+    chartData,
+    chartItems,
+    dateFields,
+    donutData,
+    NO_VALUE,
+    selectFields,
+    type ChartData,
+    type ChartItem,
+    type Period,
+    type Slice,
+} from '../../../src/markdown/chart';
 import { boardSchema, type Board } from '../../../src/markdown/kanban';
 import { Icon } from './Icons';
 import { dayMonth, formatDate, PageHeader, todayString } from './notes';
@@ -12,51 +27,138 @@ import { Select } from '../ui/select';
 import { Button } from '../ui/button';
 import { IconButton } from '../ui/icon-button';
 
-// The category colors of globals.css (docs/design/ui.md "Categories"), in the order a tag or a cover takes them.
-const CATEGORY_ORDER = ['green', 'blue', 'purple', 'red', 'pink', 'teal', 'amber', 'gray'];
-const BAR_AREA = 120, TAG_BAR = 220, DONUT = 140, RING = 26;
-const PANEL_NAMES: Record<ChartItem['kind'], string> = { kpi: 'Numbers', bar: 'Bars', donut: 'Donut', tags: 'Tags' };
-const ADDABLE: ChartItem[] = [{ kind: 'kpi' }, { kind: 'bar', field: null, period: null }, { kind: 'donut', field: null }, { kind: 'tags' }];
+// The category colors of globals.css (docs/design/ui.md "Categories"), in the
+// order a tag or a cover takes them.
+const CATEGORY_ORDER = [
+    'green',
+    'blue',
+    'purple',
+    'red',
+    'pink',
+    'teal',
+    'amber',
+    'gray',
+];
+const BAR_AREA = 120,
+    TAG_BAR = 220,
+    DONUT = 140,
+    RING = 26;
+const PANEL_NAMES: Record<ChartItem['kind'], string> = {
+    kpi: 'Numbers',
+    bar: 'Bars',
+    donut: 'Donut',
+    tags: 'Tags',
+};
+const ADDABLE: ChartItem[] = [
+    { kind: 'kpi' },
+    { kind: 'bar', field: null, period: null },
+    { kind: 'donut', field: null },
+    { kind: 'tags' },
+];
 
-// A slice's color: none for the notes without a value, else its option's own color, else the next one in order.
-const colorOf = (slice: Slice, index: number): string => `var(--cat-${slice.name === NO_VALUE ? 'none' : slice.color || CATEGORY_ORDER[index % CATEGORY_ORDER.length]})`;
+// A slice's color: none for the notes without a value, else its option's own
+// color, else the next one in order.
+const colorOf = (slice: Slice, index: number): string =>
+    `var(--cat-${slice.name === NO_VALUE ? 'none' : slice.color || CATEGORY_ORDER[index % CATEGORY_ORDER.length]})`;
 
 function Donut({ slices }: { slices: Slice[] }) {
     const total = slices.reduce((n, s) => n + s.count, 0);
-    const radius = DONUT / 2 - RING / 2, c = 2 * Math.PI * radius;
+    const radius = DONUT / 2 - RING / 2,
+        c = 2 * Math.PI * radius;
     let offset = 0;
-    const summary = slices.map(s => `${s.name}: ${s.count}`).join(', ');
+    const summary = slices.map((s) => `${s.name}: ${s.count}`).join(', ');
     return (
         <div className="donut">
-            <svg width={DONUT} height={DONUT} viewBox={`0 0 ${DONUT} ${DONUT}`} role="img" aria-label={summary}>
+            <svg
+                width={DONUT}
+                height={DONUT}
+                viewBox={`0 0 ${DONUT} ${DONUT}`}
+                role="img"
+                aria-label={summary}
+            >
                 <title>{summary}</title>
                 <g transform={`rotate(-90 ${DONUT / 2} ${DONUT / 2})`}>
                     {slices.map((s, i) => {
                         const length = total ? (s.count / total) * c : 0;
-                        const circle = <circle key={s.name} cx={DONUT / 2} cy={DONUT / 2} r={radius} fill="none" style={{ stroke: colorOf(s, i) }} strokeWidth={RING} strokeDasharray={`${length} ${c - length}`} strokeDashoffset={-offset} />;
+                        const circle = (
+                            <circle
+                                key={s.name}
+                                cx={DONUT / 2}
+                                cy={DONUT / 2}
+                                r={radius}
+                                fill="none"
+                                style={{ stroke: colorOf(s, i) }}
+                                strokeWidth={RING}
+                                strokeDasharray={`${length} ${c - length}`}
+                                strokeDashoffset={-offset}
+                            />
+                        );
                         offset += length;
                         return circle;
                     })}
                 </g>
-                <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="chart-number">{total}</text>
+                <text
+                    x="50%"
+                    y="50%"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    className="chart-number"
+                >
+                    {total}
+                </text>
             </svg>
             <ul className="legend">
-                {slices.map((s, i) => <li key={s.name}><span className="swatch" style={{ background: colorOf(s, i) }} />{s.name}<span className="dim">{s.count}</span></li>)}
+                {slices.map((s, i) => (
+                    <li key={s.name}>
+                        <span
+                            className="swatch"
+                            style={{ background: colorOf(s, i) }}
+                        />
+                        {s.name}
+                        <span className="dim">{s.count}</span>
+                    </li>
+                ))}
             </ul>
         </div>
     );
 }
 
-function Periods({ counts, period }: { counts: { start: string; count: number }[]; period: Period }) {
-    if (!counts.length) return <p className="dim">No notes have a date in the “by” field.</p>;
-    const max = Math.max(1, ...counts.map(p => p.count));
+function Periods({
+    counts,
+    period,
+}: {
+    counts: { start: string; count: number }[];
+    period: Period;
+}) {
+    if (!counts.length)
+        return <p className="dim">No notes have a date in the “by” field.</p>;
+    const max = Math.max(1, ...counts.map((p) => p.count));
     return (
         <div className="bars">
-            {counts.map(entry => (
-                <div key={entry.start} className="bar-col" title={`${entry.start}: ${entry.count}`}>
+            {counts.map((entry) => (
+                <div
+                    key={entry.start}
+                    className="bar-col"
+                    title={`${entry.start}: ${entry.count}`}
+                >
                     <span className="caption">{entry.count}</span>
-                    <div className="chart-bar" style={{ height: Math.max(4, Math.round((entry.count / max) * BAR_AREA)) }} />
-                    <span className="dim caption">{period === 'week' ? dayMonth(entry.start) : formatDate(entry.start, { month: 'short', year: 'numeric' })}</span>
+                    <div
+                        className="chart-bar"
+                        style={{
+                            height: Math.max(
+                                4,
+                                Math.round((entry.count / max) * BAR_AREA)
+                            ),
+                        }}
+                    />
+                    <span className="dim caption">
+                        {period === 'week'
+                            ? dayMonth(entry.start)
+                            : formatDate(entry.start, {
+                                  month: 'short',
+                                  year: 'numeric',
+                              })}
+                    </span>
                 </div>
             ))}
         </div>
@@ -64,81 +166,245 @@ function Periods({ counts, period }: { counts: { start: string; count: number }[
 }
 
 function Tagbars({ tags }: { tags: Slice[] }) {
-    const max = Math.max(1, ...tags.map(t => t.count));
+    const max = Math.max(1, ...tags.map((t) => t.count));
     return (
         <div className="tag-bars">
-            {tags.map(tag => (
-                <div key={tag.name} className="tag-row"><span>{tag.name}</span><div className="chart-bar" style={{ width: Math.max(4, Math.round((tag.count / max) * TAG_BAR)) }} /><span className="dim">{tag.count}</span></div>
+            {tags.map((tag) => (
+                <div key={tag.name} className="tag-row">
+                    <span>{tag.name}</span>
+                    <div
+                        className="chart-bar"
+                        style={{
+                            width: Math.max(
+                                4,
+                                Math.round((tag.count / max) * TAG_BAR)
+                            ),
+                        }}
+                    />
+                    <span className="dim">{tag.count}</span>
+                </div>
             ))}
         </div>
     );
 }
 
 function Kpis({ data }: { data: ChartData }) {
-    const items: [string, number, string][] = [['Notes', data.total, ''], ['Done', data.done, 'ok'], ['Overdue', data.overdue, data.overdue ? 'late' : ''], ['Per week', data.averagePerWeek, '']];
-    return <div className="kpis">{items.map(([name, value, cls]) => <div key={name} className="card chart-kpi"><span className="dim">{name}</span><span className={`chart-number ${cls}`}>{value}</span></div>)}</div>;
+    const items: [string, number, string][] = [
+        ['Notes', data.total, ''],
+        ['Done', data.done, 'ok'],
+        ['Overdue', data.overdue, data.overdue ? 'late' : ''],
+        ['Per week', data.averagePerWeek, ''],
+    ];
+    return (
+        <div className="kpis">
+            {items.map(([name, value, cls]) => (
+                <div key={name} className="card chart-kpi">
+                    <span className="dim">{name}</span>
+                    <span className={`chart-number ${cls}`}>{value}</span>
+                </div>
+            ))}
+        </div>
+    );
 }
 
 export function Chart({ board }: { board: Board }) {
     const client = useClient();
-    const schema = useMemo(() => boardSchema(board), [board.head.join('\n')]);   // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-line react-hooks/exhaustive-deps
+    const schema = useMemo(() => boardSchema(board), [board.head.join('\n')]);
     const [settings, setSettings] = useState(false);
     const items = chartItems(board, schema);
-    const data = useMemo(() => chartData(board, todayString(), schema), [board, schema]);
-    const commit = (next: ChartItem[] | null) => client.editNotes({ kind: 'charts', items: next });
-    const change = (at: number, next: ChartItem | null) => { const list = [...items]; if (next) list[at] = next; else list.splice(at, 1); commit(list); };
-    const move = (at: number, by: number) => { const list = [...items]; [list[at], list[at + by]] = [list[at + by], list[at]]; commit(list); };
+    const data = useMemo(
+        () => chartData(board, todayString(), schema),
+        [board, schema]
+    );
+    const commit = (next: ChartItem[] | null) =>
+        client.editNotes({ kind: 'charts', items: next });
+    const change = (at: number, next: ChartItem | null) => {
+        const list = [...items];
+        if (next) list[at] = next;
+        else list.splice(at, 1);
+        commit(list);
+    };
+    const move = (at: number, by: number) => {
+        const list = [...items];
+        [list[at], list[at + by]] = [list[at + by], list[at]];
+        commit(list);
+    };
 
     const panel = (item: ChartItem, i: number) => {
         if (item.kind === 'kpi') return <Kpis key={i} data={data} />;
-        let title: string, body: ReactNode = null;
+        let title: string,
+            body: ReactNode = null;
         if (item.kind === 'tags') {
             if (!data.byTag.length) return null;
-            title = 'By tag'; body = <Tagbars tags={data.byTag} />;
+            title = 'By tag';
+            body = <Tagbars tags={data.byTag} />;
         } else if (item.kind === 'bar') {
             const bars = barData(board, item.field, item.period, schema);
             const per = bars.period === 'week' ? 'per week' : 'per month';
-            title = bars.field === 'created' || bars.field === null ? `Created ${per}` : `${bars.field} ${per}`;
+            title =
+                bars.field === 'created' || bars.field === null
+                    ? `Created ${per}`
+                    : `${bars.field} ${per}`;
             body = <Periods counts={bars.counts} period={bars.period} />;
         } else {
             const donut = donutData(board, item.field, schema);
             if (!donut.field) return null;
-            title = `By ${donut.field}`; body = <Donut slices={donut.slices} />;
+            title = `By ${donut.field}`;
+            body = <Donut slices={donut.slices} />;
         }
-        return <section key={i} className={`card chart-panel panel-${item.kind}`}><h3>{title}</h3>{body}</section>;
+        return (
+            <section key={i} className={`card chart-panel panel-${item.kind}`}>
+                <h3>{title}</h3>
+                {body}
+            </section>
+        );
     };
 
     return (
         <div className="layout-page chart" data-page="chart">
             <PageHeader board={board} fallback="Chart">
-                <IconButton variant="outline" className="settings-toggle" aria-expanded={settings} label="Edit the panels" onClick={() => setSettings(v => !v)}><Icon name="emblem-system" /></IconButton>
+                <IconButton
+                    variant="outline"
+                    className="settings-toggle"
+                    aria-expanded={settings}
+                    label="Edit the panels"
+                    onClick={() => setSettings((v) => !v)}
+                >
+                    <Icon name="emblem-system" />
+                </IconButton>
             </PageHeader>
             {settings && (
-                <div className="chart-settings" role="group" aria-label="Panels">
+                <div
+                    className="chart-settings"
+                    role="group"
+                    aria-label="Panels"
+                >
                     <h3>Panels</h3>
                     {items.map((item, at) => {
-                        const bars = item.kind === 'bar' ? barData(board, item.field, item.period, schema) : null;
-                        const donut = item.kind === 'donut' ? donutData(board, item.field, schema) : null;
+                        const bars =
+                            item.kind === 'bar'
+                                ? barData(
+                                      board,
+                                      item.field,
+                                      item.period,
+                                      schema
+                                  )
+                                : null;
+                        const donut =
+                            item.kind === 'donut'
+                                ? donutData(board, item.field, schema)
+                                : null;
                         return (
                             <div key={at} className="settings-row">
-                                <span className="name">{PANEL_NAMES[item.kind]}</span>
+                                <span className="name">
+                                    {PANEL_NAMES[item.kind]}
+                                </span>
                                 {item.kind === 'bar' && bars && (
                                     <>
-                                        {dateFields(schema).length > 0 && <Select aria-label="Date field" value={bars.field ?? ''} onChange={e => change(at, { ...item, field: e.target.value })}>{dateFields(schema).map(f => <option key={f.key}>{f.key}</option>)}</Select>}
-                                        <Select aria-label="Period" value={bars.period} onChange={e => change(at, { ...item, field: bars.field, period: e.target.value as Period })}><option value="week">Week</option><option value="month">Month</option></Select>
+                                        {dateFields(schema).length > 0 && (
+                                            <Select
+                                                aria-label="Date field"
+                                                value={bars.field ?? ''}
+                                                onChange={(e) =>
+                                                    change(at, {
+                                                        ...item,
+                                                        field: e.target.value,
+                                                    })
+                                                }
+                                            >
+                                                {dateFields(schema).map((f) => (
+                                                    <option key={f.key}>
+                                                        {f.key}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        )}
+                                        <Select
+                                            aria-label="Period"
+                                            value={bars.period}
+                                            onChange={(e) =>
+                                                change(at, {
+                                                    ...item,
+                                                    field: bars.field,
+                                                    period: e.target
+                                                        .value as Period,
+                                                })
+                                            }
+                                        >
+                                            <option value="week">Week</option>
+                                            <option value="month">Month</option>
+                                        </Select>
                                     </>
                                 )}
-                                {item.kind === 'donut' && donut && selectFields(schema).length > 0 && (
-                                    <Select aria-label="Select field" value={donut.field ?? ''} onChange={e => change(at, { ...item, field: e.target.value })}>{selectFields(schema).map(f => <option key={f.key}>{f.key}</option>)}</Select>
-                                )}
-                                <IconButton size="icon-xs" label="Move up" disabled={at === 0} onClick={() => move(at, -1)}><Icon name="chevron-up" /></IconButton>
-                                <IconButton size="icon-xs" label="Move down" disabled={at === items.length - 1} onClick={() => move(at, 1)}><Icon name="chevron-down" /></IconButton>
-                                <IconButton size="icon-xs" label="Remove" disabled={items.length <= 1} onClick={() => change(at, null)}><Icon name="list-remove" /></IconButton>
+                                {item.kind === 'donut' &&
+                                    donut &&
+                                    selectFields(schema).length > 0 && (
+                                        <Select
+                                            aria-label="Select field"
+                                            value={donut.field ?? ''}
+                                            onChange={(e) =>
+                                                change(at, {
+                                                    ...item,
+                                                    field: e.target.value,
+                                                })
+                                            }
+                                        >
+                                            {selectFields(schema).map((f) => (
+                                                <option key={f.key}>
+                                                    {f.key}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                    )}
+                                <IconButton
+                                    size="icon-xs"
+                                    label="Move up"
+                                    disabled={at === 0}
+                                    onClick={() => move(at, -1)}
+                                >
+                                    <Icon name="chevron-up" />
+                                </IconButton>
+                                <IconButton
+                                    size="icon-xs"
+                                    label="Move down"
+                                    disabled={at === items.length - 1}
+                                    onClick={() => move(at, 1)}
+                                >
+                                    <Icon name="chevron-down" />
+                                </IconButton>
+                                <IconButton
+                                    size="icon-xs"
+                                    label="Remove"
+                                    disabled={items.length <= 1}
+                                    onClick={() => change(at, null)}
+                                >
+                                    <Icon name="list-remove" />
+                                </IconButton>
                             </div>
                         );
                     })}
-                    <div className="settings-add">{ADDABLE.map(next => <Button key={next.kind} variant="outline" size="sm" onClick={() => commit([...items, next])}><Icon name="document-new" />{PANEL_NAMES[next.kind]}</Button>)}</div>
-                    <Button variant="ghost" size="sm" className="self-start" onClick={() => commit(null)}>Reset to default</Button>
+                    <div className="settings-add">
+                        {ADDABLE.map((next) => (
+                            <Button
+                                key={next.kind}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => commit([...items, next])}
+                            >
+                                <Icon name="document-new" />
+                                {PANEL_NAMES[next.kind]}
+                            </Button>
+                        ))}
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="self-start"
+                        onClick={() => commit(null)}
+                    >
+                        Reset to default
+                    </Button>
                 </div>
             )}
             <div className="chart-body">{items.map(panel)}</div>
