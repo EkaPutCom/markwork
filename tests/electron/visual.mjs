@@ -51,10 +51,16 @@ async function trail(count = 12) {
         return entries
             .slice(-count)
             .map((e) => {
+                const key = e.input?.key
+                    ? `${e.input.mods ? `${e.input.mods}+` : ''}${e.input.key}`
+                    : '';
                 const input = e.input
-                    ? `${e.input.kind}${e.input.key ? ` ${e.input.mods ? `${e.input.mods}+` : ''}${e.input.key}` : ''}`
+                    ? `${e.input.kind}${key ? ` ${key}` : ''}`
                     : '-';
-                return `  #${e.n} ${e.userEvent ?? '-'} (${input}) changes ${JSON.stringify(e.changes)} sel ${JSON.stringify(e.selAfter)}${e.effects.length ? ` ${e.effects.join(',')}` : ''}`;
+                return `  #${e.n} ${e.userEvent ?? '-'} (${input}) changes ` +
+                    `${JSON.stringify(e.changes)} sel ` +
+                    `${JSON.stringify(e.selAfter)}` +
+                    `${e.effects.length ? ` ${e.effects.join(',')}` : ''}`;
             })
             .join('\n');
     } catch (e) {
@@ -212,7 +218,8 @@ try {
                     assert.equal(
                         await docText(),
                         'Before\n\n\n\nAfter',
-                        `${key} removes ${marker} without deleting adjacent text`
+                        `${key} removes ${marker} without deleting ` +
+                            'adjacent text'
                     );
                     await page.keyboard.press('ControlOrMeta+z');
                     assert.equal(await docText(), text);
@@ -659,7 +666,8 @@ try {
                 .repeat(5)
                 .trim();
             await setDoc(
-                `- ${long}\n  - nested ${long}\n- [ ] ${long}\n1. ${long}\n    1. deeper ${long}\n\nafter`,
+                `- ${long}\n  - nested ${long}\n- [ ] ${long}\n` +
+                    `1. ${long}\n    1. deeper ${long}\n\nafter`,
                 0
             );
             const marks = editor.locator('.cm-line:has(.cm-md-listmark)');
@@ -688,7 +696,8 @@ try {
                 );
                 assert.ok(
                     Math.abs(where.textStart - where.wrapped) < 1.5,
-                    `item ${i + 1}: its text starts at ${where.textStart}, the wrapped lines at ${where.wrapped}`
+                    `item ${i + 1}: its text starts at ${where.textStart}, ` +
+                    `the wrapped lines at ${where.wrapped}`
                 );
             }
             // The same width for every kind of marker.
@@ -976,11 +985,16 @@ try {
                                 active?.matches('.cm-md-cell') &&
                                 s.rangeCount &&
                                 active.contains(s.anchorNode);
+                        const cellSelection = inCell
+                            ? `${JSON.stringify(s.toString())} ` +
+                                `(${s.anchorOffset}–${s.focusOffset})`
+                            : 'none';
                         return [
                             `text: ${JSON.stringify(v.state.doc.toString())}`,
-                            `selection: ${m.anchor}–${m.head} ${JSON.stringify(v.state.sliceDoc(m.from, m.to))}`,
+                            `selection: ${m.anchor}–${m.head} ` +
+                            `${JSON.stringify(v.state.sliceDoc(m.from, m.to))}`,
                             `focus: ${active?.className || active?.tagName}`,
-                            `cell selection: ${inCell ? JSON.stringify(s.toString()) + ` (${s.anchorOffset}–${s.focusOffset})` : 'none'}`,
+                            `cell selection: ${cellSelection}`,
                         ].join('\n');
                     })
                     .then(
@@ -1308,7 +1322,8 @@ try {
             const rows = Array.from(
                 { length: 14 },
                 (_, i) =>
-                    `| cmd ${i} | The dependencies of step ${i}, with a description that wraps in its cell |`
+                    `| cmd ${i} | The dependencies of step ${i}, with ` +
+                    'a description that wraps in its cell |'
             ).join('\n');
             await setDoc(
                 '# Doc\n\n' +
@@ -1440,7 +1455,8 @@ try {
             }, 16);
             assert.ok(
                 moved > 0 && moved < 120,
-                `the page moves by about a row to show it, not to the grid's top (moved ${moved})`
+                `the page moves by about a row to show it, not to the ` +
+                `grid's top (moved ${moved})`
             );
             await page.keyboard.press('Escape');
         }
@@ -1813,7 +1829,8 @@ try {
                 assert.equal(
                     await toolbar.count(),
                     0,
-                    `${file}: its text is the raw file, with no formatting toolbar`
+                    `${file}: its text is the raw file, with no ` +
+                    'formatting toolbar'
                 );
                 assert.ok(
                     (await lineTexts()).some(

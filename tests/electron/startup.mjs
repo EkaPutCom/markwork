@@ -15,7 +15,9 @@ const errors = [];
 try {
     for (const mixed of [true, false]) {
         await step(
-            `startup restores ${mixed ? 'only the workspace file from mixed tabs' : 'Home when every file tab is outside'}`,
+            `startup restores ${mixed
+                ? 'only the workspace file from mixed tabs'
+                : 'Home when every file tab is outside'}`,
             async () => {
                 const started = performance.now();
                 const app = await launchApp({
@@ -61,7 +63,9 @@ try {
                         0
                     );
                     console.log(
-                        `  startup to ${mixed ? 'workspace document' : 'Home'}: ${(performance.now() - started).toFixed(0)} ms`
+                        '  startup to ' +
+                            (mixed ? 'workspace document' : 'Home') +
+                            `: ${(performance.now() - started).toFixed(0)} ms`
                     );
                     if (process.env.MARKWORK_STARTUP_SCREENSHOTS) {
                         mkdirSync(process.env.MARKWORK_STARTUP_SCREENSHOTS, {

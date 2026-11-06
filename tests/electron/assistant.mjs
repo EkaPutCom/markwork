@@ -364,7 +364,11 @@ try {
             }
             samples.sort((a, b) => a - b);
             console.log(
-                `  pi Assistant UI round trip: median ${samples[10].toFixed(1)} ms, p95 ${samples[18].toFixed(1)} ms, max ${samples[19].toFixed(1)} ms; 3 warmups, 20 samples; no real provider`
+                '  pi Assistant UI round trip: median ' +
+                    `${samples[10].toFixed(1)} ms, p95 ` +
+                    `${samples[18].toFixed(1)} ms, max ` +
+                    `${samples[19].toFixed(1)} ms; ` +
+                    '3 warmups, 20 samples; no real provider'
             );
         }
     );
