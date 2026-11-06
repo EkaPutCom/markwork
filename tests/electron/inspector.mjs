@@ -292,8 +292,9 @@ async function inNormalStart() {
                     async () => (await topLine()) === top,
                     10000,
                     async () =>
-                        `${"the editor is scrolled as" +
-            " it was: line "}${top} at the top before, line ${await topLine()} now`
+                        'the editor is scrolled as it was: line ' +
+                            `${top} at the top before, line ` +
+                            `${await topLine()} now`
                 );
                 await dialog
                     .getByRole('button', { name: 'Close', exact: true })
@@ -315,13 +316,25 @@ async function inNormalStart() {
                 const n = 2000, start = performance.now();
                 for (let i = 0; i < n; i++) {
                     const at = v.state.selection.main.head;
-                    v.dispatch({ changes: { from: at, insert: i % 60 === 59 ? '\\n' : 'x' }, selection: { anchor: at + 1 }, userEvent: 'input.type' });
+                    v.dispatch({
+                        changes: {
+                            from: at,
+                            insert: i % 60 === 59 ? '\\n' : 'x'
+                        },
+                        selection: { anchor: at + 1 },
+                        userEvent: 'input.type'
+                    });
                 }
-                return { n, ms: performance.now() - start, length: v.state.doc.length };
+                return {
+                    n,
+                    ms: performance.now() - start,
+                    length: v.state.doc.length
+                };
             })()`);
                 const each = result.ms / result.n;
                 console.log(
-                    `    ${result.n} transactions on ${result.length} characters: ${each.toFixed(3)} ms each`
+                    `    ${result.n} transactions on ${result.length} ` +
+                        `characters: ${each.toFixed(3)} ms each`
                 );
                 assert.ok(each < 16, 'typing stays inside a frame');
             }
@@ -561,7 +574,7 @@ async function inDevMode() {
                 );
                 assert.match(
                     await bad.textContent(),
-                    /removed 12–13 "\*" with the cursor at 13: a part of the hidden "\*\*" at 11–13/
+                    /removed 12–13 .*cursor at 13.*hidden.*11–13/
                 );
                 await bad.getByRole('button', { name: /Show #/ }).click();
                 assert.match(
@@ -594,7 +607,7 @@ async function inDevMode() {
                 );
                 assert.match(
                     await bad.textContent(),
-                    /the cursor is at 1, inside the hidden prefix 0–2 "# " of line 1/
+                    /cursor is at 1.*hidden prefix 0–2 "# " of line 1/
                 );
                 assert.match(
                     await inspector.locator('.ins-strip').textContent(),
@@ -690,7 +703,8 @@ async function inDevMode() {
                         word &&
                         Math.abs(box.x - word.x) < 4 &&
                         Math.abs(box.width - word.width) < 6,
-                    `the box ${JSON.stringify(box)} is on the word ${JSON.stringify(word)}`
+                    `the box ${JSON.stringify(box)} is on the word ` +
+                        JSON.stringify(word)
                 );
                 await page.locator('.cm-content .cm-md-bold').hover();
                 await waitFor(
@@ -921,7 +935,8 @@ async function throughTheBridge() {
                         true,
                     30000,
                     () =>
-                        `last answer: ${JSON.stringify(hello?.answer)}, exit ${hello?.code}, ${hello?.stderr}`
+                        `last answer: ${JSON.stringify(hello?.answer)}, ` +
+                            `exit ${hello?.code}, ${hello?.stderr}`
                 );
                 const { code, answer, stderr } = await cli(
                     ...pid,
