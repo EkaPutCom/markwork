@@ -153,8 +153,8 @@ export function findNote(
         .join('; ');
     return missing(
         hits.length
-            ? `"${fragment}" matches ${hits.length} notes: ${list}${". Extend the text until" +
-            " it is unique."}`
+            ? `"${fragment}" matches ${hits.length} notes: ${list}. ` +
+                'Extend the text until it is unique.'
             : `No note contains "${fragment}" in ${fileName}.`
     );
 }
@@ -175,11 +175,11 @@ export function findGroup(board: Board, name: string): Found<number> {
         : board.columns.flatMap((c, i) =>
               c.title.toLowerCase().includes(w) ? [i] : []
           );
-    return hits.length === 1
-        ? found(hits[0])
-        : missing(
-              `The group "${name}" ${hits.length ? 'matches more than one group' : 'does not exist'}. Groups: ${titles}.`
-          );
+    if (hits.length === 1) return found(hits[0]);
+    const reason = hits.length
+        ? 'matches more than one group'
+        : 'does not exist';
+    return missing(`The group "${name}" ${reason}. Groups: ${titles}.`);
 }
 
 // The field of a document named `key` (ignoring case), or why there is none.
@@ -247,15 +247,18 @@ export function structuredIssues(text: string): Issue[] {
                 issues.push({
                     line: 1,
                     key: `value:${key}:${item.title}`,
-                    text: `"${item.title}": ${key} "${parsed.raw}" is not valid (${parsed.error})`,
+                    text:
+                        `"${item.title}": ${key} "${parsed.raw}" is not ` +
+                        `valid (${parsed.error})`,
                 });
         }
         for (const u of item.unknown)
             issues.push({
                 line: 1,
                 key: `unknown:${u.key}:${item.title}`,
-                text: `"${item.title}": the field "${u.key}${"\" is not declared in the" +
-            " frontmatter"}`,
+                text:
+                    `"${item.title}": the field "${u.key}" is not ` +
+                    'declared in the frontmatter',
             });
     }
     return issues;
@@ -272,8 +275,9 @@ export function checkNote(
     group: string | null,
     done: boolean | null
 ): { label: string; passed: boolean } {
+    const status = done === null ? '' : done ? ' (done)' : ' (not done)';
     const label = (tail: string): string =>
-        `note: ${fragment}${group ? ` → ${group}` : ''}${done === null ? '' : done ? ' (done)' : ' (not done)'}${tail}`;
+        `note: ${fragment}${group ? ` → ${group}` : ''}${status}${tail}`;
     const doc = structuredDoc(text);
     if (!doc)
         return {
@@ -291,13 +295,16 @@ export function checkNote(
     const hits = exact.length
         ? exact
         : notes.filter((n) => n.text.toLowerCase().includes(lower));
-    if (hits.length !== 1)
+    if (hits.length !== 1) {
+        const reason = hits.length
+            ? `${hits.length} notes match`
+            : 'no such note';
+        const scope = wanted === null ? '' : ' in that group';
         return {
-            label: label(
-                ` — ${hits.length ? `${hits.length} notes match` : 'no such note'}${wanted === null ? '' : ' in that group'}`
-            ),
+            label: label(` — ${reason}${scope}`),
             passed: false,
         };
+    }
     const card = doc.board.columns[hits[0].at.column].cards[hits[0].at.index];
     const actual = card.done === true;
     return done === null || actual === done
