@@ -924,7 +924,8 @@ export async function toolTests(): Promise<void> {
                 turn({
                     active: {
                         name: 'chapter-2.md',
-                        text: '# Chapter 2\n\nA new version that is not saved yet.\n',
+                        text: '# Chapter 2\n\nA new version that is' +
+                            ' not saved yet.\n',
                         cursorLine: 0,
                     },
                 }),
