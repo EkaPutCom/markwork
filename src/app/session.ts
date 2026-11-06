@@ -1,10 +1,10 @@
 import { FolderDiskController } from './folderdisk';
 import { AgentFoldersController } from './agentfolders';
 import type { FolderAgentView } from './folderpanel';
-// The application session: builds the feature controllers of app/ and owns them, given one frontend. The frontend (the
-// Electron window, over the app protocol) supplies what only it can: the views the controllers draw on, the dialogs they ask with, and the
-// hooks for what must follow a document on screen. Everything that connects the controllers to each other lives here,
-// so a frontend implements AppFrontend and gets the application, not a copy of the wiring.
+// Builds and owns the feature controllers for one frontend. The Electron
+// window supplies views, dialogs, and hooks through the app protocol.
+// Controller wiring lives here, so each AppFrontend gets the application
+// rather than a copy of its wiring.
 
 import type { AppSettings, SidebarPage } from '../base/settings';
 import { WorkspaceRepository } from '../base/workspace';
@@ -12,13 +12,33 @@ import { fileUri, insideName } from '../base/files';
 import { platform } from '../platform/index';
 import { WELCOME } from '../base/welcome';
 import { Autosaver, type AutosaveHost } from './autosave';
-import { CollabController, type CollabDialogs, type CollabHost } from './collab';
-import { ContributeController, type ContributeDialogs, type ContributeHost } from './contribute';
+import {
+    CollabController,
+    type CollabDialogs,
+    type CollabHost,
+} from './collab';
+import {
+    ContributeController,
+    type ContributeDialogs,
+    type ContributeHost,
+} from './contribute';
 import { PullReviewController, type PullDialogs, type PullHost } from './pulls';
-import { JournalController, type JournalDialogs, type JournalHost } from './journal';
-import { HarnessController, type HarnessDialogs, type HarnessHost } from './harness';
+import {
+    JournalController,
+    type JournalDialogs,
+    type JournalHost,
+} from './journal';
+import {
+    HarnessController,
+    type HarnessDialogs,
+    type HarnessHost,
+} from './harness';
 import type { Openers } from '../orchestrator/hub';
-import { HarnessReviewController, type ReviewDialogs, type ReviewHost } from './harnessreview';
+import {
+    HarnessReviewController,
+    type ReviewDialogs,
+    type ReviewHost,
+} from './harnessreview';
 import { HomeController, existingRecent, type HomeHost } from './home';
 import { ProgramsController } from './programs';
 import { ViewController, type ViewDialogs, type ViewHost } from './views';
@@ -30,54 +50,157 @@ import { PiAssistantController } from './assistantpi';
 import { systemKeyStore } from '../agent/apikey';
 import { DeepSeek } from '../agent/deepseek';
 import type { WriterSources } from './history';
-import { HistoryController, type HistoryDialogs, type HistoryHost } from './history';
-import { PreferencesController, type PreferencesDialogs, type PreferencesHost } from './preferences';
+import {
+    HistoryController,
+    type HistoryDialogs,
+    type HistoryHost,
+} from './history';
+import {
+    PreferencesController,
+    type PreferencesDialogs,
+    type PreferencesHost,
+} from './preferences';
 import { OutlineController, type OutlineHost } from './outline';
-import { FilesController, isHtmlFile, isImageFile, isMarkdownFile, isCsvFile, type FilesDialogs, type FilesHost } from './files';
-import { SearchController, type SearchDialogs, type SearchHost } from './search';
+import {
+    FilesController,
+    isHtmlFile,
+    isImageFile,
+    isMarkdownFile,
+    isCsvFile,
+    type FilesDialogs,
+    type FilesHost,
+} from './files';
+import {
+    SearchController,
+    type SearchDialogs,
+    type SearchHost,
+} from './search';
 import type { Board } from '../markdown/kanban';
-import type { Doc, Page, TextEditor, ToastAction, ToastButton } from './document';
+import type {
+    Doc,
+    Page,
+    TextEditor,
+    ToastAction,
+    ToastButton,
+} from './document';
 import type { CommandHost, CoreCommands, FrontendCommands } from './commands';
 import { _ } from '../base/i18n';
 
-// The host the controllers see, put together: each controller is typed with only the part it needs.
-export type ControllerHost<E extends TextEditor> = AutosaveHost & JournalHost & HarnessHost & HomeHost & AgentWriteHost<E> & ViewHost<E>
-    & NoteHost & CollabHost & PullHost & ContributeHost & ReviewHost & AssistantHost<E> & HistoryHost<E> & FilesHost & SearchHost<E> & OutlineHost<E> & PreferencesHost;
+// Each controller is typed with only the host members it needs.
+export type ControllerHost<E extends TextEditor> = AutosaveHost &
+    JournalHost &
+    HarnessHost &
+    HomeHost &
+    AgentWriteHost<E> &
+    ViewHost<E> &
+    NoteHost &
+    CollabHost &
+    PullHost &
+    ContributeHost &
+    ReviewHost &
+    AssistantHost<E> &
+    HistoryHost<E> &
+    FilesHost &
+    SearchHost<E> &
+    OutlineHost<E> &
+    PreferencesHost;
 
 // What the session answers itself, from the controllers it owns.
-type SessionProvided = 'harness' | 'journal' | 'homePage' | 'programsPage' | 'setup' | 'workspace' | 'active' | 'page' | 'docs' | 'openInTab' | 'write' | 'fileMoved' | 'fileGone'
-    | 'fileBack' | 'newDocument' | 'showDocument' | 'saveAll' | 'showChat' | 'boardShown' | 'updateBoardFile' | 'record' | 'agentHost' | 'runs'
-    | 'journalSummary' | 'refreshHome' | 'chat' | 'root' | 'entryMoved' | 'entryDeleted' | 'settings' | 'toast' | 'boardNow' | 'commitBoard'
-    | 'canSaveDocument' | 'newAgent' | 'openFile' | 'projectName' | 'isActive' | 'refreshTree' | 'filesMoved' | 'showPull' | 'showReview' | 'showRuns';
+type SessionProvided =
+    | 'harness'
+    | 'journal'
+    | 'homePage'
+    | 'programsPage'
+    | 'setup'
+    | 'workspace'
+    | 'active'
+    | 'page'
+    | 'docs'
+    | 'openInTab'
+    | 'write'
+    | 'fileMoved'
+    | 'fileGone'
+    | 'fileBack'
+    | 'newDocument'
+    | 'showDocument'
+    | 'saveAll'
+    | 'showChat'
+    | 'boardShown'
+    | 'updateBoardFile'
+    | 'record'
+    | 'agentHost'
+    | 'runs'
+    | 'journalSummary'
+    | 'refreshHome'
+    | 'chat'
+    | 'root'
+    | 'entryMoved'
+    | 'entryDeleted'
+    | 'settings'
+    | 'toast'
+    | 'boardNow'
+    | 'commitBoard'
+    | 'canSaveDocument'
+    | 'newAgent'
+    | 'openFile'
+    | 'projectName'
+    | 'isActive'
+    | 'refreshTree'
+    | 'filesMoved'
+    | 'showPull'
+    | 'showReview'
+    | 'showRuns';
 
-// How a document's tab and the window are titled. The frontend adds its own mark for unsaved changes, since its editor
+// The frontend adds its own unsaved mark to tab and window titles: its editor
 // knows them first.
 export interface DocumentTitle {
     name: string;
     file: string | null;
-    page: boolean;           // the tab is a page (Home, an HTML file), not a document: it has nothing to save
-    place: string | null;    // Home: the work folder's name; a file or an HTML page: its folder, `~` for the home folder; null: the app's name
+    // Pages (Home, HTML) have nothing to save.
+    page: boolean;
+    // Home: workspace name. Files: folder, or `~`. Null: the app's name.
+    place: string | null;
 }
 
-// The views, notices, and system services of the frontend: the host members that are not another controller. A toast
-// button reaches it as a token, which it gives back to AppSession.toastActivated when the user presses the button.
-export type FrontendHost<E extends TextEditor> = Omit<ControllerHost<E>, SessionProvided> & {
+// Frontend views, notices, and system services, excluding other controllers.
+// Toast buttons carry tokens returned to AppSession.toastActivated on a press.
+export type FrontendHost<E extends TextEditor> = Omit<
+    ControllerHost<E>,
+    SessionProvided
+> & {
     toast(message: string, action?: ToastButton): void;
-    showSidebar(page: SidebarPage): void;   // open the side panel at a page (a folder was opened: the Files tab)
-    showImage(path: string): void;          // an image chosen in the Files tab: the frontend's viewer
-    setRecent(paths: string[]): void;       // the Recent list of the menus: files that still exist, latest first
-    setProgramsMissing(count: number): void;   // how many needed programs are missing: the mark on the sidebar's Programs
-    showPull(): void;                       // the content area shows the pull request page
-    showReview(): void;                     // the content area shows the review page
+    // Opening a folder selects the Files tab.
+    showSidebar(page: SidebarPage): void;
+    // Images chosen in Files use the frontend's viewer.
+    showImage(path: string): void;
+    // Existing files, latest first, for the Recent menus.
+    setRecent(paths: string[]): void;
+    // Missing programs count for the sidebar mark.
+    setProgramsMissing(count: number): void;
+    showPull(): void; // the content area shows the pull request page
+    showReview(): void; // the content area shows the review page
 };
 
-// What the frontend's tabs do when the documents change; the rest of what follows a document is the session's.
-export type FrontendDocuments<E extends TextEditor> = Omit<DocumentsHost<E>, 'autosaver' | 'refreshHome' | 'root' | 'settings' | 'toast'
-    | 'canSaveDocument' | 'createEditor' | 'contentChanged' | 'refreshTitle' | 'openFolder' | 'openConversation' | 'fileSaved'> & {
+// The frontend follows tab changes; the session owns other document effects.
+export type FrontendDocuments<E extends TextEditor> = Omit<
+    DocumentsHost<E>,
+    | 'autosaver'
+    | 'refreshHome'
+    | 'root'
+    | 'settings'
+    | 'toast'
+    | 'canSaveDocument'
+    | 'createEditor'
+    | 'contentChanged'
+    | 'refreshTitle'
+    | 'openFolder'
+    | 'openConversation'
+    | 'fileSaved'
+> & {
     setTitle(id: number, title: DocumentTitle): void;
 };
 
-// The questions the controllers ask the user. A dialog answers with a value or a Promise; tests replace them.
+// Dialogs answer with values or Promises; tests replace them.
 export interface AppDialogs {
     journal: JournalDialogs;
     collab: CollabDialogs;
@@ -94,22 +217,29 @@ export interface AppDialogs {
 
 export interface AppFrontend<E extends TextEditor> {
     readonly folderAgents?: FolderAgentView;
-    // The settings belong to the core: the frontend is given the store they live in, not a view of them (docs/design/protocol.md 9.2).
+    // Core-owned settings: the frontend gets the store, not a view.
+    // See docs/design/protocol.md 9.2.
     readonly settings: AppSettings;
     readonly host: FrontendHost<E>;
     readonly documents: FrontendDocuments<E>;
-    // The editor of a new document. Over the protocol the core makes it itself: a replica of the frontend's text.
+    // Over the protocol, the core creates a replica of the frontend's text.
     createEditor(id: number): E;
     readonly dialogs: AppDialogs;
-    // How links to the agents' daemons are made; tests give a stand-in so no ssh is ever started.
+    // Tests replace daemon links so no SSH process is started.
     readonly openers?: Openers;
 }
 
 export class AppSession<E extends TextEditor> {
     readonly settings: AppSettings;
-    // The Markdown files of the work folder; documents with unsaved changes are read from their editor.
-    readonly workspace = new WorkspaceRepository(() => new Map(this.documents.all
-        .filter(d => d.file && d.editor.isModified()).map(d => [d.file!, d.editor.getText()])));
+    // Workspace Markdown files; unsaved documents are read from their editor.
+    readonly workspace = new WorkspaceRepository(
+        () =>
+            new Map(
+                this.documents.all
+                    .filter((d) => d.file && d.editor.isModified())
+                    .map((d) => [d.file!, d.editor.getText()])
+            )
+    );
     readonly autosaver: Autosaver;
     readonly journal: JournalController;
     readonly collab: CollabController;
@@ -123,12 +253,16 @@ export class AppSession<E extends TextEditor> {
     readonly notes: NoteLinks;
     readonly documents: DocumentController<E>;
     readonly assistant: PiAssistantController<E>;
-    readonly commitWriter: WriterSources = { keyStore: systemKeyStore, makeProvider: key => new DeepSeek(key), model: () => this.settings.chatModel };
+    readonly commitWriter: WriterSources = {
+        keyStore: systemKeyStore,
+        makeProvider: (key) => new DeepSeek(key),
+        model: () => this.settings.chatModel,
+    };
     readonly agentFolders: AgentFoldersController<E>;
     readonly folderDisk: FolderDiskController<E>;
     private opened = false;
     readonly history: HistoryController<E>;
-    // The work folder and the Files tab; created first, since every other controller asks for the folder.
+    // Created first: other controllers ask Files for the work folder.
     readonly files: FilesController;
     readonly search: SearchController<E>;
     readonly outline: OutlineController<E>;
@@ -137,23 +271,52 @@ export class AppSession<E extends TextEditor> {
 
     constructor(private readonly frontend: AppFrontend<E>) {
         this.settings = frontend.settings;
-        // The frontend's members stay reachable through the prototype, so its getters keep working.
-        this.host = Object.create(frontend.host, this.provided()) as ControllerHost<E>;
+        // The prototype preserves the frontend's getters.
+        this.host = Object.create(
+            frontend.host,
+            this.provided()
+        ) as ControllerHost<E>;
         const { host } = this;
         const { dialogs } = frontend;
 
-        // Feature controllers: created before the first document, whose buffer already queues autosaves.
+        // Controllers precede documents, whose buffers queue autosaves.
         this.files = new FilesController(host, dialogs.files);
         this.autosaver = new Autosaver(host);
-        this.folderDisk = new FolderDiskController(host, () => { this.agentFolders?.refresh(); this.assistant?.refresh(); });
+        this.folderDisk = new FolderDiskController(host, () => {
+            this.agentFolders?.refresh();
+            this.assistant?.refresh();
+        });
         this.journal = new JournalController(host, dialogs.journal);
         this.collab = new CollabController(host, dialogs.collab);
-        this.pulls = new PullReviewController(host, { provider: () => this.collab.provider(), changed: () => void this.collab.refresh(), session: () => this.collab.session() }, dialogs.pulls);
-        this.collab.onOpenPull = pull => void this.pulls.open(pull);
-        this.contribute = new ContributeController(host, { session: () => this.collab.session(), refresh: () => void this.collab.refresh() }, dialogs.contribute);
+        this.pulls = new PullReviewController(
+            host,
+            {
+                provider: () => this.collab.provider(),
+                changed: () => void this.collab.refresh(),
+                session: () => this.collab.session(),
+            },
+            dialogs.pulls
+        );
+        this.collab.onOpenPull = (pull) => void this.pulls.open(pull);
+        this.contribute = new ContributeController(
+            host,
+            {
+                session: () => this.collab.session(),
+                refresh: () => void this.collab.refresh(),
+            },
+            dialogs.contribute
+        );
         this.collab.onSend = () => void this.contribute.start();
-        this.harness = new HarnessController(host, dialogs.harness, frontend.openers);
-        this.review = new HarnessReviewController(host, dialogs.review, this.collab.services);
+        this.harness = new HarnessController(
+            host,
+            dialogs.harness,
+            frontend.openers
+        );
+        this.review = new HarnessReviewController(
+            host,
+            dialogs.review,
+            this.collab.services
+        );
         this.harness.onReview = (file, card, board) => {
             const error = this.review.open(file, card, board);
             if (error) host.toast(error);
@@ -161,66 +324,122 @@ export class AppSession<E extends TextEditor> {
         this.homePage = new HomeController(host);
         this.programs = new ProgramsController({
             settings: this.settings,
-            connection: machine => this.harness.hub.connection(machine),
-            machineState: machine => this.harness.hub.state(machine),
-            refresh: () => { this.refreshHome(); this.refreshPrograms(); frontend.host.setProgramsMissing(this.programs.missingCount); },
-            openUri: uri => frontend.host.openUri(uri),
-            toast: message => this.toast(message),
+            connection: (machine) => this.harness.hub.connection(machine),
+            machineState: (machine) => this.harness.hub.state(machine),
+            refresh: () => {
+                this.refreshHome();
+                this.refreshPrograms();
+                frontend.host.setProgramsMissing(this.programs.missingCount);
+            },
+            openUri: (uri) => frontend.host.openUri(uri),
+            toast: (message) => this.toast(message),
         });
         this.views = new ViewController(host, dialogs.views);
         this.notes = new NoteLinks(host);
         this.assistant = new PiAssistantController(host, dialogs.files, {
-            changed: root => { this.folderDisk.start(root); this.files.refresh(root); this.files.refreshAgent(root, root); },
-            conflicts: root => this.folderDisk.conflicts(root),
+            changed: (root) => {
+                this.folderDisk.start(root);
+                this.files.refresh(root);
+                this.files.refreshAgent(root, root);
+            },
+            conflicts: (root) => this.folderDisk.conflicts(root),
             resolve: (path, choice) => this.folderDisk.resolve(path, choice),
         });
-        // Commit-message generation is a separate read-only DeepSeek service, not the chat runtime.
-        this.history = new HistoryController(host, dialogs.history, () => this.commitWriter);
+        // The read-only DeepSeek commit writer is separate from chat.
+        this.history = new HistoryController(
+            host,
+            dialogs.history,
+            () => this.commitWriter
+        );
         this.search = new SearchController(host, dialogs.search);
         this.outline = new OutlineController(host);
         this.preferences = new PreferencesController(host, dialogs.preferences);
-        this.documents = new DocumentController(Object.create(frontend.documents, {
-            autosaver: { get: () => this.autosaver },
-            canSaveDocument: { value: (doc: Doc<E>) => this.folderDisk.canSave(doc) },
-            refreshHome: { value: () => this.refreshHome() },
-            root: { value: () => this.files.root },
-            settings: { value: this.settings },
-            createEditor: { value: (id: number) => frontend.createEditor(id) },
-            toast: { value: (message: string, action?: ToastAction) => this.toast(message, action) },
-            activated: { value: (id: number) => this.activated(id) },
-            pageActivated: { value: (id: number) => this.pageActivated(id) },
-            contentChanged: { value: (id: number) => this.contentChanged(id) },
-            refreshTitle: { value: (id: number) => this.refreshTitle(id) },
-            openFolder: { value: (path: string) => void this.openFolder(path) },
-            openConversation: { value: (path: string, text: string) => this.agentFolders.openFile(path, text) },
-            fileSaved: { value: (path: string) => this.fileSaved(path) },
-        }) as DocumentsHost<E>);
-        this.agentFolders = new AgentFoldersController(host, frontend.folderAgents ?? {
-            show: () => {}, event: () => {}, review: async () => ({ note: '' }), cancelReview: () => {},
-        }, {
-            open: (root, id, title) => this.documents.openAgent(root, id, title), rename: (id, title) => this.documents.renameAgent(id, title),
-            diskChanged: root => {
-                const workspace = this.files.root;
-                if (!workspace || !platform().paths.same(root, workspace) && insideName(workspace, root) === null) return;
-                this.folderDisk.start(root);
-                this.files.refresh(workspace);
-                this.files.refreshAgent(root);
+        this.documents = new DocumentController(
+            Object.create(frontend.documents, {
+                autosaver: { get: () => this.autosaver },
+                canSaveDocument: {
+                    value: (doc: Doc<E>) => this.folderDisk.canSave(doc),
+                },
+                refreshHome: { value: () => this.refreshHome() },
+                root: { value: () => this.files.root },
+                settings: { value: this.settings },
+                createEditor: {
+                    value: (id: number) => frontend.createEditor(id),
+                },
+                toast: {
+                    value: (message: string, action?: ToastAction) =>
+                        this.toast(message, action),
+                },
+                activated: { value: (id: number) => this.activated(id) },
+                pageActivated: {
+                    value: (id: number) => this.pageActivated(id),
+                },
+                contentChanged: {
+                    value: (id: number) => this.contentChanged(id),
+                },
+                refreshTitle: { value: (id: number) => this.refreshTitle(id) },
+                openFolder: {
+                    value: (path: string) => void this.openFolder(path),
+                },
+                openConversation: {
+                    value: (path: string, text: string) =>
+                        this.agentFolders.openFile(path, text),
+                },
+                fileSaved: { value: (path: string) => this.fileSaved(path) },
+            }) as DocumentsHost<E>
+        );
+        this.agentFolders = new AgentFoldersController(
+            host,
+            frontend.folderAgents ?? {
+                show: () => {},
+                event: () => {},
+                review: async () => ({ note: '' }),
+                cancelReview: () => {},
             },
-            conflicts: root => this.folderDisk.conflicts(root),
-            resolve: (path, choice) => this.folderDisk.resolve(path, choice),
-            reset: () => this.folderDisk.dispose(),
-        }, dialogs.files, frontend.openers);
-        // Where agents run decides what is needed, and on an SSH machine where pi and git are looked for.
-        this.stops.push(this.settings.onChanged(['harness-machine', 'machines', 'machine-projects'], () => {
-            if (this.programs.wasChecked) void this.programs.check();
-        }));
-        this.stops.push(this.settings.onChanged(['autosave', 'recent-files'], key => {
-            if (key === 'recent-files') this.refreshRecent();
-            else if (this.settings.autosave) for (const doc of this.documents.all) this.autosaver.queue(doc);
-        }));
+            {
+                open: (root, id, title) =>
+                    this.documents.openAgent(root, id, title),
+                rename: (id, title) => this.documents.renameAgent(id, title),
+                diskChanged: (root) => {
+                    const workspace = this.files.root;
+                    if (
+                        !workspace ||
+                        (!platform().paths.same(root, workspace) &&
+                            insideName(workspace, root) === null)
+                    )
+                        return;
+                    this.folderDisk.start(root);
+                    this.files.refresh(workspace);
+                    this.files.refreshAgent(root);
+                },
+                conflicts: (root) => this.folderDisk.conflicts(root),
+                resolve: (path, choice) =>
+                    this.folderDisk.resolve(path, choice),
+                reset: () => this.folderDisk.dispose(),
+            },
+            dialogs.files,
+            frontend.openers
+        );
+        // Agent locations decide requirements and where to find pi and git.
+        this.stops.push(
+            this.settings.onChanged(
+                ['harness-machine', 'machines', 'machine-projects'],
+                () => {
+                    if (this.programs.wasChecked) void this.programs.check();
+                }
+            )
+        );
+        this.stops.push(
+            this.settings.onChanged(['autosave', 'recent-files'], (key) => {
+                if (key === 'recent-files') this.refreshRecent();
+                else if (this.settings.autosave)
+                    for (const doc of this.documents.all)
+                        this.autosaver.queue(doc);
+            })
+        );
     }
 
-    // The members of the host that come from the controllers; read lazily, as the controllers are built after the host.
+    // Read lazily: controllers are created after the host.
     private provided(): PropertyDescriptorMap {
         const get = (read: () => unknown) => ({ get: read });
         const value = (v: unknown) => ({ value: v });
@@ -235,47 +454,99 @@ export class AppSession<E extends TextEditor> {
             active: value((): Doc<E> => this.documents.active),
             page: value((): Page | null => this.documents.page),
             docs: value((): readonly Doc<E>[] => this.documents.all),
-            canSaveDocument: value((doc: Doc<E>) => this.folderDisk.canSave(doc)),
+            canSaveDocument: value((doc: Doc<E>) =>
+                this.folderDisk.canSave(doc)
+            ),
             openInTab: value((path: string) => this.documents.openInTab(path)),
-            write: value((path: string, text: string) => this.documents.write(path, text)),
-            fileMoved: value((doc: Doc<E>, path: string) => this.documents.fileMoved(doc, path)),
+            write: value((path: string, text: string) =>
+                this.documents.write(path, text)
+            ),
+            fileMoved: value((doc: Doc<E>, path: string) =>
+                this.documents.fileMoved(doc, path)
+            ),
             fileGone: value((doc: Doc<E>) => this.documents.fileGone(doc)),
-            fileBack: value((doc: Doc<E>, path: string) => this.documents.fileBack(doc, path)),
-            newDocument: value((text: string) => this.documents.reset(this.documents.blank(), text)),
+            fileBack: value((doc: Doc<E>, path: string) =>
+                this.documents.fileBack(doc, path)
+            ),
+            newDocument: value((text: string) =>
+                this.documents.reset(this.documents.blank(), text)
+            ),
             showDocument: value(() => this.views.sync()),
             saveAll: value(() => this.documents.saveOpenFiles()),
-            showChat: value(() => { this.settings.chat = true; }),
-            boardShown: value((file: string) => this.views.boardMode && this.documents.active.file === file),
-            updateBoardFile: value((file: string, edit: Parameters<ViewController<E>['updateBoardFile']>[1]) => this.views.updateBoardFile(file, edit)),
-            record: value((kind: Parameters<JournalController['record']>[0], text: string) => this.journal.record(kind, text)),
+            showChat: value(() => {
+                this.settings.chat = true;
+            }),
+            boardShown: value(
+                (file: string) =>
+                    this.views.boardMode && this.documents.active.file === file
+            ),
+            updateBoardFile: value(
+                (
+                    file: string,
+                    edit: Parameters<ViewController<E>['updateBoardFile']>[1]
+                ) => this.views.updateBoardFile(file, edit)
+            ),
+            record: value(
+                (
+                    kind: Parameters<JournalController['record']>[0],
+                    text: string
+                ) => this.journal.record(kind, text)
+            ),
             agentHost: value(() => this.harness.hostStatus()),
             runs: value(() => this.harness.orchestrator.queue.runs),
-            journalSummary: value((root: string, date: string) => this.journal.summary(root, date)),
+            journalSummary: value((root: string, date: string) =>
+                this.journal.summary(root, date)
+            ),
             refreshHome: value(() => this.refreshHome()),
             root: value(() => this.files.root),
             settings: get(() => this.settings),
             boardNow: value(() => this.views.currentBoard()),
             commitBoard: value((board: Board) => this.views.commitBoard(board)),
-            toast: value((message: string, action?: ToastAction) => this.toast(message, action)),
-            // A file or folder moved, renamed, or trashed in the Files tab: the open documents follow, then the frontend
-            // highlights the active file again and re-reads its history.
-            entryMoved: value((from: string, to: string) => { this.documents.filesMoved(from, to); this.host.filesMoved(); }),
-            entryDeleted: value((path: string) => { this.documents.fileDeleted(path); this.host.filesMoved(); }),
-            // After a delete or move: highlight the active file again and re-read its history.
-            filesMoved: value(() => { this.files.reveal(this.shownFile()); this.syncHistory(true); }),
-            refreshTree: value(() => { if (this.files.root) this.files.refresh(this.files.root); }),
-            newAgent: value((parent: string) => this.agentFolders.create(parent, this.frontend.dialogs.files)),
+            toast: value((message: string, action?: ToastAction) =>
+                this.toast(message, action)
+            ),
+            // Open documents follow Files moves, renames, and deletions.
+            // Then the frontend restores the highlight and history.
+            entryMoved: value((from: string, to: string) => {
+                this.documents.filesMoved(from, to);
+                this.host.filesMoved();
+            }),
+            entryDeleted: value((path: string) => {
+                this.documents.fileDeleted(path);
+                this.host.filesMoved();
+            }),
+            // Restore the active highlight and history after a delete/move.
+            filesMoved: value(() => {
+                this.files.reveal(this.shownFile());
+                this.syncHistory(true);
+            }),
+            refreshTree: value(() => {
+                if (this.files.root) this.files.refresh(this.files.root);
+            }),
+            newAgent: value((parent: string) =>
+                this.agentFolders.create(parent, this.frontend.dialogs.files)
+            ),
             openFile: value((path: string) => this.openFile(path)),
             projectName: value((path: string | null) => this.projectName(path)),
             isActive: value(() => this.focused),
-            // The page these show is not a view of the active document; the view controller keeps that record.
-            showPull: value(() => { this.views.otherPage(); this.frontend.host.showPull(); }),
-            showReview: value(() => { this.views.otherPage(); this.frontend.host.showReview(); }),
-            showRuns: value((file: string | null) => this.frontend.host.board.setRuns(file ? this.harness.runsOf(file) : [])),
+            // Views tracks that these pages are not the active document.
+            showPull: value(() => {
+                this.views.otherPage();
+                this.frontend.host.showPull();
+            }),
+            showReview: value(() => {
+                this.views.otherPage();
+                this.frontend.host.showReview();
+            }),
+            showRuns: value((file: string | null) =>
+                this.frontend.host.board.setRuns(
+                    file ? this.harness.runsOf(file) : []
+                )
+            ),
         };
     }
 
-    // A toast for the frontend. A button's action stays here; the frontend gets a token for it. Only the latest few are kept:
+    // Toast actions stay here; the frontend receives tokens. Keep only a few:
     // a toast is gone from the screen in seconds.
     private readonly toastActions = new Map<number, () => void>();
     private lastToast = 0;
@@ -285,88 +556,122 @@ export class AppSession<E extends TextEditor> {
         if (action) {
             const token = ++this.lastToast;
             this.toastActions.set(token, action.run);
-            for (const old of [...this.toastActions.keys()].slice(0, -8)) this.toastActions.delete(old);
+            for (const old of [...this.toastActions.keys()].slice(0, -8))
+                this.toastActions.delete(old);
             button = { label: action.label, token };
         }
         this.frontend.host.toast(message, button);
     }
 
-    // The user pressed the button of a toast; a token that is gone or was used does nothing.
+    // Expired or already-used toast tokens do nothing.
     toastActivated(token: number): void {
         const run = this.toastActions.get(token);
         this.toastActions.delete(token);
         run?.();
     }
 
-    // Open the tabs of the last session (or the first document) and start the documents.
+    // Restore the last session's tabs (or start the first document).
     start(): void {
         this.documents.start();
     }
 
-    // The host the commands of app/commands.ts run on: the core's part here, the frontend's part (its editor, its own
-    // windows) from the frontend.
+    // Commands combine core actions with frontend editor/window actions.
     commands(frontend: FrontendCommands): CommandHost {
-        const docs = this.documents, views = this.views;
+        const docs = this.documents,
+            views = this.views;
         const choose = this.frontend.documents.dialogs.chooseFile;
         const core: CoreCommands = {
             newDocument: () => docs.reset(docs.blank()),
             newBoardDocument: () => views.newBoard(),
-            newAgent: () => { void this.newAgent(); },
+            newAgent: () => {
+                void this.newAgent();
+            },
             newInboxDocument: () => views.newInbox(),
             newTableDocument: () => views.newTable(),
             newCsvTable: () => {
                 const root = this.files.root;
                 if (root) void this.files.create('csv', root);
-                else this.toast(_('Open a folder first: a CSV table is a file in the work folder'));
+                else
+                    this.toast(
+                        _(
+                            'Open a folder first: a CSV table is a file ' +
+                                'in the work folder'
+                        )
+                    );
             },
             editFields: () => views.editFields(),
             sendChanges: () => void this.contribute.start(),
             closeTab: () => docs.closeTab(),
             closeAllTabs: () => docs.closeMany(),
-            switchTab: step => docs.switchTab(step),
+            switchTab: (step) => docs.switchTab(step),
             openHome: () => docs.openHome(),
             openPrograms: () => docs.openPrograms(),
             journal: this.journal,
             open: async () => {
-                const path = await choose({ title: _('Open Markdown'), filters: ['markdown', 'all'] });
+                const path = await choose({
+                    title: _('Open Markdown'),
+                    filters: ['markdown', 'all'],
+                });
                 if (path) docs.openInTab(path);
             },
-            load: path => docs.load(path),
+            load: (path) => docs.load(path),
             chooseFolder: async () => {
-                const path = await choose({ title: _('Open Folder'), selectFolder: true, folder: this.files.root });
+                const path = await choose({
+                    title: _('Open Folder'),
+                    selectFolder: true,
+                    folder: this.files.root,
+                });
                 if (path) await this.openFolder(path);
             },
             save: () => docs.save(),
             saveAs: () => docs.saveAs(),
             exportHtml: () => docs.exportHtml(),
             insertImage: () => docs.insertImage(),
-            toggleBoardView: on => views.toggle(on),
-            setLayout: layout => views.setLayout(layout),
-            // The settings are the core's; the frontend follows them (the dark style, the panels, the editor modes).
+            toggleBoardView: (on) => views.toggle(on),
+            setLayout: (layout) => views.setLayout(layout),
+            // The frontend follows core-owned theme, panel, and mode settings.
             setOption: (key, value) => {
                 if (key === 'dark') this.settings.dark = value;
                 else this.settings[key] = value;
             },
             showPreferences: () => this.preferences.open(),
         };
-        return { ...core, edit: frontend.edit, openFind: replace => frontend.openFind(replace), showSearch: replace => frontend.showSearch(replace),
-            setSource: on => frontend.setSource(on), splitPane: side => frontend.splitPane(side), closePane: () => frontend.closePane(), moveToNextPane: () => frontend.moveToNextPane(),
-            showPalette: () => frontend.showPalette(), showShortcuts: () => frontend.showShortcuts(), showAbout: () => frontend.showAbout(), showReport: () => frontend.showReport(), quit: () => frontend.quit() };
+        return {
+            ...core,
+            edit: frontend.edit,
+            openFind: (replace) => frontend.openFind(replace),
+            showSearch: (replace) => frontend.showSearch(replace),
+            setSource: (on) => frontend.setSource(on),
+            splitPane: (side) => frontend.splitPane(side),
+            closePane: () => frontend.closePane(),
+            moveToNextPane: () => frontend.moveToNextPane(),
+            showPalette: () => frontend.showPalette(),
+            showShortcuts: () => frontend.showShortcuts(),
+            showAbout: () => frontend.showAbout(),
+            showReport: () => frontend.showReport(),
+            quit: () => frontend.quit(),
+        };
     }
 
     // ---------- What the frontend reports ----------
 
-    private focused = false;                       // the window has the focus, as the frontend last reported
-    private sidebarPage: SidebarPage | null = null;  // the side panel's page while it is open, null while it is closed
-    private timeline = false;                        // the Files view shows its Timeline section (the history of the open file)
+    // Last focus state reported by the frontend.
+    private focused = false;
+    // Null while the side panel is closed.
+    private sidebarPage: SidebarPage | null = null;
+    // Files shows the open file's history in its Timeline section.
+    private timeline = false;
     private readonly stops: (() => void)[] = [];
 
-    // What the window opens with: the folder from the command line or the last folder, then the file from the command line,
-    // the tabs of the last session, the welcome text the first time, Home, or an empty document. Called once, after start().
+    // Open the command-line or last folder, then the command-line file,
+    // restored tabs, first-run welcome, Home, or a blank document.
+    // Called once, after start().
     open(path: string | null): void {
-        const isFolder = (p: string | null): p is string => !!p && platform().fs.isDirectory(p);
+        const isFolder = (p: string | null): p is string =>
+            !!p && platform().fs.isDirectory(p);
         if (isFolder(path)) void this.openFolder(path);
-        else if (isFolder(this.settings.folder)) void this.openFolder(this.settings.folder, false);
+        else if (isFolder(this.settings.folder))
+            void this.openFolder(this.settings.folder, false);
         const { editor } = this.documents.active;
         if (path && !isFolder(path)) {
             this.documents.load(path);
@@ -386,47 +691,83 @@ export class AppSession<E extends TextEditor> {
         this.views.sync();
         this.refreshTitle((this.documents.page ?? this.documents.active).id);
         this.refreshRecent();
-        if (!this.programs.wasChecked) void this.programs.check();   // the sidebar's mark, before Home or the page asks
+        // Set the sidebar mark before Home or Programs asks for it.
+        if (!this.programs.wasChecked) void this.programs.check();
         this.syncHistory();
-        // Agents that kept working while Markwork was closed are found again once the window is up.
-        this.stops.push(platform().scheduler.idle(() => { this.harness.reconnect(); return false; }));
+        // Reconnect background agents once the window is up.
+        this.stops.push(
+            platform().scheduler.idle(() => {
+                this.harness.reconnect();
+                return false;
+            })
+        );
     }
 
-    // The user asked to close the window. true = it may close: every changed document was asked about, the agents that
-    // are still working were dealt with, and the tabs are remembered for the next launch.
+    // Closing requires document confirmation and handling running agents.
+    // Remember tabs for the next launch only when closing is allowed.
     async closeRequest(): Promise<boolean> {
-        if (!await this.documents.confirmDiscardAll()) return false;
+        if (!(await this.documents.confirmDiscardAll())) return false;
         if (this.assistant.busy) {
-            if (!await this.frontend.dialogs.files.confirm('Stop pi Assistant and close?', 'Local pi work stops when Markwork closes. Completed file and shell effects cannot be undone.', 'Stop Assistant and close', false)) return false;
+            if (
+                !(await this.frontend.dialogs.files.confirm(
+                    'Stop pi Assistant and close?',
+                    'Local pi work stops when Markwork closes. ' +
+                        'Completed file and shell effects cannot be undone.',
+                    'Stop Assistant and close',
+                    false
+                ))
+            )
+                return false;
             await this.assistant.shutdown();
         }
         let keepFolders = false;
         if (this.agentFolders.busy) {
-            const choice = await this.frontend.dialogs.harness.closeAgents(this.agentFolders.activity());
+            const choice = await this.frontend.dialogs.harness.closeAgents(
+                this.agentFolders.activity()
+            );
             if (choice === 'cancel') return false;
             keepFolders = choice !== 'stop';
         }
         const go = await this.harness.confirmClose();
-        if (go) { this.documents.rememberTabs(); await this.agentFolders.shutdown(keepFolders); }
+        if (go) {
+            this.documents.rememberTabs();
+            await this.agentFolders.shutdown(keepFolders);
+        }
         return go;
     }
 
-    // Show a folder in the Files tab and remember it to open again next time. Switching to another folder closes the tabs
-    // of files outside it first (false = the user kept one, and the folder is not switched). show = false when restoring
-    // the last folder, so a side panel that was closed on purpose does not appear.
+    // Close tabs outside the new folder first; cancellation keeps the folder.
+    // Remember the new folder for next time. Restoring uses show = false
+    // so a deliberately closed side panel stays closed.
     async openFolder(path: string, show = true): Promise<boolean> {
         const absolute = platform().paths.resolve(path);
         const root = this.files.root;
         if (root && root !== absolute && this.assistant.busy) {
-            if (!await this.frontend.dialogs.files.confirm('Stop pi Assistant and switch workspace?', 'The Assistant must stop before switching workspace. Completed tools cannot be undone.', 'Stop Assistant and switch', false)) return false;
+            if (
+                !(await this.frontend.dialogs.files.confirm(
+                    'Stop pi Assistant and switch workspace?',
+                    'The Assistant must stop before switching workspace. ' +
+                        'Completed tools cannot be undone.',
+                    'Stop Assistant and switch',
+                    false
+                ))
+            )
+                return false;
             await this.assistant.shutdown();
         }
         if (root && root !== absolute && this.agentFolders.busy) {
-            const choice = await this.frontend.dialogs.harness.closeAgents(this.agentFolders.activity());
+            const choice = await this.frontend.dialogs.harness.closeAgents(
+                this.agentFolders.activity()
+            );
             if (choice === 'cancel') return false;
             await this.agentFolders.shutdown(choice !== 'stop');
         }
-        if (root && root !== absolute && !await this.documents.closeOutside(absolute)) return false;
+        if (
+            root &&
+            root !== absolute &&
+            !(await this.documents.closeOutside(absolute))
+        )
+            return false;
         return this.applyFolder(absolute, show);
     }
 
@@ -441,7 +782,8 @@ export class AppSession<E extends TextEditor> {
         void this.collab.setFolder(absolute);
         this.settings.folder = absolute;
         this.harness.folderChanged();
-        if (this.agentFolders.folderChanged(absolute) && this.opened) this.openAgentDefault();
+        if (this.agentFolders.folderChanged(absolute) && this.opened)
+            this.openAgentDefault();
         this.assistant.folderChanged(absolute);
         const page = this.documents.page;
         if (page?.kind === 'home') this.refreshTitle(page.id);
@@ -455,21 +797,27 @@ export class AppSession<E extends TextEditor> {
 
     private async newAgent(): Promise<void> {
         if (!this.files.root) {
-            const parent = await this.frontend.documents.dialogs.chooseFile({ title: _('New Agent — Choose Parent Folder'), selectFolder: true });
-            if (!parent || !await this.openFolder(parent)) return;
+            const parent = await this.frontend.documents.dialogs.chooseFile({
+                title: _('New Agent — Choose Parent Folder'),
+                selectFolder: true,
+            });
+            if (!parent || !(await this.openFolder(parent))) return;
         }
         if (this.files.root) await this.files.create('agent', this.files.root);
     }
 
     private openAgentDefault(): void {
         const state = this.agentFolders.state();
-        if (state.error) { this.toast(state.error); return; }
+        if (state.error) {
+            this.toast(state.error);
+            return;
+        }
         if (state.sessions.length) this.agentFolders.open(state.sessions[0].id);
         else this.agentFolders.newChat();
     }
 
-    // The window got or lost the focus. Coming back re-reads the history and Home: commits are usually made outside the
-    // app, and files change outside it too (git pull, an agent, another editor).
+    // Refocus refreshes Home and history: commits and file changes can happen
+    // outside the app (git pull, an agent, another editor).
     windowFocused(focused: boolean): void {
         this.focused = focused;
         if (!focused) return;
@@ -478,14 +826,14 @@ export class AppSession<E extends TextEditor> {
         this.programs.recheckMissing();
     }
 
-    // The side panel opened at a page, switched pages, or closed (null); `timeline` says its Files view shows the Timeline.
+    // Null means closed; timeline indicates Files is showing file history.
     sidebarShown(page: SidebarPage | null, timeline = false): void {
         this.sidebarPage = page;
         this.timeline = timeline;
         this.syncHistory();
     }
 
-    // The editor of document `id` changed its text (typing, undo, a write from here that landed).
+    // Text changed through typing, undo, or a core write that landed.
     edited(id: number): void {
         const doc = this.docById(id);
         if (!doc) return;
@@ -500,7 +848,7 @@ export class AppSession<E extends TextEditor> {
         if (doc && doc === this.documents.active) this.outline.changed(doc);
     }
 
-    // A link in document `id` was followed: a Markdown file opens in a tab, anything else in the app the system picks.
+    // Markdown links open tabs; other links use the system's chosen app.
     // A relative link is read from the document's folder.
     openLink(id: number, url: string): void {
         if (/^[a-z][a-z0-9+.-]*:/i.test(url)) {
@@ -509,12 +857,18 @@ export class AppSession<E extends TextEditor> {
         }
         const { paths } = platform();
         const bare = url.replace(/[#?].*$/, '');
-        const path = paths.isAbsolute(bare) ? bare : paths.join(this.folderOf(id) ?? paths.homeDir(), decodeURI(bare));
-        if (/\.(md|markdown|mdown|mkd)$/i.test(path) && this.documents.openInTab(path)) return;
+        const path = paths.isAbsolute(bare)
+            ? bare
+            : paths.join(this.folderOf(id) ?? paths.homeDir(), decodeURI(bare));
+        if (
+            /\.(md|markdown|mdown|mkd)$/i.test(path) &&
+            this.documents.openInTab(path)
+        )
+            return;
         this.frontend.host.openUri(fileUri(path));
     }
 
-    // The folder relative links and images of document `id` are read from; null when it has no file.
+    // Base folder for relative links/images; null for unsaved documents.
     folderOf(id: number): string | null {
         const file = this.docById(id)?.file;
         return file ? platform().paths.dirname(file) : null;
@@ -527,33 +881,38 @@ export class AppSession<E extends TextEditor> {
             this.frontend.documents.setTitle(id, this.titleOf(doc));
             return;
         }
-        const page = this.documents.allPages.find(p => p.id === id);
+        const page = this.documents.allPages.find((p) => p.id === id);
         if (page) this.frontend.documents.setTitle(id, this.titleOfPage(page));
     }
 
     // ---------- What follows the documents ----------
 
     private docById(id: number): Doc<E> | undefined {
-        return this.documents.all.find(d => d.id === id);
+        return this.documents.all.find((d) => d.id === id);
     }
 
-    // The history is read only while it is shown (its page, or the Files view's Timeline), so git is not run needlessly.
+    // Avoid needless git calls: read history only on its page or Timeline.
     // force = read again for the same file.
     private syncHistory(force = false): void {
-        if (this.sidebarPage === 'history' || (this.sidebarPage === 'files' && this.timeline)) this.history.show(this.shownFile(), this.files.root, force);
+        if (
+            this.sidebarPage === 'history' ||
+            (this.sidebarPage === 'files' && this.timeline)
+        )
+            this.history.show(this.shownFile(), this.files.root, force);
     }
 
-    // The file the active tab is about: the document's, an HTML page's, none for Home. The tree and the history follow it.
+    // Tree/history follow the tab's file: document, HTML, or null for Home.
     private shownFile(): string | null {
         const page = this.documents.page;
         return page ? page.file : this.documents.active.file;
     }
 
-    // A page became the shown tab: the frontend's tabs and content follow, and what follows a document is cleared.
+    // Page tabs clear document-specific views and update frontend content.
     private pageActivated(id: number): void {
-        const page = this.documents.allPages.find(p => p.id === id);
+        const page = this.documents.allPages.find((p) => p.id === id);
         if (!page) return;
-        if (page.kind === 'agent' && page.root) this.agentFolders.activate(page.root);
+        if (page.kind === 'agent' && page.root)
+            this.agentFolders.activate(page.root);
         this.frontend.documents.pageActivated(id);
         this.outline.clear();
         this.views.sync();
@@ -562,7 +921,7 @@ export class AppSession<E extends TextEditor> {
         this.syncHistory();
     }
 
-    // A document became the active one: the frontend's tabs follow first, then everything that shows the active document.
+    // Update frontend tabs first, then views following the active document.
     private activated(id: number): void {
         const doc = this.docById(id);
         if (!doc) return;
@@ -575,7 +934,7 @@ export class AppSession<E extends TextEditor> {
         this.syncHistory();
     }
 
-    // The contents or the file of a document changed: it is shown as what it is now.
+    // Refresh views after a document's content or file changes.
     private contentChanged(id: number): void {
         const doc = this.docById(id);
         if (!doc) return;
@@ -585,14 +944,14 @@ export class AppSession<E extends TextEditor> {
         this.syncHistory();
     }
 
-    // A new file was written through Save As: the tree shows it without waiting for the folder's monitor.
+    // Show Save As files without waiting for the folder monitor.
     private fileSaved(path: string): void {
         this.files.refresh(platform().paths.dirname(path));
         this.files.reveal(path);
         this.syncHistory();
     }
 
-    // A file chosen in the Files tab: preserve document and media views; other text opens read-only.
+    // Preserve document/media views; open other text read-only.
     private openFile(path: string): void {
         if (isImageFile(path)) {
             this.frontend.host.showImage(path);
@@ -607,54 +966,81 @@ export class AppSession<E extends TextEditor> {
             return;
         }
         const active = this.documents.active;
-        if (!this.documents.openInTab(path)) this.files.reveal(active.file);   // the highlight goes back to the file that is still open
+        // Restore the highlight if the original file remains open.
+        if (!this.documents.openInTab(path)) this.files.reveal(active.file);
     }
 
     private titleOf(doc: Doc<E>): DocumentTitle {
         const name = this.documents.nameOf(doc);
         if (!doc.file) return { name, file: null, page: false, place: null };
-        return { name, file: doc.file, page: false, place: this.placeOf(doc.file) };
+        return {
+            name,
+            file: doc.file,
+            page: false,
+            place: this.placeOf(doc.file),
+        };
     }
 
     private titleOfPage(page: Page): DocumentTitle {
         const name = this.documents.nameOfPage(page);
         if (!page.file) {
             const root = this.files.root;
-            return { name, file: null, page: true, place: root ? platform().paths.basename(root) : null };
+            return {
+                name,
+                file: null,
+                page: true,
+                place: root ? platform().paths.basename(root) : null,
+            };
         }
-        return { name, file: page.file, page: true, place: this.placeOf(page.file) };
+        return {
+            name,
+            file: page.file,
+            page: true,
+            place: this.placeOf(page.file),
+        };
     }
 
     // Where a file is, for a title: its folder, `~` for the home folder.
     private placeOf(file: string): string {
         const { paths } = platform();
-        const dir = paths.dirname(file), home = paths.homeDir();
+        const dir = paths.dirname(file),
+            home = paths.homeDir();
         const below = insideName(home, dir);
         return dir === home ? '~' : below !== null ? `~/${below}` : dir;
     }
 
-    // A file's name in the work folder (the same as the name in base/workspace.ts), or its base name outside it; null if not saved.
+    // Use the workspace-relative name, or basename outside it; null if unsaved.
     private projectName(path: string | null): string | null {
         const root = this.files.root;
-        return path && (root && insideName(root, path) || platform().paths.basename(path));
+        return (
+            path &&
+            ((root && insideName(root, path)) ||
+                platform().paths.basename(path))
+        );
     }
 
     // The Recent list of the menus: the last files that still exist.
     private refreshRecent(): void {
-        this.frontend.host.setRecent(existingRecent(this.settings.recentFiles, this.files.root).slice(0, 5).map(r => r.path));
+        this.frontend.host.setRecent(
+            existingRecent(this.settings.recentFiles, this.files.root)
+                .slice(0, 5)
+                .map((r) => r.path)
+        );
     }
 
-    // Redraw Home if it is shown; the data is recomputed from the files every time.
+    // Recompute Home from files whenever it is shown.
     refreshHome(): void {
-        if (this.documents.page?.kind === 'home' && this.views.homeMode) this.frontend.host.screen.showHome(this.homePage.data());
+        if (this.documents.page?.kind === 'home' && this.views.homeMode)
+            this.frontend.host.screen.showHome(this.homePage.data());
     }
 
     // Redraw the Programs page if it is shown.
     refreshPrograms(): void {
-        if (this.documents.page?.kind === 'programs' && this.views.programsMode) this.frontend.host.screen.showPrograms(this.programs.data());
+        if (this.documents.page?.kind === 'programs' && this.views.programsMode)
+            this.frontend.host.screen.showPrograms(this.programs.data());
     }
 
-    // Stop the timers and background work of the controllers (the frontend destroys its editors and widgets).
+    // Stop controller work; the frontend destroys its editors and widgets.
     dispose(): void {
         for (const stop of this.stops.splice(0)) stop();
         for (const doc of this.documents.all) this.autosaver.cancel(doc);
