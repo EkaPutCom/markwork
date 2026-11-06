@@ -223,8 +223,12 @@ export function Programs({ data }: { data: ProgramsData | null }) {
                         <h1>Programs</h1>
                         <p>
                             {remote
-                                ? `Agents run on ${data.machineLabel} (Preferences → Agents), so what they need is checked there.`
-                                : 'Markwork edits plain files on its own. These programs add features to it; they are looked for on this computer.'}
+                                ? `Agents run on ${data.machineLabel} ` +
+                                  '(Preferences → Agents), so what they ' +
+                                  'need is checked there.'
+                                : 'Markwork edits plain files on its own. ' +
+                                  'These programs add features to it; they ' +
+                                  'are looked for on this computer.'}
                         </p>
                     </div>
                     <Button

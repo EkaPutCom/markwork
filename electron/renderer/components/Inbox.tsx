@@ -422,6 +422,13 @@ export function Inbox({
                                     .filter(Boolean)
                                     .join(' · ');
                                 const ref = refOf(at, card);
+                                const isDragging =
+                                    drag?.from.column === c &&
+                                    drag.from.index === index;
+                                const rowClass =
+                                    'inbox-row' +
+                                    mark +
+                                    (isDragging ? ' dragging' : '');
                                 return (
                                     <div
                                         key={`${index}:${card.text}`}
@@ -430,7 +437,7 @@ export function Inbox({
                                         role="listitem"
                                         tabIndex={0}
                                         draggable
-                                        className={`inbox-row${mark}${drag?.from.column === c && drag.from.index === index ? ' dragging' : ''}`}
+                                        className={rowClass}
                                         onDragStart={(e) => {
                                             e.dataTransfer.effectAllowed =
                                                 'move';

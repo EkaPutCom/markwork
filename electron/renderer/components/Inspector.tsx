@@ -307,7 +307,8 @@ function TxDetail({
                     aria-description={
                         actions.before
                             ? undefined
-                            : 'Dev mode keeps no state from before the first transaction it saw'
+                            : 'Dev mode keeps no state from before the ' +
+                              'first transaction it saw'
                     }
                     onClick={() => actions.before?.()}
                 >
@@ -386,7 +387,9 @@ function Transactions({
                                 <td>{e.n}</td>
                                 <td>
                                     <span
-                                        className={`ins-ev ${eventKind(e.userEvent)}`}
+                                        className={
+                                            'ins-ev ' + eventKind(e.userEvent)
+                                        }
                                     >
                                         {e.userEvent ??
                                             (e.effects.join(', ') || '—')}

@@ -63,7 +63,10 @@ function Value({
             <Chip
                 text={parsed.raw}
                 className="field invalid"
-                title={`“${def.key}” does not fit its field: ${parsed.error}. The text in the file is unchanged.`}
+                title={
+                    `“${def.key}” does not fit its field: ` +
+                    `${parsed.error}. The text in the file is unchanged.`
+                }
             />
         );
     const text = displayValue(def, parsed.value);
@@ -101,7 +104,10 @@ function Value({
         text.slice(0, 10) < today;
     return (
         <span
-            className={`${def.type === 'number' ? 'num' : ''}${late ? ' late' : ''}`}
+            className={
+                `${def.type === 'number' ? 'num' : ''}` +
+                `${late ? ' late' : ''}`
+            }
         >
             {text}
         </span>
@@ -277,9 +283,17 @@ export function TableView({
                             {rows.map((row) => {
                                 const ref = refOf(row.at, row.card);
                                 const item = readItem(row.card.text, schema);
+                                const rowKey =
+                                    `${row.at.column}:${row.at.index}:` +
+                                    row.card.text;
+                                const doneLabel = 'Done: ' + item.title;
+                                const deleteRowLabel =
+                                    'Delete row: ' + item.title;
+                                const deleteLabel =
+                                    'Delete the note “' + item.title + '”?';
                                 return (
                                     <tr
-                                        key={`${row.at.column}:${row.at.index}:${row.card.text}`}
+                                        key={rowKey}
                                         className={
                                             row.card.done === true ? 'done' : ''
                                         }
@@ -289,7 +303,7 @@ export function TableView({
                                                 {row.card.done !== null && (
                                                     <Checkbox
                                                         checked={row.card.done}
-                                                        aria-label={`Done: ${item.title}`}
+                                                        aria-label={doneLabel}
                                                         onCheckedChange={() =>
                                                             client.editNotes({
                                                                 kind: 'toggle',
@@ -372,11 +386,11 @@ export function TableView({
                                             <IconButton
                                                 size="icon-xs"
                                                 className="remove"
-                                                label={`Delete row: ${item.title}`}
+                                                label={deleteRowLabel}
                                                 onClick={async () => {
                                                     if (
                                                         await client.confirm(
-                                                            `Delete the note “${item.title}”?`,
+                                                            deleteLabel,
                                                             '',
                                                             'Delete'
                                                         )

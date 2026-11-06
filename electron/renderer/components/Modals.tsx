@@ -18,6 +18,9 @@ import { Kbd } from '../ui/kbd';
 import { Switch } from '../ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
+const POLL_INTERVAL_DESCRIPTION =
+    'Seconds between looks for new pull requests';
+
 // A task in a window of its own: shadcn's Dialog with a header bar, the title
 // at the start (or what `header` puts there,
 // as the tabs of Preferences) and Close at the end. Escape and a click beside
@@ -68,13 +71,15 @@ export function Modal({
                 if (!open) onClose();
             }}
         >
-            {/* Without a field that takes the focus (autoFocus), the dialog itself has it: on Close, the first thing in it,
-                its Tooltip would open, and the first Escape would close only that. */}
+            {/* Without a field that takes the focus (autoFocus), the dialog
+                itself has it: on Close, the first thing in it, its Tooltip
+                would open, and the first Escape would close only that. */}
             <DialogContent
                 showCloseButton={false}
                 aria-describedby={undefined}
                 className={cn(
-                    'modal block gap-0 p-0 outline-none focus-visible:shadow-lg',
+                    'modal block gap-0 p-0 outline-none ' +
+                        'focus-visible:shadow-lg',
                     wide && 'wide',
                     hidden && 'out-of-sight',
                     className
@@ -301,7 +306,8 @@ export function PreferencesDialog() {
                             {toggle(
                                 'visual',
                                 'Visual editor',
-                                'Edit text as it looks. Off: the live view, which shows syntax on the cursor line'
+                                'Edit text as it looks. Off: the live view, ' +
+                                    'which shows syntax on the cursor line'
                             )}
                             {toggle(
                                 'focus',
@@ -334,7 +340,7 @@ export function PreferencesDialog() {
                         >
                             <Row
                                 title="Check every"
-                                subtitle="Seconds between looks for new pull requests"
+                                subtitle={POLL_INTERVAL_DESCRIPTION}
                             >
                                 <SpinButton
                                     label="Check every"

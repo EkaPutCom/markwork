@@ -17,6 +17,16 @@ import { Label } from '../ui/label';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Textarea } from '../ui/textarea';
 
+const mergeClass = (mergeable: boolean | null) => {
+    const state =
+        mergeable === false
+            ? 'warning'
+            : mergeable === null
+              ? 'dim'
+              : 'success';
+    return `dot ${state}`;
+};
+
 export function Collab() {
     const client = useClient();
     const { collab } = useStore();
@@ -86,7 +96,7 @@ export function Collab() {
                     >
                         <span className="subject">
                             <span
-                                className={`dot ${p.mergeable === false ? 'warning' : p.mergeable === null ? 'dim' : 'success'}`}
+                                className={mergeClass(p.mergeable)}
                                 role="img"
                                 aria-label={
                                     p.mergeable === false
@@ -105,7 +115,8 @@ export function Collab() {
                             {p.author} ·{' '}
                             {relativeTime(Date.parse(p.updatedAt) / 1000, now)}
                             {p.comments > 0 &&
-                                ` · ${p.comments} ${p.comments === 1 ? 'comment' : 'comments'}`}
+                                ` · ${p.comments} ` +
+                                `${p.comments === 1 ? 'comment' : 'comments'}`}
                             {p.mergeable === false && ' · conflicts'}
                         </span>
                     </Button>
@@ -162,7 +173,8 @@ export function TokenDialog() {
                 }}
             >
                 <p>
-                    Markwork reads the pull requests of {repo.owner}/{repo.repo}{' '}
+                    Markwork reads the pull requests of{' '}
+                    {repo.owner}/{repo.repo}{' '}
                     on {repo.host}. Create an access token in your account
                     settings there (Applications), allowed to read and write
                     repositories, and paste it here.
@@ -239,7 +251,8 @@ const VIA: [SendVia, string, string][] = [
     [
         'agit',
         'AGit (no fork, no branch)',
-        'The server opens the pull request from the push. It has to be enabled on the server',
+        'The server opens the pull request from the push. It has to be ' +
+        'enabled on the server',
     ],
 ];
 

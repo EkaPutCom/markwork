@@ -58,6 +58,18 @@ function dropAt(list: HTMLElement, y: number): number {
 }
 
 // The badge of an assigned card: what its run is doing.
+const DUE_ICON = 'x-office-calendar';
+const LINK = 'note-link-row';
+const toTarget = (link: { target: string; heading?: string | null }) =>
+    link.heading ? `${link.target}#${link.heading}` : link.target;
+const stopLink = (event: {
+    preventDefault(): void;
+    stopPropagation(): void;
+}) => {
+    event.preventDefault();
+    event.stopPropagation();
+};
+
 const RUN_LABEL: Record<string, string> = {
     queued: 'queued',
     working: 'working',
@@ -76,13 +88,18 @@ function AgentChip({
 }) {
     const title =
         status === 'waiting'
-            ? `${agent} is waiting for your answer: right click the card → Answer ${agent}…`
+            ? `${agent} is waiting for your answer: right click the card ` +
+                `→ Answer ${agent}…`
             : status
-              ? `${agent}: ${RUN_LABEL[status] ?? status} (right click the card for the log)`
-              : `Assigned to ${agent}; right click the card → Work on it with ${agent}`;
+              ? `${agent}: ${RUN_LABEL[status] ?? status} ` +
+                '(right click the card for the log)'
+              : `Assigned to ${agent}; right click the card → ` +
+                `Work on it with ${agent}`;
     return (
         <Chip
-            text={`${agent}${status ? ` · ${RUN_LABEL[status] ?? status}` : ''}`}
+            text={
+                `${agent}${status ? ` · ${RUN_LABEL[status] ?? status}` : ''}`
+            }
             className={`agent run-${status ?? 'idle'}`}
             title={title}
         />
@@ -127,6 +144,10 @@ export function Board({
                 option,
             })
     );
+    const pointer = (event: { clientX: number; clientY: number }) => ({
+        x: event.clientX,
+        y: event.clientY,
+    });
     const today = todayString();
     const columnName = (title: string) =>
         title || (groupField ? `No ${groupField}` : 'No list');
@@ -391,11 +412,21 @@ export function Board({
                                       )
                                     : [];
                                 const ref = refOf(at, card);
+                                const cardClass =
+                                    `card${card.done ? ' done' : ''}` +
+                                    `${dragging ? ' dragging' : ''}`;
+                                const doneLabel = 'Done: ' + meta.title;
+                                const runStatus = agents
+                                    ? (runs[card.text] ?? null)
+                                    : null;
+                                const dueClass = meta.due
+                                    ? `due due-${dueStatus(meta.due, today)}`
+                                    : '';
                                 return (
                                     <div key={`${index}:${card.text}`}>
                                         {here && mark}
                                         <div
-                                            className={`card${card.done ? ' done' : ''}${dragging ? ' dragging' : ''}`}
+                                            className={cardClass}
                                             draggable
                                             tabIndex={0}
                                             role="group"
@@ -444,7 +475,7 @@ export function Board({
                                             <Checkbox
                                                 className="card-check"
                                                 checked={card.done === true}
-                                                aria-label={`Done: ${meta.title}`}
+                                                aria-label={doneLabel}
                                                 onClick={(e) =>
                                                     e.stopPropagation()
                                                 }
@@ -463,14 +494,7 @@ export function Board({
                                                     {meta.agent && (
                                                         <AgentChip
                                                             agent={meta.agent}
-                                                            status={
-                                                                agents
-                                                                    ? (runs[
-                                                                          card
-                                                                              .text
-                                                                      ] ?? null)
-                                                                    : null
-                                                            }
+                                                            status={runStatus}
                                                         />
                                                     )}
                                                     <FieldChips
@@ -483,32 +507,26 @@ export function Board({
                                                                 ref,
                                                                 card.text,
                                                                 key,
-                                                                {
-                                                                    x: e.clientX,
-                                                                    y: e.clientY,
-                                                                }
+                                                                pointer(e)
                                                             )
                                                         }
                                                     />
                                                     <Tags tags={meta.tags} />
                                                     {meta.due && (
                                                         <Chip
-                                                            icon="x-office-calendar"
+                                                            icon={DUE_ICON}
                                                             text={formatDay(
                                                                 meta.due,
                                                                 today
                                                             )}
-                                                            className={`due due-${dueStatus(meta.due, today)}`}
+                                                            className={dueClass}
                                                             title="Due date"
                                                             onClick={(e) =>
                                                                 openField(
                                                                     ref,
                                                                     card.text,
                                                                     'due',
-                                                                    {
-                                                                        x: e.clientX,
-                                                                        y: e.clientY,
-                                                                    }
+                                                                    pointer(e)
                                                                 )
                                                             }
                                                         />
@@ -523,22 +541,21 @@ export function Board({
                                                     )}
                                                 </div>
                                                 {links.map((l) => {
-                                                    const target = `${l.target}${l.heading ? `#${l.heading}` : ''}`;
+                                                    const url = toTarget(l);
                                                     return (
                                                         <a
-                                                            key={target}
+                                                            key={url}
                                                             href="#"
-                                                            className="note-link-row"
+                                                            className={LINK}
                                                             onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
+                                                                stopLink(e);
                                                                 client.openNote(
-                                                                    target
+                                                                    url
                                                                 );
                                                             }}
                                                         >
                                                             ↗{' '}
-                                                            {l.alias || target}
+                                                            {l.alias || url}
                                                         </a>
                                                     );
                                                 })}

@@ -372,7 +372,10 @@ function ProposalCard({ ask }: { ask: number }) {
                     <Button
                         variant="outline"
                         size="xs"
-                        aria-description="Restore the files to their contents before this change"
+                        aria-description={
+                            'Restore the files to their contents ' +
+                            'before this change'
+                        }
                         onClick={() => void client.chat.undo({ ask })}
                     >
                         Undo
@@ -439,7 +442,8 @@ export function ChatReview() {
                         {view.changes
                             .map(
                                 (c) =>
-                                    `${view.batch ? `${c.file}: ` : ''}${c.reason.trim()}`
+                                    `${view.batch ? `${c.file}: ` : ''}` +
+                                    c.reason.trim()
                             )
                             .join('\n')
                             .trim() || 'The agent gave no reason.'}
@@ -499,7 +503,8 @@ export function ChatReview() {
                             onClick={() => void apply()}
                         >
                             {view.batch && chosen.length < view.changes.length
-                                ? `Apply ${chosen.length} of ${view.changes.length}`
+                                ? `Apply ${chosen.length} ` +
+                                  `of ${view.changes.length}`
                                 : 'Apply'}
                         </Button>
                     )}
@@ -532,7 +537,10 @@ function PastRow({ action }: { action: PastAction }) {
                     <Button
                         variant="outline"
                         size="xs"
-                        aria-description="Restore the files to their contents before this change"
+                        aria-description={
+                            'Restore the files to their contents ' +
+                            'before this change'
+                        }
                         onClick={() =>
                             void client.chat.undo({ event: action.id })
                         }
@@ -632,7 +640,8 @@ function ContextButton({ agent = false }: { agent?: boolean }) {
                         ))}
                         {!agent && built && (
                             <div className="side-meta">
-                                Total ≈{fmtTokens(built.tokens)} tokens of the{' '}
+                                Total ≈{fmtTokens(built.tokens)} tokens of
+                                the{' '}
                                 {fmtTokens(settings.budget)} budget
                             </div>
                         )}
@@ -804,6 +813,22 @@ export function Chat({
             void model.send(draft);
         }
     };
+    const emptyDescription = embedded
+        ? [
+              'This pi agent writes files and memory directly,',
+              'runs commands, and accesses the network without Apply.',
+              'Activation in Sessions is required before first use.',
+              'No sandbox or guaranteed editor Undo.',
+              'Avoid editing the same files while it works.',
+          ].join(' ')
+        : [
+              'Ask pi about your workspace, request research,',
+              'or ask for file changes.',
+              'The current file name and editor selection',
+              'accompany your question.',
+              'Unsaved text is not automatically saved or replaced.',
+              'Use backups or version control for direct tool writes.',
+          ].join(' ');
     return (
         <aside
             className={embedded ? 'chat agent-conversation' : 'chat'}
@@ -910,11 +935,7 @@ export function Chat({
             >
                 {entries.length === 0 && (
                     <div className="chat-empty">
-                        <p className="side-meta">
-                            {embedded
-                                ? 'This pi agent writes files and memory directly, runs commands, and accesses the network without Apply. Activation in Sessions is required before first use. No sandbox or guaranteed editor Undo. Avoid editing the same files while it works.'
-                                : 'Ask pi about your workspace, request research, or ask for file changes. The current file name and editor selection accompany your question. Unsaved text is not automatically saved or replaced. Use backups or version control for direct tool writes.'}
-                        </p>
+                        <p className="side-meta">{emptyDescription}</p>
                         {SUGGESTIONS.map((s) => (
                             <Button
                                 key={s}

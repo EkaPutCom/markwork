@@ -31,6 +31,11 @@ const MARK: Record<FileStatus, string> = {
     deleted: 'D',
     renamed: 'R',
 };
+const fileClass = (path: string, selected: string | null) =>
+    `file h-auto justify-start font-normal` +
+    `${selected === path ? ' active' : ''}` +
+    ' text-left';
+
 const MARK_CLASS: Record<FileStatus, string> = {
     added: 'success',
     modified: 'warning',
@@ -46,8 +51,12 @@ function bannerOf(
 ): { text: string; action: 'resolve' | 'finish' | null } | null {
     if (resolving !== null) {
         const text = resolving
-            ? `${resolving} ${resolving === 1 ? 'file still has' : 'files still have'} conflict markers. Choose a side above each conflict in ${resolving === 1 ? 'its tab' : 'their tabs'}, then finish.`
-            : 'The conflicts are resolved. Finish to push the merge to the server.';
+            ? `${resolving} ` +
+                `${resolving === 1 ? 'file still has' : 'files still have'} ` +
+                'conflict markers. Choose a side above each conflict in ' +
+                `${resolving === 1 ? 'its tab' : 'their tabs'}, then finish.`
+            : 'The conflicts are resolved. ' +
+                'Finish to push the merge to the server.';
         return { text, action: 'finish' };
     }
     if (pull.state === 'merged')
@@ -56,7 +65,9 @@ function bannerOf(
         return { text: 'This pull request is closed.', action: null };
     if (pull.mergeable === false)
         return {
-            text: `This pull request conflicts with ${pull.baseRef}. Resolve the conflicts on this computer, or ask the author to.`,
+            text:
+                `This pull request conflicts with ${pull.baseRef}. ` +
+                'Resolve the conflicts on this computer, or ask the author to.',
             action: 'resolve',
         };
     if (pull.mergeable === null)
@@ -295,7 +306,7 @@ export function PullPage() {
                         <Button
                             key={f.path}
                             variant="ghost"
-                            className={`file h-auto justify-start font-normal${selected === f.path ? ' active' : ''} text-left`}
+                            className={fileClass(f.path, selected)}
                             // ui-allow: title reveals the full path
                             title={
                                 f.previousPath

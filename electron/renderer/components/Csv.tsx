@@ -50,6 +50,14 @@ import {
 import { Toggle } from '../ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
+const CELL_CLASS = 'h-5 min-w-5 font-mono text-2xs';
+const REPLACE_NEXT_LABEL = 'Replace the selected result and go to the next';
+const columnName = (table: CsvTable, column: number) =>
+    cellAt(table, 0, column) || `column ${column + 1}`;
+const columnMenuLabel = (table: CsvTable, column: number) =>
+    `Column menu: ${columnName(table, column)}`;
+const boundsOf = (element: HTMLElement) => element.getBoundingClientRect();
+
 const ROW_HEIGHT = 33,
     NUMBER_WIDTH = 48,
     BUFFER = 6;
@@ -452,6 +460,7 @@ export function Csv({
 
     const input = (row: number, column: number, header: boolean) => {
         const value = cellAt(table, row, column);
+        const name = columnName(table, column);
         return (
             // ui-allow: the CSV grid draws its own bare cell field
             <input
@@ -462,9 +471,12 @@ export function Csv({
                 aria-label={
                     header
                         ? `Column ${column + 1} name`
-                        : `Row ${row}, ${cellAt(table, 0, column) || `column ${column + 1}`}`
+                        : `Row ${row}, ${name}`
                 }
-                className={`csv-cell${header ? ' head' : ''}${numeric[column] ? ' num' : ''}${mark({ row, column })}`}
+                className={
+                    `csv-cell${header ? ' head' : ''}` +
+                    `${numeric[column] ? ' num' : ''}${mark({ row, column })}`
+                }
                 style={{ width: widths[column] }}
                 onBlur={(e) => commit(row, column, e.target.value)}
                 onKeyDown={(e) => keyDown(e, row, column)}
@@ -543,7 +555,7 @@ export function Csv({
                                             <TooltipTrigger asChild>
                                                 <Toggle
                                                     size="xs"
-                                                    className="h-5 min-w-5 font-mono text-2xs"
+                                                    className={CELL_CLASS}
                                                     aria-label={t.title}
                                                     pressed={options[t.key]}
                                                     onMouseDown={(e) =>
@@ -586,7 +598,9 @@ export function Csv({
                                     />
                                     <InputGroupAddon align="inline-end">
                                         <InputGroupButton
-                                            aria-label="Replace the selected result and go to the next"
+                                            aria-label={
+                                                REPLACE_NEXT_LABEL
+                                            }
                                             onMouseDown={(e) =>
                                                 e.preventDefault()
                                             }
@@ -707,11 +721,10 @@ export function Csv({
                                 <IconButton
                                     size="icon-xs"
                                     className="more size-6"
-                                    label={`Column menu: ${cellAt(table, 0, c) || `column ${c + 1}`}`}
+                                    label={columnMenuLabel(table, c)}
                                     aria-haspopup="menu"
                                     onClick={(e) => {
-                                        const r =
-                                            e.currentTarget.getBoundingClientRect();
+                                        const r = boundsOf(e.currentTarget);
                                         setMenu({
                                             at: { x: r.left, y: r.bottom },
                                             entries: columnMenu(c),
