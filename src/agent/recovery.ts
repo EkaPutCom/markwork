@@ -60,7 +60,9 @@ export function compactHistory(
     const limit = Math.max(0, Math.min(4000, Math.floor(budget * 0.2) * 3));
     let summary = '';
     for (const t of history.slice(0, start).reverse()) {
-        const line = `${t.role === 'user' ? 'User' : 'Assistant'}: ${t.content.replace(/\s+/g, ' ').slice(0, 400)}\n`;
+        const role = t.role === 'user' ? 'User' : 'Assistant';
+        const content = t.content.replace(/\s+/g, ' ').slice(0, 400);
+        const line = `${role}: ${content}\n`;
         if (summary.length + line.length > limit) break;
         summary = line + summary;
     }

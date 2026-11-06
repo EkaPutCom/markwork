@@ -105,11 +105,10 @@ export function journalText(events: ActionEvent[], maxChars = 8000): string {
             read: 'Browsing',
             reverted: 'Undone by the user',
         }[e.status];
-        const line =
-            `${status}: ${e.tool} ${e.changes.map(fileLabel).join(', ')} — ${e.summary}`.slice(
-                0,
-                1500
-            );
+        const description =
+            `${status}: ${e.tool} ${e.changes.map(fileLabel).join(', ')} — ` +
+            e.summary;
+        const line = description.slice(0, 1500);
         if (size + line.length > maxChars) break;
         lines.unshift(line);
         size += line.length;
