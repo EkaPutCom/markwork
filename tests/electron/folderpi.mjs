@@ -37,8 +37,16 @@ export function seedFolderAgent({
         '\nmodel: fake/test\ncreated: 2026-11-01\n---\n\n' +
         messages
             .map(
-                (message) =>
-                    `## ${message.role === 'user' ? 'You' : 'Assistant'}\n${typeof message.content === 'string' ? message.content : message.content.map((block) => block.text || '').join('')}\n`
+                (message) => {
+                    const role = message.role === 'user' ? 'You' : 'Assistant';
+                    const content =
+                        typeof message.content === 'string'
+                            ? message.content
+                            : message.content
+                                  .map((block) => block.text || '')
+                                  .join('');
+                    return `## ${role}\n${content}\n`;
+                }
             )
             .join('\n') +
         '\n';
@@ -144,7 +152,8 @@ export function createRuntime(PiRpc, _platform) {
                                         role: 'assistant',
                                         stopReason: 'error',
                                         errorMessage:
-                                            'Layout stream gate was not released',
+                                            'Layout stream gate was not ' +
+                                            'released',
                                     },
                                 });
                                 running = false;
@@ -187,7 +196,9 @@ export function createRuntime(PiRpc, _platform) {
                                 content: [
                                     {
                                         type: 'text',
-                                        text: 'Created output/research/cve-report.md',
+                                        text:
+                                            'Created output/research/' +
+                                            'cve-report.md',
                                     },
                                 ],
                             },

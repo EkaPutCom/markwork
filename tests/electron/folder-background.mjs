@@ -41,9 +41,10 @@ execFileSync('go', ['build', '-o', daemonBin, './cmd/markworkd'], {
     stdio: 'pipe',
 });
 const pi = join(bin, 'pi');
+const fixture = join(repo, 'tests/electron/folder-pi-daemon-fixture.mjs');
 writeFileSync(
     pi,
-    `#!/bin/sh\nexec '${process.execPath}' '${join(repo, 'tests/electron/folder-pi-daemon-fixture.mjs')}' "$@"\n`,
+    `#!/bin/sh\nexec '${process.execPath}' '${fixture}' "$@"\n`,
     { mode: 0o755 }
 );
 writeFileSync(
@@ -54,9 +55,13 @@ writeFileSync(
         default_idle_ttl_sec: 0,
     })
 );
+const stateDir = join(scratch, 'state');
+const daemonLauncher =
+    `#!/bin/sh\nexec '${daemonBin}' "$@" --socket '${socket}' ` +
+    `--config '${config}' --state-dir '${stateDir}'\n`;
 writeFileSync(
     join(bin, 'markworkd'),
-    `#!/bin/sh\nexec '${daemonBin}' "$@" --socket '${socket}' --config '${config}' --state-dir '${join(scratch, 'state')}'\n`,
+    daemonLauncher,
     { mode: 0o755 }
 );
 const daemon = spawn(

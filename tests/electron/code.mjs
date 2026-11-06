@@ -592,9 +592,8 @@ try {
                 `only the viewport should render, got ${lines}`
             );
             console.log(
-                `${"  performance: 30,001" +
-            " lines, click to" +
-            " highlighted view "}${elapsed.toFixed(1)} ms, ${lines} rendered lines`
+                '  performance: 30,001 lines, click to highlighted view ' +
+                    `${elapsed.toFixed(1)} ms, ${lines} rendered lines`
             );
             const searchStart = performance.now();
             await page
@@ -610,9 +609,9 @@ try {
                 ).includes('1000+')
             );
             console.log(
-                `${"  performance: search" +
-            " across 30,000 matches "}${(performance.now() - searchStart).toFixed(1)}${" ms, count capped at" +
-            " 1000+"}`
+                '  performance: search across 30,000 matches ' +
+                    `${(performance.now() - searchStart).toFixed(1)} ` +
+                    'ms, count capped at 1000+'
             );
             await page
                 .locator('.code-page input[name="search"]')
@@ -626,8 +625,9 @@ try {
                 })
                 .waitFor();
             console.log(
-                `${"  performance: select all" +
-            " and update footer on "}${longSource.length.toLocaleString()} characters ${(performance.now() - selectStart).toFixed(1)} ms`
+                '  performance: select all and update footer on ' +
+                    `${longSource.length.toLocaleString()} characters ` +
+                    `${(performance.now() - selectStart).toFixed(1)} ms`
             );
             const moveStart = performance.now();
             await page.keyboard.press('ArrowRight');
