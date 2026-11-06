@@ -73,8 +73,15 @@ writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
 
 // The tabs after each step, to compare a run on another system (CI sets
 // MARKWORK_TRACE).
-const tabsNow = async () =>
-    `      tabs: ${JSON.stringify(await page.getByRole('tab').evaluateAll((els) => els.map((e) => `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`)))}`;
+const tabsNow = async () => {
+    const tabs = await page.getByRole('tab').evaluateAll((els) =>
+        els.map((e) => {
+            const selected = e.getAttribute('aria-selected') === 'true';
+            return `${selected ? '*' : ''}${e.textContent}`;
+        })
+    );
+    return `      tabs: ${JSON.stringify(tabs)}`;
+};
 const { steps, step } = stepper({
     after: process.env.MARKWORK_TRACE ? tabsNow : undefined,
 });
@@ -743,8 +750,15 @@ try {
     // ---------- imagezoom.ts ----------
     // The viewer's title (in its header) and its zoom (in the bar under the
     // picture).
-    const caption = async () =>
-        `${await page.locator('.image-viewer .viewer-head .name').textContent()} · ${await page.locator('.image-viewer .zoom-level').textContent()}`;
+    const caption = async () => {
+        const name = await page
+            .locator('.image-viewer .viewer-head .name')
+            .textContent();
+        const zoom = await page
+            .locator('.image-viewer .zoom-level')
+            .textContent();
+        return `${name} · ${zoom}`;
+    };
     const percent = async () =>
         Number(
             (
@@ -908,10 +922,15 @@ try {
                 const seen = (window.viewerTrail = []);
                 const t0 = performance.now(),
                     at = () => Math.round(performance.now() - t0);
-                const name = (el) =>
-                    el instanceof Element
-                        ? `${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? `.${el.className.split(' ').join('.')}` : ''}`
-                        : String(el);
+                const name = (el) => {
+                    if (!(el instanceof Element)) return String(el);
+                    const tag = el.tagName.toLowerCase();
+                    const classes =
+                        typeof el.className === 'string'
+                            ? el.className.split(' ').join('.')
+                            : '';
+                    return `${tag}${classes ? `.${classes}` : ''}`;
+                };
                 for (const type of [
                     'pointerdown',
                     'mousedown',
@@ -924,7 +943,8 @@ try {
                         type,
                         (e) =>
                             seen.push(
-                                `${at()} ms ${type} ${e.key ?? ''} on ${name(e.target)}`
+                                `${at()} ms ${type} ${e.key ?? ''} ` +
+                                `on ${name(e.target)}`
                             ),
                         true
                     );
@@ -948,8 +968,11 @@ try {
                         { timeout: 5000 }
                     )
                     .catch(async (e) => {
+                        const trail = await page.evaluate(
+                            () => window.viewerTrail ?? []
+                        );
                         throw new Error(
-                            `${e.message.split('\n')[0]}\n${(await page.evaluate(() => window.viewerTrail ?? [])).join('\n')}`
+                            `${e.message.split('\n')[0]}\n${trail.join('\n')}`
                         );
                     });
             // The window may still be settling (the picture's size arriving):
@@ -1467,7 +1490,8 @@ try {
         .evaluateAll((els) =>
             els.map(
                 (e) =>
-                    `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`
+                    `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}` +
+                    `${e.textContent}`
             )
         )
         .catch(() => []);
