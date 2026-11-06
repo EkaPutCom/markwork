@@ -1,6 +1,7 @@
 # Plan: 80-character code and comment width
 
-Status: proposed. Repository-wide implementation has not started.
+Status: in progress. The tracked-file checker and initial audit are in
+place; repository-wide wrapping and CI enforcement remain to be done.
 
 ## Goal
 
@@ -36,6 +37,14 @@ Extend the checker to:
 - Report each violation as `file:line:length`.
 - Summarize violations by file and directory.
 - Return a nonzero exit status for violations or file-reading failures.
+
+Run `npm run lint:width` from the repository root; its full line report is
+on stdout and file/directory totals are on stderr. Exit 1 means violations,
+while exit 2 means an error. The command currently reports existing debt and
+is not part of required CI checks. It includes tracked source files in the
+scope above, including test source fixtures; sample Markdown and generated
+output outside that scope are not checked. Git-ignored and untracked files
+are not included, so check new files explicitly until they are tracked.
 
 Use the audit to choose manageable batches. Do not introduce a permanent
 baseline that exempts existing overlong lines.
