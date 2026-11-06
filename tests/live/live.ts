@@ -52,9 +52,11 @@ interface Scenario {
     question: string;
     minTools: number;
     mustMention: RegExp[];
-    // initial context budget; very small = the model is forced to browse with tools
+    // initial context budget; very small = the model is forced to browse with
+    // tools
     budget?: number;
-    // the quoted line number (file.md:N) must point to a line containing this pattern
+    // the quoted line number (file.md:N) must point to a line containing this
+    // pattern
     cite?: RegExp;
 }
 

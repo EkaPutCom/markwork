@@ -215,7 +215,8 @@ function createWindow(): void {
         // The sizes are the page's, not the window's with its frame (which
         // Windows counts).
         useContentSize: true,
-        // a phone's width; below 600 the side panels float (renderer/lib/client.ts)
+        // a phone's width; below 600 the side panels float
+        // (renderer/lib/client.ts)
         minWidth: 360,
         minHeight: 294,
         title: 'Markwork',

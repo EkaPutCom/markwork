@@ -4,7 +4,8 @@
 
 // Where the repository of the open folder lives, taken from its git remote.
 export interface RepoRef {
-    // https://git.example.org (with a path prefix when the forge is served below a path)
+    // https://git.example.org (with a path prefix when the forge is served
+    // below a path)
     baseUrl: string;
     // git.example.org[:port]; the key under which the token is stored
     host: string;
@@ -23,7 +24,8 @@ export interface PullRequest {
     mergeable: boolean | null;
     headRef: string;
     baseRef: string;
-    // the two commits to compare; a pull request from a fork still has its head in the base repository
+    // the two commits to compare; a pull request from a fork still has its head
+    // in the base repository
     headSha: string;
     baseSha: string;
     body: string; // the description the author wrote

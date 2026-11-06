@@ -40,7 +40,8 @@ import {
 type Message = Record<string, unknown>;
 
 const PAGE_TIMEOUT_MS = 15_000;
-// a repro with a long text fits; a stream without line breaks does not grow forever
+// a repro with a long text fits; a stream without line breaks does not grow
+// forever
 const MAX_LINE = 4 * 1024 * 1024;
 
 // Where the socket of this process is: a folder only this user can enter, as

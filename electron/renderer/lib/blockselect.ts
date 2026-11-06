@@ -64,7 +64,8 @@ export const pickedBlock = StateField.define<PickedBlock | null>({
 // start of the line after a block: inside the
 // block it would open it (its source shows, or its code takes the focus).
 export function pick(view: EditorView, block: PickedBlock): void {
-    // first: taking the focus may sync the selection from the page, which would let go of the object
+    // first: taking the focus may sync the selection from the page, which would
+    // let go of the object
     view.focus();
     const anchor =
         block.kind === 'picture'

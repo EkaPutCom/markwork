@@ -20,7 +20,8 @@ export interface TraceEvent {
     kind: TraceKind;
     round?: number; // model round (from 1) in which this event happened
     title: string;
-    // full contents (reasoning, answer, token line, error), already truncated to MAX_DETAIL
+    // full contents (reasoning, answer, token line, error), already truncated
+    // to MAX_DETAIL
     detail: string;
     status?: 'running' | 'ok' | 'failed';
     ms?: number; // duration of the event, if any
@@ -185,7 +186,8 @@ export class AgentTrace {
         this.events.push(event);
         if (this.events.length > MAX_EVENTS) {
             this.events.splice(0, this.events.length - MAX_EVENTS);
-            // indices shift; events still in progress are too old to be completed
+            // indices shift; events still in progress are too old to be
+            // completed
             this.open.clear();
         }
         this.onChange(event);

@@ -80,7 +80,8 @@ interface Shown {
     raw: string;
     visible: string;
     toRaw: number[]; // the place in the Markdown of each visible letter
-    // how many visible letters stand before each place of the Markdown (one more than its length)
+    // how many visible letters stand before each place of the Markdown (one
+    // more than its length)
     fromRaw: number[];
     styles: number[]; // the formats of each visible letter, as bits of STYLES
 }

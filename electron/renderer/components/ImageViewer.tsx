@@ -27,7 +27,8 @@ const STEP = 1.25,
 const PAD = 20,
     HEAD = 50,
     BAR = 50,
-    // the canvas around the picture, the header, the zoom bar, the room left around the window
+    // the canvas around the picture, the header, the zoom bar, the room left
+    // around the window
     MARGIN = 32;
 const clamp = (scale: number) => Math.min(MAX, Math.max(MIN, scale));
 

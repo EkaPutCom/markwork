@@ -66,7 +66,8 @@ export interface LogSource {
     readonly events: readonly TraceEvent[];
     onChange: () => void;
     text(): string;
-    // ask for the log to be cleared; the events change when the core has done it
+    // ask for the log to be cleared; the events change when the core has done
+    // it
     clear(): void;
 }
 

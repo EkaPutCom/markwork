@@ -14,7 +14,8 @@ export interface Change {
     // path relative to the project folder (for move: the source path)
     file: string;
     before: string; // previous contents ('' for a new file)
-    // contents after the change is applied ('' for delete; same as before for move)
+    // contents after the change is applied ('' for delete; same as before for
+    // move)
     after: string;
     reason: string; // the model's reason, shown on the approval card
     to?: string; // move only: the destination path

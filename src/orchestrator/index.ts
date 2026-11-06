@@ -69,7 +69,8 @@ export interface HarnessProcess {
 }
 
 export interface SpawnHandlers {
-    // one line of the harness's stdout; ts = when it was printed (Unix ms), if known
+    // one line of the harness's stdout; ts = when it was printed (Unix ms), if
+    // known
     line(text: string, ts?: number): void;
     // interrupted = the harness did not end by itself: the daemon that held it
     // went away (its session can be resumed).
@@ -953,7 +954,8 @@ export class Orchestrator {
 const RESUME_PROMPT =
     'Your work was interrupted before it was finished (the process that was running you was stopped). Check the current state of the files, then continue where you left off.';
 
-// the daemon limits the labels of a run to 8 KB; a longer card is matched by its start
+// the daemon limits the labels of a run to 8 KB; a longer card is matched by
+// its start
 const LABEL_CARD_CHARS = 4000;
 
 function spawnMeta(run: Run): SpawnMeta {

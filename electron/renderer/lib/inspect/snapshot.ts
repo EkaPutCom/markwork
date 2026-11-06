@@ -14,7 +14,8 @@ export interface DecoInfo {
     from: number;
     to: number;
     kind: DecoKind;
-    // the widget's class, or the mark's or line's class; '' for a plain hidden range
+    // the widget's class, or the mark's or line's class; '' for a plain hidden
+    // range
     what: string;
     block: boolean;
 }
@@ -40,7 +41,8 @@ export interface Snapshot {
     }; // cp: the cursor in code points, when that differs
     // the cursor line's text on each side of the cursor, up to AROUND_CHARS
     around: { before: string; after: string };
-    // the letter the eye sees on each side of the cursor, past every hidden range
+    // the letter the eye sees on each side of the cursor, past every hidden
+    // range
     visibleBefore: Visible | null;
     visibleAfter: Visible | null;
     hidden: [number, number][];

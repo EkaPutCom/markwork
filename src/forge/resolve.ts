@@ -21,7 +21,8 @@ export interface LocalMerge {
 }
 
 export type MergeStart =
-    // conflicts are absolute paths; empty = it merged cleanly (and is committed)
+    // conflicts are absolute paths; empty = it merged cleanly (and is
+    // committed)
     | { ok: true; conflicts: string[]; before: string }
     | { ok: false; message: string };
 
@@ -99,7 +100,8 @@ export async function conflictedFiles(
 }
 
 export interface PendingMerge {
-    // the pull request it merges, from git's own merge message; null = a merge this feature did not start
+    // the pull request it merges, from git's own merge message; null = a merge
+    // this feature did not start
     pull: number | null;
     before: string; // HEAD, which a merge in progress has not moved yet
     conflicts: string[]; // absolute paths git still sees as conflicted

@@ -1120,7 +1120,8 @@ export interface EditorEvents {
     run(id: string, arg?: boolean): void;
     // what the text at the cursor is changed: the toolbar shows it
     format(format: FormatAt): void;
-    // the language button of a code block was pressed: the window shows the list
+    // the language button of a code block was pressed: the window shows the
+    // list
     chooseLanguage(pick: LanguagePick): void;
 }
 
@@ -1316,7 +1317,8 @@ export class MarkdownEditor {
     focus(): void {
         if (editingInPlace(this.view)) return;
         this.view.focus();
-        // a command that put the cursor in a table or a code block (the menu had the focus)
+        // a command that put the cursor in a table or a code block (the menu
+        // had the focus)
         this.focusTableCell(this.view.state);
     }
 

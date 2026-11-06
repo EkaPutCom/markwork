@@ -76,7 +76,8 @@ export interface BuiltContext {
 
 export interface Chunk {
     file: string;
-    // heading path, e.g. "Chapter 3 › The Meeting"; empty before the first heading
+    // heading path, e.g. "Chapter 3 › The Meeting"; empty before the first
+    // heading
     heading: string;
     start: number; // first line (from 0)
     end: number; // last line, inclusive

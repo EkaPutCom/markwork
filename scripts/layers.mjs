@@ -92,7 +92,8 @@ const IMPORT =
     /(?:^|\n)\s*(?:import|export)(\s+type\b)?[^'"]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
 
 const errors = [];
-// src-relative module → the local modules it imports for their values (not `import type`)
+// src-relative module → the local modules it imports for their values (not
+// `import type`)
 const valueImports = new Map();
 for (const file of files) {
     const text = readFileSync(join(src, file), 'utf8');

@@ -289,7 +289,8 @@ export class FakeDaemon {
     replayFromStart = false;
     dropOnWrite = false;
     failSpawnWith: string | null = null;
-    // the connection dies right after the daemon created the run, before the reply
+    // the connection dies right after the daemon created the run, before the
+    // reply
     dropAfterSpawn = false;
     afterWatch: ((c: FakeConn) => void) | null = null;
     // What `git` answers when a run of it is spawned (Markwork asks git about

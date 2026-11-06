@@ -296,7 +296,7 @@ export function PullPage() {
                             key={f.path}
                             variant="ghost"
                             className={`file h-auto justify-start font-normal${selected === f.path ? ' active' : ''} text-left`}
-                            // ui-allow: title gives the ellipsized file's full path
+                            // ui-allow: title reveals the full path
                             title={
                                 f.previousPath
                                     ? `${f.previousPath} → ${f.path}`

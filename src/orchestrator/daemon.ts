@@ -30,7 +30,8 @@ const TRANSIENT = new Set(['connection_closed', 'timeout']);
 
 export interface DaemonSpawnerOptions {
     newRunId?: () => string;
-    // delete the run from the daemon once its result was delivered (default true)
+    // delete the run from the daemon once its result was delivered (default
+    // true)
     forgetWhenDone?: boolean;
     // Variables for every process it starts. The daemon must allow each name
     // (its env_allow), and keeps them in the run's

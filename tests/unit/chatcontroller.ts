@@ -180,7 +180,8 @@ export async function chatControllerTests(): Promise<void> {
                 for (const m of req.messages)
                     if (m.role === 'tool') replies.push(m.content);
                 if (++round === 1) {
-                    // the user opened another folder while the model was thinking
+                    // the user opened another folder while the model was
+                    // thinking
                     state.root = folder();
                     return {
                         usage: null,

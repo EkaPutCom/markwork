@@ -82,7 +82,8 @@ try {
             await badge()
                 .filter({ hasText: 'waiting for an answer' })
                 .waitFor({ timeout: 15000 });
-            // the card remembers its project; the board is saved with the document
+            // the card remembers its project; the board is saved with the
+            // document
             await card().getByText('#project/project').waitFor();
         }
     );

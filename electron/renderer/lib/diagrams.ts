@@ -56,7 +56,7 @@ const token = (name: string): string => {
         .getPropertyValue(name)
         .trim();
     swatch.clearRect(0, 0, 1, 1);
-    // ui-allow: the canvas's reset, so a value it cannot read does not keep the last color
+    // ui-allow: reset canvas color when a token cannot be read
     swatch.fillStyle = '#000';
     swatch.fillStyle = value;
     swatch.fillRect(0, 0, 1, 1);

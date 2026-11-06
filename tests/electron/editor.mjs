@@ -314,7 +314,8 @@ try {
             );
             await setDoc('');
             await page.keyboard.type('[[zzz');
-            // the suggestions come from the core: time for a popup that must not appear
+            // the suggestions come from the core: time for a popup that must
+            // not appear
             await page.waitForTimeout(300);
             assert.equal(
                 await popup.count(),

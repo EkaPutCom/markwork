@@ -53,7 +53,8 @@ export const systemTimers: Timers = {
 };
 
 export interface ClientOptions {
-    // ignore everything before the bridge's sentinel line (login banners over SSH)
+    // ignore everything before the bridge's sentinel line (login banners over
+    // SSH)
     expectBridge?: boolean;
     requestTimeoutMs?: number; // default 60 s
     timers?: Timers;

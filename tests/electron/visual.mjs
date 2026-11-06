@@ -1216,7 +1216,8 @@ try {
                 await waitFor(async () =>
                     /^(\*\*)?this(\*\*)?$/.test(await selected())
                 );
-                // to show that the late frame does not take the selection back to "loud"
+                // to show that the late frame does not take the selection back
+                // to "loud"
                 await page.waitForTimeout(400);
                 assert.match(await selected(), /^(\*\*)?this(\*\*)?$/);
             } finally {

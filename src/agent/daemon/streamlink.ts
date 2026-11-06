@@ -20,7 +20,8 @@ export const openCommandLink = (argv: string[]): Link =>
 
 export interface SshTarget {
     host: string; // a name from ~/.ssh/config, or user@host
-    // default "markworkd bridge"; give a full path if it is not on the non-interactive PATH
+    // default "markworkd bridge"; give a full path if it is not on the
+    // non-interactive PATH
     remoteCommand?: string;
     // extra ssh arguments, e.g. ['-p', '2222', '-i', '/path/key']
     options?: string[];

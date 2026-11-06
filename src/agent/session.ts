@@ -138,7 +138,8 @@ export class ChatSession {
     private generation = 0;
     readonly history: Turn[] = [];
     readonly events: ActionEvent[] = [];
-    // activity log for monitoring; goes neither to the model nor to the conversation file
+    // activity log for monitoring; goes neither to the model nor to the
+    // conversation file
     readonly trace = new AgentTrace();
     work: WorkState | null = null;
     thinking = false; // model thinking mode; passed on to the Provider

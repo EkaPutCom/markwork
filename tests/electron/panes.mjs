@@ -100,7 +100,8 @@ try {
             await page.keyboard.type('X');
             await waitFor(async () => (await textOf(1)).endsWith('X'));
             assert.equal(await textOf(0), await textOf(1));
-            // after the hidden "# " of the heading, which the cursor does not enter
+            // after the hidden "# " of the heading, which the cursor does not
+            // enter
             await putCursor(1, 2);
             await page.keyboard.type('Y');
             await waitFor(async () => (await textOf(0)).startsWith('# YBeta'));

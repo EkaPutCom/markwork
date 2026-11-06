@@ -232,7 +232,8 @@ async function inNormalStart() {
                 await page.locator('.cm-content').click();
                 await page.keyboard.type('abc');
                 await page.keyboard.press('Control+z');
-                // a pause to show that the offer does not come again in this tab
+                // a pause to show that the offer does not come again in this
+                // tab
                 await page.waitForTimeout(400);
                 assert.equal(await offer.count(), 0);
             }

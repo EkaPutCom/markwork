@@ -114,15 +114,18 @@ export interface Tab {
     mirror: DocMirror;
     name: string;
     file: string | null;
-    // where it is, as the core words it (doc.title): its folder, ~ for the home folder
+    // where it is, as the core words it (doc.title): its folder, ~ for the home
+    // folder
     place: string | null;
-    // 'text' or the structured page the core shows ('board', …); 'home', 'programs', and 'html' for the pages that are tabs
+    // 'text' or the structured page the core shows ('board', …); 'home',
+    // 'programs', and 'html' for the pages that are tabs
     page: string;
     board: Board | null;
     // a board grouped by a field: its name (view.notes)
     groupField: string | null;
     agents: boolean; // a board lets agents be assigned to cards
-    // how many times the core asked for the cursor in the capture line (view.focusCapture)
+    // how many times the core asked for the cursor in the capture line
+    // (view.focusCapture)
     capture: number;
     csv: string | null; // a CSV tab: the text the core sent (view.csv)
     csvRev: number; // how many times it sent it
@@ -327,9 +330,11 @@ export interface State {
     panes: P.Layout; // the panes of the editor area, and which has the focus
     palette: boolean;
     sidebar: boolean; // the `sidebar` setting
-    // the window's width, which decides whether the side panels float (layoutOf)
+    // the window's width, which decides whether the side panels float
+    // (layoutOf)
     width: number;
-    // a side panel opened over the content while the window is too narrow for it
+    // a side panel opened over the content while the window is too narrow for
+    // it
     floating: { sidebar: boolean; chat: boolean };
     // the core's settings, as `hello` and `setting` notices give them
     settings: Record<string, unknown>;
@@ -343,7 +348,8 @@ export interface State {
     image: ZoomedImage | null;
     conflictComparison: ConflictComparison | null;
     recent: string[]; // the Recent files of the menus (recent), latest first
-    // needed programs that are missing (programs.missing): the mark on the sidebar's Programs
+    // needed programs that are missing (programs.missing): the mark on the
+    // sidebar's Programs
     programsMissing: number;
     // the Preferences dialog while it is open (view.prefs.open)
     prefs: PreferencesData | null;
@@ -365,7 +371,8 @@ export interface State {
     collab: CollabSnapshot; // the pull requests tab (view.collab)
     // the pull request the core opened for review (view.pull)
     pull: PullSnapshot | null;
-    // the content area shows it, not the document (view.pull.show, until the next page)
+    // the content area shows it, not the document (view.pull.show, until the
+    // next page)
     pullShown: boolean;
     // the token dialog while the core asks for it (ask.token)
     tokenAsk: TokenAsk | null;
@@ -375,11 +382,13 @@ export interface State {
     runLogs: RunLog[];
     // the review of a card's worktree (view.review)
     review: ReviewSnapshot | null;
-    // the content area shows it, not the document (view.review.show, until the next page)
+    // the content area shows it, not the document (view.review.show, until the
+    // next page)
     reviewShown: boolean;
     // the questions of the agents that wait; the first is the one shown
     agentAsks: AgentAsk[];
-    // the form that sends a worktree's branch as a pull request (ask.pullRequest)
+    // the form that sends a worktree's branch as a pull request
+    // (ask.pullRequest)
     pullAsk: { id: number; options: PullRequestOptions } | null;
     // the project page of Preferences → Agents (view.prefs.project)
     project: ProjectPage | null;

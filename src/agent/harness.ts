@@ -348,7 +348,8 @@ export interface HarnessResult {
     cost: number; // USD, the sum of all assistant messages
     tokens: number;
     sessionId: string | null;
-    // cut short because the process holding it went away; its session can be resumed
+    // cut short because the process holding it went away; its session can be
+    // resumed
     interrupted?: boolean;
 }
 
@@ -703,7 +704,8 @@ export interface Run {
     slots: number;
     worktree: Worktree | null;
     prompt: string;
-    // the harness session being continued (a reply after finishing), null = new session
+    // the harness session being continued (a reply after finishing), null = new
+    // session
     session: string | null;
     // Changed only through RunQueue (wait, resume, end), so the status, the
     // question, and the result stay consistent.

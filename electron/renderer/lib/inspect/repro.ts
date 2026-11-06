@@ -37,7 +37,8 @@ export interface Repro {
     actual?: { doc: string; failed: string[] };
     note?: string;
     blurred: boolean;
-    // a report's picture of the editor: a PNG next to it, by its name (electron/main.ts)
+    // a report's picture of the editor: a PNG next to it, by its name
+    // (electron/main.ts)
     picture?: string;
 }
 

@@ -65,7 +65,8 @@ interface Scenario {
     question: string;
     files: Record<string, string>;
     check: (run: Run) => string[]; // what is wrong, empty = passed
-    // a tool the scenario is meant to exercise (reported when unused, not a failure)
+    // a tool the scenario is meant to exercise (reported when unused, not a
+    // failure)
     expectTool?: string;
 }
 

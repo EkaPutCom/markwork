@@ -35,7 +35,8 @@ export interface Isolation {
     // false = cards work in the project folder itself, one at a time
     worktrees: boolean;
     slots: number; // cards of the project that may work at the same time
-    // the branch new worktrees start from; '' = the branch the project folder is on
+    // the branch new worktrees start from; '' = the branch the project folder
+    // is on
     base: string;
     // where the project's worktrees go; '' = next to the project (worktreeRoot)
     dir: string;
