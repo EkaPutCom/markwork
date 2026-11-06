@@ -81,7 +81,8 @@ function inlineHtml(s: string): string {
             : '';
         const href = file + (link.heading ? `#${slug(link.heading)}` : '');
         return tok(
-            `<a class="wikilink" href="${esc(href)}">${esc(wikiLabel(link))}</a>`
+            `<a class="wikilink" href="${esc(href)}">` +
+            `${esc(wikiLabel(link))}</a>`
         );
     });
     s = s.replace(
@@ -93,7 +94,8 @@ function inlineHtml(s: string): string {
         /\[([^\]]*)\]\(([^)\s]*)(?:\s+&quot;(.*?)&quot;)?\)/g,
         (_: string, txt: string, href: string, t?: string) =>
             tok(
-                `<a href="${href}"${t ? ` title="${t}"` : ''}>${emphHtml(txt)}</a>`
+                `<a href="${href}"${t ? ` title="${t}"` : ''}>` +
+                    `${emphHtml(txt)}</a>`
             )
     );
     s = s.replace(
@@ -226,7 +228,8 @@ class ListReader {
                 if (!this.loose)
                     html = html.replace(/^<p>([\s\S]*?)<\/p>/, '$1');
                 if (it.task !== null)
-                    return `<li class="task"><input type="checkbox" disabled${it.task ? ' checked' : ''}> ${html}</li>`;
+                    return `<li class="task"><input type="checkbox" disabled` +
+                        `${it.task ? ' checked' : ''}> ${html}</li>`;
                 return `<li>${html}</li>`;
             })
             .join('\n');
@@ -265,7 +268,8 @@ const BLOCK_READERS: BlockReader[] = [
         if (!m) return null;
         const t = m[2] || '';
         return [
-            `<h${m[1].length} id="${slug(t)}">${inlineHtml(t)}</h${m[1].length}>`,
+            `<h${m[1].length} id="${slug(t)}">` +
+                `${inlineHtml(t)}</h${m[1].length}>`,
             i + 1,
         ];
     },
@@ -365,7 +369,8 @@ function codeBlock(
         }
     }
     return [
-        `<pre><code${lang ? ` class="language-${esc(lang)}"` : ''}>${esc(text)}</code></pre>`,
+        `<pre><code${lang ? ` class="language-${esc(lang)}"` : ''}>` +
+            `${esc(text)}</code></pre>`,
         i,
     ];
 }
@@ -373,24 +378,39 @@ function codeBlock(
 function tableHtml(lines: string[], i: number): [string, number] {
     const end = tableEnd(lines, i);
     const table = parseTable(lines.slice(i, end + 1));
-    const cell = (tag: string, text: string, col: number) =>
-        `<${tag}${table.aligns[col] ? ` style="text-align:${table.aligns[col]}"` : ''}>${inlineHtml(text)}</${tag}>`;
+    const cell = (tag: string, text: string, col: number) => {
+        const align = table.aligns[col];
+        const style = align ? ` style="text-align:${align}"` : '';
+        return `<${tag}${style}>${inlineHtml(text)}</${tag}>`;
+    };
     const row = (tag: string, cells: string[]) =>
         `<tr>${cells.map((c, k) => cell(tag, c, k)).join('')}</tr>`;
     return [
-        `<table>\n<thead>${row('th', table.header)}</thead>\n<tbody>\n${table.rows.map((r) => `${row('td', r)}\n`).join('')}</tbody>\n</table>`,
+        '<table>\n<thead>' +
+            `${row('th', table.header)}</thead>\n<tbody>\n` +
+            `${table.rows.map((r) => `${row('td', r)}\n`).join('')}</tbody>\n` +
+            '</table>',
         end + 1,
     ];
 }
+
+const MERMAID_MODULE =
+    'https://cdn.jsdelivr.net/npm/mermaid@11/dist/' +
+    'mermaid.esm.min.mjs';
 
 export function markdownToHtml(src: string, title: string): string {
     const body = blocksHtml(src.replace(/\r\n?/g, '\n').split('\n'));
     // Mermaid is loaded from a CDN only if the document has a diagram, so
     // ordinary documents stay self-contained.
+    const theme = "matchMedia('(prefers-color-scheme: dark)').matches " +
+        "? 'dark' : 'default'";
     const mermaid = body.includes('<pre class="mermaid">')
         ? `<script type="module">
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-mermaid.initialize({ startOnLoad: true, theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+import mermaid from '${MERMAID_MODULE}';
+mermaid.initialize({
+    startOnLoad: true,
+    theme: ${theme}
+});
 </script>
 `
         : '';
@@ -401,20 +421,54 @@ mermaid.initialize({ startOnLoad: true, theme: matchMedia('(prefers-color-scheme
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <style>
-body { max-width: 760px; margin: 40px auto; padding: 0 20px; font: 16px/1.65 "Noto Sans", "Helvetica Neue", Arial, sans-serif; color: #333; }
-h1, h2 { border-bottom: 1px solid #eee; padding-bottom: .3em; }
-h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 1.4em 0 .6em; color: #1f2328; }
-a { color: #4183c4; text-decoration: none; } a:hover { text-decoration: underline; }
-code { font-family: "DejaVu Sans Mono", monospace; font-size: .9em; background: #f3f4f4; padding: 2px 4px; border-radius: 3px; color: #c7254e; }
-pre { background: #f6f8fa; padding: 12px 16px; border-radius: 6px; overflow: auto; }
+body {
+    max-width: 760px;
+    margin: 40px auto;
+    padding: 0 20px;
+    font: 16px/1.65 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: #333;
+}
+h1, h2 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: .3em;
+}
+h1, h2, h3, h4, h5, h6 {
+    line-height: 1.3;
+    margin: 1.4em 0 .6em;
+    color: #1f2328;
+}
+a { color: #4183c4; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+    font-family: "DejaVu Sans Mono", monospace;
+    font-size: .9em;
+    background: #f3f4f4;
+    padding: 2px 4px;
+    border-radius: 3px;
+    color: #c7254e;
+}
+pre {
+    background: #f6f8fa;
+    padding: 12px 16px;
+    border-radius: 6px;
+    overflow: auto;
+}
 pre code { background: none; padding: 0; color: inherit; }
 pre.mermaid { background: none; text-align: center; }
-blockquote { margin: 1em 0; padding: 0 1em; color: #6a737d; border-left: 4px solid #dfe2e5; }
-table { border-collapse: collapse; margin: 1em 0; } th, td { border: 1px solid #dfe2e5; padding: 6px 13px; }
+blockquote {
+    margin: 1em 0;
+    padding: 0 1em;
+    color: #6a737d;
+    border-left: 4px solid #dfe2e5;
+}
+table { border-collapse: collapse; margin: 1em 0; }
+th, td { border: 1px solid #dfe2e5; padding: 6px 13px; }
 tr:nth-child(2n) { background: #f8f8f8; }
 hr { border: 0; border-top: 2px solid #eee; margin: 2em 0; }
-img { max-width: 100%; } mark { background: #fff3a3; }
-li.task { list-style: none; } li.task input { margin: 0 .3em 0 -1.3em; }
+img { max-width: 100%; }
+mark { background: #fff3a3; }
+li.task { list-style: none; }
+li.task input { margin: 0 .3em 0 -1.3em; }
 </style>
 ${mermaid}</head>
 <body>

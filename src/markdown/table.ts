@@ -277,10 +277,14 @@ export function renderTable(table: Table): string[] {
         )
     );
     const row = (cells: string[]) =>
-        `| ${cells.map((t, c) => fit(t, widths[c], table.aligns[c])).join(' | ')} |`;
+        `| ${cells
+            .map((t, c) => fit(t, widths[c], table.aligns[c]))
+            .join(' | ')} |`;
     return [
         row(table.header),
-        `| ${widths.map((w, c) => separator(w, table.aligns[c])).join(' | ')} |`,
+        `| ${widths
+            .map((w, c) => separator(w, table.aligns[c]))
+            .join(' | ')} |`,
         ...table.rows.map(row),
     ];
 }

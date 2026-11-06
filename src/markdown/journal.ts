@@ -321,7 +321,10 @@ export function agentActivity(changes: ChangeSummary[]): string | null {
         if (!list.includes(target)) list.push(target);
         parts.set(verb(c), list);
     }
-    return `Agent ${[...parts].map(([v, files]) => `${v} ${files.join(', ')}`).join('; ')}`;
+    const summary = [...parts]
+        .map(([v, files]) => `${v} ${files.join(', ')}`)
+        .join('; ');
+    return `Agent ${summary}`;
 }
 
 export function commitActivity(hash: string, subject: string): string {
@@ -334,7 +337,8 @@ export function harnessActivity(
     project: string,
     ok: boolean
 ): string {
-    return `${agent} ${ok ? 'finished' : 'failed'} ${quote(title)} in project ${project}`;
+    return `${agent} ${ok ? 'finished' : 'failed'} ` +
+        `${quote(title)} in project ${project}`;
 }
 
 // The user finished reviewing a card's worktree: its work was merged into the
@@ -345,7 +349,8 @@ export function worktreeActivity(
     outcome: { merged: string } | { discarded: true } | { pull: string }
 ): string {
     if ('pull' in outcome)
-        return `Opened a pull request for ${quote(title)} in project ${project}: ${outcome.pull}`;
+        return `Opened a pull request for ${quote(title)} in project ` +
+            `${project}: ${outcome.pull}`;
     return 'merged' in outcome
         ? `Merged ${quote(title)} into ${outcome.merged} in project ${project}`
         : `Discarded the work on ${quote(title)} in project ${project}`;

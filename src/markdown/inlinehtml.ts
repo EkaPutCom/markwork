@@ -38,7 +38,9 @@ export function cellHtml(text: string, links = false): string {
             html = WRAP[style][0] + html + WRAP[style][1];
         out +=
             run.note !== undefined
-                ? `<a class="md-note" href="${escapeHtml(NOTE_URI + encodeURIComponent(run.note))}">${html}</a>`
+                ? `<a class="md-note" href="` +
+                    `${escapeHtml(NOTE_URI + encodeURIComponent(run.note))}">` +
+                    `${html}</a>`
                 : html;
     }
     return out;

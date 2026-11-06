@@ -162,7 +162,8 @@ function defaultProblem(def: FieldDef, value: string): string | null {
     const parsed = parseValue(def, value);
     return parsed.ok
         ? null
-        : `${def.key}: the default "${value}" does not fit the field (${parsed.error})`;
+        : `${def.key}: the default "${value}" does not fit the field ` +
+            `(${parsed.error})`;
 }
 
 // The options inside `select(…)`: `text`, or `text:color` when what follows the
@@ -243,9 +244,12 @@ export function parseSchema(text: string): SchemaResult {
 
 export function describeDef(def: FieldDef): string {
     const args = def.options.length
-        ? `(${def.options.map((o) => (def.colors?.[o] ? `${o}:${def.colors[o]}` : o)).join(', ')})`
+        ? `(${def.options
+              .map((o) => (def.colors?.[o] ? `${o}:${def.colors[o]}` : o))
+              .join(', ')})`
         : '';
-    return `${def.type}${def.multiple ? '[]' : ''}${args}${def.default ? ` = ${def.default}` : ''}`;
+    return `${def.type}${def.multiple ? '[]' : ''}${args}` +
+        `${def.default ? ` = ${def.default}` : ''}`;
 }
 
 // The frontmatter with `option` added to the select field `key`, or the text
@@ -267,7 +271,8 @@ export function addOption(text: string, key: string, option: string): string {
     if (at < 0) return text;
     const indent = /^[ \t]+/.exec(lines[at])?.[0] ?? '  ';
     lines[at] =
-        `${indent}${key}: ${describeDef({ ...def, options: [...def.options, value] })}`;
+        `${indent}${key}: ` +
+        describeDef({ ...def, options: [...def.options, value] });
     return lines.join('\n');
 }
 
@@ -633,7 +638,8 @@ const pad2 = (n: number): string => String(n).padStart(2, '0');
 // default.
 export function resolveDefault(def: FieldDef, now: Date): string | null {
     if (!def.default) return null;
-    const day = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+    const day = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-` +
+        pad2(now.getDate());
     if (def.type === 'date' && def.default === 'now')
         return `${day} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
     if (def.type === 'date' && def.default === 'today') return day;

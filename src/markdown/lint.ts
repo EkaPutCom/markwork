@@ -65,7 +65,8 @@ class Scanner {
             this.issues.unshift({
                 line: fence.line + 1,
                 key: `fence:${lines[fence.line].trim()}`,
-                text: `code block opened at line ${fence.line + 1} is not closed`,
+                text: `code block opened at line ${fence.line + 1} ` +
+                    'is not closed',
             });
     }
 
@@ -110,7 +111,8 @@ class Scanner {
             this.issues.push({
                 line: i + 1,
                 key: `heading-skip:${this.level}:${n}:${title}`,
-                text: `heading "${title}" (line ${i + 1}) jumps from H${this.level} to H${n}`,
+                text: `heading "${title}" (line ${i + 1}) jumps from ` +
+                    `H${this.level} to H${n}`,
             });
         this.level = n;
         return true;
@@ -129,7 +131,8 @@ class Scanner {
             this.issues.push({
                 line: i + 2,
                 key: `table-sep:${heading}`,
-                text: `table at line ${i + 1}: header has ${columns} columns, separator has ${separator} columns`,
+                text: `table at line ${i + 1}: header has ${columns} ` +
+                    `columns, separator has ${separator} columns`,
             });
         for (let r = i + 2; r <= end; r++) {
             const cells = splitRow(lines[r]).length;
@@ -137,7 +140,8 @@ class Scanner {
                 this.issues.push({
                     line: r + 1,
                     key: `table-row:${heading}:${lines[r].trim().slice(0, 60)}`,
-                    text: `table at line ${r + 1}: ${cells} cells, header has ${columns} columns`,
+                    text: `table at line ${r + 1}: ${cells} cells, ` +
+                        `header has ${columns} columns`,
                 });
         }
         for (let r = i; r <= end; r++) collectLinks(lines[r], r, this.links);

@@ -96,8 +96,10 @@ export function optionOf(text: string, key: string): string | null {
 // the text changes.
 export function withLayout(text: string, layout: Layout): string {
     const lines = text.split('\n');
-    if (lines[0]?.trim() !== '---')
-        return `---\nlayout: ${layout}\n---\n${text.startsWith('\n') ? '' : '\n'}${text}`;
+    if (lines[0]?.trim() !== '---') {
+        const separator = text.startsWith('\n') ? '' : '\n';
+        return `---\nlayout: ${layout}\n---\n${separator}${text}`;
+    }
     for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim() === '---') break;
         if (MARKER.test(lines[i])) {

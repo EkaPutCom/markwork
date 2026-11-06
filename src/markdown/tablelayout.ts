@@ -94,8 +94,10 @@ function sortKey(
               ? value.toLowerCase()
               : value;
     }
-    if ('date' in value)
-        return `${(value as DateValue).date} ${(value as DateValue).time ?? '00:00'}`;
+    if ('date' in value) {
+        const date = value as DateValue;
+        return `${date.date} ${date.time ?? '00:00'}`;
+    }
     const progress = value as ProgressValue;
     return progress.total ? progress.done / progress.total : 0;
 }

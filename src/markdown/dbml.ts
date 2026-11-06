@@ -206,7 +206,8 @@ class Parser {
     private expect(text: string): void {
         if (!this.punct(text))
             throw new DbmlError(
-                `Expected "${text}", found ${this.cur ? `"${this.cur.text}"` : 'end of code'}`,
+                `Expected "${text}", found ` +
+                `${this.cur ? `"${this.cur.text}"` : 'end of code'}`,
                 this.line
             );
         this.p++;
@@ -535,7 +536,8 @@ export function dbmlToMermaid(src: string): string {
         ...schema.tables.flatMap(tableLines),
         ...schema.relations.map(
             (r) =>
-                `    ${quote(r.from)} ${CARDINALITY[r.op]} ${quote(r.to)} : ${quote((r.op === '<' ? r.toCol : r.fromCol) || ' ')}`
+                `    ${quote(r.from)} ${CARDINALITY[r.op]} ${quote(r.to)} : ` +
+                `${quote((r.op === '<' ? r.toCol : r.fromCol) || ' ')}`
         ),
     ].join('\n');
 }
@@ -568,7 +570,9 @@ function tableLines(t: Table): string[] {
         ]
             .filter(Boolean)
             .join(', ');
-        return `        ${ident(c.type)} ${ident(c.name)}${keys ? ` ${keys}` : ''}${c.note ? ` ${quote(c.note.replace(/\s+/g, ' '))}` : ''}`;
+        return `        ${ident(c.type)} ${ident(c.name)}` +
+            `${keys ? ` ${keys}` : ''}` +
+            `${c.note ? ` ${quote(c.note.replace(/\s+/g, ' '))}` : ''}`;
     };
     return [`    ${quote(t.name)} {`, ...t.columns.map(column), '    }'];
 }

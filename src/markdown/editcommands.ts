@@ -673,7 +673,8 @@ export function isInCodeBlock(
 function nextItemPrefix(quote: string, item: RegExpExecArray): string {
     const num = parseInt(item[2]);
     const marker = isNaN(num) ? item[2] : `${num + 1}${item[2].slice(-1)}`;
-    return `${quote}${item[1]}${marker}${item[3] || ' '}${item[4] ? '[ ] ' : ''}`;
+    return `${quote}${item[1]}${marker}${item[3] || ' '}` +
+        `${item[4] ? '[ ] ' : ''}`;
 }
 
 // Enter on a list/quote line; null if the line is neither:
