@@ -67,7 +67,10 @@ export function PaneTabs({
                         key={t.id}
                         role="tab"
                         aria-selected={t.id === pane.active}
-                        className={`tab${t.id === pane.active ? ' active' : ''}${before === t.id ? ' drop-before' : ''}`}
+                        className={
+                            `tab${t.id === pane.active ? ' active' : ''}` +
+                            `${before === t.id ? ' drop-before' : ''}`
+                        }
                         title={t.file ?? t.name}
                         draggable
                         onDragStart={(e) => {

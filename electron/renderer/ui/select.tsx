@@ -69,7 +69,18 @@ export function Select({
                 data-slot="select-trigger"
                 aria-label={label}
                 className={cn(
-                    'flex min-h-9 items-center justify-between gap-2 whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-1.5 text-start text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[placeholder]:text-muted-foreground dark:bg-input/30 dark:hover:bg-input/50',
+                    (
+                        "flex min-h-9 items-center justify-between gap-2 " +
+                        "whitespace-nowrap rounded-md border border-input " +
+                        "bg-transparent px-3 py-1.5 text-start text-sm " +
+                        "shadow-xs outline-none " +
+                        "transition-[color,box-shadow] " +
+                        "focus-visible:border-ring focus-visible:ring-[3px] " +
+                        "focus-visible:ring-ring/50 " +
+                        "disabled:pointer-events-none disabled:opacity-50 " +
+                        "data-[placeholder]:text-muted-foreground " +
+                        "dark:bg-input/30 dark:hover:bg-input/50"
+                    ),
                     className
                 )}
             >
@@ -95,14 +106,28 @@ export function Select({
                         " data-[state=open]:fade-in-0" +
                         " data-[state=open]:zoom-in-95"}
                 >
-                    <SelectPrimitive.Viewport className="min-w-[var(--radix-select-trigger-width)] scroll-my-1 p-1">
+                    <SelectPrimitive.Viewport className={(
+                        "min-w-[var(--radix-select-trigger-width)] " +
+                        "scroll-my-1 p-1"
+                    )}>
                         {items.map((item) => (
                             <SelectPrimitive.Item
                                 key={item.value}
                                 value={item.value === '' ? NONE : item.value}
-                                className="relative flex w-full cursor-default select-none items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                                className={(
+                                    "relative flex w-full cursor-default " +
+                                    "select-none items-center gap-2 " +
+                                    "rounded-sm py-1.5 pr-2 pl-8 text-sm " +
+                                    "outline-hidden focus:bg-accent " +
+                                    "focus:text-accent-foreground " +
+                                    "data-[disabled]:pointer-events-none " +
+                                    "data-[disabled]:opacity-50"
+                                )}
                             >
-                                <span className="absolute left-2 flex size-3.5 items-center justify-center">
+                                <span className={(
+                                    "absolute left-2 flex size-3.5 " +
+                                    "items-center justify-center"
+                                )}>
                                     <SelectPrimitive.ItemIndicator>
                                         <CheckIcon className="size-4" />
                                     </SelectPrimitive.ItemIndicator>

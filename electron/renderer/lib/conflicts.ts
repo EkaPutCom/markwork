@@ -25,13 +25,15 @@ const CHOICES: {
         choice: 'current',
         label: 'Accept Current Change',
         tip: (c) =>
-            `Keep the lines from ${c.current || 'the current side'} and drop the other side`,
+            `Keep the lines from ${c.current || 'the current side'} ` +
+                'and drop the other side',
     },
     {
         choice: 'incoming',
         label: 'Accept Incoming Change',
         tip: (c) =>
-            `Keep the lines from ${c.incoming || 'the incoming side'} and drop the other side`,
+            `Keep the lines from ${c.incoming || 'the incoming side'} ` +
+                'and drop the other side',
     },
     {
         choice: 'both',

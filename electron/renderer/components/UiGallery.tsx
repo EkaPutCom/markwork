@@ -108,6 +108,16 @@ import { Textarea } from '../ui/textarea';
 import { Toggle } from '../ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
+const surfaceClass = (tokens: string) =>
+    `rounded-md border px-3 py-2 text-xs font-medium ${tokens}`;
+const meaningClass = (tokens: string) =>
+    `rounded-md px-3 py-2 text-xs font-medium ${tokens}`;
+const categoryClass = (tokens: string) =>
+    `size-4 rounded-full ${tokens}`;
+const contextTriggerClass =
+    'rounded-md border border-dashed px-4 py-2 text-xs text-muted-foreground';
+const collapsibleClass = 'flex flex-col gap-1 pl-6 text-ui';
+
 export const UI_GALLERY_KEY = 'Ctrl+Alt+g';
 
 // The class names are written out whole, so Tailwind finds them in the source.
@@ -234,7 +244,7 @@ function Tokens() {
                     {SURFACES.map((token) => (
                         <span
                             key={token.name}
-                            className={`rounded-md border px-3 py-2 text-xs font-medium ${token.className}`}
+                            className={surfaceClass(token.className)}
                         >
                             {token.name}
                         </span>
@@ -244,7 +254,7 @@ function Tokens() {
                     {MEANINGS.map((token) => (
                         <span
                             key={token.name}
-                            className={`rounded-md px-3 py-2 text-xs font-medium ${token.className}`}
+                            className={meaningClass(token.className)}
                         >
                             {token.name}: {token.words}
                         </span>
@@ -257,7 +267,7 @@ function Tokens() {
                             className="flex items-center gap-1.5 text-xs"
                         >
                             <span
-                                className={`size-4 rounded-full ${cat.className}`}
+                                className={categoryClass(cat.className)}
                                 aria-hidden="true"
                             />
                             {cat.name}
@@ -612,7 +622,7 @@ function Overlays() {
                     </MenubarMenu>
                 </Menubar>
                 <ContextMenu>
-                    <ContextMenuTrigger className="rounded-md border border-dashed px-4 py-2 text-xs text-muted-foreground">
+                    <ContextMenuTrigger className={contextTriggerClass}>
                         Right-click here
                     </ContextMenuTrigger>
                     <ContextMenuContent>
@@ -831,7 +841,7 @@ function Containers() {
                         Recent
                     </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="flex flex-col gap-1 pl-6 text-ui">
+                <CollapsibleContent className={collapsibleClass}>
                     <span>plan.md</span>
                     <span>journal/2026-10-25.md</span>
                 </CollapsibleContent>

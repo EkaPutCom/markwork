@@ -86,26 +86,26 @@ function Form({
     const client = useClient();
     const usage = new Map(
         options.uses
-            .filter((u) => u.option !== null)
-            .map((u) => [`${u.key}\u0000${u.option}`, u.count])
+            .filter(u => u.option !== null)
+            .map(u => [`${u.key}\u0000${u.option}`, u.count]),
     );
     const [draft, setDraft] = useState<DraftField[]>(() =>
-        options.fields.map((def) => ({
+        options.fields.map(def => ({
             def: { ...def },
             fresh: false,
-            options: def.options.map((text) => ({
+            options: def.options.map(text => ({
                 text,
                 color: def.colors?.[text] ?? null,
             })),
-        }))
+        })),
     );
     const [colorOpen, setColorOpen] = useState<string | null>(null);
     const [checked, setChecked] = useState(false);
     const [added, setAdded] = useState<Record<number, string>>({});
 
     const set = (i: number, patch: (d: DraftField) => DraftField) =>
-        setDraft((list) => list.map((d, j) => (j === i ? patch(d) : d)));
-    const keys = draft.map((d) => d.def.key.trim());
+        setDraft(list => list.map((d, j) => (j === i ? patch(d) : d)));
+    const keys = draft.map(d => d.def.key.trim());
     const nameProblem = (i: number) =>
         draft[i].fresh
             ? fieldNameProblem(draft[i].def.key, [
@@ -116,18 +116,18 @@ function Form({
     const optionIssue = (i: number, j: number) =>
         optionProblem(
             draft[i].options[j].text,
-            draft[i].options.filter((_o, k) => k !== j).map((o) => o.text)
+            draft[i].options.filter((_o, k) => k !== j).map(o => o.text),
         );
     const valid = () =>
         draft.every(
             (d, i) =>
                 !nameProblem(i) &&
-                d.options.every((_o, j) => !optionIssue(i, j))
+                d.options.every((_o, j) => !optionIssue(i, j)),
         );
 
     const result = (): FieldDef[] =>
         draft.map(({ def, options: opts }) => {
-            const texts = opts.map((o) => o.text.trim());
+            const texts = opts.map(o => o.text.trim());
             const colors: Record<string, OptionColor> = {};
             opts.forEach((o, i) => {
                 if (o.color) colors[texts[i]] = o.color;
@@ -145,6 +145,228 @@ function Form({
         if (valid()) client.answerSchema(id, result());
     };
 
+    const optionClass = (color: OptionColor | null) =>
+        color ? `opt-dot opt-dot-${color}` : 'opt-dot opt-dot-auto';
+    const patchOption = (i: number, j: number, patch: Partial<DraftOption>) =>
+        set(i, field => ({
+            ...field,
+            options: field.options.map((option, index) =>
+                index === j ? { ...option, ...patch } : option,
+            ),
+        }));
+
+    const optionsFor = (d: DraftField, i: number) => {
+        return (
+            <div className="options">
+                {d.options.map((o, j) => {
+                    const key = `${i}.${j}`;
+                    const issue = checked ? optionIssue(i, j) : null;
+                    const uses = d.fresh
+                        ? 0
+                        : (usage.get(`${d.def.key}\u0000${o.text}`) ?? 0);
+                    return (
+                        <div key={j}>
+                            <div className="option-row">
+                                <span className="mover">
+                                    <IconButton
+                                        type="button"
+                                        size="icon-xs"
+                                        label="Move option up"
+                                        disabled={j === 0}
+                                        onClick={() =>
+                                            set(i, f => ({
+                                                ...f,
+                                                options: swap(
+                                                    f.options,
+                                                    j,
+                                                    j - 1,
+                                                ),
+                                            }))
+                                        }
+                                    >
+                                        <Icon name="chevron-up" />
+                                    </IconButton>
+                                    <IconButton
+                                        type="button"
+                                        size="icon-xs"
+                                        label="Move option down"
+                                        disabled={j === d.options.length - 1}
+                                        onClick={() =>
+                                            set(i, f => ({
+                                                ...f,
+                                                options: swap(
+                                                    f.options,
+                                                    j,
+                                                    j + 1,
+                                                ),
+                                            }))
+                                        }
+                                    >
+                                        <Icon name="chevron-down" />
+                                    </IconButton>
+                                </span>
+                                <IconButton
+                                    type="button"
+                                    variant={null}
+                                    size="icon-xs"
+                                    className={optionClass(o.color)}
+                                    aria-expanded={colorOpen === key}
+                                    label="Color of this option"
+                                    onClick={() =>
+                                        setColorOpen(
+                                            colorOpen === key ? null : key,
+                                        )
+                                    }
+                                />
+                                <Input
+                                    aria-invalid={issue ? true : undefined}
+                                    value={o.text}
+                                    aria-label="Option"
+                                    title={
+                                        issue
+                                            ? OPTION_PROBLEM[issue]
+                                            : undefined
+                                    }
+                                    onChange={e =>
+                                        patchOption(i, j, {
+                                            text: e.target.value,
+                                        })
+                                    }
+                                />
+                                {uses > 0 && (
+                                    <span className="dim caption">
+                                        {uses} {uses === 1 ? 'note' : 'notes'}
+                                    </span>
+                                )}
+                                <IconButton
+                                    type="button"
+                                    size="icon-xs"
+                                    label="Remove option"
+                                    onClick={() =>
+                                        set(i, f => ({
+                                            ...f,
+                                            options: f.options.filter(
+                                                (_x, k) => k !== j,
+                                            ),
+                                        }))
+                                    }
+                                >
+                                    <Icon name="window-close" />
+                                </IconButton>
+                            </div>
+                            {colorOpen === key && (
+                                <div className="color-row">
+                                    {OPTION_COLORS.map(color => (
+                                        <IconButton
+                                            type="button"
+                                            key={color}
+                                            variant={null}
+                                            size="icon-xs"
+                                            className={optionClass(color)}
+                                            aria-pressed={o.color === color}
+                                            label={color}
+                                            onClick={() => {
+                                                patchOption(i, j, {
+                                                    color,
+                                                });
+                                                setColorOpen(null);
+                                            }}
+                                        />
+                                    ))}
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            patchOption(i, j, {
+                                                color: null,
+                                            });
+                                            setColorOpen(null);
+                                        }}
+                                    >
+                                        Automatic
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                <div className="option-row">
+                    <Input
+                        value={added[i] ?? ''}
+                        placeholder="Add an option…"
+                        aria-label="Add an option"
+                        onChange={e =>
+                            setAdded(a => ({
+                                ...a,
+                                [i]: e.target.value,
+                            }))
+                        }
+                        onKeyDown={e => {
+                            if (e.key !== 'Enter') return;
+                            e.preventDefault();
+                            const text = (added[i] ?? '').trim();
+                            if (
+                                !text ||
+                                optionProblem(
+                                    text,
+                                    d.options.map(o => o.text),
+                                )
+                            )
+                                return;
+                            set(i, f => ({
+                                ...f,
+                                options: [
+                                    ...f.options,
+                                    {
+                                        text,
+                                        color: null,
+                                    },
+                                ],
+                            }));
+                            setAdded(a => ({
+                                ...a,
+                                [i]: '',
+                            }));
+                        }}
+                    />
+                    <IconButton
+                        type="button"
+                        size="icon-xs"
+                        label="Add option"
+                        onClick={() => {
+                            const text = (added[i] ?? '').trim();
+                            if (
+                                !text ||
+                                optionProblem(
+                                    text,
+                                    d.options.map(o => o.text),
+                                )
+                            )
+                                return;
+                            set(i, f => ({
+                                ...f,
+                                options: [
+                                    ...f.options,
+                                    {
+                                        text,
+                                        color: null,
+                                    },
+                                ],
+                            }));
+                            setAdded(a => ({
+                                ...a,
+                                [i]: '',
+                            }));
+                        }}
+                    >
+                        <Icon name="list-add" />
+                    </IconButton>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <Modal
             title="Fields"
@@ -153,7 +375,7 @@ function Form({
         >
             <form
                 className="fields-form"
-                onSubmit={(e) => {
+                onSubmit={e => {
                     e.preventDefault();
                     save();
                 }}
@@ -174,9 +396,7 @@ function Form({
                                             label="Move up"
                                             disabled={i === 0}
                                             onClick={() =>
-                                                setDraft((l) =>
-                                                    swap(l, i, i - 1)
-                                                )
+                                                setDraft(l => swap(l, i, i - 1))
                                             }
                                         >
                                             <Icon name="chevron-up" />
@@ -187,9 +407,7 @@ function Form({
                                             label="Move down"
                                             disabled={i === draft.length - 1}
                                             onClick={() =>
-                                                setDraft((l) =>
-                                                    swap(l, i, i + 1)
-                                                )
+                                                setDraft(l => swap(l, i, i + 1))
                                             }
                                         >
                                             <Icon name="chevron-down" />
@@ -209,8 +427,8 @@ function Form({
                                                     ? PROBLEM[problem]
                                                     : undefined
                                             }
-                                            onChange={(e) =>
-                                                set(i, (f) => ({
+                                            onChange={e =>
+                                                set(i, f => ({
                                                     ...f,
                                                     def: {
                                                         ...f.def,
@@ -228,8 +446,8 @@ function Form({
                                         <Select
                                             aria-label="Field type"
                                             value={d.def.type}
-                                            onChange={(e) =>
-                                                set(i, (f) => ({
+                                            onChange={e =>
+                                                set(i, f => ({
                                                     ...f,
                                                     def: {
                                                         ...f.def,
@@ -244,7 +462,7 @@ function Form({
                                                 }))
                                             }
                                         >
-                                            {TYPES.map((t) => (
+                                            {TYPES.map(t => (
                                                 <option key={t} value={t}>
                                                     {TYPE_LABEL[t]}
                                                 </option>
@@ -262,8 +480,10 @@ function Form({
                                             size="icon-xs"
                                             label="Remove this field"
                                             onClick={() =>
-                                                setDraft((l) =>
-                                                    l.filter((_x, j) => j !== i)
+                                                setDraft(l =>
+                                                    l.filter(
+                                                        (_x, j) => j !== i,
+                                                    ),
                                                 )
                                             }
                                         >
@@ -276,339 +496,7 @@ function Form({
                                         {PROBLEM[problem]}
                                     </div>
                                 )}
-                                {d.def.type === 'select' && (
-                                    <div className="options">
-                                        {d.options.map((o, j) => {
-                                            const key = `${i}.${j}`;
-                                            const issue = checked
-                                                ? optionIssue(i, j)
-                                                : null;
-                                            const uses = d.fresh
-                                                ? 0
-                                                : (usage.get(
-                                                      `${d.def.key}\u0000${o.text}`
-                                                  ) ?? 0);
-                                            return (
-                                                <div key={j}>
-                                                    <div className="option-row">
-                                                        <span className="mover">
-                                                            <IconButton
-                                                                type="button"
-                                                                size="icon-xs"
-                                                                label="Move option up"
-                                                                disabled={
-                                                                    j === 0
-                                                                }
-                                                                onClick={() =>
-                                                                    set(
-                                                                        i,
-                                                                        (
-                                                                            f
-                                                                        ) => ({
-                                                                            ...f,
-                                                                            options:
-                                                                                swap(
-                                                                                    f.options,
-                                                                                    j,
-                                                                                    j -
-                                                                                        1
-                                                                                ),
-                                                                        })
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Icon name="chevron-up" />
-                                                            </IconButton>
-                                                            <IconButton
-                                                                type="button"
-                                                                size="icon-xs"
-                                                                label="Move option down"
-                                                                disabled={
-                                                                    j ===
-                                                                    d.options
-                                                                        .length -
-                                                                        1
-                                                                }
-                                                                onClick={() =>
-                                                                    set(
-                                                                        i,
-                                                                        (
-                                                                            f
-                                                                        ) => ({
-                                                                            ...f,
-                                                                            options:
-                                                                                swap(
-                                                                                    f.options,
-                                                                                    j,
-                                                                                    j +
-                                                                                        1
-                                                                                ),
-                                                                        })
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Icon name="chevron-down" />
-                                                            </IconButton>
-                                                        </span>
-                                                        <IconButton
-                                                            type="button"
-                                                            variant={null}
-                                                            size="icon-xs"
-                                                            className={`opt-dot ${o.color ? `opt-dot-${o.color}` : 'opt-dot-auto'}`}
-                                                            aria-expanded={
-                                                                colorOpen ===
-                                                                key
-                                                            }
-                                                            label="Color of this option"
-                                                            onClick={() =>
-                                                                setColorOpen(
-                                                                    colorOpen ===
-                                                                        key
-                                                                        ? null
-                                                                        : key
-                                                                )
-                                                            }
-                                                        />
-                                                        <Input
-                                                            aria-invalid={
-                                                                issue
-                                                                    ? true
-                                                                    : undefined
-                                                            }
-                                                            value={o.text}
-                                                            aria-label="Option"
-                                                            title={
-                                                                issue
-                                                                    ? OPTION_PROBLEM[
-                                                                          issue
-                                                                      ]
-                                                                    : undefined
-                                                            }
-                                                            onChange={(e) =>
-                                                                set(i, (f) => ({
-                                                                    ...f,
-                                                                    options:
-                                                                        f.options.map(
-                                                                            (
-                                                                                x,
-                                                                                k
-                                                                            ) =>
-                                                                                k ===
-                                                                                j
-                                                                                    ? {
-                                                                                          ...x,
-                                                                                          text: e
-                                                                                              .target
-                                                                                              .value,
-                                                                                      }
-                                                                                    : x
-                                                                        ),
-                                                                }))
-                                                            }
-                                                        />
-                                                        {uses > 0 && (
-                                                            <span className="dim caption">
-                                                                {uses}{' '}
-                                                                {uses === 1
-                                                                    ? 'note'
-                                                                    : 'notes'}
-                                                            </span>
-                                                        )}
-                                                        <IconButton
-                                                            type="button"
-                                                            size="icon-xs"
-                                                            label="Remove option"
-                                                            onClick={() =>
-                                                                set(i, (f) => ({
-                                                                    ...f,
-                                                                    options:
-                                                                        f.options.filter(
-                                                                            (
-                                                                                _x,
-                                                                                k
-                                                                            ) =>
-                                                                                k !==
-                                                                                j
-                                                                        ),
-                                                                }))
-                                                            }
-                                                        >
-                                                            <Icon name="window-close" />
-                                                        </IconButton>
-                                                    </div>
-                                                    {colorOpen === key && (
-                                                        <div className="color-row">
-                                                            {OPTION_COLORS.map(
-                                                                (color) => (
-                                                                    <IconButton
-                                                                        type="button"
-                                                                        key={
-                                                                            color
-                                                                        }
-                                                                        variant={
-                                                                            null
-                                                                        }
-                                                                        size="icon-xs"
-                                                                        className={`opt-dot opt-dot-${color}`}
-                                                                        aria-pressed={
-                                                                            o.color ===
-                                                                            color
-                                                                        }
-                                                                        label={
-                                                                            color
-                                                                        }
-                                                                        onClick={() => {
-                                                                            set(
-                                                                                i,
-                                                                                (
-                                                                                    f
-                                                                                ) => ({
-                                                                                    ...f,
-                                                                                    options:
-                                                                                        f.options.map(
-                                                                                            (
-                                                                                                x,
-                                                                                                k
-                                                                                            ) =>
-                                                                                                k ===
-                                                                                                j
-                                                                                                    ? {
-                                                                                                          ...x,
-                                                                                                          color,
-                                                                                                      }
-                                                                                                    : x
-                                                                                        ),
-                                                                                })
-                                                                            );
-                                                                            setColorOpen(
-                                                                                null
-                                                                            );
-                                                                        }}
-                                                                    />
-                                                                )
-                                                            )}
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    set(
-                                                                        i,
-                                                                        (
-                                                                            f
-                                                                        ) => ({
-                                                                            ...f,
-                                                                            options:
-                                                                                f.options.map(
-                                                                                    (
-                                                                                        x,
-                                                                                        k
-                                                                                    ) =>
-                                                                                        k ===
-                                                                                        j
-                                                                                            ? {
-                                                                                                  ...x,
-                                                                                                  color: null,
-                                                                                              }
-                                                                                            : x
-                                                                                ),
-                                                                        })
-                                                                    );
-                                                                    setColorOpen(
-                                                                        null
-                                                                    );
-                                                                }}
-                                                            >
-                                                                Automatic
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                        <div className="option-row">
-                                            <Input
-                                                value={added[i] ?? ''}
-                                                placeholder="Add an option…"
-                                                aria-label="Add an option"
-                                                onChange={(e) =>
-                                                    setAdded((a) => ({
-                                                        ...a,
-                                                        [i]: e.target.value,
-                                                    }))
-                                                }
-                                                onKeyDown={(e) => {
-                                                    if (e.key !== 'Enter')
-                                                        return;
-                                                    e.preventDefault();
-                                                    const text = (
-                                                        added[i] ?? ''
-                                                    ).trim();
-                                                    if (
-                                                        !text ||
-                                                        optionProblem(
-                                                            text,
-                                                            d.options.map(
-                                                                (o) => o.text
-                                                            )
-                                                        )
-                                                    )
-                                                        return;
-                                                    set(i, (f) => ({
-                                                        ...f,
-                                                        options: [
-                                                            ...f.options,
-                                                            {
-                                                                text,
-                                                                color: null,
-                                                            },
-                                                        ],
-                                                    }));
-                                                    setAdded((a) => ({
-                                                        ...a,
-                                                        [i]: '',
-                                                    }));
-                                                }}
-                                            />
-                                            <IconButton
-                                                type="button"
-                                                size="icon-xs"
-                                                label="Add option"
-                                                onClick={() => {
-                                                    const text = (
-                                                        added[i] ?? ''
-                                                    ).trim();
-                                                    if (
-                                                        !text ||
-                                                        optionProblem(
-                                                            text,
-                                                            d.options.map(
-                                                                (o) => o.text
-                                                            )
-                                                        )
-                                                    )
-                                                        return;
-                                                    set(i, (f) => ({
-                                                        ...f,
-                                                        options: [
-                                                            ...f.options,
-                                                            {
-                                                                text,
-                                                                color: null,
-                                                            },
-                                                        ],
-                                                    }));
-                                                    setAdded((a) => ({
-                                                        ...a,
-                                                        [i]: '',
-                                                    }));
-                                                }}
-                                            >
-                                                <Icon name="list-add" />
-                                            </IconButton>
-                                        </div>
-                                    </div>
-                                )}
+                                {d.def.type === 'select' && optionsFor(d, i)}
                             </div>
                         );
                     })}
@@ -619,7 +507,7 @@ function Form({
                     size="sm"
                     className="self-start"
                     onClick={() =>
-                        setDraft((l) => [
+                        setDraft(l => [
                             ...l,
                             {
                                 def: {

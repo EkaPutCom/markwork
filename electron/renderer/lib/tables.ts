@@ -27,6 +27,14 @@ import {
 } from '../../../src/markdown/table';
 import { handling, trace } from './inspect/recorder';
 
+const HISTORY_INPUT_TYPES = [
+    'historyUndo',
+    'historyRedo',
+    'insertParagraph',
+    'insertLineBreak',
+    'format',
+];
+
 interface CellPlace {
     row: number;
     col: number;
@@ -503,9 +511,11 @@ export class TableWidget extends WidgetType {
             )
                 return;
             const from = line.from + change.from;
+            const inserted = JSON.stringify(change.insert);
             handling('table.cell-input', () => {
                 trace(
-                    `row ${rowOf(cell)}, column ${colOf(cell)}: the cell's text is written as ${JSON.stringify(change.insert)}`
+                    `row ${rowOf(cell)}, column ${colOf(cell)}: ` +
+                        `the cell's text is written as ${inserted}`
                 );
                 view.dispatch({
                     changes: {
@@ -592,8 +602,8 @@ export class TableWidget extends WidgetType {
         // and a cell is one line.
         wrap.addEventListener('beforeinput', (event) => {
             if (
-                /^(historyUndo|historyRedo|insertParagraph|insertLineBreak|format)/.test(
-                    event.inputType
+                HISTORY_INPUT_TYPES.some((type) =>
+                    event.inputType.startsWith(type)
                 )
             )
                 event.preventDefault();

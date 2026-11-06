@@ -34,7 +34,11 @@ export function MenubarTrigger({
         <MenubarPrimitive.Trigger
             data-slot="menubar-trigger"
             className={cn(
-                'flex h-6 cursor-default select-none items-center rounded-sm px-2 text-ui outline-hidden hover:bg-accent focus:bg-accent data-[state=open]:bg-accent',
+                (
+                    "flex h-6 cursor-default select-none items-center " +
+                    "rounded-sm px-2 text-ui outline-hidden hover:bg-accent " +
+                    "focus:bg-accent data-[state=open]:bg-accent"
+                ),
                 className
             )}
             {...props}
@@ -43,9 +47,20 @@ export function MenubarTrigger({
 }
 
 const popup =
-    'z-50 min-w-[8rem] origin-(--radix-menubar-content-transform-origin) overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95';
+    (
+        "z-50 min-w-[8rem] origin-(--radix-menubar-content-transform-origin) " +
+        "overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 " +
+        "text-popover-foreground shadow-md data-[state=open]:animate-in " +
+        "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+    );
 const row =
-    'relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0';
+    (
+        "relative flex cursor-default select-none items-center gap-2 " +
+        "rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent " +
+        "focus:text-accent-foreground data-[state=open]:bg-accent " +
+        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 " +
+        "[&_svg]:pointer-events-none [&_svg]:shrink-0"
+    );
 
 export function MenubarContent({
     className,

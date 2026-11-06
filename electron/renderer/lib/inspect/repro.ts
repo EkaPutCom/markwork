@@ -269,7 +269,8 @@ export function reproError(value: unknown): string | null {
     if (r.format !== 'markwork-repro')
         return 'not a markwork repro (its "format")';
     if (r.version !== 1)
-        return `version ${String(r.version)} of the format; this app reads version 1`;
+        return `version ${String(r.version)} of the format; ` +
+            'this app reads version 1';
     const start = r.start as Record<string, unknown> | undefined;
     if (!start || typeof start.doc !== 'string')
         return '"start.doc" is not text';

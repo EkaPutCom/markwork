@@ -242,7 +242,10 @@ export class CodeBoxWidget extends WidgetType {
         private readonly pickLanguage: (pick: LanguagePick) => void = () => {}
     ) {
         super();
-        this.key = `${text}\0${spans.map((s) => s.join(':')).join(',')}${dim ? '\0dim' : ''}${editable ? `\0edit${lines}\0${lang}` : ''}`;
+        this.key =
+            `${text}\0${spans.map((s) => s.join(':')).join(',')}` +
+            `${dim ? '\0dim' : ''}` +
+            `${editable ? `\0edit${lines}\0${lang}` : ''}`;
     }
 
     override eq(other: CodeBoxWidget): boolean {

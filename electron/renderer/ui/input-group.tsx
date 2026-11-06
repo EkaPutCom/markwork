@@ -11,12 +11,27 @@ import { Input } from '@/ui/input';
 // The classes of the group, the addon, and the entry inside, shared with
 // ui/dom.ts so the find bar draws the same.
 export const inputGroupClasses = cn(
-    'group/input-group relative flex h-9 w-full min-w-0 items-center rounded-md border border-input shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30',
-    'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-[3px] has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50',
-    'has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-destructive/20 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40'
+    (
+        "group/input-group relative flex h-9 w-full min-w-0 items-center " +
+        "rounded-md border border-input shadow-xs outline-none " +
+        "transition-[color,box-shadow] dark:bg-input/30"
+    ),
+    (
+        "has-[[data-slot=input-group-control]:focus-visible]:border-ring " +
+        "has-[[data-slot=input-group-control]:focus-visible]:ring-[3px] " +
+        "has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50"
+    ),
+    (
+        "has-[[data-slot][aria-invalid=true]]:border-destructive " +
+        "has-[[data-slot][aria-invalid=true]]:ring-destructive/20 " +
+        "dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40"
+    )
 );
 export const inputGroupInputClasses =
-    'flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent';
+    (
+        "flex-1 rounded-none border-0 bg-transparent shadow-none " +
+        "focus-visible:ring-0 dark:bg-transparent"
+    );
 
 export function InputGroup({ className, ...props }: ComponentProps<'div'>) {
     return (
@@ -30,7 +45,12 @@ export function InputGroup({ className, ...props }: ComponentProps<'div'>) {
 }
 
 export const addonVariants = cva(
-    "flex h-auto cursor-text select-none items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground group-data-[disabled=true]/input-group:opacity-50 [&>svg:not([class*='size-'])]:size-4",
+    (
+        "flex h-auto cursor-text select-none items-center justify-center " +
+        "gap-2 py-1.5 text-sm font-medium text-muted-foreground " +
+        "group-data-[disabled=true]/input-group:opacity-50 " +
+        "[&>svg:not([class*='size-'])]:size-4"
+    ),
     {
         variants: {
             align: {

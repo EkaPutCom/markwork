@@ -96,11 +96,17 @@ export const CHECKS: readonly Check[] = [
                     if (a < from || b > to) cut ??= [a, b];
                     covered += Math.min(b, to) - Math.max(a, from);
                 });
-                const what = `removed ${from}–${to} ${slice(before, from, to)} with the cursor at ${sel.head}`;
+                const what =
+                    `removed ${from}–${to} ${slice(before, from, to)} ` +
+                    `with the cursor at ${sel.head}`;
                 if (cut)
-                    found = `${what}: a part of the hidden ${slice(before, cut[0], cut[1])} at ${cut[0]}–${cut[1]}`;
+                    found =
+                        `${what}: a part of the hidden ` +
+                        `${slice(before, cut[0], cut[1])} at ` +
+                        `${cut[0]}–${cut[1]}`;
                 else if (covered >= to - from)
-                    found = `${what}: all of it hidden, so nothing the eye sees went away`;
+                    found = `${what}: all of it hidden, so nothing ` +
+                        'the eye sees went away';
             });
             return found && { severity: 'fail', message: found };
         },
@@ -128,7 +134,10 @@ export const CHECKS: readonly Check[] = [
                 return null;
             return {
                 severity: 'fail',
-                message: `the cursor is at ${sel.head}, inside the hidden prefix ${line.from}–${end} ${slice(after, line.from, end)} of line ${line.number}`,
+                message:
+                    `the cursor is at ${sel.head}, inside the hidden prefix ` +
+                    `${line.from}–${end} ${slice(after, line.from, end)} ` +
+                    `of line ${line.number}`,
             };
         },
     },
@@ -160,7 +169,9 @@ export const CHECKS: readonly Check[] = [
                     inBlock(before, from, to)
                 )
                     return;
-                found = `changed ${from}–${to} ${slice(before, from, to)}, outside ${lo}–${hi} around the selection`;
+                found =
+                    `changed ${from}–${to} ${slice(before, from, to)}, ` +
+                    `outside ${lo}–${hi} around the selection`;
             });
             return found && { severity: 'warn', message: found };
         },
@@ -180,10 +191,11 @@ export const CHECKS: readonly Check[] = [
             );
             parse.spans.forEach((spans, i) => {
                 for (const [name, a, b] of spans)
-                    if (name === 'cm-md-hr')
-                        markers.add(
-                            `${u16(parse.starts[i] + a)}:${u16(parse.starts[i] + b)}`
-                        );
+                    if (name === 'cm-md-hr') {
+                        const start = u16(parse.starts[i] + a);
+                        const end = u16(parse.starts[i] + b);
+                        markers.add(`${start}:${end}`);
+                    }
             });
             let found: string | null = null;
             drawn.concealed.hidden.between(0, after.doc.length, (from, to) => {
@@ -192,7 +204,9 @@ export const CHECKS: readonly Check[] = [
                     !after.sliceDoc(from, to).trim()
                 )
                     return;
-                found = `${from}–${to} ${slice(after, from, to)} is hidden but is not a marker of the parse`;
+                found =
+                    `${from}–${to} ${slice(after, from, to)} is hidden ` +
+                    'but is not a marker of the parse';
                 return false;
             });
             return found && { severity: 'fail', message: found };
@@ -231,7 +245,9 @@ export const CHECKS: readonly Check[] = [
                 if (odd)
                     return {
                         severity: 'warn',
-                        message: `line ${n} hides ${odd[1]} ${quote(odd[0])}, an odd number: a mark has lost its other half`,
+                        message:
+                            `line ${n} hides ${odd[1]} ${quote(odd[0])}, ` +
+                            'an odd number: a mark has lost its other half',
                     };
             }
             return null;
@@ -265,7 +281,10 @@ export const CHECKS: readonly Check[] = [
             const at = firstDifference(text.toString(), before.doc.toString());
             return {
                 severity: 'fail',
-                message: `undo gives a different text from ${at}: ${quote(text.sliceString(at, at + 20))} where it was ${quote(before.doc.sliceString(at, at + 20))}`,
+                message:
+                    `undo gives a different text from ${at}: ` +
+                    `${quote(text.sliceString(at, at + 20))} where it was ` +
+                    `${quote(before.doc.sliceString(at, at + 20))}`,
             };
         },
     },
@@ -285,7 +304,9 @@ export const CHECKS: readonly Check[] = [
                 )
                     return;
                 if (reach && from < reach[1] && to > reach[1]) {
-                    found = `${reach[0]}–${reach[1]} and ${from}–${to} are both replaced and cross`;
+                    found =
+                        `${reach[0]}–${reach[1]} and ${from}–${to} ` +
+                        'are both replaced and cross';
                     return false;
                 }
                 if (!reach || to > reach[1]) reach = [from, to];
@@ -322,7 +343,10 @@ export const CHECKS: readonly Check[] = [
                     if (cells(i) !== head)
                         return {
                             severity: 'warn',
-                            message: `the table at line ${t.start + 1}: line ${i + 1} has ${cells(i)} cells, its header ${head}`,
+                            message:
+                                `the table at line ${t.start + 1}: ` +
+                                `line ${i + 1} has ${cells(i)} cells, ` +
+                                `its header ${head}`,
                         };
                 }
             }
@@ -347,16 +371,31 @@ export const CHECKS: readonly Check[] = [
             if (!fresh) return null;
             const prefixes = (m: ReadonlyMap<number, number>) =>
                 JSON.stringify([...m].sort((a, b) => a[0] - b[0]));
-            const where = `with the selection at ${after.selection.main.anchor}–${after.selection.main.head}`;
+            const where =
+                `with the selection at ${after.selection.main.anchor}–` +
+                `${after.selection.main.head}`;
             if (!RangeSet.eq([kept.decorations], [fresh.decorations]))
                 return {
                     severity: 'fail',
-                    message: `the drawing kept ${where} differs from a new one: ${firstDifferent(kept.decorations, fresh.decorations)}`,
+                    message:
+                        `the drawing kept ${where} differs from a new one: ` +
+                        firstDifferent(kept.decorations, fresh.decorations),
                 };
-            if (!RangeSet.eq([kept.concealed.hidden], [fresh.concealed.hidden]))
+            if (
+                !RangeSet.eq(
+                    [kept.concealed.hidden],
+                    [fresh.concealed.hidden]
+                )
+            )
                 return {
                     severity: 'fail',
-                    message: `the hidden ranges kept ${where} differ from new ones: ${firstDifferent(kept.concealed.hidden, fresh.concealed.hidden)}`,
+                    message:
+                        'the hidden ranges kept ' +
+                        `${where} differ from new ones: ` +
+                        firstDifferent(
+                            kept.concealed.hidden,
+                            fresh.concealed.hidden
+                        ),
                 };
             if (
                 prefixes(kept.concealed.prefixes) !==
@@ -382,7 +421,9 @@ export const CHECKS: readonly Check[] = [
                 return null;
             return {
                 severity: 'warn',
-                message: `drawing the text took ${drawn.ms.toFixed(1)} ms (the limit is ${DRAW_LIMIT_MS})`,
+                message:
+                    `drawing the text took ${drawn.ms.toFixed(1)} ms ` +
+                    `(the limit is ${DRAW_LIMIT_MS})`,
             };
         },
     },
@@ -393,9 +434,12 @@ function firstDifferent(kept: DecorationSet, fresh: DecorationSet): string {
     const list = (set: DecorationSet) => {
         const out: string[] = [];
         set.between(0, 1e9, (from, to, deco) => {
-            out.push(
-                `${from}–${to} ${(deco.spec as { class?: string; widget?: object }).widget?.constructor.name ?? (deco.spec as { class?: string }).class ?? 'hidden'}`
-            );
+            const spec = deco.spec as { class?: string; widget?: object };
+            const name =
+                spec.widget?.constructor.name ??
+                (deco.spec as { class?: string }).class ??
+                'hidden';
+            out.push(`${from}–${to} ${name}`);
         });
         return out;
     };

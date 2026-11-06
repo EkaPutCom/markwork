@@ -8,9 +8,20 @@ import { CheckIcon, ChevronRightIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ITEM =
-    "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4";
+    (
+        "relative flex cursor-default select-none items-center gap-2 " +
+        "rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent " +
+        "focus:text-accent-foreground data-[disabled]:pointer-events-none " +
+        "data-[disabled]:opacity-50 [&_svg]:pointer-events-none " +
+        "[&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+    );
 const CONTENT =
-    'z-[60] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95';
+    (
+        "z-[60] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md " +
+        "border bg-popover p-1 text-popover-foreground shadow-md " +
+        "data-[state=open]:animate-in data-[state=open]:fade-in-0 " +
+        "data-[state=open]:zoom-in-95"
+    );
 
 export function ContextMenu(
     props: ComponentProps<typeof ContextMenuPrimitive.Root>
@@ -39,7 +50,12 @@ export function ContextMenuContent({
                 data-slot="context-menu-content"
                 className={cn(
                     CONTENT,
-                    'max-h-(--radix-context-menu-content-available-height) origin-(--radix-context-menu-content-transform-origin)',
+                    (
+                        "max-h-(--radix-context-menu-content-available-height" +
+                        ") " +
+                        "origin-(--radix-context-menu-content-transform-origi" +
+                        "n)"
+                    ),
                     className
                 )}
                 {...props}
@@ -72,7 +88,11 @@ export function ContextMenuItem({
             data-variant={variant}
             className={cn(
                 ITEM,
-                "data-[inset]:pl-8 data-[variant=destructive]:text-destructive [&_svg:not([class*='text-'])]:text-muted-foreground",
+                (
+                    "data-[inset]:pl-8 " +
+                    "data-[variant=destructive]:text-destructive " +
+                    "[&_svg:not([class*='text-'])]:text-muted-foreground"
+                ),
                 className
             )}
             {...props}
@@ -125,7 +145,10 @@ export function ContextMenuSubTrigger({
             data-inset={inset}
             className={cn(
                 ITEM,
-                'data-[inset]:pl-8 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
+                (
+                    "data-[inset]:pl-8 data-[state=open]:bg-accent " +
+                    "data-[state=open]:text-accent-foreground"
+                ),
                 className
             )}
             {...props}
@@ -145,7 +168,10 @@ export function ContextMenuSubContent({
             data-slot="context-menu-sub-content"
             className={cn(
                 CONTENT,
-                'origin-(--radix-context-menu-content-transform-origin) shadow-lg',
+                (
+                    "origin-(--radix-context-menu-content-transform-origin) " +
+                    "shadow-lg"
+                ),
                 className
             )}
             {...props}
@@ -163,7 +189,10 @@ export function ContextMenuLabel({
             data-slot="context-menu-label"
             data-inset={inset}
             className={cn(
-                'px-2 py-1.5 text-xs font-medium text-muted-foreground data-[inset]:pl-8',
+                (
+                    "px-2 py-1.5 text-xs font-medium text-muted-foreground " +
+                    "data-[inset]:pl-8"
+                ),
                 className
             )}
             {...props}

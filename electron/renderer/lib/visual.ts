@@ -246,7 +246,8 @@ function backspace(
     // paragraph.
     if (end !== undefined && sel.head <= end) {
         trace(
-            `in the prefix of line ${line.number} (${line.from}–${end}): the line becomes a paragraph`
+            `in the prefix of line ${line.number} (${line.from}–${end}): ` +
+                'the line becomes a paragraph'
         );
         view.dispatch({
             changes: { from: line.from, to: end },
@@ -269,8 +270,10 @@ function backspace(
     const anchor = first ? textStartAfter(state, from, pos) : from;
     trace(
         pos === sel.head
-            ? `removes the first letter of line ${line.number}'s text, ${from}–${pos}; the cursor goes to ${anchor}`
-            : `stepped back past hidden ${pos}–${sel.head}; removes ${from}–${pos}`
+            ? `removes the first letter of line ${line.number}'s text, ` +
+                `${from}–${pos}; the cursor goes to ${anchor}`
+            : `stepped back past hidden ${pos}–${sel.head}; ` +
+                `removes ${from}–${pos}`
     );
     view.dispatch({
         changes: { from, to: pos },
@@ -298,7 +301,8 @@ function deleteForward(
         const end = prefixes.get(next.from);
         if (end === undefined) return false;
         trace(
-            `at the end of line ${line.number}: the next line joins it without its prefix (${next.from}–${end})`
+            `at the end of line ${line.number}: the next line joins it ` +
+                `without its prefix (${next.from}–${end})`
         );
         view.dispatch({
             changes: { from: line.to, to: end },
@@ -324,7 +328,8 @@ function deleteForward(
     const anchor = first ? textStartAfter(state, pos, to) : pos;
     trace(
         pos === sel.head
-            ? `removes the first letter of line ${line.number}'s text, ${pos}–${to}; the cursor goes to ${anchor}`
+            ? `removes the first letter of line ${line.number}'s text, ` +
+                `${pos}–${to}; the cursor goes to ${anchor}`
             : `stepped on past hidden ${sel.head}–${pos}; removes ${pos}–${to}`
     );
     view.dispatch({

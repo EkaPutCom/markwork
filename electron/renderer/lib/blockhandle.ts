@@ -210,7 +210,8 @@ class BlockHandle {
         this.handle.style.left = `${text - 8}px`;
         // Level with the first line of the block (a table or a tall block is
         // only as tall as its first rows).
-        this.handle.style.top = `${top + (Math.min(bottom - top, 36) - 20) / 2}px`;
+        const center = top + (Math.min(bottom - top, 36) - 20) / 2;
+        this.handle.style.top = `${center}px`;
     }
 
     // A new empty block after this one, with the "/" menu open in it.

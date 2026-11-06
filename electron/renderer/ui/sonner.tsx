@@ -23,7 +23,12 @@ export function Toaster({
                     toast: 'font-sans text-sm',
                     actionButton: 'font-medium',
                     closeButton:
-                        '[--toast-close-button-start:auto] [--toast-close-button-end:0] [--toast-close-button-transform:translate(35%,-35%)]',
+                        (
+                            "[--toast-close-button-start:auto] " +
+                            "[--toast-close-button-end:0] " +
+                            "[--toast-close-button-transform:translate(35%,-3" +
+                            "5%)]"
+                        ),
                 },
             }}
             {...props}

@@ -309,7 +309,9 @@ function pickingKeys(
                   : null;
             if (!block) return false;
             trace(
-                `the ${block.kind} at ${block.from}–${block.to} is ${forward ? 'after' : 'before'} the cursor: picked, not changed`
+                `the ${block.kind} at ${block.from}–${block.to} is ` +
+                    `${forward ? 'after' : 'before'} the cursor: ` +
+                    'picked, not changed'
             );
             pick(view, block);
             return true;

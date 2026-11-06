@@ -2090,7 +2090,9 @@ export class Client {
             const { value } = await this.showDialog(
                 {
                     title: 'Save Changes?',
-                    detail: `${String(p.document)} contains unsaved changes. Changes which are not saved will be permanently lost.`,
+                    detail:
+                        `${String(p.document)} contains unsaved changes. ` +
+                        'Changes which are not saved will be permanently lost.',
                     entry: null,
                     buttons: [
                         { label: 'Save', value: 'save', style: 'suggested' },
@@ -2250,10 +2252,14 @@ export class Client {
                 keeping = a.detachable;
             const detail = [
                 stopping
-                    ? `${stopping} ${stopping === 1 ? 'agent works' : 'agents work'} in this window and will be stopped.`
+                    ? `${stopping} ` +
+                      `${stopping === 1 ? 'agent works' : 'agents work'} ` +
+                      'in this window and will be stopped.'
                     : '',
                 keeping
-                    ? `${keeping} ${keeping === 1 ? 'agent works' : 'agents work'} on a machine and can go on without this window.`
+                    ? `${keeping} ` +
+                      `${keeping === 1 ? 'agent works' : 'agents work'} ` +
+                      'on a machine and can go on without this window.'
                     : '',
             ]
                 .filter(Boolean)

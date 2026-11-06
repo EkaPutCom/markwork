@@ -228,7 +228,8 @@ export class InspectBridge {
         if (!Number.isInteger(line) || line < 1 || line > state.doc.lines)
             throw new InspectError(
                 'usage',
-                `--line ${String(request.line)} is not a line of the text (1–${state.doc.lines})`
+                `--line ${String(request.line)} is not a line of the text ` +
+                    `(1–${state.doc.lines})`
             );
         const [first, last] =
             request.line === undefined
@@ -380,7 +381,8 @@ export class InspectBridge {
             if (found === null)
                 throw new InspectError(
                     'not-found',
-                    `no visible text ${JSON.stringify(request.visible)} in the editor`
+                    `no visible text ${JSON.stringify(request.visible)} ` +
+                    'in the editor'
                 );
             pos =
                 request.edge === 'start'
@@ -490,7 +492,8 @@ export class InspectBridge {
         if (changes.length !== view.state.doc.length)
             throw new InspectError(
                 'mismatch',
-                `the change is for a text of ${changes.length} characters; this one has ${view.state.doc.length}`
+                `the change is for a text of ${changes.length} characters; ` +
+                    `this one has ${view.state.doc.length}`
             );
         view.dispatch({ changes, userEvent: 'inspect.external' });
         return this.where();
@@ -631,11 +634,15 @@ export class InspectBridge {
                 await until(fresh, NEW_DOC_MS, 'a new document');
                 break;
             } catch {
-                if (tries === NEW_DOC_TRIES)
+                if (tries === NEW_DOC_TRIES) {
+                    const activeTab = this.client.activeTab?.name ?? null;
                     throw new InspectError(
                         'timeout',
-                        `a new document did not happen within ${NEW_DOC_TRIES} tries of ${NEW_DOC_MS} ms (the active tab: ${JSON.stringify(this.client.activeTab?.name ?? null)})`
+                        'a new document did not happen within ' +
+                            `${NEW_DOC_TRIES} tries of ${NEW_DOC_MS} ms ` +
+                            `(the active tab: ${JSON.stringify(activeTab)})`
                     );
+                }
             }
         }
         // The core may still give the new tab its text (editor.ts reset makes

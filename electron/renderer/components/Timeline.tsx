@@ -33,6 +33,10 @@ const ROW_HEIGHT = 34,
     HEAD_HEIGHT = 30,
     LABEL_WIDTH = 200,
     CLICK_SLOP = 4;
+const labelClass = (done: boolean) =>
+    `timeline-label rounded-none font-normal${done ? ' dim' : ''}`;
+const weekLabel = (date: string) =>
+    `${formatDate(date, { weekday: 'short' })} ${Number(date.slice(8, 10))}`;
 const ZOOM_LABEL: Record<Zoom, string> = {
     week: 'Week',
     month: 'Month',
@@ -153,7 +157,7 @@ export function Timeline({ board }: { board: Board }) {
                         <Button
                             key={`${row.at.column}:${row.at.index}`}
                             variant="ghost"
-                            className={`timeline-label rounded-none font-normal${row.card.done === true ? ' dim' : ''}`}
+                            className={labelClass(row.card.done === true)}
                             style={{ height: ROW_HEIGHT }}
                             aria-description={
                                 row.start
@@ -182,7 +186,7 @@ export function Timeline({ board }: { board: Board }) {
                                     style={{ height: HEAD_HEIGHT }}
                                 >
                                     {zoom === 'week'
-                                        ? `${formatDate(tick.date, { weekday: 'short' })} ${Number(tick.date.slice(8, 10))}`
+                                        ? weekLabel(tick.date)
                                         : dayMonth(tick.date)}
                                 </span>
                             </div>
@@ -220,7 +224,14 @@ export function Timeline({ board }: { board: Board }) {
                                 row.start === row.end
                                     ? row.start
                                     : `${row.start} → ${row.end}`;
-                            const title = `${row.title}: ${s ? `${dates} (${s.text})` : dates}`;
+                            const title =
+                                `${row.title}: ` +
+                                (s ? `${dates} (${s.text})` : dates);
+                            const barClass =
+                                `timeline-bar${s ? ` ${s.css}` : ''}` +
+                                `${g ? ' grabbed' : ''}`;
+                            const fillWidth =
+                                `${Math.min(1, row.progress ?? 0) * 100}%`;
                             const pct =
                                 row.progress !== null && row.progress < 1
                                     ? ` · ${Math.round(row.progress * 100)}%`
@@ -228,7 +239,7 @@ export function Timeline({ board }: { board: Board }) {
                             return (
                                 <div
                                     key={`${row.at.column}:${row.at.index}`}
-                                    className={`timeline-bar${s ? ` ${s.css}` : ''}${g ? ' grabbed' : ''}`}
+                                    className={barClass}
                                     role="img"
                                     aria-label={title}
                                     title={title}
@@ -244,7 +255,7 @@ export function Timeline({ board }: { board: Board }) {
                                             <div
                                                 className="timeline-fill"
                                                 style={{
-                                                    width: `${Math.min(1, row.progress) * 100}%`,
+                                                    width: fillWidth,
                                                 }}
                                             />
                                         )}

@@ -97,8 +97,11 @@ function layout(tables: Table[]): Box[] {
 // tick for "one". dir points away from the table.
 function mark(x: number, y: number, dir: number, many: boolean): string {
     return many
-        ? `<path class="er-line" d="M${x + dir * 11} ${y}L${x} ${y - 5}M${x + dir * 11} ${y}L${x} ${y + 5}M${x + dir * 11} ${y - 5}V${y + 5}"/>`
-        : `<path class="er-line" d="M${x + dir * 8} ${y - 5}V${y + 5}M${x + dir * 12} ${y - 5}V${y + 5}"/>`;
+        ? `<path class="er-line" d="M${x + dir * 11} ${y}L${x} ${y - 5}` +
+            `M${x + dir * 11} ${y}L${x} ${y + 5}` +
+            `M${x + dir * 11} ${y - 5}V${y + 5}"/>`
+        : `<path class="er-line" d="M${x + dir * 8} ${y - 5}V${y + 5}` +
+            `M${x + dir * 12} ${y - 5}V${y + 5}"/>`;
 }
 
 function relation(r: Relation, boxes: Map<string, Box>): string {
@@ -135,8 +138,13 @@ function relation(r: Relation, boxes: Map<string, Box>): string {
     }
     const out = da === db ? Math.max(ax, bx) + STUB * 2 : 0;
     const mid = da === db ? out : (ax + bx) / 2;
-    const d = `M${ax + da * 12} ${ay}H${da === db ? out : mid}V${by}H${bx + db * 12}`;
-    return `<path class="er-line" d="${d}"/>${mark(ax, ay, da, manyA)}${mark(bx, by, db, manyB)}`;
+    const d =
+        `M${ax + da * 12} ${ay}H${da === db ? out : mid}` +
+        `V${by}H${bx + db * 12}`;
+    return (
+        `<path class="er-line" d="${d}"/>` +
+        `${mark(ax, ay, da, manyA)}${mark(bx, by, db, manyB)}`
+    );
 }
 
 export function dbmlToSvg(source: string): string {
@@ -151,20 +159,54 @@ export function dbmlToSvg(source: string): string {
         const rows = table.columns
             .map((c, i) => {
                 const cy = y + HEAD + i * ROW + ROW / 2;
+                const dividerY = y + HEAD + i * ROW;
+                const divider =
+                    i > 0
+                        ? `<path class="er-divider" d="M${x} ${dividerY}` +
+                            `H${x + w}"/>`
+                        : '';
                 let kx = x + w - PAD;
                 const badges = keys(c)
                     .reverse()
                     .map((k) => {
                         kx -= badgeW(k);
-                        const out = `<rect class="er-badge ${k === 'PK' ? 'pk' : ''}" x="${kx}" y="${cy - 10}" width="${badgeW(k)}" height="20" rx="10"/><text class="er-badge-text ${k === 'PK' ? 'pk' : ''}" x="${kx + badgeW(k) / 2}" y="${cy}">${k}</text>`;
+                        const badgeClass = k === 'PK' ? 'pk' : '';
+                        const out =
+                            `<rect class="er-badge ${badgeClass}" ` +
+                            `x="${kx}" y="${cy - 10}" width="${badgeW(k)}" ` +
+                            `height="20" rx="10"/>` +
+                            `<text class="er-badge-text ${badgeClass}" ` +
+                            `x="${kx + badgeW(k) / 2}" y="${cy}">${k}</text>`;
                         kx -= 4;
                         return out;
                     })
                     .join('');
-                return `${i > 0 ? `<path class="er-divider" d="M${x} ${y + HEAD + i * ROW}H${x + w}"/>` : ''}<text class="er-name" x="${x + PAD}" y="${cy}">${esc(c.name)}</text><text class="er-type" x="${x + PAD + b.nameW + 20}" y="${cy}">${esc(c.type)}</text>${badges}`;
+                return (
+                    divider +
+                    `<text class="er-name" x="${x + PAD}" y="${cy}">` +
+                    `${esc(c.name)}</text>` +
+                    `<text class="er-type" x="${x + PAD + b.nameW + 20}" ` +
+                    `y="${cy}">${esc(c.type)}</text>${badges}`
+                );
             })
             .join('');
-        return `<g><rect class="er-card" x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/><path class="er-head" d="M${x} ${y + HEAD}V${y + 8}a8 8 0 0 1 8-8H${x + w - 8}a8 8 0 0 1 8 8V${y + HEAD}Z"/><path class="er-divider" d="M${x} ${y + HEAD}H${x + w}"/><text class="er-title" x="${x + PAD}" y="${y + HEAD / 2}">${esc(table.name)}</text>${rows}<rect class="er-outline" x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/></g>`;
+        return (
+            `<g><rect class="er-card" x="${x}" y="${y}" ` +
+            `width="${w}" height="${h}" rx="8"/>` +
+            `<path class="er-head" d="M${x} ${y + HEAD}V${y + 8}` +
+            `a8 8 0 0 1 8-8H${x + w - 8}a8 8 0 0 1 8 8V${y + HEAD}Z"/>` +
+            `<path class="er-divider" d="M${x} ${y + HEAD}H${x + w}"/>` +
+            `<text class="er-title" x="${x + PAD}" y="${y + HEAD / 2}">` +
+            `${esc(table.name)}</text>${rows}` +
+            `<rect class="er-outline" x="${x}" y="${y}" ` +
+            `width="${w}" height="${h}" rx="8"/></g>`
+        );
     };
-    return `<svg class="er-diagram" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${schema.relations.map((r) => relation(r, byName)).join('')}${boxes.map(tableSvg).join('')}</svg>`;
+    return (
+        '<svg class="er-diagram" xmlns="http://www.w3.org/2000/svg" ' +
+        `width="${width}" height="${height}" ` +
+        `viewBox="0 0 ${width} ${height}">` +
+        `${schema.relations.map((r) => relation(r, byName)).join('')}` +
+        `${boxes.map(tableSvg).join('')}</svg>`
+    );
 }
