@@ -193,9 +193,11 @@ type Again = ((current: Board) => Board | null) | null;
 interface ViewState {
     // the user chose the text view for this board or inbox
     textOverride: boolean;
-    // the text the board/inbox last wrote or read; to recognize outside changes (undo)
+    // the text the board/inbox last wrote or read; to recognize outside changes
+    // (undo)
     boardText: string;
-    // the last texts the CSV table wrote: over the app protocol the text of an earlier write lands after a later one was made
+    // the last texts the CSV table wrote: over the app protocol the text of an
+    // earlier write lands after a later one was made
     csvWritten: string[];
     reloadQueued: boolean;
 }
@@ -852,7 +854,8 @@ export class ViewController<E extends TextEditor> {
             return;
         }
         if (PAGE_OF[layout] !== view) {
-            // the layout was changed in the text (by an undo, or the assistant): follow it
+            // the layout was changed in the text (by an undo, or the
+            // assistant): follow it
             this.show(PAGE_OF[layout]);
             return;
         }

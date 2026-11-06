@@ -80,7 +80,8 @@ export interface HomeJournal {
 // Everything the Home page shows; the frontend only draws it.
 export interface HomeData {
     now: number;
-    // the needed programs that are missing (ProgramsController.setup)                  // the moment the page was made, in milliseconds since 1970
+    // the needed programs that are missing (ProgramsController.setup)
+    // // the moment the page was made, in milliseconds since 1970
     setup: SetupData | null;
     // the user's first name, null = a greeting without a name
     name: string | null;

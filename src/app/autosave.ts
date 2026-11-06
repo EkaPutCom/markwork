@@ -23,7 +23,8 @@ export interface AutosaveHost {
 interface Pending {
     timer: ReturnType<typeof setTimeout> | null; // the pending autosave
     lastChange: number; // time (ms, monotonic) of the last text change
-    // number of text changes; marks the contents written by a background autosave
+    // number of text changes; marks the contents written by a background
+    // autosave
     changes: number;
 }
 

@@ -75,7 +75,8 @@ export interface ChangedFile {
 
 export interface HistoryChanges {
     file: string | null; // the active file
-    // the active file against the last commit; null = no file, or git could not tell
+    // the active file against the last commit; null = no file, or git could not
+    // tell
     state: WorkingState | null;
     changed: ChangedFile[];
 }
@@ -144,7 +145,8 @@ export interface HistoryHost<
 > extends DocumentHost<E> {
     readonly historyTab: HistoryTabView;
     readonly historyViewers: HistoryViewersView;
-    // write the open documents first, so no pending write brings the changes back; false = failed
+    // write the open documents first, so no pending write brings the changes
+    // back; false = failed
     saveAll(): boolean;
     fileGone(doc: Doc<E>): void;
     refreshTree(): void;

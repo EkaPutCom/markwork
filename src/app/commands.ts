@@ -70,7 +70,8 @@ export interface FrontendCommands {
     showPalette(): void;
     showShortcuts(): void;
     showAbout(): void;
-    // a report of a problem with the editor (docs/design/debugger.md, section 11)
+    // a report of a problem with the editor (docs/design/debugger.md, section
+    // 11)
     showReport(): void;
     quit(): void;
 }
@@ -131,7 +132,8 @@ export interface Command {
     readonly id: string;
     // listed in the command palette; without one it is not
     readonly label?: string;
-    // default keys, "Ctrl+Shift+P" (Ctrl, Alt, Shift, then the key); the first is shown
+    // default keys, "Ctrl+Shift+P" (Ctrl, Alt, Shift, then the key); the first
+    // is shown
     readonly keys: readonly string[];
     readonly kind: CommandKind;
     readonly scope: CommandScope;
@@ -546,7 +548,8 @@ export const commandIds = (scope: CommandScope): string[] =>
 
 // What the application is showing, as far as the commands care.
 export interface CommandState {
-    // a tab that is not a document (Home, an HTML file): no text, nothing to save
+    // a tab that is not a document (Home, an HTML file): no text, nothing to
+    // save
     readonly page: boolean;
     // a board, list, table, or another structured page
     readonly structured: boolean;

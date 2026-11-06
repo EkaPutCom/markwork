@@ -78,7 +78,8 @@ export function remapPath(
 export interface DocumentsHost<E extends TextEditor> {
     readonly settings: AppSettings;
     readonly dialogs: DocumentDialogs;
-    // the editor for a new document (a replica of the frontend's, over the protocol)
+    // the editor for a new document (a replica of the frontend's, over the
+    // protocol)
     createEditor(id: number): E;
     readonly autosaver: Autosaver;
     canSaveDocument?(doc: Doc<E>): boolean;
@@ -124,7 +125,8 @@ type MutableDoc = { -readonly [K in keyof Doc]: Doc[K] };
 
 export class DocumentController<E extends TextEditor> {
     private docs: Doc<E>[] = [];
-    // the active document; while a page is shown, the last one that was (what the page leaves behind)
+    // the active document; while a page is shown, the last one that was (what
+    // the page leaves behind)
     private current!: Doc<E>;
     private pages: Page[] = [];
     // the page that is shown instead of the active document
@@ -135,7 +137,8 @@ export class DocumentController<E extends TextEditor> {
     // made.
     private parked: Doc<E> | null = null;
     private nextId = 1;
-    // a tab from the last session is being reopened: do not record it as newly opened
+    // a tab from the last session is being reopened: do not record it as newly
+    // opened
     private restoring = false;
     private comparison: {
         id: number;

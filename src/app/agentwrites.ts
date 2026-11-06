@@ -35,7 +35,8 @@ export interface AgentWriteHost<
     fileGone(doc: Doc<E>): void;
     fileBack(doc: Doc<E>, path: string): void;
     refreshTree(): void;
-    // a delete or move happened: re-reveal the active file and reload its history
+    // a delete or move happened: re-reveal the active file and reload its
+    // history
     filesMoved(): void;
     record(kind: ActivityKind, text: string): void;
 }

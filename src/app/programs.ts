@@ -39,25 +39,29 @@ export interface InstallWay {
 }
 
 export interface ProgramInfo {
-    // unique on the page: the name, with the machine for one checked elsewhere ("vps-1:pi")
+    // unique on the page: the name, with the machine for one checked elsewhere
+    // ("vps-1:pi")
     id: string;
     name: ProgramName;
     // null = this computer; else the machine's name in Preferences → Agents
     machine: string | null;
     state: ProgramState;
-    // a feature the user chose depends on it; an optional program is never a warning
+    // a feature the user chose depends on it; an optional program is never a
+    // warning
     needed: boolean;
     version: string; // the first line of its version output, '' when not known
     path: string; // where it was found, '' when not
     detail: string; // why it is missing, not allowed, or unknown
     purpose: string;
-    // for this computer every system (this one first); for a machine, Linux only
+    // for this computer every system (this one first); for a machine, Linux
+    // only
     install: InstallWay[];
     url: string; // the page with the full instructions
 }
 
 export interface ProgramsData {
-    // where agents run: '' = in this window, 'local' = markworkd here, else an SSH machine
+    // where agents run: '' = in this window, 'local' = markworkd here, else an
+    // SSH machine
     machine: string;
     machineLabel: string;
     checking: boolean;
@@ -69,7 +73,8 @@ export interface ProgramsData {
 export interface SetupData {
     items: ProgramInfo[];
     note: string;
-    // agents are set to run through markworkd, which is missing: offer to run them in this window
+    // agents are set to run through markworkd, which is missing: offer to run
+    // them in this window
     runHere: boolean;
 }
 

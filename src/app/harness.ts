@@ -74,7 +74,8 @@ export interface CardRun {
 // when the user opens it, and answered with entries whose action stays here (a
 // token).
 export interface HarnessBoard {
-    // the runs of the board's cards, when the board is shown and when one changes
+    // the runs of the board's cards, when the board is shown and when one
+    // changes
     setRuns(runs: readonly CardRun[]): void;
     onCardMenu: (card: Card, at: Position) => Promise<HarnessMenuEntry[]>;
     onRunMenu: (token: number) => void;
@@ -128,7 +129,8 @@ export interface HarnessHost extends DocumentHost {
     readonly settings: AppSettings;
     readonly board: HarnessBoard;
     boardNow(): Board; // the board of the active document
-    // a change made from the card menu: shown on the board and written (one undo step)
+    // a change made from the card menu: shown on the board and written (one
+    // undo step)
     commitBoard(board: Board): void;
     readonly logs: HarnessLogs;
     readonly workspace: WorkspaceRepository;
@@ -146,7 +148,8 @@ export interface AgentHostStatus {
     detail: string; // why it cannot connect, when it cannot
 }
 
-// see spawnMeta() in orchestrator/index.ts: a longer card is matched by its start
+// see spawnMeta() in orchestrator/index.ts: a longer card is matched by its
+// start
 const LABEL_CARD_CHARS = 4000;
 
 export class HarnessController {

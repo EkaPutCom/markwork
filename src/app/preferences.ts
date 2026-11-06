@@ -39,7 +39,8 @@ export interface MachineDraft {
 
 // One choice of "Run agents".
 export interface MachineChoice {
-    // '' = in this window, 'local' = the markworkd daemon here, else the name of an SSH machine
+    // '' = in this window, 'local' = the markworkd daemon here, else the name
+    // of an SSH machine
     value: string;
     label: string;
 }

@@ -24,7 +24,8 @@ const MAX_RETRIES = 3;
 // when the write is sent.
 interface Write {
     make(text: string): string | null;
-    // recompute after a conflict; a whole text computed from older text must not be tried again
+    // recompute after a conflict; a whole text computed from older text must
+    // not be tried again
     retry: boolean;
     attempts: number;
 }
@@ -204,7 +205,8 @@ export class ProtocolEditor implements TextEditor {
         offset: number,
         selection: readonly [number, number] | null
     ): void {
-        // a cursor for text we do not have yet is about to be replaced by the next edit
+        // a cursor for text we do not have yet is about to be replaced by the
+        // next edit
         if (version !== this._version) return;
         this.cursor = offset;
         const u16 = makeU16Map(this.text);
