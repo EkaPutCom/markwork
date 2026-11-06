@@ -109,7 +109,9 @@ export const SCHEMA_TOOLS: ToolSpec[] = [
                                 type: 'string',
                                 enum: [...OPS],
                                 description:
-                                    'eq, ne, lt, lte, gt, gte (dates, numbers, progress), contains, empty, not_empty',
+                                    'eq, ne, lt, lte, gt, gte (dates, ' +
+                                    'numbers, progress), contains, empty, ' +
+                                    'not_empty',
                             },
                             value: {
                                 type: 'string',
@@ -138,8 +140,9 @@ export const SCHEMA_TOOLS: ToolSpec[] = [
                 },
                 limit: {
                     type: 'integer',
-                    description: `${"Maximum number of notes" +
-            " listed (1–"}${MAX_ROWS}, default ${DEFAULT_ROWS})`,
+                    description:
+                        `Maximum number of notes listed (1–${MAX_ROWS}, ` +
+                        `default ${DEFAULT_ROWS})`,
                 },
             },
             additionalProperties: false,
@@ -158,9 +161,12 @@ function describeDoc(file: SourceFile, doc: StructuredDoc): string {
     const groups = doc.board.columns
         .map((c) => `${c.title || '(no heading)'} ${c.cards.length}`)
         .join(', ');
-    const lines = [
-        `${file.name} — layout: ${doc.layout} · ${plural(notes.length, 'note', 'notes')}${groups ? ` in ${plural(doc.board.columns.length, 'group', 'groups')} (${groups})` : ''}`,
-    ];
+    const groupCount = plural(doc.board.columns.length, 'group', 'groups');
+    const groupSummary = groups ? ` in ${groupCount} (${groups})` : '';
+    const summary =
+        `${file.name} — layout: ${doc.layout} · ` +
+        `${plural(notes.length, 'note', 'notes')}${groupSummary}`;
+    const lines = [summary];
     const options = frontmatterOptions(file.text).map(([k, v]) => `${k}: ${v}`);
     if (options.length) lines.push(`options: ${options.join('; ')}`);
     lines.push(
@@ -199,17 +205,17 @@ export function describeSchema(
         const doc = structuredDoc(file.text);
         if (!doc)
             return {
-                content: `${file.name}${" is an ordinary document:" +
-            " its frontmatter has no" +
-            " \"layout:\", so it has no" +
-            " fields. edit_schema with" +
-            " set_layout can give it a" +
-            " layout."}`,
+                content:
+                    `${file.name} is an ordinary document: ` +
+                    'its frontmatter has no "layout:", so it has no fields. ' +
+                    'edit_schema with set_layout can give it a layout.',
                 summary: 'ordinary document',
             };
         return {
             content: describeDoc(file, doc),
-            summary: `${doc.layout}, ${plural(doc.schema.length, 'field', 'fields')}`,
+            summary:
+                `${doc.layout}, ` +
+                `${plural(doc.schema.length, 'field', 'fields')}`,
         };
     }
     const docs = files.flatMap((f) => {
@@ -366,11 +372,14 @@ function unknownField(
             !SPECIAL.includes(c.field.toLowerCase()) &&
             !known.has(c.field.toLowerCase())
     );
-    return bad
-        ? `${"No structured document" +
-            " has a field \""}${bad.field}". Fields: ${[...new Set(docs.flatMap((d) => d.doc.schema.map((f) => f.key)))].join(', ') || '(none)'}${"; also title, tag, group," +
-            " done."}`
-        : null;
+    if (!bad) return null;
+    const fields = [
+        ...new Set(docs.flatMap((d) => d.doc.schema.map((f) => f.key))),
+    ].join(', ') || '(none)';
+    return (
+        `No structured document has a field "${bad.field}". ` +
+        `Fields: ${fields}; also title, tag, group, done.`
+    );
 }
 
 function rowsOf(docs: { file: SourceFile; doc: StructuredDoc }[]): Row[] {
@@ -410,13 +419,25 @@ function sortRows(rows: Row[], key: string, desc: boolean): Row[] {
         .map((k) => k.row);
 }
 
-const rowLine = (r: Row): string =>
-    `${r.file}${r.group ? ` › ${r.group}` : ''} · ${r.done === null ? '' : r.done ? '[x] ' : '[ ] '}${r.item.title}${Object.keys(r.item.fields).length || r.item.tags.length ? ` — ${noteSummary(r)}` : ''}`;
+const rowLine = (r: Row): string => {
+    const group = r.group ? ` › ${r.group}` : '';
+    const done = r.done === null ? '' : r.done ? '[x] ' : '[ ] ';
+    const summary =
+        Object.keys(r.item.fields).length || r.item.tags.length
+            ? ` — ${noteSummary(r)}`
+            : '';
+    return `${r.file}${group} · ${done}${r.item.title}${summary}`;
+};
 
 function noteSummary(r: Row): string {
     const fields = Object.entries(r.item.fields).map(([key, p]) => {
         const def = r.doc.schema.find((f) => f.key === key);
-        return `${key}: ${p.ok && def ? displayValue(def, p.value) : p.ok ? '' : p.raw}`;
+        const value = p.ok && def
+            ? displayValue(def, p.value)
+            : p.ok
+              ? ''
+              : p.raw;
+        return `${key}: ${value}`;
     });
     return [...fields, ...r.item.tags.map((t) => `#${t}`)].join('; ');
 }
@@ -438,7 +459,9 @@ function countBy(rows: Row[], key: string): ToolOutcome {
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .map(([name, n]) => `${name}: ${n}`);
     return {
-        content: `${plural(rows.length, 'note', 'notes')} counted by ${key} ("—" = no value):\n${lines.join('\n')}`,
+        content:
+            `${plural(rows.length, 'note', 'notes')} counted by ${key} ` +
+            `("—" = no value):\n${lines.join('\n')}`,
         summary: plural(counts.size, 'value', 'values'),
     };
 }
@@ -506,7 +529,9 @@ export function queryNotes(
             " limit …]"}`
             : '';
     return {
-        content: `${plural(sorted.length, 'note matches', 'notes match')}:\n${sorted.slice(0, limit).map(rowLine).join('\n')}${more}`,
+        content:
+            `${plural(sorted.length, 'note matches', 'notes match')}:\n` +
+            `${sorted.slice(0, limit).map(rowLine).join('\n')}${more}`,
         summary: plural(sorted.length, 'note', 'notes'),
     };
 }
