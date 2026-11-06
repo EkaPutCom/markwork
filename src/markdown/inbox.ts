@@ -5,19 +5,19 @@
 // document can be shown as a board or as a list without being converted.
 // Frontmatter marks the document (layout.ts):
 //
-//   ---
-//   layout: list
-//   add: top             ← where a new note goes: top (default) or bottom
-//   fields:
-//     created: date = now
-//   ---
+// ---
+// layout: list
+// add: top             ← where a new note goes: top (default) or bottom
+// fields:
+// created: date = now
+// ---
 //
 // # Inbox                          ← title and description (anything before the
 // first item) are kept
 //
-//   - Read the GNOME HIG article #read [created:: 2026-10-07 14:32]
-//     item note (indented)           ← an indented line = item note
-//   - [x] Workbench name idea #markwork [created:: 2026-10-07 09:10]
+// - Read the GNOME HIG article #read [created:: 2026-10-07 14:32]
+// item note (indented)           ← an indented line = item note
+// - [x] Workbench name idea #markwork [created:: 2026-10-07 09:10]
 //
 // One item = one list bullet; the `created` field (see fields.ts) is the capture
 // time. Items without a time are
@@ -153,7 +153,8 @@ export const itemFields = (text: string, schema: FieldDef[]): FieldChip[] =>
 export interface ItemMeta {
     title: string; // text without #tags and capture time
     tags: string[];
-    captured: Date | null; // local time; an item without a time of day is treated as midnight
+    // local time; an item without a time of day is treated as midnight
+    captured: Date | null;
 }
 
 export function itemMeta(text: string): ItemMeta {

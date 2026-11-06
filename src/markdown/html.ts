@@ -4,7 +4,7 @@
 // The flow has two stages:
 // 1. blocksHtml()  splits the document line by line into blocks: headings,
 // paragraphs,
-//                    lists, quotes, tables, code blocks.
+// lists, quotes, tables, code blocks.
 // 2. inlineHtml()  formats the contents of each block: bold, italic, code,
 // links, etc.
 

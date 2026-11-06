@@ -26,8 +26,10 @@ export interface HomeFile {
 export interface Task {
     file: string; // relative name of the board
     at: Position;
-    card: string; // card text when read, to make sure the card has not changed before writing
-    box: boolean; // the card has a checkbox ("- [ ]"); without it, unchecking restores a plain bullet
+    // card text when read, to make sure the card has not changed before writing
+    card: string;
+    // the card has a checkbox ("- [ ]"); without it, unchecking restores a plain bullet
+    box: boolean;
     title: string;
     project: string | null;
     due: string; // "YYYY-MM-DD"
@@ -149,7 +151,8 @@ const parentOf = (path: string): string =>
     path.slice(0, Math.max(0, path.lastIndexOf('/')));
 
 export interface RecentSplit {
-    resume: RecentFile[]; // "Continue" cards: the latest file from different folders
+    // "Continue" cards: the latest file from different folders
+    resume: RecentFile[];
     others: RecentFile[]; // the rest for the "Recent files" list
 }
 

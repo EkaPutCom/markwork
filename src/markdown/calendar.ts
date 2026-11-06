@@ -3,13 +3,13 @@
 // date yet. The model is the same as a board's or a list's (kanban.ts), so the
 // same file can be shown as any of them.
 //
-//   ---
-//   layout: calendar
+// ---
+// layout: calendar
 // date: due                        ← optional; the date field to place notes by
 // (default `due`, else the first date field)
-//   fields:
-//     due: date
-//   ---
+// fields:
+// due: date
+// ---
 //
 // Pure TypeScript.
 
@@ -34,8 +34,10 @@ export interface CalendarItem {
 }
 
 export interface CalendarData {
-    key: string | null; // the date field notes are placed by; null if the document has none
-    byDate: Map<string, CalendarItem[]>; // notes with a date, a day's notes without a time first, then in time order
+    // the date field notes are placed by; null if the document has none
+    key: string | null;
+    // notes with a date, a day's notes without a time first, then in time order
+    byDate: Map<string, CalendarItem[]>;
     undated: { at: Position; card: Card; title: string }[];
 }
 

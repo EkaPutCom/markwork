@@ -1,13 +1,13 @@
 // A board whose columns are the values of a select field instead of `##`
 // headings:
 //
-//   ---
-//   layout: board
+// ---
+// layout: board
 // group: status                    ← the select field whose values are the
 // columns
-//   fields:
-//     status: select(todo, doing, done)
-//   ---
+// fields:
+// status: select(todo, doing, done)
+// ---
 //
 // The board view shows a derived board (`groupBoard`): a column per option in
 // the order the field lists them, then the
@@ -49,7 +49,8 @@ export function groupFieldOf(
 
 export interface Grouped {
     board: Board;
-    origin: Position[][]; // where each card of `board` is in the source, by column and index
+    // where each card of `board` is in the source, by column and index
+    origin: Position[][];
 }
 
 const valueOf = (card: Card, def: FieldDef): string | null => {

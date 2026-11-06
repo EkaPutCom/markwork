@@ -3,14 +3,14 @@
 // a board's or a list's (kanban.ts), so the same file can be shown as any of
 // them.
 //
-//   ---
-//   layout: gallery
+// ---
+// layout: gallery
 // cover: cover                     ← optional; the field that holds an image
 // path or a color (default `cover`)
-//   size: medium                     ← optional; small, medium, or large
-//   fields:
-//     cover: link
-//   ---
+// size: medium                     ← optional; small, medium, or large
+// fields:
+// cover: link
+// ---
 //
 // The cover of a note is its `cover` field, else the first image in the note
 // (`![](images/a.png)`), else a color taken

@@ -3,19 +3,19 @@
 // same as a board's or a list's (kanban.ts), so the same file can be shown as
 // any of them.
 //
-//   ---
-//   layout: chart
+// ---
+// layout: chart
 // by: created                      ← optional; the date field to count notes per
 // period by (default `created`)
 // group: status                    ← optional; the select field for the donut
 // (default the first select field)
-//   period: week                     ← optional; week or month (default week)
+// period: week                     ← optional; week or month (default week)
 // charts: [kpi, bar, donut:status, tags]   ← optional; which panels to show, in
 // order (default: kpi, bar, donut, tags)
-//   fields:
-//     created: date = today
-//     status: select(todo, doing, done)
-//   ---
+// fields:
+// created: date = today
+// status: select(todo, doing, done)
+// ---
 //
 // `charts:` names the panels: `kpi` (the four numbers), `bar` (notes per period
 // of a date field: `bar:due`,
@@ -45,9 +45,11 @@ export interface ChartData {
     total: number;
     done: number;
     overdue: number; // not done and past the `due` field
-    perPeriod: { start: string; count: number }[]; // `start`: the Monday or the "YYYY-MM-01" the period begins at
+    // `start`: the Monday or the "YYYY-MM-01" the period begins at
+    perPeriod: { start: string; count: number }[];
     period: Period;
-    byGroup: Slice[]; // the notes per value of the group field (a note without a value is "—")
+    // the notes per value of the group field (a note without a value is "—")
+    byGroup: Slice[];
     groupKey: string | null;
     byTag: Slice[];
     averagePerWeek: number;

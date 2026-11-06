@@ -5,9 +5,9 @@
 //
 // Table shape:
 //
-//   | Name  | Value |      ← header row
-//   | :---- | ----: |      ← separator row; colons set the alignment
-//   | one   |     1 |      ← body row (the edge pipes may be omitted)
+// | Name  | Value |      ← header row
+// | :---- | ----: |      ← separator row; colons set the alignment
+// | one   |     1 |      ← body row (the edge pipes may be omitted)
 
 import { RE, startsTable } from './syntax';
 
@@ -84,8 +84,10 @@ export function findTables(lines: string[]): TableRange[] {
 // ---------- Splitting lines ----------
 
 export interface CellSpan {
-    text: string; // cell contents without surrounding spaces; raw Markdown (\| stays)
-    start: number; // start position of the contents in the line (UTF-16); empty cell: a sensible cursor position
+    // cell contents without surrounding spaces; raw Markdown (\| stays)
+    text: string;
+    // start position of the contents in the line (UTF-16); empty cell: a sensible cursor position
+    start: number;
     end: number;
 }
 
@@ -128,7 +130,8 @@ export function splitRow(line: string): CellSpan[] {
             const start = from + raw.length - raw.trimStart().length;
             cells.push({ text, start, end: start + text.length });
         } else {
-            const at = Math.min(from + (raw.startsWith(' ') ? 1 : 0), to); // after "| "
+            // after "| "
+            const at = Math.min(from + (raw.startsWith(' ') ? 1 : 0), to);
             cells.push({ text: '', start: at, end: at });
         }
     }
@@ -336,7 +339,8 @@ export function setAlign(table: Table, col: number, align: Align): Table {
 
 // ---------- Drawing a table as a grid ----------
 
-const MIN_COLUMN = 56; // smallest column width (pixels) when the table has to be narrowed
+// smallest column width (pixels) when the table has to be narrowed
+const MIN_COLUMN = 56;
 
 // Column widths so that they fit in `available`. Columns that are already narrow
 // are left alone,

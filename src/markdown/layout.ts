@@ -1,25 +1,25 @@
 // How a Markdown document is shown. The frontmatter names the layout:
 //
-//   ---
-//   layout: board        ← a column per `##` heading, a card per list item
-//   ---
+// ---
+// layout: board        ← a column per `##` heading, a card per list item
+// ---
 //
-//   ---
-//   layout: list         ← one list of notes (an inbox, a reading list, …)
-//   ---
+// ---
+// layout: list         ← one list of notes (an inbox, a reading list, …)
+// ---
 //
-//   ---
-//   layout: table        ← one row per note, one column per field
-//   ---
+// ---
+// layout: table        ← one row per note, one column per field
+// ---
 //
-//   ---
+// ---
 // layout: calendar     ← a month grid; notes sit on the day of a date field
 // (`date:`, default `due`)
 // layout: timeline     ← a bar per note from `start:` to `end:` (defaults
 // `start` and `due`)
-//   layout: gallery      ← cards with a cover (`cover:`, default `cover`)
-//   layout: chart        ← counts and charts over the notes (`by:`, `group:`)
-//   ---
+// layout: gallery      ← cards with a cover (`cover:`, default `cover`)
+// layout: chart        ← counts and charts over the notes (`by:`, `group:`)
+// ---
 //
 // `layout: board` can also say `group: status` to make the columns the values of
 // a select field.

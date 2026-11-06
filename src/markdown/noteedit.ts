@@ -56,12 +56,14 @@ export interface ColumnRef {
 // the edit is applied, from the card as it is then, so the fields the dialog
 // does not show are kept.
 export interface CardForm {
-    kind: 'card' | 'note'; // a board's card (with its due date and agent), or a note of a list, a table, or a layout
+    // a board's card (with its due date and agent), or a note of a list, a table, or a layout
+    kind: 'card' | 'note';
     title: string;
     tags: string[];
     due: string; // a card's; '' for a note
     agent: string; // a card's; '' = not assigned
-    fields: { field: FieldDef; text: string }[]; // the document's fields as the dialog showed them; an empty text removes one
+    // the document's fields as the dialog showed them; an empty text removes one
+    fields: { field: FieldDef; text: string }[];
 }
 
 // A card's first line: typed as is (a quick capture), or a dialog's parts.
@@ -106,7 +108,8 @@ export type NoteEdit =
     | (CardRef & { kind: 'update'; text?: CardText; notes?: string[] })
     | (CardRef & { kind: 'delete' })
     | (CardRef & { kind: 'move'; to: Position })
-    | (CardRef & { kind: 'place'; point: Position }) // dropped between notes (inbox)
+    // dropped between notes (inbox)
+    | (CardRef & { kind: 'place'; point: Position })
     | (CardRef & { kind: 'toggle' }) // done / not done
     | (CardRef & {
           kind: 'field';
@@ -115,10 +118,13 @@ export type NoteEdit =
           field: FieldDef;
           option: string | null;
       }) // option: a new select option, written with it
-    | (CardRef & { kind: 'section'; title: string }) // into a new (or the same-named) section
-    | (CardRef & { kind: 'date'; date: string }) // dropped on a day of the calendar
+    // into a new (or the same-named) section
+    | (CardRef & { kind: 'section'; title: string })
+    // dropped on a day of the calendar
+    | (CardRef & { kind: 'date'; date: string })
     | (CardRef & { kind: 'shift'; days: number }) // a timeline bar moved
-    | (CardRef & { kind: 'resize'; edge: 'start' | 'end'; days: number }) // a timeline bar's edge moved
+    // a timeline bar's edge moved
+    | (CardRef & { kind: 'resize'; edge: 'start' | 'end'; days: number })
     | { kind: 'addColumn'; title: string }
     | (ColumnRef & { kind: 'renameColumn'; to: string })
     | (ColumnRef & { kind: 'deleteColumn'; keepCards: boolean })
@@ -257,7 +263,8 @@ function updated(
                   edit.text,
                   board.columns[at.column].cards[at.index].text
               );
-    if (text !== undefined && !text.trim()) return board; // a dialog that left nothing changes nothing
+    // a dialog that left nothing changes nothing
+    if (text !== undefined && !text.trim()) return board;
     return updateCard(board, at, {
         ...(text !== undefined && { text }),
         ...(edit.notes && { notes: edit.notes }),

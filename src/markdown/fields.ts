@@ -3,14 +3,14 @@
 // A document declares its fields in the frontmatter, one line per field as `key:
 // type(arguments)`:
 //
-//   ---
-//   fields:
-//     prioritas: select(tinggi:red, sedang:amber, rendah)
-//     due: date
-//     progres: progress
-//     pemilik: person[]
-//     created: date = now
-//   ---
+// ---
+// fields:
+// prioritas: select(tinggi:red, sedang:amber, rendah)
+// due: date
+// progres: progress
+// pemilik: person[]
+// created: date = now
+// ---
 //
 // and an item carries its values in the first line, after the title, as `[key::
 // value]`:
@@ -66,8 +66,10 @@ export interface FieldDef {
     type: FieldType;
     multiple: boolean;
     options: string[]; // select only; empty = any value
-    colors?: Record<string, OptionColor>; // select only: the color chosen for an option, by its text
-    default?: string; // what a new item gets: a value of the field, or `now` / `today` for a date
+    // select only: the color chosen for an option, by its text
+    colors?: Record<string, OptionColor>;
+    // what a new item gets: a value of the field, or `now` / `today` for a date
+    default?: string;
 }
 
 export interface DateValue {
@@ -95,7 +97,8 @@ export interface Segment {
 export interface Item {
     title: string; // text without fields and #tags
     tags: string[];
-    fields: Record<string, Parsed>; // declared fields that have a value; the first occurrence of a key wins
+    // declared fields that have a value; the first occurrence of a key wins
+    fields: Record<string, Parsed>;
     unknown: { key: string; raw: string }[]; // keys that are not in the schema
 }
 
@@ -551,7 +554,8 @@ export interface FieldChip {
     key: string;
     text: string;
     type: FieldType | null; // null = a key that is not in the schema
-    option: number | null; // select: the index of the chosen option, for its color when it has none of its own
+    // select: the index of the chosen option, for its color when it has none of its own
+    option: number | null;
     color: OptionColor | null; // select: the color chosen for the option
     invalid: string | null; // why the value does not fit its field
 }

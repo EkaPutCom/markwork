@@ -670,11 +670,11 @@ function nextItemPrefix(quote: string, item: RegExpExecArray): string {
 }
 
 // Enter on a list/quote line; null if the line is neither:
-//   "- one"   → new line "- "
-//   "9. a"     → new line "10. "
-//   "- [x] a"  → new line "- [ ] "
-//   "> a"      → new line "> "
-//   empty item ("- " or "> ") → its prefix is removed, the list/quote ends
+// "- one"   → new line "- "
+// "9. a"     → new line "10. "
+// "- [x] a"  → new line "- [ ] "
+// "> a"      → new line "> "
+// empty item ("- " or "> ") → its prefix is removed, the list/quote ends
 export function continueBlock(state: TextState): TextEdit | null {
     const { line, start, end } = lineAround(state.text, state.head);
     const quote = /^(?:[ \t]*>[ \t]?)*/.exec(line)![0];
@@ -891,7 +891,8 @@ export function enterInTable(state: TextState): TextEdit | null {
                       ),
                       insert: '',
                   }
-                : replaceLines(state.text, table.end, table.end, ['']); // leave a blank line as a separator
+                // leave a blank line as a separator
+                : replaceLines(state.text, table.end, table.end, ['']);
         return toCell(state, [change], table.end, 0);
     }
     const changes =

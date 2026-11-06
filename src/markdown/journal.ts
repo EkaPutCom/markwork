@@ -2,22 +2,22 @@
 // containing the user's notes
 // and the work activity of that day.
 //
-//   # Thursday, October 8, 2026
+// # Thursday, October 8, 2026
 //
-//   ## Today's focus
+// ## Today's focus
 //
-//   ## Notes
+// ## Notes
 //
 // - 09:12 The reused iter makes opening files ~2x faster      ← quick capture
 // (Ctrl+Shift+J)
 //
-//   ## Activity
+// ## Activity
 //
 // - 10:42 Card “Release material” → In Progress in [[tasks]]              ← from
 // the activity log and git
-//   - 16:05 Commit `dd831a6` Speed up opening…
+// - 16:05 Commit `dd831a6` Speed up opening…
 //
-//   ## Summary
+// ## Summary
 //
 // Activity (cards moved, agent changes, harness results) is recorded throughout
 // the day to a JSONL log in
@@ -66,7 +66,8 @@ export function clock(date: Date): string {
 
 interface Span {
     head: number; // index of the section heading line
-    end: number; // index of the line after the section content (the next heading, or the document length)
+    // index of the line after the section content (the next heading, or the document length)
+    end: number;
 }
 
 const FENCE = /^\s*(```|~~~)/;

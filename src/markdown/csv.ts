@@ -127,7 +127,8 @@ function readRecords(
             i++;
         }
     }
-    if (start < text.length) end(text.length, text.length); // the last record has no line break
+    // the last record has no line break
+    if (start < text.length) end(text.length, text.length);
     return records;
 }
 

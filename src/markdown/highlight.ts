@@ -6,19 +6,19 @@
 // collects:
 //
 // markers   ranges of syntax that may be hidden, together with the lines where
-//             that syntax is "active": [start, end, firstLine, lastLine, line]
-//             (offsets in code points; line = where the marker is). For
-//             code blocks, the line range is the whole block, so the ``` fences
-//             show up while the cursor is inside the block.
-//   headings  list of headings for the outline: { level, text, line }
-//   lines     document contents per line
-//   images    images to display: { line, url, alt }
+// that syntax is "active": [start, end, firstLine, lastLine, line]
+// (offsets in code points; line = where the marker is). For
+// code blocks, the line range is the whole block, so the ``` fences
+// show up while the cursor is inside the block.
+// headings  list of headings for the outline: { level, text, line }
+// lines     document contents per line
+// images    images to display: { line, url, alt }
 // codeBlocks contents of code blocks together with their language, to be colored
-//   tables    line range of each table, to be rendered as a grid
-//   starts    offset (code point) of the start of each line
+// tables    line range of each table, to be rendered as a grid
+// starts    offset (code point) of the start of each line
 // reparsed  line ranges that were re-parsed (other lines gave the same result as
 // before)
-//   spans     styles per line
+// spans     styles per line
 //
 // A style is whatever the editor applies (a CodeMirror decoration): the editor
 // hands one per name
@@ -107,10 +107,12 @@ export interface ImageRef {
 
 export interface CodeBlock {
     lang: string; // text after ``` (e.g. "js"); '' if none
-    start: number; // offset (code point) of the start of the block contents in the buffer
+    // offset (code point) of the start of the block contents in the buffer
+    start: number;
     text: string; // block contents without the fence lines
     startLine: number; // opening fence line
-    endLine: number; // closing fence line (the last line of the document if not closed)
+    // closing fence line (the last line of the document if not closed)
+    endLine: number;
     closed: boolean;
 }
 
@@ -126,7 +128,8 @@ export interface HighlightResult<T> {
     words: number;
     characters: number;
     reparsed: [first: number, last: number];
-    spans: LineSpan<T>[][]; // styles per line (offsets relative to the start of the line)
+    // styles per line (offsets relative to the start of the line)
+    spans: LineSpan<T>[][];
 }
 
 interface Parsed<T> extends HighlightResult<T> {
@@ -389,7 +392,8 @@ export class HighlightCache<T> {
         const afterOldEdit = last + 1 - shift;
         const changed = source.lines(first, last);
         if (afterOldEdit < first || changed.length !== last - first + 1)
-            return this.full(source); // delimiter that does not match the JS line splitting
+            // delimiter that does not match the JS line splitting
+            return this.full(source);
         const lines = splice(old.lines, first, afterOldEdit, changed);
         const before = lowerBound(old.checkpoints, first);
         const startLine = before > 0 ? old.checkpoints[before - 1] : 0;
@@ -574,7 +578,8 @@ class LineParser<T> {
         const fence = this.fence;
         if (fence) {
             this.hide(fence.a, fence.b, fence.line, lines.length - 1);
-            this.closeBlock(fence, lines.length); // an unclosed block continues to the end of the document
+            // an unclosed block continues to the end of the document
+            this.closeBlock(fence, lines.length);
         }
         cache?.end();
         const {

@@ -76,7 +76,8 @@ export function resolveWikiLink(
     const score = (f: string) => {
         const d = dirName(f);
         if (here !== null && d === here) return 0;
-        if (here !== null && here.startsWith(d ? `${d}/` : '')) return 1; // the parent folder of the document
+        // the parent folder of the document
+        if (here !== null && here.startsWith(d ? `${d}/` : '')) return 1;
         return 2;
     };
     return matches.sort(

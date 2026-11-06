@@ -1,28 +1,28 @@
 // Kanban board in a Markdown file. Frontmatter marks the document as a board
 // (see layout.ts):
 //
-//   ---
-//   layout: board
-//   ---
+// ---
+// layout: board
+// ---
 //
 // Existing frontmatter is kept as is when saved. Contents:
 //
-//   ## Plan                         ← heading level 2 = list (column)
+// ## Plan                         ← heading level 2 = list (column)
 //
-//   - [ ] Write the report #important  ← list item = card; [x] = done
-//     card note (indented)          ← an indented line = card note
-//   - [ ] Send invitations [due:: 2026-10-20]
-//   - [ ] Fix checkout [agent:: pi]  ← the harness assigned to work on the card
+// - [ ] Write the report #important  ← list item = card; [x] = done
+// card note (indented)          ← an indented line = card note
+// - [ ] Send invitations [due:: 2026-10-20]
+// - [ ] Fix checkout [agent:: pi]  ← the harness assigned to work on the card
 //
 // `[key:: value]` is a typed field (see fields.ts); a card has the fields in
 // CARD_SCHEMA.
 //
-//   ## Done
+// ## Done
 //
-//   - [x] Book the venue
+// - [x] Book the venue
 //
-//   %% kanban:settings
-//   ...                             ← the rest is kept as is
+// %% kanban:settings
+// ...                             ← the rest is kept as is
 //
 // Pure TypeScript. All operations return a new board; the original board
 // is not changed, so it is easy to test.
@@ -47,12 +47,15 @@ import {
 
 export interface Card {
     done: boolean | null; // null = plain item without a checkbox ("- text")
-    text: string; // first line of the card, raw Markdown (including #tag and [key:: value] fields)
-    notes: string[]; // notes: continuation lines of the card, without indentation
+    // first line of the card, raw Markdown (including #tag and [key:: value] fields)
+    text: string;
+    // notes: continuation lines of the card, without indentation
+    notes: string[];
 }
 
 export interface Column {
-    title: string; // the `##` heading; '' = the unnamed group before the first heading (only ever the first)
+    // the `##` heading; '' = the unnamed group before the first heading (only ever the first)
+    title: string;
     intro: string[]; // plain lines before the first card (e.g. "**Complete**")
     cards: Card[];
     outro: string[]; // plain lines after the last card (e.g. "***")
@@ -351,7 +354,8 @@ export function deleteColumnKeepCards(board: Board, column: number): Board {
 
 export function moveColumn(board: Board, from: number, to: number): Board {
     const column = board.columns[from];
-    if (!column || column.title === '') return board; // the unnamed group stays first
+    // the unnamed group stays first
+    if (!column || column.title === '') return board;
     const columns = board.columns.filter((_, i) => i !== from);
     columns.splice(clamp(to, firstMovable(columns), columns.length), 0, column);
     return { ...board, columns };

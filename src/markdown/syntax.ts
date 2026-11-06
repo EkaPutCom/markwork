@@ -29,7 +29,7 @@ export const startsTable = (lines: string[], i: number): boolean =>
 // from left to right as in CommonMark:
 // \`not code\`     the escape wins, because its backtick is already "eaten" by
 // the escape
-//   `C:\*`           the code wins, because the backslash is inside the code
+// `C:\*`           the code wins, because the backslash is inside the code
 // Groups: 1 = the escaped character, 2 = the opening backticks, 3 = the code
 // contents.
 export const ESCAPE_OR_CODE = (): RegExp =>

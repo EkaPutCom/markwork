@@ -3,18 +3,18 @@
 // the same as a board's or a list's (kanban.ts), so the same file can be shown
 // as any of them.
 //
-//   ---
-//   layout: timeline
+// ---
+// layout: timeline
 // start: start                     ← optional; the date field a bar starts at
 // (default `start`)
 // end: due                         ← optional; the date field a bar ends at
 // (default `due`)
 // zoom: month                      ← optional; week, month, or quarter (default
 // month)
-//   fields:
-//     start: date
-//     due: date
-//   ---
+// fields:
+// start: date
+// due: date
+// ---
 //
 // A note with only one of the two dates is a one-day marker; a note with neither
 // has a row but no bar. Dragging a bar
@@ -82,9 +82,11 @@ export interface TimelineRow {
     at: Position;
     card: Card;
     title: string;
-    start: string | null; // first day of the bar; null: the note has no date at all
+    // first day of the bar; null: the note has no date at all
+    start: string | null;
     end: string | null; // last day of the bar (inclusive)
-    progress: number | null; // 0..1 from a `progress` field, 1 for a done note, else null
+    // 0..1 from a `progress` field, 1 for a done note, else null
+    progress: number | null;
 }
 
 // Progress of a note: its `progress` field if it declares one, 1 if the note is

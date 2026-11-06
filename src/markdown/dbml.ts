@@ -258,7 +258,8 @@ class Parser {
             this.p++;
             return this.str();
         }
-        if (!this.punct('{')) this.word('note name'); // Note name { ... } at the top level
+        // Note name { ... } at the top level
+        if (!this.punct('{')) this.word('note name');
         this.expect('{');
         const text = this.str();
         this.expect('}');

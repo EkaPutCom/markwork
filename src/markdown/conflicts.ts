@@ -3,21 +3,22 @@
 // so they run in unit tests; electron/renderer/lib/conflicts.ts draws the result
 // and applies the choice.
 //
-//   <<<<<<< HEAD            start   (current: what is in the folder)
-//   our lines
+// <<<<<<< HEAD            start   (current: what is in the folder)
+// our lines
 // ||||||| base            base    (only with merge.conflictStyle = diff3 or
 // zdiff3)
-//   the common ancestor
-//   =======                 mid
-//   their lines
-//   >>>>>>> refs/pull/7     end     (incoming: what is being merged)
+// the common ancestor
+// =======                 mid
+// their lines
+// >>>>>>> refs/pull/7     end     (incoming: what is being merged)
 
 export interface Conflict {
     start: number; // line numbers, 0-based, all inside the document
     base: number | null;
     mid: number;
     end: number;
-    current: string; // what follows the marker on the first and last line (a branch name, a commit)
+    // what follows the marker on the first and last line (a branch name, a commit)
+    current: string;
     incoming: string;
 }
 

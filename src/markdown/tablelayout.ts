@@ -3,13 +3,13 @@
 // same as a board's or a list's (kanban.ts), so the same file can be shown as
 // any of them.
 //
-//   ---
-//   layout: table
+// ---
+// layout: table
 // columns: [title, status, due]    ← optional; the default is the title and
 // every declared field
 // sort: -due                       ← optional; a field or `title`, a minus for
 // descending
-//   ---
+// ---
 //
 // Pure TypeScript.
 
