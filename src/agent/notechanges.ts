@@ -381,7 +381,8 @@ class NoteTarget {
         if (raw === null)
             return {
                 ok: false,
-                message: `The value of "${key}" must be text, a number, or a list of them.`,
+                message: `The value of "${key}${"\" must be text, a number, or a" +
+        " list of them."}`,
             };
         if (!raw.trim())
             return { ok: true, value: writeField(text, def.value, null) };
@@ -606,7 +607,8 @@ function deleteGroup(t: NoteTarget): Board | Found<never> {
     if (cards.length)
         return {
             ok: false,
-            message: `The group "${title}" still contains ${cards.length} notes. Move or delete the notes first.`,
+            message: `The group "${title}" still contains ${cards.length}${" notes. Move or delete the notes" +
+        " first."}`,
         };
     return deleteColumn(t.board, column.value);
 }
@@ -677,7 +679,8 @@ class SchemaTarget {
         const kept = this.doc.declared.map((f) => f.key).join(', ') || '(none)';
         return {
             ok: false,
-            message: `The document does not declare a field "${key}". Declared fields: ${kept}.`,
+            message: `${"The document does not declare a" +
+        " field \""}${key}". Declared fields: ${kept}.`,
         };
     }
 
@@ -710,7 +713,9 @@ function addField(t: SchemaTarget): SchemaResult {
             message:
                 problem === 'taken'
                     ? `The document already has a field "${key}". Fields: ${t.doc.schema.map((f) => f.key).join(', ')}.`
-                    : `"${key}" is not a valid field name (a letter first, then letters, digits, _ or -).`,
+                    : `"${key}${"\" is not a valid field name (a" +
+        " letter first, then letters," +
+        " digits, _ or -)."}`,
         };
     if (!type)
         return {
@@ -738,7 +743,10 @@ function removeField(t: SchemaTarget): SchemaResult {
     if (uses && t.args.force !== true)
         return {
             ok: false,
-            message: `${uses} notes still have a value for "${def.value.key}". Removing the declaration keeps those values in the notes as undeclared fields; set force=true if that is what the user wants.`,
+            message: `${uses} notes still have a value for "${def.value.key}${"\". Removing the declaration keeps" +
+        " those values in the notes as" +
+        " undeclared fields; set force=true" +
+        " if that is what the user wants."}`,
         };
     return t.withDeclared(
         t.doc.declared.filter((f) => f.key !== def.value.key)
@@ -769,7 +777,9 @@ function addOptionTo(t: SchemaTarget): SchemaResult {
     if (color && !isOptionColor(color))
         return {
             ok: false,
-            message: `"${color}" is not a color. Use red, amber, green, blue, purple, teal, pink, or gray.`,
+            message: `"${color}${"\" is not a color. Use red, amber," +
+        " green, blue, purple, teal, pink," +
+        " or gray."}`,
         };
     const colors =
         color && isOptionColor(color)
@@ -799,7 +809,9 @@ function removeOption(t: SchemaTarget): SchemaResult {
     if (uses)
         return {
             ok: false,
-            message: `${uses} notes use "${option}" in ${def.value.key}. Change those notes first (edit_note), then remove the option.`,
+            message: `${uses} notes use "${option}" in ${def.value.key}${". Change those notes first" +
+        " (edit_note), then remove the" +
+        " option."}`,
         };
     if (def.value.default === option)
         return {
@@ -839,7 +851,9 @@ function reorderFields(t: SchemaTarget): SchemaResult {
     ) {
         return {
             ok: false,
-            message: `The "order" argument must list every declared field exactly once: ${t.doc.declared.map((f) => f.key).join(', ')}.`,
+            message: `${"The \"order\" argument must list" +
+        " every declared field exactly" +
+        " once: "}${t.doc.declared.map((f) => f.key).join(', ')}.`,
         };
     }
     return t.withDeclared(defs);
@@ -862,7 +876,10 @@ function setLayout(t: SchemaTarget): SchemaResult {
     if (lacking)
         return {
             ok: false,
-            message: `A ${layout} layout needs a ${lacking.type} field and the document has none. Declare one first with edit_schema add_field (for example ${lacking.key}).`,
+            message: `A ${layout} layout needs a ${lacking.type}${" field and the document has none." +
+        " Declare one first with" +
+        " edit_schema add_field (for" +
+        " example "}${lacking.key}).`,
         };
     return { ok: true, value: text };
 }
@@ -911,14 +928,17 @@ function optionProblemOf(
     if (key === 'sort')
         return [...fields, 'title', 'section'].includes(value.replace(/^-/, ''))
             ? null
-            : `sort must name a field (or title), with a leading "-" for descending. Fields: ${fields.join(', ') || '(none)'}.`;
+            : `${"sort must name a field (or title)," +
+        " with a leading \"-\" for" +
+        " descending. Fields: "}${fields.join(', ') || '(none)'}.`;
     if (key === 'columns')
         return value
             .replace(/^\[|\]$/g, '')
             .split(',')
             .every((c) => [...fields, 'title', 'section'].includes(c.trim()))
             ? null
-            : `columns lists title, section, and fields of the document: ${fields.join(', ') || '(none)'}.`;
+            : `${"columns lists title, section, and" +
+        " fields of the document: "}${fields.join(', ') || '(none)'}.`;
     return null;
 }
 
@@ -933,7 +953,9 @@ function setOption(t: SchemaTarget): SchemaResult {
     if (!KEY_OPTION.test(key) || !known.includes(key))
         return {
             ok: false,
-            message: `"${key}" is not a layout option. Options: ${known.join(', ')}. The layout itself changes with set_layout and the fields with add_field.`,
+            message: `"${key}" is not a layout option. Options: ${known.join(', ')}${". The layout itself changes with" +
+        " set_layout and the fields with" +
+        " add_field."}`,
         };
     if (value.includes('\n'))
         return {
@@ -967,7 +989,10 @@ function checkCharts(text: string, written: string): SchemaResult {
         ? { ok: true, value: text }
         : {
               ok: false,
-              message: `Some charts cannot be read (they would be left out): wanted ${names.join(', ')}, understood ${read.join(', ')}. Use kpi, tags, bar[:dateField[:week|month]], donut[:selectField].`,
+              message: `${"Some charts cannot be read (they" +
+        " would be left out): wanted "}${names.join(', ')}, understood ${read.join(', ')}${". Use kpi, tags," +
+        " bar[:dateField[:week|month]]," +
+        " donut[:selectField]."}`,
           };
 }
 
@@ -1019,7 +1044,9 @@ function planFirstLayout(args: Record<string, unknown>, text: string): Planned {
     const lacking = missingField(parseBoard(after), layout);
     if (lacking)
         return fail(
-            `A ${layout} layout needs a ${lacking.type} field. Declare it in the same batch (edit_schema add_field ${lacking.key}) after giving the document a layout such as list.`,
+            `A ${layout} layout needs a ${lacking.type}${" field. Declare it in the same" +
+        " batch (edit_schema add_field "}${lacking.key}${") after giving the document a" +
+        " layout such as list."}`,
             'needs a field'
         );
     return { ok: true, after };
