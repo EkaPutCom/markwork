@@ -86,7 +86,8 @@ function command(argv: string[]): LineLink {
         child.stdin,
         () => {
             child.stdin.end();
-            // closing stdin already asks a bridge to finish; this is for a command that does not
+            // closing stdin already asks a bridge to finish; this is for a
+            // command that does not
             if (!exited) child.kill('SIGTERM');
         },
         (end) => {

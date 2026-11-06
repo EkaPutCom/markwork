@@ -94,7 +94,8 @@ function run({
                         finish({
                             status: -1,
                             out: '',
-                            err: `${name} finished but its result was lost; try again`,
+                            err: `${name} finished but its result was lost; ` +
+                                'try again',
                         }),
                     lostMs
                 )
@@ -116,7 +117,10 @@ function run({
                 finish({
                     status: -1,
                     out: '',
-                    err: `${name} did not finish within ${Math.round(timeoutMs / 1000)} seconds and was stopped`,
+                    err:
+                        `${name} did not finish within ` +
+                        `${Math.round(timeoutMs / 1000)} seconds ` +
+                        'and was stopped',
                 });
             }, timeoutMs)
         );

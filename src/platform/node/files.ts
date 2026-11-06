@@ -71,11 +71,25 @@ const results = workerData.results;
 let counter = 0;
 parentPort.on('message', ({ id, path: target, text }) => {
     let error = null;
-    const temp = path.join(path.dirname(target), '.' + path.basename(target) + '.' + process.pid + '.w' + (++counter) + '.tmp');
+    const temp = path.join(
+        path.dirname(target),
+        '.' + path.basename(target) + '.' + process.pid +
+            '.w' + (++counter) + '.tmp'
+    );
     try {
         const fd = fs.openSync(temp, 'w', 0o644);
-        try { fs.writeSync(fd, text); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-        try { fs.renameSync(temp, target); } catch (e) { fs.rmSync(temp, { force: true }); throw e; }
+        try {
+            fs.writeSync(fd, text);
+            fs.fsyncSync(fd);
+        } finally {
+            fs.closeSync(fd);
+        }
+        try {
+            fs.renameSync(temp, target);
+        } catch (e) {
+            fs.rmSync(temp, { force: true });
+            throw e;
+        }
     } catch (e) {
         error = e instanceof Error ? e.message : String(e);
     }
@@ -261,7 +275,11 @@ function trashMac(path: string): void {
 const RECYCLE = [
     'Add-Type -AssemblyName Microsoft.VisualBasic',
     '$p = $env:MARKWORK_TRASH_PATH',
-    "if (Test-Path -LiteralPath $p -PathType Container) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p, 'OnlyErrorDialogs', 'SendToRecycleBin') } else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }",
+    "if (Test-Path -LiteralPath $p -PathType Container) { " +
+        "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p, " +
+        "'OnlyErrorDialogs', 'SendToRecycleBin') } else { " +
+        "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p, " +
+        "'OnlyErrorDialogs', 'SendToRecycleBin') }",
 ].join('; ');
 
 function trashWindows(path: string): void {

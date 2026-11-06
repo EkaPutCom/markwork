@@ -84,7 +84,8 @@ export interface FileSystem {
     setMode(path: string, mode: number): void;
     // the names of a folder's entries, in no particular order
     list(dir: string): string[];
-    // 'missing' only when nothing is there; any other error (no permission) throws
+    // 'missing' only when nothing is there; any other error (no permission)
+    // throws
     kind(path: string): EntryKind;
     // a folder, also through a symbolic link
     isDirectory(path: string): boolean;
@@ -123,7 +124,8 @@ export interface Paths {
     // the per-user configuration folder (~/.config on Linux)
     configDir(): string;
     homeDir(): string;
-    // the per-user folder for sockets and other runtime files ($XDG_RUNTIME_DIR on Linux)
+    // the per-user folder for sockets and other runtime files ($XDG_RUNTIME_DIR
+    // on Linux)
     runtimeDir(): string;
 }
 
@@ -152,7 +154,8 @@ export interface RunRequest {
     cwd: string;
     env?: Record<string, string>; // added to the inherited environment
     timeoutMs?: number; // stop a run that has not finished by then
-    // after the program has exited, how long to wait for its output before giving up
+    // after the program has exited, how long to wait for its output before
+    // giving up
     lostMs?: number;
 }
 export interface RunResult {
@@ -287,7 +290,8 @@ export function installedPlatform(): Platform | null {
 export function platform(): Platform {
     if (!current)
         throw new Error(
-            'No platform installed: the entry point must import platform/node/install.js first'
+            'No platform installed: import platform/node/install.js ' +
+                'at the entry point first'
         );
     return current;
 }
