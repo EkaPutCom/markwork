@@ -110,8 +110,12 @@ export const VERIFY_TOOL: ToolSpec = {
     },
 };
 
-const listLines = (hits: string[]): string =>
-    `${hits.slice(0, MAX_LISTED).join('; ')}${hits.length > MAX_LISTED ? `; +${hits.length - MAX_LISTED} more` : ''}`;
+const listLines = (hits: string[]): string => {
+    const listed = hits.slice(0, MAX_LISTED).join('; ');
+    const more =
+        hits.length > MAX_LISTED ? `; +${hits.length - MAX_LISTED} more` : '';
+    return `${listed}${more}`;
+};
 
 // File lines containing the text, as "file:line".
 function occurrences(file: SourceFile, text: string): string[] {
@@ -140,8 +144,9 @@ export function fileIssues(
             issues.push({
                 line: link.line,
                 key: `link:${link.target}`,
-                text: `the link to "${link.target}" (line ${link.line}${") does not point to a" +
-            " file in the folder"}`,
+                text:
+                    `the link to "${link.target}" (line ${link.line}) ` +
+                    'does not point to a file in the folder',
             });
     }
     issues.push(...structuredIssues(text));
@@ -166,9 +171,12 @@ export function structureCheck(
               ? []
               : newIssues(fileIssues(file.name, baseline, files), after);
     const old = after.length - found.length;
+    const freshness = baseline === null ? '' : ' new';
     const label = found.length
-        ? `structure: ${found.length} problems${baseline === null ? '' : ' new'} (${listLines(found.map((i) => i.text))})`
-        : `structure: no${baseline === null ? '' : ' new'} problems${old ? ` (${old} old problems left alone)` : ''}`;
+        ? `structure: ${found.length} problems${freshness} ` +
+            `(${listLines(found.map((i) => i.text))})`
+        : `structure: no${freshness} problems` +
+            `${old ? ` (${old} old problems left alone)` : ''}`;
     return { label, passed: !found.length };
 }
 
@@ -234,9 +242,13 @@ function folderCheck(kind: string, text: string, files: SourceFile[]): Check {
     if (kind !== 'present' && kind !== 'absent') throw Error();
     const hits = files.flatMap((f) => occurrences(f, text));
     const passed = kind === 'present' ? hits.length > 0 : !hits.length;
+    const remaining =
+        hits.length && kind === 'absent'
+            ? ` — still present in ${listLines(hits)}`
+            : '';
     return {
         file: '*',
-        label: `${kind} in the whole folder: ${text}${hits.length && kind === 'absent' ? ` — still present in ${listLines(hits)}` : ''}`,
+        label: `${kind} in the whole folder: ${text}${remaining}`,
         passed,
     };
 }
