@@ -486,7 +486,9 @@ function clip(
     const cut = text.slice(0, Math.max(0, maxTokens * 3));
     const at = cut.lastIndexOf('\n');
     return {
-        text: `${at > cut.length / 2 ? cut.slice(0, at) : cut}\n[… truncated …]`,
+        text:
+            `${at > cut.length / 2 ? cut.slice(0, at) : cut}\n` +
+            '[… truncated …]',
         clipped: true,
     };
 }
@@ -523,7 +525,10 @@ function windowAround(
     }
     const body = numbered(lines.slice(from, to + 1).join('\n'), from + 1);
     return {
-        text: `${from > 0 ? '[… earlier part skipped …]\n' : ''}${body}${to < lines.length - 1 ? '\n[… later part skipped …]' : ''}`,
+        text:
+            `${from > 0 ? '[… earlier part skipped …]\n' : ''}` +
+            `${body}` +
+            `${to < lines.length - 1 ? '\n[… later part skipped …]' : ''}`,
         from,
         to,
     };
@@ -541,7 +546,9 @@ export function projectMap(
                 .slice(0, n)
                 .map((h) => h.text);
             const layout = layoutOf(f.text);
-            const title = `- ${f.name}${f.opened ? ' (currently open)' : ''}${layout ? ` · layout: ${layout}` : ''} · ${words} words`;
+            const title =
+                `- ${f.name}${f.opened ? ' (currently open)' : ''}` +
+                `${layout ? ` · layout: ${layout}` : ''} · ${words} words`;
             return heads.length ? `${title}: ${heads.join(' | ')}` : title;
         });
     for (const n of [10, 4, 0]) {
@@ -608,7 +615,8 @@ class ContextBuilder {
         this.intro = [
             instructions(input.options.project, input.canPropose, input.canGit),
             input.roleInstructions
-                ? `Agent role instructions (application access and approval rules still apply):\n${input.roleInstructions}`
+                ? 'Agent role instructions (application access and approval ' +
+                    `rules still apply):\n${input.roleInstructions}`
                 : '',
         ]
             .filter(Boolean)
@@ -640,7 +648,8 @@ class ContextBuilder {
         // The selection and cursor already went into noteParts first; the
         // order: selection, cursor, attachments, excerpts.
         const note = this.noteParts.length
-            ? `<extra_context>\n${this.noteParts.join('\n\n')}\n</extra_context>`
+            ? '<extra_context>\n' +
+                `${this.noteParts.join('\n\n')}\n</extra_context>`
             : '';
         return {
             system,
@@ -668,7 +677,10 @@ class ContextBuilder {
         if (!selection) return;
         const { text } = clip(selection, this.take(0.08));
         this.noteParts.push(
-            `The text the user currently has selected${active ? ` in ${active.name}` : ''}:\n<selection>\n${text}\n</selection>`
+            'The text the user currently has selected' +
+                (active ? ` in ${active.name}` : '') +
+                ':\n' +
+                `<selection>\n${text}\n</selection>`
         );
         this.spend(
             'selection',
@@ -698,7 +710,8 @@ class ContextBuilder {
             block = fileTag(active.name, w.text, ' partial="yes"');
             this.spend(
                 'active',
-                `${active.name} (lines ${w.from + 1}–${w.to + 1} of ${active.text.split('\n').length})`,
+                `${active.name} (lines ${w.from + 1}–${w.to + 1} ` +
+                    `of ${active.text.split('\n').length})`,
                 w.text
             );
         }
@@ -706,7 +719,9 @@ class ContextBuilder {
             (c) => active.cursorLine >= c.start && active.cursorLine <= c.end
         );
         this.noteParts.push(
-            `The user's cursor is in ${active.name}, line ${active.cursorLine + 1}${here?.heading ? `, section “${here.heading}”` : ''}.`
+            `The user's cursor is in ${active.name}, line ` +
+                `${active.cursorLine + 1}` +
+                    `${here?.heading ? `, section “${here.heading}”` : ''}.`
         );
         return { block, window };
     }
@@ -732,8 +747,10 @@ class ContextBuilder {
             const cap = this.take(0.2);
             if (cap < 200) continue;
             const { text, clipped } = clip(numbered(file.text), cap);
+            const tag = clipped ? ' partial="yes"' : '';
             this.noteParts.push(
-                `Files attached by the user:\n${fileTag(file.name, text, clipped ? ' partial="yes"' : '')}`
+                `Files attached by the user:\n` +
+                    `${fileTag(file.name, text, tag)}`
             );
             this.spend(
                 'mention',
@@ -785,10 +802,14 @@ class ContextBuilder {
         if (!picked.length) return;
         const blocks = picked.map(
             (c) =>
-                `<excerpt file="${c.file}" section="${c.heading || '(start of file)'}" lines="${c.start + 1}-${c.end + 1}">\n${numbered(c.text, c.start + 1)}\n</excerpt>`
+                `<excerpt file="${c.file}" ` +
+                    `section="${c.heading || '(start of file)'}" ` +
+                    `lines="${c.start + 1}-${c.end + 1}">\n` +
+                    `${numbered(c.text, c.start + 1)}\n</excerpt>`
         );
         this.noteParts.push(
-            `Excerpts from other files that seem related to the question:\n${blocks.join('\n')}`
+            'Excerpts from other files that seem related to the question:\n' +
+                blocks.join('\n')
         );
         for (const c of picked)
             this.spend(
