@@ -95,6 +95,7 @@ Read `AGENTS.md` before contributing. Branch names use `type/short-kebab-case-de
 | `npm run bench` | Measure the Markdown module on Node; `bench:save` and `bench:compare` keep and compare results (`tests/bench/`) |
 | `npm run bench:agentic` | Measure the cost of batches, verification, and checkpoints |
 | `npm run pot` | Make the translation template `po/markwork.pot` from the files in `po/POTFILES.in` |
+| `node scripts/line-length.mjs [--max N] <file>...` | Print `file:line:characters` (Unicode code points, excluding line endings). With `--max`, show only lines longer than N; exit 1 for violations, 2 for errors. Use `--` before paths starting with `-`. Tests: `node --test scripts/line-length.test.mjs`. |
 
 The live tests, the live pi folder spike, and the benchmarks are not part of `npm test`. The spike's fake-process tests are included. Pi-based Agent Folders support local execution and explicitly selected local-Linux markworkd execution, with unsandboxed activation, native sessions, direct tools, queues and disk-conflict handling. Background runs detach and reconnect without automatic prompt replay; there is no fallback to the old folder worker. See [the plan](docs/design/agent-folders-pi-plan.md) and [Phase 0 findings](docs/design/agent-folders-pi-phase0.md).
 
