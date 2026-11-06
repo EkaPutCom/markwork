@@ -245,8 +245,8 @@ export function linkedNotesSection(notes: LinkedNote[]): string[] {
                 '',
                 title,
                 '',
-                `(the section "${note.link.heading}${"\" was not found in this" +
-            " file)"}`
+                `(the section "${note.link.heading}" was not found ` +
+                    'in this file)'
             );
             continue;
         }
@@ -263,7 +263,8 @@ export function linkedNotesSection(notes: LinkedNote[]): string[] {
         const body = note.text.trim();
         const cut =
             body.length > limit
-                ? `${body.slice(0, limit)}\n…(truncated, ${body.length - limit} more characters)`
+                ? `${body.slice(0, limit)}\n…(truncated, ` +
+                    `${body.length - limit} more characters)`
                 : body;
         budget -= Math.min(body.length, limit);
         lines.push('', title, '', fenced(cut));
@@ -305,9 +306,8 @@ export function buildPrompt(
     if (worktree) {
         lines.push(
             '',
-            `${"You work in a Git" +
-            " worktree made for this" +
-            " card, on the branch "}${worktree.branch} (from ${worktree.base}). ` +
+            'You work in a Git worktree made for this card, on the branch ' +
+                `${worktree.branch} (from ${worktree.base}). ` +
                 'Stay on this branch and in this' +
                     ' folder; do not switch branches, push,' +
                     ' or touch other worktrees. You may' +
@@ -659,7 +659,8 @@ export class PiReader {
         this.trace.add(
             error ? 'error' : 'usage',
             error ? `Failed: ${error}` : 'Finished',
-            `${this.tokens} tokens · $${this.cost.toFixed(4)}${this.sessionId ? `\nSession: ${this.sessionId}` : ''}`
+            `${this.tokens} tokens · $${this.cost.toFixed(4)}` +
+                `${this.sessionId ? `\nSession: ${this.sessionId}` : ''}`
         );
         return result;
     }
@@ -682,7 +683,8 @@ export function resultNote(
     stamp: string
 ): string {
     if (result.interrupted)
-        return `↳ ${agent} interrupted ${stamp}: ${result.error}; resume it from the card`;
+        return `↳ ${agent} interrupted ${stamp}: ${result.error}; ` +
+            'resume it from the card';
     if (!result.ok) return `↳ ${agent} failed ${stamp}: ${result.error}`;
     // Skip the opener ("Done.") and section headings ("**What changed:**");
     // take the first content line.
