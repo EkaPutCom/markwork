@@ -119,7 +119,8 @@ export function parseKey(combo: string): {
         else
             throw new UsageError(
                 'usage',
-                `${combo}: ${part} is not a modifier (Ctrl, Mod, Meta, Alt, Shift)`
+                `${combo}: ${part} is not a modifier ` +
+                    '(Ctrl, Mod, Meta, Alt, Shift)'
             );
     }
     const keyCode = KEY_NAMES[name] ?? name;
@@ -315,7 +316,8 @@ export class InspectBridge {
                 reject(
                     new UsageError(
                         'timeout',
-                        `the page did not answer ${String(request.op)} within ${PAGE_TIMEOUT_MS} ms`
+                        `the page did not answer ${String(request.op)} ` +
+                            `within ${PAGE_TIMEOUT_MS} ms`
                     )
                 );
             }, PAGE_TIMEOUT_MS);
@@ -501,7 +503,8 @@ export class InspectBridge {
         if (!existsSync(folder))
             throw new UsageError(
                 'no-checkout',
-                `${folder} is not there: the app does not run from a checkout of Markwork`
+                `${folder} is not there: the app does not run from a ` +
+                    'checkout of Markwork'
             );
         const file = join(folder, `${name}.mwrepro.json`);
         if (existsSync(file) && request.replace !== true)

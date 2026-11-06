@@ -141,7 +141,11 @@ const savedReports = new Set<string>();
 
 const two = (n: number) => String(n).padStart(2, '0');
 function reportName(now = new Date()): string {
-    const stamp = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}`;
+    const date =
+        `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
+    const hourMinute = `${two(now.getHours())}${two(now.getMinutes())}`;
+    const time = `${hourMinute}${two(now.getSeconds())}`;
+    const stamp = `${date}-${time}`;
     for (let n = 1; ; n++) {
         const name = n === 1 ? stamp : `${stamp}-${n}`;
         if (!existsSync(join(reportsFolder(), `${name}.mwrepro.json`)))
