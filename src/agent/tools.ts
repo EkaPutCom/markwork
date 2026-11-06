@@ -259,7 +259,9 @@ function searchText(
                 'parameter …]'
             : '';
     return {
-        content: `${total} lines contain "${needle}":\n${lines.join('\n')}${more}`,
+        content:
+            `${total} lines contain "${needle}":\n` +
+            `${lines.join('\n')}${more}`,
         summary: plural(total, 'line', 'lines'),
     };
 }

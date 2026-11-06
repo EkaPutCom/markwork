@@ -162,6 +162,9 @@ const clip = (text: string, hint: string): string =>
         ? text
         : `${text.slice(0, MAX_GIT_TOKENS * 3)}\n[… truncated; ${hint} …]`;
 
+const GIT_METADATA =
+    /^(index |diff --git |similarity index|dissimilarity index)/;
+
 const STATUS: Record<string, string> = {
     A: 'new',
     M: 'edit',
@@ -223,21 +226,24 @@ export function formatGit(request: GitRequest, answer: GitAnswer): ToolOutcome {
             return {
                 content:
                     `Commit ${request.commit} does not change Markdown ` +
-                    `files${request.file ? ` ${request.file}` : ''} in this folder.`,
+                    `files${request.file ? ` ${request.file}` : ''} ` +
+                    'in this folder.',
                 summary: 'no changes',
             };
         const lines = answer.text
             .split('\n')
             .filter(
                 (l) =>
-                    !/^(index |diff --git |similarity index|dissimilarity index)/.test(
-                        l
-                    )
+                    !GIT_METADATA.test(l)
             );
         return {
             content: clip(lines.join('\n'), 'limit to one file'),
             summary:
-                `${plural(lines.filter((l) => /^[+-](?![+-])/.test(l)).length, 'line', 'lines')} ` +
+                `${plural(
+                    lines.filter((l) => /^[+-](?![+-])/.test(l)).length,
+                    'line',
+                    'lines'
+                )} ` +
                 'changed',
         };
     }
@@ -245,7 +251,8 @@ export function formatGit(request: GitRequest, answer: GitAnswer): ToolOutcome {
     const body = lines.map((l, i) => `${i + 1}│ ${l}`).join('\n');
     return {
         content: clip(
-            `[${request.file} at ${request.commit}, ${lines.length} lines]\n${body}`,
+            `[${request.file} at ${request.commit}, ${lines.length} ` +
+                `lines]\n${body}`,
             'only the beginning is shown'
         ),
         summary: plural(lines.length, 'line', 'lines'),

@@ -277,11 +277,15 @@ export function planChange(
     if (!raw.trim())
         return fail('The "name" argument is required.', 'empty name');
     const file = matchMention(raw, files);
+    const hint =
+        name === 'edit_file' || name === 'insert_text'
+            ? ', or use create_file for a new file'
+            : '';
     if (!file)
         return fail(
             `File "${raw}${"\" was not found. Call" +
             " list_files to see the" +
-            " existing names"}${name === 'edit_file' || name === 'insert_text' ? ', or use create_file for a new file' : ''}.`,
+            " existing names"}${hint}.`,
             'file not found'
         );
     return plan({
@@ -432,12 +436,9 @@ function planEdit({ args, file, edit }: FileTarget): PlanResult {
     const all = args.all === true;
     if (count > 1 && !all)
         return fail(
-            `old_text appears ${count} times in ${file.name}${". Extend it with" +
-            " surrounding lines until" +
-            " it is unique, or use" +
-            " all=true if every" +
-            " occurrence really has to" +
-            " be replaced."}`,
+            `old_text appears ${count} times in ${file.name}. ` +
+                'Extend it with surrounding lines until it is unique, or ' +
+                'use all=true if every occurrence really has to be replaced.',
             'not unique'
         );
     const newText = asText(args.new_text);
@@ -520,11 +521,13 @@ function checkLine(
         .map((l, i) => (l.trim() === wanted.trim() ? i + 1 : 0))
         .filter((n) => n)
         .slice(0, 5);
+    const lineWord = near.length === 1 ? 'line' : 'lines';
     const hint = near.length
-        ? ` line_text is on ${near.length === 1 ? 'line' : 'lines'} ${near.join(', ')}.`
+        ? ` line_text is on ${lineWord} ${near.join(', ')}.`
         : ' Re-read the file with read_file.';
     return fail(
-        `Line ${line} in ${name} contains "${actual.slice(0, 200)}", not line_text.${hint}`,
+        `Line ${line} in ${name} contains "${actual.slice(0, 200)}", ` +
+            `not line_text.${hint}`,
         'line does not match'
     );
 }
@@ -837,7 +840,8 @@ export function unifiedDiff(
     return hunksOf(diffOps(before, after), context)
         .map((h) =>
             [
-                `@@ -${h.oldStart},${h.oldCount} +${h.newStart},${h.newCount} @@`,
+                `@@ -${h.oldStart},${h.oldCount} ` +
+                    `+${h.newStart},${h.newCount} @@`,
                 ...h.ops.map((o) => `${o.sign}${o.text}`),
             ].join('\n')
         )
