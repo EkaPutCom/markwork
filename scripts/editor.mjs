@@ -30,36 +30,67 @@ import { fuzz, kindsOf, play, shrink } from './editor-fuzz.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const USAGE = `Usage: npm run editor -- [--pid N] [--pretty] [--cp] [--headless [--folder DIR] [--keep]] <op> [args] [--then <op> [args]]…
-
-  snapshot [--at cursor|POS] [--all]      what the editor shows and hides
-  press KEY… [--explain]                  real keys: Backspace, Enter, Mod+b, Ctrl+Shift+z, ArrowDown
-  type TEXT [--explain]                   real typing
-  click --visible TEXT [--start|--end]    a click on text the eye sees (its end by default)
-  click --line N [--start|--end]          a click at the start of what line N shows, or past its end (the default)
-  click --pos N [--mods M] [--explain]    a click at a position of the text
-  select FROM [TO] [--explain]            a selection, dispatched (marked select.inspect)
-  log [--since N] [--flagged] [--follow]  the recorded transactions
-  decorations [--line N]                  the decorations of a line (around the cursor by default)
-  check [NAME…]                           the findings of the last transaction
-  open PATH                               a file of the work folder, or any file by its absolute path
-  mode visual|live|source [--focus|--no-focus]
-  save-repro FILE [--note TEXT] [--blur]  the recording as a repro (.mwrepro.json); --blur: letters x, digits 0
-  load FILE                               a repro's start in a new tab
-  replay FILE                             a repro played again with every check: pass, fail, or differs
-  screenshot FILE [--overlay]             a PNG of the editor
-  fuzz [--docs GLOB,…] [--runs N] [--steps N] [--seed S] [--keys K,…] [--quiet MS] [--out DIR] [--shrink-seconds N]
-                                          random keys and clicks with every check; a failure is shrunk and saved
-  shrink FILE [--check NAME] [--out F] [--quiet MS] [--shrink-seconds N]
-                                          the fewest steps of a repro that still fail its check (a report, a fuzz find)
-  test-from FILE [--name NAME] [--dir D]  a repro as a test: tests/electron/repros/NAME.mwrepro.json
-  hello                                   the window's process
-
-Positions are UTF-16 units, as CodeMirror counts; --cp makes those of snapshot, decorations, click --pos, and select code
-points, as the app protocol counts (an emoji is one). The log and repros stay in UTF-16.
-
---headless starts its own window on a scratch folder (a copy of --folder, which is never written) and closes it at the
-end unless --keep.`;
+const USAGE = [
+    "Usage: npm run editor -- [--pid N] [--pretty] [--cp]" +
+        " [--headless [--folder DIR] [--keep]] <op> [args] [--then" +
+        " <op> [args]]…",
+    "",
+    "  snapshot [--at cursor|POS] [--all]      what the editor" +
+        " shows and hides",
+    "  press KEY… [--explain]                  real keys:" +
+        " Backspace, Enter, Mod+b, Ctrl+Shift+z, ArrowDown",
+    "  type TEXT [--explain]                   real typing",
+    "  click --visible TEXT [--start|--end]    a click on text" +
+        " the eye sees (its end by default)",
+    "  click --line N [--start|--end]          a click at the" +
+        " start of what line N shows, or past its end (the default)",
+    "  click --pos N [--mods M] [--explain]    a click at a" +
+        " position of the text",
+    "  select FROM [TO] [--explain]            a selection," +
+        " dispatched (marked select.inspect)",
+    "  log [--since N] [--flagged] [--follow]  the recorded" +
+        " transactions",
+    "  decorations [--line N]                  the decorations" +
+        " of a line (around the cursor by default)",
+    "  check [NAME…]                           the findings of" +
+        " the last transaction",
+    "  open PATH                               a file of the" +
+        " work folder, or any file by its absolute path",
+    "  mode visual|live|source [--focus|--no-focus]",
+    "  save-repro FILE [--note TEXT] [--blur]  the recording as" +
+        " a repro (.mwrepro.json); --blur: letters x, digits 0",
+    "  load FILE                               a repro's start" +
+        " in a new tab",
+    "  replay FILE                             a repro played" +
+        " again with every check: pass, fail, or differs",
+    "  screenshot FILE [--overlay]             a PNG of the" +
+        " editor",
+    "  fuzz [--docs GLOB,…] [--runs N] [--steps N] [--seed S]" +
+        " [--keys K,…] [--quiet MS] [--out DIR] [--shrink-seconds" +
+        " N]",
+    "                                          random keys and" +
+        " clicks with every check; a failure is shrunk and saved",
+    "  shrink FILE [--check NAME] [--out F] [--quiet MS]" +
+        " [--shrink-seconds N]",
+    "                                          the fewest steps" +
+        " of a repro that still fail its check (a report, a fuzz" +
+        " find)",
+    "  test-from FILE [--name NAME] [--dir D]  a repro as a" +
+        " test: tests/electron/repros/NAME.mwrepro.json",
+    "  hello                                   the window's" +
+        " process",
+    "",
+    "Positions are UTF-16 units, as CodeMirror counts; --cp" +
+        " makes those of snapshot, decorations, click --pos, and" +
+        " select code",
+    "points, as the app protocol counts (an emoji is one). The" +
+        " log and repros stay in UTF-16.",
+    "",
+    "--headless starts its own window on a scratch folder (a" +
+        " copy of --folder, which is never written) and closes it" +
+        " at the",
+    "end unless --keep.",
+].join('\n');
 
 class Usage extends Error {}
 const fail = (message, code = 2) => {
@@ -565,7 +596,11 @@ function testFrom(request) {
     const { actual: _actual, ...kept } = repro;
     writeFileSync(
         file,
-        `${JSON.stringify({ ...kept, expect: { ...repro.expect, checks: 'pass' } }, null, 2)}\n`
+        `${JSON.stringify(
+            { ...kept, expect: { ...repro.expect, checks: 'pass' } },
+            null,
+            2
+        )}\n`
     );
     return {
         file,
@@ -688,21 +723,32 @@ function txLine(e) {
     const found = (e.findings ?? [])
         .map((f) => `\n      ${f.severity} ${f.check}: ${f.message}`)
         .join('');
-    return `  #${e.n} ${e.userEvent ?? '-'}${input} sel ${JSON.stringify(e.selAfter)}${effects}${found}`;
+    return (
+        `  #${e.n} ${e.userEvent ?? '-'}${input} ` +
+        `sel ${JSON.stringify(e.selAfter)}${effects}${found}`
+    );
 }
 
 const ranges = (list) => list.map(([a, b]) => `${a}–${b}`).join(' ') || 'none';
 
 function prettySnapshot(a) {
     const prefix = a.cursor.inPrefix ? ' in a hidden prefix' : '';
+    const position =
+        `cursor ${a.cursor.pos} (line ${a.cursor.line}, ` +
+        `col ${a.cursor.col})${prefix};`;
+    const before =
+        'visible before: ' + JSON.stringify(a.visibleBefore?.char ?? null);
+    const after = `after: ${JSON.stringify(a.visibleAfter?.char ?? null)}`;
     return [
-        `${a.path ?? a.name} · ${a.mode}${a.focus ? ' · focus' : ''} · ${a.length} chars, ${a.lines} lines`,
-        `cursor ${a.cursor.pos} (line ${a.cursor.line}, col ${a.cursor.col})${prefix}; visible before: ${JSON.stringify(a.visibleBefore?.char ?? null)}, after: ${JSON.stringify(a.visibleAfter?.char ?? null)}`,
+        `${a.path ?? a.name} · ${a.mode}${a.focus ? ' · focus' : ''} · ` +
+            `${a.length} chars, ${a.lines} lines`,
+        `${position} ${before}, ${after}`,
         `hidden: ${ranges(a.hidden)}`,
         `prefixes: ${ranges(a.prefixes)}`,
         ...a.decorations.map(
             (d) =>
-                `  ${d.from}–${d.to} ${d.kind}${d.block ? ' block' : ''} ${d.what}`
+                `  ${d.from}–${d.to} ${d.kind}${d.block ? ' block' : ''} ` +
+                    d.what
         ),
     ];
 }
@@ -716,12 +762,14 @@ function prettyEntries(a) {
 }
 
 function prettyReplay(a) {
-    const lines = [
-        `${a.result}: ${a.steps} steps${a.widthDiffers ? ' (the editor is not as wide as when it was recorded)' : ''}`,
-    ];
+    const width = a.widthDiffers
+        ? ' (the editor is not as wide as when it was recorded)'
+        : '';
+    const lines = [`${a.result}: ${a.steps} steps${width}`];
     if (a.first)
         lines.push(
-            `  step ${a.first.step}: ${a.first.finding.check}: ${a.first.finding.message}`
+            `  step ${a.first.step}: ${a.first.finding.check}: ` +
+                a.first.finding.message
         );
     if (a.result === 'differs')
         lines.push(
@@ -731,13 +779,20 @@ function prettyReplay(a) {
     return lines;
 }
 
-const prettyFuzz = (a) => [
-    `seed ${a.seed}: ${a.runs} runs, ${a.steps} steps, ${a.failures.length ? `${a.failures.length} failed` : 'every check passed'}`,
-    ...a.failures.map(
+const prettyFuzz = (a) => {
+    const result = a.failures.length
+        ? `${a.failures.length} failed`
+        : 'every check passed';
+    return [
+        `seed ${a.seed}: ${a.runs} runs, ${a.steps} steps, ${result}`,
+        ...a.failures.map(
         (f) =>
-            `  run ${f.run} (${f.doc}) step ${f.step}: ${f.check}: ${f.message}\n    shrunk to ${f.steps} steps in ${f.tries} tries: ${f.file}`
-    ),
-];
+            `  run ${f.run} (${f.doc}) step ${f.step}: ${f.check}: ` +
+                `${f.message}\n    shrunk to ${f.steps} steps in ` +
+                `${f.tries} tries: ${f.file}`
+        ),
+    ];
+};
 
 const prettyFindings = (a) => [
     `#${a.n}: ${a.findings.length ? '' : 'no findings'}`,
@@ -796,9 +851,10 @@ async function runAll(conn, ops, global) {
             conn,
             global.cp ? { ...request, cp: true } : request
         );
-        process.stdout.write(
-            `${global.pretty ? pretty(request, answer) : JSON.stringify(answer)}\n`
-        );
+        const output = global.pretty
+            ? pretty(request, answer)
+            : JSON.stringify(answer);
+        process.stdout.write(`${output}\n`);
         if (failed(answer)) code = 1;
     }
     return code;
