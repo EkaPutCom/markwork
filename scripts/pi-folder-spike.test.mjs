@@ -14,32 +14,81 @@ process.stdin.on('data', chunk => {
     while ((end = buffer.indexOf('\\n')) >= 0) {
         const command = JSON.parse(buffer.slice(0, end));
         buffer = buffer.slice(end + 1);
-        const respond = data => send({ type: 'response', id: command.id, command: command.type, success: true, data });
-        if (command.type === 'first') deferred = () => respond({ echoed: 'first' });
-        else if (command.type === 'second') { respond({ echoed: 'second' }); deferred(); }
-        else if (command.type === 'reject') send({ type: 'response', id: command.id, success: false, error: 'rejected' });
+        const respond = data => send({
+            type: 'response',
+            id: command.id,
+            command: command.type,
+            success: true,
+            data
+        });
+        if (command.type === 'first') {
+            deferred = () => respond({ echoed: 'first' });
+        } else if (command.type === 'second') {
+            respond({ echoed: 'second' });
+            deferred();
+        } else if (command.type === 'reject') {
+            send({
+                type: 'response',
+                id: command.id,
+                success: false,
+                error: 'rejected'
+            });
+        }
         else if (command.type === 'silent') continue;
-        else if (command.type === 'malformed') process.stdout.write('not JSON\\n');
+        else if (command.type === 'malformed')
+            process.stdout.write('not JSON\\n');
         else if (command.type === 'exit') process.exit(3);
         else if (command.type === 'flood') {
-            for (let i = 0; i < 1000; i++) send({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: 'sample 🌱' } });
+            for (let i = 0; i < 1000; i++)
+                send({
+                    type: 'message_update',
+                    assistantMessageEvent: {
+                        type: 'text_delta',
+                        contentIndex: 0,
+                        delta: 'sample 🌱'
+                    }
+                });
             respond({});
-        } else if (command.type === 'oversize') process.stdout.write('x'.repeat(8 * 1024 * 1024 + 1));
+        } else if (command.type === 'oversize') {
+            process.stdout.write('x'.repeat(8 * 1024 * 1024 + 1));
+        }
         else if (command.type === 'unicode') {
-            const line = Buffer.from(JSON.stringify({ type: 'response', id: command.id, success: true, data: 'a\\u2028b\\u2029🌱' }) + '\\n');
+            const response = {
+                type: 'response',
+                id: command.id,
+                success: true,
+                data: 'a\\u2028b\\u2029🌱'
+            };
+            const line = Buffer.from(JSON.stringify(response) + '\\n');
             for (const byte of line) process.stdout.write(Buffer.from([byte]));
         } else if (command.type === 'prompt') {
             send({ type: 'agent_start' });
-            if (command.message === 'handled') respond({ disposition: 'handled' });
+            if (command.message === 'handled')
+                respond({ disposition: 'handled' });
             else {
-                if (command.message === 'fail') send({ type: 'message_end', message: { role: 'assistant', stopReason: 'error', errorMessage: 'provider failed' } });
+                if (command.message === 'fail')
+                    send({
+                        type: 'message_end',
+                        message: {
+                            role: 'assistant',
+                            stopReason: 'error',
+                            errorMessage: 'provider failed'
+                        }
+                    });
                 send({ type: 'agent_end' });
-                if (command.message !== 'hold') send({ type: 'agent_settled', aborted: false });
+                if (command.message !== 'hold')
+                    send({ type: 'agent_settled', aborted: false });
                 respond({ disposition: 'started' });
             }
-        } else if (command.type === 'settle') { send({ type: 'agent_settled', aborted: false }); respond({}); }
+        } else if (command.type === 'settle') {
+            send({ type: 'agent_settled', aborted: false });
+            respond({});
+        }
         else if (command.type === 'clear_queue') respond({ cleared: true });
-        else if (command.type === 'abort') { send({ type: 'agent_settled', aborted: true }); respond({}); }
+        else if (command.type === 'abort') {
+            send({ type: 'agent_settled', aborted: true });
+            respond({});
+        }
         else respond({ echoed: command.type });
     }
 });
@@ -193,8 +242,8 @@ test('transport measurement: 20 batches of 1,000 events after 3 warmups', () =>
         assert.equal(delivered, 23_000);
         samples.sort((a, b) => a - b);
         console.log(
-            `${"Spike JSONL" +
-            " parse/delivery, 1000" +
-            " events: median="}${samples[10].toFixed(3)}ms p95=${samples[18].toFixed(3)}ms max=${samples[19].toFixed(3)}ms`
+            'Spike JSONL parse/delivery, 1000 events: median=' +
+                `${samples[10].toFixed(3)}ms p95=${samples[18].toFixed(3)}ms ` +
+                `max=${samples[19].toFixed(3)}ms`
         );
     }));
