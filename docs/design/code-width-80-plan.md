@@ -1,7 +1,7 @@
 # Plan: 80-character code and comment width
 
-Status: in progress. The tracked-file checker and initial audit are in
-place; repository-wide wrapping and CI enforcement remain to be done.
+Status: complete. The tracked-file checker, repository-wide wrapping, and
+CI enforcement are in place; the agreed scope has no violations.
 
 ## Goal
 
@@ -40,11 +40,11 @@ Extend the checker to:
 
 Run `npm run lint:width` from the repository root; its full line report is
 on stdout and file/directory totals are on stderr. Exit 1 means violations,
-while exit 2 means an error. The command currently reports existing debt and
-is not part of required CI checks. It includes tracked source files in the
-scope above, including test source fixtures; sample Markdown and generated
-output outside that scope are not checked. Git-ignored and untracked files
-are not included, so check new files explicitly until they are tracked.
+while exit 2 means an error. The checker now reports zero violations and runs
+in the CI core job on Linux, macOS, and Windows. It includes tracked source
+files in the scope above, including test source fixtures; sample Markdown and
+generated output outside that scope are not checked. Git-ignored and untracked
+files are not included, so check new files explicitly until they are tracked.
 
 Use the audit to choose manageable batches. Do not introduce a permanent
 baseline that exempts existing overlong lines.
@@ -120,8 +120,8 @@ For every batch:
 - Update learning documents when their existing triggers apply, such as
   structural changes or agent improvements. Formatting alone is not an
   architectural improvement.
-- Once the agreed scope is clean, make the width check mandatory locally
-  and in CI.
+- The width check is mandatory in CI and available locally as
+  `npm run lint:width`.
 - During migration, check individual batches as needed; the final check
   must cover the entire agreed scope without a violation baseline.
 
@@ -131,7 +131,7 @@ For every batch:
 - Behavior, string values, and translation results remain unchanged.
 - Typechecking and all tests pass with clean logs.
 - Performance impact has been checked and reported.
-- CI prevents new width violations.
+- CI prevents new width violations in the agreed tracked-file scope.
 
 ## Recommended first step
 

@@ -190,7 +190,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
     <p class="lede">Clean code here means one practical thing: a change can be made by reading a small part of the code, and the build tells you when a change breaks a rule. Every chapter below starts from a real problem in Markwork (once a GTK 4 + GJS workbench, now an Electron app, in TypeScript), shows the code before and after, and states how we checked that the behavior did not change.</p>
     <div class="kpis">
       <div class="kpi"><div class="what">Highest cyclomatic complexity of a function</div><div class="big">15</div><div class="from">from 132 (<code>ChatSession.ask</code>) · limit checked by the build</div></div>
-      <div class="kpi"><div class="what">Functions in src/ and scripts/</div><div class="big">4,650</div><div class="from">median 1 · mean 2.44 · 90% at 6 or less</div></div>
+      <div class="kpi"><div class="what">Functions in src/ and scripts/</div><div class="big">4,663</div><div class="from">median 1 · mean 2.45 · 90% at 6 or less</div></div>
       <div class="kpi"><div class="what">Import cycles between modules</div><div class="big">0</div><div class="from">187 modules · 525 runtime imports</div></div>
       <div class="kpi"><div class="what">Modules that write a document's file in-process</div><div class="big">1</div><div class="from">from 5 · the others call named operations</div></div>
     </div>
@@ -203,10 +203,20 @@ footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wr
       <li><a href="#ch6"><span class="n">6</span>Local reasoning: one owner per state</a></li>
       <li><a href="#ch7"><span class="n">7</span>Make time and order explicit</a></li>
       <li><a href="#ch8"><span class="n">8</span>Checklist for a change</a></li>
+      <li><a href="#jsx-width"><span class="n">9</span>Extract a render branch</a></li>
     </ul>
   </div>
 </div>
 
+<section class="chapter" id="jsx-width">
+<h2>Extract a render branch without changing its owner</h2>
+<p>Commit: <code>d06e878 refactor(renderer): wrap remaining renderer code</code>. The structured-field form had grown a deeply nested option editor inside its main field map. Wrapping the JSX alone kept the 80-column rule technically possible but made the row's behavior harder to scan. The option list now has a local render helper, and its two update paths share a small immutable patch helper.</p>
+<pre><code>Before: Form → field map → select branch → option map → controls
+After:  Form → optionsFor(field, index) → option map → controls
+        patchOption(index, option, change) → existing draft setter</code></pre>
+<p>The helpers remain inside <code>Form</code>: they use its validation, usage counts, and draft setter rather than creating another state owner. Moving, removing, coloring, and renaming options retain their existing callbacks and draft semantics; schema changes still wait for the explicit save action. No application decision or protocol changed. The Electron structured-document scenario covers adding select options, changing their colors, and using them on a card; the full suite passed with 928 tests.</p>
+<p>This was a readability and maintainability change, not a performance optimization. It does not change visible markup or styling. A dedicated rendering benchmark was not run; the changed component is exercised by the Electron interaction test. Lesson: when layout pressure exposes a hard-to-read render branch, extract it at the same state boundary instead of introducing a new owner.</p>
+</section>
 <section class="chapter" id="workspace-pi-ownership">
 <h2>Share the execution adapter, separate the conversation owner</h2>
 <p>Commit: <code>feat(assistant): use native pi for workspace conversations</code>. The old workspace Assistant constructed a custom ChatController, provider, manuscript builder and approval loop. Agent Folders already owned native pi execution. Adding a second native loop would duplicate transport, stop, projection and recovery bugs.</p>
@@ -309,9 +319,9 @@ const rules = [
   <div class="scroll-x"><table>
     <thead><tr><th>Complexity</th><th>Meaning</th><th class="num">Markwork functions</th></tr></thead>
     <tbody>
-      <tr><td>1–5</td><td>simple; easy to read and test</td><td class="num">4,149</td></tr>
-      <tr><td>6–10</td><td>fine; McCabe's own limit (1976)</td><td class="num">396</td></tr>
-      <tr><td>11–15</td><td>worth a second look; Markwork's build limit</td><td class="num">105</td></tr>
+      <tr><td>1–5</td><td>simple; easy to read and test</td><td class="num">4,158</td></tr>
+      <tr><td>6–10</td><td>fine; McCabe's own limit (1976)</td><td class="num">398</td></tr>
+      <tr><td>11–15</td><td>worth a second look; Markwork's build limit</td><td class="num">107</td></tr>
       <tr><td>above 15</td><td>refused by the build</td><td class="num">0</td></tr>
     </tbody>
   </table></div>
@@ -661,13 +671,14 @@ if (open) host.fileMoved(open, to);</code></pre></div>
   <h3>Read-only code: preserve the document boundary</h3>
   <p>A code reader needs text on screen, but not a writable document. Previously every non-image, non-HTML file activated from the tree would go through the document editor. The tree now lists all non-hidden files, and <code>AppSession.openFile()</code> routes non-document text to <code>DocumentController.openCode()</code>. It validates the file through the platform port and opens a <code>Page</code> snapshot instead of a <code>Doc</code>. The renderer uses a separate read-only CodeMirror instance with no write callbacks; the existing document editor and assistant manuscript set remain unchanged.</p>
   <p>The existing host method changes from <code>showPageTab(id)</code>, implicitly HTML, to <code>showPageTab(id, kind)</code>, where kind is HTML or code. The protocol carries that discriminator and the optional snapshot text as plain data. The core still decides what may be opened; the renderer only draws it. No new controller or layer exception is needed. The viewer reuses the existing <code>FindBar</code> rather than introducing a second search UI; that panel hides Replace and refuses expansion when its editor is read-only. Tests in <code>filescontroller.ts</code> and <code>protocol.ts</code> protect the page/document separation, file limits, and lifecycle; <code>tests/electron/code.mjs</code> checks highlighting, Find, and read-only typing/paste/Save. Lesson: sharing an editor library does not require sharing write authority.</p>
-  <p>The current measurement uses the same AST complexity counter as <code>scripts/layers.mjs</code>: 4,650 functions in <code>src/</code> and <code>scripts/</code>, median 1, mean 2.44, p90 6, maximum 15; 187 core modules, 525 local runtime imports, and no import cycles. The hero and complexity distribution above use this measurement; the before/after refactor tables remain historical evidence. A 30,001-line viewer check measures opening and viewport virtualization, not an IDE workload or cross-platform performance.</p>
+  <p>The current measurement uses the same AST complexity counter as <code>scripts/layers.mjs</code>: 4,663 functions in <code>src/</code> and top-level <code>scripts/</code>, median 1, mean 2.45, p90 6, maximum 15; distribution 4,158 at 1–5, 398 at 6–10, and 107 at 11–15. The 187 core modules have 525 local runtime imports and no cycles. The hero and complexity distribution above use this measurement; before/after refactor tables remain historical evidence. A 30,001-line viewer check measures opening and viewport virtualization, not an IDE workload or cross-platform performance.</p>
   <h3 id="shared-status">One status bar, focused-pane data</h3>
   <p>The first code viewer put its own footer inside <code>CodePage</code> and hid the window's existing <code>StatusBar</code>. That worked with one editor, but split panes had two possible footer owners: focusing Markdown brought back the global bar while code still kept its local footer, so their content bottoms no longer aligned.</p>
   <p>The shared <code>StatusBar</code> in <code>App.tsx</code> now owns the only footer for both Markdown and code. <code>CodePage</code> draws only the reader and reports selection coordinates through <code>Client.codeMoved()</code>; the renderer store keeps those coordinates by pane id with a matching tab id, and removes them when the viewer unmounts. This is local screen state, not a writable document cursor: no <code>doc.cursor</code> message is sent for code. The status bar selects the focused pane's data and caches file metadata by snapshot text, rather than rescanning it on every cursor movement. Focusing a text pane restores its existing cursor even when no selection-change event fires, and a pending document-cursor timer refuses non-document pages. Markdown's existing counts and core-controlled structured-document counts remain unchanged.</p>
-  <p><code>tests/electron/code.mjs</code> opens the same code in two panes with different selections, then Markdown beside code; it checks focus restoration, exactly one footer outside both panes, aligned pane bottoms, and no code metadata in Markdown status. Screenshots cover both themes and narrow windows. A fresh AST/import measurement leaves the hero and distribution table unchanged: 4,290 functions, median 1, mean 2.45, p90 6, maximum 15; 179 core modules, 492 local runtime imports, and zero cycles. Lesson: share the container and its placement, while keeping each pane's transient data scoped to that pane.</p>
+  <p><code>tests/electron/code.mjs</code> opens the same code in two panes with different selections, then Markdown beside code; it checks focus restoration, exactly one footer outside both panes, aligned pane bottoms, and no code metadata in Markdown status. Screenshots cover both themes and narrow windows. At the code-viewer refactor, the AST/import measurement was 4,290 functions, median 1, mean 2.45, p90 6, maximum 15; 179 core modules, 492 local runtime imports, and zero cycles. That historical snapshot predates the current aggregate at the top of this page. Lesson: share the container and its placement, while keeping each pane's transient data scoped to that pane.</p>
   <h3>The journey</h3>
   <ol class="timeline-steps">
+    <li><span class="h">d06e878</span><span><a href="#jsx-width">Structured-field option rendering</a>: extract a nested render branch and immutable patch helper at the existing form-state boundary; validate the UI behavior with the Electron suite.</span></li>
     <li><span class="h">Working tree</span><span><a href="#workspace-pi-ownership">Workspace Assistant uses native pi</a>: shared adapter, separate consent/storage ownership and independent commit writer. Commit: <code>feat(assistant): use native pi for workspace conversations</code>.</span></li>
     <li><span class="h">Phase 2</span><span><a href="#background-pi-ownership">Pi background ownership</a>: separate process lifetime from observation, reserve identity before effects, refresh stale indexes under the exclusive owner. Commit: <code>feat(agent): support background pi folder execution</code>.</span></li>
     <li><span class="h">working tree</span><span><a href="#local-pi-ownership">Local pi ownership</a>: bounded core-owned output discovery and shared GFM chat rendering; separate folder identity/queues, native-session storage, RPC execution and disk/editor coordination; retain the ordinary Assistant and card lifecycle, with no new layer exceptions.</span></li>
