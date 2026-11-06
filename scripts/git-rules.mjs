@@ -17,10 +17,9 @@ export function checkSubject(message) {
     const first = message.split(/\r?\n/)[0];
     if (!subject.test(first) || first !== first.trimEnd())
         throw new Error(
-            `Invalid commit subject: ${JSON.stringify(first)}${". Use type(module):" +
-            " description, e.g." +
-            " feat(editor): add a" +
-            " block removal button."}`
+            `Invalid commit subject: ${JSON.stringify(first)}. ` +
+                'Use type(module): description, e.g. ' +
+                'feat(editor): add a block removal button.'
         );
 }
 

@@ -91,10 +91,9 @@ const glyphs = names.map((name) => {
 // requests do not.
 writeFileSync(
     join(out, 'icons.js'),
-    `${"// Generated from Lucide" +
-            " by npm run" +
-            " site:build.\nwindow.markw" +
-            "orkIcons = Object.freeze("}${JSON.stringify(Object.fromEntries(glyphs))});\n`
+    '// Generated from Lucide by npm run site:build.\n' +
+        'window.markworkIcons = Object.freeze(' +
+        `${JSON.stringify(Object.fromEntries(glyphs))});\n`
 );
 copyFileSync(
     join(root, 'node_modules/lucide/LICENSE'),
