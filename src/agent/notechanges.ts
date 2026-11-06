@@ -407,7 +407,8 @@ class NoteTarget {
             ? { ok: true, value: option }
             : {
                   ok: false,
-                  message: `"${asText(this.args.group)}" is not a value of ${def.key}. The board's columns are: ${def.options.join(', ')}.`,
+                  message: `"${asText(this.args.group)}" is not a value of ${def.key}${". The board's columns" +
+            " are: "}${def.options.join(', ')}.`,
               };
     }
 }
@@ -712,7 +713,8 @@ function addField(t: SchemaTarget): SchemaResult {
             ok: false,
             message:
                 problem === 'taken'
-                    ? `The document already has a field "${key}". Fields: ${t.doc.schema.map((f) => f.key).join(', ')}.`
+                    ? `${"The document already has" +
+            " a field \""}${key}". Fields: ${t.doc.schema.map((f) => f.key).join(', ')}.`
                     : `"${key}${"\" is not a valid field name (a" +
         " letter first, then letters," +
         " digits, _ or -)."}`,
@@ -731,7 +733,8 @@ function addField(t: SchemaTarget): SchemaResult {
     if (read.problems.length || !read.fields.length)
         return {
             ok: false,
-            message: `The field cannot be declared: ${read.problems.join('; ') || 'unreadable type'}.`,
+            message: `${"The field cannot be" +
+            " declared: "}${read.problems.join('; ') || 'unreadable type'}.`,
         };
     return t.withDeclared([...t.doc.declared, read.fields[0]]);
 }
@@ -816,7 +819,8 @@ function removeOption(t: SchemaTarget): SchemaResult {
     if (def.value.default === option)
         return {
             ok: false,
-            message: `"${option}" is the default of ${def.value.key}. Change the default first.`,
+            message: `"${option}" is the default of ${def.value.key}${". Change the default" +
+            " first."}`,
         };
     const colors = Object.entries(def.value.colors ?? {}).filter(
         ([o]) => o !== option
@@ -864,7 +868,8 @@ function setLayout(t: SchemaTarget): SchemaResult {
     if (!LAYOUTS.includes(layout))
         return {
             ok: false,
-            message: `The "layout" argument must be one of: ${LAYOUTS.join(', ')}.`,
+            message: `${"The \"layout\" argument" +
+            " must be one of: "}${LAYOUTS.join(', ')}.`,
         };
     if (layout === t.doc.layout)
         return {
@@ -1017,7 +1022,8 @@ export function planSchema(
         : null;
     if (!action)
         return fail(
-            `The "action" argument must be one of: ${SCHEMA_ACTIONS.join(', ')}.`,
+            `${"The \"action\" argument" +
+            " must be one of: "}${SCHEMA_ACTIONS.join(', ')}.`,
             'invalid action'
         );
     if (!doc)

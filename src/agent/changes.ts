@@ -279,7 +279,9 @@ export function planChange(
     const file = matchMention(raw, files);
     if (!file)
         return fail(
-            `File "${raw}" was not found. Call list_files to see the existing names${name === 'edit_file' || name === 'insert_text' ? ', or use create_file for a new file' : ''}.`,
+            `File "${raw}${"\" was not found. Call" +
+            " list_files to see the" +
+            " existing names"}${name === 'edit_file' || name === 'insert_text' ? ', or use create_file for a new file' : ''}.`,
             'file not found'
         );
     return plan({
@@ -371,7 +373,10 @@ function planCreate(
     const file = cleanNewName(raw);
     if (!file)
         return fail(
-            `The name "${raw}" is not valid. Use a relative path without "..", without a leading dot or "/".`,
+            `The name "${raw}${"\" is not valid. Use a" +
+            " relative path without" +
+            " \"..\", without a leading" +
+            " dot or \"/\"."}`,
             'invalid name'
         );
     const taken = files.find(
@@ -379,7 +384,9 @@ function planCreate(
     );
     if (taken)
         return fail(
-            `File "${taken.name}" already exists. Use edit_file to change it, or choose another name.`,
+            `File "${taken.name}${"\" already exists. Use" +
+            " edit_file to change it," +
+            " or choose another name."}`,
             'already exists'
         );
     const text = asText(args.content);
@@ -415,13 +422,22 @@ function planEdit({ args, file, edit }: FileTarget): PlanResult {
     const count = file.text.split(oldText).length - 1;
     if (!count)
         return fail(
-            `old_text was not found in ${file.name}. Re-read that part with read_file and copy it exactly, without line numbers.`,
+            `${"old_text was not found in" +
+            " "}${file.name}${". Re-read that part with" +
+            " read_file and copy it" +
+            " exactly, without line" +
+            " numbers."}`,
             'text does not match'
         );
     const all = args.all === true;
     if (count > 1 && !all)
         return fail(
-            `old_text appears ${count} times in ${file.name}. Extend it with surrounding lines until it is unique, or use all=true if every occurrence really has to be replaced.`,
+            `old_text appears ${count} times in ${file.name}${". Extend it with" +
+            " surrounding lines until" +
+            " it is unique, or use" +
+            " all=true if every" +
+            " occurrence really has to" +
+            " be replaced."}`,
             'not unique'
         );
     const newText = asText(args.new_text);
@@ -518,7 +534,10 @@ function planMove({ args, reason, file, files }: FileTarget): PlanResult {
     const to = cleanNewName(rawTarget);
     if (!to)
         return fail(
-            `The destination "${rawTarget}" is not valid. Use a relative path without "..", without a leading dot or "/".`,
+            `The destination "${rawTarget}${"\" is not valid. Use a" +
+            " relative path without" +
+            " \"..\", without a leading" +
+            " dot or \"/\"."}`,
             'invalid destination'
         );
     if (to === file.name)
@@ -654,7 +673,9 @@ export function preflight(c: Change, read: Reader): string | null {
         return at === null ? null : `${c.file} already exists`;
     if (at === null) return `${c.file} no longer exists`;
     if (at !== c.before)
-        return `${c.file} changed since it was proposed; ask for a new proposal`;
+        return `${c.file}${" changed since it was" +
+            " proposed; ask for a new" +
+            " proposal"}`;
     if (c.kind === 'move' && c.to && read(c.to) !== null)
         return `${c.to} already exists`;
     return null;

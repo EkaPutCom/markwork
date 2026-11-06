@@ -140,7 +140,8 @@ export function fileIssues(
             issues.push({
                 line: link.line,
                 key: `link:${link.target}`,
-                text: `the link to "${link.target}" (line ${link.line}) does not point to a file in the folder`,
+                text: `the link to "${link.target}" (line ${link.line}${") does not point to a" +
+            " file in the folder"}`,
             });
     }
     issues.push(...structuredIssues(text));

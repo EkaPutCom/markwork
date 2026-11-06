@@ -63,7 +63,8 @@ export const TOOLS: ToolSpec[] = [
                 },
                 max: {
                     type: 'integer',
-                    description: `Maximum number of snippets (1–${MAX_SEARCH_HITS}, default 8)`,
+                    description: `${"Maximum number of" +
+            " snippets (1–"}${MAX_SEARCH_HITS}, default 8)`,
                 },
             },
             required: ['query'],
@@ -186,7 +187,9 @@ function searchDocuments(
     ).slice(0, limit);
     if (!ranked.length)
         return {
-            content: `No document section matches "${query}". Try other keywords or search_text.`,
+            content: `${"No document section" +
+            " matches \""}${query}${"\". Try other keywords or" +
+            " search_text."}`,
             summary: 'no results',
         };
     const body = ranked
@@ -246,7 +249,9 @@ function searchText(
         };
     const more =
         total > lines.length
-            ? `\n[… ${total - lines.length} more occurrences not shown; narrow with the file parameter …]`
+            ? `\n[… ${total - lines.length}${" more occurrences not" +
+            " shown; narrow with the" +
+            " file parameter …]"}`
             : '';
     return {
         content: `${total} lines contain "${needle}":\n${lines.join('\n')}${more}`,
@@ -336,7 +341,8 @@ export function runTool(
             return queryNotes(files, args);
         default:
             return {
-                content: `Tool "${name}" is not recognized. Available tools: ${TOOLS.map((t) => t.name).join(', ')}.`,
+                content: `Tool "${name}${"\" is not recognized." +
+            " Available tools: "}${TOOLS.map((t) => t.name).join(', ')}.`,
                 summary: 'unknown tool',
             };
     }

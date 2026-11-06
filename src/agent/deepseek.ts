@@ -112,12 +112,14 @@ export class DeepSeek implements Provider {
         } catch (e) {
             if (e instanceof RuntimeMissing)
                 throw new Error(
-                    `${e.message}; the assistant needs it to connect to DeepSeek`
+                    `${e.message}${"; the assistant needs it" +
+            " to connect to DeepSeek"}`
                 );
             if (cancelled())
                 return { ...collected.result(true), toolCalls: [] };
             throw new TemporaryProviderError(
-                `Cannot connect to DeepSeek: ${e instanceof Error ? e.message : e}`
+                `${"Cannot connect to" +
+            " DeepSeek: "}${e instanceof Error ? e.message : e}`
             );
         }
         try {
@@ -142,7 +144,9 @@ async function readAnswer(
         } catch (e) {
             if (cancelled()) return collected.result(true);
             throw new TemporaryProviderError(
-                `The connection to DeepSeek was interrupted: ${e instanceof Error ? e.message : e}`
+                `${"The connection to" +
+            " DeepSeek was" +
+            " interrupted: "}${e instanceof Error ? e.message : e}`
             );
         }
         if (line === null) throw endOfStreamError(stream.status, errorBody);

@@ -298,7 +298,8 @@ async function projectReady(
     )?.trim();
     if (branch !== wt.base)
         return fail(
-            `switch the project folder to ${wt.base} first (it is on ${branch ?? 'no branch'})`
+            `${"switch the project folder" +
+            " to "}${wt.base} first (it is on ${branch ?? 'no branch'})`
         );
     const status = await out(git, wt.repo, [
         'status',
@@ -387,7 +388,9 @@ async function takeFiles(
     )?.trim();
     if (both)
         return fail(
-            `${both.split('\n').join(', ')} changed on ${wt.base} too; merge everything, or ask the agent to update its branch`
+            `${both.split('\n').join(', ')} changed on ${wt.base}${" too; merge everything," +
+            " or ask the agent to" +
+            " update its branch"}`
         );
     const removed = files
         .filter((f) => f.status === 'deleted')

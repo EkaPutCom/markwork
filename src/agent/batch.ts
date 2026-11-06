@@ -97,7 +97,13 @@ export function planBatch(
             if (busy)
                 return {
                     changes: [],
-                    error: `${busy} is deleted or moved together with another action in the same batch. Propose delete/move as a separate action for that file.`,
+                    error: `${busy}${" is deleted or moved" +
+            " together with another" +
+            " action in the same" +
+            " batch. Propose" +
+            " delete/move as a" +
+            " separate action for that" +
+            " file."}`,
                 };
             if (c.kind === 'delete' || c.kind === 'move')
                 touched.forEach((f) => locked.add(f));

@@ -60,7 +60,13 @@ export function structuredDoc(text: string): StructuredDoc | null {
 }
 
 export const NOT_STRUCTURED = (name: string): string =>
-    `${name} is an ordinary document (its frontmatter has no "layout:"). Use edit_file, or edit_schema with set_layout to give it a layout.`;
+    `${name}${" is an ordinary document" +
+            " (its frontmatter has no" +
+            " \"layout:\"). Use" +
+            " edit_file, or" +
+            " edit_schema with" +
+            " set_layout to give it a" +
+            " layout."}`;
 
 // ---------- Reading a document's definition ----------
 
@@ -147,7 +153,8 @@ export function findNote(
         .join('; ');
     return missing(
         hits.length
-            ? `"${fragment}" matches ${hits.length} notes: ${list}. Extend the text until it is unique.`
+            ? `"${fragment}" matches ${hits.length} notes: ${list}${". Extend the text until" +
+            " it is unique."}`
             : `No note contains "${fragment}" in ${fileName}.`
     );
 }
@@ -183,7 +190,9 @@ export function findField(doc: StructuredDoc, key: string): Found<FieldDef> {
     if (def) return found(def);
     const keys = doc.schema.map((f) => f.key).join(', ') || '(none)';
     return missing(
-        `The document has no field "${key}". Its fields: ${keys}. Declare a new one with edit_schema add_field.`
+        `${"The document has no field" +
+            " \""}${key}". Its fields: ${keys}${". Declare a new one with" +
+            " edit_schema add_field."}`
     );
 }
 
@@ -245,7 +254,8 @@ export function structuredIssues(text: string): Issue[] {
             issues.push({
                 line: 1,
                 key: `unknown:${u.key}:${item.title}`,
-                text: `"${item.title}": the field "${u.key}" is not declared in the frontmatter`,
+                text: `"${item.title}": the field "${u.key}${"\" is not declared in the" +
+            " frontmatter"}`,
             });
     }
     return issues;

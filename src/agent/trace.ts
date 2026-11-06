@@ -46,7 +46,8 @@ export const MAX_EVENTS = 2000;
 
 const clip = (text: string): string =>
     text.length > MAX_DETAIL
-        ? `${text.slice(0, MAX_DETAIL)}\n… (${text.length - MAX_DETAIL} more characters truncated)`
+        ? `${text.slice(0, MAX_DETAIL)}\n… (${text.length - MAX_DETAIL}${" more characters" +
+            " truncated)"}`
         : text;
 
 // Tool arguments are raw JSON from the model; shown neatly if valid, as is if

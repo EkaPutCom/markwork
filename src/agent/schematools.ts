@@ -138,7 +138,8 @@ export const SCHEMA_TOOLS: ToolSpec[] = [
                 },
                 limit: {
                     type: 'integer',
-                    description: `Maximum number of notes listed (1–${MAX_ROWS}, default ${DEFAULT_ROWS})`,
+                    description: `${"Maximum number of notes" +
+            " listed (1–"}${MAX_ROWS}, default ${DEFAULT_ROWS})`,
                 },
             },
             additionalProperties: false,
@@ -190,13 +191,20 @@ export function describeSchema(
         const file = matchMention(name, files);
         if (!file)
             return {
-                content: `File "${name}" was not found. Call list_files to see the existing names.`,
+                content: `File "${name}${"\" was not found. Call" +
+            " list_files to see the" +
+            " existing names."}`,
                 summary: 'file not found',
             };
         const doc = structuredDoc(file.text);
         if (!doc)
             return {
-                content: `${file.name} is an ordinary document: its frontmatter has no "layout:", so it has no fields. edit_schema with set_layout can give it a layout.`,
+                content: `${file.name}${" is an ordinary document:" +
+            " its frontmatter has no" +
+            " \"layout:\", so it has no" +
+            " fields. edit_schema with" +
+            " set_layout can give it a" +
+            " layout."}`,
                 summary: 'ordinary document',
             };
         return {
@@ -249,7 +257,9 @@ function readConditions(raw: unknown): Condition[] | string {
         const field = asText(c?.field),
             op = asText(c?.op) as Op;
         if (!field || !OPS.includes(op))
-            return `Each condition needs a "field" and an "op" (one of ${OPS.join(', ')}).`;
+            return `${"Each condition needs a" +
+            " \"field\" and an \"op\" (one" +
+            " of "}${OPS.join(', ')}).`;
         const value = rawValue(c.value) ?? '';
         if (op !== 'empty' && op !== 'not_empty' && !value.trim())
             return `The condition on "${field}" needs a "value".`;
@@ -357,7 +367,9 @@ function unknownField(
             !known.has(c.field.toLowerCase())
     );
     return bad
-        ? `No structured document has a field "${bad.field}". Fields: ${[...new Set(docs.flatMap((d) => d.doc.schema.map((f) => f.key)))].join(', ') || '(none)'}; also title, tag, group, done.`
+        ? `${"No structured document" +
+            " has a field \""}${bad.field}". Fields: ${[...new Set(docs.flatMap((d) => d.doc.schema.map((f) => f.key)))].join(', ') || '(none)'}${"; also title, tag, group," +
+            " done."}`
         : null;
 }
 
@@ -448,7 +460,9 @@ export function queryNotes(
         const file = matchMention(only, files);
         if (!file)
             return {
-                content: `File "${only}" was not found. Call list_files to see the existing names.`,
+                content: `File "${only}${"\" was not found. Call" +
+            " list_files to see the" +
+            " existing names."}`,
                 summary: 'file not found',
             };
         docs = docs.filter((d) => d.file === file);
@@ -487,7 +501,9 @@ export function queryNotes(
         return { content: 'No note matches.', summary: 'no notes' };
     const more =
         sorted.length > limit
-            ? `\n[… ${sorted.length - limit} more not shown; narrow the conditions or raise limit …]`
+            ? `\n[… ${sorted.length - limit}${" more not shown; narrow" +
+            " the conditions or raise" +
+            " limit …]"}`
             : '';
     return {
         content: `${plural(sorted.length, 'note matches', 'notes match')}:\n${sorted.slice(0, limit).map(rowLine).join('\n')}${more}`,

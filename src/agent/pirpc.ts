@@ -104,7 +104,9 @@ export class PiRpc {
             const stop = platform().scheduler.idleAfter(ms, () =>
                 end(
                     Error(
-                        `pi ${type} did not answer; outcome unknown. Do not resend automatically.`
+                        `pi ${type}${" did not answer; outcome" +
+            " unknown. Do not resend" +
+            " automatically."}`
                     )
                 )
             );

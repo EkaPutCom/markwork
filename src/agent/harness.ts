@@ -245,7 +245,8 @@ export function linkedNotesSection(notes: LinkedNote[]): string[] {
                 '',
                 title,
                 '',
-                `(the section "${note.link.heading}" was not found in this file)`
+                `(the section "${note.link.heading}${"\" was not found in this" +
+            " file)"}`
             );
             continue;
         }
@@ -280,7 +281,10 @@ export function buildPrompt(
     const meta = cardMeta(card.text);
     const tags = meta.tags.filter((t) => !PROJECT_TAG.test(t));
     const lines = [
-        `Task from the kanban board "${board}" in Markwork, for the project "${project}" (the current work folder).`,
+        `${"Task from the kanban" +
+            " board \""}${board}${"\" in Markwork, for the" +
+            " project \""}${project}${"\" (the current work" +
+            " folder)."}`,
         '',
         `# ${meta.title}`,
     ];
@@ -301,7 +305,9 @@ export function buildPrompt(
     if (worktree) {
         lines.push(
             '',
-            `You work in a Git worktree made for this card, on the branch ${worktree.branch} (from ${worktree.base}). ` +
+            `${"You work in a Git" +
+            " worktree made for this" +
+            " card, on the branch "}${worktree.branch} (from ${worktree.base}). ` +
                 'Stay on this branch and in this' +
                     ' folder; do not switch branches, push,' +
                     ' or touch other worktrees. You may' +

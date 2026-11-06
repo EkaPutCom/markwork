@@ -114,7 +114,9 @@ export function parseGitCall(
     const rawFile = asString(a.file);
     const file = rawFile ? cleanNewName(rawFile) : null;
     if (rawFile && file !== rawFile)
-        return `File "${rawFile}" is not valid: use a relative Markdown path as in list_files.`;
+        return `File "${rawFile}${"\" is not valid: use a" +
+            " relative Markdown path" +
+            " as in list_files."}`;
     if (name === 'git_log') {
         const limit =
             typeof a.max === 'number' && Number.isFinite(a.max)
@@ -144,7 +146,9 @@ function commitRequest(
     file: string | null
 ): GitRequest | string {
     if (!COMMIT.test(commit))
-        return `Commit "${commit}" is not valid. Use a hash from git_log or HEAD, HEAD~1, …`;
+        return `Commit "${commit}${"\" is not valid. Use a" +
+            " hash from git_log or" +
+            " HEAD, HEAD~1, …"}`;
     if (name === 'show_commit') return { kind: 'show', commit, file };
     if (name === 'file_at_commit')
         return file
