@@ -136,7 +136,9 @@ function Row({
                 tabIndex={0}
                 aria-expanded={entry.isDir ? open : undefined}
                 aria-selected={active}
-                className={`row${active ? ' active' : ''}${over ? ' drop' : ''}`}
+                className={
+                    `row${active ? ' active' : ''}${over ? ' drop' : ''}`
+                }
                 style={{ paddingLeft: 10 + depth * 20 }}
                 draggable
                 onDragStart={(e) => {

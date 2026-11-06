@@ -478,7 +478,9 @@ function Sash({
         <div
             role="separator"
             aria-orientation={vertical ? 'vertical' : 'horizontal'}
-            className={`sash ${vertical ? 'vertical' : 'horizontal'}${on ? ' on' : ''}`}
+            className={
+                `sash ${vertical ? 'vertical' : 'horizontal'}${on ? ' on' : ''}`
+            }
             onPointerDown={(e) => {
                 e.preventDefault();
                 e.currentTarget.setPointerCapture(e.pointerId);

@@ -129,7 +129,8 @@ function Setup({ setup }: { setup: NonNullable<HomeData['setup']> }) {
                         key={p.id}
                         title={
                             p.state === 'not-allowed'
-                                ? `${p.name} is not allowed by markworkd on ${p.machine}`
+                                ? `${p.name} is not allowed by markworkd on ` +
+                                  p.machine
                                 : p.machine
                                   ? `${p.name} is not installed on ${p.machine}`
                                   : `${p.name} is not installed`
@@ -249,6 +250,7 @@ export function Home({ data }: { data: HomeData | null }) {
     }
     const part = GREETINGS[dayPart(now.getHours())];
     const tasks = allTasks ? data.tasks : data.tasks.slice(0, SHOWN_TASKS);
+    const moreTasks = data.tasks.length - tasks.length;
     const journal = data.journal;
     const journalLine =
         journal &&
@@ -257,7 +259,8 @@ export function Home({ data }: { data: HomeData | null }) {
                 ? `${journal.notes} note${journal.notes === 1 ? '' : 's'}`
                 : '',
             journal.activity
-                ? `${journal.activity} activit${journal.activity === 1 ? 'y' : 'ies'}`
+                ? `${journal.activity} activit` +
+                  `${journal.activity === 1 ? 'y' : 'ies'}`
                 : '',
         ]
             .filter(Boolean)
@@ -285,8 +288,13 @@ export function Home({ data }: { data: HomeData | null }) {
                                 <Button
                                     key={e.path}
                                     variant="outline"
-                                    className="card h-auto items-start font-normal text-left"
-                                    aria-label={`Continue ${e.subtitle} in ${e.title}`}
+                                    className={
+                                        'card h-auto items-start ' +
+                                        'font-normal text-left'
+                                    }
+                                    aria-label={
+                                        `Continue ${e.subtitle} in ${e.title}`
+                                    }
                                     onClick={() => client.openRecent(e.path)}
                                 >
                                     <span className="title">{e.title}</span>
@@ -354,18 +362,26 @@ export function Home({ data }: { data: HomeData | null }) {
                         <Row title={"Open a work folder to see due dates" +
                             " from kanban boards"} />
                     ) : data.tasks.length === 0 ? (
-                        <Row title="Nothing is due until the day after tomorrow" />
+                        <Row
+                            title="Nothing is due until the day after tomorrow"
+                        />
                     ) : (
                         tasks.map((t, i) => (
                             <Task
-                                key={`${t.file}:${t.at.column}:${t.at.index}:${i}`}
+                                key={
+                                    `${t.file}:${t.at.column}:` +
+                                    `${t.at.index}:${i}`
+                                }
                                 task={t}
                             />
                         ))
                     )}
                     {data.tasks.length > tasks.length && (
                         <Row
-                            title={`Show ${data.tasks.length - tasks.length} more task${data.tasks.length - tasks.length === 1 ? '' : 's'}`}
+                            title={
+                                `Show ${moreTasks} more ` +
+                                (moreTasks === 1 ? 'task' : 'tasks')
+                            }
                             onClick={() => setAllTasks(true)}
                         />
                     )}

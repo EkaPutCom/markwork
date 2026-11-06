@@ -76,7 +76,8 @@ export function outcome(state: ReplayState): string | null {
     if (first)
         return `fail at step ${first.step}: ${first.check}, ${first.message}`;
     if (repro.expect?.doc !== undefined && repro.expect.doc !== doc)
-        return 'differs: every check passed, but the text is not the one expected';
+        return 'differs: every check passed, but the text is not the ' +
+            'one expected';
     return repro.expect?.doc !== undefined
         ? 'pass: every check, and the text expected'
         : 'pass: every check';
@@ -177,7 +178,9 @@ export function Replay({
             if (!r) return;
             const answer = await ask({ op: 'keep-test', repro: r, name });
             setState({
-                message: `Kept as a test: ${String(answer.file)}. tests/electron/repros.mjs plays it with every check.`,
+                message:
+                    `Kept as a test: ${String(answer.file)}. ` +
+                    'tests/electron/repros.mjs plays it with every check.',
             });
         });
     const copy = () => {
@@ -195,7 +198,7 @@ export function Replay({
     return (
         <div className="ins-list wide ins-replay">
             <div className="ins-replay-bar">
-                {/* ui-allow: the file input stays hidden; the Open Repro… button opens it */}
+                {/* ui-allow: hidden input for the Open Repro button */}
                 <input
                     ref={file}
                     type="file"

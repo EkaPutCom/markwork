@@ -293,7 +293,9 @@ export function ImageViewer() {
                         <div
                             className="cm-md-diagram viewer-diagram"
                             style={{
-                                transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+                                transform:
+                                    `translate(${view.x}px, ${view.y}px) ` +
+                                    `scale(${view.scale})`,
                             }}
                             dangerouslySetInnerHTML={{ __html: image.svg }}
                             onMouseDown={(event) => {
@@ -322,7 +324,9 @@ export function ImageViewer() {
                             alt={image.title}
                             draggable={false}
                             style={{
-                                transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+                                transform:
+                                    `translate(${view.x}px, ${view.y}px) ` +
+                                    `scale(${view.scale})`,
                             }}
                             onLoad={(event) => {
                                 const img = event.currentTarget;

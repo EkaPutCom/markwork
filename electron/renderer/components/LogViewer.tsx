@@ -385,6 +385,12 @@ export function LogPanel({
                         .map((n) => {
                             const e = n.event,
                                 header = LOG_HEADERS.has(e.kind);
+                            const selectedClass =
+                                e.seq === selected ? ' selected' : '';
+                            const failedClass =
+                                e.status === 'failed' ? ' failed' : '';
+                            const className =
+                                `step ${e.kind}${selectedClass}${failedClass}`;
                             return (
                                 <div
                                     key={e.seq}
@@ -392,7 +398,7 @@ export function LogPanel({
                                     aria-selected={e.seq === selected}
                                     aria-level={n.depth + 1}
                                     tabIndex={0}
-                                    className={`step ${e.kind}${e.seq === selected ? ' selected' : ''}${e.status === 'failed' ? ' failed' : ''}`}
+                                    className={className}
                                     style={{ paddingLeft: 4 + n.depth * 14 }}
                                     onClick={() =>
                                         setPicked(

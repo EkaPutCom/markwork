@@ -25,6 +25,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 
+const CURSOR_LINE_LABEL = 'The line of the cursor, as it will be saved';
 const frame = () =>
     new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
@@ -59,6 +60,7 @@ function ReportForm({
     );
     const [error, setError] = useState<string | null>(null);
     const count = recordingOf(view.state)?.entries.length ?? 0;
+    const lastChange = count === 1 ? 'change' : `${count} changes`;
     const preview = useMemo(
         () => ({
             real: cursorLine(view, false),
@@ -93,7 +95,8 @@ function ReportForm({
             );
         } catch (e) {
             setError(
-                `The report could not be saved: ${e instanceof Error ? e.message : String(e)}`
+                `The report could not be saved: ` +
+                    `${e instanceof Error ? e.message : String(e)}`
             );
         } finally {
             setHidden(false);
@@ -169,7 +172,7 @@ function ReportForm({
                                 What the editor just did
                                 <small>
                                     {count
-                                        ? `The last ${count === 1 ? 'change' : `${count} changes`}`
+                                        ? `The last ${lastChange}`
                                         : 'Nothing yet'}
                                     : keys, clicks, and what each did. Nothing
                                     typed in other windows.
@@ -190,7 +193,7 @@ function ReportForm({
                                 </small>
                                 <code
                                     className="report-preview"
-                                    aria-label="The line of the cursor, as it will be saved"
+                                    aria-label={CURSOR_LINE_LABEL}
                                 >
                                     {blur ? preview.blurred : preview.real}
                                 </code>

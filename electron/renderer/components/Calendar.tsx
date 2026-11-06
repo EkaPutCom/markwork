@@ -96,13 +96,15 @@ export function Calendar({ board }: { board: Board }) {
     const event = (item: CalendarItem) => {
         const done = item.card.done === true,
             late = !done && item.date < today;
+        const status = done ? ' done' : late ? ' late' : '';
+        const className = `calendar-event justify-start${status} text-left`;
         const label = (item.time ? `${item.time} ` : '') + item.title;
         return (
             <Button
                 key={`${item.at.column}:${item.at.index}`}
                 variant="ghost"
                 size="xs"
-                className={`calendar-event justify-start${done ? ' done' : late ? ' late' : ''} text-left`}
+                className={className}
                 draggable
                 aria-label={label}
                 // ui-allow: the title gives the ellipsized event's full name
@@ -132,10 +134,13 @@ export function Calendar({ board }: { board: Board }) {
     };
     const cell = (date: string, limit: number) => {
         const items = data.byDate.get(date) ?? [];
+        const other = monthOf(date) !== month ? ' other' : '';
+        const dropped = over === date ? ' drop' : '';
+        const tall = limit === Infinity ? ' tall' : '';
         return (
             <div
                 key={date}
-                className={`calendar-day${monthOf(date) !== month ? ' other' : ''}${over === date ? ' drop' : ''}${limit === Infinity ? ' tall' : ''}`}
+                className={`calendar-day${other}${dropped}${tall}`}
                 data-date={date}
                 title={
                     data.key
@@ -185,7 +190,14 @@ export function Calendar({ board }: { board: Board }) {
     const weekRange = weekDays(day);
     const period =
         mode === 'week'
-            ? `${formatDate(weekRange[0], { day: 'numeric', month: 'short' })} – ${formatDate(weekRange[6], { day: 'numeric', month: 'short', year: 'numeric' })}`
+            ? `${formatDate(weekRange[0], {
+                  day: 'numeric',
+                  month: 'short',
+              })} – ${formatDate(weekRange[6], {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+              })}`
             : formatDate(`${month}-01`, { month: 'long', year: 'numeric' });
 
     return (
@@ -268,7 +280,9 @@ export function Calendar({ board }: { board: Board }) {
                     )}
                 </div>
                 <aside
-                    className={`calendar-undated${over === 'undated' ? ' drop' : ''}`}
+                    className={
+                        `calendar-undated${over === 'undated' ? ' drop' : ''}`
+                    }
                     {...target('undated', '')}
                 >
                     <h3>Not scheduled ({data.undated.length})</h3>

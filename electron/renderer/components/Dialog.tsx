@@ -58,7 +58,9 @@ export function DialogLayer() {
                 <AlertDialogHeader>
                     <AlertDialogTitle>{dialog.title}</AlertDialogTitle>
                     {dialog.detail && (
-                        <AlertDialogDescription className="[overflow-wrap:anywhere]">
+                        <AlertDialogDescription
+                            className="[overflow-wrap:anywhere]"
+                        >
                             {dialog.detail}
                         </AlertDialogDescription>
                     )}

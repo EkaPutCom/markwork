@@ -337,7 +337,8 @@ const VIA: ['fork' | 'direct' | 'agit', string, string][] = [
     [
         'agit',
         'AGit (no fork, no branch)',
-        'The server opens the pull request from the push. It has to be enabled on the server',
+        'The server opens the pull request from the push. It has to be ' +
+        'enabled on the server',
     ],
 ];
 
@@ -380,7 +381,8 @@ export function PullRequestDialog() {
                 }}
             >
                 <p>
-                    {options.branch} goes to {options.host} and is offered for{' '}
+                    {options.branch} goes to {options.host} and is offered
+                    for{' '}
                     {options.repository}, to be merged into {options.base}.
                 </p>
                 {options.uncommitted && (

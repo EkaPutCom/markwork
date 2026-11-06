@@ -82,7 +82,8 @@ function MergeResult({ comparison }: { comparison: ConflictComparison }) {
         try {
             if (!(await client.applyConflictComparison(comparison.id, text)))
                 setError(
-                    'The document changed. Close this comparison and open it again before applying.'
+                    'The document changed. Close this comparison and open it ' +
+                    'again before applying.'
                 );
         } catch (error) {
             setError(
@@ -141,7 +142,11 @@ function MergeResult({ comparison }: { comparison: ConflictComparison }) {
                     " px-3 py-2"}>
                     <h3 className="text-sm font-medium">
                         Result{' '}
-                        <span className="text-xs font-normal text-muted-foreground">
+                        <span
+                            className={
+                                'text-xs font-normal text-muted-foreground'
+                            }
+                        >
                             {comparison.file}
                         </span>
                     </h3>

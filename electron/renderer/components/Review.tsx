@@ -66,7 +66,11 @@ function CommentableDiff({ review }: { review: ReviewSnapshot }) {
             {diff.lines.map((l, i) => (
                 <div key={i}>
                     <div
-                        className={`line ${l.kind}${commented.has(i) ? ' commented' : ''}`}
+                        className={
+                            'line ' +
+                            l.kind +
+                            (commented.has(i) ? ' commented' : '')
+                        }
                     >
                         <span className="text">{l.text || ' '}</span>
                         {(l.kind === 'add' ||
@@ -91,7 +95,9 @@ function CommentableDiff({ review }: { review: ReviewSnapshot }) {
                                 autoFocus
                                 rows={2}
                                 aria-label="Comment"
-                                placeholder="Say what should change on this line"
+                                placeholder={
+                                    'Say what should change on this line'
+                                }
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                                 onKeyDown={(e) => {

@@ -448,7 +448,8 @@ function StatusBar() {
                         </span>
                     )}
                     <span className="ml-auto">
-                        UTF-8 · {code.ending} · {code.lines.toLocaleString()}{' '}
+                        UTF-8 · {code.ending} ·{' '}
+                        {code.lines.toLocaleString()}{' '}
                         lines
                     </span>
                 </>
@@ -622,7 +623,9 @@ export function App() {
                 <MenuBar />
             </div>
             <div
-                className={`shell${panels.sidebar.floats ? ' float-sidebar' : ''}`}
+                className={
+                    `shell${panels.sidebar.floats ? ' float-sidebar' : ''}`
+                }
             >
                 <ActivityBar />
                 {panels.sidebar.shown && (
@@ -641,7 +644,9 @@ export function App() {
                 <div className="main">
                     <HeaderBar />
                     <div
-                        className={`content${panels.chat.floats ? ' float-chat' : ''}`}
+                        className={
+                            `content${panels.chat.floats ? ' float-chat' : ''}`
+                        }
                     >
                         <div className="editor-group">
                             <EditorArea />
@@ -659,7 +664,8 @@ export function App() {
                             ) : (
                                 <Chat />
                             ))}
-                        {/* A floating panel closes when the content beside it is clicked; the header stays in reach. */}
+                        {/* A floating panel closes when the content beside it
+                            is clicked; the header stays in reach. */}
                         {((panels.sidebar.floats && panels.sidebar.shown) ||
                             (panels.chat.floats && panels.chat.shown)) && (
                             <div

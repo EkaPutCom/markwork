@@ -36,7 +36,8 @@ export function ActivityBar() {
                     aria-pressed={shown && current === page}
                     aria-description={
                         page === 'history'
-                            ? `${changed} changed ${changed === 1 ? 'file' : 'files'}`
+                            ? `${changed} changed ` +
+                              `${changed === 1 ? 'file' : 'files'}`
                             : undefined
                     }
                     onClick={() => client.showSidebarPage(page)}

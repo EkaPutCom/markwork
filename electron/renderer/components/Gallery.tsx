@@ -91,6 +91,12 @@ export function Gallery({ board }: { board: Board }) {
                         card.cover.kind === 'image'
                             ? imageUrl(card.cover.path, client.baseDir())
                             : null;
+                    const coverClass =
+                        card.cover.kind === 'color'
+                            ? `cover cover-${card.cover.index}`
+                            : card.cover.kind === 'image'
+                              ? 'cover cover-missing'
+                              : 'cover cover-none';
                     return (
                         <div
                             key={`${card.at.column}:${card.at.index}`}
@@ -110,7 +116,7 @@ export function Gallery({ board }: { board: Board }) {
                             }}
                         >
                             <div
-                                className={`cover ${card.cover.kind === 'color' ? `cover-${card.cover.index}` : card.cover.kind === 'image' ? 'cover-missing' : 'cover-none'}`}
+                                className={coverClass}
                                 style={{ height: Math.round(width * 0.45) }}
                             >
                                 {src && (
@@ -129,7 +135,8 @@ export function Gallery({ board }: { board: Board }) {
                                         e.stopPropagation();
                                         if (
                                             await client.confirm(
-                                                `Delete the note “${card.title}”?`,
+                                                'Delete the note “' +
+                                                    card.title + '”?',
                                                 '',
                                                 'Delete'
                                             )
@@ -177,7 +184,11 @@ export function Gallery({ board }: { board: Board }) {
                                                         ? text
                                                         : `${def.key}: ${text}`
                                                 }
-                                                className={`field${color ? ` opt-${color}` : ''}`}
+                                                className={
+                                                    color
+                                                        ? `field opt-${color}`
+                                                        : 'field'
+                                                }
                                             />
                                         );
                                     })}

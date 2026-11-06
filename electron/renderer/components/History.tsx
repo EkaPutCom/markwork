@@ -217,6 +217,8 @@ export function History() {
         [changed, unchecked]
     );
     const state = changes?.state;
+    const fileWord = chosen.length === 1 ? 'file' : 'files';
+    const changesLabel = `Changes (${changed.length})`;
 
     return (
         <aside className="sidebar history" aria-label="History">
@@ -254,7 +256,7 @@ export function History() {
                             busy={false}
                             label={
                                 chosen.length
-                                    ? `Commit ${chosen.length} ${chosen.length === 1 ? 'file' : 'files'}`
+                                    ? `Commit ${chosen.length} ${fileWord}`
                                     : 'Commit'
                             }
                             onCommit={(message) =>
@@ -272,8 +274,11 @@ export function History() {
                                     <Button
                                         variant="ghost"
                                         size="xs"
-                                        className="fold w-full justify-start rounded-none"
-                                        aria-label={`Changes (${changed.length})`}
+                                        className={
+                                            'fold w-full justify-start ' +
+                                            'rounded-none'
+                                        }
+                                        aria-label={changesLabel}
                                     >
                                         <Icon
                                             name={

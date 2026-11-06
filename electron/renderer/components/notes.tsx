@@ -76,7 +76,8 @@ export const refOf = (at: Position, card: Card): CardRef => ({
 // Today, as the notes write a day: "YYYY-MM-DD" in local time.
 export function todayString(now = new Date()): string {
     const pad = (n: number) => String(n).padStart(2, '0');
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-` +
+        `${pad(now.getDate())}`;
 }
 
 const MONTHS = [
@@ -225,7 +226,10 @@ export function FieldChips({
                         key={chip.key}
                         text={chip.text}
                         title={chip.invalid ?? chip.key}
-                        className={`field${color ? ` opt-${color}` : ''}${chip.invalid ? ' invalid' : ''}`}
+                        className={
+                            `field${color ? ` opt-${color}` : ''}` +
+                            `${chip.invalid ? ' invalid' : ''}`
+                        }
                         onClick={
                             onEdit && chip.type
                                 ? (e) => onEdit(chip.key, e)

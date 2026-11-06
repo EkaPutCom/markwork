@@ -25,7 +25,8 @@ const OPTIONS = [
 ] as const;
 
 const GLOBS =
-    'Separate patterns with commas. * matches within a folder, ** matches across folders, a name matches that folder or file anywhere.';
+    'Separate patterns with commas. * matches within a folder, ** matches ' +
+    'across folders, a name matches that folder or file anywhere.'
 
 export function Search() {
     const client = useClient();
@@ -110,7 +111,9 @@ export function Search() {
                                     <TooltipTrigger asChild>
                                         <Toggle
                                             size="xs"
-                                            className="h-5 min-w-5 font-mono text-2xs"
+                                            className={
+                                                'h-5 min-w-5 font-mono text-2xs'
+                                            }
                                             aria-label={o.title}
                                             pressed={form[o.key]}
                                             onPressedChange={(on) =>
@@ -202,7 +205,9 @@ export function Search() {
             </div>
             {results?.message && (
                 <div
-                    className={`search-message${results.invalid ? ' error' : ''}`}
+                    className={
+                        `search-message${results.invalid ? ' error' : ''}`
+                    }
                     role="status"
                 >
                     {results.message}

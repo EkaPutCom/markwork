@@ -59,7 +59,11 @@ const ADDABLE: ChartItem[] = [
 // A slice's color: none for the notes without a value, else its option's own
 // color, else the next one in order.
 const colorOf = (slice: Slice, index: number): string =>
-    `var(--cat-${slice.name === NO_VALUE ? 'none' : slice.color || CATEGORY_ORDER[index % CATEGORY_ORDER.length]})`;
+    `var(--cat-${
+        slice.name === NO_VALUE
+            ? 'none'
+            : slice.color || CATEGORY_ORDER[index % CATEGORY_ORDER.length]
+    })`;
 
 function Donut({ slices }: { slices: Slice[] }) {
     const total = slices.reduce((n, s) => n + s.count, 0);

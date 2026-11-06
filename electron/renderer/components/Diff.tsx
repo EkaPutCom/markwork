@@ -103,7 +103,10 @@ export function DiffLines({
     return (
         <pre
             ref={ref}
-            className={`diff ${wide ? 'side' : 'inline'}${className ? ` ${className}` : ''}`}
+            className={
+                `diff ${wide ? 'side' : 'inline'}` +
+                `${className ? ` ${className}` : ''}`
+            }
             style={style}
         >
             {rows?.map((r, i) =>
