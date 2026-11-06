@@ -45,11 +45,13 @@ try {
 } catch (e) {
     recordFailure();
     say(
-        `${RED}The core tests stopped: ${errorMessage(e)}${RESET}\n${e instanceof Error ? e.stack : ''}`
+        `${RED}The core tests stopped: ${errorMessage(e)}${RESET}\n` +
+            `${e instanceof Error ? e.stack : ''}`
     );
 }
 const { passed, failed } = summary();
 say(
-    `\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET} (Node ${process.version})`
+    `\n${failed ? RED : GREEN}${passed} passed, ${failed} failed${RESET} ` +
+        `(Node ${process.version})`
 );
 process.exit(failed ? 1 : 0);

@@ -65,7 +65,8 @@ const pass = (name: string) => {
 const fail = (name: string, e: unknown) => {
     failed++;
     say(
-        `  ${RED}✗ ${name}${RESET}\n    ${errorMessage(e).split('\n').join('\n    ')}`
+        `  ${RED}✗ ${name}${RESET}\n    ` +
+            errorMessage(e).split('\n').join('\n    ')
     );
 };
 
@@ -140,7 +141,8 @@ export function ok(cond: unknown, msg: string): asserts cond {
 export function contains(haystack: string, needle: string): void {
     if (!haystack.includes(needle))
         throw new Error(
-            `does not contain ${JSON.stringify(needle)}\n    in: ${JSON.stringify(haystack.slice(0, 300))}`
+            `does not contain ${JSON.stringify(needle)}\n    in: ` +
+                JSON.stringify(haystack.slice(0, 300))
         );
 }
 
