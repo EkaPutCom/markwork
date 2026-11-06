@@ -162,35 +162,41 @@ const day = (offset) => {
     return d.toISOString().slice(0, 10);
 };
 const LAYOUTS_DOC = () =>
-    `${"---\nlayout:" +
-            " board\nfields:\n  status:" +
-            " select(todo:gray," +
-            " doing:blue, done:green)" +
-            " = todo\n  start: date\n " +
-            " due: date\n---\n\n# Launch" +
-            " plan\n\nOne file. Change" +
-            " the layout: line and the" +
-            " same notes become a" +
-            " list, a table, a" +
-            " calendar, a timeline, a" +
-            " gallery, or a chart.\n\n##" +
-            " Plan\n\n- [ ] Write the" +
-            " changelog #docs" +
-            " [status:: todo] [start::" +
-            " "}${day(3)}] [due:: ${day(6)}${"]\n- [ ] Prepare the" +
-            " release material" +
-            " #marketing [status::" +
-            " todo] [start:: "}${day(1)}] [due:: ${day(8)}${"]\n\n## In Progress\n\n- [ ]" +
-            " Fix the sync bug #bug" +
-            " [status:: doing]" +
-            " [start:: "}${day(-4)}] [due:: ${day(2)}${"]\n- [ ] Review the parser" +
-            " #dev [status:: doing]" +
-            " [start:: "}${day(-1)}] [due:: ${day(4)}${"]\n\n## Done\n\n- [x]" +
-            " Redesign the home page" +
-            " #design [status:: done]" +
-            " [start:: "}${day(-9)}] [due:: ${day(-3)}${"]\n- [x] Move to Electron" +
-            " #dev [status:: done]" +
-            " [start:: "}${day(-12)}] [due:: ${day(-6)}]\n`;
+    [
+        '---',
+        'layout: board',
+        'fields:',
+        '  status: select(todo:gray, doing:blue, done:green) = todo',
+        '  start: date',
+        '  due: date',
+        '---',
+        '',
+        '# Launch plan',
+        '',
+        'One file. Change the layout: line and the same notes become a ' +
+            'list, a table, a calendar, a timeline, a gallery, or a chart.',
+        '',
+        '## Plan',
+        '',
+        `- [ ] Write the changelog #docs [status:: todo] [start:: ${day(3)}] ` +
+            `[due:: ${day(6)}]`,
+        `- [ ] Prepare the release material #marketing [status:: todo] ` +
+            `[start:: ${day(1)}] [due:: ${day(8)}]`,
+        '',
+        '## In Progress',
+        '',
+        `- [ ] Fix the sync bug #bug [status:: doing] [start:: ${day(-4)}] ` +
+            `[due:: ${day(2)}]`,
+        `- [ ] Review the parser #dev [status:: doing] [start:: ${day(-1)}] ` +
+            `[due:: ${day(4)}]`,
+        '',
+        '## Done',
+        '',
+        `- [x] Redesign the home page #design [status:: done] ` +
+            `[start:: ${day(-9)}] [due:: ${day(-3)}]`,
+        `- [x] Move to Electron #dev [status:: done] [start:: ${day(-12)}] ` +
+            `[due:: ${day(-6)}]`
+    ].join('\n') + '\n';
 const SALES =
     [
         'date,customer,city,amount,status',
@@ -201,30 +207,49 @@ const SALES =
         '2026-10-06,PT Nusa Kita,Semarang,9100000,paid',
         '2026-10-07,CV Harapan,Makassar,4800000,pending',
     ].join('\n') + '\n';
-const SALES_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Sales report</title><style>
-body{font:15px/1.5 system-ui,sans-serif;margin:0;padding:32px 40px;color:#2e3436;background:#fff}
-h1{font-size:22px;margin:0 0 4px}p{color:#5e6a6e;margin:0 0 20px}
-.row{display:flex;align-items:center;gap:12px;margin:8px 0}.name{width:110px}
-.bar{height:22px;border-radius:5px;background:#3584e4}.value{color:#5e6a6e}
-button{margin-top:18px;font:inherit;padding:6px 14px;border-radius:6px;border:1px solid #c0bfbc;background:#f6f5f4}
-</style></head><body><h1>Sales per city</h1><p>A page in the work folder. It runs its own script, but it cannot reach the network.</p>
-<div id="bars"></div><button id="b">Show in millions</button>
-<script>
-const data = [['Jakarta', 12.4], ['Surabaya', 6.2], ['Bandung', 8.75], ['Semarang', 9.1], ['Medan', 2.3]];
-const box = document.getElementById('bars');
-let millions = false;
-function draw() {
-  box.innerHTML = '';
-  for (const [city, v] of data) {
-    const r = document.createElement('div'); r.className = 'row';
-    r.innerHTML = '<span class="name">' + city + '</span><div class="bar" style="width:' + v * 28 + 'px"></div><span class="value">' + (millions ? v + ' M' : (v * 1000000).toLocaleString('en-US')) + '</span>';
-    box.append(r);
-  }
-}
-document.getElementById('b').onclick = () => { millions = !millions; draw(); };
-draw();
-</script></body></html>
-`;
+const SALES_PAGE = [
+    "<!doctype html><html><head><meta" +
+        " charset=\"utf-8\"><title>Sales report</title><style>",
+    "body{font:15px/1.5" +
+        " system-ui,sans-serif;margin:0;padding:32px" +
+        " 40px;color:#2e3436;background:#fff}",
+    "h1{font-size:22px;margin:0 0 4px}p{color:#5e6a6e;margin:0" +
+        " 0 20px}",
+    ".row{display:flex;align-items:center;gap:12px;margin:8px" +
+        " 0}.name{width:110px}",
+    ".bar{height:22px;border-radius:5px;background:#3584e4}.val" +
+        "ue{color:#5e6a6e}",
+    "button{margin-top:18px;font:inherit;padding:6px" +
+        " 14px;border-radius:6px;border:1px solid" +
+        " #c0bfbc;background:#f6f5f4}",
+    "</style></head><body><h1>Sales per city</h1><p>A page in" +
+        " the work folder. It runs its own script, but it cannot" +
+        " reach the network.</p>",
+    "<div id=\"bars\"></div><button id=\"b\">Show in" +
+        " millions</button>",
+    "<script>",
+    "const data = [['Jakarta', 12.4], ['Surabaya', 6.2]," +
+        " ['Bandung', 8.75], ['Semarang', 9.1], ['Medan', 2.3]];",
+    "const box = document.getElementById('bars');",
+    "let millions = false;",
+    "function draw() {",
+    "  box.innerHTML = '';",
+    "  for (const [city, v] of data) {",
+    "    const r = document.createElement('div'); r.className =" +
+        " 'row';",
+    "    r.innerHTML = '<span class=\"name\">' + city +" +
+        " '</span><div class=\"bar\" style=\"width:' + v * 28 +" +
+        " 'px\"></div><span class=\"value\">' + (millions ? v + ' M' :" +
+        " (v * 1000000).toLocaleString('en-US')) + '</span>';",
+    "    box.append(r);",
+    "  }",
+    "}",
+    "document.getElementById('b').onclick = () => { millions =" +
+        " !millions; draw(); };",
+    "draw();",
+    "</script></body></html>",
+    "",
+].join('\n');
 const PI_BOARD =
     '---\nlayout: board\nproject:' +
         ' web-ecommerce\n---\n\n## Plan\n\n- [' +
@@ -300,7 +325,8 @@ function writeGif(name, frames) {
     gif.finish();
     writeFileSync(join(OUT, `${name}.gif`), gif.bytes());
     console.log(
-        `  ${name}.gif: ${frames.length} frames, ${Math.round(gif.bytes().length / 1024)} KB`
+        `  ${name}.gif: ${frames.length} frames, ` +
+            `${Math.round(gif.bytes().length / 1024)} KB`
     );
 }
 
@@ -444,7 +470,8 @@ class Run {
         const { width, height, data } = await this.app.evaluate(
             async ({ BrowserWindow }, w) => {
                 const image = (
-                    await BrowserWindow.getAllWindows()[0].webContents.capturePage()
+                    await BrowserWindow.getAllWindows()[0].webContents
+                        .capturePage()
                 ).resize({ width: w, quality: 'best' });
                 return {
                     ...image.getSize(),
@@ -1096,12 +1123,8 @@ const GROUPS = {
             git('add', 'plan.md');
             git('commit', '-q', '-m', message);
         }
-        put(
-            root,
-            'plan.md',
-            `${readFileSync(join(root, 'plan.md'), 'utf8')}${"- Evaluation: 30" +
-            " November\n"}`
-        );
+        const plan = readFileSync(join(root, 'plan.md'), 'utf8');
+        put(root, 'plan.md', `${plan}- Evaluation: 30 November\n`);
         put(
             root,
             'ideas.md',
@@ -1681,6 +1704,27 @@ const GROUPS = {
                 ' account. Two asked for a PDF' +
                 ' export.\n'
         );
+        const fixtureQuestion =
+            'Compare `plan.md` with `references/meeting.md`. ' +
+            'Which decision never made it into the plan?';
+        const otherDecision =
+            'The other decisions are consistent. *Prepare the release ' +
+            'material* is assigned to Sari.';
+        const secondQuestion =
+            'What else should the plan record before we call it ready?';
+        const checklistLead =
+            'Two things are worth adding to `plan.md` so the brief does not ' +
+            'repeat the same gap:';
+        const reason =
+            '1. **The reason for the new date.** A reader who only sees ' +
+            '*22 November* cannot tell that the sync testing moved it.';
+        const owners =
+            '2. **The follow-up owners.** Budi (the sync bug) and Dewi ' +
+            '(the beta trial) are only in the meeting notes.';
+        const conclusion =
+            'Those facts belong in the *Schedule* section. pi can update ' +
+            'files directly after activation; review the disk changes and ' +
+            'keep backups.';
         const fixtureChat = `---
 layout: chat
 title: "Which meeting decision is not in the plan?"
@@ -1689,7 +1733,7 @@ created: 2026-10-31T09:20:00
 ---
 
 ## You
-Compare \`plan.md\` with \`references/meeting.md\`. Which decision never made it into the plan?
+${fixtureQuestion}
 
 ## Assistant
 One decision is still missing from \`plan.md\`:
@@ -1704,18 +1748,18 @@ One decision is still missing from \`plan.md\`:
 
 > The sync testing is not finished.
 
-The other decisions are consistent. *Prepare the release material* is assigned to Sari.
+${otherDecision}
 
 ## You
-What else should the plan record before we call it ready?
+${secondQuestion}
 
 ## Assistant
-Two things are worth adding to \`plan.md\` so the brief does not repeat the same gap:
+${checklistLead}
 
-1. **The reason for the new date.** A reader who only sees *22 November* cannot tell that the sync testing moved it.
-2. **The follow-up owners.** Budi (the sync bug) and Dewi (the beta trial) are only in the meeting notes.
+${reason}
+${owners}
 
-Those facts belong in the *Schedule* section. pi can update files directly after activation; review the disk changes and keep backups.
+${conclusion}
 `;
         put(
             root,
@@ -1830,15 +1874,20 @@ function updateSizes() {
             .filter((f) => f.endsWith('.html'))
             .map((f) => join(repo, 'docs', 'docs', f)),
     ];
+    const imageDimensions = new RegExp(
+        '<img (src|data-light-src)="((?:\\.\\./)?assets/([^"]+))"' +
+            '([^>]*?)width="\\d+" height="\\d+"',
+        'g'
+    );
     for (const page of pages) {
         const html = readFileSync(page, 'utf8');
-        const next = html.replace(
-            /<img (src|data-light-src)="((?:\.\.\/)?assets\/([^"]+))"([^>]*?)width="\d+" height="\d+"/g,
+        const next = html.replace(imageDimensions,
             (all, attr, src, name, between) => {
                 const file = join(repo, 'docs', 'assets', name);
                 const size = existsSync(file) && sizeOf(file);
                 return size
-                    ? `<img ${attr}="${src}"${between}width="${size[0]}" height="${size[1]}"`
+                    ? `<img ${attr}="${src}"${between}` +
+                        `width="${size[0]}" height="${size[1]}"`
                     : all;
             }
         );
