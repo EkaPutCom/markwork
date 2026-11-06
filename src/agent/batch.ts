@@ -168,6 +168,9 @@ export function applyBatch(changes: Change[], host: BatchHost): string | null {
                 failures.push(`${c.file}: ${String(error)}`);
             }
         }
-        return `${String(e)}${failures.length ? `; recovery failed: ${failures.join('; ')}` : '; the batch changes were restored'}`;
+        const recovery = failures.length
+            ? `; recovery failed: ${failures.join('; ')}`
+            : '; the batch changes were restored';
+        return `${String(e)}${recovery}`;
     }
 }

@@ -192,7 +192,10 @@ export function formatGit(request: GitRequest, answer: GitAnswer): ToolOutcome {
                     .filter((l) => l.trim())
                     .map((l) => {
                         const [code, ...paths] = l.split('\t');
-                        return `  ${STATUS[code[0]] ?? code} ${paths.join(' → ')}`;
+                        return (
+                            `  ${STATUS[code[0]] ?? code} ` +
+                            paths.join(' → ')
+                        );
                     });
                 return [
                     `${hash} ${date} · ${author} · ${subject.join(' ')}`,
@@ -218,7 +221,9 @@ export function formatGit(request: GitRequest, answer: GitAnswer): ToolOutcome {
     if (request.kind === 'show') {
         if (!/^diff --git /m.test(answer.text))
             return {
-                content: `Commit ${request.commit} does not change Markdown files${request.file ? ` ${request.file}` : ''} in this folder.`,
+                content:
+                    `Commit ${request.commit} does not change Markdown ` +
+                    `files${request.file ? ` ${request.file}` : ''} in this folder.`,
                 summary: 'no changes',
             };
         const lines = answer.text
@@ -231,7 +236,9 @@ export function formatGit(request: GitRequest, answer: GitAnswer): ToolOutcome {
             );
         return {
             content: clip(lines.join('\n'), 'limit to one file'),
-            summary: `${plural(lines.filter((l) => /^[+-](?![+-])/.test(l)).length, 'line', 'lines')} changed`,
+            summary:
+                `${plural(lines.filter((l) => /^[+-](?![+-])/.test(l)).length, 'line', 'lines')} ` +
+                'changed',
         };
     }
     const lines = answer.text.replace(/\n$/, '').split('\n');
@@ -253,6 +260,9 @@ export function describeGitCall(
     if (request.kind === 'log')
         return `Viewing Git history${request.file ? ` ${request.file}` : ''}`;
     if (request.kind === 'show')
-        return `Viewing commit ${request.commit}${request.file ? ` (${request.file})` : ''}`;
+        return (
+            `Viewing commit ${request.commit}` +
+            `${request.file ? ` (${request.file})` : ''}`
+        );
     return `Reading ${request.file} at ${request.commit}`;
 }

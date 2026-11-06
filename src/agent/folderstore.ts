@@ -364,7 +364,8 @@ export class FolderStore<
                     turns: parsed.turns,
                 };
         } catch {
-            /* Show identity, never adopt hand-edited history or approval metadata. */
+            /* Show identity, never adopt hand-edited history or approval
+             * metadata. */
         }
         return {
             title: binding.title,

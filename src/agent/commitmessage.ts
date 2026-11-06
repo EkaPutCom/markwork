@@ -90,7 +90,9 @@ export function commitPrompt(
         { role: 'system', content: SYSTEM },
         {
             role: 'user',
-            content: `Recent commit messages:\n${recent}${"\n\nChanges to commit:\n\n"}${changes}${note}`,
+            content:
+                `Recent commit messages:\n${recent}` +
+                `\n\nChanges to commit:\n\n${changes}${note}`,
         },
     ];
 }
