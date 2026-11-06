@@ -1,7 +1,22 @@
-// The Electron main process: a window, the core in a utility process, and the channel between them. It holds no
+// The Electron main process: a window, the core in a utility process, and the
+// channel between them. It holds no
 // application logic; the file dialogs are the one thing only it can show.
 
-import { BrowserWindow, Menu, MessageChannelMain, app, dialog, ipcMain, nativeTheme, protocol, safeStorage, shell, utilityProcess, type NativeImage, type WebContents } from 'electron';
+import {
+    BrowserWindow,
+    Menu,
+    MessageChannelMain,
+    app,
+    dialog,
+    ipcMain,
+    nativeTheme,
+    protocol,
+    safeStorage,
+    shell,
+    utilityProcess,
+    type NativeImage,
+    type WebContents,
+} from 'electron';
 import { cpSync, existsSync, readlinkSync, rmSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join } from 'node:path';
@@ -9,108 +24,188 @@ import { fileURLToPath } from 'node:url';
 import { checkForUpdates } from './updater';
 import { hasDrive } from '../src/markdown/paths';
 import { SecretVault, answerSecret } from '../src/platform/node/vault';
-import { HTML_CSP, HTML_SCHEME, htmlContentType, parseHtmlUrl, resolveHtmlRequest } from '../src/markdown/htmlview';
+import {
+    HTML_CSP,
+    HTML_SCHEME,
+    htmlContentType,
+    parseHtmlUrl,
+    resolveHtmlRequest,
+} from '../src/markdown/htmlview';
 import { reproError } from './renderer/lib/inspect/repro';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-// The keyring of the core where the OS gives Node none (core.ts): safeStorage, which only this process can call.
+// The keyring of the core where the OS gives Node none (core.ts): safeStorage,
+// which only this process can call.
 let vault: SecretVault | null = null;
-const secretVault = () => vault ??= new SecretVault(join(app.getPath('userData'), 'secrets.json'), {
-    available: () => safeStorage.isEncryptionAvailable(),
-    encrypt: text => safeStorage.encryptString(text),
-    decrypt: data => safeStorage.decryptString(Buffer.from(data)),
-});
+const secretVault = () =>
+    (vault ??= new SecretVault(join(app.getPath('userData'), 'secrets.json'), {
+        available: () => safeStorage.isEncryptionAvailable(),
+        encrypt: (text) => safeStorage.encryptString(text),
+        decrypt: (data) => safeStorage.decryptString(Buffer.from(data)),
+    }));
 
-// The images of a document: app://file/<absolute path>, so the page (which may not load file: URLs) can show the
-// pictures next to the text. Only image files are served, and only to this app's own pages.
+// The images of a document: app://file/<absolute path>, so the page (which may
+// not load file: URLs) can show the
+// pictures next to the text. Only image files are served, and only to this
+// app's own pages.
 const IMAGE_FILE = /\.(png|jpe?g|gif|webp|svg|bmp|avif|ico)$/i;
 const IMAGE_TYPES: Record<string, string> = {
-    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
-    bmp: 'image/bmp', avif: 'image/avif', ico: 'image/x-icon',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    bmp: 'image/bmp',
+    avif: 'image/avif',
+    ico: 'image/x-icon',
 };
 protocol.registerSchemesAsPrivileged([
-    { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
-    { scheme: HTML_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
+    {
+        scheme: 'app',
+        privileges: { standard: true, secure: true, supportFetchAPI: true },
+    },
+    {
+        scheme: HTML_SCHEME,
+        privileges: {
+            standard: true,
+            secure: true,
+            supportFetchAPI: true,
+            stream: true,
+        },
+    },
 ]);
 
-// The folder each open HTML tab may read, by the id the page was served under (html-register).
+// The folder each open HTML tab may read, by the id the page was served under
+// (html-register).
 const htmlRoots = new Map<number, string>();
 ipcMain.handle('html-register', (_event, id: unknown, root: unknown) => {
-    if (typeof id === 'number' && typeof root === 'string' && isAbsolute(root)) htmlRoots.set(id, root);
+    if (typeof id === 'number' && typeof root === 'string' && isAbsolute(root))
+        htmlRoots.set(id, root);
 });
-ipcMain.handle('html-unregister', (_event, id: unknown) => { if (typeof id === 'number') htmlRoots.delete(id); });
+ipcMain.handle('html-unregister', (_event, id: unknown) => {
+    if (typeof id === 'number') htmlRoots.delete(id);
+});
 
-const linkOf = (path: string): string | null => { try { return readlinkSync(path); } catch { return null; } };
+const linkOf = (path: string): string | null => {
+    try {
+        return readlinkSync(path);
+    } catch {
+        return null;
+    }
+};
 
-// Dev mode (docs/design/debugger.md): the Editor Inspector and its checks. Off in a normal start; the page asks once.
-const devMode = process.argv.includes('--inspect-editor') || process.env.MARKWORK_DEV === '1';
-ipcMain.on('dev-mode', event => { event.returnValue = devMode; });
-// The UI Gallery's sample document (tests/samples/ui-gallery.md, docs/design/design-system.md stage 4), copied with its
-// pictures into the app's data folder on each ask, so editing it there never changes the one in the repository. Null
-// where the samples are not next to the app (a packaged build started in dev mode).
+// Dev mode (docs/design/debugger.md): the Editor Inspector and its checks. Off
+// in a normal start; the page asks once.
+const devMode =
+    process.argv.includes('--inspect-editor') ||
+    process.env.MARKWORK_DEV === '1';
+ipcMain.on('dev-mode', (event) => {
+    event.returnValue = devMode;
+});
+// The UI Gallery's sample document (tests/samples/ui-gallery.md,
+// docs/design/design-system.md stage 4), copied with its
+// pictures into the app's data folder on each ask, so editing it there never
+// changes the one in the repository. Null
+// where the samples are not next to the app (a packaged build started in dev
+// mode).
 ipcMain.handle('ui-gallery-sample', () => {
     const samples = join(app.getAppPath(), 'tests', 'samples');
     if (!devMode || !existsSync(join(samples, 'ui-gallery.md'))) return null;
     const folder = join(app.getPath('userData'), 'ui-gallery');
     rmSync(folder, { recursive: true, force: true });
-    cpSync(join(samples, 'images'), join(folder, 'images'), { recursive: true });
+    cpSync(join(samples, 'images'), join(folder, 'images'), {
+        recursive: true,
+    });
     cpSync(join(samples, 'ui-gallery.md'), join(folder, 'ui-gallery.md'));
     return join(folder, 'ui-gallery.md');
 });
 
-// ---------- Reports of a problem with the editor (docs/design/debugger.md, section 11) ----------
+// ---------- Reports of a problem with the editor (docs/design/debugger.md,
+// section 11) ----------
 //
-// The page cannot write files, so a report is written here, in the app's own data folder (never the work folder, where
-// it could be committed with the person's notes). Only a repro this version can read is taken, under a name made here;
+// The page cannot write files, so a report is written here, in the app's own
+// data folder (never the work folder, where
+// it could be committed with the person's notes). Only a repro this version can
+// read is taken, under a name made here;
 // nothing is sent anywhere.
 
 const REPORT_LIMIT = 64 * 1024 * 1024;
 const reportsFolder = () => join(app.getPath('userData'), 'reports');
-// The picture of the editor each page took last, while it showed its text blurred: kept here until the report is saved.
+// The picture of the editor each page took last, while it showed its text
+// blurred: kept here until the report is saved.
 const pictures = new WeakMap<WebContents, NativeImage>();
 // The reports this run wrote: the only files Show File reveals.
 const savedReports = new Set<string>();
 
 const two = (n: number) => String(n).padStart(2, '0');
 function reportName(now = new Date()): string {
-    const stamp = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}`;
+    const date =
+        `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
+    const hourMinute = `${two(now.getHours())}${two(now.getMinutes())}`;
+    const time = `${hourMinute}${two(now.getSeconds())}`;
+    const stamp = `${date}-${time}`;
     for (let n = 1; ; n++) {
         const name = n === 1 ? stamp : `${stamp}-${n}`;
-        if (!existsSync(join(reportsFolder(), `${name}.mwrepro.json`))) return name;
+        if (!existsSync(join(reportsFolder(), `${name}.mwrepro.json`)))
+            return name;
     }
 }
 
-const isRect = (r: unknown): r is Electron.Rectangle => !!r && typeof r === 'object'
-    && ['x', 'y', 'width', 'height'].every(k => Number.isInteger((r as Record<string, unknown>)[k]) && (r as Record<string, number>)[k] >= 0);
+const isRect = (r: unknown): r is Electron.Rectangle =>
+    !!r &&
+    typeof r === 'object' &&
+    ['x', 'y', 'width', 'height'].every(
+        (k) =>
+            Number.isInteger((r as Record<string, unknown>)[k]) &&
+            (r as Record<string, number>)[k] >= 0
+    );
 
 ipcMain.handle('report-picture', async (event, rect: unknown) => {
-    if (!isRect(rect) || !rect.width || !rect.height) throw new Error('not a part of the window');
+    if (!isRect(rect) || !rect.width || !rect.height)
+        throw new Error('not a part of the window');
     pictures.set(event.sender, await event.sender.capturePage(rect));
 });
-ipcMain.handle('report-save', async (event, json: unknown, withPicture: unknown) => {
-    if (typeof json !== 'string' || json.length > REPORT_LIMIT) throw new Error('not a report');
-    const repro = JSON.parse(json) as Record<string, unknown>;
-    const error = reproError(repro);
-    if (error) throw new Error(`not a report: ${error}`);
-    await mkdir(reportsFolder(), { recursive: true });
-    const name = reportName(), picture = withPicture === true ? pictures.get(event.sender) : undefined;
-    pictures.delete(event.sender);
-    repro.app = { ...repro.app as object, electron: process.versions.electron, os: process.platform };
-    if (picture) {
-        repro.picture = `${name}.png`;
-        await writeFile(join(reportsFolder(), repro.picture as string), picture.toPNG());
-    } else delete repro.picture;
-    const path = join(reportsFolder(), `${name}.mwrepro.json`);
-    await writeFile(path, `${JSON.stringify(repro, null, 2)}\n`);
-    savedReports.add(path);
-    return { path, name: `${name}.mwrepro.json` };
+ipcMain.handle(
+    'report-save',
+    async (event, json: unknown, withPicture: unknown) => {
+        if (typeof json !== 'string' || json.length > REPORT_LIMIT)
+            throw new Error('not a report');
+        const repro = JSON.parse(json) as Record<string, unknown>;
+        const error = reproError(repro);
+        if (error) throw new Error(`not a report: ${error}`);
+        await mkdir(reportsFolder(), { recursive: true });
+        const name = reportName(),
+            picture =
+                withPicture === true ? pictures.get(event.sender) : undefined;
+        pictures.delete(event.sender);
+        repro.app = {
+            ...(repro.app as object),
+            electron: process.versions.electron,
+            os: process.platform,
+        };
+        if (picture) {
+            repro.picture = `${name}.png`;
+            await writeFile(
+                join(reportsFolder(), repro.picture as string),
+                picture.toPNG()
+            );
+        } else delete repro.picture;
+        const path = join(reportsFolder(), `${name}.mwrepro.json`);
+        await writeFile(path, `${JSON.stringify(repro, null, 2)}\n`);
+        savedReports.add(path);
+        return { path, name: `${name}.mwrepro.json` };
+    }
+);
+ipcMain.handle('report-show', (_event, path: unknown) => {
+    if (typeof path === 'string' && savedReports.has(path))
+        shell.showItemInFolder(path);
 });
-ipcMain.handle('report-show', (_event, path: unknown) => { if (typeof path === 'string' && savedReports.has(path)) shell.showItemInFolder(path); });
 
 // Windows the page has let go (the core agreed to the close).
 const mayClose = new WeakSet<BrowserWindow>();
-ipcMain.handle('close-window', event => {
+ipcMain.handle('close-window', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return;
     mayClose.add(win);
@@ -121,12 +216,17 @@ function createWindow(): void {
     const win = new BrowserWindow({
         width: 1100,
         height: 720,
-        // The sizes are the page's, not the window's with its frame (which Windows counts).
+        // The sizes are the page's, not the window's with its frame (which
+        // Windows counts).
         useContentSize: true,
-        minWidth: 360,    // a phone's width; below 600 the side panels float (renderer/lib/client.ts)
+        // a phone's width; below 600 the side panels float
+        // (renderer/lib/client.ts)
+        minWidth: 360,
         minHeight: 294,
         title: 'Markwork',
-        backgroundColor: nativeTheme.shouldUseDarkColors ? '#242424' : '#fafafa',
+        backgroundColor: nativeTheme.shouldUseDarkColors
+            ? '#242424'
+            : '#fafafa',
         webPreferences: {
             preload: join(here, 'preload.cjs'),
             contextIsolation: true,
@@ -139,34 +239,46 @@ function createWindow(): void {
         if (/^https?:/.test(url)) void shell.openExternal(url);
         return { action: 'deny' };
     });
-    win.webContents.on('will-navigate', event => event.preventDefault());
-    // A page in an HTML tab stays on its own scheme; a link that clicks out to the web opens in the browser.
-    win.webContents.on('will-frame-navigate', event => {
+    win.webContents.on('will-navigate', (event) => event.preventDefault());
+    // A page in an HTML tab stays on its own scheme; a link that clicks out to
+    // the web opens in the browser.
+    win.webContents.on('will-frame-navigate', (event) => {
         const target = parseHtmlUrl(event.url);
         if (target && htmlRoots.has(target.id)) return;
         event.preventDefault();
-        if (!event.isMainFrame && /^(https?|mailto):/i.test(event.url)) void shell.openExternal(event.url);
+        if (!event.isMainFrame && /^(https?|mailto):/i.test(event.url))
+            void shell.openExternal(event.url);
     });
 
-    const core = utilityProcess.fork(join(here, 'core.js'), [], { stdio: 'pipe' });
+    const core = utilityProcess.fork(join(here, 'core.js'), [], {
+        stdio: 'pipe',
+    });
     let stderr = '';
-    core.stderr?.on('data', chunk => { stderr = (stderr + chunk).slice(-2000); });
+    core.stderr?.on('data', (chunk) => {
+        stderr = (stderr + chunk).slice(-2000);
+    });
     let coreGone = false;
-    core.on('exit', code => {
+    core.on('exit', (code) => {
         coreGone = true;
         if (!win.isDestroyed()) win.webContents.send('core-exit', code, stderr);
     });
-    core.on('message', message => {
-        const reply = answerSecret(secretVault(), (message as { secrets?: unknown } | null)?.secrets);
+    core.on('message', (message) => {
+        const reply = answerSecret(
+            secretVault(),
+            (message as { secrets?: unknown } | null)?.secrets
+        );
         if (reply) core.postMessage({ secrets: reply });
     });
     const { port1, port2 } = new MessageChannelMain();
     core.postMessage('port', [port1]);
-    win.webContents.once('did-finish-load', () => win.webContents.postMessage('port', null, [port2]));
+    win.webContents.once('did-finish-load', () =>
+        win.webContents.postMessage('port', null, [port2])
+    );
     win.on('closed', () => core.kill());
-    // Closing waits for the core, which asks about unsaved documents; the page says when the window may go (close-window).
+    // Closing waits for the core, which asks about unsaved documents; the page
+    // says when the window may go (close-window).
     // Without a core to ask (it has exited) the window just closes.
-    win.on('close', event => {
+    win.on('close', (event) => {
         if (mayClose.has(win) || core.pid === undefined || coreGone) return;
         event.preventDefault();
         win.webContents.send('close-request');
@@ -175,90 +287,184 @@ function createWindow(): void {
     void win.loadFile(join(here, 'renderer', 'index.html'));
 }
 
-// The core's file chooser (ask.file, app/dialogs.ts ChooseFileOptions): open, save, or a folder.
+// The core's file chooser (ask.file, app/dialogs.ts ChooseFileOptions): open,
+// save, or a folder.
 const FILTERS: Record<string, { name: string; extensions: string[] }> = {
-    markdown: { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'txt'] },
-    image: { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif'] },
+    markdown: {
+        name: 'Markdown',
+        extensions: ['md', 'markdown', 'mdown', 'txt'],
+    },
+    image: {
+        name: 'Images',
+        extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif'],
+    },
     html: { name: 'HTML', extensions: ['html', 'htm'] },
     all: { name: 'All Files', extensions: ['*'] },
 };
 
-interface ChooseFile { title?: string; save?: boolean; selectFolder?: boolean; filters?: string[]; name?: string | null; folder?: string | null }
+interface ChooseFile {
+    title?: string;
+    save?: boolean;
+    selectFolder?: boolean;
+    filters?: string[];
+    name?: string | null;
+    folder?: string | null;
+}
 
 ipcMain.handle('choose-file', async (event, options: ChooseFile) => {
     // For tests that cannot drive a native dialog.
-    const preset = options.selectFolder ? process.env.MARKWORK_PICK_FOLDER : process.env.MARKWORK_CHOOSE_FILE;
+    const preset = options.selectFolder
+        ? process.env.MARKWORK_PICK_FOLDER
+        : process.env.MARKWORK_CHOOSE_FILE;
     if (preset !== undefined) return preset || null;
     const win = BrowserWindow.fromWebContents(event.sender);
-    const filters = (options.filters ?? []).map(f => FILTERS[f]).filter(f => f !== undefined);
-    const defaultPath = options.folder && options.name ? join(options.folder, options.name) : options.name ?? options.folder ?? undefined;
+    const filters = (options.filters ?? [])
+        .map((f) => FILTERS[f])
+        .filter((f) => f !== undefined);
+    const defaultPath =
+        options.folder && options.name
+            ? join(options.folder, options.name)
+            : (options.name ?? options.folder ?? undefined);
     if (options.save) {
-        const save = { title: options.title, defaultPath, filters, properties: ['createDirectory' as const, 'showOverwriteConfirmation' as const] };
-        const result = win ? await dialog.showSaveDialog(win, save) : await dialog.showSaveDialog(save);
-        return result.canceled ? null : result.filePath ?? null;
+        const save = {
+            title: options.title,
+            defaultPath,
+            filters,
+            properties: [
+                'createDirectory' as const,
+                'showOverwriteConfirmation' as const,
+            ],
+        };
+        const result = win
+            ? await dialog.showSaveDialog(win, save)
+            : await dialog.showSaveDialog(save);
+        return result.canceled ? null : (result.filePath ?? null);
     }
     const open = {
-        title: options.title, defaultPath, filters,
-        properties: options.selectFolder ? ['openDirectory' as const, 'createDirectory' as const] : ['openFile' as const],
+        title: options.title,
+        defaultPath,
+        filters,
+        properties: options.selectFolder
+            ? ['openDirectory' as const, 'createDirectory' as const]
+            : ['openFile' as const],
     };
-    const result = win ? await dialog.showOpenDialog(win, open) : await dialog.showOpenDialog(open);
-    return result.canceled ? null : result.filePaths[0] ?? null;
+    const result = win
+        ? await dialog.showOpenDialog(win, open)
+        : await dialog.showOpenDialog(open);
+    return result.canceled ? null : (result.filePaths[0] ?? null);
 });
 
-// A folder in the file manager (reveal.folder): only an existing folder, never a file the system would run.
+// A folder in the file manager (reveal.folder): only an existing folder, never
+// a file the system would run.
 ipcMain.handle('open-folder', async (_event, path: unknown) => {
-    if (typeof path !== 'string' || !isAbsolute(path) || !statSync(path, { throwIfNoEntry: false })?.isDirectory()) return;
+    if (
+        typeof path !== 'string' ||
+        !isAbsolute(path) ||
+        !statSync(path, { throwIfNoEntry: false })?.isDirectory()
+    )
+        return;
     await shell.openPath(path);
 });
 
 // `electron . <folder>` opens that folder at start.
-ipcMain.handle('initial-folder', () => process.argv.slice(app.isPackaged ? 1 : 2).find(a => !a.startsWith('-')) ?? null);
+ipcMain.handle(
+    'initial-folder',
+    () =>
+        process.argv
+            .slice(app.isPackaged ? 1 : 2)
+            .find((a) => !a.startsWith('-')) ?? null
+);
 
 void app.whenReady().then(() => {
-    // For the Playwright tests on a machine without a keychain: safeStorage on its plain-text backend (Linux only).
-    if (process.env.MARKWORK_TEST_PLAIN_STORAGE && process.platform === 'linux') safeStorage.setUsePlainTextEncryption(true);
-    // An HTML page: every request is answered from the page's folder (a link out of it is refused) with the page policy.
-    protocol.handle(HTML_SCHEME, async request => {
+    // For the Playwright tests on a machine without a keychain: safeStorage on
+    // its plain-text backend (Linux only).
+    if (process.env.MARKWORK_TEST_PLAIN_STORAGE && process.platform === 'linux')
+        safeStorage.setUsePlainTextEncryption(true);
+    // An HTML page: every request is answered from the page's folder (a link
+    // out of it is refused) with the page policy.
+    protocol.handle(HTML_SCHEME, async (request) => {
         const target = parseHtmlUrl(request.url);
         const root = target && htmlRoots.get(target.id);
-        const file = root ? resolveHtmlRequest(root, target.path, linkOf) : null;
+        const file = root
+            ? resolveHtmlRequest(root, target.path, linkOf)
+            : null;
         if (!file) return new Response('not found', { status: 404 });
         try {
-            return new Response(await readFile(file), { headers: { 'content-type': htmlContentType(file), 'content-security-policy': HTML_CSP } });
+            return new Response(await readFile(file), {
+                headers: {
+                    'content-type': htmlContentType(file),
+                    'content-security-policy': HTML_CSP,
+                },
+            });
         } catch {
             return new Response('not found', { status: 404 });
         }
     });
-    protocol.handle('app', async request => {
+    protocol.handle('app', async (request) => {
         try {
-            // app://file/C%3A/a/b.png is C:/a/b.png on Windows: the drive comes after the URL's first /.
+            // app://file/C%3A/a/b.png is C:/a/b.png on Windows: the drive comes
+            // after the URL's first /.
             const decoded = decodeURIComponent(new URL(request.url).pathname);
-            const path = decoded.startsWith('/') && hasDrive(decoded.slice(1)) ? decoded.slice(1) : decoded;
-            if (!isAbsolute(path) || !IMAGE_FILE.test(path)) return new Response('not an image', { status: 403 });
-            const type = IMAGE_TYPES[extname(path).slice(1).toLowerCase()] ?? 'application/octet-stream';
-            return new Response(await readFile(path), { headers: { 'content-type': type } });
+            const path =
+                decoded.startsWith('/') && hasDrive(decoded.slice(1))
+                    ? decoded.slice(1)
+                    : decoded;
+            if (!isAbsolute(path) || !IMAGE_FILE.test(path))
+                return new Response('not an image', { status: 403 });
+            const type =
+                IMAGE_TYPES[extname(path).slice(1).toLowerCase()] ??
+                'application/octet-stream';
+            return new Response(await readFile(path), {
+                headers: { 'content-type': type },
+            });
         } catch {
             return new Response('not found', { status: 404 });
         }
     });
-    // The keys belong to the command table of the page (app/commands.ts); a default menu would take Ctrl+W and others first.
-    // macOS keeps a menu bar, so it gets one with nothing the page handles: the app menu (Hide, Quit) and the clipboard keys,
-    // which a text field there only has through menu roles. Undo, Close (Cmd+W), and New stay with the page.
-    Menu.setApplicationMenu(process.platform === 'darwin' ? Menu.buildFromTemplate([
-        { role: 'appMenu' },
-        { label: 'Edit', submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
-    ]) : null);
+    // The keys belong to the command table of the page (app/commands.ts); a
+    // default menu would take Ctrl+W and others first.
+    // macOS keeps a menu bar, so it gets one with nothing the page handles: the
+    // app menu (Hide, Quit) and the clipboard keys,
+    // which a text field there only has through menu roles. Undo, Close
+    // (Cmd+W), and New stay with the page.
+    Menu.setApplicationMenu(
+        process.platform === 'darwin'
+            ? Menu.buildFromTemplate([
+                  { role: 'appMenu' },
+                  {
+                      label: 'Edit',
+                      submenu: [
+                          { role: 'cut' },
+                          { role: 'copy' },
+                          { role: 'paste' },
+                          { role: 'selectAll' },
+                      ],
+                  },
+              ])
+            : null
+    );
     createWindow();
-    // Dev mode: the inspector's socket for scripts/editor.mjs. Its code is loaded only then.
+    // Dev mode: the inspector's socket for scripts/editor.mjs. Its code is
+    // loaded only then.
     if (devMode) {
         void import('./inspect').then(({ InspectBridge }) => {
-            const bridge = new InspectBridge(() => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null);
+            const bridge = new InspectBridge(
+                () =>
+                    BrowserWindow.getFocusedWindow() ??
+                    BrowserWindow.getAllWindows()[0] ??
+                    null
+            );
             const path = bridge.start();
-            if (process.env.MARKWORK_INSPECT_QUIET !== '1') console.log(`Editor Inspector: ${path}`);
+            if (process.env.MARKWORK_INSPECT_QUIET !== '1')
+                console.log(`Editor Inspector: ${path}`);
             app.on('will-quit', () => bridge.stop());
         });
     }
     checkForUpdates();
-    app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
 });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});

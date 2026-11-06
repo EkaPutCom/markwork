@@ -2,35 +2,49 @@
 import { spawn } from 'node:child_process';
 
 export class SpikeRpc {
-    constructor(program, args, { cwd, env = process.env, timeout = 30_000 } = {}) {
+    constructor(
+        program,
+        args,
+        { cwd, env = process.env, timeout = 30_000 } = {}
+    ) {
         this.timeout = timeout;
         this.pending = new Map();
         this.listeners = new Set();
         this.sequence = 0;
         this.failure = null;
         this.stderr = '';
-        this.child = spawn(program, args, { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
-        this.closed = new Promise(resolve => this.child.once('close', (code, signal) => {
-            this.fail(new Error(`pi exited (${code ?? signal})`));
-            resolve({ code, signal });
-        }));
-        this.child.on('error', error => this.fail(error));
-        this.child.stdin.on('error', error => this.fail(error));
+        this.child = spawn(program, args, {
+            cwd,
+            env,
+            stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        this.closed = new Promise((resolve) =>
+            this.child.once('close', (code, signal) => {
+                this.fail(new Error(`pi exited (${code ?? signal})`));
+                resolve({ code, signal });
+            })
+        );
+        this.child.on('error', (error) => this.fail(error));
+        this.child.stdin.on('error', (error) => this.fail(error));
         this.child.stderr.setEncoding('utf8');
-        this.child.stderr.on('data', text => { this.stderr = (this.stderr + text).slice(-8192); });
+        this.child.stderr.on('data', (text) => {
+            this.stderr = (this.stderr + text).slice(-8192);
+        });
         this.child.stdout.setEncoding('utf8');
         let buffer = '';
-        this.child.stdout.on('data', chunk => {
+        this.child.stdout.on('data', (chunk) => {
             buffer += chunk;
             try {
                 let end;
                 while ((end = buffer.indexOf('\n')) >= 0) {
-                    if (end > 8 * 1024 * 1024) throw new Error('pi record exceeds 8 MiB');
+                    if (end > 8 * 1024 * 1024)
+                        throw new Error('pi record exceeds 8 MiB');
                     const line = buffer.slice(0, end).replace(/\r$/, '');
                     buffer = buffer.slice(end + 1);
                     if (line) this.record(JSON.parse(line));
                 }
-                if (buffer.length > 8 * 1024 * 1024) throw new Error('pi record exceeds 8 MiB');
+                if (buffer.length > 8 * 1024 * 1024)
+                    throw new Error('pi record exceeds 8 MiB');
             } catch (error) {
                 this.fail(error);
                 this.child.kill();
@@ -51,7 +65,10 @@ export class SpikeRpc {
             if (request) {
                 this.pending.delete(record.id);
                 if (record.success) request.resolve(record.data);
-                else request.reject(new Error(record.error || 'pi rejected command'));
+                else
+                    request.reject(
+                        new Error(record.error || 'pi rejected command')
+                    );
             }
         }
         for (const listener of this.listeners) listener(record);
@@ -75,12 +92,16 @@ export class SpikeRpc {
                 if (error) finish(error);
                 else if (predicate(record)) finish(null, record);
             };
-            const timer = setTimeout(() => finish(new Error('pi event deadline exceeded')), timeout);
+            const timer = setTimeout(
+                () => finish(new Error('pi event deadline exceeded')),
+                timeout
+            );
             cancel = () => finish(null, null);
             this.listeners.add(listener);
             if (this.failure) finish(this.failure);
         });
-        // A wait can fail while a correlated command is still awaiting its response.
+        // A wait can fail while a correlated command is still awaiting its
+        // response.
         promise.catch(() => {});
         return { promise, cancel };
     }
@@ -95,30 +116,57 @@ export class SpikeRpc {
                 if (error) reject(error);
                 else resolve(value);
             };
-            const timer = setTimeout(() => finish(new Error(`pi ${type} deadline exceeded; outcome unknown`)), timeout);
-            this.pending.set(id, { resolve: value => finish(null, value), reject: error => finish(error) });
-            // One write per record; the callback bounds the write together with its acknowledgement.
-            // This spike serializes commands except for cancellation and never floods stdin.
-            this.child.stdin.write(`${JSON.stringify({ ...fields, id, type })}\n`, error => {
-                if (error) finish(error);
+            const timer = setTimeout(
+                () =>
+                    finish(
+                        new Error(
+                            `pi ${type} deadline exceeded; outcome unknown`
+                        )
+                    ),
+                timeout
+            );
+            this.pending.set(id, {
+                resolve: (value) => finish(null, value),
+                reject: (error) => finish(error),
             });
+            // One write per record; the callback bounds the write together with
+            // its acknowledgement.
+            // This spike serializes commands except for cancellation and never
+            // floods stdin.
+            this.child.stdin.write(
+                `${JSON.stringify({ ...fields, id, type })}\n`,
+                (error) => {
+                    if (error) finish(error);
+                }
+            );
         });
     }
 
     async prompt(message, timeout = 180_000) {
-        const settled = this.waitFor(event => event.type === 'agent_settled', timeout);
+        const settled = this.waitFor(
+            (event) => event.type === 'agent_settled',
+            timeout
+        );
         let failure = null;
-        const off = this.onEvent(event => {
-            if (event?.type === 'message_end' && event.message?.role === 'assistant'
-                && ['error', 'aborted'].includes(event.message.stopReason)) {
-                failure = event.message.errorMessage || event.message.stopReason;
+        const off = this.onEvent((event) => {
+            if (
+                event?.type === 'message_end' &&
+                event.message?.role === 'assistant' &&
+                ['error', 'aborted'].includes(event.message.stopReason)
+            ) {
+                failure =
+                    event.message.errorMessage || event.message.stopReason;
             }
         });
         try {
             const response = await this.command('prompt', { message });
-            if (response?.disposition !== 'started') throw new Error(`Unexpected disposition: ${response?.disposition}`);
+            if (response?.disposition !== 'started')
+                throw new Error(
+                    `Unexpected disposition: ${response?.disposition}`
+                );
             const result = await settled.promise;
-            if (failure || result.aborted) throw new Error(failure || 'pi run aborted');
+            if (failure || result.aborted)
+                throw new Error(failure || 'pi run aborted');
         } finally {
             off();
             settled.cancel();

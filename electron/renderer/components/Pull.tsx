@@ -1,9 +1,16 @@
-// The review of one pull request, a page of the content area: the changed files, each one as a note or as a raw
-// diff, the discussion, and the merge. The core reads the forge and decides; this draws what it sends and reports what the user did.
+// The review of one pull request, a page of the content area: the changed
+// files, each one as a note or as a raw
+// diff, the discussion, and the merge. The core reads the forge and decides;
+// this draws what it sends and reports what the user did.
 
 import { useEffect, useState } from 'react';
 import { relativeTime } from '../../../src/base/gitlog';
-import type { FileStatus, MergeMethod, PullComment, PullRequest } from '../../../src/app/protocol/collab';
+import type {
+    FileStatus,
+    MergeMethod,
+    PullComment,
+    PullRequest,
+} from '../../../src/app/protocol/collab';
 import { DiffLines } from './Diff';
 import { Icon } from './Icons';
 import { useClient, useStore } from '../lib/useClient';
@@ -13,49 +20,146 @@ import { IconButton } from '../ui/icon-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Textarea } from '../ui/textarea';
 
-const METHOD_NAME: Record<MergeMethod, string> = { merge: 'Merge commit', squash: 'Squash and merge', rebase: 'Rebase and merge' };
-const MARK: Record<FileStatus, string> = { added: 'A', modified: 'M', deleted: 'D', renamed: 'R' };
-const MARK_CLASS: Record<FileStatus, string> = { added: 'success', modified: 'warning', deleted: 'error', renamed: 'warning' };
+const METHOD_NAME: Record<MergeMethod, string> = {
+    merge: 'Merge commit',
+    squash: 'Squash and merge',
+    rebase: 'Rebase and merge',
+};
+const MARK: Record<FileStatus, string> = {
+    added: 'A',
+    modified: 'M',
+    deleted: 'D',
+    renamed: 'R',
+};
+const fileClass = (path: string, selected: string | null) =>
+    `file h-auto justify-start font-normal` +
+    `${selected === path ? ' active' : ''}` +
+    ' text-left';
 
-// What the page says above the files: why it cannot be merged, or what the local merge needs next.
-function bannerOf(pull: PullRequest, resolving: number | null): { text: string; action: 'resolve' | 'finish' | null } | null {
+const MARK_CLASS: Record<FileStatus, string> = {
+    added: 'success',
+    modified: 'warning',
+    deleted: 'error',
+    renamed: 'warning',
+};
+
+// What the page says above the files: why it cannot be merged, or what the
+// local merge needs next.
+function bannerOf(
+    pull: PullRequest,
+    resolving: number | null
+): { text: string; action: 'resolve' | 'finish' | null } | null {
     if (resolving !== null) {
         const text = resolving
-            ? `${resolving} ${resolving === 1 ? 'file still has' : 'files still have'} conflict markers. Choose a side above each conflict in ${resolving === 1 ? 'its tab' : 'their tabs'}, then finish.`
-            : 'The conflicts are resolved. Finish to push the merge to the server.';
+            ? `${resolving} ` +
+                `${resolving === 1 ? 'file still has' : 'files still have'} ` +
+                'conflict markers. Choose a side above each conflict in ' +
+                `${resolving === 1 ? 'its tab' : 'their tabs'}, then finish.`
+            : 'The conflicts are resolved. ' +
+                'Finish to push the merge to the server.';
         return { text, action: 'finish' };
     }
-    if (pull.state === 'merged') return { text: 'This pull request has been merged.', action: null };
-    if (pull.state === 'closed') return { text: 'This pull request is closed.', action: null };
-    if (pull.mergeable === false) return { text: `This pull request conflicts with ${pull.baseRef}. Resolve the conflicts on this computer, or ask the author to.`, action: 'resolve' };
-    if (pull.mergeable === null) return { text: 'Checking whether it can be merged…', action: null };
+    if (pull.state === 'merged')
+        return { text: 'This pull request has been merged.', action: null };
+    if (pull.state === 'closed')
+        return { text: 'This pull request is closed.', action: null };
+    if (pull.mergeable === false)
+        return {
+            text:
+                `This pull request conflicts with ${pull.baseRef}. ` +
+                'Resolve the conflicts on this computer, or ask the author to.',
+            action: 'resolve',
+        };
+    if (pull.mergeable === null)
+        return { text: 'Checking whether it can be merged…', action: null };
     return null;
 }
 
-function Comment({ author, body, time, description }: { author: string; body: string; time: string; description: boolean }) {
-    const hue = Array.from(author).reduce((sum, ch) => sum + ch.codePointAt(0)!, 0) % 6;
+function Comment({
+    author,
+    body,
+    time,
+    description,
+}: {
+    author: string;
+    body: string;
+    time: string;
+    description: boolean;
+}) {
+    const hue =
+        Array.from(author).reduce((sum, ch) => sum + ch.codePointAt(0)!, 0) % 6;
     return (
         <article className={`comment${description ? ' description' : ''}`}>
-            <span className={`avatar hue-${hue}`} aria-hidden="true">{(Array.from(author.trim())[0] ?? '?').toUpperCase()}</span>
+            <span className={`avatar hue-${hue}`} aria-hidden="true">
+                {(Array.from(author.trim())[0] ?? '?').toUpperCase()}
+            </span>
             <div className="text">
-                <header><strong>{author || 'Someone'}</strong><span className="time">{time ? relativeTime(Date.parse(time) / 1000, Date.now() / 1000) : ''}</span></header>
+                <header>
+                    <strong>{author || 'Someone'}</strong>
+                    <span className="time">
+                        {time
+                            ? relativeTime(
+                                  Date.parse(time) / 1000,
+                                  Date.now() / 1000
+                              )
+                            : ''}
+                    </span>
+                </header>
                 <div className="body">{body}</div>
             </div>
         </article>
     );
 }
 
-function Discussion({ pull, comments, commenting, cleared }: { pull: PullRequest; comments: readonly PullComment[]; commenting: boolean; cleared: number }) {
+function Discussion({
+    pull,
+    comments,
+    commenting,
+    cleared,
+}: {
+    pull: PullRequest;
+    comments: readonly PullComment[];
+    commenting: boolean;
+    cleared: number;
+}) {
     const client = useClient();
     const [text, setText] = useState('');
-    useEffect(() => { setText(''); }, [cleared]);
+    useEffect(() => {
+        setText('');
+    }, [cleared]);
     return (
         <div className="discussion">
-            <Comment author={pull.author} body={pull.body.trim() || 'No description.'} time={pull.createdAt} description />
-            {comments.map(c => <Comment key={c.id} author={c.author} body={c.body} time={c.createdAt} description={false} />)}
+            <Comment
+                author={pull.author}
+                body={pull.body.trim() || 'No description.'}
+                time={pull.createdAt}
+                description
+            />
+            {comments.map((c) => (
+                <Comment
+                    key={c.id}
+                    author={c.author}
+                    body={c.body}
+                    time={c.createdAt}
+                    description={false}
+                />
+            ))}
             <div className="comment-form">
-                <Textarea aria-label="Comment" placeholder="Leave a comment" rows={3} value={text} disabled={commenting} onChange={e => setText(e.target.value)} />
-                <Button size="sm" disabled={commenting || !text.trim()} onClick={() => client.commentOnPull(text.trim())}>Comment</Button>
+                <Textarea
+                    aria-label="Comment"
+                    placeholder="Leave a comment"
+                    rows={3}
+                    value={text}
+                    disabled={commenting}
+                    onChange={(e) => setText(e.target.value)}
+                />
+                <Button
+                    size="sm"
+                    disabled={commenting || !text.trim()}
+                    onClick={() => client.commentOnPull(text.trim())}
+                >
+                    Comment
+                </Button>
             </div>
         </div>
     );
@@ -67,31 +171,111 @@ export function PullPage() {
     const [view, setView] = useState<'note' | 'raw' | 'discussion'>('note');
     const [method, setMethod] = useState<MergeMethod>('merge');
     const number = page?.pull?.number;
-    useEffect(() => { setView('note'); }, [number]);
-    if (!page || !page.pull) return <div className="pull-page"><p className="empty">Loading…</p></div>;
-    const { pull, files, selected, fileView, message, comments, busy, resolving, commenting, cleared } = page;
+    useEffect(() => {
+        setView('note');
+    }, [number]);
+    if (!page || !page.pull)
+        return (
+            <div className="pull-page">
+                <p className="empty">Loading…</p>
+            </div>
+        );
+    const {
+        pull,
+        files,
+        selected,
+        fileView,
+        message,
+        comments,
+        busy,
+        resolving,
+        commenting,
+        cleared,
+    } = page;
     const open = pull.state === 'open';
     const banner = bannerOf(pull, resolving);
     const rendered = fileView?.rendered ?? null;
-    const showing = view === 'discussion' ? 'discussion' : rendered === null || view === 'raw' ? 'raw' : 'note';
-    const lines = fileView ? (showing === 'note' ? rendered! : fileView.raw) : [];
+    const showing =
+        view === 'discussion'
+            ? 'discussion'
+            : rendered === null || view === 'raw'
+              ? 'raw'
+              : 'note';
+    const lines = fileView
+        ? showing === 'note'
+            ? rendered!
+            : fileView.raw
+        : [];
     return (
         <div className="pull-page">
             <header className="pull-head">
-                <IconButton label="Close the review" onClick={() => client.closePull()}><Icon name="go-previous" /></IconButton>
+                <IconButton
+                    label="Close the review"
+                    onClick={() => client.closePull()}
+                >
+                    <Icon name="go-previous" />
+                </IconButton>
                 <div className="titles">
-                    <h2>#{pull.number}  {pull.title}</h2>
-                    <p className="meta">{pull.author} wants to merge {pull.headRef} into {pull.baseRef} · {relativeTime(Date.parse(pull.updatedAt) / 1000, Date.now() / 1000)}</p>
+                    <h2>
+                        #{pull.number} {pull.title}
+                    </h2>
+                    <p className="meta">
+                        {pull.author} wants to merge {pull.headRef} into{' '}
+                        {pull.baseRef} ·{' '}
+                        {relativeTime(
+                            Date.parse(pull.updatedAt) / 1000,
+                            Date.now() / 1000
+                        )}
+                    </p>
                 </div>
                 <div className="actions">
-                    {pull.url && <Button variant="ghost" size="sm" onClick={() => client.pullInBrowser()}>Open in browser</Button>}
-                    {resolving !== null && <Button variant="outline" size="sm" onClick={() => client.abortPull()}>Abort merge</Button>}
+                    {pull.url && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => client.pullInBrowser()}
+                        >
+                            Open in browser
+                        </Button>
+                    )}
+                    {resolving !== null && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => client.abortPull()}
+                        >
+                            Abort merge
+                        </Button>
+                    )}
                     {open && (
                         <div className="merge-split">
-                            <Select aria-label="Merge method" value={method} disabled={busy || resolving !== null} onChange={e => setMethod(e.target.value as MergeMethod)}>
-                                {(Object.keys(METHOD_NAME) as MergeMethod[]).map(m => <option key={m} value={m}>{METHOD_NAME[m]}</option>)}
+                            <Select
+                                aria-label="Merge method"
+                                value={method}
+                                disabled={busy || resolving !== null}
+                                onChange={(e) =>
+                                    setMethod(e.target.value as MergeMethod)
+                                }
+                            >
+                                {(
+                                    Object.keys(METHOD_NAME) as MergeMethod[]
+                                ).map((m) => (
+                                    <option key={m} value={m}>
+                                        {METHOD_NAME[m]}
+                                    </option>
+                                ))}
                             </Select>
-                            <Button size="sm" disabled={busy || resolving !== null || pull.mergeable === false} onClick={() => client.mergePull(method)}>{busy ? 'Merging…' : 'Merge'}</Button>
+                            <Button
+                                size="sm"
+                                disabled={
+                                    busy ||
+                                    resolving !== null ||
+                                    pull.mergeable === false
+                                }
+                                onClick={() => client.mergePull(method)}
+                            >
+                                {busy ? 'Merging…' : 'Merge'}
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -99,33 +283,91 @@ export function PullPage() {
             {banner && (
                 <div className="banner" role="status">
                     <span>{banner.text}</span>
-                    {banner.action === 'resolve' && <Button variant="outline" size="sm" onClick={() => client.resolvePull()}>Resolve locally…</Button>}
-                    {banner.action === 'finish' && <Button size="sm" onClick={() => client.finishPull()}>Finish and push</Button>}
+                    {banner.action === 'resolve' && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => client.resolvePull()}
+                        >
+                            Resolve locally…
+                        </Button>
+                    )}
+                    {banner.action === 'finish' && (
+                        <Button size="sm" onClick={() => client.finishPull()}>
+                            Finish and push
+                        </Button>
+                    )}
                 </div>
             )}
             <div className="pull-body">
                 <nav className="pull-files" aria-label="Changed files">
-                    {files.map(f => (
-                        // ui-allow: a file name is cut off with an ellipsis; the title is its full path
-                        <Button key={f.path} variant="ghost" className={`file h-auto justify-start font-normal${selected === f.path ? ' active' : ''} text-left`} title={f.previousPath ? `${f.previousPath} → ${f.path}` : f.path}
-                            aria-current={selected === f.path} onClick={() => { setView(v => v === 'discussion' ? 'note' : v); client.selectPullFile(f.path); }}>
-                            <span className={`mark ${MARK_CLASS[f.status]}`} aria-hidden="true">{MARK[f.status]}</span>
+                    {files.map((f) => (
+                        // ui-allow: title gives the ellipsized file's full path
+                        <Button
+                            key={f.path}
+                            variant="ghost"
+                            className={fileClass(f.path, selected)}
+                            // ui-allow: title reveals the full path
+                            title={
+                                f.previousPath
+                                    ? `${f.previousPath} → ${f.path}`
+                                    : f.path
+                            }
+                            aria-current={selected === f.path}
+                            onClick={() => {
+                                setView((v) =>
+                                    v === 'discussion' ? 'note' : v
+                                );
+                                client.selectPullFile(f.path);
+                            }}
+                        >
+                            <span
+                                className={`mark ${MARK_CLASS[f.status]}`}
+                                aria-hidden="true"
+                            >
+                                {MARK[f.status]}
+                            </span>
                             <span className="name">{f.path}</span>
-                            <span className="counts">+{f.additions} −{f.deletions}</span>
+                            <span className="counts">
+                                +{f.additions} −{f.deletions}
+                            </span>
                         </Button>
                     ))}
                 </nav>
-                <Tabs value={showing} onValueChange={value => setView(value as typeof view)} className="pull-main">
+                <Tabs
+                    value={showing}
+                    onValueChange={(value) => setView(value as typeof view)}
+                    className="pull-main"
+                >
                     <TabsList className="pref-tabs">
-                        <TabsTrigger value="note" disabled={rendered === null}>Note</TabsTrigger>
+                        <TabsTrigger value="note" disabled={rendered === null}>
+                            Note
+                        </TabsTrigger>
                         <TabsTrigger value="raw">Raw diff</TabsTrigger>
-                        <TabsTrigger value="discussion">{comments.length ? `Discussion (${comments.length})` : 'Discussion'}</TabsTrigger>
+                        <TabsTrigger value="discussion">
+                            {comments.length
+                                ? `Discussion (${comments.length})`
+                                : 'Discussion'}
+                        </TabsTrigger>
                     </TabsList>
-                    <TabsContent value={showing} className="flex flex-col gap-2">
-                    {showing === 'discussion' ? <Discussion pull={pull} comments={comments} commenting={commenting} cleared={cleared} />
-                        : message ? <p className="empty">{message}</p>
-                            : fileView && fileView.note && lines.length === 0 ? <p className="empty">{fileView.note}</p>
-                                : <DiffLines lines={lines} className="large" />}
+                    <TabsContent
+                        value={showing}
+                        className="flex flex-col gap-2"
+                    >
+                        {showing === 'discussion' ? (
+                            <Discussion
+                                pull={pull}
+                                comments={comments}
+                                commenting={commenting}
+                                cleared={cleared}
+                            />
+                        ) : message ? (
+                            <p className="empty">{message}</p>
+                        ) : fileView && fileView.note && lines.length === 0 ? (
+                            <p className="empty">{fileView.note}</p>
+                        ) : (
+                            <DiffLines lines={lines} className="large" />
+                        )}
                     </TabsContent>
                 </Tabs>
             </div>

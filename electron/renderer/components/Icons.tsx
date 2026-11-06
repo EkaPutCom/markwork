@@ -1,23 +1,95 @@
-// The window's icons, from Lucide (the icon set of shadcn/ui), drawn inline so they take the text color. The names are
-// the window's own (what an icon stands for), so a component never names a Lucide export.
+// The window's icons, from Lucide (the icon set of shadcn/ui), drawn inline so
+// they take the text color. The names are
+// the window's own (what an icon stands for), so a component never names a
+// Lucide export.
 
 import {
-    ArrowUp, BetweenHorizontalEnd, BetweenVerticalEnd, Bold, BookOpen, Calendar, ChartColumn, ChartGantt, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, ChevronUp,
-    CircleAlert, CircleCheck, CircleMinus, Code, CodeXml, Columns2, Command, Copy, Ellipsis, EllipsisVertical, ExternalLink, FileOutput, FileText, Folder, GitPullRequest, GripVertical, Heading1, Heading2, Heading3, Highlighter, History, House,
-    Image, Info, Italic, LayoutGrid, Link, List, ListOrdered, ListTodo, ListTree, MessageSquare, Minus, Package, PanelLeft, Pencil, Plus, Redo2, RefreshCw, Rows2, Search, Settings, SlidersHorizontal, Sparkles,
-    Square, SquareCode, SquareKanban, SquareTerminal, Strikethrough, Table, TextCursorInput, TextQuote, TextSearch, Trash2, TriangleAlert, Type, Undo2, X, ZoomIn, ZoomOut,
+    ArrowUp,
+    BetweenHorizontalEnd,
+    BetweenVerticalEnd,
+    Bold,
+    BookOpen,
+    Calendar,
+    ChartColumn,
+    ChartGantt,
+    Check,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsUpDown,
+    ChevronUp,
+    CircleAlert,
+    CircleCheck,
+    CircleMinus,
+    Code,
+    CodeXml,
+    Columns2,
+    Command,
+    Copy,
+    Ellipsis,
+    EllipsisVertical,
+    ExternalLink,
+    FileOutput,
+    FileText,
+    Folder,
+    GitPullRequest,
+    GripVertical,
+    Heading1,
+    Heading2,
+    Heading3,
+    Highlighter,
+    History,
+    House,
+    Image,
+    Info,
+    Italic,
+    LayoutGrid,
+    Link,
+    List,
+    ListOrdered,
+    ListTodo,
+    ListTree,
+    MessageSquare,
+    Minus,
+    Package,
+    PanelLeft,
+    Pencil,
+    Plus,
+    Redo2,
+    RefreshCw,
+    Rows2,
+    Search,
+    Settings,
+    SlidersHorizontal,
+    Sparkles,
+    Square,
+    SquareCode,
+    SquareKanban,
+    SquareTerminal,
+    Strikethrough,
+    Table,
+    TextCursorInput,
+    TextQuote,
+    TextSearch,
+    Trash2,
+    TriangleAlert,
+    Type,
+    Undo2,
+    X,
+    ZoomIn,
+    ZoomOut,
     type IconNode,
 } from 'lucide';
 
 const ICONS = {
     'sidebar-show': PanelLeft,
     'document-new': Plus,
-    'folder': Folder,
+    folder: Folder,
     'pan-down': ChevronDown,
     'pan-end': ChevronRight,
-    'search': Search,
+    search: Search,
     'view-refresh': RefreshCw,
-    'outline': ListTree,
+    outline: ListTree,
     'open-menu': Ellipsis,
     'window-close': X,
     'text-x-generic': FileText,
@@ -60,10 +132,10 @@ const ICONS = {
     'user-available': MessageSquare,
     'zoom-in': ZoomIn,
     'zoom-out': ZoomOut,
-    'sparkle': Sparkles,
-    'home': House,
-    'journal': BookOpen,
-    'programs': Package,
+    sparkle: Sparkles,
+    home: House,
+    journal: BookOpen,
+    programs: Package,
     'program-ok': CircleCheck,
     'program-optional': CircleMinus,
     'external-link': ExternalLink,
@@ -95,11 +167,32 @@ const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
-const STROKE = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+const STROKE = {
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+} as const;
 
-export function Icon({ name, size = 16, className }: { name: IconName; size?: number; className?: string }) {
+export function Icon({
+    name,
+    size = 16,
+    className,
+}: {
+    name: IconName;
+    size?: number;
+    className?: string;
+}) {
     return (
-        <svg className={`icon-svg${className ? ` ${className}` : ''}`} width={size} height={size} viewBox="0 0 24 24" {...STROKE} aria-hidden="true">
+        <svg
+            className={`icon-svg${className ? ` ${className}` : ''}`}
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            {...STROKE}
+            aria-hidden="true"
+        >
             {ICONS[name].map(([tag, attrs], i) => {
                 const Tag = tag as 'path';
                 return <Tag key={i} {...(attrs as object)} />;
@@ -108,15 +201,28 @@ export function Icon({ name, size = 16, className }: { name: IconName; size?: nu
     );
 }
 
-// The same icon as a DOM element, for the parts drawn without React (the editor's find bar).
+// The same icon as a DOM element, for the parts drawn without React (the
+// editor's find bar).
 export function iconElement(name: IconName, size = 16): SVGSVGElement {
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg');
-    for (const [k, v] of [['class', 'icon-svg'], ['width', String(size)], ['height', String(size)], ['viewBox', '0 0 24 24'], ['fill', 'none'],
-        ['stroke', 'currentColor'], ['stroke-width', '2'], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round'], ['aria-hidden', 'true']]) svg.setAttribute(k, v);
+    for (const [k, v] of [
+        ['class', 'icon-svg'],
+        ['width', String(size)],
+        ['height', String(size)],
+        ['viewBox', '0 0 24 24'],
+        ['fill', 'none'],
+        ['stroke', 'currentColor'],
+        ['stroke-width', '2'],
+        ['stroke-linecap', 'round'],
+        ['stroke-linejoin', 'round'],
+        ['aria-hidden', 'true'],
+    ])
+        svg.setAttribute(k, v);
     for (const [tag, attrs] of ICONS[name]) {
         const element = document.createElementNS(ns, tag);
-        for (const [k, v] of Object.entries(attrs)) if (v !== undefined) element.setAttribute(k, String(v));
+        for (const [k, v] of Object.entries(attrs))
+            if (v !== undefined) element.setAttribute(k, String(v));
         svg.append(element);
     }
     return svg;

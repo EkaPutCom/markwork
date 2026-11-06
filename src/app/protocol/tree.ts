@@ -1,6 +1,9 @@
-// The Files tab over the protocol (FileTreeView): the folders the tree has open go out as `view.tree.*`, and what the user did
-// comes back as `act.tree.*` (docs/design/protocol.md 6.5). The frontend asks for the contents of a folder when it first opens
-// it (`act.tree.openFolder`); the core then keeps sending that folder when it changes on disk.
+// The Files tab over the protocol (FileTreeView): the folders the tree has open
+// go out as `view.tree.*`, and what the user did
+// comes back as `act.tree.*` (docs/design/protocol.md 6.5). The frontend asks
+// for the contents of a folder when it first opens
+// it (`act.tree.openFolder`); the core then keeps sending that folder when it
+// changes on disk.
 
 import type { FileTreeView, FolderEntry } from '../files';
 import type { Wire } from './messages';
@@ -16,11 +19,20 @@ export class ProtocolTree implements FileTreeView {
 
     constructor(private readonly wire: Wire) {}
 
-    showRoot(root: string | null, entries: FolderEntry[]): void { this.wire.notify('view.tree.root', { root, entries }); }
-    showFolder(dir: string, entries: FolderEntry[]): void { this.wire.notify('view.tree.folder', { dir, entries }); }
-    expand(dir: string): void { this.wire.notify('view.tree.expand', { dir }); }
-    reveal(path: string | null): void { this.wire.notify('view.tree.reveal', { path }); }
+    showRoot(root: string | null, entries: FolderEntry[]): void {
+        this.wire.notify('view.tree.root', { root, entries });
+    }
+    showFolder(dir: string, entries: FolderEntry[]): void {
+        this.wire.notify('view.tree.folder', { dir, entries });
+    }
+    expand(dir: string): void {
+        this.wire.notify('view.tree.expand', { dir });
+    }
+    reveal(path: string | null): void {
+        this.wire.notify('view.tree.reveal', { path });
+    }
 }
 
-// What a frontend needs of the files module, as types (the renderer takes them from here).
+// What a frontend needs of the files module, as types (the renderer takes them
+// from here).
 export type { FolderEntry, NewKind } from '../files';

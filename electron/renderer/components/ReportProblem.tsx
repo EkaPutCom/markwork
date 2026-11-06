@@ -1,13 +1,22 @@
-// "Something looks wrong?": a report of a problem with the editor, for the people the visual editor is for, in every
-// build (docs/design/debugger.md, section 11; board 3 of docs/design/shadcn/Debugger.html). It saves what the editor
-// just did as a repro file, the text blurred unless the person says otherwise, with a picture of the editor if they
-// like; the main process writes it in the app's data folder, and nothing is sent anywhere. Help → Report a Problem with
-// the Editor opens it, and so does the link that shows for a moment after an Undo of something just typed.
+// "Something looks wrong?": a report of a problem with the editor, for the
+// people the visual editor is for, in every
+// build (docs/design/debugger.md, section 11; board 3 of
+// docs/design/shadcn/Debugger.html). It saves what the editor
+// just did as a repro file, the text blurred unless the person says otherwise,
+// with a picture of the editor if they
+// like; the main process writes it in the app's data folder, and nothing is
+// sent anywhere. Help → Report a Problem with
+// the Editor opens it, and so does the link that shows for a moment after an
+// Undo of something just typed.
 
 import { useEffect, useMemo, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { blurText } from '../../../src/markdown/blur';
-import { observeRecordings, recordingOf, type Recording } from '../lib/inspect/recorder';
+import {
+    observeRecordings,
+    recordingOf,
+    type Recording,
+} from '../lib/inspect/recorder';
 import { reportOf, takeEditorPicture } from '../lib/inspect/report';
 import { useClient, useStore } from '../lib/useClient';
 import { Modal } from './Modals';
@@ -16,34 +25,61 @@ import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 
-const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+const CURSOR_LINE_LABEL = 'The line of the cursor, as it will be saved';
+const frame = () =>
+    new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-// The line of the cursor, as it would be saved: what the person sees of their own text before saving it.
+// The line of the cursor, as it would be saved: what the person sees of their
+// own text before saving it.
 function cursorLine(view: EditorView, blur: boolean): string {
-    const { state } = view, line = state.doc.lineAt(state.selection.main.head);
-    const text = blur ? blurText(state.doc.toString()).slice(line.from, line.to) : line.text;
+    const { state } = view,
+        line = state.doc.lineAt(state.selection.main.head);
+    const text = blur
+        ? blurText(state.doc.toString()).slice(line.from, line.to)
+        : line.text;
     return text.trim() ? text : '(an empty line)';
 }
 
-function ReportForm({ view, onClose }: { view: EditorView; onClose: () => void }) {
+function ReportForm({
+    view,
+    onClose,
+}: {
+    view: EditorView;
+    onClose: () => void;
+}) {
     const [note, setNote] = useState('');
     const [steps, setSteps] = useState(true);
     const [blur, setBlur] = useState(true);
     const [picture, setPicture] = useState(true);
     const [busy, setBusy] = useState(false);
-    // While the picture is taken the dialog is out of the way, and the editor shows the text as it will be saved.
+    // While the picture is taken the dialog is out of the way, and the editor
+    // shows the text as it will be saved.
     const [hidden, setHidden] = useState(false);
-    const [saved, setSaved] = useState<{ path: string; name: string } | null>(null);
+    const [saved, setSaved] = useState<{ path: string; name: string } | null>(
+        null
+    );
     const [error, setError] = useState<string | null>(null);
     const count = recordingOf(view.state)?.entries.length ?? 0;
-    const preview = useMemo(() => ({ real: cursorLine(view, false), blurred: cursorLine(view, true) }), [view]);
+    const lastChange = count === 1 ? 'change' : `${count} changes`;
+    const preview = useMemo(
+        () => ({
+            real: cursorLine(view, false),
+            blurred: cursorLine(view, true),
+        }),
+        [view]
+    );
 
     const save = async () => {
         setBusy(true);
         setError(null);
         try {
-            // Made before the picture: what the editor did up to now, not the blurred text shown for the picture.
-            const report = reportOf(view, { note: note.trim() || undefined, steps, blur });
+            // Made before the picture: what the editor did up to now, not the
+            // blurred text shown for the picture.
+            const report = reportOf(view, {
+                note: note.trim() || undefined,
+                steps,
+                blur,
+            });
             if (!report) throw new Error('This editor keeps no recording.');
             if (picture) {
                 setHidden(true);
@@ -51,9 +87,17 @@ function ReportForm({ view, onClose }: { view: EditorView; onClose: () => void }
                 await frame();
                 await takeEditorPicture(view, blur);
             }
-            setSaved(await window.markwork.saveReport(JSON.stringify(report), picture));
+            setSaved(
+                await window.markwork.saveReport(
+                    JSON.stringify(report),
+                    picture
+                )
+            );
         } catch (e) {
-            setError(`The report could not be saved: ${e instanceof Error ? e.message : String(e)}`);
+            setError(
+                `The report could not be saved: ` +
+                    `${e instanceof Error ? e.message : String(e)}`
+            );
         } finally {
             setHidden(false);
             setBusy(false);
@@ -61,40 +105,136 @@ function ReportForm({ view, onClose }: { view: EditorView; onClose: () => void }
     };
 
     return (
-        <Modal title="Something looks wrong?" onClose={onClose} className="report" hidden={hidden}>
+        <Modal
+            title="Something looks wrong?"
+            onClose={onClose}
+            className="report"
+            hidden={hidden}
+        >
             {saved ? (
                 <div className="form">
-                    <p>The report is saved as <b>{saved.name}</b>. Nothing was sent: attach the file to a bug report, or give it to whoever fixes Markwork.</p>
+                    <p>
+                        The report is saved as <b>{saved.name}</b>. Nothing was
+                        sent: attach the file to a bug report, or give it to
+                        whoever fixes Markwork.
+                    </p>
                     <div className="buttons">
-                        <Button type="button" autoFocus onClick={onClose}>Close</Button>
-                        <Button type="button" variant="outline" onClick={() => void window.markwork.showReport(saved.path)}>Show File</Button>
+                        <Button type="button" autoFocus onClick={onClose}>
+                            Close
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                void window.markwork.showReport(saved.path)
+                            }
+                        >
+                            Show File
+                        </Button>
                     </div>
                 </div>
             ) : (
-                <form className="form" onSubmit={e => { e.preventDefault(); void save(); }}>
-                    <p>Tell us what you expected. Markwork saves what the editor just did, so the problem can be played back and fixed.</p>
-                    <Label>What happened<Textarea autoFocus rows={3} value={note} onChange={e => setNote(e.target.value)}
-                        placeholder="I pressed Backspace after a bold word, and a star appeared instead of the last letter going away." /></Label>
-                    <div className="report-options" role="group" aria-label="What the report holds">
+                <form
+                    className="form"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        void save();
+                    }}
+                >
+                    <p>
+                        Tell us what you expected. Markwork saves what the
+                        editor just did, so the problem can be played back and
+                        fixed.
+                    </p>
+                    <Label>
+                        What happened
+                        <Textarea
+                            autoFocus
+                            rows={3}
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder={"I pressed Backspace after a bold" +
+                                " word, and a star appeared instead" +
+                                " of the last letter going away."}
+                        />
+                    </Label>
+                    <div
+                        className="report-options"
+                        role="group"
+                        aria-label="What the report holds"
+                    >
                         <Label className="choice">
-                            <Checkbox checked={steps} onCheckedChange={on => setSteps(on === true)} />
-                            <span>What the editor just did<small>{count ? `The last ${count === 1 ? 'change' : `${count} changes`}` : 'Nothing yet'}: keys, clicks, and what each did. Nothing typed in other windows.</small></span>
+                            <Checkbox
+                                checked={steps}
+                                onCheckedChange={(on) => setSteps(on === true)}
+                            />
+                            <span>
+                                What the editor just did
+                                <small>
+                                    {count
+                                        ? `The last ${lastChange}`
+                                        : 'Nothing yet'}
+                                    : keys, clicks, and what each did. Nothing
+                                    typed in other windows.
+                                </small>
+                            </span>
                         </Label>
                         <Label className="choice">
-                            <Checkbox checked={blur} onCheckedChange={on => setBlur(on === true)} />
-                            <span>Blur my text<small>Letters become x and numbers 0, but Markdown, spaces, emoji, and other scripts stay, which is enough for a bug.</small>
-                                <code className="report-preview" aria-label="The line of the cursor, as it will be saved">{blur ? preview.blurred : preview.real}</code></span>
+                            <Checkbox
+                                checked={blur}
+                                onCheckedChange={(on) => setBlur(on === true)}
+                            />
+                            <span>
+                                Blur my text
+                                <small>
+                                    Letters become x and numbers 0, but
+                                    Markdown, spaces, emoji, and other scripts
+                                    stay, which is enough for a bug.
+                                </small>
+                                <code
+                                    className="report-preview"
+                                    aria-label={CURSOR_LINE_LABEL}
+                                >
+                                    {blur ? preview.blurred : preview.real}
+                                </code>
+                            </span>
                         </Label>
                         <Label className="choice">
-                            <Checkbox checked={picture} onCheckedChange={on => setPicture(on === true)} />
-                            <span>A picture of the editor<small>{blur ? 'Blurred the same way.' : 'As it is on screen.'}</small></span>
+                            <Checkbox
+                                checked={picture}
+                                onCheckedChange={(on) =>
+                                    setPicture(on === true)
+                                }
+                            />
+                            <span>
+                                A picture of the editor
+                                <small>
+                                    {blur
+                                        ? 'Blurred the same way.'
+                                        : 'As it is on screen.'}
+                                </small>
+                            </span>
                         </Label>
                     </div>
-                    {error && <div className="form-error" role="alert">{error}</div>}
+                    {error && (
+                        <div className="form-error" role="alert">
+                            {error}
+                        </div>
+                    )}
                     <div className="buttons">
-                        <Button type="submit" disabled={busy}>Save Report</Button>
-                        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                        <span className="report-foot">Saved as a file. Nothing is sent.</span>
+                        <Button type="submit" disabled={busy}>
+                            Save Report
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onClose}
+                        >
+                            Cancel
+                        </Button>
+                        <span className="report-foot">
+                            Saved as a file. Nothing is sent.
+                        </span>
                     </div>
                 </form>
             )}
@@ -109,22 +249,39 @@ export function ReportDialog() {
     const close = () => client.showInfo(null);
     const view = client.currentEditor?.view;
     if (!view || !recordingOf(view.state)) {
-        return <Modal title="Something looks wrong?" onClose={close}><div className="form"><p>Open a document first: a report is about the text editor.</p></div></Modal>;
+        return (
+            <Modal title="Something looks wrong?" onClose={close}>
+                <div className="form">
+                    <p>
+                        Open a document first: a report is about the text
+                        editor.
+                    </p>
+                </div>
+            </Modal>
+        );
     }
     return <ReportForm view={view} onClose={close} />;
 }
 
-const UNDO_AFTER_MS = 10_000;   // an Undo this soon after typing may be undoing what the editor did
+// an Undo this soon after typing may be undoing what the editor did
+const UNDO_AFTER_MS = 10_000;
 const OFFER_MS = 5000;
 
-// The undo of something typed within UNDO_AFTER_MS: the commonest sign that the editor did what was not expected.
+// The undo of something typed within UNDO_AFTER_MS: the commonest sign that the
+// editor did what was not expected.
 function undidTyping(recording: Recording): boolean {
     const undo = recording.entries.at(-1);
     if (!undo || undo.userEvent !== 'undo') return false;
-    return recording.entries.some(e => e !== undo && e.userEvent?.startsWith('input.type') && undo.t - e.t < UNDO_AFTER_MS);
+    return recording.entries.some(
+        (e) =>
+            e !== undo &&
+            e.userEvent?.startsWith('input.type') &&
+            undo.t - e.t < UNDO_AFTER_MS
+    );
 }
 
-// The link under the header that offers a report, for a few seconds after such an Undo; once a tab.
+// The link under the header that offers a report, for a few seconds after such
+// an Undo; once a tab.
 export function ReportOffer() {
     const client = useClient();
     const { info } = useStore();
@@ -132,19 +289,33 @@ export function ReportOffer() {
     useEffect(() => {
         const offered = new WeakSet<Recording>();
         let timer: ReturnType<typeof setTimeout> | undefined;
-        const stop = observeRecordings(recording => {
+        const stop = observeRecordings((recording) => {
             if (offered.has(recording) || !undidTyping(recording)) return;
             offered.add(recording);
             setShown(true);
             clearTimeout(timer);
             timer = setTimeout(() => setShown(false), OFFER_MS);
         });
-        return () => { stop(); clearTimeout(timer); };
+        return () => {
+            stop();
+            clearTimeout(timer);
+        };
     }, []);
     if (!shown || info === 'report') return null;
     return (
         <div className="report-offer">
-            <Button type="button" variant="outline" size="xs" className="shadow-sm" onClick={() => { setShown(false); client.run('report-problem'); }}>Something looks wrong?</Button>
+            <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="shadow-sm"
+                onClick={() => {
+                    setShown(false);
+                    client.run('report-problem');
+                }}
+            >
+                Something looks wrong?
+            </Button>
         </div>
     );
 }

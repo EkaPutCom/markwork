@@ -15,7 +15,8 @@ export function useStore(): State {
     return useSyncExternalStore(client.subscribe, client.getState);
 }
 
-// The Assistant panel has a store of its own: an answer streams in many small notices, and only the panel draws again for them.
+// The Assistant panel has a store of its own: an answer streams in many small
+// notices, and only the panel draws again for them.
 export function useChat(): ChatState {
     const { chat } = useClient();
     return useSyncExternalStore(chat.subscribe, chat.getState);
