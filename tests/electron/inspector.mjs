@@ -263,7 +263,11 @@ async function inNormalStart() {
                 // not the line the scroll is anchored on.
                 const topLine = () =>
                     page.evaluate(
-                        `(v => v.state.doc.lineAt(v.lineBlockAtHeight(v.scrollDOM.scrollTop).from).number)(${view})`
+                        `${"(v =>" +
+            " v.state.doc.lineAt(v.lin" +
+            "eBlockAtHeight(v.scrollDO" +
+            "M.scrollTop).from).number" +
+            ")("}${view})`
                     );
                 const top = await topLine();
                 await page.getByRole('menuitem', { name: 'Help' }).click();
@@ -288,7 +292,8 @@ async function inNormalStart() {
                     async () => (await topLine()) === top,
                     10000,
                     async () =>
-                        `the editor is scrolled as it was: line ${top} at the top before, line ${await topLine()} now`
+                        `${"the editor is scrolled as" +
+            " it was: line "}${top} at the top before, line ${await topLine()} now`
                 );
                 await dialog
                     .getByRole('button', { name: 'Close', exact: true })
@@ -542,7 +547,10 @@ async function inDevMode() {
             async () => {
                 await setDoc(page, 'some **bold** text', 13);
                 await page.evaluate(
-                    `${view}.dispatch({ changes: { from: 12, to: 13 }, userEvent: 'delete.backward' })`
+                    `${view}${".dispatch({ changes: {" +
+            " from: 12, to: 13 }," +
+            " userEvent:" +
+            " 'delete.backward' })"}`
                 );
                 const bad = inspector.locator('.ins-check', {
                     hasText: 'backspace-visible',
@@ -572,7 +580,9 @@ async function inDevMode() {
             async () => {
                 await setDoc(page, '# Title', 7);
                 await page.evaluate(
-                    `${view}.dispatch({ selection: { anchor: 1 }, filter: false })`
+                    `${view}${".dispatch({ selection: {" +
+            " anchor: 1 }, filter:" +
+            " false })"}`
                 );
                 await tab('Checks').click();
                 const bad = inspector.locator('.ins-check', {

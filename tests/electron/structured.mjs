@@ -41,7 +41,10 @@ writeFileSync(
 );
 writeFileSync(
     join(notes, 'cal.md'),
-    `---\nlayout: calendar\nfields:\n  due: date\n---\n\n# Calendar\n\n- Release [due:: ${month}-10]\n- Undated\n`
+    `${"---\nlayout:" +
+            " calendar\nfields:\n  due:" +
+            " date\n---\n\n# Calendar\n\n-" +
+            " Release [due:: "}${month}-10]\n- Undated\n`
 );
 writeFileSync(
     join(notes, 'line.md'),

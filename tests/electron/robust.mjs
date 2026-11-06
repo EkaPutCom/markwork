@@ -103,7 +103,10 @@ try {
         );
     const cursorLine = () =>
         page.evaluate(
-            `(v => v.state.doc.lineAt(v.state.selection.main.head).number)(${view})`
+            `${"(v =>" +
+            " v.state.doc.lineAt(v.sta" +
+            "te.selection.main.head).n" +
+            "umber)("}${view})`
         );
     const frame = () =>
         page.evaluate(

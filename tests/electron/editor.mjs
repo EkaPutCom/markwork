@@ -866,7 +866,8 @@ try {
             );
             assert.ok(
                 after - before > 40,
-                `dragging shifts the image (${before} → ${after}, ${await caption()})`
+                `${"dragging shifts the image" +
+            " ("}${before} → ${after}, ${await caption()})`
             );
             await page.keyboard.press('Escape');
             await page.locator('.image-viewer').waitFor({ state: 'detached' });
@@ -931,7 +932,8 @@ try {
                 new MutationObserver(() => {
                     if (!document.querySelector('.image-viewer'))
                         seen.push(
-                            `${at()} ms the viewer is gone; focus on ${name(document.activeElement)}`
+                            `${at()}${" ms the viewer is gone;" +
+            " focus on "}${name(document.activeElement)}`
                         );
                 }).observe(document.body, { childList: true, subtree: true });
             });

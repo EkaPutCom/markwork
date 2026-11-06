@@ -80,7 +80,8 @@ try {
                 .getByText('Research Assistant', { exact: true })
                 .waitFor();
             console.log(
-                `  New Agent submit to chat: ${(performance.now() - started).toFixed(1)} ms`
+                `${"  New Agent submit to" +
+            " chat: "}${(performance.now() - started).toFixed(1)} ms`
             );
             const root = join(notes, 'agents', 'Research Assistant');
             const config = JSON.parse(
