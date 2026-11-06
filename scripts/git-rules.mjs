@@ -17,14 +17,20 @@ export function checkSubject(message) {
     const first = message.split(/\r?\n/)[0];
     if (!subject.test(first) || first !== first.trimEnd())
         throw new Error(
-            `Invalid commit subject: ${JSON.stringify(first)}. Use type(module): description, e.g. feat(editor): add a block removal button.`
+            `Invalid commit subject: ${JSON.stringify(first)}${". Use type(module):" +
+            " description, e.g." +
+            " feat(editor): add a" +
+            " block removal button."}`
         );
 }
 
 export function checkBranch(name) {
     if (!branch.test(name ?? ''))
         throw new Error(
-            `Invalid branch: ${JSON.stringify(name)}. Use type/short-kebab-case-description, e.g. feat/horizontal-rules.`
+            `Invalid branch: ${JSON.stringify(name)}${". Use" +
+            " type/short-kebab-case-de" +
+            "scription, e.g." +
+            " feat/horizontal-rules."}`
         );
 }
 
@@ -75,7 +81,9 @@ export function run(args) {
         }
         if (existing && existing !== '.githooks')
             throw new Error(
-                `core.hooksPath is already ${JSON.stringify(existing)}; refusing to replace existing hooks.`
+                `${"core.hooksPath is already" +
+            " "}${JSON.stringify(existing)}${"; refusing to replace" +
+            " existing hooks."}`
             );
         git('config', '--local', 'core.hooksPath', '.githooks');
         console.log('Installed the tracked commit-message hook.');

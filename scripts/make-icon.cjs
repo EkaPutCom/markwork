@@ -20,7 +20,9 @@ app.whenReady().then(async () => {
         frame: false,
         webPreferences: { offscreen: true },
     });
-    const page = `<style>html,body{margin:0;background:transparent}svg{width:${SIZE}px;height:${SIZE}px;display:block}</style>${svg}`;
+    const page = `${"<style>html,body{margin:0" +
+            ";background:transparent}s" +
+            "vg{width:"}${SIZE}px;height:${SIZE}px;display:block}</style>${svg}`;
     await win.loadURL(
         `data:text/html;charset=utf-8,${encodeURIComponent(page)}`
     );

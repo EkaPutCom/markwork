@@ -317,7 +317,8 @@ function findSocket(pid) {
         );
     if (pids.length > 1)
         throw new Usage(
-            `more than one window in dev mode is running (${pids.join(', ')}): choose one with --pid`
+            `${"more than one window in" +
+            " dev mode is running ("}${pids.join(', ')}): choose one with --pid`
         );
     return socketOf(pids[0]);
 }
@@ -823,7 +824,8 @@ async function main() {
         code = await runAll(window.conn, ops, global);
         if (window.headless && global.keep)
             process.stderr.write(
-                `editor: the window keeps running: --pid ${window.headless.pid}\n`
+                `${"editor: the window keeps" +
+            " running: --pid "}${window.headless.pid}\n`
             );
     } catch (e) {
         error =

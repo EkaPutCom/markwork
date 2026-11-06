@@ -193,6 +193,8 @@ test('transport measurement: 20 batches of 1,000 events after 3 warmups', () =>
         assert.equal(delivered, 23_000);
         samples.sort((a, b) => a - b);
         console.log(
-            `Spike JSONL parse/delivery, 1000 events: median=${samples[10].toFixed(3)}ms p95=${samples[18].toFixed(3)}ms max=${samples[19].toFixed(3)}ms`
+            `${"Spike JSONL" +
+            " parse/delivery, 1000" +
+            " events: median="}${samples[10].toFixed(3)}ms p95=${samples[18].toFixed(3)}ms max=${samples[19].toFixed(3)}ms`
         );
     }));

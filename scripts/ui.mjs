@@ -79,7 +79,14 @@ const HUES =
 // a color function, or a Tailwind class of
 // its palette (`text-white`, `bg-red-500/50`).
 const STRING_COLOR = new RegExp(
-    `(^|[\\s(\\[,'"])#[0-9a-fA-F]{3,8}(?![\\w-])|\\b(rgba?|hsla?|oklch|oklab|lab|lch)\\(|\\b(bg|text|border|ring|fill|stroke|outline|from|via|to|shadow|decoration|divide|accent|caret|placeholder)-(${HUES})(-\\d{2,3})?\\b`
+    `${"(^|[\\s(\\[,'\"])#[0-9a-fA-F" +
+            "]{3,8}(?![\\w-])|\\b(rgba?|" +
+            "hsla?|oklch|oklab|lab|lch" +
+            ")\\(|\\b(bg|text|border|rin" +
+            "g|fill|stroke|outline|fro" +
+            "m|via|to|shadow|decoratio" +
+            "n|divide|accent|caret|pla" +
+            "ceholder)-("}${HUES})(-\\d{2,3})?\\b`
 );
 const STRING_FONT_PX = /\btext-\[\d+(\.\d+)?px\]/;
 // A layer class of 10 or more (`z-10`, `z-[100]`); `z-(--z-overlay)` is the
@@ -107,7 +114,12 @@ const CSS_TIME = /(?<![\w-])\d*\.?\d+m?s(?![\w-])/;
 // In CSS, a color inside a declaration's value; named colors only as whole
 // words.
 const CSS_COLOR = new RegExp(
-    `#[0-9a-fA-F]{3,8}(?![\\w-])|\\b(rgba?|hsla?|oklch|oklab|lab|lch)\\(|(^|[\\s,(])(${HUES}|grey|silver|navy|maroon|olive|aqua|fuchsia|lime)(?=$|[\\s,);!])`
+    `${"#[0-9a-fA-F]{3,8}(?![\\w-]" +
+            ")|\\b(rgba?|hsla?|oklch|ok" +
+            "lab|lab|lch)\\(|(^|[\\s,(])" +
+            "("}${HUES}${"|grey|silver|navy|maroon|" +
+            "olive|aqua|fuchsia|lime)(" +
+            "?=$|[\\s,);!])"}`
 );
 const ALLOW = /ui-allow:/;
 

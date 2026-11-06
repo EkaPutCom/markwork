@@ -22,7 +22,8 @@ const worker = resolve(bundle ?? join(root, 'dist-electron/folder-worker.js'));
 mkdirSync(dirname(target), { recursive: true });
 writeFileSync(
     target,
-    `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${quote(runtime)} ${quote(worker)} "$@"\n`
+    `${"#!/bin/sh\nELECTRON_RUN_AS" +
+            "_NODE=1 exec "}${quote(runtime)} ${quote(worker)} "$@"\n`
 );
 chmodSync(target, 0o755);
 console.log(target);

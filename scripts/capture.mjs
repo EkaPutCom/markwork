@@ -156,7 +156,35 @@ const day = (offset) => {
     return d.toISOString().slice(0, 10);
 };
 const LAYOUTS_DOC = () =>
-    `---\nlayout: board\nfields:\n  status: select(todo:gray, doing:blue, done:green) = todo\n  start: date\n  due: date\n---\n\n# Launch plan\n\nOne file. Change the layout: line and the same notes become a list, a table, a calendar, a timeline, a gallery, or a chart.\n\n## Plan\n\n- [ ] Write the changelog #docs [status:: todo] [start:: ${day(3)}] [due:: ${day(6)}]\n- [ ] Prepare the release material #marketing [status:: todo] [start:: ${day(1)}] [due:: ${day(8)}]\n\n## In Progress\n\n- [ ] Fix the sync bug #bug [status:: doing] [start:: ${day(-4)}] [due:: ${day(2)}]\n- [ ] Review the parser #dev [status:: doing] [start:: ${day(-1)}] [due:: ${day(4)}]\n\n## Done\n\n- [x] Redesign the home page #design [status:: done] [start:: ${day(-9)}] [due:: ${day(-3)}]\n- [x] Move to Electron #dev [status:: done] [start:: ${day(-12)}] [due:: ${day(-6)}]\n`;
+    `${"---\nlayout:" +
+            " board\nfields:\n  status:" +
+            " select(todo:gray," +
+            " doing:blue, done:green)" +
+            " = todo\n  start: date\n " +
+            " due: date\n---\n\n# Launch" +
+            " plan\n\nOne file. Change" +
+            " the layout: line and the" +
+            " same notes become a" +
+            " list, a table, a" +
+            " calendar, a timeline, a" +
+            " gallery, or a chart.\n\n##" +
+            " Plan\n\n- [ ] Write the" +
+            " changelog #docs" +
+            " [status:: todo] [start::" +
+            " "}${day(3)}] [due:: ${day(6)}${"]\n- [ ] Prepare the" +
+            " release material" +
+            " #marketing [status::" +
+            " todo] [start:: "}${day(1)}] [due:: ${day(8)}${"]\n\n## In Progress\n\n- [ ]" +
+            " Fix the sync bug #bug" +
+            " [status:: doing]" +
+            " [start:: "}${day(-4)}] [due:: ${day(2)}${"]\n- [ ] Review the parser" +
+            " #dev [status:: doing]" +
+            " [start:: "}${day(-1)}] [due:: ${day(4)}${"]\n\n## Done\n\n- [x]" +
+            " Redesign the home page" +
+            " #design [status:: done]" +
+            " [start:: "}${day(-9)}] [due:: ${day(-3)}${"]\n- [x] Move to Electron" +
+            " #dev [status:: done]" +
+            " [start:: "}${day(-12)}] [due:: ${day(-6)}]\n`;
 const SALES =
     [
         'date,customer,city,amount,status',
@@ -1065,7 +1093,8 @@ const GROUPS = {
         put(
             root,
             'plan.md',
-            `${readFileSync(join(root, 'plan.md'), 'utf8')}- Evaluation: 30 November\n`
+            `${readFileSync(join(root, 'plan.md'), 'utf8')}${"- Evaluation: 30" +
+            " November\n"}`
         );
         put(
             root,
@@ -1501,12 +1530,31 @@ const GROUPS = {
         put(
             root,
             'tasks.md',
-            `---\nlayout: board\nproject: launch\n---\n\n## Plan\n\n- [ ] Prepare the release material #marketing [due:: ${day(1)}]\n- [ ] Write the release notes #docs [due:: ${day(2)}]\n\n## In Progress\n\n- [ ] Fix the sync bug #bug #important [due:: ${day(0)}]\n\n## Done\n\n- [x] Redesign the home page #design\n`
+            `${"---\nlayout:" +
+            " board\nproject:" +
+            " launch\n---\n\n## Plan\n\n- [" +
+            " ] Prepare the release" +
+            " material #marketing" +
+            " [due:: "}${day(1)}${"]\n- [ ] Write the release" +
+            " notes #docs [due:: "}${day(2)}${"]\n\n## In Progress\n\n- [ ]" +
+            " Fix the sync bug #bug" +
+            " #important [due:: "}${day(0)}${"]\n\n## Done\n\n- [x]" +
+            " Redesign the home page" +
+            " #design\n"}`
         );
         put(
             root,
             'inbox.md',
-            `---\nlayout: list\n---\n\n# Inbox\n\nA place to capture ideas, notes, and things to process later.\n\n- Read the article about writing release notes #read [created:: ${day(0)} 08:10]\n- Idea: offer a PDF export #idea [created:: ${day(-1)} 17:45]\n`
+            `${"---\nlayout: list\n---\n\n#" +
+            " Inbox\n\nA place to" +
+            " capture ideas, notes," +
+            " and things to process" +
+            " later.\n\n- Read the" +
+            " article about writing" +
+            " release notes #read" +
+            " [created:: "}${day(0)}${" 08:10]\n- Idea: offer a" +
+            " PDF export #idea" +
+            " [created:: "}${day(-1)} 17:45]\n`
         );
         const run = new Run('daily', root);
         await run.start();

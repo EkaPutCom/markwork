@@ -146,7 +146,12 @@ for (const file of files.filter(
     const hit = SYSTEM_SPECIFIC.exec(readFileSync(join(src, file), 'utf8'));
     if (hit)
         errors.push(
-            `src/${file}: mentions "${hit[0]}" (what differs per system belongs in platform/, behind platform(); see "The foundation for other frontends" in AGENT.md)`
+            `src/${file}: mentions "${hit[0]}${"\" (what differs per" +
+            " system belongs in" +
+            " platform/, behind" +
+            " platform(); see \"The" +
+            " foundation for other" +
+            " frontends\" in AGENT.md)"}`
         );
 }
 
@@ -242,7 +247,10 @@ for (const file of rendererFiles) {
             .replace(/(?:\.js|\.ts)?$/, '.ts');
         if (target.startsWith('..'))
             errors.push(
-                `${where} (the renderer imports only its own files and the shared parts of src/)`
+                `${where}${" (the renderer imports" +
+            " only its own files and" +
+            " the shared parts of" +
+            " src/)"}`
             );
         else if (m[1] ? !RENDERER_TYPES(target) : !RENDERER_VALUES(target)) {
             errors.push(
@@ -250,7 +258,11 @@ for (const file of rendererFiles) {
             );
         } else if (!m[1] && acts(target)) {
             errors.push(
-                `${where} (it reaches the runtime; the renderer gets that work from the main process over the protocol)`
+                `${where}${" (it reaches the runtime;" +
+            " the renderer gets that" +
+            " work from the main" +
+            " process over the" +
+            " protocol)"}`
             );
         }
     }
@@ -388,7 +400,9 @@ for (const [name, path] of checked) {
             seen.set(key, Math.max(seen.get(key) ?? 0, fn.cc));
         if (fn.cc > Math.max(MAX_COMPLEXITY, allowed ?? 0)) {
             errors.push(
-                `${name}:${fn.line}: ${fn.name} has cyclomatic complexity ${fn.cc} (limit ${allowed ?? MAX_COMPLEXITY}${allowed ? ', may not grow' : ''}); split it into smaller functions`
+                `${name}:${fn.line}: ${fn.name}${" has cyclomatic" +
+            " complexity "}${fn.cc} (limit ${allowed ?? MAX_COMPLEXITY}${allowed ? ', may not grow' : ''}${"); split it into smaller" +
+            " functions"}`
             );
         }
     }
@@ -397,15 +411,22 @@ for (const [key, allowed] of Object.entries(COMPLEXITY_ALLOWED)) {
     const now = seen.get(key);
     if (now === undefined)
         errors.push(
-            `scripts/layers.mjs: COMPLEXITY_ALLOWED lists ${key}, which no longer exists; remove the entry`
+            `${"scripts/layers.mjs:" +
+            " COMPLEXITY_ALLOWED lists" +
+            " "}${key}${", which no longer exists;" +
+            " remove the entry"}`
         );
     else if (now <= MAX_COMPLEXITY)
         errors.push(
-            `scripts/layers.mjs: ${key} is now ${now}, within the limit; remove it from COMPLEXITY_ALLOWED`
+            `scripts/layers.mjs: ${key} is now ${now}${", within the limit;" +
+            " remove it from" +
+            " COMPLEXITY_ALLOWED"}`
         );
     else if (now < allowed)
         errors.push(
-            `scripts/layers.mjs: ${key} went down to ${now}; lower its COMPLEXITY_ALLOWED entry from ${allowed}`
+            `scripts/layers.mjs: ${key} went down to ${now}${"; lower its" +
+            " COMPLEXITY_ALLOWED entry" +
+            " from "}${allowed}`
         );
 }
 
@@ -414,5 +435,6 @@ if (errors.length) {
     process.exit(1);
 }
 console.log(
-    `Layer rules: ${files.length} modules and ${rendererFiles.length} renderer files checked; complexity: ${functions} functions within ${MAX_COMPLEXITY} or their allowance`
+    `Layer rules: ${files.length} modules and ${rendererFiles.length}${" renderer files checked;" +
+            " complexity: "}${functions} functions within ${MAX_COMPLEXITY} or their allowance`
 );

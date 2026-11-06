@@ -101,7 +101,9 @@ const base =
 async function start(revision, sessionFile) {
     const text =
         base +
-        `Current instruction revision: ${revision}. When asked for the revision, answer ${revision}.`;
+        `${"Current instruction" +
+            " revision: "}${revision}${". When asked for the" +
+            " revision, answer "}${revision}.`;
     await writeFile(instructions, text + '\n');
     const hash = createHash('sha256')
         .update(text + '\n')
@@ -165,7 +167,11 @@ try {
     const first = await start('REVISION_ONE');
     await turn(
         'remember',
-        `Remember the exact token ${marker} in this conversation only. Reply with it and your current instruction revision. Do not write the token to any file.`
+        `Remember the exact token ${marker}${" in this conversation" +
+            " only. Reply with it and" +
+            " your current instruction" +
+            " revision. Do not write" +
+            " the token to any file."}`
     );
     const saved = await client.command('get_state');
     assert.ok(saved.sessionFile);
