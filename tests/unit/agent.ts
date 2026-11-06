@@ -335,11 +335,14 @@ export async function agentTests(): Promise<void> {
             Array.from(
                 { length: 4000 },
                 (_, i) =>
-                    `Line ${i} in chapter ${n} contains an ordinary sentence about sailing and the sea.`
+                    `Line ${i} in chapter ${n}${" contains an ordinary" +
+            " sentence about sailing" +
+            " and the sea."}`
             ).join('\n');
         const big = Array.from({ length: 12 }, (_, i) => ({
             name: `chapter-${i}.md`,
-            text: `# Chapter ${i}\n\n${filler(i)}\n\nThe character Wicaksono appears here in chapter ${i}.\n`,
+            text: `# Chapter ${i}\n\n${filler(i)}${"\n\nThe character Wicaksono" +
+            " appears here in chapter "}${i}.\n`,
         }));
         const active = {
             name: 'active.md',
@@ -738,7 +741,8 @@ export async function toolTests(): Promise<void> {
                 text: Array.from(
                     { length: 5000 },
                     (_, i) =>
-                        `Content line number ${i + 1} with a sentence that is long enough.`
+                        `Content line number ${i + 1}${" with a sentence that is" +
+            " long enough."}`
                 ).join('\n'),
             },
         ];

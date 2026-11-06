@@ -171,7 +171,9 @@ export function layoutsModelTests(): void {
         ' date field, otherwise none', () => {
         const doc = (head: string) =>
             parseBoard(
-                `---\nlayout: calendar\n${head}fields:\n  start: date\n  due: date\n  note: text\n---\n`
+                `---\nlayout: calendar\n${head}${"fields:\n  start: date\n " +
+            " due: date\n  note:" +
+            " text\n---\n"}`
             );
         eq(
             [
@@ -452,7 +454,12 @@ export function layoutsModelTests(): void {
         ' fit are dropped; none is the default', () => {
         const doc = (line: string) =>
             parseBoard(
-                `---\nlayout: chart\n${line}\nfields:\n  due: date\n  status: select(a, b)\n  tags: select(x, y)[]\n---\n\n- [ ] a [due:: 2026-10-12] [status:: a]\n`
+                `---\nlayout: chart\n${line}${"\nfields:\n  due: date\n " +
+            " status: select(a, b)\n " +
+            " tags: select(x," +
+            " y)[]\n---\n\n- [ ] a [due::" +
+            " 2026-10-12] [status::" +
+            " a]\n"}`
             );
         const texts = (line: string) =>
             chartItems(doc(line)).map(chartItemText);

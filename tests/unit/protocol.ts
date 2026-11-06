@@ -3963,7 +3963,9 @@ export async function protocolTests(): Promise<void> {
     // without being carried over, which is a feature the Electron window
     // silently lacks (docs/design/electron-migrasi.md).
     const STILL_UNWIRED: string[] = ['frontendCommands.edit'];
-    await test(`the members still unwired only shrink (${STILL_UNWIRED.length} reached by these scenarios)`, () => {
+    await test(`${"the members still unwired" +
+            " only shrink ("}${STILL_UNWIRED.length}${" reached by these" +
+            " scenarios)"}`, () => {
         eq(unwiredTouched(), STILL_UNWIRED);
     });
 }

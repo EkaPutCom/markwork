@@ -329,7 +329,10 @@ export async function assistantPiTests(): Promise<void> {
             }
             samples.sort((a, b) => a - b);
             say(
-                `  pi Assistant round trip: median ${samples[10].toFixed(3)} ms, p95 ${samples[18].toFixed(3)} ms, max ${samples[19].toFixed(3)} ms (3 warmups, 20 samples, fake pi; no provider latency)`
+                `${"  pi Assistant round" +
+            " trip: median "}${samples[10].toFixed(3)} ms, p95 ${samples[18].toFixed(3)} ms, max ${samples[19].toFixed(3)}${" ms (3 warmups, 20" +
+            " samples, fake pi; no" +
+            " provider latency)"}`
             );
         } finally {
             await finish(session);

@@ -116,7 +116,11 @@ export class LaggingEditor extends FakeEditor {
     override getText(): string {
         if (this.pending !== null)
             throw new Error(
-                `read the text while a write to it had not landed (docs/design/protocol.md 5.5)\n${new Error().stack}`
+                `${"read the text while a" +
+            " write to it had not" +
+            " landed" +
+            " (docs/design/protocol.md" +
+            " 5.5)\n"}${new Error().stack}`
             );
         return this.text;
     }

@@ -126,7 +126,10 @@ export async function crossOsTests(): Promise<void> {
         eq(mac[0], 'osascript');
         eq(
             mac[2],
-            `tell application "Terminal" to do script "cd '/Users/eka/it'\\\\''s'"`,
+            `${"tell application" +
+            " \"Terminal\" to do script" +
+            " \"cd" +
+            " '/Users/eka/it'\\\\''s'\""}`,
             'quotes for the shell, then for AppleScript'
         );
     });

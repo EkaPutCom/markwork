@@ -265,7 +265,10 @@ export async function publishTests(): Promise<void> {
         if (!result.ok)
             contains(
                 result.message,
-                `Pull request #3 is already open for ${branch}: https://forge.example.org/team/notes/pulls/3`
+                `${"Pull request #3 is" +
+            " already open for "}${branch}${":" +
+            " https://forge.example.or" +
+            "g/team/notes/pulls/3"}`
             );
         ok(!(await refs(upstream)).includes(branch), 'nothing was pushed');
         open = [];
@@ -291,7 +294,8 @@ export async function publishTests(): Promise<void> {
             eq(result.pushed, true);
             contains(
                 result.message,
-                `The branch ${branch} was pushed, but the pull request was not opened`
+                `The branch ${branch}${" was pushed, but the pull" +
+            " request was not opened"}`
             );
             contains(result.message, 'may already exist');
         }

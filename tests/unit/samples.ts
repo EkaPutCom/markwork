@@ -28,7 +28,10 @@ const SAMPLES: [string, Layout][] = [
 export function sampleDocumentTests(): void {
     section('Sample documents');
     for (const [name, layout] of SAMPLES) {
-        test(`${name}: layout ${layout}, a schema without problems, values that fit, and a form the app writes unchanged`, () => {
+        test(`${name}: layout ${layout}${", a schema without" +
+            " problems, values that" +
+            " fit, and a form the app" +
+            " writes unchanged"}`, () => {
             const text = readTextFile(
                 disk.join(ROOT, 'tests', 'samples', name)
             );

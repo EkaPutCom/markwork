@@ -64,7 +64,9 @@ export function inlineHtmlTests(): void {
             Array.from(
                 { length: 200 },
                 (_, i) =>
-                    `| **CVE-${i}** | High risk with \\| escaped pipe | https://example.com/${i} |`
+                    `| **CVE-${i}${"** | High risk with \\|" +
+            " escaped pipe |" +
+            " https://example.com/"}${i} |`
             ).join('\n');
         const times: number[] = [];
         for (let i = 0; i < 23; i++) {
@@ -140,7 +142,10 @@ export function inlineHtmlTests(): void {
         ' the note URI, and not inside code', () => {
         eq(
             cellHtml('[[Spec#Color|color]]', true),
-            `<a class="md-note" href="${NOTE_URI}Spec%23Color%7Ccolor"><span class="md-link">color</span></a>`
+            `<a class="md-note" href="${NOTE_URI}${"Spec%23Color%7Ccolor\"><sp" +
+            "an" +
+            " class=\"md-link\">color</s" +
+            "pan></a>"}`
         );
         ok(!cellHtml('[[Spec]]').includes('<a '), 'without the option');
         ok(!cellHtml('`[[Spec]]`', true).includes('<a '), 'inside code');

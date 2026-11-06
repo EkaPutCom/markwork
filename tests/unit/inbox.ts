@@ -211,7 +211,8 @@ export function inboxModelTests(): void {
         ' (default) or bottom, and add-to:' +
         ' names the group', () => {
         const head = (extra: string) =>
-            `---\nlayout: list\n${extra}---\n\n- loose\n\n## Now\n\n- one\n\n## Later\n\n- two\n`;
+            `---\nlayout: list\n${extra}${"---\n\n- loose\n\n## Now\n\n-" +
+            " one\n\n## Later\n\n- two\n"}`;
         const at = (text: string) =>
             parseBoard(text).columns.map((c) => c.cards.map((i) => i.text));
         const add = (extra: string) =>
