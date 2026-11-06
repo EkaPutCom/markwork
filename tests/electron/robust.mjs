@@ -161,13 +161,15 @@ try {
             const out = {};
             for (const el of document.querySelectorAll('.cm-content > *')) {
                 const line = ed.state.doc.lineAt(ed.posAtDOM(el)).number;
-                out[
-                    el.classList.contains('cm-line')
-                        ? `line ${line}`
-                        : `widget ${line} ${Object.keys(out).length}`
-                ] = el.classList.contains('cm-line')
-                    ? `${el.className.replace(/\s*cm-activeLine\b/, '')}|${el.innerHTML.replace(/<img[^>]*>/g, '<img>')}`
-                    : [...el.classList]
+                const isLine = el.classList.contains('cm-line');
+                const key = isLine
+                    ? `line ${line}`
+                    : `widget ${line} ${Object.keys(out).length}`;
+                out[key] =
+                    isLine
+                        ? `${el.className.replace(/\s*cm-activeLine\b/, '')}|` +
+                            el.innerHTML.replace(/<img[^>]*>/g, '<img>')
+                        : [...el.classList]
                           .filter(
                               (c) => c.startsWith('cm-md-') && c !== 'cm-md-dim'
                           )
@@ -517,7 +519,8 @@ try {
             const long = Array.from(
                 { length: 600 },
                 (_, i) =>
-                    `## Section ${i}\n\nParagraph **bold** and *italic* number ${i} 🎉 with \`code\`.\n`
+                    `## Section ${i}\n\nParagraph **bold** and *italic* ` +
+                    `number ${i} 🎉 with \`code\`.\n`
             ).join('\n');
             await setDoc(long);
             await edit(30, 30, '**new**\n\n', 30);

@@ -83,7 +83,9 @@ if (files.length) {
                     );
                     assert.ok(answer, stderr);
                     const why = answer.first
-                        ? `step ${answer.first.step}: ${answer.first.finding.check}: ${answer.first.finding.message}`
+                        ? `step ${answer.first.step}: ` +
+                            `${answer.first.finding.check}: ` +
+                            answer.first.finding.message
                         : answer.result === 'differs'
                           ? `the text came out ${JSON.stringify(answer.doc)}`
                           : stderr;

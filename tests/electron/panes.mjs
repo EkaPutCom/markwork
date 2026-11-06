@@ -404,10 +404,10 @@ try {
     const tabs = await page
         ?.getByRole('tab')
         .evaluateAll((els) =>
-            els.map(
-                (e) =>
-                    `${e.getAttribute('aria-selected') === 'true' ? '*' : ''}${e.textContent}`
-            )
+            els.map((e) => {
+                const selected = e.getAttribute('aria-selected') === 'true';
+                return `${selected ? '*' : ''}${e.textContent}`;
+            })
         )
         .catch(() => []);
     console.error(`tabs: ${JSON.stringify(tabs)}`);

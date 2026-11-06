@@ -154,8 +154,10 @@ try {
             await page
                 .locator('.board .card', { hasText: 'Three edited' })
                 .waitFor();
-            const expected =
-                /- \[ \] Three edited #tag \[due:: 2026-10-25\]\n {2}a note\n {2}second line/;
+            const expected = new RegExp(
+                String.raw`- \[ \] Three edited #tag \[due:: 2026-10-25\]` +
+                    String.raw`\n {2}a note\n {2}second line`
+            );
             const text = await saved('board.md', expected);
             assert.match(text, expected);
         }
@@ -314,13 +316,11 @@ try {
                 .locator('.inbox-row', { hasText: 'Third idea' })
                 .getByText('just now')
                 .waitFor();
-            assert.match(
-                await saved(
-                    'list.md',
-                    /- Third idea #new \[created:: \d{4}-\d\d-\d\d \d\d:\d\d\]\n- First idea/
-                ),
-                /- Third idea #new \[created:: \d{4}-\d\d-\d\d \d\d:\d\d\]\n- First idea/
+            const firstIdea = new RegExp(
+                String.raw`- Third idea #new \[created:: ` +
+                    String.raw`\d{4}-\d\d-\d\d \d\d:\d\d\]\n- First idea`
             );
+            assert.match(await saved('list.md', firstIdea), firstIdea);
         }
     );
 

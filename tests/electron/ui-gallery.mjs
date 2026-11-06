@@ -249,7 +249,8 @@ try {
                         await close.click();
                         await notice.waitFor({ state: 'detached' });
                         console.log(
-                            `  dismiss notice (${theme}, ${width}px): ${(performance.now() - started).toFixed(0)} ms`
+                            `  dismiss notice (${theme}, ${width}px): ` +
+                                `${(performance.now() - started).toFixed(0)} ms`
                         );
                     }
                     await page.setViewportSize({ width: 1280, height: 800 });

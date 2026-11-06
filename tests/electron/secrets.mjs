@@ -147,7 +147,8 @@ try {
         if (child.exitCode === null) child.kill('SIGKILL');
     }
     console.log(
-        `Electron secrets: ${steps.length} steps, ${failed ? 'FAILED' : 'passed'}`
+        `Electron secrets: ${steps.length} steps, ` +
+            `${failed ? 'FAILED' : 'passed'}`
     );
 }
 if (failed) process.exitCode = 1;
