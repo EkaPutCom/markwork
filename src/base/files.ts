@@ -160,7 +160,10 @@ export function flushWrites(path: string): void {
     while (busy()) {
         if (platform().monotonicMs() > deadline)
             throw new Error(
-                `background writes to ${path} did not finish: ${[...queues.keys()].filter((p) => atOrBelow(path, p)).join(', ')}`
+                `background writes to ${path} did not finish: ` +
+                    [...queues.keys()]
+                        .filter((p) => atOrBelow(path, p))
+                        .join(', ')
             );
         platform().fs.pumpWrites(true);
     }

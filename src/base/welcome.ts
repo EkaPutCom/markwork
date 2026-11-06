@@ -2,7 +2,10 @@
 
 export const WELCOME = `# Welcome to Markwork
 
-A personal workspace for notes, plans, and tasks, together with AI agents (open the panel with \`Ctrl+Shift+A\`). Everything is **Markdown** that is formatted live: the syntax is hidden, and shows up again when the cursor is on its line. Try clicking this line.
+${'A personal workspace for notes, plans, and tasks, together with AI ' +
+' agents (open the panel with `Ctrl+Shift+A`). Everything is **Markdown** ' +
+'that is formatted live: the syntax is hidden, and shows up again when the ' +
+'cursor is on its line. Try clicking this line.'}
 
 ## Text formatting
 

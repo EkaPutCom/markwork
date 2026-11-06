@@ -28,11 +28,11 @@ export const SETTING_KEYS = {
         default: 'files',
         choices: ['files', 'search', 'history', 'collab'],
     },
-    // the side panel's width in pixels (the window keeps it between 200 and 480)
+    // Side-panel width in pixels (the window keeps it between 200 and 480).
     'sidebar-width': { type: 'u', default: 280 },
-    // the sections of the Files view that are folded or hidden, and their sizes (JSON the window writes)
+    // Folded Files-view sections and their sizes (JSON written by the window).
     'sidebar-sections': { type: 's', default: '' },
-    // the Files view shows its Timeline section: the history of the open file is read
+    // The Files Timeline shows history for the open file.
     'timeline-open': { type: 'b', default: false },
     chat: { type: 'b', default: false }, // assistant panel open
     'chat-model': { type: 's', default: 'deepseek-flash' },

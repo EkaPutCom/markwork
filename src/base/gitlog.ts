@@ -7,7 +7,7 @@ export interface Commit {
     author: string;
     time: number; // seconds since the epoch
     subject: string;
-    // file path in this commit relative to the repo root (changes if the file was ever renamed)
+    // Path in this commit relative to the repo root (changes on rename).
     path: string | null;
 }
 
