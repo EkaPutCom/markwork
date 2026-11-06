@@ -421,9 +421,13 @@ export class HarnessReviewController {
             ? fmt(_(' on {machine}'), { machine: this.host.harness.machine })
             : '';
         const label = HARNESSES[c.agent]?.label ?? c.agent;
+        const commit = fmt(_('from {base} at {commit}'), {
+            base: c.wt.base,
+            commit: c.review.mergeBase.slice(0, 7),
+        });
         view.setHeader(
             c.title,
-            `${label}${machine} · ${c.wt.branch} · ${fmt(_('from {base} at {commit}'), { base: c.wt.base, commit: c.review.mergeBase.slice(0, 7) })}`,
+            `${label}${machine} · ${c.wt.branch} · ${commit}`,
             c.wt.base,
             !isRemoteMachine(this.host.harness.machine)
         );
@@ -745,7 +749,9 @@ export class HarnessReviewController {
               : _('merge commit');
         this.closed(
             c,
-            `↳ merged into ${c.wt.base} ${this.host.harness.orchestrator.stamp()} (${how}, ${merged.value.slice(0, 7)})`,
+            `↳ merged into ${c.wt.base} ` +
+                `${this.host.harness.orchestrator.stamp()} ` +
+                `(${how}, ${merged.value.slice(0, 7)})`,
             true
         );
         this.host.record(
@@ -941,7 +947,8 @@ export class HarnessReviewController {
         }
         this.closed(
             c,
-            `↳ worktree removed ${this.host.harness.orchestrator.stamp()}; the branch ${c.wt.branch} is kept`,
+            `↳ worktree removed ${this.host.harness.orchestrator.stamp()}; ` +
+                `the branch ${c.wt.branch} is kept`,
             false
         );
         this.host.toast(
@@ -978,7 +985,8 @@ export class HarnessReviewController {
         }
         this.closed(
             c,
-            `↳ ${HARNESSES[c.agent]?.label ?? c.agent}'s work discarded ${this.host.harness.orchestrator.stamp()}`,
+            `↳ ${HARNESSES[c.agent]?.label ?? c.agent}'s work discarded ` +
+                `${this.host.harness.orchestrator.stamp()}`,
             false
         );
         this.host.record(

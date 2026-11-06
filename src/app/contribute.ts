@@ -131,6 +131,11 @@ export class ContributeController {
         const where = fmt(_('The folder is now on the branch {branch}.'), {
             branch: result.branch,
         });
-        return `${result.pull ? fmt(_('Opened pull request #{number}.'), { number: result.pull.number }) : _('Sent. The pull request appears in the list shortly.')} ${where}`;
+        const status = result.pull
+            ? fmt(_('Opened pull request #{number}.'), {
+                  number: result.pull.number,
+              })
+            : _('Sent. The pull request appears in the list shortly.');
+        return `${status} ${where}`;
     }
 }
