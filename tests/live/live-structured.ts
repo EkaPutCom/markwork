@@ -388,7 +388,8 @@ export async function liveStructured(
     for (const sc of SCENARIOS)
         if (!(await runScenario(sc, provider, model, thinking))) failures++;
     say(
-        `${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} structured scenarios passed${RESET}`
+        `${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length}${" structured scenarios" +
+            " passed"}${RESET}`
     );
     return failures;
 }

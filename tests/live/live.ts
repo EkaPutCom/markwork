@@ -107,7 +107,10 @@ async function main(): Promise<boolean> {
     const found = await systemKeyStore.get();
     if (!found?.key) {
         say(
-            `${RED}No API key. Set DEEPSEEK_API_KEY in .env (see .env.example), then run npm run test:live.${RESET}`
+            `${RED}${"No API key. Set" +
+            " DEEPSEEK_API_KEY in .env" +
+            " (see .env.example), then" +
+            " run npm run test:live."}${RESET}`
         );
         return false;
     }
@@ -204,7 +207,8 @@ async function main(): Promise<boolean> {
                         ] ?? '';
                     if (!sc.cite.test(line))
                         problems.push(
-                            `the citation ${name}:${n} points to the wrong line (“${line.slice(0, 40)}”)`
+                            `the citation ${name}:${n}${" points to the wrong line" +
+            " (“"}${line.slice(0, 40)}”)`
                         );
                 }
                 if (!cites.length) problems.push('no line number citation');

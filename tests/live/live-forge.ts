@@ -465,7 +465,10 @@ async function writeChecks(): Promise<void> {
         async () => {
             write(
                 started.conflicts[0],
-                `---\ntitle: Rapat mingguan\n---\n# Rapat mingguan\n\nBahas (owner and contributor ${stamp}).\n`
+                `${"---\ntitle: Rapat" +
+            " mingguan\n---\n# Rapat" +
+            " mingguan\n\nBahas (owner" +
+            " and contributor "}${stamp}).\n`
             );
             const done = await finishLocalMerge(
                 runGit,

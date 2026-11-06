@@ -115,7 +115,11 @@ if (COMPARE) {
         baseline.environment?.host !== environment.host
     ) {
         say(
-            `${DIM}The baseline is not equivalent (format, size, repetitions, or environment); the difference is skipped.${RESET}`
+            `${DIM}${"The baseline is not" +
+            " equivalent (format," +
+            " size, repetitions, or" +
+            " environment); the" +
+            " difference is skipped."}${RESET}`
         );
         baseline = null;
     }
@@ -162,12 +166,78 @@ const KANBAN = (cards: number): string =>
 const SCENE = (i: number): string =>
     (i % 10 === 0 ? `# Chapter ${i / 10 + 1}: The Voyage East\n\n` : '') +
     `## Scene ${i}\n\n` +
-    `The morning wind blew in from the sea as Raka went down the steps of the pier for the ${i}th time. He carried a worn *notebook* that was always tucked into his jacket pocket, and on every page were written the names of the harbors he wanted to call at. In the distance, the ship **White Seagull** swayed gently with the waves — her hull a clean white, her sails sea blue, and her flag fluttering as if calling out.\n\n` +
-    `“You are late again,” said Laras without turning around. Her hands were busy straightening the tangled mooring rope.\n\n` +
-    `“I am not late. The ship is just too early,” Raka answered with a smile. He knew the answer would satisfy no one, but the morning was too beautiful to waste on arguing.\n\n` +
-    `Captain Hasan stood at the bow with his arms folded across his chest. He was an old man with a deep voice who had led voyages to the east for thirty years, and was said never to have lost a single crew member. The people at the harbor called him *the Keeper of Directions*, a nickname he accepted in silence. As the sun began to rise, he gave a signal, and the crew pulled up the anchor at once. Raka felt the deck tremble beneath his feet; the journey he had dreamed of for so long had finally begun.\n\n` +
-    `> The sea never promises anything, but it always keeps what it did not promise.\n\n` +
-    `That night they anchored in a small bay that appeared on no map. The stars looked closer than usual, and the sound of crickets from the island was like singing. Raka sat at the stern, writing by lantern light, while Laras reread her father's letter for the umpteenth time — the letter she still refused to show to anyone.\n\n`;
+    `${"The morning wind blew in" +
+            " from the sea as Raka" +
+            " went down the steps of" +
+            " the pier for the "}${i}${"th time. He carried a" +
+            " worn *notebook* that was" +
+            " always tucked into his" +
+            " jacket pocket, and on" +
+            " every page were written" +
+            " the names of the harbors" +
+            " he wanted to call at. In" +
+            " the distance, the ship" +
+            " **White Seagull** swayed" +
+            " gently with the waves —" +
+            " her hull a clean white," +
+            " her sails sea blue, and" +
+            " her flag fluttering as" +
+            " if calling out.\n\n"}` +
+    `${"“You are late again,”" +
+            " said Laras without" +
+            " turning around. Her" +
+            " hands were busy" +
+            " straightening the" +
+            " tangled mooring rope.\n\n"}` +
+    `${"“I am not late. The ship" +
+            " is just too early,” Raka" +
+            " answered with a smile." +
+            " He knew the answer would" +
+            " satisfy no one, but the" +
+            " morning was too" +
+            " beautiful to waste on" +
+            " arguing.\n\n"}` +
+    `${"Captain Hasan stood at" +
+            " the bow with his arms" +
+            " folded across his chest." +
+            " He was an old man with a" +
+            " deep voice who had led" +
+            " voyages to the east for" +
+            " thirty years, and was" +
+            " said never to have lost" +
+            " a single crew member." +
+            " The people at the harbor" +
+            " called him *the Keeper" +
+            " of Directions*, a" +
+            " nickname he accepted in" +
+            " silence. As the sun" +
+            " began to rise, he gave a" +
+            " signal, and the crew" +
+            " pulled up the anchor at" +
+            " once. Raka felt the deck" +
+            " tremble beneath his" +
+            " feet; the journey he had" +
+            " dreamed of for so long" +
+            " had finally begun.\n\n"}` +
+    `${"> The sea never promises" +
+            " anything, but it always" +
+            " keeps what it did not" +
+            " promise.\n\n"}` +
+    `${"That night they anchored" +
+            " in a small bay that" +
+            " appeared on no map. The" +
+            " stars looked closer than" +
+            " usual, and the sound of" +
+            " crickets from the island" +
+            " was like singing. Raka" +
+            " sat at the stern," +
+            " writing by lantern" +
+            " light, while Laras" +
+            " reread her father's" +
+            " letter for the umpteenth" +
+            " time — the letter she" +
+            " still refused to show to" +
+            " anyone.\n\n"}`;
 
 const doc = (n: number): string =>
     FIXTURE === 'mixed'
@@ -181,7 +251,9 @@ const doc = (n: number): string =>
                     Array.from(
                         { length: 8 },
                         (_, j) =>
-                            `Paragraph ${i}.${j} with different notes and long enough for a real document.\n`
+                            `Paragraph ${i}.${j}${" with different notes and" +
+            " long enough for a real" +
+            " document.\n"}`
                     ).join('') +
                     '\n'
             ).join('');

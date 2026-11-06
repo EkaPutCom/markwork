@@ -179,7 +179,8 @@ export async function liveCommitMessage(
         }
     }
     say(
-        `\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length} commit message scenarios passed${RESET}`
+        `\n${failures ? RED : GREEN}${SCENARIOS.length - failures}/${SCENARIOS.length}${" commit message scenarios" +
+            " passed"}${RESET}`
     );
     return failures;
 }
