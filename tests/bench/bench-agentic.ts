@@ -29,7 +29,8 @@ const measure = (name: string, action: () => void) => {
     }
     const sorted = [...samples].sort((a, b) => a - b);
     say(
-        `${name}: median ${((sorted[4] + sorted[5]) / 2).toFixed(3)} ms · p95 ${sorted[9].toFixed(3)} ms · max ${sorted[9].toFixed(3)} ms`
+        `${name}: median ${((sorted[4] + sorted[5]) / 2).toFixed(3)} ms · ` +
+            `p95 ${sorted[9].toFixed(3)} ms · max ${sorted[9].toFixed(3)} ms`
     );
 };
 try {

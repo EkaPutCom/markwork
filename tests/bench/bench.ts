@@ -125,9 +125,12 @@ if (COMPARE) {
     }
 }
 
+const PARAGRAPH =
+    'Paragraph with **bold**, *italic*, ~~strikethrough~~, ' +
+    '==highlight==, `code`, and [link](https://example.com).';
 const BLOCK = `## Section
 
-Paragraph with **bold**, *italic*, ~~strikethrough~~, ==highlight==, \`code\`, and [link](https://example.com).
+${PARAGRAPH}
 
 - Item one
 - [x] Task done
@@ -285,18 +288,25 @@ function report(name: string, t: number[]): void {
     if (before !== undefined && before > 0) {
         const pct = ((med - before) / before) * 100;
         const color = Math.abs(pct) < 25 ? DIM : pct < 0 ? GREEN : RED;
-        delta = `   ${color}${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% (was ${before.toFixed(2)} ms)${RESET}`;
+        delta =
+            `   ${color}${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% ` +
+            `(was ${before.toFixed(2)} ms)${RESET}`;
     }
-    say(
-        `  ${name.padEnd(34)} median ${med.toFixed(2)} ms   p95 ${p95.toFixed(2)} ms   max ${max.toFixed(2)} ms${delta}${over ? `  ${RED}> ${BUDGET} ms${RESET}` : ''}`
-    );
+    const times =
+        `  ${name.padEnd(34)} median ${med.toFixed(2)} ms   ` +
+        `p95 ${p95.toFixed(2)} ms   max ${max.toFixed(2)} ms`;
+    const budget = over ? `  ${RED}> ${BUDGET} ms${RESET}` : '';
+    say(`${times}${delta}${budget}`);
 }
 
 const text = doc(SIZE);
 const lines = text.split('\n');
-say(
-    `${DIM}Size ${SIZE} blocks (${FIXTURE}, ≈ ${(text.length / 1024).toFixed(0)} KB), ${RUNS} repetitions${BUDGET !== null ? `, budget ${BUDGET} ms` : ''}${RESET}`
-);
+const budgetLabel = BUDGET !== null ? `, budget ${BUDGET} ms` : '';
+const fixtureLabel =
+    `${DIM}Size ${SIZE} blocks (${FIXTURE}, ≈ ` +
+    `${(text.length / 1024).toFixed(0)} KB), ${RUNS} repetitions` +
+    `${budgetLabel}${RESET}`;
+say(fixtureLabel);
 report(
     'markdownToHtml',
     measure(() => markdownToHtml(text, 'bench'))
