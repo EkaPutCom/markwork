@@ -88,15 +88,21 @@ const WORK = {
     'ideas.md': '# Ideas\n\nA PDF export feature.\n',
 };
 
+const DOC_PARAGRAPH =
+    'Weekly meeting, **Friday morning**. Things that *need* follow-up are ' +
+    'below, this text is ==highlighted== and ~~this one is struck through~~.';
+const KANBAN_DOC_TASK =
+    '- [ ] Write the kanban feature [documentation](' +
+    'https://github.com/EkaPutCom/markwork)';
 const DOC = `# Product Meeting Notes
 
-Weekly meeting, **Friday morning**. Things that *need* follow-up are below, this text is ==highlighted== and ~~this one is struck through~~.
+${DOC_PARAGRAPH}
 
 ## Decisions
 
 - The \`1.0\` release is postponed by one week
 - [x] Fix the HTML export bug
-- [ ] Write the kanban feature [documentation](https://github.com/EkaPutCom/markwork)
+${KANBAN_DOC_TASK}
 
 > A quote from a user: "At last, an editor that stays out of the way."
 
