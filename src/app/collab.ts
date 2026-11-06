@@ -249,7 +249,8 @@ export class CollabController {
         if (!this.host.settings.forgeNotify) return;
         for (const event of events) {
             if (event.kind === 'closed') continue;
-            const key = `${event.kind}:${event.pull.number}:${event.pull.updatedAt}`;
+            const key =
+                `${event.kind}:${event.pull.number}:${event.pull.updatedAt}`;
             if (this.notified.has(key)) continue;
             this.notified.add(key);
             const title =

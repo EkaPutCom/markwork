@@ -82,7 +82,8 @@ export class DaemonHub {
     private signature(machine: string): string {
         return machine === LOCAL_MACHINE
             ? machine
-            : `${this.settings.machines()[machine] ?? ''}|${this.settings.daemonCommand()}`;
+            : `${this.settings.machines()[machine] ?? ''}|` +
+                this.settings.daemonCommand();
     }
 
     // The settings of the machines changed: a connection made from other values

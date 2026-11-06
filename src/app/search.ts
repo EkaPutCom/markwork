@@ -152,7 +152,10 @@ export class SearchController<E extends TextEditor = TextEditor> {
     ): string {
         const filters = activeFilters(query.include, query.exclude);
         const note = filters
-            ? ` · ${fmt(ngettext('{count} filter', '{count} filters', filters), { count: filters })}`
+            ? ` · ${fmt(
+                  ngettext('{count} filter', '{count} filters', filters),
+                  { count: filters }
+              )}`
             : '';
         if (total === 0) return _('No results') + note;
         const text = fmt(

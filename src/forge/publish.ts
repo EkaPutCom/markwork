@@ -39,6 +39,15 @@ const fail = (message: string, pushed = false): PublishResult => ({
 });
 const text = (e: unknown): string =>
     e instanceof Error ? e.message : String(e);
+const AUTH_FAILURE = new RegExp(
+    '\\b401\\b|authentication failed|invalid credentials|bad credentials',
+    'i'
+);
+const CONNECTION_FAILURE = new RegExp(
+    'could not resolve host|couldn\'t connect|connection (refused|timed out)|' +
+        'unable to access',
+    'i'
+);
 
 // What a failed push says, in words for the user. `branch` is the one that was
 // pushed.
@@ -59,21 +68,13 @@ export function pushFailure(run: GitRun | null, branch: string): string {
             " commits; rename it or" +
             " delete it there first"}`;
     }
-    if (
-        /\b401\b|authentication failed|invalid credentials|bad credentials/i.test(
-            said
-        )
-    )
+    if (AUTH_FAILURE.test(said))
         return 'the server refused the access token';
     if (
         /\b403\b|permission denied|not allowed to push|unauthorized/i.test(said)
     )
         return 'the access token may not push to this repository';
-    if (
-        /could not resolve host|couldn't connect|connection (refused|timed out)|unable to access/i.test(
-            said
-        )
-    )
+    if (CONNECTION_FAILURE.test(said))
         return `${"the server cannot be" +
             " reached from where the" +
             " repository is ("}${said.split('\n').pop()?.trim()})`;
@@ -131,7 +132,8 @@ export async function publishBranch(
             );
             if (open)
                 return fail(
-                    `Pull request #${open.number} is already open for ${request.branch}: ${open.url}`
+                    `Pull request #${open.number} is already open ` +
+                    `for ${request.branch}: ${open.url}`
                 );
         }
         if (request.via === 'agit')
@@ -199,7 +201,8 @@ async function viaBranch(
     } catch (e) {
         const detail =
             e instanceof ForgeError && (e.status === 409 || e.status === 422)
-                ? `a pull request for ${request.branch} may already exist (${e.message})`
+                ? `a pull request for ${request.branch} may already exist ` +
+                    `(${e.message})`
                 : text(e);
         return fail(
             `The branch ${request.branch}${" was pushed, but the pull" +

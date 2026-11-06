@@ -59,7 +59,8 @@ function discardStage(stage: string, files: string[]): void {
             fs.remove(paths.join(stage, dir));
         fs.remove(stage);
     } catch {
-        /* Keep unexpected contents rather than recursively deleting user files. */
+        /* Keep unexpected contents rather than recursively deleting user
+         * files. */
     }
 }
 

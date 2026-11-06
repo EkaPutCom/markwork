@@ -204,7 +204,9 @@ export class DocumentController<E extends TextEditor> {
                 : [
                       {
                           kind: 'hunk',
-                          text: `@@ -1,${current.length} +1,${incoming.length} @@`,
+                          text:
+                              `@@ -1,${current.length} ` +
+                                  `+1,${incoming.length} @@`,
                       },
                       ...current.map((text) => ({
                           kind: 'context' as const,

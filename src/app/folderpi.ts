@@ -40,12 +40,13 @@ const textOf = (content: any): string =>
 
 // Known credential fields are redacted before retaining tool arguments/results
 // in UI logs. Arbitrary output is not secret-safe.
+const SECRET_FIELD =
+    /^(authorization|api[_-]?key|token|password|secret|credential)$/i;
+
 function redacted(record: PiRecord): PiRecord {
     return JSON.parse(
         JSON.stringify(record, (key, value) =>
-            /^(authorization|api[_-]?key|token|password|secret|credential)$/i.test(
-                key
-            )
+            SECRET_FIELD.test(key)
                 ? '[redacted]'
                 : value
         )
@@ -345,14 +346,18 @@ export class FolderPiSession {
         if (event.type === 'tool_execution_start')
             this.panel.turnStep(turn, {
                 id: event.toolCallId,
-                label: `${event.toolName}: ${JSON.stringify(event.args).slice(0, 180)}`,
+                label:
+                `${event.toolName}: ` +
+                    `${JSON.stringify(event.args).slice(0, 180)}`,
                 summary: '',
             });
         if (event.type === 'tool_execution_end') {
             this.panel.turnStep(turn, {
                 id: event.toolCallId,
                 label: event.toolName || 'Tool',
-                summary: `${event.isError ? 'Failed' : 'Completed'}: ${textOf(event.result?.content).slice(0, 2000)}`,
+                summary:
+                    `${event.isError ? 'Failed' : 'Completed'}: ` +
+                    `${textOf(event.result?.content).slice(0, 2000)}`
             });
             this.diskChanged();
         }

@@ -126,7 +126,10 @@ export class GiteaProvider implements ForgeProvider {
     }
 
     private apiOf(owner: string, repo: string): string {
-        return `${this.repo.baseUrl}/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+        return (
+            `${this.repo.baseUrl}/api/v1/repos/` +
+            `${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
+        );
     }
 
     private request(
@@ -164,7 +167,8 @@ export class GiteaProvider implements ForgeProvider {
         } catch (e) {
             throw new ForgeError(
                 'network',
-                `Cannot reach ${this.repo.host}: ${e instanceof Error ? e.message : e}`
+                `Cannot reach ${this.repo.host}: ` +
+                    `${e instanceof Error ? e.message : e}`
             );
         }
         if (response.status >= 200 && response.status < 300)

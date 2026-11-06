@@ -131,7 +131,9 @@ export function chatHandlers({
         );
         const name = page.file.split(/[\\/]/).pop()!;
         return {
-            draft: `Code from ${name}, lines ${first}–${last}:\n\n${fence}\n${selected}\n${fence}\n\n`,
+            draft:
+                `Code from ${name}, lines ${first}–${last}:\n\n` +
+                `${fence}\n${selected}\n${fence}\n\n`,
         };
     });
     wire.on('act.chat.stop', (p) => {

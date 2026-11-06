@@ -188,7 +188,8 @@ export class Orchestrator {
     stamp: () => string = () => {
         const d = new Date();
         const two = (n: number) => String(n).padStart(2, '0');
-        return `${two(d.getDate())}/${two(d.getMonth() + 1)} ${two(d.getHours())}:${two(d.getMinutes())}`;
+        return `${two(d.getDate())}/${two(d.getMonth() + 1)} ` +
+            `${two(d.getHours())}:${two(d.getMinutes())}`;
     };
     // Git where the project folders are (this computer, or the machine of the
     // daemon), for the worktrees.
@@ -448,10 +449,11 @@ export class Orchestrator {
         if (previous?.result?.sessionId && previous.worktree?.path === wt.path)
             return this.resume(previous, text);
         const isolation = this.isolation(project, folder);
-        const prompt = `${buildPrompt(card, project, boardName, [], wt)}${"\n\nYou worked on this card" +
-            " before; your changes are" +
-            " in this worktree. The" +
-            " user reviewed them:\n\n"}${text}`;
+        const previousWork =
+            '\n\nYou worked on this card before; your changes are in this ' +
+            'worktree. The user reviewed them:\n\n';
+        const prompt = `${buildPrompt(card, project, boardName, [], wt)}` +
+            `${previousWork}${text}`;
         const where = fmt(_('Worktree: {path}\nBranch {branch} from {base}'), {
             path: wt.cwd,
             branch: wt.branch,

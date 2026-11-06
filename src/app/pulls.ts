@@ -126,7 +126,9 @@ export function noteLines(diff: NoteDiff): DiffLine[] {
         for (const l of diff.body)
             lines.push({
                 kind: l.kind === 'same' ? 'context' : l.kind,
-                text: `${l.kind === 'add' ? '+' : l.kind === 'del' ? '-' : ' '}${l.text}`,
+                text:
+                    `${l.kind === 'add' ? '+' : l.kind === 'del' ? '-' : ' '}` +
+                    l.text,
             });
     }
     return lines;

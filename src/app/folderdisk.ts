@@ -77,7 +77,8 @@ export class FolderDiskController<E extends TextEditor> {
                 })
             );
         } catch {
-            /* Tool completion also refreshes when a directory cannot be monitored. */
+            /* Tool completion also refreshes when a directory cannot be
+             * monitored. */
         }
     }
 
