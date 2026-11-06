@@ -111,14 +111,16 @@ export async function chatControllerTests(): Promise<void> {
         return { c, ...rec, state, disk };
     };
 
-    await test('without a key nothing is sent and the view asks for one', async () => {
+    await test('without a key nothing is sent and the' +
+        ' view asks for one', async () => {
         const { c, log } = setup(null);
         c.keyStore = { ...KEY, get: async () => null };
         await within(c.send('hello'));
         eq(log, ['noKey']);
     });
 
-    await test('a turn is shown, saved to the folder, and can be reopened and deleted', async () => {
+    await test('a turn is shown, saved to the folder,' +
+        ' and can be reopened and deleted', async () => {
         const root = folder();
         const { c, log } = setup(root);
         c.makeProvider = () => answer('Hi.');
@@ -168,7 +170,9 @@ export async function chatControllerTests(): Promise<void> {
         );
     });
 
-    await test('a proposal after the work folder changed is refused without asking the user', async () => {
+    await test('a proposal after the work folder' +
+        ' changed is refused without asking the' +
+        ' user', async () => {
         const { c, log, state, decideWith } = setup(folder());
         decideWith(() => {
             throw new Error('the user must not be asked');
@@ -218,7 +222,8 @@ export async function chatControllerTests(): Promise<void> {
         );
     });
 
-    await test('an approved proposal is applied through the host and can be undone', async () => {
+    await test('an approved proposal is applied' +
+        ' through the host and can be undone', async () => {
         const { c, disk, decideWith } = setup(folder());
         let applied: Change | Change[] | null = null;
         decideWith((change, apply) => {

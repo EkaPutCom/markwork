@@ -74,7 +74,8 @@ try {
         }
     );
     await step(
-        'pi requires an explicit unsandboxed activation before the first prompt',
+        'pi requires an explicit unsandboxed' +
+            ' activation before the first prompt',
         async () => {
             await page
                 .getByRole('button', { name: 'Activate pi agent', exact: true })
@@ -189,7 +190,9 @@ try {
         }
     );
     await step(
-        'an Explorer transcript opens the existing chat rather than a Markdown document',
+        'an Explorer transcript opens the' +
+            ' existing chat rather than a Markdown' +
+            ' document',
         async () => {
             await page.getByRole('tab', { name: /plan\.md/ }).click();
             const folder = page.getByRole('treeitem', {
@@ -279,7 +282,9 @@ try {
         }
     );
     await step(
-        'pi writes directly with visible tools while disk conflicts preserve unsaved drafts',
+        'pi writes directly with visible tools' +
+            ' while disk conflicts preserve unsaved' +
+            ' drafts',
         async () => {
             await input.fill('write report');
             await input.press('Enter');
@@ -333,7 +338,9 @@ try {
         }
     );
     await step(
-        'research tables render and nested shell outputs appear without a manual tree expansion',
+        'research tables render and nested' +
+            ' shell outputs appear without a manual' +
+            ' tree expansion',
         async () => {
             await input.fill('research table');
             await input.press('Enter');
@@ -397,7 +404,9 @@ try {
         }
     );
     await step(
-        'switching a streaming session keeps it working and another session queues independently',
+        'switching a streaming session keeps it' +
+            ' working and another session queues' +
+            ' independently',
         async () => {
             await input.fill('slow');
             await input.press('Enter');
@@ -429,7 +438,9 @@ try {
         }
     );
     await step(
-        'explicit native restore replaces a tampered readable projection without replaying tools',
+        'explicit native restore replaces a' +
+            ' tampered readable projection without' +
+            ' replaying tools',
         async () => {
             const projection = readdirSync(join(notes, 'chats')).find(
                 (name) =>

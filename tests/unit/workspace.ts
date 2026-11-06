@@ -23,7 +23,9 @@ export async function workspaceTests(): Promise<void> {
         return fn(root, at);
     };
 
-    await test('lists Markdown files alphabetically, skipping dot files, tool folders, and other files', () => {
+    await test('lists Markdown files alphabetically,' +
+        ' skipping dot files, tool folders, and' +
+        ' other files', () => {
         withFolder(
             {
                 'b.md': 'B',
@@ -56,7 +58,8 @@ export async function workspaceTests(): Promise<void> {
         );
     });
 
-    await test('unsaved documents are read from their editor, also for keep', () => {
+    await test('unsaved documents are read from their' +
+        ' editor, also for keep', () => {
         withFolder({ 'a.md': 'disk', 'b.md': 'disk' }, (root, at) => {
             const w = new WorkspaceRepository(
                 () =>
@@ -72,7 +75,9 @@ export async function workspaceTests(): Promise<void> {
         });
     });
 
-    await test("the app's own writes are visible at once, without walking or waiting for a monitor", () => {
+    await test("the app's own writes are visible at" +
+        " once, without walking or waiting for" +
+        " a monitor", () => {
         withFolder({ 'a.md': 'one' }, (root, at) => {
             const w = new WorkspaceRepository();
             eq(
@@ -89,7 +94,9 @@ export async function workspaceTests(): Promise<void> {
         });
     });
 
-    await test('outside changes arrive through the folder monitors; until then the snapshot is reused', async () => {
+    await test('outside changes arrive through the' +
+        ' folder monitors; until then the' +
+        ' snapshot is reused', async () => {
         await withFolder({ 'a.md': 'A', 'sub/b.md': 'B' }, async (root, at) => {
             const w = new WorkspaceRepository();
             eq(w.names(root), ['a.md', 'sub/b.md']);
@@ -118,7 +125,8 @@ export async function workspaceTests(): Promise<void> {
         });
     });
 
-    await test('the contents cache stays within its limit, least recently used out first', () => {
+    await test('the contents cache stays within its' +
+        ' limit, least recently used out first', () => {
         withFolder(
             {
                 'a.md': 'a'.repeat(40),

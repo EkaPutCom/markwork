@@ -25,7 +25,23 @@ import type { SavedChat } from '../agent/transcript';
 import type { TextEditor } from './document';
 
 export const FOLDER_ACTIVATION_NOTICE =
-    'This trusted-local agent runs pi with your account permissions. It can change files, run commands, and access the network without individual approval. The workspace is not a sandbox: tools may access other files, secrets, localhost, and private networks. Content may be sent to model providers or network destinations. Use backups; disk writes have no guaranteed editor Undo. Avoid editing the same files while the agent works. Closing Markwork stops local execution; Stop cannot undo completed commands or guarantee termination of detached programs.';
+    'This trusted-local agent runs pi with' +
+        ' your account permissions. It can' +
+        ' change files, run commands, and' +
+        ' access the network without individual' +
+        ' approval. The workspace is not a' +
+        ' sandbox: tools may access other' +
+        ' files, secrets, localhost, and' +
+        ' private networks. Content may be sent' +
+        ' to model providers or network' +
+        ' destinations. Use backups; disk' +
+        ' writes have no guaranteed editor' +
+        ' Undo. Avoid editing the same files' +
+        ' while the agent works. Closing' +
+        ' Markwork stops local execution; Stop' +
+        ' cannot undo completed commands or' +
+        ' guarantee termination of detached' +
+        ' programs.';
 
 interface Conversation {
     id: string;
@@ -99,7 +115,8 @@ export class AgentFoldersController<E extends TextEditor> {
     async execution(root: string, mode: 'local' | 'background'): Promise<void> {
         if (root !== this.root || !this.enabled.has(root) || this.busy)
             throw Error(
-                'Activate this agent and wait for idle before changing execution'
+                'Activate this agent and wait for idle' +
+                    ' before changing execution'
             );
         const store = this.stores.get(root)!,
             epoch = this.epoch;
@@ -107,7 +124,13 @@ export class AgentFoldersController<E extends TextEditor> {
             !(await this.dialogs.confirm(
                 'Change pi execution?',
                 mode === 'background'
-                    ? 'Use local markworkd. Authenticate pi in the daemon account and allow pi, workspace and runtime storage in daemon configuration. Background work can continue after closing Markwork. Tools still run unsandboxed without Apply. No local fallback is used.'
+                    ? 'Use local markworkd. Authenticate pi' +
+                        ' in the daemon account and allow pi,' +
+                        ' workspace and runtime storage in' +
+                        ' daemon configuration. Background work' +
+                        ' can continue after closing Markwork.' +
+                        ' Tools still run unsandboxed without' +
+                        ' Apply. No local fallback is used.'
                     : 'Local work stops when Markwork closes.',
                 'Change execution',
                 false
@@ -199,8 +222,15 @@ export class AgentFoldersController<E extends TextEditor> {
                 ),
             activated: !!root && this.enabled.has(root),
             runtimeDetail: background
-                ? 'pi · Local markworkd · Direct writes · No sandbox. Authentication is checked before each new prompt. Running work can continue after closing. Queued prompts remain drafts; unknown outcomes require explicit recovery.'
-                : 'pi · Native sessions · Direct writes without Apply · No sandbox. Local execution stops when Markwork closes.',
+                ? 'pi · Local markworkd · Direct writes ·' +
+                    ' No sandbox. Authentication is checked' +
+                    ' before each new prompt. Running work' +
+                    ' can continue after closing. Queued' +
+                    ' prompts remain drafts; unknown' +
+                    ' outcomes require explicit recovery.'
+                : 'pi · Native sessions · Direct writes' +
+                    ' without Apply · No sandbox. Local' +
+                    ' execution stops when Markwork closes.',
             conflicts: root ? this.tabs.conflicts(root) : [],
             sessions: [...this.known]
                 .filter(([, item]) => item.root === root)
@@ -369,7 +399,8 @@ export class AgentFoldersController<E extends TextEditor> {
                 !platform().paths.same(workspace, this.host.root()!)
             )
                 throw Error(
-                    'The workspace changed. Start New Agent again in the current folder.'
+                    'The workspace changed. Start New Agent' +
+                        ' again in the current folder.'
                 );
             const root = createAgentFolder(workspace, workspace, name);
             this.activate(root);
@@ -513,7 +544,9 @@ export class AgentFoldersController<E extends TextEditor> {
         };
         panel.onPreview = async () => ({
             system: '',
-            note: 'pi manages native context, compaction, instructions, and tools. Tools may send workspace content to providers.',
+            note: 'pi manages native context, compaction,' +
+                ' instructions, and tools. Tools may' +
+                ' send workspace content to providers.',
             items: [],
             tokens: 0,
             unknownMentions: [],
@@ -533,11 +566,16 @@ export class AgentFoldersController<E extends TextEditor> {
             return null;
         };
         panel.onDeleteChat = async () =>
-            'Session deletion is not available. Native history is kept in application data.';
+            'Session deletion is not available.' +
+                ' Native history is kept in application' +
+                ' data.';
         panel.onApply = async () =>
             'pi writes directly; no Apply proposal is available';
         panel.onUndo = async () =>
-            'Editor Undo cannot reverse arbitrary pi disk writes or shell commands. Restore from backups or version control.';
+            'Editor Undo cannot reverse arbitrary' +
+                ' pi disk writes or shell commands.' +
+                ' Restore from backups or version' +
+                ' control.';
         panel.onInsert = async () => false;
         panel.onClearLog = () => pi.trace.clear();
         panel.onModel = (model) => pi.selectModel(model);
@@ -546,7 +584,9 @@ export class AgentFoldersController<E extends TextEditor> {
         panel.onKeyStatus = async () => null;
         panel.onSaveKey = async () => {
             throw Error(
-                'Authenticate using pi on this machine; folder agents do not use the Assistant key store'
+                'Authenticate using pi on this machine;' +
+                    ' folder agents do not use the' +
+                    ' Assistant key store'
             );
         };
         panel.onForgetKey = async () => {};
@@ -560,7 +600,9 @@ export class AgentFoldersController<E extends TextEditor> {
             { root, panel } = entry;
         if (!this.enabled.has(root))
             throw Error(
-                'Activate pi agent before sending. Tools run without individual approval.'
+                'Activate pi agent before sending.' +
+                    ' Tools run without individual' +
+                    ' approval.'
             );
         if (entry.sending || panel.busy)
             throw Error('This session is already working or queued');
@@ -569,7 +611,9 @@ export class AgentFoldersController<E extends TextEditor> {
             entry.pi.store.list().some((chat) => chat.run)
         )
             throw Error(
-                'Reconnect or explicitly recover the original background run before sending'
+                'Reconnect or explicitly recover the' +
+                    ' original background run before' +
+                    ' sending'
             );
         entry.pi.store.saveDraft(entry.pi.chatId, text);
         const epoch = this.epoch;
@@ -599,7 +643,10 @@ export class AgentFoldersController<E extends TextEditor> {
         if (
             !(await this.dialogs.confirm(
                 'Stop original background run?',
-                'Stop the exact recorded daemon run. Completed tools cannot be undone. Restore native history explicitly before sending another prompt.',
+                'Stop the exact recorded daemon run.' +
+                    ' Completed tools cannot be undone.' +
+                    ' Restore native history explicitly' +
+                    ' before sending another prompt.',
                 'Stop original run',
                 true
             ))
@@ -615,13 +662,17 @@ export class AgentFoldersController<E extends TextEditor> {
         const entry = this.find(id);
         if (!this.enabled.has(entry.root) || this.queue.busy(entry.root))
             throw Error(
-                'Activate the agent and wait for its workspace to become idle before restoring native history'
+                'Activate the agent and wait for its' +
+                    ' workspace to become idle before' +
+                    ' restoring native history'
             );
         const epoch = this.epoch;
         if (
             !(await this.dialogs.confirm(
                 'Restore native session?',
-                'Replace the readable chat projection with native pi history. This does not resend prompts or repeat tools.',
+                'Replace the readable chat projection' +
+                    ' with native pi history. This does not' +
+                    ' resend prompts or repeat tools.',
                 'Restore native session',
                 true
             ))
@@ -650,8 +701,14 @@ export class AgentFoldersController<E extends TextEditor> {
                 ? 'Use disk version?'
                 : 'Keep draft for saving?',
             choice === 'reload'
-                ? 'This discards the current unsaved draft and loads the disk contents. Save a copy first if you need both versions.'
-                : 'This preserves your draft and allows Save or autosave to replace the current disk contents. Save a copy first if you need both versions.',
+                ? 'This discards the current unsaved' +
+                    ' draft and loads the disk contents.' +
+                    ' Save a copy first if you need both' +
+                    ' versions.'
+                : 'This preserves your draft and allows' +
+                    ' Save or autosave to replace the' +
+                    ' current disk contents. Save a copy' +
+                    ' first if you need both versions.',
             choice === 'reload' ? 'Use disk version' : 'Keep draft for saving',
             true
         );

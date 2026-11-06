@@ -69,7 +69,10 @@ export function kanbanModelTests(): void {
         eq(serializeBoard(parseBoard(BOARD)), BOARD));
     test('a messy board is tidied up and the result is stable', () => {
         const messy =
-            '---\r\nlayout: board\r\n---\r\n# Board title\r\n\r\n\r\n##   A  \r\n* [X] one\r\n    note with four spaces\r\n\r\n\r\n- two\r\n## B\r\n';
+            '---\r\nlayout: board\r\n---\r\n# Board' +
+                ' title\r\n\r\n\r\n##   A  \r\n* [X]' +
+                ' one\r\n    note with four' +
+                ' spaces\r\n\r\n\r\n- two\r\n## B\r\n';
         const once = serializeBoard(parseBoard(messy));
         eq(serializeBoard(parseBoard(once)), once, 'idempotent');
         const b = parseBoard(messy);
@@ -218,13 +221,21 @@ export function kanbanModelTests(): void {
             'text that is only a tag is still shown'
         );
     });
-    test('splitCard keeps a due text that is not a date, so editing a card does not lose it', () => {
+    test('splitCard keeps a due text that is not' +
+        ' a date, so editing a card does not' +
+        ' lose it', () => {
         eq(splitCard('Send [due:: besok]').due, 'besok');
         eq(cardMeta('Send [due:: besok]').due, null, 'it is not a due date');
     });
-    test('boardSchema: the built-in fields plus the frontmatter fields; cardFields leaves due and agent to their badges', () => {
+    test('boardSchema: the built-in fields plus' +
+        ' the frontmatter fields; cardFields' +
+        ' leaves due and agent to their badges', () => {
         const board = parseBoard(
-            '---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah)\n  due: text\n---\n\n## Plan\n\n- [ ] A [prioritas:: tinggi] [due:: 2026-10-20] [agent:: pi] [x:: 1]\n'
+            '---\nlayout: board\nfields:\n ' +
+                ' prioritas: select(tinggi, rendah)\n ' +
+                ' due: text\n---\n\n## Plan\n\n- [ ] A' +
+                ' [prioritas:: tinggi] [due::' +
+                ' 2026-10-20] [agent:: pi] [x:: 1]\n'
         );
         const schema = boardSchema(board);
         eq(
@@ -240,9 +251,14 @@ export function kanbanModelTests(): void {
         );
         eq(boardSchema(newBoard()).length, 2, 'a board without a fields block');
     });
-    test('setCardField sets, replaces, and clears one field; a value that does not fit changes nothing', () => {
+    test('setCardField sets, replaces, and' +
+        ' clears one field; a value that does' +
+        ' not fit changes nothing', () => {
         const board = parseBoard(
-            '---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah)\n---\n\n## Plan\n\n- [ ] A #x [prioritas:: rendah] [owner:: Eka]\n'
+            '---\nlayout: board\nfields:\n ' +
+                ' prioritas: select(tinggi,' +
+                ' rendah)\n---\n\n## Plan\n\n- [ ] A #x' +
+                ' [prioritas:: rendah] [owner:: Eka]\n'
         );
         const prio = boardSchema(board).find((f) => f.key === 'prioritas')!;
         const text = (b: Board) => b.columns[0].cards[0].text;
@@ -267,7 +283,10 @@ export function kanbanModelTests(): void {
     });
     test('withFieldOption adds an option to the frontmatter line only', () => {
         const board = parseBoard(
-            '---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah)\n  due2: date\n---\n\n# Sprint\n\n## Plan\n\n- [ ] A\n'
+            '---\nlayout: board\nfields:\n ' +
+                ' prioritas: select(tinggi, rendah)\n ' +
+                ' due2: date\n---\n\n# Sprint\n\n##' +
+                ' Plan\n\n- [ ] A\n'
         );
         const next = withFieldOption(board, 'prioritas', 'urgent');
         eq(next.head.length, board.head.length, 'same lines');
@@ -284,9 +303,14 @@ export function kanbanModelTests(): void {
             'nothing to add'
         );
     });
-    test('addCard with a time gives the card the defaults the board declares; without one it adds nothing', () => {
+    test('addCard with a time gives the card the' +
+        ' defaults the board declares; without' +
+        ' one it adds nothing', () => {
         const board = parseBoard(
-            '---\nlayout: board\nfields:\n  prioritas: select(tinggi, rendah) = rendah\n  dibuat: date = today\n---\n\n## Plan\n'
+            '---\nlayout: board\nfields:\n ' +
+                ' prioritas: select(tinggi, rendah) =' +
+                ' rendah\n  dibuat: date =' +
+                ' today\n---\n\n## Plan\n'
         );
         const now = new Date(2026, 9, 8, 9, 5);
         eq(
@@ -296,9 +320,14 @@ export function kanbanModelTests(): void {
         );
         eq(addCard(board, 0, 'B').columns[0].cards[0].text, 'B');
     });
-    test('declaredFields, reservedFields, withSchema, and fieldUses on a board and on a list', () => {
+    test('declaredFields, reservedFields,' +
+        ' withSchema, and fieldUses on a board' +
+        ' and on a list', () => {
         const board = parseBoard(
-            '---\nlayout: board\nfields:\n  prio: select(a, b)\n---\n\n## Plan\n\n- [ ] X [prio:: a]\n- [ ] Y [prio:: b]\n\n## Done\n\n- [x] Z [prio:: a]\n'
+            '---\nlayout: board\nfields:\n  prio:' +
+                ' select(a, b)\n---\n\n## Plan\n\n- [ ]' +
+                ' X [prio:: a]\n- [ ] Y [prio::' +
+                ' b]\n\n## Done\n\n- [x] Z [prio:: a]\n'
         );
         eq(
             declaredFields(board).map((f) => f.key),
@@ -335,9 +364,13 @@ export function kanbanModelTests(): void {
             'no difference, no new board'
         );
     });
-    test('deleteColumnKeepCards: the notes go to the group above; the first group only loses its heading', () => {
+    test('deleteColumnKeepCards: the notes go to' +
+        ' the group above; the first group only' +
+        ' loses its heading', () => {
         const doc = parseBoard(
-            '---\nlayout: list\n---\n\n- loose\n\n## Now\n\n- one\n\n## Later\n\n- two\n- three\n'
+            '---\nlayout: list\n---\n\n-' +
+                ' loose\n\n## Now\n\n- one\n\n##' +
+                ' Later\n\n- two\n- three\n'
         );
         const shape = (b: Board) =>
             b.columns.map((c) => [c.title, c.cards.map((i) => i.text)]);
@@ -375,7 +408,9 @@ export function kanbanModelTests(): void {
         );
         eq(doc.columns[2].cards.length, 2, 'the original is not changed');
     });
-    test('dropSpot: halves of a note, halves of a section title, the gaps, and below the last row', () => {
+    test('dropSpot: halves of a note, halves of' +
+        ' a section title, the gaps, and below' +
+        ' the last row', () => {
         // unnamed group: a, b | section 1: (title) c | section 2: (title,
         // empty)
         const rows: DropRow[] = [
@@ -426,7 +461,10 @@ export function kanbanModelTests(): void {
             'the first row is a title: the top of it'
         );
     });
-    test('placeMove: within a group the final position counts, across groups the note goes in front of the point, and no change is no board', () => {
+    test('placeMove: within a group the final' +
+        ' position counts, across groups the' +
+        ' note goes in front of the point, and' +
+        ' no change is no board', () => {
         const doc = parseBoard(
             '---\nlayout: list\n---\n\n- a\n- b\n- c\n\n## Later\n\n- d\n- e\n'
         );

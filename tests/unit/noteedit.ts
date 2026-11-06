@@ -30,14 +30,17 @@ import {
 } from '../core/framework';
 
 const BOARD =
-    '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two #a\n\n## Done\n\n- [x] Old\n';
+    '---\nlayout: board\n---\n\n##' +
+        ' Plan\n\n- [ ] One\n- [ ] Two #a\n\n##' +
+        ' Done\n\n- [x] Old\n';
 const titles = (text: string, column = 0) =>
     parseBoard(text).columns[column].cards.map((c) => c.text);
 
 export async function noteEditTests(): Promise<void> {
     section("Edits of a document's notes");
 
-    await test('every edit is plain data, and applies with the board functions it names', () => {
+    await test('every edit is plain data, and applies' +
+        ' with the board functions it names', () => {
         const board = parseBoard(BOARD);
         const edits: NoteEdit[] = [
             { kind: 'add', column: 1, text: 'New', notes: ['a note'], now: 0 },
@@ -79,7 +82,9 @@ export async function noteEditTests(): Promise<void> {
         eq(remove.columns[1].cards, []);
     });
 
-    await test('a card is found again by its text when it moved; one that is gone or ambiguous makes the edit stale', () => {
+    await test('a card is found again by its text when' +
+        ' it moved; one that is gone or' +
+        ' ambiguous makes the edit stale', () => {
         const board = parseBoard(BOARD);
         // Another write put a card above "Two" while the user was dragging it.
         const moved = parseBoard(
@@ -132,7 +137,10 @@ export async function noteEditTests(): Promise<void> {
         );
     });
 
-    await test('a dialog answers the parts of a card; the text is composed from the card as it is, keeping what the dialog did not show', () => {
+    await test('a dialog answers the parts of a card;' +
+        ' the text is composed from the card as' +
+        ' it is, keeping what the dialog did' +
+        ' not show', () => {
         const form = {
             kind: 'card' as const,
             title: 'Ship',
@@ -191,7 +199,10 @@ export async function noteEditTests(): Promise<void> {
         );
     });
 
-    await test('the view controller applies an edit to the board it holds, after a write that had not landed when the view sent it', async () => {
+    await test('the view controller applies an edit to' +
+        ' the board it holds, after a write' +
+        ' that had not landed when the view' +
+        ' sent it', async () => {
         const session = new AppSession(
             fakeFrontend(memorySettings(), [], () => new LaggingEditor())
         );
@@ -250,7 +261,9 @@ export async function noteEditTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a list that reports an edit is written through the board the core holds, not one the view sends', () => {
+    await test('a list that reports an edit is written' +
+        ' through the board the core holds, not' +
+        ' one the view sends', () => {
         const sent: unknown[] = [];
         const inbox = quiet<NotesView & { focusCapture(): void }>({
             setBoard: (board) => {

@@ -359,14 +359,16 @@ export class HarnessReviewController {
             return {
                 repo: null,
                 why: _(
-                    'Pull requests on GitHub are not supported yet; Forgejo and Gitea are'
+                    'Pull requests on GitHub are not' +
+                        ' supported yet; Forgejo and Gitea are'
                 ),
             };
         if (kind === 'gitlab')
             return {
                 repo: null,
                 why: _(
-                    'Pull requests on GitLab are not supported yet; Forgejo and Gitea are'
+                    'Pull requests on GitLab are not' +
+                        ' supported yet; Forgejo and Gitea are'
                 ),
             };
         return { repo, why: '' };
@@ -482,7 +484,8 @@ export class HarnessReviewController {
             view.setBanner(
                 fmt(
                     _(
-                        '{agent} is still working on this card; what you see may change.'
+                        '{agent} is still working on this card;' +
+                            ' what you see may change.'
                     ),
                     { agent }
                 )
@@ -491,8 +494,10 @@ export class HarnessReviewController {
             view.setBanner(
                 fmt(
                     ngettext(
-                        '{base} moved on by {n} commit, and merging would conflict in {files}.',
-                        '{base} moved on by {n} commits, and merging would conflict in {files}.',
+                        '{base} moved on by {n} commit, and' +
+                            ' merging would conflict in {files}.',
+                        '{base} moved on by {n} commits, and' +
+                            ' merging would conflict in {files}.',
                         r.behind
                     ),
                     {
@@ -507,8 +512,10 @@ export class HarnessReviewController {
             view.setBanner(
                 fmt(
                     ngettext(
-                        '{base} moved on by {n} commit since; this still merges cleanly.',
-                        '{base} moved on by {n} commits since; this still merges cleanly.',
+                        '{base} moved on by {n} commit since;' +
+                            ' this still merges cleanly.',
+                        '{base} moved on by {n} commits since;' +
+                            ' this still merges cleanly.',
                         r.behind
                     ),
                     { base: c.wt.base, n: r.behind }
@@ -585,7 +592,9 @@ export class HarnessReviewController {
                 title: fmt(_('Reply to {agent}'), { agent }),
                 label: fmt(
                     _(
-                        '{agent} goes on in the same worktree; the card goes back to being worked on.'
+                        '{agent} goes on in the same worktree;' +
+                            ' the card goes back to being worked' +
+                            ' on.'
                     ),
                     { agent }
                 ),
@@ -669,7 +678,8 @@ export class HarnessReviewController {
         const partial = files
             ? fmt(
                   _(
-                      'Only {count} of {all} files are taken; the others stay out.'
+                      'Only {count} of {all} files are taken;' +
+                          ' the others stay out.'
                   ),
                   { count: files.length, all: c.review.files.length }
               )
@@ -683,10 +693,12 @@ export class HarnessReviewController {
                 detail: [
                     action === 'squash' || partial
                         ? _(
-                              'Everything becomes one commit on the base branch of the project folder.'
+                              'Everything becomes one commit on the' +
+                                  ' base branch of the project folder.'
                           )
                         : _(
-                              'A merge commit joins the branch to the base branch of the project folder.'
+                              'A merge commit joins the branch to the' +
+                                  ' base branch of the project folder.'
                           ),
                     partial,
                     _('The worktree is removed afterwards.'),
@@ -844,7 +856,10 @@ export class HarnessReviewController {
         if (!saved)
             return fmt(
                 _(
-                    'Add an access token for {host} first: open the project folder and use “Connect to a server…” in the Pull Requests tab.'
+                    'Add an access token for {host} first:' +
+                        ' open the project folder and use' +
+                        ' “Connect to a server…” in the Pull' +
+                        ' Requests tab.'
                 ),
                 { host: repo.host }
             );
@@ -862,7 +877,9 @@ export class HarnessReviewController {
             const info = await provider.repoInfo();
             if (!info)
                 return _(
-                    'The server does not know this repository, or the token cannot see it.'
+                    'The server does not know this' +
+                        ' repository, or the token cannot see' +
+                        ' it.'
                 );
             return { provider, token: saved.token, canPush: info.canPush };
         } catch (e) {
@@ -892,7 +909,9 @@ export class HarnessReviewController {
             this.host.toast(
                 fmt(
                     _(
-                        'Sent {branch}; the pull request appears in the list on the server shortly'
+                        'Sent {branch}; the pull request' +
+                            ' appears in the list on the server' +
+                            ' shortly'
                     ),
                     { branch: c.wt.branch }
                 )
@@ -933,7 +952,10 @@ export class HarnessReviewController {
                 }),
                 detail: fmt(
                     _(
-                        'The worktree and the branch {branch} are deleted, with every change in them. The project folder is not touched.'
+                        'The worktree and the branch {branch}' +
+                            ' are deleted, with every change in' +
+                            ' them. The project folder is not' +
+                            ' touched.'
                     ),
                     { branch: c.wt.branch }
                 ),
@@ -1005,7 +1027,8 @@ export class HarnessReviewController {
             target
                 ? fmt(
                       _(
-                          'No terminal found; run: ssh -t {target} and cd {path}'
+                          'No terminal found; run: ssh -t' +
+                              ' {target} and cd {path}'
                       ),
                       { target, path: c.wt.cwd }
                   )

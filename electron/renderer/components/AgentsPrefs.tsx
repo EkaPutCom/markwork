@@ -161,7 +161,9 @@ function ProjectPageView({ page }: { page: ProjectPage }) {
             </Row>
             <Row
                 title="A worktree per card"
-                subtitle="Each card works on a branch of its own, so cards do not step on each other"
+                subtitle={"Each card works on a branch of its" +
+                    " own, so cards do not step on each" +
+                    " other"}
             >
                 <Switch
                     aria-label="A worktree per card"
@@ -247,7 +249,9 @@ export function AgentsPage({ prefs }: { prefs: PreferencesData }) {
             <h3>Run agents</h3>
             <Row
                 title="Where"
-                subtitle="Agents run as children of this window, or on a machine that goes on without it"
+                subtitle={"Agents run as children of this" +
+                    " window, or on a machine that goes" +
+                    " on without it"}
             >
                 <Select
                     aria-label="Run agents"
@@ -315,7 +319,8 @@ export function AgentsPage({ prefs }: { prefs: PreferencesData }) {
                 <Button
                     key={p.name}
                     variant="ghost"
-                    className="pref-row project-row h-auto font-normal text-left"
+                    className={"pref-row project-row h-auto" +
+                        " font-normal text-left"}
                     onClick={() => client.openProject(p.name)}
                 >
                     <span className="text">

@@ -7,7 +7,10 @@ import { section, test, eq } from '../core/framework';
 
 export function appSettingsTests(): void {
     section('Settings: AppSettings on any store');
-    test('AppSettings needs only a SettingsStore: typed values, and onChanged hears only the keys it asks for', () => {
+    test('AppSettings needs only a' +
+        ' SettingsStore: typed values, and' +
+        ' onChanged hears only the keys it asks' +
+        ' for', () => {
         const values = new Map<string, SettingValue>([
             ['color-scheme', 'system'],
             ['tabs', []],
@@ -49,7 +52,9 @@ export function appSettingsTests(): void {
         s.machines = {};
         eq(heard, ['machines']);
     });
-    test('projects belong to the work folder; a folder seen for the first time starts with the earlier ones', () => {
+    test('projects belong to the work folder; a' +
+        ' folder seen for the first time starts' +
+        ' with the earlier ones', () => {
         const values = new Map<string, SettingValue>([
             ['projects', { shop: '/srv/shop' }],
             ['project-options', { shop: 'w1' }],

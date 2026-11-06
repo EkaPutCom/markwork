@@ -27,7 +27,9 @@ const opened = (...docs: number[]): P.Layout =>
 export function paneTests(): void {
     section('Panes (renderer/lib/panes.ts)');
 
-    test('open and show: a new document is a tab of the focused pane; the core switching to one finds its pane', () => {
+    test('open and show: a new document is a tab' +
+        ' of the focused pane; the core' +
+        ' switching to one finds its pane', () => {
         const layout = opened(1, 2, 3);
         eq(show(layout), '1,2,[3]');
         eq(show(P.show(layout, 1)), '[1],2,3', 'the focused pane has it');
@@ -55,7 +57,9 @@ export function paneTests(): void {
         );
     });
 
-    test('split: right and left make columns, up and down make rows, and an empty pane cannot be split', () => {
+    test('split: right and left make columns, up' +
+        ' and down make rows, and an empty pane' +
+        ' cannot be split', () => {
         const base = opened(1, 2);
         eq(show(P.split(base, 1, 'right')), '1,[2] | [2]');
         eq(show(P.split(base, 1, 'left')), '[2] | 1,[2]');
@@ -75,7 +79,9 @@ export function paneTests(): void {
         );
     });
 
-    test('closing a document removes its tab everywhere, shows the next one, and drops a pane left empty', () => {
+    test('closing a document removes its tab' +
+        ' everywhere, shows the next one, and' +
+        ' drops a pane left empty', () => {
         const grid = P.split(opened(1, 2, 3), 1, 'right'); // 1,2,[3] | [3]
         eq(
             show(P.close(grid, 3)),
@@ -94,7 +100,8 @@ export function paneTests(): void {
         );
     });
 
-    test('closeTab: closes the document only when no other pane shows it', () => {
+    test('closeTab: closes the document only' +
+        ' when no other pane shows it', () => {
         const grid = P.split(opened(1, 2), 1, 'right'); // 1,[2] | [2]
         const once = P.closeTab(grid, 2, 2);
         eq(
@@ -109,7 +116,9 @@ export function paneTests(): void {
         );
     });
 
-    test('drop: the middle joins the tabs, an edge makes a pane, and a pane left empty goes', () => {
+    test('drop: the middle joins the tabs, an' +
+        ' edge makes a pane, and a pane left' +
+        ' empty goes', () => {
         const grid = P.split(opened(1, 2, 3), 1, 'right'); // 1,2,[3] | [3]
         eq(
             show(P.drop(grid, 1, 1, 2, 'center')),
@@ -153,7 +162,10 @@ export function paneTests(): void {
         );
     });
 
-    test('closePane joins its tabs to the pane before it, joinAll puts everything in the focused pane, moveToNextPane moves a tab', () => {
+    test('closePane joins its tabs to the pane' +
+        ' before it, joinAll puts everything in' +
+        ' the focused pane, moveToNextPane' +
+        ' moves a tab', () => {
         // 1,[2] | [2] | [2]
         const three = P.split(P.split(opened(1, 2), 1, 'right'), 2, 'right');
         eq(show(P.closePane(three, 2)), '1,[2] | [2]');
@@ -162,18 +174,22 @@ export function paneTests(): void {
         eq(
             show(P.joinAll(three)),
             '[2],1',
-            'the focused pane (the last one made) keeps its order and takes the others'
+            'the focused pane (the last one made)' +
+                ' keeps its order and takes the others'
         );
         // [1],2 | [2]
         const two = P.select(P.split(opened(1, 2), 1, 'right'), 1, 1);
         eq(
             show(P.moveToNextPane(two)),
             '[2] | 2,[1]',
-            'the tab goes and is the one shown there; the pane it left shows another'
+            'the tab goes and is the one shown' +
+                ' there; the pane it left shows another'
         );
     });
 
-    test('neighbor and reorder: the next tab round the bar, and a tab dragged within it', () => {
+    test('neighbor and reorder: the next tab' +
+        ' round the bar, and a tab dragged' +
+        ' within it', () => {
         const pane = P.currentPane(opened(1, 2, 3));
         eq(
             [P.neighbor(pane, 1), P.neighbor(pane, -1)],
@@ -193,7 +209,8 @@ export function paneTests(): void {
         );
     });
 
-    test('source is per pane, and a split pane starts like the one it came from', () => {
+    test('source is per pane, and a split pane' +
+        ' starts like the one it came from', () => {
         const layout = P.setSource(opened(1, 2), 1, true);
         eq(P.currentPane(P.split(layout, 1, 'right')).source, true);
         eq(
@@ -204,7 +221,9 @@ export function paneTests(): void {
         );
     });
 
-    test('sizes: a line moves the share of the two panes it separates, and none goes below a quarter of an equal share', () => {
+    test('sizes: a line moves the share of the' +
+        ' two panes it separates, and none goes' +
+        ' below a quarter of an equal share', () => {
         const sizes = P.shift([1, 1, 1], 0, 0.5);
         eq(sizes, [1.5, 0.5, 1]);
         eq(

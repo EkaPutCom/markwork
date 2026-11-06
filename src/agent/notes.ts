@@ -75,7 +75,9 @@ export function valueHint(def: FieldDef): string {
                     ? `one of: ${def.options.join(', ')}`
                     : 'any text';
             case 'date':
-                return 'YYYY-MM-DD, or YYYY-MM-DD HH:MM; "today" and "now" are accepted when writing';
+                return 'YYYY-MM-DD, or YYYY-MM-DD HH:MM;' +
+                    ' "today" and "now" are accepted when' +
+                    ' writing';
             case 'progress':
                 return 'done/total such as 3/5, or a percentage such as 60%';
             case 'person':

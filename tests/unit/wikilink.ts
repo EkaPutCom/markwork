@@ -26,7 +26,8 @@ const FILES = [
 
 export function wikiLinkTests(): void {
     section('[[note]] links');
-    test('the [[...]] contents are parsed into target, section, and alias', () => {
+    test('the [[...]] contents are parsed into' +
+        ' target, section, and alias', () => {
         eq(parseWikiLink('Note'), { target: 'Note', heading: '', alias: '' });
         eq(parseWikiLink('Journal/Idea#Section Two|see idea'), {
             target: 'Journal/Idea',
@@ -39,7 +40,9 @@ export function wikiLinkTests(): void {
             alias: '',
         });
     });
-    test('the target is looked up by file name without extension and case-insensitively', () => {
+    test('the target is looked up by file name' +
+        ' without extension and' +
+        ' case-insensitively', () => {
         eq(resolveWikiLink('daily note', FILES, null), 'Journal/Daily Note.md');
         eq(
             resolveWikiLink('Chapter 1', FILES, null),
@@ -52,7 +55,11 @@ export function wikiLinkTests(): void {
         eq(resolveWikiLink('nonexistent', FILES, null), null);
         eq(resolveWikiLink('image', FILES, null), null, 'not a Markdown file');
     });
-    test('duplicate names: the folder of the source document wins, then the shortest path; a target with a folder is matched against the end of the path', () => {
+    test('duplicate names: the folder of the' +
+        ' source document wins, then the' +
+        ' shortest path; a target with a folder' +
+        ' is matched against the end of the' +
+        ' path', () => {
         eq(
             resolveWikiLink('Idea', FILES, 'Journal/Daily Note.md'),
             'Journal/Idea.md'
@@ -65,7 +72,9 @@ export function wikiLinkTests(): void {
             'project/sub/Chapter 1.markdown'
         );
     });
-    test('a new note is created next to the source document; names that leave the folder or are hidden are rejected', () => {
+    test('a new note is created next to the' +
+        ' source document; names that leave the' +
+        ' folder or are hidden are rejected', () => {
         eq(newNotePath('New', 'Journal/Daily Note.md'), 'Journal/New.md');
         eq(newNotePath('New', null), 'New.md');
         eq(newNotePath('archive/Old', 'Journal/x.md'), 'archive/Old.md');
@@ -80,11 +89,14 @@ export function wikiLinkTests(): void {
         ])
             eq(newNotePath(bad, null), null, bad);
     });
-    test('a suggestion uses the short name if unique, the path if duplicate', () => {
+    test('a suggestion uses the short name if' +
+        ' unique, the path if duplicate', () => {
         eq(wikiTargetFor('Journal/Daily Note.md', FILES), 'Daily Note');
         eq(wikiTargetFor('Journal/Idea.md', FILES), 'Journal/Idea');
     });
-    test('text being typed after [[ is recognized; a closed [[, alias, section, and code are not', () => {
+    test('text being typed after [[ is' +
+        ' recognized; a closed [[, alias,' +
+        ' section, and code are not', () => {
         eq(wikiQuery('see [[no'), 'no');
         eq(wikiQuery('see [['), '');
         eq(wikiQuery('see [[a]] then'), null);
@@ -93,7 +105,9 @@ export function wikiLinkTests(): void {
         eq(wikiQuery('`code [[x'), null);
         eq(wikiQuery('no link'), null);
     });
-    test('suggestions: name prefix first, word prefix, then a path fragment; non-Markdown files are skipped', () => {
+    test('suggestions: name prefix first, word' +
+        ' prefix, then a path fragment;' +
+        ' non-Markdown files are skipped', () => {
         eq(suggestNotes('idea', FILES), ['Idea.md', 'Journal/Idea.md']);
         eq(suggestNotes('dai', FILES), ['Journal/Daily Note.md']);
         eq(suggestNotes('journal', FILES), [
@@ -104,7 +118,9 @@ export function wikiLinkTests(): void {
         eq(suggestNotes('', FILES, 2).length, 2, 'count limit');
         eq(suggestNotes('zzz', FILES), []);
     });
-    test('highlighting: only the name or alias becomes the link, the brackets and the alias target are hidden', () => {
+    test('highlighting: only the name or alias' +
+        ' becomes the link, the brackets and' +
+        ' the alias target are hidden', () => {
         const r = parseInline('a [[Note]] b');
         ok(
             r.tags.some(([n, s, e]) => n === 'link' && s === 4 && e === 8),
@@ -126,7 +142,9 @@ export function wikiLinkTests(): void {
             [23, 25],
         ]);
     });
-    test('highlighting: empty [[ ]], inline code, and link contents are not formatted again', () => {
+    test('highlighting: empty [[ ]], inline' +
+        ' code, and link contents are not' +
+        ' formatted again', () => {
         eq(parseInline('[[ ]]').tags, []);
         ok(
             !parseInline('`[[x]]`').tags.some(([n]) => n === 'link'),
@@ -156,7 +174,9 @@ export function wikiLinkTests(): void {
         contains(body('[[a<b]]'), '>a&lt;b</a>');
         contains(body('`[[x]]`'), '<code>[[x]]</code>');
     });
-    test('wikiLinksIn: in order of appearance, without duplicates, inline code skipped', () => {
+    test('wikiLinksIn: in order of appearance,' +
+        ' without duplicates, inline code' +
+        ' skipped', () => {
         eq(
             wikiLinksIn('[[A]] `[[B]]` [[a]] [[A#x]] [[C|c]]').map(
                 (l) => `${l.target}#${l.heading}`
@@ -164,12 +184,17 @@ export function wikiLinkTests(): void {
             ['A#', 'A#x', 'C#']
         );
     });
-    test('noteSection takes the part up to the next heading of the same level, skipping code blocks', () => {
+    test('noteSection takes the part up to the' +
+        ' next heading of the same level,' +
+        ' skipping code blocks', () => {
         const doc =
-            '# Title\n\n## Color\n\nblue\n\n```\n# not a heading\n```\n\n### Sub\n\ncontent\n\n## Other\n\nx';
+            '# Title\n\n## Color\n\nblue\n\n```\n#' +
+                ' not a heading\n```\n\n###' +
+                ' Sub\n\ncontent\n\n## Other\n\nx';
         eq(
             noteSection(doc, 'color'),
-            '## Color\n\nblue\n\n```\n# not a heading\n```\n\n### Sub\n\ncontent'
+            '## Color\n\nblue\n\n```\n# not a' +
+                ' heading\n```\n\n### Sub\n\ncontent'
         );
         eq(noteSection(doc, 'Other'), '## Other\n\nx');
         eq(noteSection(doc, 'nonexistent'), null);

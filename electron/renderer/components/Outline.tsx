@@ -17,7 +17,12 @@ export function OutlineList() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full justify-start pr-2 pl-[calc(0.75rem+var(--depth)*0.75rem)] text-ui font-normal hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-left"
+                        className={"w-full justify-start pr-2" +
+                            " pl-[calc(0.75rem+var(--depth)*0.75" +
+                            "rem)] text-ui font-normal" +
+                            " hover:bg-sidebar-accent" +
+                            " hover:text-sidebar-accent-foregrou" +
+                            "nd text-left"}
                         style={
                             { '--depth': heading.level - 1 } as CSSProperties
                         }

@@ -480,7 +480,8 @@ export function ChatReview() {
                     {open && (
                         <Input
                             className="note"
-                            placeholder="Note for the agent (optional), e.g. the reason for rejecting"
+                            placeholder={"Note for the agent (optional), e.g." +
+                                " the reason for rejecting"}
                             aria-label="Note for the agent"
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
@@ -677,7 +678,8 @@ function HistoryButton() {
                 <div key={c.path} className="chat-item">
                     <Button
                         variant="ghost"
-                        className="open h-auto items-stretch font-normal text-left"
+                        className={"open h-auto items-stretch" +
+                            " font-normal text-left"}
                         onClick={async () => {
                             if (await client.chat.openChat(c.path))
                                 setOpen(false);
@@ -827,7 +829,8 @@ export function Chat({
                 <SettingsButton />
             </div>
             {!embedded && (
-                <div className="flex flex-col gap-2 border-b p-3 text-xs text-muted-foreground">
+                <div className={"flex flex-col gap-2 border-b p-3" +
+                    " text-xs text-muted-foreground"}>
                     <p>
                         pi · Direct file, shell and network tools · No Apply or
                         sandbox. Local work stops when Markwork closes.
@@ -916,7 +919,9 @@ export function Chat({
                             <Button
                                 key={s}
                                 variant="outline"
-                                className="h-auto justify-start whitespace-normal px-3 py-2 text-left font-normal"
+                                className={"h-auto justify-start" +
+                                    " whitespace-normal px-3 py-2" +
+                                    " text-left font-normal"}
                                 onClick={() => {
                                     model.setDraft(s);
                                     model.focusInput();
@@ -974,7 +979,9 @@ export function Chat({
                     ref={input}
                     rows={2}
                     aria-label={embedded ? 'Message' : 'Ask the Assistant'}
-                    className="min-h-0 border-0 bg-transparent p-1 shadow-none focus-visible:ring-0 dark:bg-transparent"
+                    className={"min-h-0 border-0 bg-transparent p-1" +
+                        " shadow-none focus-visible:ring-0" +
+                        " dark:bg-transparent"}
                     placeholder="Ask a question"
                     value={draft}
                     onChange={(e) => model.setDraft(e.target.value)}

@@ -12,7 +12,8 @@ import { section, test, eq, ok, contains, within } from '../core/framework';
 
 export async function workTests(): Promise<void> {
     section('Agent: saved work');
-    await test('a plan checkpoint is restored as paused after the process stops', async () => {
+    await test('a plan checkpoint is restored as' +
+        ' paused after the process stops', async () => {
         const work = parseWork(
             JSON.stringify({
                 goal: 'Sync the schedule',
@@ -38,7 +39,9 @@ export async function workTests(): Promise<void> {
         eq(chat?.work?.steps, work.steps);
         contains(workText(work), '[x] Read the meeting');
     });
-    await test('a batch merges chained changes and rejects a single broken action without a partial result', async () => {
+    await test('a batch merges chained changes and' +
+        ' rejects a single broken action' +
+        ' without a partial result', async () => {
         const actions = [
             {
                 tool: 'edit_file',
@@ -74,7 +77,9 @@ export async function workTests(): Promise<void> {
             []
         );
     });
-    await test('batch preflight rejects conflicts before writing and restores when a write fails', async () => {
+    await test('batch preflight rejects conflicts' +
+        ' before writing and restores when a' +
+        ' write fails', async () => {
         const p = planBatch(
             JSON.stringify({
                 actions: ['a', 'b'].map((n) => ({
@@ -111,12 +116,15 @@ export async function workTests(): Promise<void> {
         contains(applyBatch(p.changes, host) ?? '', 'restored');
         eq([...disk.values()], ['old', 'old']);
     });
-    await test('verification checks the actual contents, missing files, and note group/status', async () => {
+    await test('verification checks the actual' +
+        ' contents, missing files, and note' +
+        ' group/status', async () => {
         const files = [
             { name: 'plan.md', text: 'Release November 22' },
             {
                 name: 'board.md',
-                text: '---\nlayout: board\n---\n\n## Done\n\n- [x] Release material\n',
+                text: '---\nlayout: board\n---\n\n##' +
+                    ' Done\n\n- [x] Release material\n',
             },
         ];
         const checks = [
@@ -139,7 +147,10 @@ export async function workTests(): Promise<void> {
         eq(verifyWork(JSON.stringify({ checks }), files).passed, false);
         eq(verifyWork('{', files).passed, false);
     });
-    await test('the journal stores the diff and decisions; an interruption is recovered from the actual contents without writing', async () => {
+    await test('the journal stores the diff and' +
+        ' decisions; an interruption is' +
+        ' recovered from the actual contents' +
+        ' without writing', async () => {
         const event: ActionEvent = {
             id: '1',
             question: 'Change the schedule',
@@ -176,7 +187,8 @@ export async function workTests(): Promise<void> {
         reconcileEvents([event], [{ name: 'a.md', text: 'conflict' }]);
         eq(event.status, 'failed');
     });
-    await test('retry is limited and does not repeat output that was already shown', async () => {
+    await test('retry is limited and does not repeat' +
+        ' output that was already shown', async () => {
         let calls = 0;
         const request = {
             model: 'm',
@@ -244,7 +256,8 @@ export async function workTests(): Promise<void> {
         }
         eq(calls, 1);
     });
-    await test('old context is summarized without deleting the source history', async () => {
+    await test('old context is summarized without' +
+        ' deleting the source history', async () => {
         const history = Array.from({ length: 20 }, (_, i) => ({
             role: i % 2 ? ('assistant' as const) : ('user' as const),
             content: `Turn ${i} ` + 'x'.repeat(500),
@@ -255,7 +268,8 @@ export async function workTests(): Promise<void> {
         eq(history.length, 20);
         eq(compact.recent[compact.recent.length - 1], history[19]);
     });
-    await test('a broken plan and an unknown step status are rejected', async () => {
+    await test('a broken plan and an unknown step' +
+        ' status are rejected', async () => {
         eq(parseWork('{'), null);
         eq(
             parseWork(

@@ -56,7 +56,8 @@ try {
     const content = page.locator('.cm-content');
 
     await step(
-        'a wide window docks the side panel and the Assistant beside the editor',
+        'a wide window docks the side panel and' +
+            ' the Assistant beside the editor',
         async () => {
             await resize(1100);
             await page.getByRole('treeitem', { name: /note\.md/ }).click();
@@ -81,7 +82,8 @@ try {
     );
 
     await step(
-        'below 900 px the Assistant closes and opens again floating over the editor',
+        'below 900 px the Assistant closes and' +
+            ' opens again floating over the editor',
         async () => {
             await resize(760);
             await chat.waitFor({ state: 'detached' });
@@ -126,7 +128,10 @@ try {
     );
 
     await step(
-        'below 600 px the side panel floats too, one floating panel at a time, Escape closes it, and the header bar shows icons only',
+        'below 600 px the side panel floats' +
+            ' too, one floating panel at a time,' +
+            ' Escape closes it, and the header bar' +
+            ' shows icons only',
         async () => {
             await resize(480);
             await files.waitFor({ state: 'detached' });
@@ -187,7 +192,8 @@ try {
     );
 
     await step(
-        'widening the window docks the panels again as they were before it narrowed',
+        'widening the window docks the panels' +
+            ' again as they were before it narrowed',
         async () => {
             await resize(1100);
             await files.waitFor();
@@ -198,7 +204,9 @@ try {
     );
 
     await step(
-        'a panel closed on purpose stays closed when the window narrows and widens again',
+        'a panel closed on purpose stays closed' +
+            ' when the window narrows and widens' +
+            ' again',
         async () => {
             await page.keyboard.press('ControlOrMeta+Shift+A');
             await chat.waitFor({ state: 'detached' });

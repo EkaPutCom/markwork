@@ -30,7 +30,8 @@ export function inboxModelTests(): void {
     const items = (text: string) =>
         parseBoard(text).columns.flatMap((c) => c.cards);
 
-    test('parseBoard on a flat list: one unnamed group with the head, notes, and outro', () => {
+    test('parseBoard on a flat list: one unnamed' +
+        ' group with the head, notes, and outro', () => {
         const list = parseBoard(INBOX);
         eq(
             list.head,
@@ -84,9 +85,13 @@ export function inboxModelTests(): void {
         eq(serializeBoard(parseBoard(text)), text, 'stable');
     });
 
-    test('a list with headings: the notes before the first heading are an unnamed group, each heading is a group', () => {
+    test('a list with headings: the notes before' +
+        ' the first heading are an unnamed' +
+        ' group, each heading is a group', () => {
         const text =
-            '---\nlayout: list\n---\n\n# Reading\n\n- loose\n\n## Now\n\n- one\n- two\n\n## Later\n\n- three\n';
+            '---\nlayout: list\n---\n\n#' +
+                ' Reading\n\n- loose\n\n## Now\n\n-' +
+                ' one\n- two\n\n## Later\n\n- three\n';
         const doc = parseBoard(text);
         eq(
             doc.columns.map((c) => [c.title, c.cards.map((i) => i.text)]),
@@ -98,7 +103,9 @@ export function inboxModelTests(): void {
         );
         eq(serializeBoard(doc), text, 'stable');
     });
-    test('the same text is a board and a list: switching the layout line changes nothing else', () => {
+    test('the same text is a board and a list:' +
+        ' switching the layout line changes' +
+        ' nothing else', () => {
         const asList = BOARD.replace('layout: board', 'layout: list');
         const [a, b] = [parseBoard(asList), parseBoard(BOARD)];
         eq(
@@ -126,7 +133,9 @@ export function inboxModelTests(): void {
             'and is written back as it was'
         );
     });
-    test('the unnamed group stays first: nothing is added or moved before it, and it cannot be moved', () => {
+    test('the unnamed group stays first: nothing' +
+        ' is added or moved before it, and it' +
+        ' cannot be moved', () => {
         const doc = parseBoard(
             '---\nlayout: list\n---\n\n- loose\n\n## Now\n\n- one\n'
         );
@@ -143,7 +152,9 @@ export function inboxModelTests(): void {
         ok(moveColumn(doc, 0, 1) === doc, 'it cannot be moved');
     });
 
-    test('captureItem inserts at the top of the first group with a capture time, unless the text already has one', () => {
+    test('captureItem inserts at the top of the' +
+        ' first group with a capture time,' +
+        ' unless the text already has one', () => {
         let list = parseBoard(INBOX);
         list = captureItem(list, '  New idea #x  ', new Date(2026, 9, 8, 9, 5));
         eq(
@@ -166,7 +177,9 @@ export function inboxModelTests(): void {
             'empty text is ignored'
         );
     });
-    test('captureItem on an empty list makes the unnamed group; with headings it goes into the first group', () => {
+    test('captureItem on an empty list makes the' +
+        ' unnamed group; with headings it goes' +
+        ' into the first group', () => {
         const empty = captureItem(
             newList(),
             'First',
@@ -194,7 +207,9 @@ export function inboxModelTests(): void {
             ['Top', 'one']
         );
     });
-    test('add: says where a new note goes: top (default) or bottom, and add-to: names the group', () => {
+    test('add: says where a new note goes: top' +
+        ' (default) or bottom, and add-to:' +
+        ' names the group', () => {
         const head = (extra: string) =>
             `---\nlayout: list\n${extra}---\n\n- loose\n\n## Now\n\n- one\n\n## Later\n\n- two\n`;
         const at = (text: string) =>
@@ -309,9 +324,13 @@ export function inboxModelTests(): void {
         );
     });
 
-    test('captureItem gives a new item the default of every field it does not set; without defaults it adds nothing', () => {
+    test('captureItem gives a new item the' +
+        ' default of every field it does not' +
+        ' set; without defaults it adds nothing', () => {
         const withDefaults = parseBoard(
-            '---\nlayout: list\nfields:\n  created: date = now\n  status: select(antre, dibaca) = antre\n---\n\n- old\n'
+            '---\nlayout: list\nfields:\n  created:' +
+                ' date = now\n  status: select(antre,' +
+                ' dibaca) = antre\n---\n\n- old\n'
         );
         const first = (b: ReturnType<typeof parseBoard>) =>
             b.columns[0].cards[0].text;
@@ -356,9 +375,16 @@ export function inboxModelTests(): void {
             'New Inbox declares where notes go and the capture time'
         );
     });
-    test('list fields: chips without the capture time, missing fields, setting one, and adding an option', () => {
+    test('list fields: chips without the capture' +
+        ' time, missing fields, setting one,' +
+        ' and adding an option', () => {
         const list = parseBoard(
-            '---\nlayout: list\nfields:\n  tipe: select(ide, bacaan)\n  created: text\n  url: link\n---\n\n# Inbox\n\n- Satu #x [created:: 2026-10-07 14:22] [tipe:: ide]\n- Dua\n'
+            '---\nlayout: list\nfields:\n  tipe:' +
+                ' select(ide, bacaan)\n  created:' +
+                ' text\n  url: link\n---\n\n#' +
+                ' Inbox\n\n- Satu #x [created::' +
+                ' 2026-10-07 14:22] [tipe:: ide]\n-' +
+                ' Dua\n'
         );
         const schema = boardSchema(list);
         eq(

@@ -48,7 +48,8 @@ const SCRIPTS = [
                     name: 'plans/launch.md',
                     old_text: '- Public release: 15 November',
                     new_text: '- Public release: 22 November',
-                    reason: 'The 1 October meeting postponed the public release to 22 November.',
+                    reason: 'The 1 October meeting postponed the' +
+                        ' public release to 22 November.',
                 }),
             ],
             [
@@ -60,7 +61,10 @@ const SCRIPTS = [
                     reason: 'Sari started preparing the release material.',
                 }),
             ],
-            'Done. The release date in the plan is now **22 November**, and the card *Prepare the release material* is in the *In Progress* list.',
+            'Done. The release date in the plan is' +
+                ' now **22 November**, and the card' +
+                ' *Prepare the release material* is in' +
+                ' the *In Progress* list.',
         ],
     ],
     [
@@ -82,7 +86,8 @@ const SCRIPTS = [
                                 name: 'plans/launch.md',
                                 old_text: '- Public release: 15 November',
                                 new_text: '- Public release: 22 November',
-                                reason: 'The 1 October meeting postponed the public release.',
+                                reason: 'The 1 October meeting postponed the' +
+                                    ' public release.',
                             }),
                         },
                         {
@@ -92,7 +97,8 @@ const SCRIPTS = [
                                 action: 'move',
                                 note: 'Prepare the release material',
                                 group: 'In Progress',
-                                reason: 'Sari started preparing the release material.',
+                                reason: 'Sari started preparing the release' +
+                                    ' material.',
                             }),
                         },
                         {
@@ -100,7 +106,8 @@ const SCRIPTS = [
                             arguments: JSON.stringify({
                                 name: 'notes/meeting-8-oct.md',
                                 position: 'end',
-                                text: '\nThe launch plan has been updated to 22 November.\n',
+                                text: '\nThe launch plan has been updated to' +
+                                    ' 22 November.\n',
                                 reason: 'Record that the plan has been synced.',
                             }),
                         },
@@ -126,7 +133,8 @@ const SCRIPTS = [
                         {
                             file: 'tasks.md',
                             kind: 'kanban',
-                            text: 'Prepare the release material #marketing [due:: 2026-11-10]',
+                            text: 'Prepare the release material' +
+                                ' #marketing [due:: 2026-11-10]',
                             list: 'In Progress',
                             done: false,
                         },
@@ -145,7 +153,12 @@ const SCRIPTS = [
                     note: 'All the checks passed.',
                 }),
             ],
-            'Done and verified. The plan uses **22 November**, the old date is left in no file, the card *Prepare the release material* is in *In Progress*, and the 8 October meeting notes record the update.',
+            'Done and verified. The plan uses **22' +
+                ' November**, the old date is left in' +
+                ' no file, the card *Prepare the' +
+                ' release material* is in *In' +
+                ' Progress*, and the 8 October meeting' +
+                ' notes record the update.',
         ],
     ],
     [
@@ -153,19 +166,29 @@ const SCRIPTS = [
         [
             [tool('g1', 'git_log', { file: 'plan.md' })],
             [tool('g2', 'show_commit', { commit: 'HEAD', file: 'plan.md' })],
-            'The date **15 November** first entered in the commit *Clarify the goal and the dates* by Eka Putra; the earlier commit only wrote "Closed beta: October". The line *Evaluation: 30 November* is not committed yet.',
+            'The date **15 November** first entered' +
+                ' in the commit *Clarify the goal and' +
+                ' the dates* by Eka Putra; the earlier' +
+                ' commit only wrote "Closed beta:' +
+                ' October". The line *Evaluation: 30' +
+                ' November* is not committed yet.',
         ],
     ],
     [
         'Summarize this week',
         [
-            'The public release is postponed to 22 November, Sari prepares the release material, and Budi fixes the sync bug.',
+            'The public release is postponed to 22' +
+                ' November, Sari prepares the release' +
+                ' material, and Budi fixes the sync' +
+                ' bug.',
         ],
     ],
     [
         'List the launch risks',
         [
-            'Main risks: the sync bug, a closed beta that slips, and a limited test server budget.',
+            'Main risks: the sync bug, a closed' +
+                ' beta that slips, and a limited test' +
+                ' server budget.',
         ],
     ],
 ];

@@ -42,7 +42,9 @@ layout: list
 export function homeModelTests(): void {
     section('Home (model)');
 
-    test('dueTasks: unfinished overdue, today, and next two days, ordered by due date', () => {
+    test('dueTasks: unfinished overdue, today,' +
+        ' and next two days, ordered by due' +
+        ' date', () => {
         const tasks = dueTasks(
             [
                 { name: 'board.md', text: BOARD },
@@ -93,9 +95,13 @@ export function homeModelTests(): void {
             [{ file: 'inbox.md', open: 2 }]
         );
     });
-    test('a list counts too: its due notes show up in dueTasks, and notes under headings count as open', () => {
+    test('a list counts too: its due notes show' +
+        ' up in dueTasks, and notes under' +
+        ' headings count as open', () => {
         const list =
-            '---\nlayout: list\n---\n\n- loose [due:: 2026-10-07]\n\n## Later\n\n- [ ] one\n- [x] done\n';
+            '---\nlayout: list\n---\n\n- loose' +
+                ' [due:: 2026-10-07]\n\n## Later\n\n- [' +
+                ' ] one\n- [x] done\n';
         eq(
             dueTasks([{ name: 'list.md', text: list }], '2026-10-07').map(
                 (t) => [t.title, t.at]

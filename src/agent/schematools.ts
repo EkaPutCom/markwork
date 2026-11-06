@@ -49,7 +49,17 @@ export const SCHEMA_TOOLS: ToolSpec[] = [
     {
         name: 'describe_schema',
         description:
-            'Describe how a structured document is set up: its layout (board, list, table, calendar, timeline, gallery, chart), its one-line options, its fields with their types, select options and defaults, and its groups with the number of notes. Without a name it summarizes every structured file in the folder. Use it before edit_note or edit_schema so you write values the document accepts.',
+            'Describe how a structured document is' +
+                ' set up: its layout (board, list,' +
+                ' table, calendar, timeline, gallery,' +
+                ' chart), its one-line options, its' +
+                ' fields with their types, select' +
+                ' options and defaults, and its groups' +
+                ' with the number of notes. Without a' +
+                ' name it summarizes every structured' +
+                ' file in the folder. Use it before' +
+                ' edit_note or edit_schema so you write' +
+                ' values the document accepts.',
         parameters: {
             type: 'object',
             properties: {
@@ -64,7 +74,16 @@ export const SCHEMA_TOOLS: ToolSpec[] = [
     {
         name: 'query_notes',
         description:
-            'Find the notes of structured documents by their fields, e.g. everything due this week, or the number of notes per status. Filter with "where" (all conditions must hold), then list the notes (optionally sorted) or count them per value of a field with count_by. Use it for questions about many notes at once instead of reading every file.',
+            'Find the notes of structured documents' +
+                ' by their fields, e.g. everything due' +
+                ' this week, or the number of notes per' +
+                ' status. Filter with "where" (all' +
+                ' conditions must hold), then list the' +
+                ' notes (optionally sorted) or count' +
+                ' them per value of a field with' +
+                ' count_by. Use it for questions about' +
+                ' many notes at once instead of reading' +
+                ' every file.',
         parameters: {
             type: 'object',
             properties: {
@@ -83,7 +102,8 @@ export const SCHEMA_TOOLS: ToolSpec[] = [
                             field: {
                                 type: 'string',
                                 description:
-                                    'A field of the document, or title, tag, group, or done (true/false)',
+                                    'A field of the document, or title,' +
+                                        ' tag, group, or done (true/false)',
                             },
                             op: {
                                 type: 'string',
@@ -94,7 +114,9 @@ export const SCHEMA_TOOLS: ToolSpec[] = [
                             value: {
                                 type: 'string',
                                 description:
-                                    'What to compare with; a date field also accepts "today". Not used for empty/not_empty',
+                                    'What to compare with; a date field' +
+                                        ' also accepts "today". Not used for' +
+                                        ' empty/not_empty',
                             },
                         },
                         required: ['field', 'op'],
@@ -104,13 +126,15 @@ export const SCHEMA_TOOLS: ToolSpec[] = [
                 sort_by: {
                     type: 'string',
                     description:
-                        'A field to sort the result by (notes without a value go last)',
+                        'A field to sort the result by (notes' +
+                            ' without a value go last)',
                 },
                 desc: { type: 'boolean', description: 'Sort from high to low' },
                 count_by: {
                     type: 'string',
                     description:
-                        'Instead of listing notes, count them per value of this field',
+                        'Instead of listing notes, count them' +
+                            ' per value of this field',
                 },
                 limit: {
                     type: 'integer',

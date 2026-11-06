@@ -55,12 +55,15 @@ export function journalModelTests(): void {
     test('the template contains the date title and four sections', () => {
         eq(
             EMPTY,
-            "# Thursday, October 8, 2026\n\n## Today's focus\n\n## Notes\n\n## Activity\n\n## Summary\n"
+            "# Thursday, October 8, 2026\n\n##" +
+                " Today's focus\n\n## Notes\n\n##" +
+                " Activity\n\n## Summary\n"
         );
         eq(clock(new Date(2026, 9, 8, 9, 5)), '09:05');
     });
 
-    test('addNote: time-stamped bullets at the end of the Notes section, in order', () => {
+    test('addNote: time-stamped bullets at the' +
+        ' end of the Notes section, in order', () => {
         let text = addNote(EMPTY, '09:12', 'Opening files got faster');
         text = addNote(
             text,
@@ -69,12 +72,19 @@ export function journalModelTests(): void {
         );
         eq(
             text,
-            "# Thursday, October 8, 2026\n\n## Today's focus\n\n## Notes\n\n- 09:12 Opening files got faster\n- 11:40 ! Flatpak cannot be tested yet on this machine\n\n## Activity\n\n## Summary\n"
+            "# Thursday, October 8, 2026\n\n##" +
+                " Today's focus\n\n## Notes\n\n- 09:12" +
+                " Opening files got faster\n- 11:40 !" +
+                " Flatpak cannot be tested yet on this" +
+                " machine\n\n## Activity\n\n##" +
+                " Summary\n"
         );
         eq(addNote(EMPTY, '09:00', '   '), EMPTY, 'empty note ignored');
     });
 
-    test('addNote: the Notes section is created if missing; other contents are untouched', () => {
+    test('addNote: the Notes section is created' +
+        ' if missing; other contents are' +
+        ' untouched', () => {
         eq(
             addNote('# Today\n\nFree writing.\n', '08:00', 'start'),
             '# Today\n\nFree writing.\n\n## Notes\n\n- 08:00 start\n'
@@ -88,14 +98,17 @@ export function journalModelTests(): void {
         );
     });
 
-    test('mergeActivity: only adds lines that are not there yet; user edits stay', () => {
+    test('mergeActivity: only adds lines that' +
+        ' are not there yet; user edits stay', () => {
         const first = mergeActivity(EMPTY, [
             '- 10:42 Card “A” → In Progress',
             '- 16:05 Commit `dd831a6` Speed up',
         ]);
         ok(
             first.includes(
-                '## Activity\n\n- 10:42 Card “A” → In Progress\n- 16:05 Commit `dd831a6` Speed up\n\n## Summary'
+                '## Activity\n\n- 10:42 Card “A” → In' +
+                    ' Progress\n- 16:05 Commit `dd831a6`' +
+                    ' Speed up\n\n## Summary'
             ),
             first
         );
@@ -109,7 +122,9 @@ export function journalModelTests(): void {
         ]);
         ok(
             again.includes(
-                '(helped by Rina)\n- 16:05 Commit `dd831a6` Speed up\n- 17:00 Agent changed [[plan]]\n\n## Summary'
+                '(helped by Rina)\n- 16:05 Commit' +
+                    ' `dd831a6` Speed up\n- 17:00 Agent' +
+                    ' changed [[plan]]\n\n## Summary'
             ),
             again
         );
@@ -121,11 +136,15 @@ export function journalModelTests(): void {
         eq(mergeActivity(EMPTY, []), EMPTY);
     });
 
-    test('mergeActivity: a deleted Activity section is created again before Summary', () => {
+    test('mergeActivity: a deleted Activity' +
+        ' section is created again before' +
+        ' Summary', () => {
         const text = '# J\n\n## Notes\n\n- a\n\n## Summary\n\nDone.\n';
         eq(
             mergeActivity(text, ['- 09:00 x']),
-            '# J\n\n## Notes\n\n- a\n\n## Activity\n\n- 09:00 x\n\n## Summary\n\nDone.\n'
+            '# J\n\n## Notes\n\n- a\n\n##' +
+                ' Activity\n\n- 09:00 x\n\n##' +
+                ' Summary\n\nDone.\n'
         );
     });
 
@@ -138,7 +157,9 @@ export function journalModelTests(): void {
         eq(journalStats('# free\n'), { notes: 0, activity: 0 });
     });
 
-    test('activity log: round-trip serialization, broken lines skipped, in time order', () => {
+    test('activity log: round-trip' +
+        ' serialization, broken lines skipped,' +
+        ' in time order', () => {
         const events: Activity[] = [
             {
                 time: at(16, 5),
@@ -149,7 +170,9 @@ export function journalModelTests(): void {
         ];
         const log =
             events.map(serializeActivity).join('\n') +
-            '\n{"time": 1, "kind": "card"\n{"time":2,"kind":"other","text":"x"}\n';
+            '\n{"time": 1, "kind":' +
+                ' "card"\n{"time":2,"kind":"other","tex' +
+                't":"x"}\n';
         const parsed = parseActivity(log);
         eq(parsed.length, 2, 'broken lines/foreign kinds included');
         eq(activityLines(parsed), [
@@ -183,7 +206,9 @@ export function journalModelTests(): void {
         ]);
     });
 
-    test('boardEvents: an edited, deleted, or duplicate card does not produce a false event', () => {
+    test('boardEvents: an edited, deleted, or' +
+        ' duplicate card does not produce a' +
+        ' false event', () => {
         const before = parseBoard(BOARD);
         eq(
             boardEvents(
@@ -229,7 +254,10 @@ export function journalModelTests(): void {
                 { kind: 'delete', file: 'old.md' },
                 { kind: 'move', file: 'a.md', to: 'archive/a.md' },
             ]),
-            'Agent changed [[plans/launch]], [[tasks]]; created [[notes/new]]; removed `old.md`; moved [[a]] to [[archive/a]]'
+            'Agent changed [[plans/launch]],' +
+                ' [[tasks]]; created [[notes/new]];' +
+                ' removed `old.md`; moved [[a]] to' +
+                ' [[archive/a]]'
         );
         eq(agentActivity([]), null);
         eq(

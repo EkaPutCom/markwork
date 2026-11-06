@@ -99,7 +99,8 @@ try {
             const gallery = page.getByRole('region', { name: 'UI Gallery' });
 
             await step(
-                'dev mode: Ctrl+Alt+G opens the gallery with every part of the design system',
+                'dev mode: Ctrl+Alt+G opens the gallery' +
+                    ' with every part of the design system',
                 async () => {
                     await page.keyboard.press('Control+Alt+g');
                     await gallery.waitFor();
@@ -161,7 +162,8 @@ try {
             );
 
             await step(
-                'the theme switches between light and dark, and the page follows',
+                'the theme switches between light and' +
+                    ' dark, and the page follows',
                 async () => {
                     const ground = () =>
                         gallery.evaluate(
@@ -190,7 +192,8 @@ try {
             );
 
             await step(
-                'a notice closes from its right edge in both themes and a narrow window',
+                'a notice closes from its right edge in' +
+                    ' both themes and a narrow window',
                 async () => {
                     for (const [theme, width] of [
                         ['Light', 1280],
@@ -257,7 +260,8 @@ try {
             );
 
             await step(
-                'Open Sample Document opens a copy with every element of the editor drawn',
+                'Open Sample Document opens a copy with' +
+                    ' every element of the editor drawn',
                 async () => {
                     await gallery
                         .getByRole('button', { name: 'Open Sample Document' })

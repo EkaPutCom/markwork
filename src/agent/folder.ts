@@ -36,7 +36,9 @@ function descriptionOf(value: unknown): string {
 function identity(config: Record<string, unknown>): string {
     if (config.version !== 2 || config.runtime !== 'pi')
         throw Error(
-            'This agent requires a new version 2 pi configuration. Existing folders are not migrated.'
+            'This agent requires a new version 2 pi' +
+                ' configuration. Existing folders are' +
+                ' not migrated.'
         );
     if (
         typeof config.id !== 'string' ||

@@ -70,7 +70,8 @@ export function ensureAgentChatStorage(root: string): void {
               : '';
         if (paired && loadChat(folderPath(root, 'chats/' + paired))) continue;
         throw Error(
-            'The chats folder contains a file that is not an agent conversation: ' +
+            'The chats folder contains a file that' +
+                ' is not an agent conversation: ' +
                 entry.name
         );
     }

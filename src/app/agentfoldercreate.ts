@@ -15,7 +15,8 @@ function folderName(raw: string): string {
         name.endsWith('.')
     )
         throw Error(
-            'Use a visible folder name without path separators or reserved characters.'
+            'Use a visible folder name without path' +
+                ' separators or reserved characters.'
         );
     if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name))
         throw Error('That folder name is reserved. Choose another name.');
@@ -26,17 +27,23 @@ function creationParent(workspace: string, parent: string): string {
     const { fs, paths } = platform();
     if (fs.exists(paths.join(workspace, 'agent.json')))
         throw Error(
-            'Open an ordinary workspace to create another agent. Agents cannot contain agents.'
+            'Open an ordinary workspace to create' +
+                ' another agent. Agents cannot contain' +
+                ' agents.'
         );
     const agents = folderPath(workspace, 'agents');
     if (!paths.same(parent, workspace) && !paths.same(parent, agents))
         throw Error(
-            'New agents can only be created directly inside the workspace agents directory.'
+            'New agents can only be created' +
+                ' directly inside the workspace agents' +
+                ' directory.'
         );
     if (fs.kind(agents) === 'missing') fs.createDir(agents, 0o755);
     if (fs.kind(agents) !== 'directory')
         throw Error(
-            'The workspace agents path must be a directory, not a file or symbolic link.'
+            'The workspace agents path must be a' +
+                ' directory, not a file or symbolic' +
+                ' link.'
         );
     return agents;
 }

@@ -11,10 +11,16 @@ const shape = (text: string) =>
 export function blockTests(): void {
     section('Blocks (markdown/blocks.ts)');
 
-    test('blocksOf: each kind of block, and the lines between them are not blocks', () => {
+    test('blocksOf: each kind of block, and the' +
+        ' lines between them are not blocks', () => {
         eq(
             shape(
-                '# Title\n\nSome text\nover two lines\n\n- a\n- b\n  more\n\n> quote\n> more\n\n---\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n```js\ncode\n\nafter a blank\n```\n\nend'
+                '# Title\n\nSome text\nover two' +
+                    ' lines\n\n- a\n- b\n  more\n\n>' +
+                    ' quote\n> more\n\n---\n\n| a | b |\n|' +
+                    ' - | - |\n| 1 | 2' +
+                    ' |\n\n```js\ncode\n\nafter a' +
+                    ' blank\n```\n\nend'
             ),
             [
                 'heading 0-0',
@@ -34,7 +40,9 @@ export function blockTests(): void {
         ]);
     });
 
-    test('blocksOf: a heading, a list, or a table that touches a line of text is a block of its own', () => {
+    test('blocksOf: a heading, a list, or a' +
+        ' table that touches a line of text is' +
+        ' a block of its own', () => {
         eq(shape('text\n# Head\nmore\n- item\n1. one'), [
             'paragraph 0-0',
             'heading 1-1',
@@ -76,7 +84,8 @@ export function blockTests(): void {
         );
     };
 
-    test('moveBlock: down, up, to the end, and nothing when it would not change', () => {
+    test('moveBlock: down, up, to the end, and' +
+        ' nothing when it would not change', () => {
         const text = 'one\n\ntwo\n\nthree';
         eq(
             moved(text, 0, 2),
@@ -90,7 +99,10 @@ export function blockTests(): void {
         eq(moved(text, 5, 0), null, 'a block that does not exist');
     });
 
-    test('moveBlock: the lines between blocks stay put, a single line break becomes a blank line, and the cursor follows the block', () => {
+    test('moveBlock: the lines between blocks' +
+        ' stay put, a single line break becomes' +
+        ' a blank line, and the cursor follows' +
+        ' the block', () => {
         eq(moved('a\n\n\nb', 0, 2), 'b\n\n\na', 'two blank lines stay two');
         eq(
             moved('# T\ntext\n\nlast', 1, 3),
@@ -100,7 +112,8 @@ export function blockTests(): void {
         eq(
             moved('# H\npara\n\nlast', 2, 0),
             'last\n\n# H\n\npara',
-            'blocks that touched are apart once the range around the move is rearranged'
+            'blocks that touched are apart once the' +
+                ' range around the move is rearranged'
         );
         const ls = lines('# T\ntext\n\nlast'),
             move = moveBlock(ls, blocksOf(ls), 0, 3)!;

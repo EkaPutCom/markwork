@@ -351,7 +351,8 @@ export function Home({ data }: { data: HomeData | null }) {
                 )}
                 <Section title="Due dates">
                     {!data.workspace ? (
-                        <Row title="Open a work folder to see due dates from kanban boards" />
+                        <Row title={"Open a work folder to see due dates" +
+                            " from kanban boards"} />
                     ) : data.tasks.length === 0 ? (
                         <Row title="Nothing is due until the day after tomorrow" />
                     ) : (

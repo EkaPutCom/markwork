@@ -71,15 +71,20 @@ export function reconcileEvents(
         if (e.changes.length && states.every((s) => s === 'after')) {
             e.status = 'applied';
             e.summary =
-                'The actual result matches the whole proposal; restored after an interruption.';
+                'The actual result matches the whole' +
+                    ' proposal; restored after an' +
+                    ' interruption.';
         } else if (states.every((s) => s === 'before')) {
             e.status = 'interrupted';
             e.summary =
-                'The process stopped before applying; a new proposal and approval are needed.';
+                'The process stopped before applying; a' +
+                    ' new proposal and approval are needed.';
         } else {
             e.status = 'failed';
             e.summary =
-                'The actual contents differ or the batch was only partly applied; check the files before continuing.';
+                'The actual contents differ or the' +
+                    ' batch was only partly applied; check' +
+                    ' the files before continuing.';
         }
     }
 }

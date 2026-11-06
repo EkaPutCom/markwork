@@ -29,14 +29,22 @@ import type {
 import { section, test, eq, ok, contains, within } from '../core/framework';
 
 const PLAN =
-    '# Plan\n\n- First draft: October\n- Revision: November\n\n## Notes\n\nNone yet.\n';
+    '# Plan\n\n- First draft: October\n-' +
+        ' Revision: November\n\n##' +
+        ' Notes\n\nNone yet.\n';
 const files: SourceFile[] = [
     { name: 'plan.md', text: PLAN },
     { name: 'research/harbor.md', text: '# Harbor\n\nThere are two piers.\n' },
 ];
 
 const BOARD =
-    '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Write report #important\n  report note\n- [ ] Send invitations [due:: 2026-10-20]\n\n## In Progress\n\n- [ ] Harbor research\n\n## Done\n\n- [x] Book venue\n';
+    '---\nlayout: board\n---\n\n##' +
+        ' Plan\n\n- [ ] Write report' +
+        ' #important\n  report note\n- [ ] Send' +
+        ' invitations [due:: 2026-10-20]\n\n##' +
+        ' In Progress\n\n- [ ] Harbor' +
+        ' research\n\n## Done\n\n- [x] Book' +
+        ' venue\n';
 const kfiles: SourceFile[] = [...files, { name: 'board.md', text: BOARD }];
 // The arguments of an edit_note call for a board: a card is a note and a list
 // is a group.
@@ -74,7 +82,8 @@ const plan = (name: string, args: object, over: SourceFile[] = files) =>
 export async function changeTests(): Promise<void> {
     section('Agent: change proposals');
 
-    await test('tool and kanban action names never reach inherited object properties', async () => {
+    await test('tool and kanban action names never' +
+        ' reach inherited object properties', async () => {
         for (const name of [
             'toString',
             'constructor',
@@ -94,7 +103,8 @@ export async function changeTests(): Promise<void> {
         }
     });
 
-    await test('edit_file: replaces one exact piece and produces the new contents', async () => {
+    await test('edit_file: replaces one exact piece' +
+        ' and produces the new contents', async () => {
         const r = plan('edit_file', {
             name: 'plan',
             old_text: '- Revision: November',
@@ -110,7 +120,9 @@ export async function changeTests(): Promise<void> {
         eq(r.change.reason, 'schedule shifted');
     });
 
-    await test('edit_file: text does not match, is not unique, is the same, or the file does not exist → message for the model', async () => {
+    await test('edit_file: text does not match, is not' +
+        ' unique, is the same, or the file does' +
+        ' not exist → message for the model', async () => {
         const bad = (args: object) => {
             const r = plan('edit_file', {
                 reason: 'x',
@@ -158,7 +170,9 @@ export async function changeTests(): Promise<void> {
             );
     });
 
-    await test('create_file: a new file with .md and a trailing newline; a taken or unsafe name is rejected', async () => {
+    await test('create_file: a new file with .md and a' +
+        ' trailing newline; a taken or unsafe' +
+        ' name is rejected', async () => {
         const r = plan('create_file', {
             name: 'tasks/week-1',
             content: '# Week 1',
@@ -197,7 +211,8 @@ export async function changeTests(): Promise<void> {
         eq(cleanNewName('./notes.markdown'), 'notes.markdown');
     });
 
-    await test('diffPreview: context, removal, addition, and truncation', async () => {
+    await test('diffPreview: context, removal,' +
+        ' addition, and truncation', async () => {
         const r = plan('edit_file', {
             name: 'plan.md',
             old_text: '- Revision: November',
@@ -232,7 +247,9 @@ export async function changeTests(): Promise<void> {
         eq(big.lines[big.lines.length - 1].sign, '…');
     });
 
-    await test('unifiedDiff: git-style hunks with three context lines and the right line numbers', async () => {
+    await test('unifiedDiff: git-style hunks with' +
+        ' three context lines and the right' +
+        ' line numbers', async () => {
         const r = plan('edit_file', {
             name: 'plan.md',
             old_text: '- Revision: November',
@@ -260,7 +277,9 @@ export async function changeTests(): Promise<void> {
         eq(unifiedDiff('x\n', 'x\n'), '');
     });
 
-    await test('edit_note: add a card on a board at the end of a list, only that line changes', async () => {
+    await test('edit_note: add a card on a board at' +
+        ' the end of a list, only that line' +
+        ' changes', async () => {
         const after = kanbanAfter({
             action: 'add',
             card: 'Arrange schedule #plan',
@@ -284,7 +303,8 @@ export async function changeTests(): Promise<void> {
         );
     });
 
-    await test('edit_note: move a card to the end of another list and mark done/not done', async () => {
+    await test('edit_note: move a card to the end of' +
+        ' another list and mark done/not done', async () => {
         const moved = kanbanAfter({
             action: 'move',
             card: 'harbor research',
@@ -316,7 +336,9 @@ export async function changeTests(): Promise<void> {
         ); // card notes stay
     });
 
-    await test('the diff separates distant changes: moving a card does not mark other lists as changed', async () => {
+    await test('the diff separates distant changes:' +
+        ' moving a card does not mark other' +
+        ' lists as changed', async () => {
         const after = kanbanAfter({
             action: 'move',
             card: 'Send invitations',
@@ -348,7 +370,9 @@ export async function changeTests(): Promise<void> {
         );
     });
 
-    await test('edit_note: clear errors for the model (not a structured file, group/note does not match, no change)', async () => {
+    await test('edit_note: clear errors for the model' +
+        ' (not a structured file, group/note' +
+        ' does not match, no change)', async () => {
         const bad = (
             args: {
                 card?: string;
@@ -465,7 +489,9 @@ export async function changeTests(): Promise<void> {
         },
     });
 
-    await test('without onProposal the agent is not given change tools and the prompt stays read-only', async () => {
+    await test('without onProposal the agent is not' +
+        ' given change tools and the prompt' +
+        ' stays read-only', async () => {
         const calls: ChatRequest[] = [];
         await within(
             new ChatSession().ask(input(), proposing(calls, []), 'm', base)
@@ -488,7 +514,10 @@ export async function changeTests(): Promise<void> {
         contains(results[0], 'not recognized');
     });
 
-    await test('approved: the handler receives the diff, the result goes back to the model, the new contents are visible in the next round', async () => {
+    await test('approved: the handler receives the' +
+        ' diff, the result goes back to the' +
+        ' model, the new contents are visible' +
+        ' in the next round', async () => {
         const calls: ChatRequest[] = [];
         const results: string[] = [];
         const seen: Change[] = [];
@@ -526,7 +555,8 @@ export async function changeTests(): Promise<void> {
         );
     });
 
-    await test('rejected or failed to apply: the model is told and no change is counted', async () => {
+    await test('rejected or failed to apply: the model' +
+        ' is told and no change is counted', async () => {
         for (const [answer, expected, summary] of [
             [{ applied: false }, 'rejected', 'rejected'],
             [
@@ -550,7 +580,8 @@ export async function changeTests(): Promise<void> {
         }
     });
 
-    await test('an invalid proposal does not reach the handler; the model gets the reason', async () => {
+    await test('an invalid proposal does not reach the' +
+        ' handler; the model gets the reason', async () => {
         const results: string[] = [];
         let asked = 0;
         const bad = JSON.stringify({
@@ -572,7 +603,9 @@ export async function changeTests(): Promise<void> {
         contains(results[0], 'not found');
     });
 
-    await test('create_file followed by edit_file on that file in one turn uses the new contents', async () => {
+    await test('create_file followed by edit_file on' +
+        ' that file in one turn uses the new' +
+        ' contents', async () => {
         const results: string[] = [];
         let round = 0;
         const provider: Provider = {
@@ -628,7 +661,8 @@ export async function changeTests(): Promise<void> {
         eq(edits[1].after, '# New\n\nTwo.\n');
     });
 
-    await test('the project option is off: no tools, even though a handler exists', async () => {
+    await test('the project option is off: no tools,' +
+        ' even though a handler exists', async () => {
         const calls: ChatRequest[] = [];
         await within(
             new ChatSession().ask(
@@ -647,7 +681,8 @@ export async function changeTests(): Promise<void> {
         eq(calls[0].tools, undefined);
     });
 
-    await test('instructions: the proposal section only exists if allowed', async () => {
+    await test('instructions: the proposal section' +
+        ' only exists if allowed', async () => {
         const on = buildContext({
             ...input(),
             recent: [],

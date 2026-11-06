@@ -346,7 +346,8 @@ export const COMMANDS: readonly Command[] = [
         scope: 'text',
         editor: (h) =>
             h.edit.block(
-                '| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| ',
+                '| Column 1 | Column 2 | Column 3 |\n|' +
+                    ' -------- | -------- | -------- |\n| ',
                 ' |  |  |\n'
             ),
     }),

@@ -29,12 +29,14 @@ const rules = [
     [
         (f) => f.startsWith('markdown/'),
         (t) => !t.startsWith('markdown/'),
-        'markdown/ only holds string → data functions: nothing outside markdown/',
+        'markdown/ only holds string → data' +
+            ' functions: nothing outside markdown/',
     ],
     [
         (f) => f.startsWith('forge/'),
         (t) => t.startsWith('agent/'),
-        'forge/ talks to Git hosting services and knows nothing about the agent',
+        'forge/ talks to Git hosting services' +
+            ' and knows nothing about the agent',
     ],
     [
         isBase,
@@ -49,7 +51,9 @@ const rules = [
     [
         (f) => f.startsWith('app/'),
         (t) => !(isCore(t) || t.startsWith('app/')),
-        'app/ is the application layer the frontend talks to: it imports only the core and app/',
+        'app/ is the application layer the' +
+            ' frontend talks to: it imports only' +
+            ' the core and app/',
     ],
     [isCore, (t) => !isCore(t), 'the core imports only the core'],
     [
@@ -71,12 +75,18 @@ const rules = [
                 t === 'platform/index.ts' ||
                 t === 'platform/terminals.ts'
             ),
-        'platform/node/ implements the port with Node built-ins only: the contract, the terminal list, and its own files, nothing above it',
+        'platform/node/ implements the port' +
+            ' with Node built-ins only: the' +
+            ' contract, the terminal list, and its' +
+            ' own files, nothing above it',
     ],
     [
         (f) => !f.startsWith('platform/node/'),
         (t) => t.startsWith('node:') || t.startsWith('platform/node/'),
-        'only platform/node/ uses Node built-ins; the rest reaches them through platform(), and only an entry point installs it',
+        'only platform/node/ uses Node' +
+            ' built-ins; the rest reaches them' +
+            ' through platform(), and only an entry' +
+            ' point installs it',
     ],
     [
         () => true,

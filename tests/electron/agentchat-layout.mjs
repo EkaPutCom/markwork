@@ -11,7 +11,10 @@ const { scratch, notes } = scratchFolder('agentchat-layout');
 const gate = join(scratch, 'continue-stream');
 
 const paragraph =
-    'The plan and meeting notes describe a launch moved to 22 November. Compare the sources before proposing an update. ';
+    'The plan and meeting notes describe a' +
+        ' launch moved to 22 November. Compare' +
+        ' the sources before proposing an' +
+        ' update. ';
 const answer =
     '### Research finding\n\n' +
     paragraph.repeat(12) +
@@ -134,7 +137,8 @@ try {
         }
     };
     await step(
-        'long saved history keeps window chrome and the composer inside the viewport',
+        'long saved history keeps window chrome' +
+            ' and the composer inside the viewport',
         async () => {
             await chats.waitFor({ timeout: 15000 });
             await chats.locator('.chat-assistant').nth(24).waitFor();
@@ -161,7 +165,9 @@ try {
         }
     );
     await step(
-        'streaming follows new output but preserves a user reading earlier messages',
+        'streaming follows new output but' +
+            ' preserves a user reading earlier' +
+            ' messages',
         async () => {
             await page
                 .getByRole('button', { name: 'Activate pi agent', exact: true })
@@ -223,7 +229,8 @@ try {
         }
     );
     await step(
-        'measure long-history tab switching and renderer heap without a provider',
+        'measure long-history tab switching and' +
+            ' renderer heap without a provider',
         async () => {
             await page
                 .getByRole('treeitem', { name: 'instructions.md', exact: true })
@@ -258,7 +265,9 @@ try {
         }
     );
     await step(
-        'long history stays contained in both themes, a narrow window, and split panes',
+        'long history stays contained in both' +
+            ' themes, a narrow window, and split' +
+            ' panes',
         async () => {
             const out = process.env.MARKWORK_LONG_CHAT_OUT;
             if (out) mkdirSync(out, { recursive: true });

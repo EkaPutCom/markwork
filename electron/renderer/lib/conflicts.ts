@@ -42,7 +42,9 @@ const CHOICES: {
         choice: 'compare',
         label: 'Compare Changes',
         tip: () =>
-            'Compare the current and incoming versions without changing the document',
+            'Compare the current and incoming' +
+                ' versions without changing the' +
+                ' document',
     },
 ];
 

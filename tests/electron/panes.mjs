@@ -14,7 +14,9 @@ writeFileSync(join(notes, 'a.md'), '# Alpha\n\nfirst text\n');
 writeFileSync(join(notes, 'b.md'), '# Beta\n\nsecond text\n');
 writeFileSync(
     join(notes, 'board.md'),
-    '---\nlayout: board\n---\n\n## Todo\n\n- [ ] One\n- [ ] Two\n\n## Done\n\n- [x] Old\n'
+    '---\nlayout: board\n---\n\n##' +
+        ' Todo\n\n- [ ] One\n- [ ] Two\n\n##' +
+        ' Done\n\n- [x] Old\n'
 );
 writeFileSync(join(notes, 'c.md'), '# Gamma\n\nthird text\n');
 
@@ -60,7 +62,9 @@ try {
     await open('b.md');
 
     await step(
-        'one pane looks as before; the header split button makes a second with the same document',
+        'one pane looks as before; the header' +
+            ' split button makes a second with the' +
+            ' same document',
         async () => {
             assert.equal(await panes.count(), 1);
             assert.equal(
@@ -82,7 +86,8 @@ try {
             assert.equal(
                 await page.locator('.headerbar .mode-switch').count(),
                 1,
-                'the Visual / Markdown switch stays in the header, for the focused pane'
+                'the Visual / Markdown switch stays in' +
+                    ' the header, for the focused pane'
             );
             assert.equal(
                 await page.locator('.pane-bar .mode-switch').count(),
@@ -93,7 +98,9 @@ try {
     );
 
     await step(
-        'a document in two panes is one document: typing in one is in the other, and Save writes it once',
+        'a document in two panes is one' +
+            ' document: typing in one is in the' +
+            ' other, and Save writes it once',
         async () => {
             const end = (await textOf(0)).length;
             await putCursor(0, end);
@@ -125,7 +132,9 @@ try {
     );
 
     await step(
-        'each pane has its own tabs: another document in the second pane, and the focus follows a click',
+        'each pane has its own tabs: another' +
+            ' document in the second pane, and the' +
+            ' focus follows a click',
         async () => {
             await panes
                 .nth(1)
@@ -213,7 +222,10 @@ try {
     );
 
     await step(
-        'a pane has its own Visual / Markdown, set by the header switch for the focused pane, and a board is drawn in its pane',
+        'a pane has its own Visual / Markdown,' +
+            ' set by the header switch for the' +
+            ' focused pane, and a board is drawn in' +
+            ' its pane',
         async () => {
             const header = page
                 .locator('.headerbar')
@@ -303,7 +315,9 @@ try {
     );
 
     await step(
-        'closing a tab keeps a document that another pane shows; closing a pane joins its tabs to the one before',
+        'closing a tab keeps a document that' +
+            ' another pane shows; closing a pane' +
+            ' joins its tabs to the one before',
         async () => {
             const count = await panes.count();
             const bPanes = await page
@@ -353,7 +367,9 @@ try {
     );
 
     await step(
-        'the keyboard splits: Ctrl+Alt+\\ to the right and Ctrl+Alt+Shift+\\ down, and the next tab stays in the pane',
+        'the keyboard splits: Ctrl+Alt+\\ to' +
+            ' the right and Ctrl+Alt+Shift+\\ down,' +
+            ' and the next tab stays in the pane',
         async () => {
             await panes.nth(0).locator('.cm-content').click();
             await page.keyboard.press('ControlOrMeta+Alt+\\');

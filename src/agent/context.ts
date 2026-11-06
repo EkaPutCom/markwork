@@ -173,10 +173,22 @@ const STOPWORDS = new Set(
     // Indonesian + English stopwords (the search must work for documents in
     // either language).
     (
-        'yang dan di ke dari untuk pada dengan atau ini itu adalah akan juga tidak ada saya aku kamu dia mereka kita kami ' +
-        'apa siapa kapan dimana mana bagaimana kenapa mengapa seperti dalam oleh sebagai karena agar supaya bisa dapat ' +
-        'sudah telah masih lebih sangat saja hanya tapi tetapi namun jika kalau lalu kemudian setelah sebelum ketika saat ' +
-        'bab tolong coba mohon berikan jelaskan cari carikan the and for with what who how chapter please try give explain search find'
+        'yang dan di ke dari untuk pada dengan' +
+            ' atau ini itu adalah akan juga tidak' +
+            ' ada saya aku kamu dia mereka kita' +
+            ' kami ' +
+        'apa siapa kapan dimana mana bagaimana' +
+            ' kenapa mengapa seperti dalam oleh' +
+            ' sebagai karena agar supaya bisa dapat' +
+            ' ' +
+        'sudah telah masih lebih sangat saja' +
+            ' hanya tapi tetapi namun jika kalau' +
+            ' lalu kemudian setelah sebelum ketika' +
+            ' saat ' +
+        'bab tolong coba mohon berikan jelaskan' +
+            ' cari carikan the and for with what' +
+            ' who how chapter please try give' +
+            ' explain search find'
     ).split(' ')
 );
 
@@ -265,9 +277,14 @@ For work with several steps, use set_work to record the goal and progress. After
 You also have read-only tools to browse the whole workspace: list_files, search_documents (by topic), search_text (exact text, e.g. a name, date, or number), read_file (file contents, possibly by line range), describe_schema (the layout, fields, select options, and groups of a structured document, i.e. one whose frontmatter has "layout:"), and query_notes (filter, sort, or count the notes of structured documents by their fields, e.g. everything due this week or the number of notes per status). The context above is only the automatically selected part, not the whole manuscript. So, for questions about manuscript contents outside that context (characters, events, chronology, consistency, "where", "how many times", comparisons between chapters), search with the tools first before answering; do not guess and do not say "there is none" before searching. To check consistency, collect all relevant occurrences (search_text) and then read the surrounding parts. Do not call tools for things already clearly in the context, and stop searching once the evidence is sufficient. Mention the file and line number from the tool results when quoting.`;
 
 const READ_ONLY_RULE =
-    '- You cannot change files. Write editing suggestions as text the user can copy.\n';
+    '- You cannot change files. Write' +
+        ' editing suggestions as text the user' +
+        ' can copy.\n';
 const CHANGE_RULE =
-    '- You do not write files yourself; changes only go through proposals approved by the user (see the proposal tools section).\n';
+    '- You do not write files yourself;' +
+        ' changes only go through proposals' +
+        ' approved by the user (see the' +
+        ' proposal tools section).\n';
 
 // Only present if the agent may propose changes; its tools do nothing before
 // the user applies them.

@@ -39,7 +39,8 @@ export function noteDiffTests(): void {
         );
         eq(fileDiff(DIFF, 'nothing.md'), '');
     });
-    test('a renamed file is found by its new name, a binary file is recognized', () => {
+    test('a renamed file is found by its new' +
+        ' name, a binary file is recognized', () => {
         ok(
             fileDiff(DIFF, 'new name.md').includes('rename from old name.md'),
             'rename part'
@@ -49,10 +50,16 @@ export function noteDiffTests(): void {
     });
 
     const before =
-        '---\ntitle: Rapat\ndate: 2026-10-12\nlayout: list\n---\n# Rapat\n\nBahas rilis.\nBawa laptop.\n';
+        '---\ntitle: Rapat\ndate:' +
+            ' 2026-10-12\nlayout: list\n---\n#' +
+            ' Rapat\n\nBahas rilis.\nBawa laptop.\n';
     const after =
-        '---\ntitle: Rapat\ndate: 2026-10-14\nlayout: calendar\nowner: budi\n---\n# Rapat\n\nBahas kolaborasi.\nBawa laptop.\n';
-    test('the frontmatter fields that changed, were added, or were removed', () => {
+        '---\ntitle: Rapat\ndate:' +
+            ' 2026-10-14\nlayout: calendar\nowner:' +
+            ' budi\n---\n# Rapat\n\nBahas' +
+            ' kolaborasi.\nBawa laptop.\n';
+    test('the frontmatter fields that changed,' +
+        ' were added, or were removed', () => {
         eq(diffNote(before, after).fields, [
             { key: 'date', before: '2026-10-12', after: '2026-10-14' },
             { key: 'layout', before: 'list', after: 'calendar' },
@@ -62,7 +69,8 @@ export function noteDiffTests(): void {
             { key: 'b', before: '2', after: null },
         ]);
     });
-    test('the text is diffed line by line with the unchanged lines kept in place', () => {
+    test('the text is diffed line by line with' +
+        ' the unchanged lines kept in place', () => {
         const { body } = diffNote(before, after);
         eq(
             body.map((l) => `${l.kind}:${l.text}`),
@@ -91,11 +99,14 @@ export function noteDiffTests(): void {
             body: [{ kind: 'same', text: '# Sama' }],
         });
     });
-    test('a note without frontmatter, and a frontmatter that never closes, are all text', () => {
+    test('a note without frontmatter, and a' +
+        ' frontmatter that never closes, are' +
+        ' all text', () => {
         eq(diffNote('a\n', 'b\n').fields, []);
         eq(diffNote('---\nno end\ntext\n', '---\nno end\ntext!\n').fields, []);
     });
-    test('lines moved in the middle are matched, not shown as one big change', () => {
+    test('lines moved in the middle are matched,' +
+        ' not shown as one big change', () => {
         const { body } = diffNote('1\n2\n3\n4\n5\n', '1\n2\nX\n4\n5\n');
         eq(
             body.map((l) => `${l.kind}:${l.text}`),

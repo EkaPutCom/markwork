@@ -153,7 +153,8 @@ export function Calendar({ board }: { board: Board }) {
                     <Button
                         variant="link"
                         size="xs"
-                        className="more h-auto justify-start text-muted-foreground text-left"
+                        className={"more h-auto justify-start" +
+                            " text-muted-foreground text-left"}
                         onClick={(e) => {
                             e.stopPropagation();
                             setAnchor(date);
@@ -282,7 +283,8 @@ export function Calendar({ board }: { board: Board }) {
                             key={`${item.at.column}:${item.at.index}`}
                             variant="outline"
                             size="sm"
-                            className="calendar-note justify-start font-normal text-left"
+                            className={"calendar-note justify-start" +
+                                " font-normal text-left"}
                             draggable
                             onClick={() => edit(item.at)}
                             onDragStart={(e) => {

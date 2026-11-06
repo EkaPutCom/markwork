@@ -28,14 +28,23 @@ export const CHANGE_TOOLS: ToolSpec[] = [
     {
         name: 'create_file',
         description:
-            'Propose a new Markdown file in the work folder (e.g. notes, plans, a research summary). It is not written right away: the user sees the contents and then applies or rejects it. Fails if the name is already taken.',
+            'Propose a new Markdown file in the' +
+                ' work folder (e.g. notes, plans, a' +
+                ' research summary). It is not written' +
+                ' right away: the user sees the' +
+                ' contents and then applies or rejects' +
+                ' it. Fails if the name is already' +
+                ' taken.',
         parameters: {
             type: 'object',
             properties: {
                 name: {
                     type: 'string',
                     description:
-                        'Relative path in the work folder, e.g. "plans/october.md" (folders are created if needed; dot files are not allowed)',
+                        'Relative path in the work folder, e.g.' +
+                            ' "plans/october.md" (folders are' +
+                            ' created if needed; dot files are not' +
+                            ' allowed)',
                 },
                 content: {
                     type: 'string',
@@ -53,7 +62,17 @@ export const CHANGE_TOOLS: ToolSpec[] = [
     {
         name: 'edit_file',
         description:
-            'Propose replacing a piece of text in an existing file. old_text must be exactly as in the file (read it first with read_file). By default old_text must appear exactly once (add surrounding lines if needed); with all=true every occurrence is replaced, e.g. renaming a name or date throughout the file. It is not written right away: the user sees the diff and then applies or rejects it.',
+            'Propose replacing a piece of text in' +
+                ' an existing file. old_text must be' +
+                ' exactly as in the file (read it first' +
+                ' with read_file). By default old_text' +
+                ' must appear exactly once (add' +
+                ' surrounding lines if needed); with' +
+                ' all=true every occurrence is' +
+                ' replaced, e.g. renaming a name or' +
+                ' date throughout the file. It is not' +
+                ' written right away: the user sees the' +
+                ' diff and then applies or rejects it.',
         parameters: {
             type: 'object',
             properties: {
@@ -64,7 +83,8 @@ export const CHANGE_TOOLS: ToolSpec[] = [
                 old_text: {
                     type: 'string',
                     description:
-                        'The text being replaced, exactly as written (without line numbers)',
+                        'The text being replaced, exactly as' +
+                            ' written (without line numbers)',
                 },
                 new_text: {
                     type: 'string',
@@ -74,7 +94,9 @@ export const CHANGE_TOOLS: ToolSpec[] = [
                 all: {
                     type: 'boolean',
                     description:
-                        'true = replace all occurrences (default false: there must be exactly one)',
+                        'true = replace all occurrences' +
+                            ' (default false: there must be exactly' +
+                            ' one)',
                 },
                 reason: {
                     type: 'string',
@@ -88,7 +110,18 @@ export const CHANGE_TOOLS: ToolSpec[] = [
     {
         name: 'insert_text',
         description:
-            'Propose inserting new text into an existing file without replacing anything: at the start (after the frontmatter if there is one), at the end, or after a given line. For after_line, line_text must contain the contents of that line as returned by read_file (without the number) as a safeguard against miscounting. It is not written right away: the user sees the diff and then applies or rejects it.',
+            'Propose inserting new text into an' +
+                ' existing file without replacing' +
+                ' anything: at the start (after the' +
+                ' frontmatter if there is one), at the' +
+                ' end, or after a given line. For' +
+                ' after_line, line_text must contain' +
+                ' the contents of that line as returned' +
+                ' by read_file (without the number) as' +
+                ' a safeguard against miscounting. It' +
+                ' is not written right away: the user' +
+                ' sees the diff and then applies or' +
+                ' rejects it.',
         parameters: {
             type: 'object',
             properties: {
@@ -103,12 +136,15 @@ export const CHANGE_TOOLS: ToolSpec[] = [
                 line: {
                     type: 'integer',
                     description:
-                        'after_line only: the line number (from 1) the new text follows',
+                        'after_line only: the line number (from' +
+                            ' 1) the new text follows',
                 },
                 line_text: {
                     type: 'string',
                     description:
-                        'after_line only: the contents of that line, to make sure the number is correct',
+                        'after_line only: the contents of that' +
+                            ' line, to make sure the number is' +
+                            ' correct',
                 },
                 text: {
                     type: 'string',
@@ -127,7 +163,13 @@ export const CHANGE_TOOLS: ToolSpec[] = [
     {
         name: 'delete_file',
         description:
-            'Propose moving a Markdown file to the Trash (the user can recover it). Only if the user asked for it or the file is clearly a duplicate/obsolete. It is not carried out right away: the user sees the contents and then applies or rejects it.',
+            'Propose moving a Markdown file to the' +
+                ' Trash (the user can recover it). Only' +
+                ' if the user asked for it or the file' +
+                ' is clearly a duplicate/obsolete. It' +
+                ' is not carried out right away: the' +
+                ' user sees the contents and then' +
+                ' applies or rejects it.',
         parameters: {
             type: 'object',
             properties: {
@@ -147,7 +189,14 @@ export const CHANGE_TOOLS: ToolSpec[] = [
     {
         name: 'move_file',
         description:
-            'Propose renaming or moving a Markdown file to another path in the work folder (folders are created if needed). The contents do not change; links in other files are not updated, so propose that change separately if needed. Fails if the destination already exists.',
+            'Propose renaming or moving a Markdown' +
+                ' file to another path in the work' +
+                ' folder (folders are created if' +
+                ' needed). The contents do not change;' +
+                ' links in other files are not updated,' +
+                ' so propose that change separately if' +
+                ' needed. Fails if the destination' +
+                ' already exists.',
         parameters: {
             type: 'object',
             properties: {
@@ -158,7 +207,8 @@ export const CHANGE_TOOLS: ToolSpec[] = [
                 destination: {
                     type: 'string',
                     description:
-                        'The new relative path, e.g. "archive/meeting-oct-1.md"',
+                        'The new relative path, e.g.' +
+                            ' "archive/meeting-oct-1.md"',
                 },
                 reason: {
                     type: 'string',
@@ -337,7 +387,9 @@ function planCreate(
         return fail('The "content" argument is required.', 'empty content');
     if (text.length > MAX_NEW_FILE_CHARS)
         return fail(
-            'The content is too long for a single proposed file. Split it into several files.',
+            'The content is too long for a single' +
+                ' proposed file. Split it into several' +
+                ' files.',
             'too long'
         );
     return {
@@ -356,7 +408,8 @@ function planEdit({ args, file, edit }: FileTarget): PlanResult {
     const oldText = asText(args.old_text);
     if (!oldText)
         return fail(
-            'The "old_text" argument is required (the exact piece being replaced).',
+            'The "old_text" argument is required' +
+                ' (the exact piece being replaced).',
             'empty old_text'
         );
     const count = file.text.split(oldText).length - 1;
@@ -440,7 +493,9 @@ function checkLine(
     const wanted = args.line_text;
     if (typeof wanted !== 'string')
         return fail(
-            'The "line_text" argument is required for after_line: copy the contents of that line from read_file.',
+            'The "line_text" argument is required' +
+                ' for after_line: copy the contents of' +
+                ' that line from read_file.',
             'empty line_text'
         );
     const actual = lines[line - 1];

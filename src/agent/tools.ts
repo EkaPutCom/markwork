@@ -31,7 +31,11 @@ export const TOOLS: ToolSpec[] = [
     {
         name: 'list_files',
         description:
-            'List all document files in the work folder with their word counts and headings (an outline of the contents). Use it to find out which files and sections exist.',
+            'List all document files in the work' +
+                ' folder with their word counts and' +
+                ' headings (an outline of the' +
+                ' contents). Use it to find out which' +
+                ' files and sections exist.',
         parameters: {
             type: 'object',
             properties: {},
@@ -41,14 +45,21 @@ export const TOOLS: ToolSpec[] = [
     {
         name: 'search_documents',
         description:
-            'Search for the document sections most relevant to a topic or question (ranked keyword search). Returns snippets per section with the file name, heading, and line numbers. Good for topics, decisions, plans, events, or ideas.',
+            'Search for the document sections most' +
+                ' relevant to a topic or question' +
+                ' (ranked keyword search). Returns' +
+                ' snippets per section with the file' +
+                ' name, heading, and line numbers. Good' +
+                ' for topics, decisions, plans, events,' +
+                ' or ideas.',
         parameters: {
             type: 'object',
             properties: {
                 query: {
                     type: 'string',
                     description:
-                        'Keywords or a short sentence about what is being looked for',
+                        'Keywords or a short sentence about' +
+                            ' what is being looked for',
                 },
                 max: {
                     type: 'integer',
@@ -62,7 +73,13 @@ export const TOOLS: ToolSpec[] = [
     {
         name: 'search_text',
         description:
-            'Search for occurrences of exact text (case-insensitive) across all documents or a single file, and return the lines where it appears. Good for names, places, numbers, dates, or specific terms, e.g. checking consistency.',
+            'Search for occurrences of exact text' +
+                ' (case-insensitive) across all' +
+                ' documents or a single file, and' +
+                ' return the lines where it appears.' +
+                ' Good for names, places, numbers,' +
+                ' dates, or specific terms, e.g.' +
+                ' checking consistency.',
         parameters: {
             type: 'object',
             properties: {
@@ -82,7 +99,12 @@ export const TOOLS: ToolSpec[] = [
     {
         name: 'read_file',
         description:
-            'Read the contents of a document file (can be partial: from_line to to_line, line numbers start at 1). The result includes line numbers. Long files are truncated; continue with the next from_line.',
+            'Read the contents of a document file' +
+                ' (can be partial: from_line to' +
+                ' to_line, line numbers start at 1).' +
+                ' The result includes line numbers.' +
+                ' Long files are truncated; continue' +
+                ' with the next from_line.',
         parameters: {
             type: 'object',
             properties: {

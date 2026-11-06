@@ -150,7 +150,9 @@ function ReportForm({
                             rows={3}
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="I pressed Backspace after a bold word, and a star appeared instead of the last letter going away."
+                            placeholder={"I pressed Backspace after a bold" +
+                                " word, and a star appeared instead" +
+                                " of the last letter going away."}
                         />
                     </Label>
                     <div

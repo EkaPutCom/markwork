@@ -135,7 +135,8 @@ function Timeline() {
                 <Button
                     key={c.hash}
                     variant="ghost"
-                    className="commit h-auto items-stretch font-normal text-left"
+                    className={"commit h-auto items-stretch" +
+                        " font-normal text-left"}
                     onClick={() => client.openCommit(c.hash)}
                 >
                     <span className="subject">

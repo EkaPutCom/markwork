@@ -34,7 +34,8 @@ export function pageTabTests(): void {
         return { session, settings, docs: session.documents, ids, shown };
     };
 
-    test('Home is a page, not a document: the empty document waits without a tab', () => {
+    test('Home is a page, not a document: the' +
+        ' empty document waits without a tab', () => {
         const { session, docs, ids, shown } = setup();
         docs.openHome();
         eq(docs.page?.kind, 'home');
@@ -47,7 +48,9 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('opening a file brings the waiting document back, after Home, and shows it', () => {
+    test('opening a file brings the waiting' +
+        ' document back, after Home, and shows' +
+        ' it', () => {
         const { session, docs, ids } = setup();
         docs.openHome();
         const homeId = docs.page!.id;
@@ -60,7 +63,9 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('an HTML file opens as a page of its own, once; the document that was shown stays behind it', () => {
+    test('an HTML file opens as a page of its' +
+        ' own, once; the document that was' +
+        ' shown stays behind it', () => {
         const { session, docs, ids } = setup();
         docs.openInTab(a);
         const doc = docs.active;
@@ -78,7 +83,9 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('the folder a page may read is the work folder if the file is inside it, else its own folder', () => {
+    test('the folder a page may read is the work' +
+        ' folder if the file is inside it, else' +
+        ' its own folder', () => {
         const { session, docs } = setup();
         docs.openHtml(page, tmp);
         eq(docs.page?.root, tmp, 'inside the work folder');
@@ -87,7 +94,8 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('Save, Save As, and Export do nothing while a page is shown', async () => {
+    test('Save, Save As, and Export do nothing' +
+        ' while a page is shown', async () => {
         const { session, docs } = setup();
         docs.openInTab(a);
         docs.active.editor.setModified(true);
@@ -101,7 +109,9 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('closing a shown page shows its neighbor; closing a page that is not shown changes nothing', async () => {
+    test('closing a shown page shows its' +
+        ' neighbor; closing a page that is not' +
+        ' shown changes nothing', async () => {
         const { session, docs, ids, shown } = setup();
         docs.openInTab(a);
         const docId = docs.active.id;
@@ -121,7 +131,9 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('closing the last document leaves the page that is open; with none, Home comes back', async () => {
+    test('closing the last document leaves the' +
+        ' page that is open; with none, Home' +
+        ' comes back', async () => {
         const { session, docs, ids, shown } = setup();
         docs.openInTab(a);
         docs.openHtml(page, dir);
@@ -140,7 +152,9 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('Home stays when it is the last tab; with Home switched off the empty document takes its place', async () => {
+    test('Home stays when it is the last tab;' +
+        ' with Home switched off the empty' +
+        ' document takes its place', async () => {
         const on = setup(true);
         on.docs.openHome();
         await on.docs.closeById(on.docs.page!.id);
@@ -157,7 +171,8 @@ export function pageTabTests(): void {
         off.session.dispose();
     });
 
-    test('a page closes without asking; a changed document is still asked about', async () => {
+    test('a page closes without asking; a' +
+        ' changed document is still asked about', async () => {
         const { session, docs } = setup();
         docs.openInTab(a);
         docs.openHtml(page, dir);
@@ -166,7 +181,8 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('switching to the next tab goes through documents and pages alike', () => {
+    test('switching to the next tab goes through' +
+        ' documents and pages alike', () => {
         const { session, docs, ids, shown } = setup();
         docs.openInTab(a);
         docs.openHtml(page, dir);
@@ -178,7 +194,8 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('the next launch gets back the file tabs and Home, not an HTML page', () => {
+    test('the next launch gets back the file' +
+        ' tabs and Home, not an HTML page', () => {
         const { session, settings, docs } = setup();
         docs.openHome();
         docs.openInTab(a);
@@ -223,7 +240,8 @@ export function pageTabTests(): void {
         next.session.dispose();
     });
 
-    test('switching the work folder closes the HTML pages that are outside it', async () => {
+    test('switching the work folder closes the' +
+        ' HTML pages that are outside it', async () => {
         const { session, docs } = setup();
         const inside = disk.join(tmp, 'pagetabs-other');
         disk.mkdirs(inside);
@@ -237,7 +255,8 @@ export function pageTabTests(): void {
         session.dispose();
     });
 
-    test('the title of a page is a page title; Home is named by the work folder', () => {
+    test('the title of a page is a page title;' +
+        ' Home is named by the work folder', () => {
         const settings = memorySettings();
         const titles: Record<
             number,

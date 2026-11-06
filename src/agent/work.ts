@@ -19,7 +19,13 @@ export interface WorkState {
 export const WORK_TOOL: ToolSpec = {
     name: 'set_work',
     description:
-        'Record the goal and plan of a multi-step piece of work. Update the step status as progress is made. This state is saved with the conversation so it can be resumed after stopping. Do not declare it finished before the result has been checked.',
+        'Record the goal and plan of a' +
+            ' multi-step piece of work. Update the' +
+            ' step status as progress is made. This' +
+            ' state is saved with the conversation' +
+            ' so it can be resumed after stopping.' +
+            ' Do not declare it finished before the' +
+            ' result has been checked.',
     parameters: {
         type: 'object',
         properties: {

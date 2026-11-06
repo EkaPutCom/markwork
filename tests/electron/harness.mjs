@@ -29,7 +29,9 @@ git('add', '.');
 git('commit', '-q', '-m', 'First');
 writeFileSync(
     join(notes, 'board.md'),
-    '---\nlayout: board\n---\n\n## Todo\n\n- [ ] Write the notes\n\n## Done\n\n- [x] Old\n'
+    '---\nlayout: board\n---\n\n##' +
+        ' Todo\n\n- [ ] Write the notes\n\n##' +
+        ' Done\n\n- [x] Old\n'
 );
 
 const { steps, step } = stepper({ echo: true });
@@ -75,7 +77,9 @@ try {
     );
 
     await step(
-        'assigning asks for the project folder, starts the run, and the card shows that it waits for an answer',
+        'assigning asks for the project folder,' +
+            ' starts the run, and the card shows' +
+            ' that it waits for an answer',
         async () => {
             await openMenu();
             await menuItem('Work on it with pi').click();
@@ -89,7 +93,8 @@ try {
     );
 
     await step(
-        'the log of the run opens in a window of its own and closes with Escape',
+        'the log of the run opens in a window' +
+            ' of its own and closes with Escape',
         async () => {
             await openMenu();
             await menuItem('View pi Log').click();
@@ -102,7 +107,9 @@ try {
     );
 
     await step(
-        "the agent's question is a dialog; Later leaves it waiting, Allow answers it and the run finishes",
+        "the agent's question is a dialog;" +
+            " Later leaves it waiting, Allow" +
+            " answers it and the run finishes",
         async () => {
             await openMenu();
             await menuItem('Answer pi…').click();
@@ -126,7 +133,9 @@ try {
     );
 
     await step(
-        'Review Changes opens the worktree: the files with a box each, the diff, and a comment on a line',
+        'Review Changes opens the worktree: the' +
+            ' files with a box each, the diff, and' +
+            ' a comment on a line',
         async () => {
             await openMenu();
             await menuItem('Review Changes').click();
@@ -157,7 +166,8 @@ try {
     );
 
     await step(
-        'Reply opens the comments as a message for the agent; Cancel sends nothing',
+        'Reply opens the comments as a message' +
+            ' for the agent; Cancel sends nothing',
         async () => {
             await page.getByRole('button', { name: 'Reply (1)…' }).click();
             const reply = page.getByRole('dialog', { name: 'Reply to pi' });
@@ -172,7 +182,9 @@ try {
     );
 
     await step(
-        'merging asks first; a yes puts the work into the project and the review closes',
+        'merging asks first; a yes puts the' +
+            ' work into the project and the review' +
+            ' closes',
         async () => {
             await page
                 .getByRole('button', { name: 'Merge', exact: true })
@@ -205,7 +217,9 @@ try {
     );
 
     await step(
-        'Preferences → Agents lists the project, changes its isolation, and adds and removes a machine',
+        'Preferences → Agents lists the' +
+            ' project, changes its isolation, and' +
+            ' adds and removes a machine',
         async () => {
             await page
                 .getByRole('menubar')

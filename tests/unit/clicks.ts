@@ -74,14 +74,18 @@ export function clickTests(): void {
         eq(wikiLinkAt('read [[Plans|the plan]] today', 8)?.target, 'Plans');
         eq(wikiLinkAt('read [[Plans]] today', 1), null, 'outside the link');
     });
-    test('diagramKind: mermaid and dbml, any case; empty or unclosed is not a diagram', () => {
+    test('diagramKind: mermaid and dbml, any' +
+        ' case; empty or unclosed is not a' +
+        ' diagram', () => {
         eq(diagramKind(block('mermaid', 'graph TD; A-->B')), 'mermaid');
         eq(diagramKind(block('DBML', 'Table users {}')), 'dbml');
         eq(diagramKind(block('js', 'x')), null, 'other language');
         eq(diagramKind(block('mermaid', '  \n')), null, 'empty');
         eq(diagramKind(block('mermaid', 'graph TD', false)), null, 'unclosed');
     });
-    test('imageSource: URL kept, absolute path kept, relative path decoded and joined', () => {
+    test('imageSource: URL kept, absolute path' +
+        ' kept, relative path decoded and' +
+        ' joined', () => {
         eq(imageSource('https://e.example/a%20b.png', '/doc', POSIX), {
             kind: 'url',
             url: 'https://e.example/a%20b.png',

@@ -71,7 +71,9 @@ function sameAsFullParse(result: HighlightResult<string>, text: string): void {
 
 export function highlightTests(): void {
     section('Syntax highlighting as data');
-    test('a heading line gives the heading and bold styles and three markers that may be hidden', () => {
+    test('a heading line gives the heading and' +
+        ' bold styles and three markers that' +
+        ' may be hidden', () => {
         const r = highlightText('## Judul **tebal**', NAMES);
         eq(spansOf(r, 0), [
             'h2 0-18',
@@ -87,7 +89,8 @@ export function highlightTests(): void {
         ]);
         eq(r.headings, [{ level: 2, text: 'Judul **tebal**', line: 0 }]);
     });
-    test('the fences of a code block are active on every line of the block', () => {
+    test('the fences of a code block are active' +
+        ' on every line of the block', () => {
         const r = highlightText('text\n```js\nconst x = 1;\n```\nend', NAMES);
         eq(r.codeBlocks, [
             {
@@ -117,7 +120,8 @@ export function highlightTests(): void {
         ok(spansOf(r, 0).includes('bold 4-5'), JSON.stringify(spansOf(r, 0)));
         eq(r.characters, 7);
     });
-    test("the editor's hanging indent covers a list item line, outside a quote", () => {
+    test("the editor's hanging indent covers a" +
+        " list item line, outside a quote", () => {
         const indent = {
             tag: (indent: string, marker: string, _gap: string, task: string) =>
                 `hang:${indent}${marker}${task}`,
@@ -137,9 +141,12 @@ export function highlightTests(): void {
             JSON.stringify(spansOf(r, 2))
         );
     });
-    test('fences, tables, and emoji edited one at a time stay equal to a full parse', () => {
+    test('fences, tables, and emoji edited one' +
+        ' at a time stay equal to a full parse', () => {
         const doc = new EditedText(
-            '# Start\n\nparagraph **bold** 😀\n\nA | B\n-- | --\nx | y\n\n```js\nconst x = 1;\n```\n\nend'
+            '# Start\n\nparagraph **bold** 😀\n\nA |' +
+                ' B\n-- | --\nx | y\n\n```js\nconst x =' +
+                ' 1;\n```\n\nend'
         );
         const cache = new HighlightCache(NAMES);
         cache.update(textLines(doc.text));
@@ -166,7 +173,9 @@ export function highlightTests(): void {
     });
     test('300 random edits equal a full parse', () => {
         const doc = new EditedText(
-            '# Title\n\n**bold** and `code` 🎉\n\nA | B\n-- | --\nx | y\n\n```ts\nconst x = 1;\n```\n\nend\n'
+            '# Title\n\n**bold** and `code` 🎉\n\nA' +
+                ' | B\n-- | --\nx | y\n\n```ts\nconst x' +
+                ' = 1;\n```\n\nend\n'
         );
         const cache = new HighlightCache(NAMES);
         cache.update(textLines(doc.text));
@@ -204,7 +213,8 @@ export function highlightTests(): void {
             );
         }
     });
-    test('a single edit in 50,000 lines reads and parses only its neighbors', () => {
+    test('a single edit in 50,000 lines reads' +
+        ' and parses only its neighbors', () => {
         const lines = Array.from(
             { length: 50000 },
             (_, i) => `Paragraph ${i} with a different note.`

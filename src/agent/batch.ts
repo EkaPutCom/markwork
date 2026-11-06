@@ -14,7 +14,16 @@ import type { ToolSpec } from './provider';
 export const BATCH_TOOL: ToolSpec = {
     name: 'propose_batch',
     description:
-        'Propose interdependent actions as a single batch (at most 20). The user reviews all diffs at once and may apply only some of the files; the per-file results are returned. For several changes to one file, use the contents resulting from the previous action. A file that is deleted or moved must not be touched by another action in the same batch.',
+        'Propose interdependent actions as a' +
+            ' single batch (at most 20). The user' +
+            ' reviews all diffs at once and may' +
+            ' apply only some of the files; the' +
+            ' per-file results are returned. For' +
+            ' several changes to one file, use the' +
+            ' contents resulting from the previous' +
+            ' action. A file that is deleted or' +
+            ' moved must not be touched by another' +
+            ' action in the same batch.',
     parameters: {
         type: 'object',
         properties: {
@@ -32,7 +41,8 @@ export const BATCH_TOOL: ToolSpec = {
                         arguments: {
                             type: 'string',
                             description:
-                                'JSON object of the arguments of the chosen tool',
+                                'JSON object of the arguments of the' +
+                                    ' chosen tool',
                         },
                     },
                     required: ['tool', 'arguments'],

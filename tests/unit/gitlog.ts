@@ -77,10 +77,12 @@ export function gitLogTests(): void {
             'Fix: a\tb'
         );
     });
-    test('status is read into a list of changed files, a rename uses the new path', () => {
+    test('status is read into a list of changed' +
+        ' files, a rename uses the new path', () => {
         eq(
             parseStatus(
-                ' M a.md\nA  b.md\n?? c d.md\nR  old.md -> new.md\n D x.md\n?? "t\\"k.md"\n'
+                ' M a.md\nA  b.md\n?? c d.md\nR  old.md' +
+                    ' -> new.md\n D x.md\n?? "t\\"k.md"\n'
             ),
             [
                 { path: 'a.md', kind: 'modified' },
@@ -110,7 +112,11 @@ export function gitLogTests(): void {
     });
     test('diff: the header is dropped, lines get a kind', () => {
         const diff =
-            'diff --git a/a.md b/a.md\nindex 1..2 100644\n--- a/a.md\n+++ b/a.md\n@@ -1,2 +1,2 @@\n # Title\n-old\n+new\n\\ No newline at end of file\n';
+            'diff --git a/a.md b/a.md\nindex 1..2' +
+                ' 100644\n--- a/a.md\n+++ b/a.md\n@@' +
+                ' -1,2 +1,2 @@\n #' +
+                ' Title\n-old\n+new\n\\ No newline at' +
+                ' end of file\n';
         eq(parseDiff(diff), [
             { kind: 'hunk', text: '@@ -1,2 +1,2 @@' },
             { kind: 'context', text: ' # Title' },
@@ -122,7 +128,9 @@ export function gitLogTests(): void {
     test('a diff without hunks (rename only) is empty', () => {
         eq(
             parseDiff(
-                'diff --git a/a.md b/b.md\nsimilarity index 100%\nrename from a.md\nrename to b.md\n'
+                'diff --git a/a.md b/b.md\nsimilarity' +
+                    ' index 100%\nrename from a.md\nrename' +
+                    ' to b.md\n'
             ),
             []
         );

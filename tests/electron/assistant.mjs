@@ -77,7 +77,9 @@ try {
             .waitFor();
     };
     await step(
-        'opening the panel requires explicit unsandboxed activation and preserves the draft on Cancel',
+        'opening the panel requires explicit' +
+            ' unsandboxed activation and preserves' +
+            ' the draft on Cancel',
         async () => {
             await panel.waitFor();
             await input.fill('hello pi');
@@ -116,7 +118,9 @@ try {
         }
     );
     await step(
-        'settings use pi models and authentication rather than an Assistant API key',
+        'settings use pi models and' +
+            ' authentication rather than an' +
+            ' Assistant API key',
         async () => {
             await panel
                 .getByRole('button', {
@@ -182,7 +186,9 @@ try {
         }
     );
     await step(
-        'dirty drafts survive native writes and expose explicit resolution controls in the Assistant',
+        'dirty drafts survive native writes and' +
+            ' expose explicit resolution controls' +
+            ' in the Assistant',
         async () => {
             const editor = page.locator(
                 '.text-editor:not([hidden]) .cm-content'
@@ -208,7 +214,8 @@ try {
         }
     );
     await step(
-        'Ask Assistant attaches selected code and remains reviewable before Send',
+        'Ask Assistant attaches selected code' +
+            ' and remains reviewable before Send',
         async () => {
             await page.getByRole('treeitem', { name: /main\.ts/ }).click();
             const code = page.getByRole('textbox', {
@@ -285,7 +292,9 @@ try {
         }
     );
     await step(
-        'new conversations and history use only pi bindings, never old Markdown transcripts',
+        'new conversations and history use only' +
+            ' pi bindings, never old Markdown' +
+            ' transcripts',
         async () => {
             await panel
                 .getByRole('button', { name: 'New conversation', exact: true })
@@ -315,7 +324,8 @@ try {
         }
     );
     await step(
-        'Stop ends a slow pi turn and does not claim to undo completed commands',
+        'Stop ends a slow pi turn and does not' +
+            ' claim to undo completed commands',
         async () => {
             await send('slow');
             await panel
@@ -335,7 +345,9 @@ try {
         }
     );
     await step(
-        'measure the real Assistant window with deterministic pi, native resume and projection',
+        'measure the real Assistant window with' +
+            ' deterministic pi, native resume and' +
+            ' projection',
         async () => {
             const samples = [];
             for (let i = 0; i < 23; i++) {
@@ -357,7 +369,9 @@ try {
         }
     );
     await step(
-        'Add to Journal still records a line and Summarize Journal uses the pi Assistant',
+        'Add to Journal still records a line' +
+            ' and Summarize Journal uses the pi' +
+            ' Assistant',
         async () => {
             await page
                 .getByRole('menubar')

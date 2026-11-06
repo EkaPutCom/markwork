@@ -95,7 +95,10 @@ const SETTLED = ev({ type: 'agent_settled' });
 
 function follower() {
     let board: Board = parseBoard(
-        '---\nlayout: board\nproject: shop\n---\n\n## Plan\n\n## In Progress\n\n- [ ] Checkout [agent:: pi]\n\n## Review\n'
+        '---\nlayout: board\nproject:' +
+            ' shop\n---\n\n## Plan\n\n## In' +
+            ' Progress\n\n- [ ] Checkout [agent::' +
+            ' pi]\n\n## Review\n'
     );
     const changes: string[] = [];
     const host = {
@@ -165,7 +168,8 @@ function follower() {
 export async function daemonAppTests(): Promise<void> {
     section('markworkd in the app: machines');
 
-    await test('an SSH target is a host, never something ssh would read as an option', async () => {
+    await test('an SSH target is a host, never' +
+        ' something ssh would read as an option', async () => {
         for (const ok1 of [
             'vps',
             'eka@vps.example.com',
@@ -196,7 +200,9 @@ export async function daemonAppTests(): Promise<void> {
         );
     });
 
-    await test('a machine name is short and plain, and is not the word that means this computer', async () => {
+    await test('a machine name is short and plain, and' +
+        ' is not the word that means this' +
+        ' computer', async () => {
         for (const good of ['vps', 'Home-NAS', 'build.2', 'a'])
             ok(isValidMachineName(good), good);
         for (const bad of [
@@ -220,7 +226,9 @@ export async function daemonAppTests(): Promise<void> {
         eq(machineProjectKey('vps', 'shop'), 'vps:shop');
     });
 
-    await test("this computer: markworkd bridge when it is installed, else the socket; an SSH machine: ssh with the user's host", async () => {
+    await test("this computer: markworkd bridge when" +
+        " it is installed, else the socket; an" +
+        " SSH machine: ssh with the user's host", async () => {
         const a = hubWith({ installed: true });
         await settle1(a.hub.connection(LOCAL_MACHINE));
         eq(a.calls, [
@@ -256,7 +264,9 @@ export async function daemonAppTests(): Promise<void> {
         c.hub.dispose();
     });
 
-    await test('a machine that is not defined or whose host is not valid is refused with a sentence, not connected to', async () => {
+    await test('a machine that is not defined or whose' +
+        ' host is not valid is refused with a' +
+        ' sentence, not connected to', async () => {
         const { hub, calls } = hubWith({
             machines: { evil: '-oProxyCommand=x' },
         });
@@ -277,7 +287,10 @@ export async function daemonAppTests(): Promise<void> {
         eq(calls, []);
     });
 
-    await test('the hub tells which machine changed state, keeps one connection per machine, and makes a new one after forget', async () => {
+    await test('the hub tells which machine changed' +
+        ' state, keeps one connection per' +
+        ' machine, and makes a new one after' +
+        ' forget', async () => {
         const { hub } = hubWith({ machines: { vps: 'vps' } });
         const seen: string[] = [];
         hub.onState((m, s) => seen.push(`${m}:${s}`));
@@ -295,7 +308,9 @@ export async function daemonAppTests(): Promise<void> {
 
     section('markworkd in the app: following a run again');
 
-    await test('adopting makes a working run on the card and follows the daemon run from its start', async () => {
+    await test('adopting makes a working run on the' +
+        ' card and follows the daemon run from' +
+        ' its start', async () => {
         const f = follower();
         eq(f.orch.adopt(f.info), null);
         eq(f.adoptedWith, { runId: 'mw-1', upTo: 9 });
@@ -318,7 +333,9 @@ export async function daemonAppTests(): Promise<void> {
         contains(g.orch.adopt(g.info) ?? '', 'no daemon');
     });
 
-    await test('a question that nothing answered is asked again once the history is over, not before', async () => {
+    await test('a question that nothing answered is' +
+        ' asked again once the history is over,' +
+        ' not before', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         const run = f.orch.queue.runs[0];
@@ -332,7 +349,8 @@ export async function daemonAppTests(): Promise<void> {
         f.orch.dispose();
     });
 
-    await test('a question that was answered meanwhile is not asked again', async () => {
+    await test('a question that was answered meanwhile' +
+        ' is not asked again', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.history([STATE, ASK(), { in: ANSWER }, ev({ type: 'turn_start' })]);
@@ -340,7 +358,10 @@ export async function daemonAppTests(): Promise<void> {
         f.orch.dispose();
     });
 
-    await test('a question whose own timeout ran out while Markwork was closed was answered by the harness: noted, not asked', async () => {
+    await test('a question whose own timeout ran out' +
+        ' while Markwork was closed was' +
+        ' answered by the harness: noted, not' +
+        ' asked', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.history([STATE, ASK({ timeout: 30000 })], Date.now() - 3600000);
@@ -363,7 +384,10 @@ export async function daemonAppTests(): Promise<void> {
         g.orch.dispose();
     });
 
-    await test('a turn that finished while closed is handled as if it just did: close stdin, or ask the question it ended with', async () => {
+    await test('a turn that finished while closed is' +
+        ' handled as if it just did: close' +
+        ' stdin, or ask the question it ended' +
+        ' with', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.history([STATE, TEXT('Done: added the checkout.'), SETTLED]);
@@ -383,7 +407,9 @@ export async function daemonAppTests(): Promise<void> {
         g.orch.dispose();
     });
 
-    await test('an earlier question that was followed by a reply is history; only the last open one counts', async () => {
+    await test('an earlier question that was followed' +
+        ' by a reply is history; only the last' +
+        ' open one counts', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.history([
@@ -402,7 +428,9 @@ export async function daemonAppTests(): Promise<void> {
         f.orch.dispose();
     });
 
-    await test('a run that ended while Markwork was closed is finished: the card gets its result and moves to Review', async () => {
+    await test('a run that ended while Markwork was' +
+        ' closed is finished: the card gets its' +
+        ' result and moves to Review', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.handlers.line(STATE, 1);
@@ -415,7 +443,8 @@ export async function daemonAppTests(): Promise<void> {
         eq(
             run.result?.sessionId,
             's-1',
-            'the session id comes from the replayed history, so a reply can continue it'
+            'the session id comes from the replayed' +
+                ' history, so a reply can continue it'
         );
         const b = f.board();
         eq(b.columns[2].cards.length, 1, 'moved to Review');
@@ -426,7 +455,8 @@ export async function daemonAppTests(): Promise<void> {
         );
     });
 
-    await test('a run the daemon lost (it restarted) fails the card with the reason', async () => {
+    await test('a run the daemon lost (it restarted)' +
+        ' fails the card with the reason', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.history([STATE]);
@@ -436,7 +466,9 @@ export async function daemonAppTests(): Promise<void> {
         contains(run.result?.error ?? '', 'daemon restarted');
     });
 
-    await test('an interrupted run (lost with a known session) can be resumed in the same session, once the user confirms', async () => {
+    await test('an interrupted run (lost with a known' +
+        ' session) can be resumed in the same' +
+        ' session, once the user confirms', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.history([STATE]);
@@ -475,7 +507,9 @@ export async function daemonAppTests(): Promise<void> {
         eq(f.orch.queue.find('/b.md', run.card)?.status, 'working');
     });
 
-    await test('a lost run without a session id cannot be resumed; a run that failed by itself is not "interrupted"', async () => {
+    await test('a lost run without a session id cannot' +
+        ' be resumed; a run that failed by' +
+        ' itself is not "interrupted"', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.history([]);
@@ -498,7 +532,9 @@ export async function daemonAppTests(): Promise<void> {
         );
     });
 
-    await test('closing: runs in a daemon are let go or stopped as asked, local children are stopped; queued cards are counted', async () => {
+    await test('closing: runs in a daemon are let go' +
+        ' or stopped as asked, local children' +
+        ' are stopped; queued cards are counted', async () => {
         const f = follower();
         f.orch.adopt(f.info);
         f.orch.dispose();
@@ -510,10 +546,15 @@ export async function daemonAppTests(): Promise<void> {
         eq(g.calls, ['stop'], 'stopped when the user chose to stop everything');
     });
 
-    await test('with project folders on another machine, the local folder checks are skipped', async () => {
+    await test('with project folders on another' +
+        ' machine, the local folder checks are' +
+        ' skipped', async () => {
         let spawnedIn = '';
         const board = parseBoard(
-            '---\nlayout: board\nproject: shop\n---\n\n## Plan\n\n- [ ] Checkout [agent:: pi]\n\n## In Progress\n'
+            '---\nlayout: board\nproject:' +
+                ' shop\n---\n\n## Plan\n\n- [ ]' +
+                ' Checkout [agent:: pi]\n\n## In' +
+                ' Progress\n'
         );
         const orch = new Orchestrator({
             workspace: () => '/home/u/notes',

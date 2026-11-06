@@ -21,10 +21,15 @@ export async function liveAgentic(
         const path = (name: string) => disk.join(root, name);
         const original = {
             'meeting.md':
-                '# Meeting decisions\nThe release is postponed from 15 November to 22 November. The release material starts being worked on.\n',
+                '# Meeting decisions\nThe release is' +
+                    ' postponed from 15 November to 22' +
+                    ' November. The release material starts' +
+                    ' being worked on.\n',
             'plan.md': '# Plan\nRelease date: 15 November\n',
             'tasks.md':
-                '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n',
+                '---\nlayout: board\n---\n\n##' +
+                    ' Plan\n\n- [ ] Release material\n\n##' +
+                    ' In Progress\n\n',
         };
         try {
             for (const [name, text] of Object.entries(original))
@@ -55,7 +60,14 @@ export async function liveAgentic(
             const r = await session.ask(
                 {
                     question:
-                        'Use the decisions in meeting.md to sync the release date in plan.md and move Release material to In Progress in tasks.md. Record a work plan, propose both as a single batch, and check the actual result before declaring it finished. Do not change meeting.md or create other files.',
+                        'Use the decisions in meeting.md to' +
+                            ' sync the release date in plan.md and' +
+                            ' move Release material to In Progress' +
+                            ' in tasks.md. Record a work plan,' +
+                            ' propose both as a single batch, and' +
+                            ' check the actual result before' +
+                            ' declaring it finished. Do not change' +
+                            ' meeting.md or create other files.',
                     active: null,
                     files: workspace.files(root),
                     selection: '',

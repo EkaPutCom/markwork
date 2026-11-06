@@ -52,23 +52,29 @@ export async function backgroundAvailable(
                 available: false,
                 detail:
                     result?.err ||
-                    'Configure the markwork-agent program and this folder in markworkd.',
+                    'Configure the markwork-agent program' +
+                        ' and this folder in markworkd.',
             };
         if (!check.available)
             return {
                 available: false,
-                detail: 'The background worker cannot access a model credential. Configure its environment or system keyring.',
+                detail: 'The background worker cannot access a' +
+                    ' model credential. Configure its' +
+                    ' environment or system keyring.',
             };
         return {
             available: check.agent === true,
             detail: check.agent
-                ? 'Started work continues after the window closes; proposals still wait for Apply.'
+                ? 'Started work continues after the' +
+                    ' window closes; proposals still wait' +
+                    ' for Apply.'
                 : 'The worker could not load agent.json.',
         };
     } catch {
         return {
             available: false,
-            detail: 'markworkd could not be reached. Local chat is still available.',
+            detail: 'markworkd could not be reached. Local' +
+                ' chat is still available.',
         };
     }
 }
@@ -149,7 +155,8 @@ export class BackgroundConversation {
             // The spawn may have succeeded before its reply was lost. Follow
             // the same identity; never retry the model call.
             this.panel.receive('chat.error', {
-                error: 'Background startup is unconfirmed. Reconnecting to the original run.',
+                error: 'Background startup is unconfirmed.' +
+                    ' Reconnecting to the original run.',
             });
         }
         if (this.disposed || this.completed) return;
@@ -170,7 +177,9 @@ export class BackgroundConversation {
     private follow(from: number): void {
         this.watchdog = platform().scheduler.idleAfter(86400000, () =>
             this.fail(
-                'Background work exceeded its recovery window. Reopen the session to inspect it.'
+                'Background work exceeded its recovery' +
+                    ' window. Reopen the session to inspect' +
+                    ' it.'
             )
         );
         this.follower = this.conn.follow(this.run, from, {
@@ -182,7 +191,9 @@ export class BackgroundConversation {
     private record(record: DaemonRecord): void {
         if (record.kind === 'out' && record.truncated) {
             this.fail(
-                'Background output exceeded the daemon line limit. Stop and inspect this session before continuing.'
+                'Background output exceeded the daemon' +
+                    ' line limit. Stop and inspect this' +
+                    ' session before continuing.'
             );
             return;
         }
@@ -281,7 +292,8 @@ export class BackgroundConversation {
             return 'That proposal is no longer available';
         const indices = chosen ?? proposal.changes.map((_, i) => i);
         if (proposal.changes.some((c) => changeFiles(c).some(isAgentReserved)))
-            return 'Agent configuration and session storage require an explicit user edit';
+            return 'Agent configuration and session' +
+                ' storage require an explicit user edit';
         if (new Set(indices).size !== indices.length)
             return 'Choose each file only once';
         if (
@@ -348,7 +360,8 @@ export class BackgroundConversation {
                 () => this.complete(),
                 () => {
                     this.panel.receive('chat.error', {
-                        error: 'Background state is unknown. Reconnect before continuing this session.',
+                        error: 'Background state is unknown. Reconnect' +
+                            ' before continuing this session.',
                     });
                 }
             );

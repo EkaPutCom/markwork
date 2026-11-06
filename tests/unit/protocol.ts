@@ -92,7 +92,9 @@ function scriptedWire(): Wire & {
 }
 
 const BOARD =
-    '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two\n\n## Done\n\n- [x] Old\n';
+    '---\nlayout: board\n---\n\n##' +
+        ' Plan\n\n- [ ] One\n- [ ] Two\n\n##' +
+        ' Done\n\n- [x] Old\n';
 
 // A frontend that behaves as docs/design/protocol.md says, over two Connections
 // that deliver in order but never at once.
@@ -175,7 +177,8 @@ function attach(
 export async function protocolTests(): Promise<void> {
     section('App protocol (no window)');
 
-    await test('changes in code points apply and diff back, emoji included', () => {
+    await test('changes in code points apply and diff' +
+        ' back, emoji included', () => {
         const next = lcg(7);
         for (let i = 0; i < 400; i++) {
             const before = randomText(next),
@@ -202,7 +205,9 @@ export async function protocolTests(): Promise<void> {
         ]);
     });
 
-    await test('one doc.replace is in flight; the next is computed against the replica once it landed', async () => {
+    await test('one doc.replace is in flight; the next' +
+        ' is computed against the replica once' +
+        ' it landed', async () => {
         const wire = scriptedWire();
         const editor = new ProtocolEditor(1, wire);
         editor.setText('ab');
@@ -240,7 +245,9 @@ export async function protocolTests(): Promise<void> {
         eq(editor.isModified(), true);
     });
 
-    await test('a conflict makes an update compute again, and a whole-text write fail instead of undoing the typing', async () => {
+    await test('a conflict makes an update compute' +
+        ' again, and a whole-text write fail' +
+        ' instead of undoing the typing', async () => {
         const wire = scriptedWire();
         const editor = new ProtocolEditor(1, wire);
         const failures: string[] = [];
@@ -281,7 +288,9 @@ export async function protocolTests(): Promise<void> {
         eq(wire.sent.length, 4, 'a whole text is not computed again');
     });
 
-    await test('edits from the frontend keep their order: a stale one is dropped and a gap asks for the text', async () => {
+    await test('edits from the frontend keep their' +
+        ' order: a stale one is dropped and a' +
+        ' gap asks for the text', async () => {
         const wire = scriptedWire();
         const editor = new ProtocolEditor(1, wire);
         editor.setText('ab');
@@ -305,7 +314,9 @@ export async function protocolTests(): Promise<void> {
         eq([editor.version, editor.cursorOffset], [v + 5, 3]);
     });
 
-    await test('a change from the core moves over the edits made since its base, and is refused when it touches them', () => {
+    await test('a change from the core moves over the' +
+        ' edits made since its base, and is' +
+        ' refused when it touches them', () => {
         const mirror = new DocMirror(1, 'one two three', 5);
         // 4 characters inserted at the start (version 6)
         mirror.typed('ONE one two three');
@@ -391,7 +402,10 @@ export async function protocolTests(): Promise<void> {
         return { core, front, posted };
     };
 
-    await test('a withdrawn ask is answered "cancelled" at once, the dialog is told to close, and its late answer is dropped', async () => {
+    await test('a withdrawn ask is answered' +
+        ' "cancelled" at once, the dialog is' +
+        ' told to close, and its late answer is' +
+        ' dropped', async () => {
         const { core, front, posted } = pair();
         let closed = false,
             answer: (v: Record<string, unknown>) => void = () => {};
@@ -426,7 +440,9 @@ export async function protocolTests(): Promise<void> {
         );
     });
 
-    await test('a question the frontend does not know is a "no"; its generic dialog answers any Question or Prompt', async () => {
+    await test('a question the frontend does not know' +
+        ' is a "no"; its generic dialog answers' +
+        ' any Question or Prompt', async () => {
         const { core, front } = pair();
         const asks = new Asks(core);
         eq(
@@ -475,7 +491,9 @@ export async function protocolTests(): Promise<void> {
         );
     });
 
-    await test('hello carries the command table and the settings; a setting changes from either side', async () => {
+    await test('hello carries the command table and' +
+        ' the settings; a setting changes from' +
+        ' either side', async () => {
         const post = { toClient: (_m: Message) => {} };
         const settings = memorySettings();
         settings.sidebar = true;
@@ -523,7 +541,9 @@ export async function protocolTests(): Promise<void> {
         return { server, ui };
     };
 
-    await test("the core lists the folder, opens a file, and the frontend's typing reaches the replica and the disk", async () => {
+    await test("the core lists the folder, opens a" +
+        " file, and the frontend's typing" +
+        " reaches the replica and the disk", async () => {
         const { server, ui } = await start();
         eq((ui.last('view.files')!.files as string[]).sort(), [
             'board.md',
@@ -546,7 +566,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Compare Changes sends the selected unsaved conflict as a read-only snapshot and rejects stale markers', async () => {
+    await test('Compare Changes sends the selected' +
+        ' unsaved conflict as a read-only' +
+        ' snapshot and rejects stale markers', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
         await until(() => ui.active?.text.includes('# Note') === true);
@@ -654,7 +676,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test("a folder chosen in the frontend's dialog opens: the core lists it and the frontend can open its files", async () => {
+    await test("a folder chosen in the frontend's" +
+        " dialog opens: the core lists it and" +
+        " the frontend can open its files", async () => {
         const post = { toClient: (_m: Message) => {} };
         const server = new ProtocolServer(memorySettings(), (m) =>
             post.toClient(m)
@@ -676,7 +700,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('switching to another folder lists that folder and closes tabs of the first', async () => {
+    await test('switching to another folder lists that' +
+        ' folder and closes tabs of the first', async () => {
         const other = disk.join(tmp, 'protocol-other');
         disk.mkdirs(other);
         disk.write(disk.join(other, 'x.md'), '# X\n');
@@ -690,7 +715,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the Open Folder command asks the frontend for a folder and the file list follows', async () => {
+    await test('the Open Folder command asks the' +
+        ' frontend for a folder and the file' +
+        ' list follows', async () => {
         const post = { toClient: (_m: Message) => {} };
         const server = new ProtocolServer(memorySettings(), (m) =>
             post.toClient(m)
@@ -720,7 +747,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('ask.notes lists the notes a [[ may link to, and open.note follows a link into a tab', async () => {
+    await test('ask.notes lists the notes a [[ may' +
+        ' link to, and open.note follows a link' +
+        ' into a tab', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
         await until(() => ui.active?.text.startsWith('# Note') === true);
@@ -749,7 +778,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('an image chosen in the Files tab is shown by the frontend (view.image)', async () => {
+    await test('an image chosen in the Files tab is' +
+        ' shown by the frontend (view.image)', async () => {
         const { server, ui } = await start();
         const png = disk.join(dir, 'pic.png');
         disk.write(png, 'not really a png');
@@ -762,7 +792,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('open.link opens a relative Markdown link in a tab, and a closed document is stale', async () => {
+    await test('open.link opens a relative Markdown' +
+        ' link in a tab, and a closed document' +
+        ' is stale', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
         await until(() => ui.active?.text.startsWith('# Note') === true);
@@ -780,7 +812,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the outline lists the headings of the active document, and a jump reveals the line', async () => {
+    await test('the outline lists the headings of the' +
+        ' active document, and a jump reveals' +
+        ' the line', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
         await until(() => ui.last('view.outline') !== undefined);
@@ -796,7 +830,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a search sends the results, a hit opens with its match selected, and Replace All asks first', async () => {
+    await test('a search sends the results, a hit' +
+        ' opens with its match selected, and' +
+        ' Replace All asks first', async () => {
         const { server, ui } = await start();
         const query = {
             text: 'Note',
@@ -849,7 +885,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the Files tab: the root and a folder come as view.tree.*, and create, rename, and move change the disk', async () => {
+    await test('the Files tab: the root and a folder' +
+        ' come as view.tree.*, and create,' +
+        ' rename, and move change the disk', async () => {
         const { server, ui } = await start();
         await until(() => ui.last('view.tree.root') !== undefined);
         const root = ui.last('view.tree.root')!.root as string;
@@ -915,7 +953,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Home and an HTML file are tabs of their own: page.open, view.home, view.page, page.close', async () => {
+    await test('Home and an HTML file are tabs of' +
+        ' their own: page.open, view.home,' +
+        ' view.page, page.close', async () => {
         const { server, ui } = await start();
         ok((await ui.client.request('command', { name: 'home' })).ok, 'home');
         await until(() => ui.last('view.home') !== undefined);
@@ -962,7 +1002,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a workspace code file crosses the protocol as a page snapshot, never a writable replica', async () => {
+    await test('a workspace code file crosses the' +
+        ' protocol as a page snapshot, never a' +
+        ' writable replica', async () => {
         const { server, ui } = await start();
         const path = disk.join(dir, 'source.ts'),
             text = '// 🐈\r\nexport const answer = ` ``` `;\r\n';
@@ -985,7 +1027,9 @@ export async function protocolTests(): Promise<void> {
         });
         eq(
             draft.draft,
-            'Code from source.ts, lines 2–2:\n\n````\nexport const answer = ` ``` `;\n````\n\n'
+            'Code from source.ts, lines' +
+                ' 2–2:\n\n````\nexport const answer = `' +
+                ' ``` `;\n````\n\n'
         );
         for (const [from, to] of [
             [0, 0],
@@ -1027,7 +1071,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('ordinary Assistant protocol requires activation and uses native pi, not the legacy key or proposal engine', async () => {
+    await test('ordinary Assistant protocol requires' +
+        ' activation and uses native pi, not' +
+        ' the legacy key or proposal engine', async () => {
         const { server, ui } = await start();
         const fake = fakeFolderPi();
         server.session.assistant.runtime = fake.runtime;
@@ -1108,7 +1154,9 @@ export async function protocolTests(): Promise<void> {
         }
     });
 
-    await test('Explorer and open.file route only indexed pi projections to one scoped session page', async () => {
+    await test('Explorer and open.file route only' +
+        ' indexed pi projections to one scoped' +
+        ' session page', async () => {
         const folder = disk.join(dir, 'folder-agent');
         disk.mkdirs(disk.join(folder, 'chats'));
         disk.write(
@@ -1249,7 +1297,9 @@ export async function protocolTests(): Promise<void> {
         }
     });
 
-    await test('New Agent is offered as a core command and tree creation opens a scoped chat page', async () => {
+    await test('New Agent is offered as a core command' +
+        ' and tree creation opens a scoped chat' +
+        ' page', async () => {
         const { server, ui } = await start();
         ui.answers['ask.files.name'] = { text: 'Created Agent' };
         try {
@@ -1280,7 +1330,9 @@ export async function protocolTests(): Promise<void> {
         }
     });
 
-    await test('a new document is opened empty and not reset again, so what is typed into it at once stays', async () => {
+    await test('a new document is opened empty and not' +
+        ' reset again, so what is typed into it' +
+        ' at once stays', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
         await until(() => ui.active?.text.startsWith('# Note') === true);
@@ -1299,7 +1351,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('tab.closeMany closes several tabs, and a Cancel about a changed document closes none', async () => {
+    await test('tab.closeMany closes several tabs, and' +
+        ' a Cancel about a changed document' +
+        ' closes none', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
         await ui.client.request('open.file', { name: 'board.md' });
@@ -1332,7 +1386,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the Programs page is a tab of its own: view.programs, programs.missing, and Check again', async () => {
+    await test('the Programs page is a tab of its own:' +
+        ' view.programs, programs.missing, and' +
+        ' Check again', async () => {
         const { server, ui } = await start();
         ok(
             (await ui.client.request('act.programs.open', {})).ok,
@@ -1384,7 +1440,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Preferences: the command opens the dialog with the values, a change is written and sent again, a wrong one is refused', async () => {
+    await test('Preferences: the command opens the' +
+        ' dialog with the values, a change is' +
+        ' written and sent again, a wrong one' +
+        ' is refused', async () => {
         const { server, ui } = await start();
         ok(
             (await ui.client.request('command', { name: 'preferences' })).ok,
@@ -1437,7 +1496,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the Recent list of the menus is sent when files are opened', async () => {
+    await test('the Recent list of the menus is sent' +
+        ' when files are opened', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
         await until(() => ui.last('recent') !== undefined);
@@ -1459,7 +1519,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a card moved in the board view is written through doc.replace and shown again', async () => {
+    await test('a card moved in the board view is' +
+        ' written through doc.replace and shown' +
+        ' again', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'board.md' });
         await until(() => ui.last('view.notes') !== undefined);
@@ -1500,7 +1562,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a drag of a card that is gone is stale: nothing is written and the board is drawn again', async () => {
+    await test('a drag of a card that is gone is' +
+        ' stale: nothing is written and the' +
+        ' board is drawn again', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'board.md' });
         await until(() => ui.last('view.notes') !== undefined);
@@ -1522,7 +1586,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('typing that does not touch a board write is kept: the write moves over it', async () => {
+    await test('typing that does not touch a board' +
+        ' write is kept: the write moves over' +
+        ' it', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'board.md' });
         await until(() => ui.last('view.notes') !== undefined);
@@ -1549,7 +1615,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('typing where a board write changes is kept and the write is refused and reported', async () => {
+    await test('typing where a board write changes is' +
+        ' kept and the write is refused and' +
+        ' reported', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'board.md' });
         await until(() => ui.last('view.notes') !== undefined);
@@ -1575,7 +1643,10 @@ export async function protocolTests(): Promise<void> {
         );
         server.dispose();
     });
-    await test('a board write refused by the frontend is made again on the text as it is then: the typing and the card both stay', async () => {
+    await test('a board write refused by the frontend' +
+        ' is made again on the text as it is' +
+        ' then: the typing and the card both' +
+        ' stay', async () => {
         const post = { toClient: (_m: Message) => {} };
         const server = new ProtocolServer(memorySettings(), (m) =>
             post.toClient(m)
@@ -1615,7 +1686,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the screen follows the page: counts, the layout button, and which commands apply, each sent when it changes', async () => {
+    await test('the screen follows the page: counts,' +
+        ' the layout button, and which commands' +
+        ' apply, each sent when it changes', async () => {
         const { server, ui } = await start();
         await ui.client.request('open.file', { name: 'note.md' });
         await until(() => ui.last('view.layout') !== undefined);
@@ -1653,7 +1726,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Save As asks the frontend for a path and writes the new document there', async () => {
+    await test('Save As asks the frontend for a path' +
+        ' and writes the new document there', async () => {
         const post = { toClient: (_m: Message) => {} };
         const server = new ProtocolServer(memorySettings(), (m) =>
             post.toClient(m)
@@ -1689,23 +1763,38 @@ export async function protocolTests(): Promise<void> {
     disk.mkdirs(pages);
     disk.write(
         disk.join(pages, 'list.md'),
-        '---\nlayout: list\nadd: top\nfields:\n  created: date = now\n---\n\n# Inbox\n\n- First idea #idea\n- Second\n'
+        '---\nlayout: list\nadd: top\nfields:\n' +
+            '  created: date = now\n---\n\n#' +
+            ' Inbox\n\n- First idea #idea\n-' +
+            ' Second\n'
     );
     disk.write(
         disk.join(pages, 'table.md'),
-        '---\nlayout: table\nfields:\n  status: select(todo:gray, done:green) = todo\n---\n\n# Table\n\n- One [status:: todo]\n- Two [status:: done]\n'
+        '---\nlayout: table\nfields:\n  status:' +
+            ' select(todo:gray, done:green) =' +
+            ' todo\n---\n\n# Table\n\n- One' +
+            ' [status:: todo]\n- Two [status::' +
+            ' done]\n'
     );
     disk.write(
         disk.join(pages, 'cal.md'),
-        '---\nlayout: calendar\nfields:\n  due: date\n---\n\n- Release [due:: 2026-10-20]\n- Undated\n'
+        '---\nlayout: calendar\nfields:\n  due:' +
+            ' date\n---\n\n- Release [due::' +
+            ' 2026-10-20]\n- Undated\n'
     );
     disk.write(
         disk.join(pages, 'line.md'),
-        '---\nlayout: timeline\nfields:\n  start: date\n  due: date\n---\n\n- Build [start:: 2026-10-05] [due:: 2026-10-09]\n'
+        '---\nlayout: timeline\nfields:\n ' +
+            ' start: date\n  due: date\n---\n\n-' +
+            ' Build [start:: 2026-10-05] [due::' +
+            ' 2026-10-09]\n'
     );
     disk.write(
         disk.join(pages, 'chart.md'),
-        '---\nlayout: chart\nfields:\n  status: select(todo, done)\n---\n\n- A [status:: todo]\n- B [status:: done]\n'
+        '---\nlayout: chart\nfields:\n  status:' +
+            ' select(todo, done)\n---\n\n- A' +
+            ' [status:: todo]\n- B [status::' +
+            ' done]\n'
     );
     disk.write(disk.join(pages, 'board.md'), BOARD);
     disk.write(disk.join(pages, 'sheet.csv'), 'name,qty\nada,3\nlin,5\n');
@@ -1724,7 +1813,9 @@ export async function protocolTests(): Promise<void> {
     const shownPage = (ui: ReturnType<typeof attach>) =>
         ui.last('view.page')?.page;
 
-    await test('a list, a table, and the layouts are shown as their own pages with the notes of the document', async () => {
+    await test('a list, a table, and the layouts are' +
+        ' shown as their own pages with the' +
+        ' notes of the document', async () => {
         const { server, ui } = await startPages();
         for (const [name, page] of [
             ['list.md', 'inbox'],
@@ -1751,7 +1842,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a note captured in the list, a date given in the calendar, and a bar moved in the timeline are written to the text', async () => {
+    await test('a note captured in the list, a date' +
+        ' given in the calendar, and a bar' +
+        ' moved in the timeline are written to' +
+        ' the text', async () => {
         const { server, ui } = await startPages();
         await ui.client.request('open.file', { name: 'list.md' });
         await until(() => shownPage(ui) === 'inbox');
@@ -1809,7 +1903,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a list opened after a board takes its own text, and a capture lands in the list', async () => {
+    await test('a list opened after a board takes its' +
+        ' own text, and a capture lands in the' +
+        ' list', async () => {
         const { server, ui } = await startPages();
         await ui.client.request('act.tree.activate', {
             path: disk.join(pages, 'board.md'),
@@ -1838,7 +1934,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the panels of a chart are written to its frontmatter', async () => {
+    await test('the panels of a chart are written to' +
+        ' its frontmatter', async () => {
         const { server, ui } = await startPages();
         await ui.client.request('open.file', { name: 'chart.md' });
         await until(() => shownPage(ui) === 'chart');
@@ -1854,7 +1951,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the layout command writes the layout into the frontmatter and the page follows', async () => {
+    await test('the layout command writes the layout' +
+        ' into the frontmatter and the page' +
+        ' follows', async () => {
         const { server, ui } = await startPages();
         await ui.client.request('open.file', { name: 'table.md' });
         await until(() => shownPage(ui) === 'table');
@@ -1866,7 +1965,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Fields… asks the frontend (ask.schema) with the fields and how many notes use each option, and writes the answer', async () => {
+    await test('Fields… asks the frontend (ask.schema)' +
+        ' with the fields and how many notes' +
+        ' use each option, and writes the' +
+        ' answer', async () => {
         const { server, ui } = await start();
         const asked: Record<string, unknown>[] = [];
         ui.client.on('ask.schema', (p) => {
@@ -1902,7 +2004,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Fields… answered with nothing (Cancel) changes nothing', async () => {
+    await test('Fields… answered with nothing (Cancel)' +
+        ' changes nothing', async () => {
         const { server, ui } = await start();
         ui.client.on('ask.schema', () => ({}));
         await ui.client.request('open.file', { name: 'board.md' });
@@ -1914,7 +2017,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a CSV file is a tab: view.csv sends the text, act.csv.change writes it, and the counts follow act.csv.shape', async () => {
+    await test('a CSV file is a tab: view.csv sends' +
+        ' the text, act.csv.change writes it,' +
+        ' and the counts follow act.csv.shape', async () => {
         const { server, ui } = await startPages();
         ok(
             (
@@ -1952,7 +2057,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('new inbox and new table documents ask for the cursor in the capture line', async () => {
+    await test('new inbox and new table documents ask' +
+        ' for the cursor in the capture line', async () => {
         const { server, ui } = await startPages();
         await ui.client.request('command', { name: 'inbox-new' });
         await until(() => ui.last('view.focusCapture') !== undefined);
@@ -2040,7 +2146,9 @@ export async function protocolTests(): Promise<void> {
     const noticesOf = (ui: ReturnType<typeof attach>, ev: string) =>
         ui.log.filter((l) => l.ev === ev).map((l) => l.payload);
 
-    await test("Add to Journal asks the frontend for a line (ask.capture) and writes it into today's journal", async () => {
+    await test("Add to Journal asks the frontend for a" +
+        " line (ask.capture) and writes it into" +
+        " today's journal", async () => {
         const { server, ui } = await startChat();
         let prompt: Record<string, unknown> | undefined;
         ui.client.on('ask.capture', (p) => {
@@ -2068,7 +2176,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Add to Journal answered with nothing (Cancel) writes nothing', async () => {
+    await test('Add to Journal answered with nothing' +
+        ' (Cancel) writes nothing', async () => {
         const { server, ui } = await startChat();
         const before = ui.log.length;
         ui.client.on('ask.capture', () => ({}));
@@ -2082,7 +2191,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a turn is told as chat.* notices: the question, the streamed answer, the end, and busy around it', async () => {
+    await test('a turn is told as chat.* notices: the' +
+        ' question, the streamed answer, the' +
+        ' end, and busy around it', async () => {
         const { server, ui, chat } = await startChat();
         chat.makeProvider = () => scripted(null, 'Hello there');
         const sync = await ui.client.request('act.chat.sync', {});
@@ -2140,7 +2251,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('without an API key the turn asks for one (chat.noKey) and the key is saved by act.chat.key', async () => {
+    await test('without an API key the turn asks for' +
+        ' one (chat.noKey) and the key is saved' +
+        ' by act.chat.key', async () => {
         const { server, ui, chat } = await startChat();
         let stored: string | null = null;
         chat.keyStore = {
@@ -2191,7 +2304,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('model, thinking and saving are settings of the core; the panel gets them back as chat.settings', async () => {
+    await test('model, thinking and saving are' +
+        ' settings of the core; the panel gets' +
+        ' them back as chat.settings', async () => {
         const { server, ui, settings } = await startChat();
         await ui.client.request('act.chat.thinking', { thinking: true });
         await until(() =>
@@ -2227,7 +2342,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a proposal is the ask ask.proposal: the frontend gets how it looks, asks the core to apply it, and answers with its note', async () => {
+    await test('a proposal is the ask ask.proposal:' +
+        ' the frontend gets how it looks, asks' +
+        ' the core to apply it, and answers' +
+        ' with its note', async () => {
         const { server, ui, chat } = await startChat();
         const told: string[] = [];
         chat.makeProvider = () =>
@@ -2305,7 +2423,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a rejected proposal writes nothing, and a stopped turn withdraws the ask so a late apply is refused', async () => {
+    await test('a rejected proposal writes nothing,' +
+        ' and a stopped turn withdraws the ask' +
+        ' so a late apply is refused', async () => {
         const { server, ui, chat } = await startChat();
         chat.makeProvider = () =>
             scripted({ name: 'edit_file', args: edit }, 'ok');
@@ -2344,7 +2464,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('saved conversations: the list, opening one, and deleting one only by a path the core listed', async () => {
+    await test('saved conversations: the list, opening' +
+        ' one, and deleting one only by a path' +
+        ' the core listed', async () => {
         const settings = memorySettings();
         const { server, ui, chat } = await startChat(settings);
         settings.chatSave = true;
@@ -2394,7 +2516,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('Insert into note puts the answer into the open document, and clearing the log empties it', async () => {
+    await test('Insert into note puts the answer into' +
+        ' the open document, and clearing the' +
+        ' log empties it', async () => {
         const { server, ui, chat } = await startChat();
         chat.makeProvider = () => scripted(null, 'x');
         await ui.client.request('act.chat.send', { text: 'q' });
@@ -2481,7 +2605,10 @@ export async function protocolTests(): Promise<void> {
                 }),
                 'GET /pulls/7.diff': () => ({
                     status: 200,
-                    body: 'diff --git a/plan.md b/plan.md\n--- a/plan.md\n+++ b/plan.md\n@@ -1 +1 @@\n-Ship 15 November\n+Ship 22 November\n',
+                    body: 'diff --git a/plan.md b/plan.md\n---' +
+                        ' a/plan.md\n+++ b/plan.md\n@@ -1 +1' +
+                        ' @@\n-Ship 15 November\n+Ship 22' +
+                        ' November\n',
                 }),
                 'GET /raw/plan.md?ref=b7': () => ({
                     status: 200,
@@ -2596,7 +2723,10 @@ export async function protocolTests(): Promise<void> {
         key: string
     ): number => (ui.last(ev)?.[key] as unknown[] | undefined)?.length ?? -1;
 
-    await test('the History tab is told the commits and the uncommitted files (view.history, view.historyChanges) once its page is the open one', async () => {
+    await test('the History tab is told the commits' +
+        ' and the uncommitted files' +
+        ' (view.history, view.historyChanges)' +
+        ' once its page is the open one', async () => {
         const { server, ui, a, b } = await startGit();
         await until(() => listLength(ui, 'view.history', 'commits') === 2);
         eq(
@@ -2626,7 +2756,8 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the history is not read while another page of the side panel is open', async () => {
+    await test('the history is not read while another' +
+        ' page of the side panel is open', async () => {
         const { server, ui, b } = await startGit();
         await until(() => listLength(ui, 'view.history', 'commits') === 2);
         ui.client.notify('setting', { key: 'sidebar-page', value: 'files' });
@@ -2663,7 +2794,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a commit opens in a viewer (view.historyViewer.*) with its changes and the file as it was, and closing it is reported', async () => {
+    await test('a commit opens in a viewer' +
+        ' (view.historyViewer.*) with its' +
+        ' changes and the file as it was, and' +
+        ' closing it is reported', async () => {
         const { server, ui } = await startGit();
         await until(() => listLength(ui, 'view.history', 'commits') === 2);
         const hash = (ui.last('view.history')!.commits as { hash: string }[])[0]
@@ -2713,7 +2847,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('committing from the tab writes only the listed files that changed, and the log follows', async () => {
+    await test('committing from the tab writes only' +
+        ' the listed files that changed, and' +
+        ' the log follows', async () => {
         const { server, ui, root, b } = await startGit();
         await until(
             () => listLength(ui, 'view.historyChanges', 'changed') === 1
@@ -2771,7 +2907,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('discarding asks (ask.discard) with the kind and the file, and does nothing when the answer is no', async () => {
+    await test('discarding asks (ask.discard) with the' +
+        ' kind and the file, and does nothing' +
+        ' when the answer is no', async () => {
         const { server, ui, a, b } = await startGit();
         await until(
             () => listLength(ui, 'view.historyChanges', 'changed') === 1
@@ -2810,7 +2948,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the commit message is written by the assistant and streams as history.messageText; the reply says how it ended', async () => {
+    await test('the commit message is written by the' +
+        ' assistant and streams as' +
+        ' history.messageText; the reply says' +
+        ' how it ended', async () => {
         const { server, ui, b } = await startGit();
         await until(
             () => listLength(ui, 'view.historyChanges', 'changed') === 1
@@ -2843,7 +2984,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the uncommitted changes of a file open in a viewer with a commit form, and committing closes it', async () => {
+    await test('the uncommitted changes of a file open' +
+        ' in a viewer with a commit form, and' +
+        ' committing closes it', async () => {
         const { server, ui, root, b } = await startGit();
         await until(
             () => listLength(ui, 'view.historyChanges', 'changed') === 1
@@ -2886,7 +3029,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the pull requests tab is told the server and the list (view.collab), and a missing token is told as a note', async () => {
+    await test('the pull requests tab is told the' +
+        ' server and the list (view.collab),' +
+        ' and a missing token is told as a note', async () => {
         const forge = fakeForge();
         const { server, ui } = await startGit(forge);
         await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
@@ -2913,7 +3058,10 @@ export async function protocolTests(): Promise<void> {
         other.server.dispose();
     });
 
-    await test('the token dialog (ask.token) can try a typed token (act.collab.testToken) before it is saved, and the saved token connects', async () => {
+    await test('the token dialog (ask.token) can try a' +
+        ' typed token (act.collab.testToken)' +
+        ' before it is saved, and the saved' +
+        ' token connects', async () => {
         const forge = fakeForge(null);
         const { server, ui } = await startGit(forge);
         await until(() => typeof ui.last('view.collab')?.note === 'string');
@@ -2950,7 +3098,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the token dialog answered with an empty token forgets the saved one, and Cancel changes nothing', async () => {
+    await test('the token dialog answered with an' +
+        ' empty token forgets the saved one,' +
+        ' and Cancel changes nothing', async () => {
         const forge = fakeForge();
         const { server, ui } = await startGit(forge);
         await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
@@ -2964,7 +3114,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test("a pull request opens as a page (view.pull.show, view.pull) with its files, the first file's note view, and the discussion", async () => {
+    await test("a pull request opens as a page" +
+        " (view.pull.show, view.pull) with its" +
+        " files, the first file's note view," +
+        " and the discussion", async () => {
         const forge = fakeForge();
         const { server, ui } = await startGit(forge);
         await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
@@ -3033,7 +3186,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a comment is sent to the forge and the box is cleared; closing the review shows the document again', async () => {
+    await test('a comment is sent to the forge and the' +
+        ' box is cleared; closing the review' +
+        ' shows the document again', async () => {
         const forge = fakeForge();
         const { server, ui } = await startGit(forge);
         await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
@@ -3058,7 +3213,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('merging asks (ask.pull.merge) first: nothing is merged on a no, one POST on a yes; an unknown method is refused', async () => {
+    await test('merging asks (ask.pull.merge) first:' +
+        ' nothing is merged on a no, one POST' +
+        ' on a yes; an unknown method is' +
+        ' refused', async () => {
         const forge = fakeForge();
         const { server, ui } = await startGit(forge);
         await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
@@ -3100,7 +3258,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('sending changes asks (ask.sendChanges) with where it goes and what can be sent, and an answer outside the offer sends nothing', async () => {
+    await test('sending changes asks (ask.sendChanges)' +
+        ' with where it goes and what can be' +
+        ' sent, and an answer outside the offer' +
+        ' sends nothing', async () => {
         const forge = fakeForge();
         const { server, ui, b } = await startGit(forge);
         await until(() => listLength(ui, 'view.collab', 'pulls') === 1);
@@ -3243,7 +3404,10 @@ export async function protocolTests(): Promise<void> {
         return { server, ui, spawned, say, menu, choose, cardNow, runs };
     };
 
-    await test("a card's menu is asked for (act.card.menu), an entry runs by its token, and the run shows on the board (view.runs)", async () => {
+    await test("a card's menu is asked for" +
+        " (act.card.menu), an entry runs by its" +
+        " token, and the run shows on the board" +
+        " (view.runs)", async () => {
         const { server, ui, spawned, menu, choose, cardNow, runs } =
             await startAgents();
         const first = await menu('One');
@@ -3285,7 +3449,10 @@ export async function protocolTests(): Promise<void> {
 
     await test('a card of a grouped board has no agent menu', async () => {
         const { server, ui } = await startAgents(
-            '---\nlayout: board\ngroup: s\nfields:\n  s: select(todo:gray, done:green)\n---\n\n- [ ] One [s:: todo]\n'
+            '---\nlayout: board\ngroup:' +
+                ' s\nfields:\n  s: select(todo:gray,' +
+                ' done:green)\n---\n\n- [ ] One [s::' +
+                ' todo]\n'
         );
         await until(() => ui.last('view.notes')?.agents === false);
         const reply = await ui.client.request('act.card.menu', {
@@ -3300,7 +3467,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('a harness that asks is answered through ask.harness.answer, read against what it offered; steering goes through ask.text', async () => {
+    await test('a harness that asks is answered' +
+        ' through ask.harness.answer, read' +
+        ' against what it offered; steering' +
+        ' goes through ask.text', async () => {
         const { server, ui, spawned, say, menu, choose, cardNow, runs } =
             await startAgents();
         ui.client.on('ask.folder', () => ({ path: agentFolder }));
@@ -3352,7 +3522,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test("a run's log is a window of its own: opened with the events, cleared and closed only while it is open", async () => {
+    await test("a run's log is a window of its own:" +
+        " opened with the events, cleared and" +
+        " closed only while it is open", async () => {
         const { server, ui, spawned, menu, choose, cardNow } =
             await startAgents();
         ui.client.on('ask.folder', () => ({ path: agentFolder }));
@@ -3400,7 +3572,9 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('closing the window with an agent at work asks (ask.closeAgents): Cancel keeps the window, Stop ends the agent', async () => {
+    await test('closing the window with an agent at' +
+        ' work asks (ask.closeAgents): Cancel' +
+        ' keeps the window, Stop ends the agent', async () => {
         const { server, ui, spawned, menu, choose } = await startAgents();
         ui.client.on('ask.folder', () => ({ path: agentFolder }));
         await choose(await menu('One'), 'Work on it with pi');
@@ -3422,7 +3596,9 @@ export async function protocolTests(): Promise<void> {
         ok(spawned[0].stopped, 'the agent was stopped with the window');
     });
 
-    await test('a project folder on another machine is asked as text (ask.remoteFolder), and a folder the core rejects is told', async () => {
+    await test('a project folder on another machine is' +
+        ' asked as text (ask.remoteFolder), and' +
+        ' a folder the core rejects is told', async () => {
         const { server, ui, menu, choose } = await startAgents();
         ui.client.on('ask.folder', () => ({
             path: disk.join(dir, 'inside-the-work-folder'),
@@ -3437,7 +3613,10 @@ export async function protocolTests(): Promise<void> {
 
     // A project that is a Git repository: the run works in a worktree of its
     // own, and the card can be reviewed.
-    await test("the review of a card's worktree: view.review.show and view.review with the files, a comment, a reply, and a merge that asks first", async () => {
+    await test("the review of a card's worktree:" +
+        " view.review.show and view.review with" +
+        " the files, a comment, a reply, and a" +
+        " merge that asks first", async () => {
         const repo = disk.join(tmp, `agent-repo-${++repoCount}`);
         disk.mkdirs(repo);
         await git(repo, 'init', '-q');
@@ -3585,7 +3764,10 @@ export async function protocolTests(): Promise<void> {
         server.dispose();
     });
 
-    await test('the form that sends a branch as a pull request is read against its offer, and a harness answer against its question', async () => {
+    await test('the form that sends a branch as a pull' +
+        ' request is read against its offer,' +
+        ' and a harness answer against its' +
+        ' question', async () => {
         const wire = scriptedWire();
         const asks = new Asks(wire);
         const reviews = new ProtocolReviewDialogs(asks);
@@ -3642,7 +3824,11 @@ export async function protocolTests(): Promise<void> {
         eq(await leave, 'cancel', 'anything but the three answers is Cancel');
     });
 
-    await test('Preferences → Agents: a machine is added through ask.machine, a project is opened, changed field by field, and removed worktrees must be listed ones', async () => {
+    await test('Preferences → Agents: a machine is' +
+        ' added through ask.machine, a project' +
+        ' is opened, changed field by field,' +
+        ' and removed worktrees must be listed' +
+        ' ones', async () => {
         const { server, ui } = await start();
         const { settings } = server.session;
         settings.projects = { notes: agentFolder };

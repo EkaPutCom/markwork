@@ -170,7 +170,9 @@ export async function publishTests(): Promise<void> {
     const refs = (repo: string) =>
         sh(repo, 'for-each-ref', '--format=%(refname)');
 
-    await test('direct: the branch is pushed as it is and the pull request names it and the base', async () => {
+    await test('direct: the branch is pushed as it is' +
+        ' and the pull request names it and the' +
+        ' base', async () => {
         const { folder, branch } = await clone();
         const head = await sh(folder, 'rev-parse', 'HEAD');
         const result = await within(
@@ -201,7 +203,8 @@ export async function publishTests(): Promise<void> {
         );
     });
 
-    await test('direct: a token that may not push is told so before anything is pushed', async () => {
+    await test('direct: a token that may not push is' +
+        ' told so before anything is pushed', async () => {
         canPush = false;
         const { folder, branch } = await clone();
         const result = await within(
@@ -216,7 +219,9 @@ export async function publishTests(): Promise<void> {
         canPush = true;
     });
 
-    await test('direct: a branch that exists on the server with other commits is not overwritten', async () => {
+    await test('direct: a branch that exists on the' +
+        ' server with other commits is not' +
+        ' overwritten', async () => {
         const { folder, branch } = await clone();
         const tree = await sh(upstream, 'rev-parse', 'main^{tree}');
         await sh(
@@ -242,7 +247,9 @@ export async function publishTests(): Promise<void> {
         eq(pulls.length, count, 'no pull request');
     });
 
-    await test('direct: a pull request that is already open for the branch is reported, and nothing is pushed', async () => {
+    await test('direct: a pull request that is already' +
+        ' open for the branch is reported, and' +
+        ' nothing is pushed', async () => {
         const { folder, branch } = await clone();
         open = [
             {
@@ -264,11 +271,15 @@ export async function publishTests(): Promise<void> {
         open = [];
     });
 
-    await test('direct: when the pull request cannot be opened the branch is still pushed, and the message says so', async () => {
+    await test('direct: when the pull request cannot' +
+        ' be opened the branch is still pushed,' +
+        ' and the message says so', async () => {
         const { folder, branch } = await clone();
         createFails = new ForgeError(
             'server',
-            'forge.example.org answered HTTP 422: pull request already exists for these targets',
+            'forge.example.org answered HTTP 422:' +
+                ' pull request already exists for these' +
+                ' targets',
             422
         );
         const result = await within(
@@ -287,7 +298,9 @@ export async function publishTests(): Promise<void> {
         contains(await refs(upstream), `refs/heads/${branch}`);
     });
 
-    await test("fork: the branch goes to the user's own copy and the pull request names it", async () => {
+    await test("fork: the branch goes to the user's" +
+        " own copy and the pull request names" +
+        " it", async () => {
         const { folder, branch } = await clone();
         const result = await within(
             publishBranch(context(), request(folder, branch, { via: 'fork' }))
@@ -301,7 +314,9 @@ export async function publishTests(): Promise<void> {
         eq(pulls[pulls.length - 1].head, `eka:${branch}`);
     });
 
-    await test('AGit: the branch goes to refs/for/<base> and no pull request is created here', async () => {
+    await test('AGit: the branch goes to' +
+        ' refs/for/<base> and no pull request' +
+        ' is created here', async () => {
         const { folder, branch } = await clone();
         const count = pulls.length;
         const result = await within(
@@ -318,7 +333,8 @@ export async function publishTests(): Promise<void> {
         eq(pulls.length, count);
     });
 
-    await test('a server that cannot be reached from where the repository is says so', async () => {
+    await test('a server that cannot be reached from' +
+        ' where the repository is says so', async () => {
         const { folder, branch } = await clone();
         const broken: SendContext = {
             ...context(),
@@ -344,7 +360,8 @@ export async function publishTests(): Promise<void> {
         if (!result.ok) contains(result.message, 'Could not push');
     });
 
-    await test('nothing is done for a missing title or a bad branch name', async () => {
+    await test('nothing is done for a missing title or' +
+        ' a bad branch name', async () => {
         const { folder, branch } = await clone();
         const bad = async (extra: Partial<PublishRequest>) => {
             const r = await within(
@@ -356,7 +373,9 @@ export async function publishTests(): Promise<void> {
         contains(await bad({ branch: 'has space' }), 'branch');
     });
 
-    await test('a failed push is told in words: rejected, refused token, no right, no variables on the daemon', async () => {
+    await test('a failed push is told in words:' +
+        ' rejected, refused token, no right, no' +
+        ' variables on the daemon', async () => {
         const run = (err: string) => ({ status: 1, out: '', err });
         contains(
             pushFailure(run('! [rejected] x -> x (non-fast-forward)'), 'x'),
@@ -365,7 +384,9 @@ export async function publishTests(): Promise<void> {
         contains(
             pushFailure(
                 run(
-                    "fatal: unable to access 'https://h/r.git/': The requested URL returned error: 401"
+                    "fatal: unable to access" +
+                        " 'https://h/r.git/': The requested URL" +
+                        " returned error: 401"
                 ),
                 'x'
             ),
@@ -374,7 +395,10 @@ export async function publishTests(): Promise<void> {
         contains(
             pushFailure(
                 run(
-                    "remote: User permission denied for writing.\nfatal: unable to access 'https://h/r.git/': The requested URL returned error: 403"
+                    "remote: User permission denied for" +
+                        " writing.\nfatal: unable to access" +
+                        " 'https://h/r.git/': The requested URL" +
+                        " returned error: 403"
                 ),
                 'x'
             ),
@@ -390,7 +414,9 @@ export async function publishTests(): Promise<void> {
         contains(
             pushFailure(
                 run(
-                    "fatal: unable to access 'https://h/r.git/': Could not resolve host: h"
+                    "fatal: unable to access" +
+                        " 'https://h/r.git/': Could not resolve" +
+                        " host: h"
                 ),
                 'x'
             ),
@@ -403,7 +429,8 @@ export async function publishTests(): Promise<void> {
         eq(pushFailure(null, 'x'), 'git could not be run');
     });
 
-    await test('the hosts that are not Forgejo or Gitea are known by name', async () => {
+    await test('the hosts that are not Forgejo or' +
+        ' Gitea are known by name', async () => {
         eq(
             [
                 'github.com',
@@ -418,7 +445,8 @@ export async function publishTests(): Promise<void> {
         );
     });
 
-    await test('a Forgejo or Gitea server is told from other servers by its version endpoint', async () => {
+    await test('a Forgejo or Gitea server is told from' +
+        ' other servers by its version endpoint', async () => {
         const repo = {
             baseUrl: 'https://forge.example.org',
             host: 'forge.example.org',
@@ -476,7 +504,8 @@ export async function publishTests(): Promise<void> {
         );
     });
 
-    await test('a Gitea provider created for the review works with the same transport', async () => {
+    await test('a Gitea provider created for the' +
+        ' review works with the same transport', async () => {
         const provider = new GiteaProvider(
             {
                 baseUrl: 'https://forge.example.org',
@@ -490,7 +519,9 @@ export async function publishTests(): Promise<void> {
         eq(await within(provider.currentUser()), 'eka');
     });
 
-    await test('what the agent left uncommitted becomes a commit, and can be taken back', async () => {
+    await test('what the agent left uncommitted' +
+        ' becomes a commit, and can be taken' +
+        ' back', async () => {
         const { folder, branch } = await clone();
         const wt = {
             path: folder,
@@ -525,7 +556,9 @@ export async function publishTests(): Promise<void> {
         contains(await sh(folder, 'status', '--porcelain'), 'c.md');
     });
 
-    await test('the description starts from what the agent said and the commits, and the card remembers the pull request', async () => {
+    await test('the description starts from what the' +
+        ' agent said and the commits, and the' +
+        ' card remembers the pull request', async () => {
         eq(
             pullRequestBody(
                 'Added QRIS.\n',
@@ -535,7 +568,9 @@ export async function publishTests(): Promise<void> {
                 ],
                 true
             ),
-            'Added QRIS.\n\nCommits:\n- Add QRIS\n- Fix tests\n- Changes the agent did not commit'
+            'Added QRIS.\n\nCommits:\n- Add QRIS\n-' +
+                ' Fix tests\n- Changes the agent did' +
+                ' not commit'
         );
         eq(pullRequestBody('', [], false), '');
         eq(
@@ -553,7 +588,9 @@ export async function publishTests(): Promise<void> {
         );
         eq(
             note,
-            '↳ pull request #7 opened 18/10 20:21: https://forge.example.org/team/notes/pulls/7'
+            '↳ pull request #7 opened 18/10 20:21:' +
+                ' https://forge.example.org/team/notes/' +
+                'pulls/7'
         );
         eq(
             pullFromNotes([

@@ -125,7 +125,9 @@ export class LaggingEditor extends FakeEditor {
     override replaceText(text: string): void {
         if (this.pending !== null)
             throw new Error(
-                'wrote a whole text before the previous write had landed; use update() (docs/design/protocol.md 5.5)'
+                'wrote a whole text before the previous' +
+                    ' write had landed; use update()' +
+                    ' (docs/design/protocol.md 5.5)'
             );
         this.pending = text;
         setTimeout(() => this.land(), 0);
@@ -256,7 +258,8 @@ export function fakeFrontend(
 
 export async function appSessionTests(): Promise<void> {
     section('Command registry');
-    await test('ids are unique, keys are well formed, and the palette order is kept', () => {
+    await test('ids are unique, keys are well formed,' +
+        ' and the palette order is kept', () => {
         eq(
             new Set(COMMANDS.map((c) => c.id)).size,
             COMMANDS.length,
@@ -388,7 +391,9 @@ export async function appSessionTests(): Promise<void> {
         );
     });
 
-    await test("a command says where it runs: the editor's edits and the frontend's own windows there, the rest in the core", () => {
+    await test("a command says where it runs: the" +
+        " editor's edits and the frontend's own" +
+        " windows there, the rest in the core", () => {
         const editor = COMMANDS.filter((c) => c.runs === 'editor').map(
             (c) => c.id
         );
@@ -449,7 +454,8 @@ export async function appSessionTests(): Promise<void> {
     });
 
     section('Application session');
-    await test('the session builds the controllers on a frontend and opens a file', () => {
+    await test('the session builds the controllers on' +
+        ' a frontend and opens a file', () => {
         const toasts: string[] = [];
         const settings = memorySettings();
         const session = new AppSession(fakeFrontend(settings, toasts));
@@ -481,7 +487,9 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('the session decides what the window opens with: a folder and a file, the last tabs, the welcome text, or Home', () => {
+    await test('the session decides what the window' +
+        ' opens with: a folder and a file, the' +
+        ' last tabs, the welcome text, or Home', () => {
         const dir = disk.join(tmp, 'appsession-open');
         disk.mkdirs(dir);
         const file = disk.join(dir, 'plan.md');
@@ -536,7 +544,9 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('conflict comparison reads the selected conflict from the unsaved buffer and never changes it', () => {
+    await test('conflict comparison reads the selected' +
+        ' conflict from the unsaved buffer and' +
+        ' never changes it', () => {
         const shown: import('../../src/app/documents').ConflictComparison[] =
             [];
         const base = fakeFrontend(memorySettings(), []);
@@ -550,7 +560,10 @@ export async function appSessionTests(): Promise<void> {
         session.start();
         const doc = session.documents.active;
         const text =
-            '# Plan\n\n<<<<<<< HEAD\nFriday 🎉\n||||||| base\nancestor\n=======\nMonday 🎉\n>>>>>>> topic';
+            '# Plan\n\n<<<<<<< HEAD\nFriday' +
+                ' 🎉\n|||||||' +
+                ' base\nancestor\n=======\nMonday' +
+                ' 🎉\n>>>>>>> topic';
         doc.editor.setText(text);
         eq(session.documents.compareConflict(doc.id, 3), true);
         eq([shown[0].current, shown[0].incoming], ['HEAD', 'topic']);
@@ -598,7 +611,10 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('Apply Result uses only an offered comparison, preserves blank lines, and rejects a changed or closed preview', () => {
+    await test('Apply Result uses only an offered' +
+        ' comparison, preserves blank lines,' +
+        ' and rejects a changed or closed' +
+        ' preview', () => {
         const shown: import('../../src/app/documents').ConflictComparison[] =
             [];
         const base = fakeFrontend(memorySettings(), []);
@@ -650,7 +666,9 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('Apply Result waits behind an earlier editor write and never overwrites what landed', async () => {
+    await test('Apply Result waits behind an earlier' +
+        ' editor write and never overwrites' +
+        ' what landed', async () => {
         const shown: import('../../src/app/documents').ConflictComparison[] =
                 [],
             toasts: string[] = [];
@@ -681,7 +699,9 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('startup skips saved tabs outside the restored workspace and keeps the surviving active tab', () => {
+    await test('startup skips saved tabs outside the' +
+        ' restored workspace and keeps the' +
+        ' surviving active tab', () => {
         const dir = disk.join(tmp, 'appsession-restore');
         const sibling = dir + '-other';
         disk.mkdirs(dir);
@@ -745,7 +765,9 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('opening another folder closes the tabs outside it, shows the Files tab, and closing remembers the tabs', async () => {
+    await test('opening another folder closes the tabs' +
+        ' outside it, shows the Files tab, and' +
+        ' closing remembers the tabs', async () => {
         const base = disk.join(tmp, 'appsession-folders');
         const [one, two] = [disk.join(base, 'one'), disk.join(base, 'two')];
         disk.mkdirs(one);
@@ -777,7 +799,8 @@ export async function appSessionTests(): Promise<void> {
         eq(
             pages,
             ['files'],
-            'the Files tab is shown when asked for, not when the last folder is restored'
+            'the Files tab is shown when asked for,' +
+                ' not when the last folder is restored'
         );
         ok(settings.sidebar, 'and the side panel is opened');
         session.documents.openInTab(disk.join(two, 'b.md'));
@@ -791,7 +814,9 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('unsaved changes are asked about one tab at a time: Cancel keeps the tab, the folder, and the window', async () => {
+    await test('unsaved changes are asked about one' +
+        ' tab at a time: Cancel keeps the tab,' +
+        ' the folder, and the window', async () => {
         const base = disk.join(tmp, 'appsession-unsaved');
         const [one, two] = [disk.join(base, 'one'), disk.join(base, 'two')];
         disk.mkdirs(one);
@@ -878,7 +903,9 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('the history is read only while its tab is shown, and coming back to the window reads it again', () => {
+    await test('the history is read only while its tab' +
+        ' is shown, and coming back to the' +
+        ' window reads it again', () => {
         const session = new AppSession(fakeFrontend(memorySettings(), []));
         session.start();
         const reads: boolean[] = [];
@@ -911,7 +938,9 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test("titles, links, the Recent list, and a file chosen in the tree are the session's", async () => {
+    await test("titles, links, the Recent list, and a" +
+        " file chosen in the tree are the" +
+        " session's", async () => {
         // The home folder is the test folder here, so the title can show `~`
         // without touching the real one.
         const real = platform();
@@ -976,7 +1005,8 @@ export async function appSessionTests(): Promise<void> {
             eq(
                 session.documents.active.file,
                 next,
-                "a Markdown link opens in a tab, read from the document's folder"
+                "a Markdown link opens in a tab, read" +
+                    " from the document's folder"
             );
             session.openLink(
                 session.documents.active.id,
@@ -1020,7 +1050,9 @@ export async function appSessionTests(): Promise<void> {
         }
     });
 
-    await test('a toast button reaches the frontend as a token; the session runs its action once, and forgets old ones', () => {
+    await test('a toast button reaches the frontend as' +
+        ' a token; the session runs its action' +
+        ' once, and forgets old ones', () => {
         const buttons: (ToastButton | undefined)[] = [];
         const session = new AppSession(
             fakeFrontend(memorySettings(), [], undefined, {
@@ -1061,7 +1093,8 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('the core holds the board: it reads it from the document, not from the view', () => {
+    await test('the core holds the board: it reads it' +
+        ' from the document, not from the view', () => {
         const session = new AppSession(
             fakeFrontend(memorySettings(), [], () => new LaggingEditor())
         );
@@ -1084,7 +1117,10 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test("a card's harness menu is plain entries with tokens; a token runs its action, and the tokens of an earlier menu are forgotten", () => {
+    await test("a card's harness menu is plain entries" +
+        " with tokens; a token runs its action," +
+        " and the tokens of an earlier menu are" +
+        " forgotten", () => {
         const toasts: string[] = [];
         const session = new AppSession(fakeFrontend(memorySettings(), toasts));
         session.start();
@@ -1121,7 +1157,10 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a batch that fails after writing an open document restores it, even when the editor applies writes a turn later', async () => {
+    await test('a batch that fails after writing an' +
+        ' open document restores it, even when' +
+        ' the editor applies writes a turn' +
+        ' later', async () => {
         const session = new AppSession(
             fakeFrontend(memorySettings(), [], () => new LaggingEditor())
         );
@@ -1174,7 +1213,8 @@ export async function appSessionTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('writes to an open board land even when the editor applies them a turn later', async () => {
+    await test('writes to an open board land even when' +
+        ' the editor applies them a turn later', async () => {
         const session = new AppSession(
             fakeFrontend(memorySettings(), [], () => new LaggingEditor())
         );

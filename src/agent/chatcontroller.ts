@@ -290,7 +290,8 @@ export class ChatController {
             change,
             (c) => {
                 if (proposalRoot !== this.host.root())
-                    return 'The work folder changed since the proposal was made';
+                    return 'The work folder changed since the' +
+                        ' proposal was made';
                 if (Array.isArray(c))
                     return this.host.applyBatch
                         ? this.host.applyBatch(c)
@@ -323,7 +324,9 @@ export class ChatController {
                 continue;
             event.status = 'reverted';
             event.summary =
-                'Undone by the user from the panel; the files are back to their previous contents.';
+                'Undone by the user from the panel; the' +
+                    ' files are back to their previous' +
+                    ' contents.';
         }
         const work = this.session.work;
         if (work) {
@@ -418,7 +421,9 @@ export class ChatController {
             readTextFile(this.chatPath) !== this.savedText
         )
             throw Error(
-                'The conversation file changed outside this session. Its contents were not overwritten.'
+                'The conversation file changed outside' +
+                    ' this session. Its contents were not' +
+                    ' overwritten.'
             );
     }
 

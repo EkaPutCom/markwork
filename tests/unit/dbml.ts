@@ -75,7 +75,10 @@ export function dbmlTests(): void {
     });
     test('relation types: < - <>', () => {
         const m = dbmlToMermaid(
-            'Table a { id int }\nTable b {\nid int\na_id int\n}\nRef: a.id < b.a_id\nRef: a.id - b.id\nRef: a.id <> b.id'
+            'Table a { id int }\nTable b {\nid' +
+                ' int\na_id int\n}\nRef: a.id <' +
+                ' b.a_id\nRef: a.id - b.id\nRef: a.id' +
+                ' <> b.id'
         );
         contains(m, '"a" ||--o{ "b" : "a_id"');
         contains(m, '"a" ||--|| "b"');
@@ -84,15 +87,25 @@ export function dbmlTests(): void {
     });
     test('a named Ref, a Ref block, schema, and comments', () => {
         const m = dbmlToMermaid(
-            '/* x */ Table public.a { id int }\nTable b { a_id int }\nRef fk_b { b.a_id > public.a.id }\nRef { public.a.id < b.a_id [delete: cascade] }'
+            '/* x */ Table public.a { id int' +
+                ' }\nTable b { a_id int }\nRef fk_b {' +
+                ' b.a_id > public.a.id }\nRef {' +
+                ' public.a.id < b.a_id [delete:' +
+                ' cascade] }'
         );
         contains(m, '"public.a" {');
         contains(m, '"b" }o--|| "public.a" : "a_id"');
         contains(m, '"public.a" ||--o{ "b" : "a_id"');
     });
-    test('Enum, TableGroup, Project, and Note are skipped; array types are read', () => {
+    test('Enum, TableGroup, Project, and Note' +
+        ' are skipped; array types are read', () => {
         const s = parseDbml(
-            "Project p { database_type: 'PostgreSQL' }\nEnum st { a\n b [note: 'x'] }\nTable t { tags text[]\n st st [not null] }\nTableGroup g { t }\nNote n { 'notes' }"
+            "Project p { database_type:" +
+                " 'PostgreSQL' }\nEnum st { a\n b" +
+                " [note: 'x'] }\nTable t { tags" +
+                " text[]\n st st [not null]" +
+                " }\nTableGroup g { t }\nNote n {" +
+                " 'notes' }"
         );
         eq(
             s.tables[0].columns.map((c) => c.type),
@@ -100,7 +113,8 @@ export function dbmlTests(): void {
             'column types'
         );
     });
-    test('names with spaces/quotes and invalid attributes are cleaned up', () => {
+    test('names with spaces/quotes and invalid' +
+        ' attributes are cleaned up', () => {
         const m = dbmlToMermaid(
             'Table "customer data" { "full name" varchar }'
         );

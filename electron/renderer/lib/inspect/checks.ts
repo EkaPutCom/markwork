@@ -257,7 +257,8 @@ export const CHECKS: readonly Check[] = [
                 return {
                     severity: 'fail',
                     message:
-                        'the edit made a step in the history, but undo did nothing',
+                        'the edit made a step in the history,' +
+                            ' but undo did nothing',
                 };
             const text = (undone as EditorState).doc;
             if (text.eq(before.doc)) return null;

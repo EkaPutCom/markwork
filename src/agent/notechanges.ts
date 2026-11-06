@@ -100,7 +100,25 @@ export const NOTE_TOOLS: ToolSpec[] = [
     {
         name: 'edit_note',
         description:
-            'Propose a change to one note of a structured document (a file with "layout:" in its frontmatter: board, list, table, calendar, timeline, gallery, chart). Safer than edit_file because every field value is checked against the fields the document declares (see describe_schema). Actions: add (a new note, with its fields), update (change title, tags, or fields of a note), move (to another group), mark (done / not done), delete; and for the groups (the ## headings, i.e. the columns of a board): add_group, rename_group, delete_group (only an empty one). It is not written right away: the user sees the diff and then applies or rejects it.',
+            'Propose a change to one note of a' +
+                ' structured document (a file with' +
+                ' "layout:" in its frontmatter: board,' +
+                ' list, table, calendar, timeline,' +
+                ' gallery, chart). Safer than edit_file' +
+                ' because every field value is checked' +
+                ' against the fields the document' +
+                ' declares (see describe_schema).' +
+                ' Actions: add (a new note, with its' +
+                ' fields), update (change title, tags,' +
+                ' or fields of a note), move (to' +
+                ' another group), mark (done / not' +
+                ' done), delete; and for the groups' +
+                ' (the ## headings, i.e. the columns of' +
+                ' a board): add_group, rename_group,' +
+                ' delete_group (only an empty one). It' +
+                ' is not written right away: the user' +
+                ' sees the diff and then applies or' +
+                ' rejects it.',
         parameters: {
             type: 'object',
             properties: {
@@ -112,22 +130,36 @@ export const NOTE_TOOLS: ToolSpec[] = [
                     type: 'string',
                     enum: [...NOTE_ACTIONS],
                     description:
-                        'add = a new note at the end of a group (or where the document says new notes go); update = change title, tags, and/or fields; move = move to the end of another group; mark = change the done status; delete = remove the note; add_group / rename_group / delete_group = manage the groups',
+                        'add = a new note at the end of a group' +
+                            ' (or where the document says new notes' +
+                            ' go); update = change title, tags,' +
+                            ' and/or fields; move = move to the end' +
+                            ' of another group; mark = change the' +
+                            ' done status; delete = remove the' +
+                            ' note; add_group / rename_group /' +
+                            ' delete_group = manage the groups',
                 },
                 note: {
                     type: 'string',
                     description:
-                        'update/move/mark/delete: a piece of the text of an existing note (must match exactly one note)',
+                        'update/move/mark/delete: a piece of' +
+                            ' the text of an existing note (must' +
+                            ' match exactly one note)',
                 },
                 text: {
                     type: 'string',
                     description:
-                        'add: the title of the new note, a single line; it may contain #tags. Put field values in "fields", not in the title',
+                        'add: the title of the new note, a' +
+                            ' single line; it may contain #tags.' +
+                            ' Put field values in "fields", not in' +
+                            ' the title',
                 },
                 title: {
                     type: 'string',
                     description:
-                        'update: the new title (the tags and fields are kept). rename_group: the new name of the group',
+                        'update: the new title (the tags and' +
+                            ' fields are kept). rename_group: the' +
+                            ' new name of the group',
                 },
                 tags: {
                     type: 'array',
@@ -138,13 +170,24 @@ export const NOTE_TOOLS: ToolSpec[] = [
                 fields: {
                     type: 'object',
                     description:
-                        'add/update: field values by field name, e.g. {"status": "doing", "due": "2026-10-20"}. A value must fit the field (see describe_schema); an empty string removes the field from the note',
+                        'add/update: field values by field' +
+                            ' name, e.g. {"status": "doing", "due":' +
+                            ' "2026-10-20"}. A value must fit the' +
+                            ' field (see describe_schema); an empty' +
+                            ' string removes the field from the' +
+                            ' note',
                     additionalProperties: true,
                 },
                 group: {
                     type: 'string',
                     description:
-                        'add_group: the name of the new group. rename_group/delete_group: the existing group. add/move: the group (the ## heading, i.e. the column of a board). On a board grouped by a field it is a value of that field. Required to add to a board',
+                        'add_group: the name of the new group.' +
+                            ' rename_group/delete_group: the' +
+                            ' existing group. add/move: the group' +
+                            ' (the ## heading, i.e. the column of a' +
+                            ' board). On a board grouped by a field' +
+                            ' it is a value of that field. Required' +
+                            ' to add to a board',
                 },
                 done: {
                     type: 'boolean',
@@ -162,7 +205,20 @@ export const NOTE_TOOLS: ToolSpec[] = [
     {
         name: 'edit_schema',
         description:
-            'Propose a change to how a structured document is set up, in its frontmatter: add or remove a field, add or remove an option of a select field, put the fields in another order, switch the layout, or set a layout option (group, sort, date, columns, …). The notes are not rewritten; a field or option that notes still use cannot be removed. Check the current setup with describe_schema first. It is not written right away: the user sees the diff and then applies or rejects it.',
+            'Propose a change to how a structured' +
+                ' document is set up, in its' +
+                ' frontmatter: add or remove a field,' +
+                ' add or remove an option of a select' +
+                ' field, put the fields in another' +
+                ' order, switch the layout, or set a' +
+                ' layout option (group, sort, date,' +
+                ' columns, …). The notes are not' +
+                ' rewritten; a field or option that' +
+                ' notes still use cannot be removed.' +
+                ' Check the current setup with' +
+                ' describe_schema first. It is not' +
+                ' written right away: the user sees the' +
+                ' diff and then applies or rejects it.',
         parameters: {
             type: 'object',
             properties: {
@@ -174,27 +230,44 @@ export const NOTE_TOOLS: ToolSpec[] = [
                     type: 'string',
                     enum: [...SCHEMA_ACTIONS],
                     description:
-                        'add_field = declare a field; remove_field = drop a declaration; add_option / remove_option = change the options of a select field; reorder_fields = new order; set_layout = switch the layout; set_option = set (or with an empty value, remove) a one-line option',
+                        'add_field = declare a field;' +
+                            ' remove_field = drop a declaration;' +
+                            ' add_option / remove_option = change' +
+                            ' the options of a select field;' +
+                            ' reorder_fields = new order;' +
+                            ' set_layout = switch the layout;' +
+                            ' set_option = set (or with an empty' +
+                            ' value, remove) a one-line option',
                 },
                 field: {
                     type: 'string',
                     description:
-                        'add_field/remove_field/add_option/remove_option: the field name (a letter first, then letters, digits, _ or -)',
+                        'add_field/remove_field/add_option/remo' +
+                            've_option: the field name (a letter' +
+                            ' first, then letters, digits, _ or -)',
                 },
                 type: {
                     type: 'string',
                     description:
-                        'add_field: text, number, select, date, progress, person, agent, or link; a select lists its options and may give each a color: select(todo:gray, doing:blue, done:green); add [] after the type for several values: person[]',
+                        'add_field: text, number, select, date,' +
+                            ' progress, person, agent, or link; a' +
+                            ' select lists its options and may give' +
+                            ' each a color: select(todo:gray,' +
+                            ' doing:blue, done:green); add [] after' +
+                            ' the type for several values: person[]',
                 },
                 default: {
                     type: 'string',
                     description:
-                        'add_field: the value a new note gets; for a date "today" or "now"',
+                        'add_field: the value a new note gets;' +
+                            ' for a date "today" or "now"',
                 },
                 option: {
                     type: 'string',
                     description:
-                        'add_option/remove_option: the option text (no comma, parenthesis, or colon)',
+                        'add_option/remove_option: the option' +
+                            ' text (no comma, parenthesis, or' +
+                            ' colon)',
                 },
                 color: {
                     type: 'string',
@@ -214,7 +287,8 @@ export const NOTE_TOOLS: ToolSpec[] = [
                     type: 'array',
                     items: { type: 'string' },
                     description:
-                        'reorder_fields: every declared field name, in the new order',
+                        'reorder_fields: every declared field' +
+                            ' name, in the new order',
                 },
                 layout: {
                     type: 'string',
@@ -224,17 +298,24 @@ export const NOTE_TOOLS: ToolSpec[] = [
                 key: {
                     type: 'string',
                     description:
-                        'set_option: add, add-to, group, sort, columns, charts, by, date, start, end, cover, period, size, or zoom',
+                        'set_option: add, add-to, group, sort,' +
+                            ' columns, charts, by, date, start,' +
+                            ' end, cover, period, size, or zoom',
                 },
                 value: {
                     type: 'string',
                     description:
-                        'set_option: the value; empty removes the option. sort is a field name, with a leading "-" for descending',
+                        'set_option: the value; empty removes' +
+                            ' the option. sort is a field name,' +
+                            ' with a leading "-" for descending',
                 },
                 force: {
                     type: 'boolean',
                     description:
-                        'remove_field only: remove the declaration although notes still have a value for it (the values stay in the notes as undeclared fields)',
+                        'remove_field only: remove the' +
+                            ' declaration although notes still have' +
+                            ' a value for it (the values stay in' +
+                            ' the notes as undeclared fields)',
                 },
                 reason: {
                     type: 'string',
@@ -276,7 +357,9 @@ class NoteTarget {
             return {
                 ok: false,
                 message:
-                    'The "fields" argument must be an object of field values, e.g. {"status": "doing"}.',
+                    'The "fields" argument must be an' +
+                        ' object of field values, e.g.' +
+                        ' {"status": "doing"}.',
             };
         let out = text;
         for (const [key, value] of Object.entries(given)) {
@@ -340,7 +423,8 @@ function addNote(t: NoteTarget): Board | Found<never> {
         return {
             ok: false,
             message:
-                'The "text" argument (the title of the new note, a single line) is required.',
+                'The "text" argument (the title of the' +
+                    ' new note, a single line) is required.',
         };
     let text = t.withFields(title);
     if (failed(text)) return text;
@@ -466,7 +550,8 @@ function markNote(t: NoteTarget): Board | Found<never> {
         return {
             ok: false,
             message:
-                'The "done" argument (true/false) is required for the mark action.',
+                'The "done" argument (true/false) is' +
+                    ' required for the mark action.',
         };
     if (t.board.columns[at.value.column].cards[at.value.index].done === done)
         return { ok: false, message: 'That note already has that status.' };
@@ -489,7 +574,8 @@ function addGroup(t: NoteTarget): Board | Found<never> {
         return {
             ok: false,
             message:
-                'The "group" argument must be the name of the new group (a single line).',
+                'The "group" argument must be the name' +
+                    ' of the new group (a single line).',
         };
     if (groupTaken(t.board, name))
         return { ok: false, message: `The group "${name}" already exists.` };
@@ -504,7 +590,8 @@ function renameGroup(t: NoteTarget): Board | Found<never> {
         return {
             ok: false,
             message:
-                'The "title" argument must be the new name of the group (a single line).',
+                'The "title" argument must be the new' +
+                    ' name of the group (a single line).',
         };
     if (groupTaken(t.board, name, column.value))
         return { ok: false, message: `The group "${name}" already exists.` };
@@ -629,7 +716,10 @@ function addField(t: SchemaTarget): SchemaResult {
         return {
             ok: false,
             message:
-                'The "type" argument is required: text, number, select, date, progress, person, agent, or link (e.g. select(todo, doing, done)).',
+                'The "type" argument is required: text,' +
+                    ' number, select, date, progress,' +
+                    ' person, agent, or link (e.g.' +
+                    ' select(todo, doing, done)).',
         };
     const spec = preset && !type.includes('=') ? `${type} = ${preset}` : type;
     const read = parseSchema(`---\nfields:\n  ${key}: ${spec}\n---`);

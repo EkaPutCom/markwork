@@ -121,7 +121,10 @@ export class DaemonHub {
                     throw new Error(
                         fmt(
                             _(
-                                'markworkd is not running on this computer ({path}). Start it with “markworkd start” or its systemd user service.'
+                                'markworkd is not running on this' +
+                                    ' computer ({path}). Start it with' +
+                                    ' “markworkd start” or its systemd user' +
+                                    ' service.'
                             ),
                             { path }
                         )
@@ -137,7 +140,8 @@ export class DaemonHub {
             throw new Error(
                 fmt(
                     _(
-                        'The machine “{name}” is not defined; add it in Preferences.'
+                        'The machine “{name}” is not defined;' +
+                            ' add it in Preferences.'
                     ),
                     { name: machine }
                 )

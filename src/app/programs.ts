@@ -101,15 +101,20 @@ const CHECK_MS = 10_000;
 const PURPOSE: Record<ProgramName, () => string> = {
     git: () =>
         _(
-            "History, pull requests, the agent's history tools, and a worktree per card."
+            "History, pull requests, the agent's" +
+                " history tools, and a worktree per" +
+                " card."
         ),
     pi: () =>
         _(
-            'The agent that works on kanban cards: Work on it with pi on a card.'
+            'The agent that works on kanban cards:' +
+                ' Work on it with pi on a card.'
         ),
     markworkd: () =>
         _(
-            'Keeps agents running after the window closes, or runs them on another machine.'
+            'Keeps agents running after the window' +
+                ' closes, or runs them on another' +
+                ' machine.'
         ),
 };
 
@@ -129,7 +134,8 @@ function ways(name: ProgramName): InstallWay[] {
                 {
                     os: 'linux',
                     text: _(
-                        'Install it with the package manager of your system; on Ubuntu or Debian:'
+                        'Install it with the package manager of' +
+                            ' your system; on Ubuntu or Debian:'
                     ),
                     command: 'sudo apt install git',
                 },
@@ -150,7 +156,8 @@ function ways(name: ProgramName): InstallWay[] {
             return (['linux', 'darwin', 'win32'] as const).map((os) => ({
                 os,
                 text: _(
-                    'Install it with npm (Node.js 22.19 or newer), or follow pi.dev:'
+                    'Install it with npm (Node.js 22.19 or' +
+                        ' newer), or follow pi.dev:'
                 ),
                 command: PI_NPM,
             }));
@@ -160,7 +167,9 @@ function ways(name: ProgramName): InstallWay[] {
                     os: 'linux',
                     text: _('Build it with Go into ~/.local/bin:'),
                     command:
-                        'GOBIN=$HOME/.local/bin go install github.com/EkaPutCom/markwork/markworkd/cmd/markworkd@main',
+                        'GOBIN=$HOME/.local/bin go install' +
+                            ' github.com/EkaPutCom/markwork/markwor' +
+                            'kd/cmd/markworkd@main',
                 },
             ];
     }
@@ -488,7 +497,8 @@ export class ProgramsController {
                 path: '',
                 detail: fmt(
                     _(
-                        'Choose a project folder on {machine} first; the check runs there.'
+                        'Choose a project folder on {machine}' +
+                            ' first; the check runs there.'
                     ),
                     { machine }
                 ),

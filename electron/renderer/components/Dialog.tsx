@@ -82,7 +82,8 @@ export function DialogLayer() {
                         />
                     </div>
                 )}
-                <AlertDialogFooter className="flex-col sm:flex-row-reverse sm:justify-start">
+                <AlertDialogFooter className={"flex-col sm:flex-row-reverse" +
+                    " sm:justify-start"}>
                     {dialog.buttons.map((b, i) => (
                         <Button
                             key={b.value}

@@ -157,7 +157,9 @@ async function readAnswer(
 function endOfStreamError(status: number, errorBody: string): Error {
     if (status === 200)
         return new TemporaryProviderError(
-            'The DeepSeek stream ended before the completion marker; the work can be resumed from the checkpoint.'
+            'The DeepSeek stream ended before the' +
+                ' completion marker; the work can be' +
+                ' resumed from the checkpoint.'
         );
     const message = httpErrorMessage(status, errorBody);
     return status === 429 || status >= 500

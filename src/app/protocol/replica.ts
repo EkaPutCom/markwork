@@ -298,7 +298,8 @@ export class ProtocolEditor implements TextEditor {
                         this.onFailed(
                             write.retry
                                 ? 'The text kept changing under this edit'
-                                : 'The text changed while this edit was on its way'
+                                : 'The text changed while this edit was' +
+                                    ' on its way'
                         );
                 } else {
                     this.onFailed(reply.error.message);

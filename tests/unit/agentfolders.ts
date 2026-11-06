@@ -63,7 +63,9 @@ function sessionFor(folder: string) {
 
 export async function agentFolderTests(): Promise<void> {
     section('Pi Agent folders');
-    await test('new shell outputs expand their parents without opening a document or changing tree selection', async () => {
+    await test('new shell outputs expand their parents' +
+        ' without opening a document or' +
+        ' changing tree selection', async () => {
         const folder = fixture('output-tree'),
             { session, frontend } = sessionFor(folder);
         const shown = new Map<string, string[]>(),
@@ -135,7 +137,9 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('incomplete output inventories do not expand guessed paths but loaded folders still refresh', async () => {
+    await test('incomplete output inventories do not' +
+        ' expand guessed paths but loaded' +
+        ' folders still refresh', async () => {
         const folder = fixture('output-limit'),
             { session, frontend } = sessionFor(folder),
             workspace = disk.join(folder, 'workspace');
@@ -165,7 +169,8 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('agent output discovery baseline: 200 existing files and new nested reports', async () => {
+    await test('agent output discovery baseline: 200' +
+        ' existing files and new nested reports', async () => {
         const folder = fixture('output-perf'),
             workspace = disk.join(folder, 'workspace');
         for (let i = 0; i < 200; i++)
@@ -195,7 +200,9 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('new agents are version 2 stable identities directly under the root agents directory', () => {
+    await test('new agents are version 2 stable' +
+        ' identities directly under the root' +
+        ' agents directory', () => {
         const workspace = root('create');
         const path = createAgentFolder(
             workspace,
@@ -226,7 +233,9 @@ export async function agentFolderTests(): Promise<void> {
         ok(rejected, 'collision overwritten');
         eq(platform().fs.list(workspace), ['agents']);
     });
-    await test('creation rejects unsafe names, forged parents, nesting, files and symlink escapes', () => {
+    await test('creation rejects unsafe names, forged' +
+        ' parents, nesting, files and symlink' +
+        ' escapes', () => {
         const workspace = root('paths'),
             outside = root('outside');
         for (const name of [
@@ -288,7 +297,9 @@ export async function agentFolderTests(): Promise<void> {
         }
         ok(rejected, 'agent inside agent');
     });
-    await test('failed scaffold writes do not publish partial agents or remove unknown user contents', () => {
+    await test('failed scaffold writes do not publish' +
+        ' partial agents or remove unknown user' +
+        ' contents', () => {
         const workspace = root('failure'),
             fs = platform().fs,
             original = fs.writeText;
@@ -308,7 +319,9 @@ export async function agentFolderTests(): Promise<void> {
         ok(rejected, 'failure hidden');
         eq(platform().fs.list(disk.join(workspace, 'agents')), []);
     });
-    await test('old markers, executable configuration, traversal and malformed definitions start no runtime', () => {
+    await test('old markers, executable configuration,' +
+        ' traversal and malformed definitions' +
+        ' start no runtime', () => {
         const valid = JSON.parse(config());
         for (const value of [
             { ...valid, version: 1 },
@@ -338,7 +351,9 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('opening, editing instructions, and creating chats never activate or launch pi', async () => {
+    await test('opening, editing instructions, and' +
+        ' creating chats never activate or' +
+        ' launch pi', async () => {
         const folder = fixture('activation'),
             { session, fake, frontend } = sessionFor(folder);
         try {
@@ -376,7 +391,9 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('native sessions isolate history, preserve identity and use updated instruction snapshots', async () => {
+    await test('native sessions isolate history,' +
+        ' preserve identity and use updated' +
+        ' instruction snapshots', async () => {
         const folder = fixture('native'),
             { session, fake } = sessionFor(folder);
         try {
@@ -438,7 +455,9 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('tool writes bypass Apply and known credential fields are redacted from bounded logs', async () => {
+    await test('tool writes bypass Apply and known' +
+        ' credential fields are redacted from' +
+        ' bounded logs', async () => {
         const folder = fixture('writes'),
             { session } = sessionFor(folder);
         try {
@@ -468,7 +487,9 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('one active turn per agent, tab switches retain routing, and Stop frees the queue', async () => {
+    await test('one active turn per agent, tab' +
+        ' switches retain routing, and Stop' +
+        ' frees the queue', async () => {
         const folder = fixture('queue'),
             { session, fake } = sessionFor(folder);
         try {
@@ -495,7 +516,8 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('queued Stop removes a prompt rather than executing it later', async () => {
+    await test('queued Stop removes a prompt rather' +
+        ' than executing it later', async () => {
         const queue = new FolderTurnQueue(),
             order: string[] = [];
         let release!: () => void;
@@ -513,7 +535,9 @@ export async function agentFolderTests(): Promise<void> {
         await Promise.all([a, b]);
         eq(order, ['a']);
     });
-    await test('projection edits are never executable history and restoration never resends a prompt', async () => {
+    await test('projection edits are never executable' +
+        ' history and restoration never resends' +
+        ' a prompt', async () => {
         const folder = fixture('projection'),
             { session, fake } = sessionFor(folder);
         try {
@@ -541,7 +565,9 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('provider failure becomes interrupted and requires explicit native restore, never automatic retry', async () => {
+    await test('provider failure becomes interrupted' +
+        ' and requires explicit native restore,' +
+        ' never automatic retry', async () => {
         const folder = fixture('interrupted'),
             { session, fake } = sessionFor(folder);
         try {
@@ -558,7 +584,8 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('another owner is refused and runtime indexes never adopt old chat files', () => {
+    await test('another owner is refused and runtime' +
+        ' indexes never adopt old chat files', () => {
         const folder = fixture('ownership'),
             definition = loadAgentFolder(folder);
         if (definition.kind !== 'agent') throw Error('Invalid fixture');
@@ -584,7 +611,9 @@ export async function agentFolderTests(): Promise<void> {
             second.release();
         }
     });
-    await test('mixed tabs and Explorer use only offered session bindings while dirty documents survive', () => {
+    await test('mixed tabs and Explorer use only' +
+        ' offered session bindings while dirty' +
+        ' documents survive', () => {
         const folder = fixture('tabs'),
             { session } = sessionFor(folder);
         try {
@@ -617,7 +646,9 @@ export async function agentFolderTests(): Promise<void> {
             session.dispose();
         }
     });
-    await test('external disk changes refresh clean documents, preserve drafts, and gate explicit save and autosave', async () => {
+    await test('external disk changes refresh clean' +
+        ' documents, preserve drafts, and gate' +
+        ' explicit save and autosave', async () => {
         const folder = fixture('disk'),
             { session, settings } = sessionFor(folder);
         try {

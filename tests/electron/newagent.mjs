@@ -147,7 +147,9 @@ try {
         }
     );
     await step(
-        'Explorer always creates directly in workspace agents even from another selected folder',
+        'Explorer always creates directly in' +
+            ' workspace agents even from another' +
+            ' selected folder',
         async () => {
             await page
                 .getByRole('treeitem', { name: 'projects', exact: true })

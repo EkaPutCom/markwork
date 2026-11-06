@@ -302,7 +302,8 @@ export class PullReviewController {
         return isBinaryDiff(fileDiff(this.diff, path))
             ? _('This is a binary file; there is no text to compare.')
             : _(
-                  'There is no text change to show (for example a rename without edits).'
+                  'There is no text change to show (for' +
+                      ' example a rename without edits).'
               );
     }
 
@@ -331,7 +332,8 @@ export class PullReviewController {
                 rendered: [],
                 raw,
                 note: _(
-                    'This file is too large to compare as a note. The diff shows what changed.'
+                    'This file is too large to compare as a' +
+                        ' note. The diff shows what changed.'
                 ),
             };
         }
@@ -356,7 +358,10 @@ export class PullReviewController {
                 }),
                 detail: fmt(
                     _(
-                        '“{title}” will be merged into {base} on the server with “{method}”. Everybody who uses this repository sees it.'
+                        '“{title}” will be merged into {base}' +
+                            ' on the server with “{method}”.' +
+                            ' Everybody who uses this repository' +
+                            ' sees it.'
                     ),
                     {
                         title: pull.title,
@@ -443,7 +448,9 @@ export class PullReviewController {
             ]);
             if (!target)
                 return _(
-                    'The server does not know this repository, or the token cannot see it.'
+                    'The server does not know this' +
+                        ' repository, or the token cannot see' +
+                        ' it.'
                 );
             return {
                 folder,
@@ -513,12 +520,16 @@ export class PullReviewController {
                 pending.pull !== null
                     ? fmt(
                           _(
-                              'A merge for pull request #{number} is already in progress in this folder. Open that pull request to finish or abort it.'
+                              'A merge for pull request #{number} is' +
+                                  ' already in progress in this folder.' +
+                                  ' Open that pull request to finish or' +
+                                  ' abort it.'
                           ),
                           { number: pending.pull }
                       )
                     : _(
-                          'A merge is already in progress in this folder. Finish or abort it first.'
+                          'A merge is already in progress in this' +
+                              ' folder. Finish or abort it first.'
                       )
             );
         }
@@ -535,14 +546,22 @@ export class PullReviewController {
             pending.conflicts.length
                 ? fmt(
                       ngettext(
-                          'This merge was already started in this folder. {count} file still has conflicts; edit it, then choose Finish and push.',
-                          'This merge was already started in this folder. {count} files still have conflicts; edit them, then choose Finish and push.',
+                          'This merge was already started in this' +
+                              ' folder. {count} file still has' +
+                              ' conflicts; edit it, then choose' +
+                              ' Finish and push.',
+                          'This merge was already started in this' +
+                              ' folder. {count} files still have' +
+                              ' conflicts; edit them, then choose' +
+                              ' Finish and push.',
                           pending.conflicts.length
                       ),
                       { count: pending.conflicts.length }
                   )
                 : _(
-                      'This merge was already started in this folder. Choose Finish and push to send it to the server.'
+                      'This merge was already started in this' +
+                          ' folder. Choose Finish and push to' +
+                          ' send it to the server.'
                   )
         );
     }
@@ -567,7 +586,12 @@ export class PullReviewController {
                 ),
                 detail: fmt(
                     _(
-                        'Markwork will merge it into your {base}. Files that conflict get conflict markers; you edit them in their tabs and then finish, which pushes the result to the server. “Abort merge” undoes it.'
+                        'Markwork will merge it into your' +
+                            ' {base}. Files that conflict get' +
+                            ' conflict markers; you edit them in' +
+                            ' their tabs and then finish, which' +
+                            ' pushes the result to the server.' +
+                            ' “Abort merge” undoes it.'
                     ),
                     { base: pull.baseRef }
                 ),
@@ -591,14 +615,20 @@ export class PullReviewController {
             started.conflicts.length
                 ? fmt(
                       ngettext(
-                          '{count} file has conflicts. Edit it, then open the pull request again and choose Finish and push.',
-                          '{count} files have conflicts. Edit them, then open the pull request again and choose Finish and push.',
+                          '{count} file has conflicts. Edit it,' +
+                              ' then open the pull request again and' +
+                              ' choose Finish and push.',
+                          '{count} files have conflicts. Edit' +
+                              ' them, then open the pull request' +
+                              ' again and choose Finish and push.',
                           started.conflicts.length
                       ),
                       { count: started.conflicts.length }
                   )
                 : _(
-                      'Merged without conflicts. Choose Finish and push to send it to the server.'
+                      'Merged without conflicts. Choose' +
+                          ' Finish and push to send it to the' +
+                          ' server.'
                   )
         );
     }
@@ -653,13 +683,15 @@ export class PullReviewController {
             recorded.ok
                 ? fmt(
                       _(
-                          'Pushed. Pull request #{number} is merged on the server.'
+                          'Pushed. Pull request #{number} is' +
+                              ' merged on the server.'
                       ),
                       { number: pull.number }
                   )
                 : fmt(
                       _(
-                          'Pushed, but pull request #{number} is not marked as merged: {message}'
+                          'Pushed, but pull request #{number} is' +
+                              ' not marked as merged: {message}'
                       ),
                       { number: pull.number, message: recorded.message }
                   )
@@ -679,7 +711,9 @@ export class PullReviewController {
                     number: pull.number,
                 }),
                 detail: _(
-                    'The folder goes back to what it was before. Your edits to the conflicting files are lost.'
+                    'The folder goes back to what it was' +
+                        ' before. Your edits to the conflicting' +
+                        ' files are lost.'
                 ),
                 accept: _('Undo the Merge'),
                 destructive: true,
@@ -714,7 +748,8 @@ export class PullReviewController {
         if (current !== pull.baseRef)
             return fmt(
                 _(
-                    '{done}. The folder is on {branch}, not {base}, so it was not updated.'
+                    '{done}. The folder is on {branch}, not' +
+                        ' {base}, so it was not updated.'
                 ),
                 { done, branch: current || '?', base: pull.baseRef }
             );

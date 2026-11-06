@@ -7,7 +7,11 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const [destination, executable, bundle] = process.argv.slice(2);
 if (!destination)
     throw Error(
-        'Usage: node scripts/agent-worker-launcher.mjs <destination> [Electron-or-Markwork-executable] [folder-worker.js]'
+        'Usage: node' +
+            ' scripts/agent-worker-launcher.mjs' +
+            ' <destination>' +
+            ' [Electron-or-Markwork-executable]' +
+            ' [folder-worker.js]'
     );
 const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
 const target = resolve(destination);

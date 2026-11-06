@@ -51,17 +51,28 @@ function commit(cwd) {
         );
     write(
         'src/checkout/qris.ts',
-        '// QRIS payments at checkout.\nexport function qrisPayload(amount: number, merchant: string): string {\n    return `000201010212${merchant}54${String(amount).length}${amount}`;\n}\n'
+        '// QRIS payments at checkout.\nexport' +
+            ' function qrisPayload(amount: number,' +
+            ' merchant: string): string {\n   ' +
+            ' return' +
+            ' `000201010212${merchant}54${String(am' +
+            'ount).length}${amount}`;\n}\n'
     );
     write(
         'src/checkout/index.ts',
-        "export { cartTotal } from './cart.js';\nexport { qrisPayload } from './qris.js';\n"
+        "export { cartTotal } from" +
+            " './cart.js';\nexport { qrisPayload }" +
+            " from './qris.js';\n"
     );
     git('add', '-A');
     git('commit', '-q', '-m', 'Add QRIS payments at checkout');
     write(
         'tests/qris.test.ts',
-        "import { qrisPayload } from '../src/checkout/qris.js';\n\ntest('the payload names the amount', () => {\n    expect(qrisPayload(15000, 'ID1')).toContain('15000');\n});\n"
+        "import { qrisPayload } from" +
+            " '../src/checkout/qris.js';\n\ntest('t" +
+            "he payload names the amount', () =>" +
+            " {\n    expect(qrisPayload(15000," +
+            " 'ID1')).toContain('15000');\n});\n"
     );
     git('add', '-A');
     git('commit', '-q', '-m', 'Test the QRIS payload');
@@ -78,7 +89,8 @@ export function spawn(_argv, cwd, handlers) {
             type: 'message_update',
             assistantMessageEvent: {
                 type: 'thinking_delta',
-                delta: 'Look at the project structure first, then find the payment module.',
+                delta: 'Look at the project structure first,' +
+                    ' then find the payment module.',
             },
         });
         say({
@@ -119,7 +131,10 @@ export function spawn(_argv, cwd, handlers) {
         if (m === 'ask' && turns === 1) {
             say(
                 assistant(
-                    'I have read the README.\n\nThe installation section uses both npm and pnpm. Shall I standardize it on pnpm only?'
+                    'I have read the README.\n\nThe' +
+                        ' installation section uses both npm' +
+                        ' and pnpm. Shall I standardize it on' +
+                        ' pnpm only?'
                 )
             );
         } else {

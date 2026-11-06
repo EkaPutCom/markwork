@@ -45,7 +45,9 @@ export async function discardTests(): Promise<void> {
     const status = () =>
         sh('status', '--porcelain=v1', '--untracked-files=all');
 
-    await test('a modified file goes back to the last commit, in the working tree and in the index', async () => {
+    await test('a modified file goes back to the last' +
+        ' commit, in the working tree and in' +
+        ' the index', async () => {
         write('a.md', '# a.md\nedited\n');
         write('b.md', '# b.md\nstaged edit\n');
         await sh('add', 'b.md');
@@ -59,7 +61,8 @@ export async function discardTests(): Promise<void> {
         eq((await discard(['c.md'])).ok, true);
         eq(read('c.md'), '# c.md\n');
     });
-    await test('a new file, staged or not, is taken out and moved to the Trash', async () => {
+    await test('a new file, staged or not, is taken' +
+        ' out and moved to the Trash', async () => {
         write('new-untracked.md', 'x\n');
         write('new-staged.md', 'y\n');
         await sh('add', 'new-staged.md');
@@ -85,11 +88,13 @@ export async function discardTests(): Promise<void> {
         ok(exists('renamed.md') && !exists('d.md'), 'the files were touched');
         await sh('mv', 'renamed.md', 'd.md');
     });
-    await test('a clean file is not an error, and nothing selected is', async () => {
+    await test('a clean file is not an error, and' +
+        ' nothing selected is', async () => {
         eq((await discard(['a.md'])).ok, true);
         eq((await within(discardChanges([]))).ok, false);
     });
-    await test('the repository list is empty again after everything is discarded', async () => {
+    await test('the repository list is empty again' +
+        ' after everything is discarded', async () => {
         const changes = await within(repoChanges(repo));
         ok(changes.ok && changes.changes.length === 0, JSON.stringify(changes));
     });

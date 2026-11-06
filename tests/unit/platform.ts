@@ -170,7 +170,8 @@ async function withPlatform(
 export async function platformTests(): Promise<void> {
     section('Platform: credentials');
 
-    await test('the environment wins over the keyring and the file', async () => {
+    await test('the environment wins over the keyring' +
+        ' and the file', async () => {
         const { fake, ring, files } = fakePlatform({
             env: { TEST_KEY: '  from-env \n' },
         });
@@ -184,7 +185,8 @@ export async function platformTests(): Promise<void> {
         );
     });
 
-    await test('saving goes to the keyring and removes an older fallback file', async () => {
+    await test('saving goes to the keyring and removes' +
+        ' an older fallback file', async () => {
         const { fake, ring, files } = fakePlatform();
         files.set('/config/markwork/test.key', 'old');
         await withPlatform(fake, async () => {
@@ -201,7 +203,8 @@ export async function platformTests(): Promise<void> {
         });
     });
 
-    await test('without a keyring the secret goes to a file only its owner can read', async () => {
+    await test('without a keyring the secret goes to a' +
+        ' file only its owner can read', async () => {
         const { fake, files, modes } = fakePlatform({ keyring: false });
         await withPlatform(fake, async () => {
             eq(await within(saveCredential(CREDENTIAL, 'sekret')), 'file');
@@ -214,7 +217,9 @@ export async function platformTests(): Promise<void> {
         });
     });
 
-    await test('clearing removes it from the keyring and the file, and a missing one reads as null', async () => {
+    await test('clearing removes it from the keyring' +
+        ' and the file, and a missing one reads' +
+        ' as null', async () => {
         const { fake, ring, files } = fakePlatform();
         ring.set('com.example.test|{"provider":"x"}', 'a');
         files.set('/config/markwork/test.key', 'b');
@@ -229,7 +234,8 @@ export async function platformTests(): Promise<void> {
 
     section('Platform: cancelling');
 
-    await test('cancel runs each listener once, in order, and later cancels do nothing', async () => {
+    await test('cancel runs each listener once, in' +
+        ' order, and later cancels do nothing', async () => {
         const c = new Cancellable();
         const seen: string[] = [];
         c.onCancel(() => seen.push('a'));
@@ -241,7 +247,8 @@ export async function platformTests(): Promise<void> {
         ok(c.cancelled, 'cancelled');
     });
 
-    await test('a listener added after cancelling runs at once; a removed one never runs', async () => {
+    await test('a listener added after cancelling runs' +
+        ' at once; a removed one never runs', async () => {
         const c = new Cancellable();
         const seen: string[] = [];
         const off = c.onCancel(() => seen.push('removed'));
@@ -259,7 +266,9 @@ export async function platformTests(): Promise<void> {
     section(`Platform on ${host().runtime}: files`);
     const installed = platform();
 
-    await test('kind tells files, folders, symbolic links, and missing paths apart without following links', async () => {
+    await test('kind tells files, folders, symbolic' +
+        ' links, and missing paths apart' +
+        ' without following links', async () => {
         const { fs, paths } = installed;
         const dir = paths.join(tmp, 'platform-kind');
         fs.makeDirs(paths.join(dir, 'sub'), 0o755);
@@ -279,7 +288,9 @@ export async function platformTests(): Promise<void> {
         ok(threw, 'listing a missing folder throws');
     });
 
-    await test('info and listInfo give kind, size, and a stamp that changes with the contents; watchDir reports a new file', async () => {
+    await test('info and listInfo give kind, size, and' +
+        ' a stamp that changes with the' +
+        ' contents; watchDir reports a new file', async () => {
         const { fs, paths } = installed;
         const dir = paths.join(tmp, 'platform-info');
         fs.makeDirs(dir, 0o755);
@@ -312,7 +323,9 @@ export async function platformTests(): Promise<void> {
         eq(await within(seen), paths.join(dir, 'b.md'));
     });
 
-    await test('copy takes a folder with its files and links as they are, and refuses a target that exists', async () => {
+    await test('copy takes a folder with its files and' +
+        ' links as they are, and refuses a' +
+        ' target that exists', async () => {
         const { fs, paths } = installed;
         const dir = paths.join(tmp, 'platform-copy');
         fs.makeDirs(paths.join(dir, 'from', 'sub'), 0o755);
@@ -341,7 +354,9 @@ export async function platformTests(): Promise<void> {
         ok(threw, 'copying onto something that exists throws');
     });
 
-    await test('background writes finish through pumpWrites, in order, and report their errors', async () => {
+    await test('background writes finish through' +
+        ' pumpWrites, in order, and report' +
+        ' their errors', async () => {
         const { fs, paths } = installed;
         const file = paths.join(tmp, 'platform-bg.md');
         const results: unknown[] = [];
@@ -357,7 +372,8 @@ export async function platformTests(): Promise<void> {
         eq(fs.readText(file), 'first');
     });
 
-    await test('idle work runs until it says stop, and a cancelled one never runs', async () => {
+    await test('idle work runs until it says stop, and' +
+        ' a cancelled one never runs', async () => {
         const { scheduler } = installed;
         let runs = 0,
             cancelledRan = false;
@@ -381,7 +397,9 @@ export async function platformTests(): Promise<void> {
 
     section(`Platform on ${host().runtime}: processes`);
 
-    await test('run collects the output, the exit status, and the extra environment; a missing program gives null', async () => {
+    await test('run collects the output, the exit' +
+        ' status, and the extra environment; a' +
+        ' missing program gives null', async () => {
         const { processes } = installed;
         const r = await within(
             processes.run({
@@ -399,14 +417,17 @@ export async function platformTests(): Promise<void> {
         );
     });
 
-    await test('spawn speaks line by line: stdin in, stdout lines out, the exit status after both outputs are drained', async () => {
+    await test('spawn speaks line by line: stdin in,' +
+        ' stdout lines out, the exit status' +
+        ' after both outputs are drained', async () => {
         const lines: string[] = [];
         const ended = new Promise<[number, string]>((resolve) => {
             const child = installed.processes.spawn(
                 [
                     installed.processes.findProgram('sh')!,
                     '-c',
-                    'while read -r l; do echo "got $l"; done; echo bye >&2; exit 4',
+                    'while read -r l; do echo "got $l";' +
+                        ' done; echo bye >&2; exit 4',
                 ],
                 tmp,
                 {
@@ -434,7 +455,8 @@ export async function platformTests(): Promise<void> {
         eq(await within(ended), 128 + 15); // SIGTERM
     });
 
-    await test('findProgram finds a program on PATH and not one that does not exist', async () => {
+    await test('findProgram finds a program on PATH' +
+        ' and not one that does not exist', async () => {
         ok(
             /(^|[\\/])node(\.exe)?$/i.test(
                 installed.processes.findProgram('node') ?? ''

@@ -48,11 +48,14 @@ try {
     const history = page.getByRole('complementary', { name: 'History' });
     const collab = page.getByRole('complementary', { name: 'Pull requests' });
     const toast = page.locator(
-        '[data-sonner-toast][data-index="0"]:not([data-removed=true]) [data-title]'
+        '[data-sonner-toast][data-index="0"]:no' +
+            't([data-removed=true]) [data-title]'
     );
 
     await step(
-        'the History page lists the commits of the open file and the uncommitted files',
+        'the History page lists the commits of' +
+            ' the open file and the uncommitted' +
+            ' files',
         async () => {
             await page
                 .getByRole('treeitem', { name: /a\.md/ })
@@ -121,7 +124,9 @@ try {
     );
 
     await step(
-        'a commit opens in a viewer with its changes and its contents; Escape closes it',
+        'a commit opens in a viewer with its' +
+            ' changes and its contents; Escape' +
+            ' closes it',
         async () => {
             await history.getByRole('button', { name: /Add line two/ }).click();
             const viewer = page.getByRole('dialog', { name: /Add line two/ });
@@ -136,7 +141,9 @@ try {
     );
 
     await step(
-        'the uncommitted changes of a new file open with a commit form, and committing writes the commit',
+        'the uncommitted changes of a new file' +
+            ' open with a commit form, and' +
+            ' committing writes the commit',
         async () => {
             await history
                 .getByRole('button', { name: 'b.md', exact: true })
@@ -173,7 +180,9 @@ try {
     );
 
     await step(
-        'the form commits the checked files, and the assistant writes the message into it',
+        'the form commits the checked files,' +
+            ' and the assistant writes the message' +
+            ' into it',
         async () => {
             writeFileSync(join(notes, 'c.md'), 'third\n');
             await history
@@ -289,7 +298,9 @@ try {
     );
 
     await step(
-        'the form that sends changes needs a title and follows it in the branch name',
+        'the form that sends changes needs a' +
+            ' title and follows it in the branch' +
+            ' name',
         async () => {
             writeFileSync(join(notes, 'd.md'), 'for the pull request\n');
             await collab
@@ -322,7 +333,9 @@ try {
     );
 
     await step(
-        'a pull request opens as a page with its files, the note view, and the discussion',
+        'a pull request opens as a page with' +
+            ' its files, the note view, and the' +
+            ' discussion',
         async () => {
             await collab
                 .getByRole('button', { name: /Move the release/ })

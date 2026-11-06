@@ -123,7 +123,9 @@ export async function folderDaemonTests(): Promise<void> {
     });
     try {
         await until(() => disk.exists(socket), 10000);
-        await test('background pi starts without version support; app close/reopen retains the exact run and prompt', async () => {
+        await test('background pi starts without version' +
+            ' support; app close/reopen retains the' +
+            ' exact run and prompt', async () => {
             const first = make();
             await first.agentFolders.enable(folder);
             await first.agentFolders.execution(folder, 'background');
@@ -174,7 +176,8 @@ export async function folderDaemonTests(): Promise<void> {
                         message.role === 'assistant' &&
                         message.content === 'Background report completed.'
                 ),
-                'observed report must have a complete native snapshot before reopening'
+                'observed report must have a complete' +
+                    ' native snapshot before reopening'
             );
             const second = make();
             await until(
@@ -206,7 +209,8 @@ export async function folderDaemonTests(): Promise<void> {
             eq((await (await connection.ready()).get(run)).state, 'exited');
             second.dispose();
         });
-        await test('lost runs require explicit native recovery, never prompt or tool replay', async () => {
+        await test('lost runs require explicit native' +
+            ' recovery, never prompt or tool replay', async () => {
             const app = make();
             await app.agentFolders.enable(folder);
             disk.remove(disk.join(workspace, 'continue'));
@@ -264,7 +268,9 @@ export async function folderDaemonTests(): Promise<void> {
             eq(entry.pi.store.get(entry.pi.chatId).run, undefined);
             app.dispose();
         });
-        await test('background transport baseline: 1,000 events with native resume and execution-machine preflights', async () => {
+        await test('background transport baseline: 1,000' +
+            ' events with native resume and' +
+            ' execution-machine preflights', async () => {
             const app = make();
             await app.agentFolders.enable(folder);
             disk.write(disk.join(workspace, 'continue'), 'go');
@@ -285,7 +291,9 @@ export async function folderDaemonTests(): Promise<void> {
             );
             app.dispose();
         });
-        await test('unavailable execution-machine credentials fail before a prompt and never fall back locally', async () => {
+        await test('unavailable execution-machine' +
+            ' credentials fail before a prompt and' +
+            ' never fall back locally', async () => {
             const app = make();
             await app.agentFolders.enable(folder);
             disk.write(disk.join(workspace, 'deny-auth'), 'deny');

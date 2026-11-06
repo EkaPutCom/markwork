@@ -116,7 +116,11 @@ export class FolderDiskController<E extends TextEditor> {
     private conflict(observed: Observed, disk: string | null): void {
         if (!observed.conflict)
             this.host.toast(
-                'A file changed on disk while you were editing. Your draft is preserved. Resolve the conflict from the Assistant or agent Sessions panel before saving.'
+                'A file changed on disk while you were' +
+                    ' editing. Your draft is preserved.' +
+                    ' Resolve the conflict from the' +
+                    ' Assistant or agent Sessions panel' +
+                    ' before saving.'
             );
         observed.conflict = true;
         observed.disk = disk;
@@ -165,7 +169,8 @@ export class FolderDiskController<E extends TextEditor> {
             observed.disk = disk;
             this.changed();
             throw Error(
-                'The file changed again. Review the conflict before resolving it.'
+                'The file changed again. Review the' +
+                    ' conflict before resolving it.'
             );
         }
         if (choice === 'keep') {
@@ -175,7 +180,9 @@ export class FolderDiskController<E extends TextEditor> {
         }
         if (disk === null)
             throw Error(
-                'The file was removed or cannot be read. Keep your draft and save it to another file.'
+                'The file was removed or cannot be' +
+                    ' read. Keep your draft and save it to' +
+                    ' another file.'
             );
         const before = doc.editor.getText();
         observed.target = disk;

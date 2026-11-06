@@ -69,7 +69,9 @@ export function tableTests(): void {
             'cell start; out of range = end of line'
         );
     });
-    test('setCellText: only the cell changes, and a pipe or a line break cannot split it', () => {
+    test('setCellText: only the cell changes,' +
+        ' and a pipe or a line break cannot' +
+        ' split it', () => {
         const edit = (line: string, col: number, text: string) => {
             const c = setCellText(line, col, text);
             return c && line.slice(0, c.from) + c.insert + line.slice(c.to);
@@ -107,7 +109,8 @@ export function tableTests(): void {
             'rows are padded/truncated to the header count'
         );
     });
-    test('displayWidth: CJK and emoji take two columns, joiners take zero', () => {
+    test('displayWidth: CJK and emoji take two' +
+        ' columns, joiners take zero', () => {
         eq(
             [
                 displayWidth('abc'),
@@ -174,7 +177,8 @@ export function tableTests(): void {
         const t = parseTable(['| a |', '| --- |', '| 1 |']);
         eq(deleteColumn(t, 0), t);
     });
-    test('findTables: several tables, skipping code blocks, stopping at other blocks', () => {
+    test('findTables: several tables, skipping' +
+        ' code blocks, stopping at other blocks', () => {
         const lines = [
             '| a | b |',
             '| - | - |',
@@ -204,7 +208,8 @@ export function tableTests(): void {
             'a line without a pipe ends the table'
         );
     });
-    test('fitColumns: left alone if it fits, only wide columns are narrowed', () => {
+    test('fitColumns: left alone if it fits,' +
+        ' only wide columns are narrowed', () => {
         eq(fitColumns([100, 80], 300), [100, 80], 'fits');
         eq(
             fitColumns([400, 50, 50], 300),

@@ -72,7 +72,9 @@ function after(
 export function editCommandTests(): void {
     section('Editor commands (text → edit)');
 
-    test('applyChanges and mapPosition: a position in a replaced range or at an insertion moves past the new text', () => {
+    test('applyChanges and mapPosition: a' +
+        ' position in a replaced range or at an' +
+        ' insertion moves past the new text', () => {
         const changes = [
             { from: 1, to: 1, insert: 'XY' },
             { from: 3, to: 5, insert: 'z' },
@@ -84,7 +86,8 @@ export function editCommandTests(): void {
         );
     });
 
-    test('wrap: around a selection, removed again, and a pair at the cursor', () => {
+    test('wrap: around a selection, removed' +
+        ' again, and a pair at the cursor', () => {
         eq(
             after('a ·word‸ b', (s) => wrap(s, '**')),
             'a ‸**word**· b'
@@ -145,11 +148,14 @@ export function editCommandTests(): void {
         );
     });
 
-    test('wrap toggles what the line shows: a selection without its hidden markers, part of a span, and other formats', () => {
+    test('wrap toggles what the line shows: a' +
+        ' selection without its hidden markers,' +
+        ' part of a span, and other formats', () => {
         eq(
             after('make this **‸loud·**', (s) => wrap(s, '**')),
             'make this ‸loud·',
-            'the text of a bold span without its ** (a table cell, the visual editor)'
+            'the text of a bold span without its **' +
+                ' (a table cell, the visual editor)'
         );
         eq(
             after('make this **‸loud**·', (s) => wrap(s, '**')),
@@ -222,7 +228,9 @@ export function editCommandTests(): void {
         );
     });
 
-    test('inlineFormatsAt: at a cursor, and over a selection with or without its markers', () => {
+    test('inlineFormatsAt: at a cursor, and over' +
+        ' a selection with or without its' +
+        ' markers', () => {
         eq(inlineFormatsAt('a **b** c', 4, 4), ['bold']);
         eq(
             inlineFormatsAt('a **b** c', 2, 7),
@@ -251,7 +259,9 @@ export function editCommandTests(): void {
         );
     });
 
-    test('togglePrefix: every selected line, numbered, and removed when all have it', () => {
+    test('togglePrefix: every selected line,' +
+        ' numbered, and removed when all have' +
+        ' it', () => {
         eq(
             after('·one\ntwo‸', (s) => togglePrefix(s, /^>\s?/, '> ')),
             '> ·one\n> two‸'
@@ -271,7 +281,8 @@ export function editCommandTests(): void {
         );
     });
 
-    test('lineKindOf: headings, quotes, the three lists, and plain text', () => {
+    test('lineKindOf: headings, quotes, the' +
+        ' three lists, and plain text', () => {
         eq(
             [
                 '## Two',
@@ -299,7 +310,9 @@ export function editCommandTests(): void {
         });
     });
 
-    test('setLineKind: replaces the prefix a line has, and the same kind again makes a paragraph', () => {
+    test('setLineKind: replaces the prefix a' +
+        ' line has, and the same kind again' +
+        ' makes a paragraph', () => {
         eq(
             after('- it‸em', (s) => setLineKind(s, 'numbered')),
             '1. it‸em',
@@ -378,14 +391,17 @@ export function editCommandTests(): void {
         eq(after('> - in a quote‸', continueBlock), '> - in a quote\n> - ‸');
     });
 
-    test('Enter on an empty item ends the list; on plain text it is not handled', () => {
+    test('Enter on an empty item ends the list;' +
+        ' on plain text it is not handled', () => {
         eq(after('- one\n- ‸', continueBlock), '- one\n‸');
         eq(after('> - ‸', continueBlock), '‸');
         eq(after('> a\n> ‸', continueBlock), '> a\n‸');
         eq(after('plain‸', continueBlock), null);
     });
 
-    test('Tab and Shift+Tab indent a list item by 4 spaces; not a list line = not handled', () => {
+    test('Tab and Shift+Tab indent a list item' +
+        ' by 4 spaces; not a list line = not' +
+        ' handled', () => {
         eq(
             after('- it‸em', (s) => indentListItem(s, false)),
             '    - it‸em'
@@ -415,7 +431,9 @@ export function editCommandTests(): void {
 
     const TABLE = '| a | b |\n| --- | --- |\n| 1 | 2 |';
 
-    test('Tab moves to the next cell, wraps to the next row, and adds a row after the last cell', () => {
+    test('Tab moves to the next cell, wraps to' +
+        ' the next row, and adds a row after' +
+        ' the last cell', () => {
         eq(
             after('| a‸ | b |\n| --- | --- |\n| 1 | 2 |', (s) =>
                 tabInTable(s, false)
@@ -454,7 +472,8 @@ export function editCommandTests(): void {
         );
     });
 
-    test('Enter moves down a row; on an empty last row it leaves the table', () => {
+    test('Enter moves down a row; on an empty' +
+        ' last row it leaves the table', () => {
         eq(
             after('| a | ‸b |\n| --- | --- |\n| 1 | 2 |', enterInTable),
             '| a | b |\n| --- | --- |\n| 1 | ‸2 |'
@@ -467,7 +486,8 @@ export function editCommandTests(): void {
         );
     });
 
-    test('table commands: rows, columns, alignment, and what cannot be done', () => {
+    test('table commands: rows, columns,' +
+        ' alignment, and what cannot be done', () => {
         const run = (
             before: string,
             command: Parameters<typeof runTableCommand>[1]

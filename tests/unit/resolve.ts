@@ -100,7 +100,8 @@ export async function resolveTests(): Promise<void> {
         return { bare, work, merge };
     };
 
-    await test('conflict markers are told from a Markdown heading underline', async () => {
+    await test('conflict markers are told from a' +
+        ' Markdown heading underline', async () => {
         ok(
             hasMarkers('a\n<<<<<<< HEAD\nb\n=======\nc\n>>>>>>> FETCH_HEAD\n'),
             'markers'
@@ -115,7 +116,9 @@ export async function resolveTests(): Promise<void> {
         );
     });
 
-    await test('the folder must be on the base branch, clean, and not in the middle of a merge', async () => {
+    await test('the folder must be on the base branch,' +
+        ' clean, and not in the middle of a' +
+        ' merge', async () => {
         const { work } = await scenario(true);
         eq(await within(preflight(runGit, work, 'main')), null);
         contains(
@@ -133,7 +136,9 @@ export async function resolveTests(): Promise<void> {
         eq(await within(preflight(runGit, work, 'main')), null);
     });
 
-    await test('a merge left in the folder (the app was closed) is found again with its pull request and files', async () => {
+    await test('a merge left in the folder (the app' +
+        ' was closed) is found again with its' +
+        ' pull request and files', async () => {
         const { work, merge } = await scenario(true);
         eq(await within(pendingMerge(runGit, work)), null);
         const start = await within(startLocalMerge(runGit, merge));
@@ -148,7 +153,8 @@ export async function resolveTests(): Promise<void> {
         eq(await within(pendingMerge(runGit, work)), null);
     });
 
-    await test('a merge that was started by hand is found, without a pull request', async () => {
+    await test('a merge that was started by hand is' +
+        ' found, without a pull request', async () => {
         const { work } = await scenario(true);
         await sh(work, 'checkout', '-q', '-b', 'side', 'HEAD~1');
         write(`${work}/journal.md`, 'side\n');
@@ -161,7 +167,9 @@ export async function resolveTests(): Promise<void> {
         await sh(work, 'merge', '--abort');
     });
 
-    await test('a conflicting pull request is merged as far as it goes and the conflicting files are listed', async () => {
+    await test('a conflicting pull request is merged' +
+        ' as far as it goes and the conflicting' +
+        ' files are listed', async () => {
         const { work, merge } = await scenario(true);
         const start = await within(startLocalMerge(runGit, merge));
         ok(start.ok, `started: ${!start.ok && start.message}`);
@@ -175,7 +183,8 @@ export async function resolveTests(): Promise<void> {
         eq(await sh(work, 'rev-parse', 'HEAD'), start.before);
     });
 
-    await test('finishing commits the resolution as a merge and pushes the base branch', async () => {
+    await test('finishing commits the resolution as a' +
+        ' merge and pushes the base branch', async () => {
         const { bare, work, merge } = await scenario(true);
         const start = await within(startLocalMerge(runGit, merge));
         if (!start.ok) throw new Error(start.message);
@@ -210,7 +219,9 @@ export async function resolveTests(): Promise<void> {
         );
     });
 
-    await test('finishing while git still sees conflicts is refused and nothing is pushed', async () => {
+    await test('finishing while git still sees' +
+        ' conflicts is refused and nothing is' +
+        ' pushed', async () => {
         const { bare, merge } = await scenario(true);
         const before = await sh(bare, 'rev-parse', 'main');
         const start = await within(startLocalMerge(runGit, merge));
@@ -233,7 +244,9 @@ export async function resolveTests(): Promise<void> {
         eq(await sh(work, 'status', '--porcelain'), '');
     });
 
-    await test('a pull request that merges cleanly is committed at once; finishing only pushes, aborting undoes it', async () => {
+    await test('a pull request that merges cleanly is' +
+        ' committed at once; finishing only' +
+        ' pushes, aborting undoes it', async () => {
         const { bare, work, merge } = await scenario(false);
         const start = await within(startLocalMerge(runGit, merge));
         ok(start.ok && start.conflicts.length === 0, 'no conflicts');
@@ -256,7 +269,9 @@ export async function resolveTests(): Promise<void> {
         );
     });
 
-    await test('a local base that has diverged from the server stops before the pull request is touched', async () => {
+    await test('a local base that has diverged from' +
+        ' the server stops before the pull' +
+        ' request is touched', async () => {
         const { work, merge } = await scenario(true);
         write(`${work}/local.md`, 'only here\n');
         await sh(work, 'add', 'local.md');
@@ -306,17 +321,21 @@ export async function resolveTests(): Promise<void> {
         } as unknown as ForgeProvider;
         return { provider, marks: () => marks };
     };
-    await test('a pull request the server already shows as merged is left alone', async () => {
+    await test('a pull request the server already' +
+        ' shows as merged is left alone', async () => {
         const f = forge(['merged'], async () => {});
         ok((await within(confirmMerged(f.provider, 7, 'abc'))).ok, 'ok');
         eq(f.marks(), 0);
     });
-    await test('an open pull request is recorded as merged with the pushed commit', async () => {
+    await test('an open pull request is recorded as' +
+        ' merged with the pushed commit', async () => {
         const f = forge(['open'], async () => {});
         ok((await within(confirmMerged(f.provider, 7, 'abc'))).ok, 'ok');
         eq(f.marks(), 1);
     });
-    await test('a repository that does not allow manual merges is explained, not hidden', async () => {
+    await test('a repository that does not allow' +
+        ' manual merges is explained, not' +
+        ' hidden', async () => {
         const f = forge(['open'], async () => {
             throw new ForgeError('not-mergeable', 'not allowed', 405);
         });
@@ -328,7 +347,9 @@ export async function resolveTests(): Promise<void> {
             'explained'
         );
     });
-    await test('a server that notices the merge by itself while it is being recorded counts as merged', async () => {
+    await test('a server that notices the merge by' +
+        ' itself while it is being recorded' +
+        ' counts as merged', async () => {
         const f = forge(['open', 'merged'], async () => {
             throw new ForgeError('not-mergeable', 'already merged', 405);
         });
@@ -345,7 +366,9 @@ export async function resolveTests(): Promise<void> {
         );
     });
 
-    await test('a repository opened through a symbolic link keeps that spelling in its changes', async () => {
+    await test('a repository opened through a symbolic' +
+        ' link keeps that spelling in its' +
+        ' changes', async () => {
         // a folder link needs rights a Windows runner may not have
         if (platform().os === 'win32') return;
         const real = disk.join(dir, 'linked-real'),

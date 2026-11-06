@@ -97,7 +97,9 @@ test('a saved light choice controls the first media request', () => {
 test('an invalid preference falls back to dark', () => {
     assert.equal(start({ saved: 'unexpected' }).root.dataset.theme, 'dark');
 });
-test('switching themes changes the media, accessible control label, and saved choice together', () => {
+test('switching themes changes the media,' +
+    ' accessible control label, and saved' +
+    ' choice together', () => {
     const state = start();
     state.loaded();
     state.window.markworkTheme.set('light');
@@ -127,7 +129,9 @@ test('reduced motion uses only a still image in the selected theme', () => {
     assert.equal(state.attrs.get('src'), 'assets/demo.gif');
 });
 
-test('all existing documentation URLs have the shared dark-first shell and retain their content', () => {
+test('all existing documentation URLs have' +
+    ' the shared dark-first shell and' +
+    ' retain their content', () => {
     assert.equal(pages.length, 25);
     for (const page of pages) {
         const html = readFileSync(page, 'utf8');
@@ -147,7 +151,9 @@ test('all existing documentation URLs have the shared dark-first shell and retai
         );
     }
 });
-test('every application image has actual light and dark files and every animation has still alternatives', () => {
+test('every application image has actual' +
+    ' light and dark files and every' +
+    ' animation has still alternatives', () => {
     for (const page of pages) {
         const html = readFileSync(page, 'utf8');
         for (const match of html.matchAll(
@@ -183,7 +189,9 @@ test('every application image has actual light and dark files and every animatio
         }
     }
 });
-test('local styles, scripts, fonts, links, and media are present in the static site', () => {
+test('local styles, scripts, fonts, links,' +
+    ' and media are present in the static' +
+    ' site', () => {
     for (const page of pages) {
         const html = readFileSync(page, 'utf8');
         for (const [, url] of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
@@ -193,7 +201,8 @@ test('local styles, scripts, fonts, links, and media are present in the static s
         }
     }
 });
-test('web color tokens are generated from the current application theme', () => {
+test('web color tokens are generated from' +
+    ' the current application theme', () => {
     const source = readFileSync(
         join(root, 'electron/renderer/styles/globals.css'),
         'utf8'
@@ -208,14 +217,17 @@ test('web color tokens are generated from the current application theme', () => 
             'Run npm run site:build after changing the application tokens'
         );
 });
-test('the approved landing page omits the removed approval section and link', () => {
+test('the approved landing page omits the' +
+    ' removed approval section and link', () => {
     const html = readFileSync(join(site, 'index.html'), 'utf8');
     assert.doesNotMatch(
         html,
         /A capable agent|How approval works|BUILT AROUND YOUR APPROVAL/
     );
 });
-test('icons are inline geometry from a classic script, so opening the site as a local file needs no SVG requests', () => {
+test('icons are inline geometry from a' +
+    ' classic script, so opening the site' +
+    ' as a local file needs no SVG requests', () => {
     const window = {};
     runInNewContext(readFileSync(join(site, 'web/icons.js'), 'utf8'), {
         window,

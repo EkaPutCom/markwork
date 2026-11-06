@@ -21,7 +21,27 @@ const MAX_LISTED = 8;
 export const VERIFY_TOOL: ToolSpec = {
     name: 'verify_work',
     description:
-        'Check the actual result after changes. State the criteria from the user\'s request: text that must be present/absent, a note in a structured document (kind note: text = the note, optionally in a group and done or not done), the value of a field of a note in a structured document (kind field: text = a piece of the note, field = the field name, value = the expected value, empty for no value), or Markdown structure (tables, headings, code blocks, links to other files, and for a structured document its field declarations and the values of its notes) without new problems. file "*" means the whole folder, e.g. making sure an old date remains in no file. Check all changed files. A failed result means the work is not finished.',
+        'Check the actual result after changes.' +
+            ' State the criteria from the user\'s' +
+            ' request: text that must be' +
+            ' present/absent, a note in a' +
+            ' structured document (kind note: text' +
+            ' = the note, optionally in a group and' +
+            ' done or not done), the value of a' +
+            ' field of a note in a structured' +
+            ' document (kind field: text = a piece' +
+            ' of the note, field = the field name,' +
+            ' value = the expected value, empty for' +
+            ' no value), or Markdown structure' +
+            ' (tables, headings, code blocks, links' +
+            ' to other files, and for a structured' +
+            ' document its field declarations and' +
+            ' the values of its notes) without new' +
+            ' problems. file "*" means the whole' +
+            ' folder, e.g. making sure an old date' +
+            ' remains in no file. Check all changed' +
+            ' files. A failed result means the work' +
+            ' is not finished.',
     parameters: {
         type: 'object',
         properties: {
@@ -35,7 +55,8 @@ export const VERIFY_TOOL: ToolSpec = {
                         file: {
                             type: 'string',
                             description:
-                                'File name, or "*" for the whole folder (present/absent only)',
+                                'File name, or "*" for the whole folder' +
+                                    ' (present/absent only)',
                         },
                         kind: {
                             type: 'string',
@@ -50,12 +71,17 @@ export const VERIFY_TOOL: ToolSpec = {
                         text: {
                             type: 'string',
                             description:
-                                'present/absent: the exact text; note: a piece of the text of the note; field: a piece of the text of the note. Not used for structure',
+                                'present/absent: the exact text; note:' +
+                                    ' a piece of the text of the note;' +
+                                    ' field: a piece of the text of the' +
+                                    ' note. Not used for structure',
                         },
                         group: {
                             type: 'string',
                             description:
-                                'note only: the group (the ## heading, the column of a board) the note must be in',
+                                'note only: the group (the ## heading,' +
+                                    ' the column of a board) the note must' +
+                                    ' be in',
                         },
                         done: {
                             type: 'boolean',
@@ -69,7 +95,9 @@ export const VERIFY_TOOL: ToolSpec = {
                         value: {
                             type: 'string',
                             description:
-                                'field only: the expected value (as written in the note); empty means the note must not have the field',
+                                'field only: the expected value (as' +
+                                    ' written in the note); empty means the' +
+                                    ' note must not have the field',
                         },
                     },
                     required: ['file', 'kind'],

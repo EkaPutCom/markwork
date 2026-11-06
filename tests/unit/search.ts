@@ -26,7 +26,8 @@ const pattern = (
 
 export function searchTests(): void {
     section('Search across documents');
-    test('an empty query has no pattern, an invalid regular expression an error', () => {
+    test('an empty query has no pattern, an' +
+        ' invalid regular expression an error', () => {
         eq(buildPattern('', plain), null);
         const bad = buildPattern('(', { ...plain, regex: true });
         ok(bad !== null && 'error' in bad, 'an unclosed group is an error');
@@ -35,7 +36,8 @@ export function searchTests(): void {
             'without regex the parenthesis is literal text'
         );
     });
-    test('hits carry the line, the offsets, and the text around the match', () => {
+    test('hits carry the line, the offsets, and' +
+        ' the text around the match', () => {
         const r = searchFiles(
             [
                 {
@@ -70,7 +72,8 @@ export function searchTests(): void {
             'the dot is literal without regex'
         );
     });
-    test('files without a match are left out, and the list stops at the limit', () => {
+    test('files without a match are left out,' +
+        ' and the list stops at the limit', () => {
         const files = [
             { name: 'a.md', text: 'x x x' },
             { name: 'b.md', text: 'none' },
@@ -84,7 +87,8 @@ export function searchTests(): void {
         const cut = searchFiles(files, pattern('x'), 2);
         eq([cut.total, cut.truncated, cut.files.length], [2, true, 1]);
     });
-    test('a long line is cut around the match and an empty match is skipped', () => {
+    test('a long line is cut around the match' +
+        ' and an empty match is skipped', () => {
         const line = `${'a'.repeat(100)}NEEDLE${'b'.repeat(100)}`;
         const hit = searchFiles(
             [{ name: 'a.md', text: line }],
@@ -102,7 +106,8 @@ export function searchTests(): void {
             0
         );
     });
-    test('replacing: literal text, regex groups, and the line endings stay', () => {
+    test('replacing: literal text, regex groups,' +
+        ' and the line endings stay', () => {
         eq(replaceMatches('foo Foo\r\nfoo', pattern('foo'), '$1x', false), {
             text: '$1x $1x\r\n$1x',
             count: 3,
@@ -130,7 +135,8 @@ export function searchTests(): void {
 
 export function searchFilterTests(): void {
     section('Files to include and exclude');
-    test('no patterns means no filter; a name matches a file or folder at any depth', () => {
+    test('no patterns means no filter; a name' +
+        ' matches a file or folder at any depth', () => {
         eq(pathFilter('', ' , '), null);
         const only = pathFilter('README.md, drafts', '')!;
         eq(
@@ -145,7 +151,9 @@ export function searchFilterTests(): void {
             [true, true, true, true, true, false]
         );
     });
-    test('a pattern with a slash is anchored; * stays in a folder and ** crosses folders', () => {
+    test('a pattern with a slash is anchored; *' +
+        ' stays in a folder and ** crosses' +
+        ' folders', () => {
         const f = pathFilter('agenda/**, notes/*.md', '')!;
         eq(
             [
@@ -163,7 +171,8 @@ export function searchFilterTests(): void {
             false,
         ]);
     });
-    test('excluding wins over including, and a folder pattern covers its contents', () => {
+    test('excluding wins over including, and a' +
+        ' folder pattern covers its contents', () => {
         const f = pathFilter('**', 'drafts/**, *.tmp.md')!;
         eq(
             [

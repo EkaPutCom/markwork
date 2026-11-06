@@ -263,7 +263,8 @@ export function discardPrompt(
     if (kind === 'untracked' || kind === 'added')
         return {
             heading: `Delete the new file “${name}”?`,
-            detail: 'The file is not in the last commit. It will be moved to the Trash.',
+            detail: 'The file is not in the last commit. It' +
+                ' will be moved to the Trash.',
             accept: 'Move to Trash',
         };
     if (kind === 'deleted')

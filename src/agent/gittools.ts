@@ -20,7 +20,15 @@ export const GIT_TOOLS: ToolSpec[] = [
     {
         name: 'git_log',
         description:
-            'List the latest Git commits in the work folder (or for a single file, following renames): hash, date, author, message, and the Markdown files that changed. Use it for questions like "what changed this week" or "when was this date changed". Uncommitted changes are not shown.',
+            'List the latest Git commits in the' +
+                ' work folder (or for a single file,' +
+                ' following renames): hash, date,' +
+                ' author, message, and the Markdown' +
+                ' files that changed. Use it for' +
+                ' questions like "what changed this' +
+                ' week" or "when was this date' +
+                ' changed". Uncommitted changes are not' +
+                ' shown.',
         parameters: {
             type: 'object',
             properties: {
@@ -39,14 +47,17 @@ export const GIT_TOOLS: ToolSpec[] = [
     {
         name: 'show_commit',
         description:
-            'Show the changes (diff) to Markdown files in one commit, from a hash in git_log. Can be limited to one file.',
+            'Show the changes (diff) to Markdown' +
+                ' files in one commit, from a hash in' +
+                ' git_log. Can be limited to one file.',
         parameters: {
             type: 'object',
             properties: {
                 commit: {
                     type: 'string',
                     description:
-                        'Commit hash (at least 4 characters) or HEAD, HEAD~1, …',
+                        'Commit hash (at least 4 characters) or' +
+                            ' HEAD, HEAD~1, …',
                 },
                 file: {
                     type: 'string',
@@ -60,7 +71,11 @@ export const GIT_TOOLS: ToolSpec[] = [
     {
         name: 'file_at_commit',
         description:
-            'Read the full contents of a file as it was at a given commit (including files that have since been deleted or moved). The result includes line numbers.',
+            'Read the full contents of a file as it' +
+                ' was at a given commit (including' +
+                ' files that have since been deleted or' +
+                ' moved). The result includes line' +
+                ' numbers.',
         parameters: {
             type: 'object',
             properties: {
@@ -184,7 +199,8 @@ export function formatGit(request: GitRequest, answer: GitAnswer): ToolOutcome {
             return {
                 content: request.file
                     ? `There are no commits for ${request.file} yet.`
-                    : 'There are no commits that touch Markdown files in this folder yet.',
+                    : 'There are no commits that touch' +
+                        ' Markdown files in this folder yet.',
                 summary: '0 commits',
             };
         return {

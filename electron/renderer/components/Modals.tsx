@@ -328,7 +328,9 @@ export function PreferencesDialog() {
                         </Group>
                         <Group
                             title="Collaboration"
-                            description="Pull requests of the Forgejo or Gitea server behind the folder's git remote"
+                            description={"Pull requests of the Forgejo or" +
+                                " Gitea server behind the folder's" +
+                                " git remote"}
                         >
                             <Row
                                 title="Check every"

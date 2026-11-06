@@ -14,7 +14,8 @@ export function projectPath(root: string, file: string): string {
         // anything that cannot be checked throws.
         if (fs.kind(current) === 'symlink')
             throw Error(
-                'path goes through a symbolic link outside the agent access boundary'
+                'path goes through a symbolic link' +
+                    ' outside the agent access boundary'
             );
     }
     return current;

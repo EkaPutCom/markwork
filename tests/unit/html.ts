@@ -14,7 +14,9 @@ export function htmlTests(): void {
     test('format inline', () =>
         eq(
             body('**a** *b* `c` ~~d~~ ==e=='),
-            '<p><strong>a</strong> <em>b</em> <code>c</code> <del>d</del> <mark>e</mark></p>'
+            '<p><strong>a</strong> <em>b</em>' +
+                ' <code>c</code> <del>d</del>' +
+                ' <mark>e</mark></p>'
         ));
     test('links and images', () => {
         const h = body('[GTK](https://gtk.org/a_b) ![logo](img/x.png)');
@@ -24,14 +26,20 @@ export function htmlTests(): void {
     test('HTML in a code block is escaped', () =>
         eq(
             body('```html\n<b>&</b>\n```'),
-            '<pre><code class="language-html">&lt;b&gt;&amp;&lt;/b&gt;</code></pre>'
+            '<pre><code' +
+                ' class="language-html">&lt;b&gt;&amp;&' +
+                'lt;/b&gt;</code></pre>'
         ));
-    test('a mermaid block becomes <pre class="mermaid"> and loads the Mermaid script', () => {
+    test('a mermaid block becomes <pre' +
+        ' class="mermaid"> and loads the' +
+        ' Mermaid script', () => {
         const h = markdownToHtml('```mermaid\ngraph TD\n  A-->B\n```', 't');
         contains(h, '<pre class="mermaid">graph TD\n  A--&gt;B</pre>');
         contains(h, 'mermaid.esm.min.mjs');
     });
-    test('a dbml block becomes a Mermaid ER diagram; invalid dbml stays a code block', () => {
+    test('a dbml block becomes a Mermaid ER' +
+        ' diagram; invalid dbml stays a code' +
+        ' block', () => {
         const h = markdownToHtml('```dbml\nTable a { id int [pk] }\n```', 't');
         contains(h, '<pre class="mermaid">erDiagram');
         contains(h, 'mermaid.esm.min.mjs');

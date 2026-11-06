@@ -5,13 +5,16 @@ import { blurText } from '../../src/markdown/blur';
 
 export function blurTests(): void {
     section('Blurring a report');
-    test('letters become x or X and digits 0; spaces and punctuation stay', () => {
+    test('letters become x or X and digits 0;' +
+        ' spaces and punctuation stay', () => {
         eq(
             blurText('Kita rilis Jumat, 25 Oktober.'),
             'Xxxx xxxxx Xxxxx, 00 Xxxxxxx.'
         );
     });
-    test('the Markdown stays: headings, emphasis, lists, tasks, quotes, code fences, and tables', () => {
+    test('the Markdown stays: headings,' +
+        ' emphasis, lists, tasks, quotes, code' +
+        ' fences, and tables', () => {
         eq(blurText('# Plan 2026\n'), '# Xxxx 0000\n');
         eq(
             blurText('Some **bold** and *it* ~~old~~ ==new== `code`'),
@@ -26,13 +29,17 @@ export function blurTests(): void {
             '| Xxxx | Xxx |\n| --- | ---: |\n| Xxx | 00 |'
         );
     });
-    test('a code block keeps its fences and language; its lines are text, even one that looks like a list', () => {
+    test('a code block keeps its fences and' +
+        ' language; its lines are text, even' +
+        ' one that looks like a list', () => {
         eq(
             blurText('```mermaid\ngraph TD\n- not a list\n```\n'),
             '```mermaid\nxxxxx XX\n- xxx x xxxx\n```\n'
         );
     });
-    test('a link keeps its brackets and scheme; its words and address are blurred; a picture keeps its markup', () => {
+    test('a link keeps its brackets and scheme;' +
+        ' its words and address are blurred; a' +
+        ' picture keeps its markup', () => {
         eq(
             blurText('[Docs](https://example.com/a?b=1)'),
             '[Xxxx](https://xxxxxxx.xxx/x?x=0)'
@@ -49,13 +56,16 @@ export function blurTests(): void {
             'Xxxx [due:: 0000-00-00] [owner:: Xxx]'
         );
     });
-    test('emoji and other scripts stay as they are; accented Latin letters are blurred', () => {
+    test('emoji and other scripts stay as they' +
+        ' are; accented Latin letters are' +
+        ' blurred', () => {
         eq(
             blurText('Привет 日本語 🎉 naïve Ünï'),
             'Привет 日本語 🎉 xxxxx Xxx'
         );
     });
-    test('the length in UTF-16 units stays, so every offset of a repro still holds', () => {
+    test('the length in UTF-16 units stays, so' +
+        ' every offset of a repro still holds', () => {
         const text = disk.read(
             disk.join(ROOT, 'tests', 'samples', 'all-formats.md')
         );

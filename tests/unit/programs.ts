@@ -106,7 +106,9 @@ const states = (c: ProgramsController) =>
 export async function programsTests(): Promise<void> {
     section('Programs: the pure parts');
 
-    test('the ways to install put this system first, and a machine gets the Linux way', () => {
+    test('the ways to install put this system' +
+        ' first, and a machine gets the Linux' +
+        ' way', () => {
         eq(
             installWays('git', 'darwin').map((w) => w.os),
             ['darwin', 'linux', 'win32']
@@ -153,7 +155,8 @@ export async function programsTests(): Promise<void> {
             remoteState({
                 status: 127,
                 out: '',
-                err: 'program "pi" was not found in PATH or the per-user bin directories',
+                err: 'program "pi" was not found in PATH or' +
+                    ' the per-user bin directories',
             }).state,
             'missing'
         );
@@ -162,7 +165,8 @@ export async function programsTests(): Promise<void> {
 
     section('Programs: agents in this window');
 
-    await test('git and pi are needed, markworkd is optional; Home lists only pi', async () => {
+    await test('git and pi are needed, markworkd is' +
+        ' optional; Home lists only pi', async () => {
         const t = controller({ git: 'git version 2.43.0' });
         await t.programs.check();
         eq(states(t.programs), {
@@ -186,7 +190,9 @@ export async function programsTests(): Promise<void> {
         eq(t.programs.missingCount, 1);
     });
 
-    await test('everything needed is there: no Set up section, and a missing optional program is no warning', async () => {
+    await test('everything needed is there: no Set up' +
+        ' section, and a missing optional' +
+        ' program is no warning', async () => {
         const t = controller({ git: 'git version 2.43.0', pi: '1.0.3' });
         await t.programs.check();
         eq(t.programs.setup(), null);
@@ -197,7 +203,8 @@ export async function programsTests(): Promise<void> {
         );
     });
 
-    await test('hiding the section lasts until the list of missing programs changes', async () => {
+    await test('hiding the section lasts until the' +
+        ' list of missing programs changes', async () => {
         const t = controller({ git: 'git version 2.43.0' });
         await t.programs.check();
         t.programs.hideSetup();
@@ -215,7 +222,9 @@ export async function programsTests(): Promise<void> {
 
     section('Programs: agents through markworkd on this computer');
 
-    await test('markworkd is needed, and Home offers to run the agents in this window instead', async () => {
+    await test('markworkd is needed, and Home offers' +
+        ' to run the agents in this window' +
+        ' instead', async () => {
         const t = controller({ git: 'git version 2.43.0', pi: '1.0.3' });
         t.settings.harnessMachine = 'local';
         await t.programs.check();
@@ -235,7 +244,8 @@ export async function programsTests(): Promise<void> {
         eq(t.settings.harnessMachine, '');
     });
 
-    await test('markworkd that runs as a service, not on the PATH, counts as installed', async () => {
+    await test('markworkd that runs as a service, not' +
+        ' on the PATH, counts as installed', async () => {
         const t = controller(
             { git: 'git version 2.43.0', pi: '1.0.3' },
             { state: { state: 'ready', detail: '' } }
@@ -251,7 +261,8 @@ export async function programsTests(): Promise<void> {
 
     section('Programs: agents on an SSH machine');
 
-    await test('markworkd, pi and git are checked there; git stays needed here', async () => {
+    await test('markworkd, pi and git are checked' +
+        ' there; git stays needed here', async () => {
         const daemon = new FakeDaemon();
         daemon.answer = (program) =>
             program === 'pi' ? { status: 0, out: '1.0.3' } : null;
@@ -297,7 +308,9 @@ export async function programsTests(): Promise<void> {
         }
     });
 
-    await test('a program the daemon refuses is not allowed, and one it cannot find is missing there', async () => {
+    await test('a program the daemon refuses is not' +
+        ' allowed, and one it cannot find is' +
+        ' missing there', async () => {
         const daemon = new FakeDaemon();
         daemon.answer = () => ({
             refuse: 'program_not_allowed',
@@ -328,7 +341,9 @@ export async function programsTests(): Promise<void> {
         }
     });
 
-    await test('without a project folder on the machine, pi and git there are unknown, not missing', async () => {
+    await test('without a project folder on the' +
+        ' machine, pi and git there are' +
+        ' unknown, not missing', async () => {
         const t = controller({ git: 'git version 2.43.0' });
         t.settings.machines = { vps: 'me@vps' };
         t.settings.harnessMachine = 'vps';
@@ -348,7 +363,9 @@ export async function programsTests(): Promise<void> {
         }
     });
 
-    await test('a machine that answers ssh without a markworkd is missing it; one that does not answer is unknown', async () => {
+    await test('a machine that answers ssh without a' +
+        ' markworkd is missing it; one that' +
+        ' does not answer is unknown', async () => {
         const gone = new FakeDaemon();
         gone.refuse = true;
         const missing = controller(
@@ -394,7 +411,9 @@ export async function programsTests(): Promise<void> {
 
     section('Programs: the actions');
 
-    await test('the terminal opens here, or logged in to the machine; a target ssh would misread opens nothing', async () => {
+    await test('the terminal opens here, or logged in' +
+        ' to the machine; a target ssh would' +
+        ' misread opens nothing', async () => {
         const t = controller({});
         t.settings.machines = { vps: 'me@vps', bad: '-oProxyCommand=x' };
         t.programs.openTerminal(null);
@@ -407,7 +426,8 @@ export async function programsTests(): Promise<void> {
         eq(t.opened, ['https://pi.dev']);
     });
 
-    await test('the real lookup finds git on the machine that runs the tests', async () => {
+    await test('the real lookup finds git on the' +
+        ' machine that runs the tests', async () => {
         // The one check against the real platform: the controller's default is
         // platform().processes.
         if (!platform().processes.findProgram('git')) return;

@@ -53,10 +53,21 @@ function cut(diff: string, limit: number): string {
 }
 
 const SYSTEM = [
-    'You write git commit messages for a personal repository of notes and documents.',
-    'Reply with the message only: one line, at most 72 characters, in the imperative mood, saying what changed in the content (for example "Move the public release to 22 November"), not "Update plan.md".',
-    'Write in the language of the recent commit messages; if there are none, in the language of the changed text.',
-    'Follow their style (capitalization, prefixes such as "docs:"). No quotes, no trailing period, no explanation.',
+    'You write git commit messages for a' +
+        ' personal repository of notes and' +
+        ' documents.',
+    'Reply with the message only: one line,' +
+        ' at most 72 characters, in the' +
+        ' imperative mood, saying what changed' +
+        ' in the content (for example "Move the' +
+        ' public release to 22 November"), not' +
+        ' "Update plan.md".',
+    'Write in the language of the recent' +
+        ' commit messages; if there are none,' +
+        ' in the language of the changed text.',
+    'Follow their style (capitalization,' +
+        ' prefixes such as "docs:"). No quotes,' +
+        ' no trailing period, no explanation.',
 ].join(' ');
 
 export function commitPrompt(
@@ -71,7 +82,9 @@ export function commitPrompt(
         .map((d) => `### ${d.name}\n${d.diff.trimEnd() || '(no text changes)'}`)
         .join('\n\n');
     const note = shortened
-        ? '\n\nSome diffs were shortened; describe the change from what is shown.'
+        ? '\n\nSome diffs were shortened;' +
+            ' describe the change from what is' +
+            ' shown.'
         : '';
     return [
         { role: 'system', content: SYSTEM },

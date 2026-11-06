@@ -65,7 +65,8 @@ export class NoteLinks {
         if (!root) {
             host.toast(
                 _(
-                    'Open a folder or save the document first to follow [[note]] links'
+                    'Open a folder or save the document' +
+                        ' first to follow [[note]] links'
                 )
             );
             return;

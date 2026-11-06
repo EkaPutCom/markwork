@@ -59,7 +59,9 @@ export async function preferencesTests(): Promise<void> {
         return { settings, session, view, opened, updates, answers, taken };
     };
 
-    await test('the dialog opens with every value as plain data, and the choices of where agents run', () => {
+    await test('the dialog opens with every value as' +
+        ' plain data, and the choices of where' +
+        ' agents run', () => {
         const { session, opened } = setup((s) => {
             s.machines = { vps: 'eka@vps.example.com' };
             s.dark = null;
@@ -85,7 +87,9 @@ export async function preferencesTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a change from the dialog writes the setting, and the dialog is sent the values again while it is open', () => {
+    await test('a change from the dialog writes the' +
+        ' setting, and the dialog is sent the' +
+        ' values again while it is open', () => {
         const { settings, session, view, updates } = setup();
         view.onSet('focus', true);
         eq(updates.length, 0, 'closed: nothing is sent');
@@ -146,7 +150,8 @@ export async function preferencesTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a machine is added once its name and host are valid and not taken', async () => {
+    await test('a machine is added once its name and' +
+        ' host are valid and not taken', async () => {
         const { settings, session, view, answers, taken } = setup((s) => {
             s.machines = { vps: 'a@b' };
         });
@@ -168,7 +173,9 @@ export async function preferencesTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('removing a machine forgets the choice of where agents run and its project folders; other machines are kept', () => {
+    await test('removing a machine forgets the choice' +
+        ' of where agents run and its project' +
+        ' folders; other machines are kept', () => {
         const { settings, session, view } = setup((s) => {
             s.machines = { vps: 'a@b', nas: 'nas' };
             s.harnessMachine = 'nas';
@@ -273,7 +280,9 @@ export async function preferencesTests(): Promise<void> {
         };
     };
 
-    await test("the Projects group is sent as plain rows; a project's page and its card worktrees follow when it is chosen", async () => {
+    await test("the Projects group is sent as plain" +
+        " rows; a project's page and its card" +
+        " worktrees follow when it is chosen", async () => {
         const { session, view, pages, lists, repo, wt } = await projectSetup();
         eq(session.preferences.data().projects, [
             { name: 'shop', folder: repo, worktrees: true },
@@ -301,7 +310,9 @@ export async function preferencesTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a change to a project is checked before it is written; a field that is not an isolation setting is left out', async () => {
+    await test('a change to a project is checked' +
+        ' before it is written; a field that is' +
+        ' not an isolation setting is left out', async () => {
         const { session, settings, view } = await projectSetup();
         const stored = () => JSON.parse(settings.projectOptions.shop ?? '{}');
         eq(await view.onSetProject('shop', { slots: 3 }), null);
@@ -345,7 +356,9 @@ export async function preferencesTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('removing a worktree: only one the core listed, only after asking, then the list is sent again', async () => {
+    await test('removing a worktree: only one the core' +
+        ' listed, only after asking, then the' +
+        ' list is sent again', async () => {
         const { session, view, lists, removals, answers, repo, wt } =
             await projectSetup();
         view.onOpenProject('shop');

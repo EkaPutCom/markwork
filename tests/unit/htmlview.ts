@@ -34,7 +34,8 @@ export function htmlViewTests(): void {
             [true, true, true, false, false, false]
         );
     });
-    test('a file below the folder gets an address and a file outside gets none', () => {
+    test('a file below the folder gets an' +
+        ' address and a file outside gets none', () => {
         eq(
             htmlViewUrl(3, root, '/home/u/site/index.html'),
             'mwhtml://v3/index.html'
@@ -56,7 +57,9 @@ export function htmlViewTests(): void {
             'a path that climbs out'
         );
     });
-    test('an address gives the viewer and the decoded path, without the query or fragment', () => {
+    test('an address gives the viewer and the' +
+        ' decoded path, without the query or' +
+        ' fragment', () => {
         eq(parseHtmlUrl('mwhtml://v12/a%20b/c.css?x=1#top'), {
             id: 12,
             path: '/a b/c.css',
@@ -81,13 +84,16 @@ export function htmlViewTests(): void {
             'an escape was already decoded once; what is left is a plain name'
         );
     });
-    test('a request for the folder itself, or with a NUL or a backslash, is refused', () => {
+    test('a request for the folder itself, or' +
+        ' with a NUL or a backslash, is refused', () => {
         eq(resolve('/'), null);
         eq(resolve(''), null);
         eq(resolve('/a\0.html'), null);
         eq(resolve('/..\\x'), null);
     });
-    test('a Windows folder works with \\ or /, and a link to a drive path is read as absolute', () => {
+    test('a Windows folder works with \\ or /,' +
+        ' and a link to a drive path is read as' +
+        ' absolute', () => {
         const win = 'C:\\Users\\u\\site';
         eq(
             htmlViewUrl(2, win, 'C:\\Users\\u\\site\\a b\\index.html'),
@@ -109,7 +115,8 @@ export function htmlViewTests(): void {
         eq(winResolve('/in/x.js'), 'C:/Users/u/site/sub/x.js');
         eq(winResolve('/out/x'), null);
     });
-    test('a symbolic link is followed only while it stays inside the folder', () => {
+    test('a symbolic link is followed only while' +
+        ' it stays inside the folder', () => {
         eq(resolve('/out/passwd'), null, 'a link to /etc');
         eq(
             resolve('/in/x.js'),
@@ -129,7 +136,9 @@ export function htmlViewTests(): void {
         );
         eq(resolve('/loop'), null, 'a link loop');
     });
-    test('the policy allows the page its own scripts and styles and nothing from outside', () => {
+    test('the policy allows the page its own' +
+        ' scripts and styles and nothing from' +
+        ' outside', () => {
         for (const part of [
             "default-src 'self'",
             "'unsafe-inline'",

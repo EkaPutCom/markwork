@@ -74,7 +74,9 @@ export async function deepseekTests(): Promise<void> {
             const delta = (tool_calls: object[]) =>
                 `data: ${JSON.stringify({ choices: [{ delta: { tool_calls } }] })}`;
             const lines = [
-                'data: {"choices":[{"delta":{"reasoning_content":"need to look up"}}]}',
+                'data:' +
+                    ' {"choices":[{"delta":{"reasoning_cont' +
+                    'ent":"need to look up"}}]}',
                 delta([
                     {
                         index: 0,
@@ -92,7 +94,10 @@ export async function deepseekTests(): Promise<void> {
                     },
                 ]),
                 delta([{ index: 0, function: { arguments: 'xt":"Laras"}' } }]),
-                'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":50,"completion_tokens":9}}',
+                'data:' +
+                    ' {"choices":[{"delta":{},"finish_reaso' +
+                    'n":"tool_calls"}],"usage":{"prompt_tok' +
+                    'ens":50,"completion_tokens":9}}',
                 'data: [DONE]',
             ];
             reply.write(lines.join('\n\n') + '\n\n');
@@ -102,10 +107,15 @@ export async function deepseekTests(): Promise<void> {
         const lines = [
             ': keep-alive',
             'data: {"choices":[{"delta":{"role":"assistant","content":""}}]}',
-            'data: {"choices":[{"delta":{"reasoning_content":"Considering…  "}}]}',
+            'data:' +
+                ' {"choices":[{"delta":{"reasoning_cont' +
+                'ent":"Considering…  "}}]}',
             'data: {"choices":[{"delta":{"content":"Hello "}}]}',
             'data: {"choices":[{"delta":{"content":"writer"}}]}',
-            'data: {"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":7,"prompt_cache_hit_tokens":100}}',
+            'data:' +
+                ' {"choices":[],"usage":{"prompt_tokens' +
+                '":120,"completion_tokens":7,"prompt_ca' +
+                'che_hit_tokens":100}}',
             'data: [DONE]',
         ];
         reply.write(lines.join('\n\n') + '\n\n');
@@ -119,7 +129,9 @@ export async function deepseekTests(): Promise<void> {
         messages: [{ role: 'user' as const, content: 'hai' }],
     };
 
-    await test('the answer streams in pieces, reasoning is separate, usage is read, the key is sent as a Bearer', async () => {
+    await test('the answer streams in pieces,' +
+        ' reasoning is separate, usage is read,' +
+        ' the key is sent as a Bearer', async () => {
         mode = 'stream';
         let text = '',
             thinking = '';
@@ -150,7 +162,9 @@ export async function deepseekTests(): Promise<void> {
         eq(requested, 'POST');
     });
 
-    await test('tools are sent as tools; tool calls that arrive in pieces are assembled per index', async () => {
+    await test('tools are sent as tools; tool calls' +
+        ' that arrive in pieces are assembled' +
+        ' per index', async () => {
         mode = 'tools';
         let text = '';
         const result = await within(
@@ -219,7 +233,9 @@ export async function deepseekTests(): Promise<void> {
         });
     });
 
-    await test('a 503 before output is retried; a stream cut off after text is not repeated', async () => {
+    await test('a 503 before output is retried; a' +
+        ' stream cut off after text is not' +
+        ' repeated', async () => {
         mode = 'busy';
         requests = 0;
         let text = '';
@@ -255,7 +271,9 @@ export async function deepseekTests(): Promise<void> {
         eq(text, 'partial');
     });
 
-    await test('cancellation during the retry pause finishes without sending a second request', async () => {
+    await test('cancellation during the retry pause' +
+        ' finishes without sending a second' +
+        ' request', async () => {
         mode = 'busy';
         requests = 0;
         const cancellable = new Cancellable();
@@ -271,7 +289,9 @@ export async function deepseekTests(): Promise<void> {
         eq(requests, 1);
     });
 
-    await test('cancelling while the answer streams keeps the text so far and stops reading', async () => {
+    await test('cancelling while the answer streams' +
+        ' keeps the text so far and stops' +
+        ' reading', async () => {
         mode = 'hold';
         requests = 0;
         const cancellable = new Cancellable();
@@ -289,7 +309,8 @@ export async function deepseekTests(): Promise<void> {
         eq([r.cancelled, partial, requests], [true, 'Hello ', 1]);
     });
 
-    await test('status 401 becomes an error with the server message', async () => {
+    await test('status 401 becomes an error with the' +
+        ' server message', async () => {
         mode = 'unauthorized';
         let message = '';
         try {
@@ -303,7 +324,9 @@ export async function deepseekTests(): Promise<void> {
         contains(message, 'Authentication Fails');
     });
 
-    await test('a request that was already cancelled finishes as cancelled, not as an error', async () => {
+    await test('a request that was already cancelled' +
+        ' finishes as cancelled, not as an' +
+        ' error', async () => {
         mode = 'stream';
         const cancellable = new Cancellable();
         cancellable.cancel();

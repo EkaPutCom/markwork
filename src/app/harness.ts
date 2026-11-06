@@ -699,7 +699,8 @@ export class HarnessController {
             ) {
                 this.host.toast(
                     _(
-                        'The board changed while choosing a folder; assign the card again'
+                        'The board changed while choosing a' +
+                            ' folder; assign the card again'
                     )
                 );
                 return;
@@ -761,7 +762,8 @@ export class HarnessController {
                     : _('Choose a project folder'),
                 label: fmt(
                     _(
-                        'The folder of the project on {machine} (an absolute path):'
+                        'The folder of the project on {machine}' +
+                            ' (an absolute path):'
                     ),
                     { machine: this.machineLabel(machine) }
                 ),
@@ -795,7 +797,8 @@ export class HarnessController {
         const problem = !PROJECT_NAME.test(project)
             ? fmt(
                   _(
-                      'the folder name "{name}" cannot be used as a project name'
+                      'the folder name "{name}" cannot be' +
+                          ' used as a project name'
                   ),
                   { name: project }
               )
@@ -841,7 +844,8 @@ export class HarnessController {
                 title: fmt(_('Steering for {agent}'), { agent: run.agent }),
                 label: fmt(
                     _(
-                        '{agent} receives it before its next step, without stopping the work.'
+                        '{agent} receives it before its next' +
+                            ' step, without stopping the work.'
                     ),
                     { agent: run.agent }
                 ),
@@ -878,7 +882,9 @@ export class HarnessController {
                 title: fmt(_('Reply to {agent}'), { agent: run.agent }),
                 label: fmt(
                     _(
-                        'The {agent} session continues with this reply; the card goes back to being worked on.'
+                        'The {agent} session continues with' +
+                            ' this reply; the card goes back to' +
+                            ' being worked on.'
                     ),
                     { agent: run.agent }
                 ),

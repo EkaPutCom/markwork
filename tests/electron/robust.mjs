@@ -187,7 +187,9 @@ try {
     // ---------- sample.ts ----------
 
     await step(
-        'sample: the file opens and every heading, and only those, is in the outline',
+        'sample: the file opens and every' +
+            ' heading, and only those, is in the' +
+            ' outline',
         async () => {
             await open('all-formats.md');
             const rows = page
@@ -269,7 +271,9 @@ try {
     );
 
     await step(
-        'sample: a 4-backtick block holds ``` inside it, and a nested quote is a quote of level three',
+        'sample: a 4-backtick block holds ```' +
+            ' inside it, and a nested quote is a' +
+            ' quote of level three',
         async () => {
             assert.ok(
                 await styled('code\n```\n````', 'codeblock', 0),
@@ -288,7 +292,9 @@ try {
     );
 
     await step(
-        'sample: the cursor sweeps the whole document, to the start and the end of every line',
+        'sample: the cursor sweeps the whole' +
+            ' document, to the start and the end of' +
+            ' every line',
         async () => {
             const lines = await page.evaluate(`${view}.state.doc.lines`);
             for (let n = 1; n <= lines; n++) {
@@ -454,7 +460,9 @@ try {
     };
 
     await step(
-        'robust: random edits and undo draw what a fresh tab draws for the same text',
+        'robust: random edits and undo draw' +
+            ' what a fresh tab draws for the same' +
+            ' text',
         async () => {
             await setDoc(SAMPLE);
             let seed = 7;
@@ -499,7 +507,9 @@ try {
     );
 
     await step(
-        'robust: a long document is drawn the same to its end, also after an edit near its start',
+        'robust: a long document is drawn the' +
+            ' same to its end, also after an edit' +
+            ' near its start',
         async () => {
             const long = Array.from(
                 { length: 600 },
@@ -517,7 +527,9 @@ try {
     );
 
     await step(
-        'robust: the outline follows a heading that is edited, removed, and shifted, and a click lands on it',
+        'robust: the outline follows a heading' +
+            ' that is edited, removed, and shifted,' +
+            ' and a click lands on it',
         async () => {
             await setDoc('# One\n\n## Two\n\n# Three');
             const rows = page

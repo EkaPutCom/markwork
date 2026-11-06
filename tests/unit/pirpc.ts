@@ -12,7 +12,9 @@ import { section, test, eq, ok, tmp, disk, say } from '../core/framework';
 
 export async function piRpcTests(): Promise<void> {
     section('Shared pi RPC transport');
-    await test('local discovery accepts installed pi without probing its version and still rejects missing pi', async () => {
+    await test('local discovery accepts installed pi' +
+        ' without probing its version and still' +
+        ' rejects missing pi', async () => {
         const processes = platform().processes,
             find = processes.findProgram,
             run = processes.run;
@@ -38,7 +40,9 @@ export async function piRpcTests(): Promise<void> {
             processes.run = run;
         }
     });
-    await test('native prompt completion before acknowledgement is observed and agent_end alone is not terminal', async () => {
+    await test('native prompt completion before' +
+        ' acknowledgement is observed and' +
+        ' agent_end alone is not terminal', async () => {
         let handlers!: ChildHandlers,
             settled = false;
         const writes: string[] = [];
@@ -78,7 +82,9 @@ export async function piRpcTests(): Promise<void> {
             await rpc.close();
         }
     });
-    await test('responses correlate out of order; malformed records and process exits reject pending work', async () => {
+    await test('responses correlate out of order;' +
+        ' malformed records and process exits' +
+        ' reject pending work', async () => {
         let handlers!: ChildHandlers;
         const ids: string[] = [];
         const spawn: Processes['spawn'] = (_argv, _cwd, value) => {
@@ -126,7 +132,9 @@ export async function piRpcTests(): Promise<void> {
             await rpc.close();
         }
     });
-    await test('unknown acknowledgements time out without resending and failure propagates to active prompts', async () => {
+    await test('unknown acknowledgements time out' +
+        ' without resending and failure' +
+        ' propagates to active prompts', async () => {
         let handlers!: ChildHandlers,
             calls = 0;
         const spawn: Processes['spawn'] = (_argv, _cwd, value) => {
@@ -163,7 +171,9 @@ export async function piRpcTests(): Promise<void> {
             await rpc.close();
         }
     });
-    await test('Stop clears queued pi input before abort; oversized output and input backpressure fail closed', async () => {
+    await test('Stop clears queued pi input before' +
+        ' abort; oversized output and input' +
+        ' backpressure fail closed', async () => {
         let handlers!: ChildHandlers,
             blocked = false;
         const writes: string[] = [];
@@ -225,7 +235,8 @@ export async function piRpcTests(): Promise<void> {
             await other.close();
         }
     });
-    await test('a synchronous settled event before the prompt acknowledgement is retained', async () => {
+    await test('a synchronous settled event before the' +
+        ' prompt acknowledgement is retained', async () => {
         const spawn: Processes['spawn'] = (_argv, _cwd, handlers) => ({
             write(line) {
                 const command = JSON.parse(line);
@@ -250,7 +261,9 @@ export async function piRpcTests(): Promise<void> {
             await rpc.close();
         }
     });
-    await test('the adapter accepts LF records containing Unicode separators without splitting them again', async () => {
+    await test('the adapter accepts LF records' +
+        ' containing Unicode separators without' +
+        ' splitting them again', async () => {
         const fake = fakeFolderPi(),
             id = platform().newId(),
             dir = disk.join(tmp, 'pi-unicode');
@@ -281,7 +294,9 @@ export async function piRpcTests(): Promise<void> {
 }
 
 async function folderPiMeasurement(): Promise<void> {
-    await test('folder pi measurement: 200 bindings, native-history projection, 1,000 RPC events and bounded logs', async () => {
+    await test('folder pi measurement: 200 bindings,' +
+        ' native-history projection, 1,000 RPC' +
+        ' events and bounded logs', async () => {
         const id = platform().newId(),
             root = disk.join(tmp, 'pi-measure-' + id);
         const config = {

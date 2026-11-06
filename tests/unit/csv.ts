@@ -56,7 +56,8 @@ export function csvTests(): void {
             ['say "hi"', 'z'],
         ]);
     });
-    test('empty cells, a trailing delimiter, and a last record without a line break', () => {
+    test('empty cells, a trailing delimiter, and' +
+        ' a last record without a line break', () => {
         eq(cells('a,,c\n,,\nx,'), [
             ['a', '', 'c'],
             ['', '', ''],
@@ -82,7 +83,8 @@ export function csvTests(): void {
             ['1', '2'],
         ]);
     });
-    test('a file that was not touched is written exactly as it was read', () => {
+    test('a file that was not touched is written' +
+        ' exactly as it was read', () => {
         const samples = [
             'a,b\n1,2\n',
             'a,b\n1,2',
@@ -142,7 +144,8 @@ export function csvTests(): void {
         eq(serializeCsv(table), 'a,b,c\n1,,z\n');
         eq(cellAt(table, 1, 5), '');
     });
-    test('a row is inserted below the header or at the end, as wide as the table', () => {
+    test('a row is inserted below the header or' +
+        ' at the end, as wide as the table', () => {
         const table = parseCsv('a,b,c\n1,2,3\n');
         eq(serializeCsv(insertRow(table, 1)), 'a,b,c\n,,\n1,2,3\n');
         eq(serializeCsv(insertRow(table, 2)), 'a,b,c\n1,2,3\n,,\n');
@@ -195,9 +198,12 @@ export function csvTests(): void {
             'a name that is taken is skipped'
         );
     });
-    test('a column of numbers is recognized, blanks aside; one other value makes it text', () => {
+    test('a column of numbers is recognized,' +
+        ' blanks aside; one other value makes' +
+        ' it text', () => {
         const table = parseCsv(
-            'n,amount,mixed,empty\nAda,12,1,\nLin,-3.5,x,\nZed,,2,\n1,\"1,200\",3,\n'
+            'n,amount,mixed,empty\nAda,12,1,\nLin,-' +
+                '3.5,x,\nZed,,2,\n1,\"1,200\",3,\n'
         );
         eq(
             [0, 1, 2, 3].map((c) => isNumericColumn(table, c)),
@@ -205,7 +211,9 @@ export function csvTests(): void {
         );
         eq(isNumericColumn(parseCsv('p\n50%\n+7\n.5\n'), 0), true);
     });
-    test('a table of a hundred thousand rows fits the table view, and one of a million cells and more does not', () => {
+    test('a table of a hundred thousand rows' +
+        ' fits the table view, and one of a' +
+        ' million cells and more does not', () => {
         const row = {
             cells: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
             raw: null,
@@ -217,7 +225,9 @@ export function csvTests(): void {
         eq(fitsTableView(table(100_000)), true);
         eq(fitsTableView(table(CSV_VIEW_CELLS / 10 + 1)), false);
     });
-    test('a row moves to another place and the other lines keep their text; the header cannot move or be passed', () => {
+    test('a row moves to another place and the' +
+        ' other lines keep their text; the' +
+        ' header cannot move or be passed', () => {
         const table = parseCsv('h,i\n"a",1\nb, 2\nc,3\n');
         eq(serializeCsv(moveRow(table, 1, 3)), 'h,i\nb, 2\nc,3\n"a",1\n');
         eq(serializeCsv(moveRow(table, 3, 1)), 'h,i\nc,3\n"a",1\nb, 2\n');
@@ -238,7 +248,9 @@ export function csvTests(): void {
         eq(moveColumn(table, 1, 1) === table, true);
         eq(moveColumn(table, 5, 0) === table, true);
     });
-    test('dropping before a gap lands one place earlier when the dragged item was before it', () => {
+    test('dropping before a gap lands one place' +
+        ' earlier when the dragged item was' +
+        ' before it', () => {
         eq(
             [
                 [1, 1],
@@ -264,7 +276,9 @@ export function csvTests(): void {
         if (!(built instanceof RegExp)) throw new Error('no pattern');
         return built;
     };
-    test('finding looks in every cell, header included, in reading order, with the options of the search', () => {
+    test('finding looks in every cell, header' +
+        ' included, in reading order, with the' +
+        ' options of the search', () => {
         const table = parseCsv('Name,City\nAda,Paris\nlin,"Par, Ada"\nZed,\n');
         eq(findCells(table, pattern('ada')), [
             { row: 1, column: 0 },
@@ -290,7 +304,9 @@ export function csvTests(): void {
         ]);
         eq(findCells(table, pattern('nothing here')), []);
     });
-    test('replacing in a cell changes its matches only, and the row alone is written again', () => {
+    test('replacing in a cell changes its' +
+        ' matches only, and the row alone is' +
+        ' written again', () => {
         const table = parseCsv('n,city\n"a",Paris Paris\nb, Rome\n');
         const next = replaceInCell(
             table,
@@ -325,7 +341,9 @@ export function csvTests(): void {
             'n,city\n"a",Paris Paris\nb, R-Rome\n'
         );
     });
-    test('replacing everywhere counts the matches and leaves rows without one as they were', () => {
+    test('replacing everywhere counts the' +
+        ' matches and leaves rows without one' +
+        ' as they were', () => {
         const table = parseCsv(
             'city,note\nParis,"in Paris, FR"\nRome,\nparis,x\n'
         );

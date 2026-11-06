@@ -152,7 +152,9 @@ export async function contributeTests(): Promise<void> {
     const refs = (repo: string) =>
         sh(repo, 'for-each-ref', '--format=%(refname)');
 
-    await test("fork: the user's own copy is created, the branch goes there, and the pull request names it", async () => {
+    await test("fork: the user's own copy is created," +
+        " the branch goes there, and the pull" +
+        " request names it", async () => {
         const { folder, file } = await clone();
         const result = await within(
             sendChanges(context(), request(folder, file))
@@ -179,7 +181,8 @@ export async function contributeTests(): Promise<void> {
         );
     });
 
-    await test('fork: an existing fork is used, not created again', async () => {
+    await test('fork: an existing fork is used, not' +
+        ' created again', async () => {
         forkExists = true;
         calls.length = 0;
         const { folder, file } = await clone();
@@ -191,7 +194,9 @@ export async function contributeTests(): Promise<void> {
         contains(await refs(fork), 'refs/heads/second');
     });
 
-    await test('fork: a repository of the same name that is not a fork stops before anything is pushed', async () => {
+    await test('fork: a repository of the same name' +
+        ' that is not a fork stops before' +
+        ' anything is pushed', async () => {
         forkIsFork = false;
         const { folder, file } = await clone();
         const result = await within(
@@ -219,7 +224,9 @@ export async function contributeTests(): Promise<void> {
         eq(pulls[pulls.length - 1].head, 'direct-branch');
     });
 
-    await test('AGit: the commit goes to refs/for/<base> and no pull request is created here', async () => {
+    await test('AGit: the commit goes to' +
+        ' refs/for/<base> and no pull request' +
+        ' is created here', async () => {
         const before = pulls.length;
         const { folder, file } = await clone();
         const result = await within(
@@ -237,7 +244,8 @@ export async function contributeTests(): Promise<void> {
         eq(pulls.length, before);
     });
 
-    await test('a push that fails says so and where the commit is', async () => {
+    await test('a push that fails says so and where' +
+        ' the commit is', async () => {
         const { folder, file } = await clone();
         const broken: SendContext = {
             ...context(),
@@ -281,7 +289,8 @@ export async function contributeTests(): Promise<void> {
         );
     });
 
-    await test('nothing is done for a missing title, no files, or a bad branch name', async () => {
+    await test('nothing is done for a missing title,' +
+        ' no files, or a bad branch name', async () => {
         const { folder, file } = await clone();
         const bad = async (extra: Partial<SendRequest>) => {
             const r = await within(
@@ -328,7 +337,9 @@ export async function contributeTests(): Promise<void> {
         eq(slug('a'.repeat(80)).length, 48);
     });
 
-    await test('the token travels in the environment as a Basic header, never in the arguments', async () => {
+    await test('the token travels in the environment' +
+        ' as a Basic header, never in the' +
+        ' arguments', async () => {
         const env = credentialEnv('eka', 'sekret');
         eq(env.GIT_CONFIG_KEY_0, 'http.extraHeader');
         eq(env.GIT_CONFIG_VALUE_0, `Authorization: Basic ZWthOnNla3JldA==`);

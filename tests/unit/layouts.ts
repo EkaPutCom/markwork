@@ -72,7 +72,9 @@ const titles = (cards: { card: { text: string } }[]): string[] =>
 export function layoutsModelTests(): void {
     section('Dates');
 
-    test('dayNumber/addDays/daysBetween: real dates only, across months and leap years', () => {
+    test('dayNumber/addDays/daysBetween: real' +
+        ' dates only, across months and leap' +
+        ' years', () => {
         eq(
             [
                 dayNumber('2026-02-30'),
@@ -91,7 +93,8 @@ export function layoutsModelTests(): void {
             ['2026-11-02', '2028-02-29', '2025-12-31', -2]
         );
     });
-    test('weekday starts on Monday, and a month is shown as whole weeks', () => {
+    test('weekday starts on Monday, and a month' +
+        ' is shown as whole weeks', () => {
         eq(
             [
                 weekday('2026-10-12'),
@@ -143,7 +146,9 @@ export function layoutsModelTests(): void {
 
     section('Calendar (model)');
 
-    test('calendarData: notes by the day of their date field, in time order, and the ones without a date', () => {
+    test('calendarData: notes by the day of' +
+        ' their date field, in time order, and' +
+        ' the ones without a date', () => {
         const data = calendarData(parseBoard(sample('calendar.md')));
         eq(data.key, 'due');
         eq(
@@ -161,7 +166,9 @@ export function layoutsModelTests(): void {
             ['Research PDF export', 'Read the HIG article', 'Tidy up the icons']
         );
     });
-    test('dateField: date: picks the field, otherwise due, otherwise the first date field, otherwise none', () => {
+    test('dateField: date: picks the field,' +
+        ' otherwise due, otherwise the first' +
+        ' date field, otherwise none', () => {
         const doc = (head: string) =>
             parseBoard(
                 `---\nlayout: calendar\n${head}fields:\n  start: date\n  due: date\n  note: text\n---\n`
@@ -189,17 +196,19 @@ export function layoutsModelTests(): void {
             'no date field: every note is undated'
         );
     });
-    test('moveToDate: sets the date and keeps the time; an empty date unschedules; a wrong date changes nothing', () => {
+    test('moveToDate: sets the date and keeps' +
+        ' the time; an empty date unschedules;' +
+        ' a wrong date changes nothing', () => {
         const board = parseBoard(sample('calendar.md'));
         const data = calendarData(board);
         const meeting = data.byDate.get('2026-10-11')![1];
         const moved = moveToDate(board, meeting.at, '2026-10-15');
         eq(
             moved.columns[meeting.at.column].cards[meeting.at.index].text,
-            '- [ ] Team meeting [status:: todo] [due:: 2026-10-15 14:00]'.replace(
-                '- [ ] ',
-                ''
-            )
+            (
+                '- [ ] Team meeting [status:: todo]' +
+                ' [due:: 2026-10-15 14:00]'
+            ).replace('- [ ] ', '')
         );
         const plain = data.byDate.get('2026-10-09')![0];
         ok(
@@ -226,7 +235,10 @@ export function layoutsModelTests(): void {
 
     section('Timeline (model)');
 
-    test('timelineRows: start to end, a marker for one date, none for no date, progress from the field or the checkbox', () => {
+    test('timelineRows: start to end, a marker' +
+        ' for one date, none for no date,' +
+        ' progress from the field or the' +
+        ' checkbox', () => {
         const rows = timelineRows(parseBoard(sample('timeline.md')));
         eq(
             rows.map((r) => [r.title, r.start, r.end, r.progress]),
@@ -241,7 +253,9 @@ export function layoutsModelTests(): void {
         );
         eq(timelineZoom(parseBoard(sample('timeline.md'))), 'month');
     });
-    test('timelineRange and barSpan: a whole number of weeks from a Monday, with room for today and every date', () => {
+    test('timelineRange and barSpan: a whole' +
+        ' number of weeks from a Monday, with' +
+        ' room for today and every date', () => {
         const rows = timelineRows(parseBoard(sample('timeline.md')));
         const range = timelineRange(rows, '2026-10-11');
         eq(
@@ -259,7 +273,9 @@ export function layoutsModelTests(): void {
             { date: '2026-10-05', offset: 7 },
         ]);
     });
-    test('shiftRow moves both dates and keeps a time; resizeRow moves one edge and never inverts the bar', () => {
+    test('shiftRow moves both dates and keeps a' +
+        ' time; resizeRow moves one edge and' +
+        ' never inverts the bar', () => {
         const board = parseBoard(sample('timeline.md'));
         const at = { column: 0, index: 1 };
         const shifted = shiftRow(board, at, 3).columns[0].cards[1].text;
@@ -301,7 +317,9 @@ export function layoutsModelTests(): void {
 
     section('Gallery (model)');
 
-    test('galleryCards: cover from the field, then the first image, then the first tag color, else none', () => {
+    test('galleryCards: cover from the field,' +
+        ' then the first image, then the first' +
+        ' tag color, else none', () => {
         const cards = galleryCards(parseBoard(sample('gallery.md')));
         eq(
             cards.map((c) => c.cover.kind),
@@ -355,7 +373,9 @@ export function layoutsModelTests(): void {
 
     section('Chart (model)');
 
-    test('chartData: totals, overdue, notes per week, per status in the order of the options, per tag', () => {
+    test('chartData: totals, overdue, notes per' +
+        ' week, per status in the order of the' +
+        ' options, per tag', () => {
         const data = chartData(parseBoard(sample('chart.md')), '2026-10-12');
         eq(
             [data.total, data.done, data.overdue, data.period, data.groupKey],
@@ -385,7 +405,9 @@ export function layoutsModelTests(): void {
         );
         eq(data.averagePerWeek, 2.8);
     });
-    test('chartData: a document without dates, fields, or notes gives empty charts, not errors', () => {
+    test('chartData: a document without dates,' +
+        ' fields, or notes gives empty charts,' +
+        ' not errors', () => {
         const empty = chartData(
             parseBoard('---\nlayout: chart\n---\n'),
             '2026-10-12'
@@ -411,7 +433,10 @@ export function layoutsModelTests(): void {
         eq(
             chartData(
                 parseBoard(
-                    '---\nlayout: chart\nperiod: month\nby: d\nfields:\n  d: date\n---\n\n- [ ] a [d:: 2026-10-30]\n- [ ] b [d:: 2026-11-02]\n'
+                    '---\nlayout: chart\nperiod: month\nby:' +
+                        ' d\nfields:\n  d: date\n---\n\n- [ ] a' +
+                        ' [d:: 2026-10-30]\n- [ ] b [d::' +
+                        ' 2026-11-02]\n'
                 ),
                 '2026-11-05'
             ).perPeriod,
@@ -422,7 +447,9 @@ export function layoutsModelTests(): void {
         );
     });
 
-    test('charts: names the panels in order; unknown names and fields that do not fit are dropped; none is the default', () => {
+    test('charts: names the panels in order;' +
+        ' unknown names and fields that do not' +
+        ' fit are dropped; none is the default', () => {
         const doc = (line: string) =>
             parseBoard(
                 `---\nlayout: chart\n${line}\nfields:\n  due: date\n  status: select(a, b)\n  tags: select(x, y)[]\n---\n\n- [ ] a [due:: 2026-10-12] [status:: a]\n`
@@ -438,14 +465,17 @@ export function layoutsModelTests(): void {
         ]);
         eq(
             texts(
-                'charts: [donut:status, donut:nope, bar:status, pie, kpi:x, bar::week]'
+                'charts: [donut:status, donut:nope,' +
+                    ' bar:status, pie, kpi:x, bar::week]'
             ),
             ['donut:status', 'bar::week']
         );
         eq(texts('charts: []'), ['kpi', 'bar', 'donut', 'tags']);
         eq(texts('charts: [pie]'), ['kpi', 'bar', 'donut', 'tags']);
     });
-    test('barData and donutData: a chosen field and period, else the ones by: and group: name', () => {
+    test('barData and donutData: a chosen field' +
+        ' and period, else the ones by: and' +
+        ' group: name', () => {
         const board = parseBoard(sample('chart.md'));
         eq(barData(board, null, null).field, 'created');
         const due = barData(board, 'due', 'month');
@@ -457,7 +487,10 @@ export function layoutsModelTests(): void {
         eq(donutData(board, null).field, 'status');
         eq(donutData(board, 'due').field, 'status');
     });
-    test('withCharts: writes one line after layout:, replaces it, and the default (or null) removes it; the rest is untouched', () => {
+    test('withCharts: writes one line after' +
+        ' layout:, replaces it, and the default' +
+        ' (or null) removes it; the rest is' +
+        ' untouched', () => {
         const board = parseBoard(sample('chart.md'));
         const custom = withCharts(board, [
             { kind: 'tags' },
@@ -490,7 +523,10 @@ export function layoutsModelTests(): void {
     const statusOf = (text: string): string =>
         /\[status:: ([^\]]*)\]/.exec(text)?.[1] ?? '';
 
-    test('groupFieldOf: group: must name a single select field; groupBoard makes a column per option and one for no value', () => {
+    test('groupFieldOf: group: must name a' +
+        ' single select field; groupBoard makes' +
+        ' a column per option and one for no' +
+        ' value', () => {
         const { def, view } = grouped();
         eq(def.key, 'status');
         eq(
@@ -500,7 +536,9 @@ export function layoutsModelTests(): void {
         eq(
             groupFieldOf(
                 parseBoard(
-                    '---\nlayout: board\ngroup: owner\nfields:\n  owner: person\n---\n'
+                    '---\nlayout: board\ngroup:' +
+                        ' owner\nfields:\n  owner:' +
+                        ' person\n---\n'
                 )
             ),
             null
@@ -518,7 +556,8 @@ export function layoutsModelTests(): void {
         eq(
             groupBoard(
                 parseBoard(
-                    '---\nlayout: board\ngroup: s\n---\n\n- [ ] x [s:: z]\n- [ ] y [s:: a]\n'
+                    '---\nlayout: board\ngroup: s\n---\n\n-' +
+                        ' [ ] x [s:: z]\n- [ ] y [s:: a]\n'
                 ),
                 { key: 's', type: 'select', multiple: false, options: [] }
             ).board.columns.map((c) => c.title),
@@ -526,7 +565,9 @@ export function layoutsModelTests(): void {
             'a select without options takes the values the notes have'
         );
     });
-    test('ungroupBoard: moving a card to another column sets its status; the empty column removes it', () => {
+    test('ungroupBoard: moving a card to another' +
+        ' column sets its status; the empty' +
+        ' column removes it', () => {
         const { source, def, view } = grouped();
         const moved = moveCard(
             view.board,
@@ -564,7 +605,10 @@ export function layoutsModelTests(): void {
             'nothing changed'
         );
     });
-    test('ungroupBoard: an edit is kept, a new card gets the value of its column, a deleted card goes, a new column is a new option', () => {
+    test('ungroupBoard: an edit is kept, a new' +
+        ' card gets the value of its column, a' +
+        ' deleted card goes, a new column is a' +
+        ' new option', () => {
         const { source, def, view } = grouped();
         const edited = ungroupBoard(
             source,
@@ -573,7 +617,8 @@ export function layoutsModelTests(): void {
                 view.board,
                 { column: 3, index: 0 },
                 {
-                    text: 'Review the parser twice [status:: review] [priority:: high]',
+                    text: 'Review the parser twice [status::' +
+                        ' review] [priority:: high]',
                 }
             ),
             def
@@ -630,7 +675,9 @@ export function layoutsModelTests(): void {
         );
     });
 
-    test('missingField: a calendar, timeline, or chart without its field offers one, and adding it makes the layout work', () => {
+    test('missingField: a calendar, timeline, or' +
+        ' chart without its field offers one,' +
+        ' and adding it makes the layout work', () => {
         const plain = parseBoard('---\nlayout: list\n---\n\n- [ ] a\n- [ ] b');
         eq(
             [

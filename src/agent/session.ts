@@ -787,7 +787,9 @@ class TurnRun {
             call.id,
             work
                 ? workText(work)
-                : 'Invalid plan: fill in a goal and 1–20 steps with status pending/done/blocked.',
+                : 'Invalid plan: fill in a goal and 1–20' +
+                    ' steps with status' +
+                    ' pending/done/blocked.',
             !!work
         );
         handlers.onTool?.({
@@ -858,7 +860,8 @@ class TurnRun {
             };
         const content = answer.note?.trim()
             ? `The user rejected this change.${noteText(answer.note)} Adjust the proposal to that note if it is still relevant.`
-            : 'The user rejected this change. Do not repeat it; ask what the user wants.';
+            : 'The user rejected this change. Do not' +
+                ' repeat it; ask what the user wants.';
         return { content, summary: 'rejected', ok: true };
     }
 
@@ -895,7 +898,11 @@ class TurnRun {
         if (cost > this.toolBudget) {
             outcome = {
                 content:
-                    'The reading budget for this question has run out. Answer with the information already gathered and mention anything that could not be checked.',
+                    'The reading budget for this question' +
+                        ' has run out. Answer with the' +
+                        ' information already gathered and' +
+                        ' mention anything that could not be' +
+                        ' checked.',
                 summary: 'budget exhausted',
             };
         } else {

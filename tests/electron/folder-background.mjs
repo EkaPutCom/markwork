@@ -227,7 +227,10 @@ try {
     );
     assert.deepEqual(errors, []);
     console.log(
-        'Pi folder background: actual window close, detached tool completion, exact native reattach, no duplicate prompt; screenshots ' +
+        'Pi folder background: actual window' +
+            ' close, detached tool completion,' +
+            ' exact native reattach, no duplicate' +
+            ' prompt; screenshots ' +
             shotDir
     );
 } finally {

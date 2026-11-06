@@ -16,11 +16,24 @@ const HEADS = {
 };
 
 export const LAUNCH =
-    '# Markwork 1.0 Launch Plan\n\n## Goal\n\nRelease Markwork 1.0 for Linux users, complete with folder syncing.\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n- Evaluation: 30 November\n\n## Budget\n\nTotal $3,000, including the redesign and a test server.\n';
+    '# Markwork 1.0 Launch Plan\n\n##' +
+        ' Goal\n\nRelease Markwork 1.0 for' +
+        ' Linux users, complete with folder' +
+        ' syncing.\n\n## Schedule\n\n- Closed' +
+        ' beta: 20 October\n- Public release:' +
+        ' 15 November\n- Evaluation: 30' +
+        ' November\n\n## Budget\n\nTotal' +
+        ' $3,000, including the redesign and a' +
+        ' test server.\n';
 export const SCHEDULE =
-    '---\ntitle: Release schedule\nlayout: list\n---\n# Release schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n';
+    '---\ntitle: Release schedule\nlayout:' +
+        ' list\n---\n# Release schedule\n\n-' +
+        ' Closed beta: 20 October\n- Public' +
+        ' release: 15 November\n';
 export const RESEARCH =
-    '# Competitor research\n\nThree similar note apps; all of them are paid and closed.\n';
+    '# Competitor research\n\nThree similar' +
+        ' note apps; all of them are paid and' +
+        ' closed.\n';
 
 const pull = (n, title, user, hours, extra = {}) => ({
     number: n,
@@ -41,11 +54,16 @@ const pull = (n, title, user, hours, extra = {}) => ({
 const pulls = [
     pull(14, 'Postpone the public release to 22 November', 'sari', 2, {
         comments: 2,
-        body: 'The 1 October meeting moved the release because the sync testing is not finished. This updates the plan and the schedule.',
+        body: 'The 1 October meeting moved the' +
+            ' release because the sync testing is' +
+            ' not finished. This updates the plan' +
+            ' and the schedule.',
     }),
     pull(13, 'Show the release schedule as a calendar', 'budi', 26, {
         comments: 1,
-        body: 'The schedule note becomes a calendar, so the beta and the release show up next to each other.',
+        body: 'The schedule note becomes a calendar,' +
+            ' so the beta and the release show up' +
+            ' next to each other.',
     }),
     pull(12, 'Fix the wording in the research notes', 'dewi', 70, {
         mergeable: false,
@@ -111,7 +129,8 @@ const comments = {
         },
         {
             id: 2,
-            body: 'I moved the beta note too, so the schedule stays in one piece.',
+            body: 'I moved the beta note too, so the' +
+                ' schedule stays in one piece.',
             user: { login: 'sari' },
             created_at: ago(1),
         },
@@ -119,7 +138,9 @@ const comments = {
     13: [
         {
             id: 3,
-            body: 'The calendar reads better than the list. Merging after the release date is settled.',
+            body: 'The calendar reads better than the' +
+                ' list. Merging after the release date' +
+                ' is settled.',
             user: { login: 'dewi' },
             created_at: ago(20),
         },
@@ -129,7 +150,9 @@ const DIFF_14 = [
     'diff --git a/plans/launch.md b/plans/launch.md',
     '--- a/plans/launch.md',
     '+++ b/plans/launch.md',
-    '@@ -5,7 +5,7 @@ Release Markwork 1.0 for Linux users, complete with folder syncing.',
+    '@@ -5,7 +5,7 @@ Release Markwork 1.0' +
+        ' for Linux users, complete with folder' +
+        ' syncing.',
     ' ## Schedule',
     ' ',
     ' - Closed beta: 20 October',

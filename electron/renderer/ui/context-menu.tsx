@@ -93,7 +93,9 @@ export function ContextMenuCheckboxItem({
             className={cn(ITEM, 'py-1.5 pr-2 pl-8', className)}
             {...props}
         >
-            <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+            <span className={"pointer-events-none absolute left-2" +
+                " flex size-3.5 items-center" +
+                " justify-center"}>
                 <ContextMenuPrimitive.ItemIndicator>
                     <CheckIcon className="size-4" />
                 </ContextMenuPrimitive.ItemIndicator>

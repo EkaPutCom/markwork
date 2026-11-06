@@ -56,7 +56,9 @@ const lines = (...events: object[]) => events.map((e) => JSON.stringify(e));
 export function harnessTests(): void {
     section('External harness (model)');
 
-    test('cardMeta: [agent:: name] is an assignment; a bare @name or an email address is just text', () => {
+    test('cardMeta: [agent:: name] is an' +
+        ' assignment; a bare @name or an email' +
+        ' address is just text', () => {
         eq(cardMeta('Checkout QRIS [agent:: pi] #feature [due:: 2026-10-20]'), {
             title: 'Checkout QRIS',
             tags: ['feature'],
@@ -148,12 +150,14 @@ export function harnessTests(): void {
                 { ...parts, title: 'Renamed' },
                 'Checkout [owner:: Eka] [due:: 2026-10-20]'
             ),
-            'Renamed #feature [owner:: Eka] [due:: 2026-10-20 09:00] [agent:: pi]',
+            'Renamed #feature [owner:: Eka] [due::' +
+                ' 2026-10-20 09:00] [agent:: pi]',
             'fields of other keys are kept'
         );
     });
 
-    test('project from the board frontmatter, a #project/… tag on the card wins', () => {
+    test('project from the board frontmatter, a' +
+        ' #project/… tag on the card wins', () => {
         const b = parseBoard(BOARD);
         eq(boardProject(b), 'web-ecommerce');
         eq(cardProject(b, b.columns[0].cards[0]), 'web-ecommerce');
@@ -176,7 +180,9 @@ export function harnessTests(): void {
         );
     });
 
-    test('the project folder must not be the Markwork work folder, its contents, or its parent', () => {
+    test('the project folder must not be the' +
+        ' Markwork work folder, its contents,' +
+        ' or its parent', () => {
         eq(checkProjectFolder('/home/eka/web', '/home/eka/markwork'), null);
         eq(
             checkProjectFolder(
@@ -202,7 +208,9 @@ export function harnessTests(): void {
         ok(checkProjectFolder('/', null), 'root');
     });
 
-    test('the prompt contains the title, notes, tags (without the project tag), due date, and task boundaries', () => {
+    test('the prompt contains the title, notes,' +
+        ' tags (without the project tag), due' +
+        ' date, and task boundaries', () => {
         const b = parseBoard(BOARD);
         const p1 = buildPrompt(
             b.columns[0].cards[0],
@@ -220,7 +228,9 @@ export function harnessTests(): void {
         ok(!p2.includes('@pi'), 'the assignment is not part of the title');
     });
 
-    test('[[note]] links in the card title and notes become a list of context links without duplicates', () => {
+    test('[[note]] links in the card title and' +
+        ' notes become a list of context links' +
+        ' without duplicates', () => {
         const card = {
             done: false,
             text: 'Tidy up checkout [[Specification]] [agent:: pi]',
@@ -244,7 +254,9 @@ export function harnessTests(): void {
         eq(cardWikiLinks(many).length, MAX_LINKED_NOTES, 'link count limit');
     });
 
-    test('the prompt copies the contents of related notes in a code block, marks missing ones, and truncates long ones', () => {
+    test('the prompt copies the contents of' +
+        ' related notes in a code block, marks' +
+        ' missing ones, and truncates long ones', () => {
         const card = {
             done: false,
             text: 'Tidy up checkout [[Specification]] [agent:: pi]',
@@ -335,7 +347,9 @@ export function harnessTests(): void {
         );
     });
 
-    test('PiReader: JSON that is not an event, a null message, and inherited names are ignored', () => {
+    test('PiReader: JSON that is not an event, a' +
+        ' null message, and inherited names are' +
+        ' ignored', () => {
         const r = new PiReader(
             new AgentTrace(
                 () => 0,
@@ -355,7 +369,8 @@ export function harnessTests(): void {
         eq(r.finish(0, '').error, 'pi finished without an answer');
     });
 
-    test('PiReader: tools, answers, cost, and session become the log and the result', () => {
+    test('PiReader: tools, answers, cost, and' +
+        ' session become the log and the result', () => {
         const trace = new AgentTrace(
             () => 0,
             () => '2026-10-05T10:00:00'
@@ -483,7 +498,8 @@ export function harnessTests(): void {
         );
     });
 
-    test('RPC mode: arguments, stdin commands, and the session id from get_state', () => {
+    test('RPC mode: arguments, stdin commands,' +
+        ' and the session id from get_state', () => {
         eq(HARNESSES.pi.args('Checkout', null), [
             '--mode',
             'rpc',
@@ -546,7 +562,8 @@ export function harnessTests(): void {
         });
     });
 
-    test('an extension request becomes ask; notify and TUI status do not wait', () => {
+    test('an extension request becomes ask;' +
+        ' notify and TUI status do not wait', () => {
         const trace = new AgentTrace();
         const r = new PiReader(trace);
         const sig = r.line(
@@ -635,7 +652,9 @@ export function harnessTests(): void {
         );
     });
 
-    test('a question at the end of an answer and a summary of the answer given by the user', () => {
+    test('a question at the end of an answer and' +
+        ' a summary of the answer given by the' +
+        ' user', () => {
         eq(
             [
                 'Use SDK A or B?',
@@ -671,7 +690,9 @@ export function harnessTests(): void {
         );
     });
 
-    test('PiReader.restart: the error and status of the old turn do not carry over to the next prompt', () => {
+    test('PiReader.restart: the error and status' +
+        ' of the old turn do not carry over to' +
+        ' the next prompt', () => {
         const r = new PiReader(new AgentTrace());
         r.line(
             JSON.stringify({
@@ -731,7 +752,8 @@ export function harnessTests(): void {
                     ...base,
                     ok: true,
                     summary:
-                        'Done.\n\n**What changed:**\n- Created a new file `HELLO.txt`.',
+                        'Done.\n\n**What changed:**\n- Created' +
+                            ' a new file `HELLO.txt`.',
                     error: null,
                 },
                 's'

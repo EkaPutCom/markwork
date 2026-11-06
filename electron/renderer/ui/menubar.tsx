@@ -98,7 +98,9 @@ export function MenubarCheckboxItem({
             className={cn(row, 'pl-8', className)}
             {...props}
         >
-            <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+            <span className={"pointer-events-none absolute left-2" +
+                " flex size-3.5 items-center" +
+                " justify-center"}>
                 <MenubarPrimitive.ItemIndicator>
                     <CheckIcon className="size-4" />
                 </MenubarPrimitive.ItemIndicator>

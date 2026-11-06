@@ -39,7 +39,8 @@ export function fileOpsTests(): void {
         );
         ok(exists(at('notes.md')), 'file was not created');
     });
-    test('createFile can append another extension, and keeps one that fits', () => {
+    test('createFile can append another' +
+        ' extension, and keeps one that fits', () => {
         eq(
             createFile(base, 'sales', 'a,b\n', '.csv', /\.csv$/i),
             at('sales.csv'),
@@ -52,7 +53,8 @@ export function fileOpsTests(): void {
         );
         eq(disk.read(at('sales.csv')), 'a,b\n', 'content');
     });
-    test('renameEntry keeps a CSV or HTML extension instead of adding .md', () => {
+    test('renameEntry keeps a CSV or HTML' +
+        ' extension instead of adding .md', () => {
         eq(renameEntry(at('sales.csv'), 'sales-q3.csv'), at('sales-q3.csv'));
         eq(
             createFile(base, 'page.html', '<p>x</p>', '.html', /\.html?$/i),
@@ -60,7 +62,9 @@ export function fileOpsTests(): void {
         );
         eq(renameEntry(at('page.html'), 'home.htm'), at('home.htm'));
     });
-    test('createFile rejects empty names, names with slashes or dots, and existing ones', () => {
+    test('createFile rejects empty names, names' +
+        ' with slashes or dots, and existing' +
+        ' ones', () => {
         throws(() => createFile(base, '  '), 'empty');
         throws(() => createFile(base, 'a/b'), '/');
         throws(() => createFile(base, '.secret'), 'dot');
@@ -107,7 +111,8 @@ export function fileOpsTests(): void {
         throws(() => moveEntry(at('notes.md'), at('target')), 'already exists');
         ok(exists(at('notes.md')), 'the source must not disappear');
     });
-    test('renameEntry renames files (keeping .md) and folders, rejects clashes', () => {
+    test('renameEntry renames files (keeping' +
+        ' .md) and folders, rejects clashes', () => {
         createFile(base, 'r1');
         createFile(base, 'r2');
         createFolder(base, 'rd');
@@ -121,7 +126,9 @@ export function fileOpsTests(): void {
         throws(() => renameEntry(at('r3.md'), 'r2'), 'already exists');
         throws(() => renameEntry(at('r3.md'), 'a/b'), '/');
     });
-    test('copyEntry copies files and folders, numbering a name clash, and refuses into itself', () => {
+    test('copyEntry copies files and folders,' +
+        ' numbering a name clash, and refuses' +
+        ' into itself', () => {
         createFolder(base, 'cp');
         createFile(at('cp'), 'inside');
         disk.write(at('pic.png'), 'x');

@@ -164,7 +164,9 @@ export class PiRpc {
         const timeout = platform().scheduler.idleAfter(ms, () =>
             reject(
                 Error(
-                    'pi observation deadline exceeded; inspect the original run before continuing'
+                    'pi observation deadline exceeded;' +
+                        ' inspect the original run before' +
+                        ' continuing'
                 )
             )
         );
@@ -216,7 +218,9 @@ export async function discoverPi(): Promise<string> {
     const program = platform().processes.findProgram('pi');
     if (!program)
         throw Error(
-            'pi is not installed. Install pi and authenticate using pi before activating this agent.'
+            'pi is not installed. Install pi and' +
+                ' authenticate using pi before' +
+                ' activating this agent.'
         );
     return program;
 }

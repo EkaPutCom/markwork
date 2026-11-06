@@ -13,7 +13,11 @@ export function Toaster({
     return (
         <Sonner
             theme={theme}
-            className="toaster group [--normal-bg:var(--popover)] [--normal-border:var(--border)] [--normal-text:var(--popover-foreground)]"
+            className={"toaster group" +
+                " [--normal-bg:var(--popover)]" +
+                " [--normal-border:var(--border)]" +
+                " [--normal-text:var(--popover-foreg" +
+                "round)]"}
             toastOptions={{
                 classNames: {
                     toast: 'font-sans text-sm',

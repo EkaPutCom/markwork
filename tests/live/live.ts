@@ -70,7 +70,9 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'a character across the whole book',
         question:
-            'Who is Hasan and what is his role in this whole book? Give the file and line numbers.',
+            'Who is Hasan and what is his role in' +
+                ' this whole book? Give the file and' +
+                ' line numbers.',
         minTools: 0,
         mustMention: [/captain/i],
         cite: /hasan|hasyim|captain/i,
@@ -78,7 +80,9 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'contradictions (the initial context is enough)',
         question:
-            'Are there contradictions about the age of Raka or about the ship in this book? Give the file and its lines.',
+            'Are there contradictions about the age' +
+                ' of Raka or about the ship in this' +
+                ' book? Give the file and its lines.',
         minTools: 0,
         mustMention: [/17|seventeen/i, /25|twenty-five/i],
         cite: /raka|ship|hull|sail|hasan|hasyim|captain|seagull/i,
@@ -89,7 +93,9 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'contradictions without initial context (tools required)',
         question:
-            'Are there contradictions about the age of Raka or about the ship in this book? Give the file and its lines.',
+            'Are there contradictions about the age' +
+                ' of Raka or about the ship in this' +
+                ' book? Give the file and its lines.',
         minTools: 1,
         budget: 900,
         mustMention: [/17|seventeen/i, /25|twenty-five/i],

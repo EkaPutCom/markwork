@@ -34,7 +34,9 @@ const rowsOf = (extra: string, sort: string | null) => {
 export function tableLayoutTests(): void {
     section('Table layout (model)');
 
-    test('layout: table is recognized, has only the fields it declares, and a new table is written and read back', () => {
+    test('layout: table is recognized, has only' +
+        ' the fields it declares, and a new' +
+        ' table is written and read back', () => {
         eq(layoutOf(TABLE()), 'table');
         eq(
             boardSchema(parseBoard(TABLE())).map((f) => f.key),
@@ -50,7 +52,10 @@ export function tableLayoutTests(): void {
         eq(serializeBoard(parseBoard(text)), text, 'stable');
     });
 
-    test('tableColumns: the title and every field by default (and the section when a group has a title); columns: picks and orders them', () => {
+    test('tableColumns: the title and every' +
+        ' field by default (and the section' +
+        ' when a group has a title); columns:' +
+        ' picks and orders them', () => {
         const board = parseBoard(TABLE());
         eq(tableColumns(board), [
             'title',
@@ -101,7 +106,10 @@ export function tableLayoutTests(): void {
         );
     });
 
-    test('tableRows: document order, or sorted by title, date, progress, option order, or section; notes without a value go last', () => {
+    test('tableRows: document order, or sorted' +
+        ' by title, date, progress, option' +
+        ' order, or section; notes without a' +
+        ' value go last', () => {
         eq(
             rowsOf('', null),
             ['Delta', 'Alpha', 'Charlie', 'Bravo', 'Echo'],
@@ -126,7 +134,9 @@ export function tableLayoutTests(): void {
         eq(
             rowsOf('', 'status'),
             ['Alpha', 'Delta', 'Bravo', 'Charlie', 'Echo'],
-            'by the order of the options (todo, doing, done); equal ones keep the document order; none last'
+            'by the order of the options (todo,' +
+                ' doing, done); equal ones keep the' +
+                ' document order; none last'
         );
         eq(
             rowsOf('', 'section'),
@@ -145,7 +155,9 @@ export function tableLayoutTests(): void {
         );
     });
 
-    test('nextSort: ascending, then descending, then the document order; another column starts again', () => {
+    test('nextSort: ascending, then descending,' +
+        ' then the document order; another' +
+        ' column starts again', () => {
         const a = nextSort(null, 'due'),
             b = nextSort(a, 'due'),
             c = nextSort(b, 'due');

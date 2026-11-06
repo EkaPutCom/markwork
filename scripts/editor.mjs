@@ -311,7 +311,9 @@ function findSocket(pid) {
         .filter(alive);
     if (!pids.length)
         throw new Usage(
-            'no Markwork window in dev mode is running (start it with MARKWORK_DEV=1, or use --headless)'
+            'no Markwork window in dev mode is' +
+                ' running (start it with' +
+                ' MARKWORK_DEV=1, or use --headless)'
         );
     if (pids.length > 1)
         throw new Usage(

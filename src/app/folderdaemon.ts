@@ -57,7 +57,9 @@ export class FolderDaemonPi implements FolderPiRuntime {
                     if (exit.reason !== 'exited' || exit.code !== 0)
                         fail(
                             Error(
-                                'pi preflight failed on the execution machine. Check daemon programs, roots, and pi authentication.'
+                                'pi preflight failed on the execution' +
+                                    ' machine. Check daemon programs,' +
+                                    ' roots, and pi authentication.'
                             )
                         );
                 }
@@ -83,7 +85,9 @@ export class FolderDaemonPi implements FolderPiRuntime {
             !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(provider)
         )
             throw Error(
-                'Select a pi model with a valid provider identifier on the execution machine'
+                'Select a pi model with a valid' +
+                    ' provider identifier on the execution' +
+                    ' machine'
             );
         // Provider data must not become CLI flags, especially the
         // credential-printing --credentials flag.
@@ -103,7 +107,10 @@ export class FolderDaemonPi implements FolderPiRuntime {
         }
         if (result.status !== 'ready')
             throw Error(
-                'pi credentials are unavailable on the execution machine. Authenticate there using pi; Assistant credentials are not forwarded.'
+                'pi credentials are unavailable on the' +
+                    ' execution machine. Authenticate there' +
+                    ' using pi; Assistant credentials are' +
+                    ' not forwarded.'
             );
     }
 
@@ -152,7 +159,9 @@ export class FolderDaemonPi implements FolderPiRuntime {
             run = binding.run;
         if (!run?.prompted || !binding.native)
             throw Error(
-                'Background startup outcome is unknown. Inspect/stop the original run, then explicitly restore native history.'
+                'Background startup outcome is unknown.' +
+                    ' Inspect/stop the original run, then' +
+                    ' explicitly restore native history.'
             );
         const client = await daemonDeadline(this.conn.ready()),
             summary = await daemonDeadline(client.get(run.id));
@@ -168,7 +177,9 @@ export class FolderDaemonPi implements FolderPiRuntime {
             )
         )
             throw Error(
-                'The original run is no longer running. Explicit native recovery is required; nothing was resubmitted.'
+                'The original run is no longer running.' +
+                    ' Explicit native recovery is required;' +
+                    ' nothing was resubmitted.'
             );
         const rpc = new PiRpc([], summary.cwd, (_argv, _cwd, handlers) =>
             this.makeProcess(run.id, handlers)
@@ -211,7 +222,9 @@ export class FolderDaemonPi implements FolderPiRuntime {
             summary = await daemonDeadline(client.get(run.id));
         if (summary.state !== 'exited')
             throw Error(
-                'Background shutdown is not confirmed. The original run remains reserved; reconnect or stop it explicitly.'
+                'Background shutdown is not confirmed.' +
+                    ' The original run remains reserved;' +
+                    ' reconnect or stop it explicitly.'
             );
         this.process?.detach();
         this.store.clearRun(this.chat);
@@ -242,7 +255,9 @@ export class FolderDaemonPi implements FolderPiRuntime {
             const summary = await daemonDeadline(client.get(run.id));
             if (summary.state !== 'exited')
                 throw Error(
-                    'Stop the original background run and wait for its exit before restoring native history'
+                    'Stop the original background run and' +
+                        ' wait for its exit before restoring' +
+                        ' native history'
                 );
         } catch (error) {
             if (!(error instanceof DaemonError) || error.code !== 'not_found')

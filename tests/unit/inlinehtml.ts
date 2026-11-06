@@ -11,9 +11,12 @@ import { section, test, eq, ok, contains, say } from '../core/framework';
 
 export function inlineHtmlTests(): void {
     section('Inline runs and HTML');
-    test('chat tables use shared GFM cells, alignment and safe inline formatting', () => {
+    test('chat tables use shared GFM cells,' +
+        ' alignment and safe inline formatting', () => {
         const html = chatHtml(
-            '| CVE | Risk | Score |\n| :--- | :---: | ---: |\n| **CVE-1** | escaped \\| pipe | `9.8` |'
+            '| CVE | Risk | Score |\n| :--- | :---:' +
+                ' | ---: |\n| **CVE-1** | escaped \\|' +
+                ' pipe | `9.8` |'
         );
         contains(html, '<table>');
         contains(html, '<thead>');
@@ -29,7 +32,9 @@ export function inlineHtmlTests(): void {
         ok(!unsafe.includes('<img'), 'raw HTML executed');
         contains(unsafe, '&lt;img');
     });
-    test('streamed table prefixes stay readable until the separator completes and code pipes stay code', () => {
+    test('streamed table prefixes stay readable' +
+        ' until the separator completes and' +
+        ' code pipes stay code', () => {
         ok(!chatHtml('| A | B |\n| ').includes('<table>'), 'premature table');
         contains(chatHtml('| A | B |\n| --- | --- |'), '<table>');
         const code = chatHtml(
@@ -39,7 +44,9 @@ export function inlineHtmlTests(): void {
         contains(code, '```\nstill code');
         contains(code, '<p class="md-line">after</p>');
     });
-    test('chat preserves numbered and task markers and recognizes rules before bullets', () => {
+    test('chat preserves numbered and task' +
+        ' markers and recognizes rules before' +
+        ' bullets', () => {
         const html = chatHtml(
             '3. Third\n4) Fourth\n- [x] Done\n- [ ] Pending\n- - -'
         );
@@ -49,7 +56,9 @@ export function inlineHtmlTests(): void {
         contains(html, 'data-marker="☐"');
         contains(html, '<hr');
     });
-    test('chat table render baseline: 200 research rows, 3 warmups and 20 samples', () => {
+    test('chat table render baseline: 200' +
+        ' research rows, 3 warmups and 20' +
+        ' samples', () => {
         const text =
             '| CVE | Risk | Source |\n| --- | --- | --- |\n' +
             Array.from(
@@ -75,7 +84,8 @@ export function inlineHtmlTests(): void {
         );
     });
 
-    test('inlineRuns: markers are dropped and styles merged (bold inside italic)', () => {
+    test('inlineRuns: markers are dropped and' +
+        ' styles merged (bold inside italic)', () => {
         eq(inlineRuns('a **b** *c **d***'), [
             { text: 'a ', styles: [] },
             { text: 'b', styles: ['bold'] },
@@ -85,7 +95,8 @@ export function inlineHtmlTests(): void {
         ]);
     });
 
-    test('inlineRuns: a [[note]] is a run of its own only when links are asked for', () => {
+    test('inlineRuns: a [[note]] is a run of its' +
+        ' own only when links are asked for', () => {
         const runs = inlineRuns('see [[Spec#Color|color]] now', true);
         eq(
             runs.map((r) => [r.text, r.note]),
@@ -112,7 +123,9 @@ export function inlineHtmlTests(): void {
         eq(cellHtml('a \\| b'), 'a | b');
     });
 
-    test('cellHtml: no markup in the text reaches the page as a tag or an attribute', () => {
+    test('cellHtml: no markup in the text' +
+        ' reaches the page as a tag or an' +
+        ' attribute', () => {
         const html = cellHtml('<img src=x onerror=alert(1)> "q" \'s\'');
         ok(!html.includes('<img'), html);
         contains(
@@ -123,7 +136,8 @@ export function inlineHtmlTests(): void {
         ok(!/"b onmouseover/.test(note), note);
     });
 
-    test('cellHtml: [[note]] becomes a link with the note URI, and not inside code', () => {
+    test('cellHtml: [[note]] becomes a link with' +
+        ' the note URI, and not inside code', () => {
         eq(
             cellHtml('[[Spec#Color|color]]', true),
             `<a class="md-note" href="${NOTE_URI}Spec%23Color%7Ccolor"><span class="md-link">color</span></a>`
@@ -146,14 +160,20 @@ export function inlineHtmlTests(): void {
         ]);
     });
 
-    test('chatHtml: heading, list, quote, one <pre> for consecutive code lines, all escaped', () => {
+    test('chatHtml: heading, list, quote, one' +
+        ' <pre> for consecutive code lines, all' +
+        ' escaped', () => {
         const html = chatHtml(
-            '## Title\n- one **bold**\n> quote\n```ts\nconst a = 1 < 2;\nb();\n```\nend'
+            '## Title\n- one **bold**\n>' +
+                ' quote\n```ts\nconst a = 1 <' +
+                ' 2;\nb();\n```\nend'
         );
         contains(html, '<div class="md-heading md-h2">Title</div>');
         contains(
             html,
-            '<div class="md-bullet" data-depth="0">one <strong>bold</strong></div>'
+            '<div class="md-bullet"' +
+                ' data-depth="0">one' +
+                ' <strong>bold</strong></div>'
         );
         contains(html, '<blockquote class="md-quote">quote</blockquote>');
         contains(html, '<pre class="md-code">const a = 1 &lt; 2;\nb();</pre>');
@@ -161,7 +181,9 @@ export function inlineHtmlTests(): void {
         ok(!html.includes('```'), 'the fence was shown');
     });
 
-    test('chatHtml tolerates truncated text (an unclosed code block, an unpaired bold marker)', () => {
+    test('chatHtml tolerates truncated text (an' +
+        ' unclosed code block, an unpaired bold' +
+        ' marker)', () => {
         const html = chatHtml('Text **bold not yet\n```\ncode <b>');
         contains(html, '<pre class="md-code">code &lt;b&gt;</pre>');
         ok(!/<b>/.test(html), 'a raw tag slipped through');

@@ -302,7 +302,8 @@ export class FakeDaemon {
         cwd: string
     ) => { status: number; out?: string; err?: string } = () => ({
         status: 128,
-        err: 'fatal: not a git repository (or any of the parent directories): .git',
+        err: 'fatal: not a git repository (or any of' +
+            ' the parent directories): .git',
     });
     // What another program run to its end answers (`pi --version`), or how the
     // daemon refuses it; null leaves it running,

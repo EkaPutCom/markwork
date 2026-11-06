@@ -80,7 +80,10 @@ try {
         .waitFor({ timeout: 15000 });
 
     await step(
-        'the activity bar has the views, Programs, and Preferences; the one shown is pressed, and pressing it closes the sidebar',
+        'the activity bar has the views,' +
+            ' Programs, and Preferences; the one' +
+            ' shown is pressed, and pressing it' +
+            ' closes the sidebar',
         async () => {
             for (const name of [
                 'Files',
@@ -120,7 +123,9 @@ try {
     );
 
     await step(
-        'Files has its four sections, and Home and Journal are not in the sidebar any more',
+        'Files has its four sections, and Home' +
+            ' and Journal are not in the sidebar' +
+            ' any more',
         async () => {
             for (const id of ['editors', 'folder', 'outline', 'timeline'])
                 await section(id).waitFor();
@@ -149,7 +154,9 @@ try {
     );
 
     await step(
-        'Open Editors lists the open documents, a click selects one, and its close button closes it',
+        'Open Editors lists the open documents,' +
+            ' a click selects one, and its close' +
+            ' button closes it',
         async () => {
             await open('a.md');
             await open('b.md');
@@ -194,7 +201,9 @@ try {
     );
 
     await step(
-        'Outline follows the document, and a section folds and unfolds from its header (and the setting keeps it)',
+        'Outline follows the document, and a' +
+            ' section folds and unfolds from its' +
+            ' header (and the setting keeps it)',
         async () => {
             await open('launch.md').catch(async () => {
                 await page.getByRole('treeitem', { name: /plans/ }).click();
@@ -270,7 +279,9 @@ try {
     );
 
     await step(
-        'the Timeline lists the commits of the open file once it is unfolded, and the core is told',
+        'the Timeline lists the commits of the' +
+            ' open file once it is unfolded, and' +
+            ' the core is told',
         async () => {
             await head('timeline').click();
             await waitFor(() => saved()['timeline-open'] === true);
@@ -313,7 +324,9 @@ try {
     );
 
     await step(
-        'the sidebar edge is dragged to change its width, within limits, and the width is kept',
+        'the sidebar edge is dragged to change' +
+            ' its width, within limits, and the' +
+            ' width is kept',
         async () => {
             const shell = page.locator('.side-shell');
             const before = (await shell.boundingBox()).width;

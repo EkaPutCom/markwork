@@ -116,13 +116,17 @@ const touched = (base: string, text: string): string[] => {
 export function noteToolTests(): void {
     section('Structured documents: describe_schema');
 
-    test('describe_schema lists the layout, options, fields, select options, defaults, and groups', () => {
+    test('describe_schema lists the layout,' +
+        ' options, fields, select options,' +
+        ' defaults, and groups', () => {
         const r = describeSchema(files(), { name: 'tasks' });
         contains(r.content, 'tasks.md — layout: table · 4 notes');
         contains(r.content, 'options: add: bottom');
         contains(
             r.content,
-            '- status: select(todo:gray, doing:blue, done:green) = todo — one of: todo, doing, done'
+            '- status: select(todo:gray,' +
+                ' doing:blue, done:green) = todo — one' +
+                ' of: todo, doing, done'
         );
         contains(r.content, '- due: date');
         contains(
@@ -132,14 +136,17 @@ export function noteToolTests(): void {
         contains(r.content, '- progress: progress');
     });
 
-    test('describe_schema marks the built-in fields of a board and the groups', () => {
+    test('describe_schema marks the built-in' +
+        ' fields of a board and the groups', () => {
         const r = describeSchema(files(), { name: 'board.md' });
         contains(r.content, 'in 3 groups (Plan 1, In Progress 0, Done 1)');
         contains(r.content, '- due: date (built in to boards)');
         contains(r.content, '- priority: select(high:red, low)');
     });
 
-    test('describe_schema without a name summarizes every structured file and skips ordinary ones', () => {
+    test('describe_schema without a name' +
+        ' summarizes every structured file and' +
+        ' skips ordinary ones', () => {
         const r = describeSchema(files(), {});
         contains(r.content, 'tasks.md');
         contains(r.content, 'board.md');
@@ -166,7 +173,8 @@ export function noteToolTests(): void {
         );
     });
 
-    test('describe_schema is a registered read tool and reaches runTool', () => {
+    test('describe_schema is a registered read' +
+        ' tool and reaches runTool', () => {
         ok(
             TOOLS.some((t) => t.name === 'describe_schema') &&
                 TOOLS.some((t) => t.name === 'query_notes'),
@@ -218,7 +226,8 @@ export function noteToolTests(): void {
             .filter((l) => l.startsWith('tasks.md'))
             .map((l) => /· (?:\[.\] )?(.*?)( —|$)/.exec(l)![1]);
 
-    test('query_notes filters by a select, a date comparison, and today', () => {
+    test('query_notes filters by a select, a' +
+        ' date comparison, and today', () => {
         eq(
             titles(
                 queryNotes(
@@ -278,7 +287,9 @@ export function noteToolTests(): void {
         );
     });
 
-    test('query_notes: empty, not_empty, tag, title, multiple values, progress, and ne counts notes without a value', () => {
+    test('query_notes: empty, not_empty, tag,' +
+        ' title, multiple values, progress, and' +
+        ' ne counts notes without a value', () => {
         eq(
             titles(
                 queryNotes(
@@ -421,7 +432,8 @@ export function noteToolTests(): void {
         );
     });
 
-    test('query_notes spans every structured file and explains its errors', () => {
+    test('query_notes spans every structured' +
+        ' file and explains its errors', () => {
         const all = queryNotes(
             files(),
             { where: [{ field: 'done', op: 'eq', value: 'true' }] },
@@ -476,7 +488,9 @@ export function noteToolTests(): void {
 
     section('Structured documents: edit_note');
 
-    test('edit_note add: fields are written in normal form and the defaults of the document are filled in', () => {
+    test('edit_note add: fields are written in' +
+        ' normal form and the defaults of the' +
+        ' document are filled in', () => {
         const out = note({
             action: 'add',
             text: 'Draft docs #docs',
@@ -488,7 +502,10 @@ export function noteToolTests(): void {
         });
         contains(
             out,
-            '- Plan retreat\n- Draft docs #docs [due:: 2026-11-02 09:30] [owner:: Ana, Budi] [progress:: 40%] [status:: todo]\n'
+            '- Plan retreat\n- Draft docs #docs' +
+                ' [due:: 2026-11-02 09:30] [owner::' +
+                ' Ana, Budi] [progress:: 40%] [status::' +
+                ' todo]\n'
         );
         eq(
             touched(TABLE, out).length,
@@ -497,7 +514,9 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_note add: where a list puts new notes, and a group when the layout allows one', () => {
+    test('edit_note add: where a list puts new' +
+        ' notes, and a group when the layout' +
+        ' allows one', () => {
         const list =
             '---\nlayout: list\nfields:\n  created: date = now\n---\n\n- Old\n';
         const set = [{ name: 'inbox.md', text: list }];
@@ -531,7 +550,9 @@ export function noteToolTests(): void {
         eq(set.length, 1);
     });
 
-    test('edit_note add: a board needs a group, matched like the other group arguments', () => {
+    test('edit_note add: a board needs a group,' +
+        ' matched like the other group' +
+        ' arguments', () => {
         contains(
             refused('edit_note', 'board.md', { action: 'add', text: 'Hire' }),
             'The "group" argument is required'
@@ -547,11 +568,14 @@ export function noteToolTests(): void {
         );
         contains(
             out,
-            '## In Progress\n\n- [ ] Hire a caterer [priority:: low] [due:: 2026-11-01]\n'
+            '## In Progress\n\n- [ ] Hire a caterer' +
+                ' [priority:: low] [due:: 2026-11-01]\n'
         );
     });
 
-    test('edit_note refuses what the schema does not accept, with a message the model can use', () => {
+    test('edit_note refuses what the schema does' +
+        ' not accept, with a message the model' +
+        ' can use', () => {
         contains(
             refused('edit_note', 'tasks.md', {
                 action: 'add',
@@ -613,7 +637,8 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_note on an ordinary file points to edit_file and set_layout', () => {
+    test('edit_note on an ordinary file points' +
+        ' to edit_file and set_layout', () => {
         const message = refused('edit_note', 'notes.md', {
             action: 'add',
             text: 'x',
@@ -622,7 +647,9 @@ export function noteToolTests(): void {
         contains(message, 'set_layout');
     });
 
-    test('edit_note update: only the fields given change and the rest of the line stays as it was', () => {
+    test('edit_note update: only the fields' +
+        ' given change and the rest of the line' +
+        ' stays as it was', () => {
         const out = note({
             action: 'update',
             note: 'Fix login',
@@ -633,7 +660,9 @@ export function noteToolTests(): void {
         ]);
     });
 
-    test('edit_note update: a new title and new tags keep the fields; today and now are filled in for dates', () => {
+    test('edit_note update: a new title and new' +
+        ' tags keep the fields; today and now' +
+        ' are filled in for dates', () => {
         const out = note({
             action: 'update',
             note: 'Write spec',
@@ -641,7 +670,9 @@ export function noteToolTests(): void {
             tags: ['docs', 'q4'],
         });
         eq(touched(TABLE, out), [
-            '- Write the spec #docs #q4 [status:: doing] [due:: 2026-10-20] [progress:: 3/5]',
+            '- Write the spec #docs #q4 [status::' +
+                ' doing] [due:: 2026-10-20] [progress::' +
+                ' 3/5]',
         ]);
         const r = planNote(
             {
@@ -666,7 +697,9 @@ export function noteToolTests(): void {
         ok(r2.ok && r2.after.includes('[due:: 2026-10-12 09:05]'), 'now');
     });
 
-    test('edit_note update: errors for no match, several matches, and nothing to change', () => {
+    test('edit_note update: errors for no match,' +
+        ' several matches, and nothing to' +
+        ' change', () => {
         contains(
             refused('edit_note', 'tasks.md', {
                 action: 'update',
@@ -716,14 +749,16 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_note move: to another group of a board, and not to the group it is in', () => {
+    test('edit_note move: to another group of a' +
+        ' board, and not to the group it is in', () => {
         const out = note(
             { action: 'move', note: 'Release material', group: 'In Progress' },
             'board.md'
         );
         contains(
             out,
-            '## Plan\n\n## In Progress\n\n- [ ] Release material [priority:: high]\n'
+            '## Plan\n\n## In Progress\n\n- [ ]' +
+                ' Release material [priority:: high]\n'
         );
         contains(
             refused('edit_note', 'board.md', {
@@ -743,7 +778,8 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_note on a board grouped by a field: move and add set that field', () => {
+    test('edit_note on a board grouped by a' +
+        ' field: move and add set that field', () => {
         const moved = note(
             { action: 'move', note: 'Alpha', group: 'DONE' },
             'grouped.md'
@@ -804,7 +840,9 @@ export function noteToolTests(): void {
 
     section('Structured documents: edit_schema');
 
-    test('edit_schema add_field declares a field in the frontmatter, in order, and leaves the notes alone', () => {
+    test('edit_schema add_field declares a field' +
+        ' in the frontmatter, in order, and' +
+        ' leaves the notes alone', () => {
         const out = schema({
             action: 'add_field',
             field: 'priority',
@@ -839,7 +877,8 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_schema add_field refuses bad names, duplicates, and bad types', () => {
+    test('edit_schema add_field refuses bad' +
+        ' names, duplicates, and bad types', () => {
         contains(
             refused('edit_schema', 'tasks.md', {
                 action: 'add_field',
@@ -898,7 +937,9 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_schema remove_field is refused while notes use the field, unless forced', () => {
+    test('edit_schema remove_field is refused' +
+        ' while notes use the field, unless' +
+        ' forced', () => {
         contains(
             refused('edit_schema', 'tasks.md', {
                 action: 'remove_field',
@@ -952,7 +993,9 @@ export function noteToolTests(): void {
         });
         contains(
             added,
-            '  status: select(todo:gray, doing:blue, done:green, blocked:red) = todo'
+            '  status: select(todo:gray,' +
+                ' doing:blue, done:green, blocked:red)' +
+                ' = todo'
         );
         contains(
             note(
@@ -1062,7 +1105,8 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_schema reorder_fields needs every declared field exactly once', () => {
+    test('edit_schema reorder_fields needs every' +
+        ' declared field exactly once', () => {
         const out = schema({
             action: 'reorder_fields',
             order: ['due', 'status', 'progress', 'owner'],
@@ -1094,7 +1138,9 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_schema set_layout switches the layout when the document has what the layout needs', () => {
+    test('edit_schema set_layout switches the' +
+        ' layout when the document has what the' +
+        ' layout needs', () => {
         contains(
             schema({ action: 'set_layout', layout: 'calendar' }),
             'layout: calendar'
@@ -1136,7 +1182,8 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_schema set_layout gives an ordinary file its first layout', () => {
+    test('edit_schema set_layout gives an' +
+        ' ordinary file its first layout', () => {
         const out = schema(
             { action: 'set_layout', layout: 'list' },
             'notes.md'
@@ -1159,7 +1206,9 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_schema set_option validates the value against the document and can remove an option', () => {
+    test('edit_schema set_option validates the' +
+        ' value against the document and can' +
+        ' remove an option', () => {
         contains(
             schema({ action: 'set_option', key: 'sort', value: '-due' }),
             'sort: -due'
@@ -1239,7 +1288,8 @@ export function noteToolTests(): void {
                         name: 'board.md',
                         text: BOARD.replace(
                             'priority: select(high:red, low)',
-                            'priority: select(high:red, low)\n  status: select(a, b)'
+                            'priority: select(high:red, low)\n ' +
+                                ' status: select(a, b)'
                         ),
                     },
                 ]
@@ -1277,7 +1327,8 @@ export function noteToolTests(): void {
 
     section('Structured documents: verification and batches');
 
-    test('verify_work kind field checks the value of a field of one note', () => {
+    test('verify_work kind field checks the' +
+        ' value of a field of one note', () => {
         const check = (c: object) =>
             verifyWork(
                 JSON.stringify({
@@ -1365,7 +1416,9 @@ export function noteToolTests(): void {
         );
     });
 
-    test('verify_work structure reports invalid values, undeclared fields, and a broken declaration', () => {
+    test('verify_work structure reports invalid' +
+        ' values, undeclared fields, and a' +
+        ' broken declaration', () => {
         eq(structuredIssues(TABLE).length, 0, 'a good document has no issues');
         eq(
             structuredIssues(NOTES).length,
@@ -1381,7 +1434,9 @@ export function noteToolTests(): void {
             .join('\n');
         contains(
             text,
-            '"Ship release": status "finished" is not valid (not one of: todo, doing, done)'
+            '"Ship release": status "finished" is' +
+                ' not valid (not one of: todo, doing,' +
+                ' done)'
         );
         contains(text, 'the field "colour" is not declared');
         contains(text, 'field declaration: owner: unknown type "wibble"');
@@ -1402,9 +1457,14 @@ export function noteToolTests(): void {
         eq(withBaseline.passed, true, 'old problems are left alone');
     });
 
-    test('verify_work kind note: one note, optionally in a group and done or not, in any layout', () => {
+    test('verify_work kind note: one note,' +
+        ' optionally in a group and done or' +
+        ' not, in any layout', () => {
         const board =
-            '---\nlayout: board\n---\n\n## Doing\n\n- [ ] Ship it #now [priority:: high]\n\n## Done\n\n- [x] Ship it later\n';
+            '---\nlayout: board\n---\n\n##' +
+                ' Doing\n\n- [ ] Ship it #now' +
+                ' [priority:: high]\n\n## Done\n\n- [x]' +
+                ' Ship it later\n';
         const list =
             '---\nlayout: list\n---\n\n- Read the HIG #read\n- [x] Plan trip\n';
         const check = (text: string, file: string, c: object) =>
@@ -1507,7 +1567,9 @@ export function noteToolTests(): void {
         );
     });
 
-    test('edit_note and edit_schema work in a batch that depends on an earlier action', () => {
+    test('edit_note and edit_schema work in a' +
+        ' batch that depends on an earlier' +
+        ' action', () => {
         const batch = planBatch(
             JSON.stringify({
                 actions: [
@@ -1569,7 +1631,9 @@ export function noteToolTests(): void {
         contains(bad.error ?? '', 'no field "priority"');
     });
 
-    test('the proposal tools for structured documents are listed, and edit_kanban is gone', () => {
+    test('the proposal tools for structured' +
+        ' documents are listed, and edit_kanban' +
+        ' is gone', () => {
         eq(CHANGE_TOOLS.map((t) => t.name).slice(-2), [
             'edit_note',
             'edit_schema',
@@ -1584,7 +1648,8 @@ export function noteToolTests(): void {
         );
     });
 
-    test('a round trip through edit_note changes nothing outside the note it touched', () => {
+    test('a round trip through edit_note changes' +
+        ' nothing outside the note it touched', () => {
         const out = note(
             { action: 'mark', note: 'Book venue', done: false },
             'board.md'

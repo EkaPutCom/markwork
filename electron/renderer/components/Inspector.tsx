@@ -695,13 +695,17 @@ export function Inspector({ onClose }: { onClose: () => void }) {
                     >
                         <ToggleGroupItem
                             value="live"
-                            className="h-6 rounded-sm px-2 aria-checked:bg-background aria-checked:shadow-xs"
+                            className={"h-6 rounded-sm px-2" +
+                                " aria-checked:bg-background" +
+                                " aria-checked:shadow-xs"}
                         >
                             Live
                         </ToggleGroupItem>
                         <ToggleGroupItem
                             value="paused"
-                            className="h-6 rounded-sm px-2 aria-checked:bg-background aria-checked:shadow-xs"
+                            className={"h-6 rounded-sm px-2" +
+                                " aria-checked:bg-background" +
+                                " aria-checked:shadow-xs"}
                             disabled={!steps.length}
                         >
                             Paused

@@ -57,7 +57,10 @@ const routes = {
         ]),
     'GET /pulls/7.diff': () =>
         ok(
-            'diff --git a/plan.md b/plan.md\n--- a/plan.md\n+++ b/plan.md\n@@ -1 +1 @@\n-Ship 15 November\n+Ship 22 November\n'
+            'diff --git a/plan.md b/plan.md\n---' +
+                ' a/plan.md\n+++ b/plan.md\n@@ -1 +1' +
+                ' @@\n-Ship 15 November\n+Ship 22' +
+                ' November\n'
         ),
     'GET /raw/plan.md?ref=b7': () => ok('Ship 15 November\n'),
     'GET /raw/plan.md?ref=h7': () => ok('Ship 22 November\n'),

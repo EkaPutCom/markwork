@@ -223,7 +223,8 @@ export function Search() {
                         >
                             <Button
                                 variant="ghost"
-                                className="file-name h-auto justify-start font-normal text-left"
+                                className={"file-name h-auto justify-start" +
+                                    " font-normal text-left"}
                                 aria-expanded={open}
                                 onClick={() => fold(f.file)}
                             >
@@ -247,7 +248,8 @@ export function Search() {
                                     <Button
                                         key={i}
                                         variant="ghost"
-                                        className="hit h-auto justify-start font-normal text-left"
+                                        className={"hit h-auto justify-start" +
+                                            " font-normal text-left"}
                                         role="treeitem"
                                         onClick={() =>
                                             client.openHit(f.file, i)

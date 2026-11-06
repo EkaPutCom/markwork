@@ -69,7 +69,9 @@ export class FolderStore<
             throw Error('Invalid agent execution mode');
         if (index.root !== this.root && platform().fs.exists(index.root))
             throw Error(
-                'This agent identity belongs to another folder. Do not copy agent ids between folders.'
+                'This agent identity belongs to another' +
+                    ' folder. Do not copy agent ids between' +
+                    ' folders.'
             );
         for (const chat of index.chats) this.validateBinding(chat);
         if (
@@ -116,7 +118,8 @@ export class FolderStore<
         this.claim();
         if (this.data.chats.some((chat) => chat.run))
             throw Error(
-                'Resolve the original background run before changing execution mode'
+                'Resolve the original background run' +
+                    ' before changing execution mode'
             );
         this.data.execution = mode;
         this.save();
@@ -132,7 +135,8 @@ export class FolderStore<
         this.claim();
         if (this.data.chats.some((chat) => chat.run))
             throw Error(
-                'Reconnect or explicitly recover the original background run first'
+                'Reconnect or explicitly recover the' +
+                    ' original background run first'
             );
         const run = platform().newId();
         this.get(id).run = { id: run, seq: 0, prompted: false };
@@ -205,7 +209,12 @@ export class FolderStore<
         const lock = paths.join(this.directory, 'owner');
         if (!fs.createDir(lock, 0o700))
             throw Error(
-                'This agent is owned by another window or an interrupted application. Close its owning window. After a crash, inspect native sessions and remove the runtime owner directory before explicit recovery.'
+                'This agent is owned by another window' +
+                    ' or an interrupted application. Close' +
+                    ' its owning window. After a crash,' +
+                    ' inspect native sessions and remove' +
+                    ' the runtime owner directory before' +
+                    ' explicit recovery.'
             );
         this.owner = platform().newId();
         try {
@@ -308,7 +317,8 @@ export class FolderStore<
         const chat = this.get(id);
         if (!chat.native || !chat.instructionRevision)
             throw Error(
-                'Native session and instructions must be bound before recording a turn'
+                'Native session and instructions must' +
+                    ' be bound before recording a turn'
             );
         // Append-only provenance, never prompts, credentials or executable
         // replay input.
@@ -333,7 +343,10 @@ export class FolderStore<
             platform().hash(readTextFile(path)) !== chat.projectionHash
         )
             throw Error(
-                'The chat projection changed on disk. It is not executable history. Restore the native projection before continuing.'
+                'The chat projection changed on disk.' +
+                    ' It is not executable history. Restore' +
+                    ' the native projection before' +
+                    ' continuing.'
             );
     }
 
@@ -378,7 +391,9 @@ export class FolderStore<
         });
         if (text.length > 2 * 1024 * 1024)
             throw Error(
-                'Readable chat projection exceeded 2 MiB. Native history is retained in runtime storage.'
+                'Readable chat projection exceeded 2' +
+                    ' MiB. Native history is retained in' +
+                    ' runtime storage.'
             );
         writeTextFile(this.path(id), text);
         chat.projectionHash = platform().hash(text);

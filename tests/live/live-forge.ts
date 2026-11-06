@@ -97,7 +97,8 @@ async function readChecks(): Promise<PullRequest | undefined> {
         }
     );
     const info = await step(
-        'repoInfo: owner, default branch, clone URL, and whether the token may push',
+        'repoInfo: owner, default branch, clone' +
+            ' URL, and whether the token may push',
         async () => {
             const r = await owner.repoInfo();
             check(
@@ -130,7 +131,9 @@ async function readChecks(): Promise<PullRequest | undefined> {
     const clean = pulls?.find((p) => p.mergeable === true),
         conflicting = pulls?.find((p) => p.mergeable === false);
     await step(
-        'mergeable is told apart: one pull request is clean, one conflicts (the seeded ones)',
+        'mergeable is told apart: one pull' +
+            ' request is clean, one conflicts (the' +
+            ' seeded ones)',
         async () =>
             check(
                 clean && conflicting,
@@ -160,7 +163,8 @@ async function readChecks(): Promise<PullRequest | undefined> {
         }
     );
     const diff = await step(
-        'getDiff returns the unified diff, and fileDiff cuts one file out of it',
+        'getDiff returns the unified diff, and' +
+            ' fileDiff cuts one file out of it',
         async () => {
             const d = await owner.getDiff(pull.number);
             check(d.includes('diff --git'), 'no diff header');
@@ -186,7 +190,9 @@ async function readChecks(): Promise<PullRequest | undefined> {
         }
     }
     await step(
-        'getContent: the file at the base and at the head differ; a file that is not there is null',
+        'getContent: the file at the base and' +
+            ' at the head differ; a file that is' +
+            ' not there is null',
         async () => {
             check(
                 modified,
@@ -230,7 +236,9 @@ async function readChecks(): Promise<PullRequest | undefined> {
 
 async function writeChecks(): Promise<void> {
     say(
-        '\nWriting: comments, sending through a fork, AGit, merging, and resolving a conflict here'
+        '\nWriting: comments, sending through a' +
+            ' fork, AGit, merging, and resolving a' +
+            ' conflict here'
     );
     const comment = await step(
         'addComment posts and listComments sees it',
@@ -265,7 +273,9 @@ async function writeChecks(): Promise<void> {
 
     // 1. A pull request through the contributor's fork, merged by the owner.
     const sent = await step(
-        'sendChanges through the fork: push over HTTP with the token as a Basic header, then the pull request',
+        'sendChanges through the fork: push' +
+            ' over HTTP with the token as a Basic' +
+            ' header, then the pull request',
         async () => {
             write(
                 disk.join(contrib.folder, 'journal.md'),
@@ -288,7 +298,8 @@ async function writeChecks(): Promise<void> {
     );
     if (sent) {
         await step(
-            'the pull request shows up for the owner, from the fork, with its file',
+            'the pull request shows up for the' +
+                ' owner, from the fork, with its file',
             async () => {
                 const p = await owner.getPull(sent.number);
                 check(
@@ -322,7 +333,8 @@ async function writeChecks(): Promise<void> {
     // 2. AGit: no fork, no branch.
     const agitFolder = await clone(CONTRIBUTOR_TOKEN, `agit-${stamp}`);
     const agit = await step(
-        'sendChanges through AGit: the server opens the pull request from the push',
+        'sendChanges through AGit: the server' +
+            ' opens the pull request from the push',
         async () => {
             write(disk.join(agitFolder.folder, 'agit.md'), `# AGit ${stamp}\n`);
             const result = await sendChanges(context(), {
@@ -375,7 +387,8 @@ async function writeChecks(): Promise<void> {
     );
     if (!conflicted) return;
     await step(
-        'meanwhile main changes the same line; the server then reports the conflict',
+        'meanwhile main changes the same line;' +
+            ' the server then reports the conflict',
         async () => {
             const file = (
                 await api(
@@ -418,7 +431,9 @@ async function writeChecks(): Promise<void> {
         token: OWNER_TOKEN,
     };
     const started = await step(
-        'startLocalMerge fetches refs/pull/N/head from the server and merges it: the file conflicts',
+        'startLocalMerge fetches' +
+            ' refs/pull/N/head from the server and' +
+            ' merges it: the file conflicts',
         async () => {
             check(
                 (await preflight(runGit, mine.folder, 'main')) === null,
@@ -463,7 +478,9 @@ async function writeChecks(): Promise<void> {
     );
     if (!pushed) return;
     await step(
-        'pushing does not by itself close the pull request, and the refusal is explained (manual merge not allowed)',
+        'pushing does not by itself close the' +
+            ' pull request, and the refusal is' +
+            ' explained (manual merge not allowed)',
         async () => {
             const result = await confirmMerged(
                 owner,
@@ -485,7 +502,10 @@ async function writeChecks(): Promise<void> {
         autodetect_manual_merge: true,
     });
     await step(
-        'with manual merges allowed, confirmMerged records it and the server shows the pull request as merged',
+        'with manual merges allowed,' +
+            ' confirmMerged records it and the' +
+            ' server shows the pull request as' +
+            ' merged',
         async () => {
             const result = await confirmMerged(
                 owner,
@@ -536,7 +556,10 @@ async function publishChecks(): Promise<void> {
         via: 'direct' as const,
     };
     const opened = await step(
-        'publishBranch (direct): the branch is pushed over HTTP with the token as a Basic header, and the pull request opened',
+        'publishBranch (direct): the branch is' +
+            ' pushed over HTTP with the token as a' +
+            ' Basic header, and the pull request' +
+            ' opened',
         async () => {
             const result = await publishBranch(
                 context(owner, OWNER_TOKEN),
@@ -563,7 +586,8 @@ async function publishChecks(): Promise<void> {
         }
     );
     await step(
-        'publishing again says a pull request is already open, and pushes nothing',
+        'publishing again says a pull request' +
+            ' is already open, and pushes nothing',
         async () => {
             const result = await publishBranch(
                 context(owner, OWNER_TOKEN),
@@ -586,7 +610,10 @@ async function publishChecks(): Promise<void> {
             { state: 'closed' }
         );
     await step(
-        'a branch that exists on the server with other commits is not overwritten, and the refusal is readable',
+        'a branch that exists on the server' +
+            ' with other commits is not' +
+            ' overwritten, and the refusal is' +
+            ' readable',
         async () => {
             const again = await clone(OWNER_TOKEN, `publish-again-${stamp}`);
             await branchIn(again, branch, 'other.md');
@@ -604,7 +631,9 @@ async function publishChecks(): Promise<void> {
     const contrib = await clone(CONTRIBUTOR_TOKEN, `publish-contrib-${stamp}`);
     await branchIn(contrib, `markwork/fork-${stamp}`, 'fork.md');
     const forked = await step(
-        "publishBranch (fork): the branch goes to the contributor's fork and the pull request names it",
+        "publishBranch (fork): the branch goes" +
+            " to the contributor's fork and the" +
+            " pull request names it",
         async () => {
             const result = await publishBranch(
                 context(contributor, CONTRIBUTOR_TOKEN),

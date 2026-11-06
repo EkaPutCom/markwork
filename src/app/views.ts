@@ -334,7 +334,8 @@ export class ViewController<E extends TextEditor> {
         state.textOverride = true;
         this.host.toast(
             _(
-                'This CSV file is too big for the table view, so it is shown as text'
+                'This CSV file is too big for the table' +
+                    ' view, so it is shown as text'
             )
         );
         return 'text';
@@ -415,10 +416,12 @@ export class ViewController<E extends TextEditor> {
         const message =
             def.type === 'date'
                 ? _(
-                      'This layout places notes by a date field, and the document has none'
+                      'This layout places notes by a date' +
+                          ' field, and the document has none'
                   )
                 : _(
-                      'This layout groups notes by a select field, and the document has none'
+                      'This layout groups notes by a select' +
+                          ' field, and the document has none'
                   );
         this.host.toast(message, {
             label: fmt(_('Add “{field}”'), { field: def.key }),
@@ -636,7 +639,10 @@ export class ViewController<E extends TextEditor> {
         if (on && !isStructured(text)) {
             this.host.toast(
                 _(
-                    'This document has no layout (it needs "layout: board", "list", "table", "calendar", "timeline", "gallery", or "chart" in the frontmatter)'
+                    'This document has no layout (it needs' +
+                        ' "layout: board", "list", "table",' +
+                        ' "calendar", "timeline", "gallery", or' +
+                        ' "chart" in the frontmatter)'
                 )
             );
             this.show('text');
@@ -773,7 +779,8 @@ export class ViewController<E extends TextEditor> {
     ): { text: string } | string | null {
         try {
             if (!isStructured(text))
-                return 'the board file is no longer a board (its frontmatter has no "layout:")';
+                return 'the board file is no longer a board' +
+                    ' (its frontmatter has no "layout:")';
             const board = parseBoard(text);
             const next = edit(board);
             if (next === board) return null;
@@ -797,7 +804,8 @@ export class ViewController<E extends TextEditor> {
             flushWrites(file);
             const text = readTextFile(file);
             if (!isStructured(text))
-                return 'the board file is no longer a board (its frontmatter has no "layout:")';
+                return 'the board file is no longer a board' +
+                    ' (its frontmatter has no "layout:")';
             const board = parseBoard(text);
             const next = edit(board);
             if (next === board) return null;

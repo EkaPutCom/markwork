@@ -228,7 +228,9 @@ export class DocumentController<E extends TextEditor> {
                 accepted = false;
                 this.host.toast(
                     _(
-                        'The document changed. Open Compare Changes again before applying the result.'
+                        'The document changed. Open Compare' +
+                            ' Changes again before applying the' +
+                            ' result.'
                     )
                 );
                 return null;
@@ -608,7 +610,9 @@ export class DocumentController<E extends TextEditor> {
             if (info.kind !== 'file')
                 throw new Error(
                     _(
-                        'The code viewer only opens regular files, not symbolic links or special files.'
+                        'The code viewer only opens regular' +
+                            ' files, not symbolic links or special' +
+                            ' files.'
                     )
                 );
             if (info.size > 2 * 1024 * 1024)
@@ -706,7 +710,9 @@ export class DocumentController<E extends TextEditor> {
         );
         if (doc && this.host.canSaveDocument?.(doc) === false) {
             this.host.dialogs.showError(
-                'Resolve the disk conflict from the agent Sessions panel before saving. Your draft has not been overwritten.'
+                'Resolve the disk conflict from the' +
+                    ' agent Sessions panel before saving.' +
+                    ' Your draft has not been overwritten.'
             );
             return false;
         }

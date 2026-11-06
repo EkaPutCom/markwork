@@ -56,7 +56,9 @@ export async function assistantPiTests(): Promise<void> {
         await until(() => !session.assistant.busy);
     };
 
-    await test('opening a workspace never launches pi; activation is explicit, cancellable and workspace-scoped', async () => {
+    await test('opening a workspace never launches pi;' +
+        ' activation is explicit, cancellable' +
+        ' and workspace-scoped', async () => {
         const { session, fake, frontend, root } = setup();
         try {
             eq(fake.launches.length, 0);
@@ -94,7 +96,9 @@ export async function assistantPiTests(): Promise<void> {
         }
     });
 
-    await test('direct tools run in the workspace with pi credentials and native history, without proposals or legacy import', async () => {
+    await test('direct tools run in the workspace with' +
+        ' pi credentials and native history,' +
+        ' without proposals or legacy import', async () => {
         const { session, fake, root, notices, settings } = setup();
         const old = disk.join(root, '.markwork', 'chats', 'old.md');
         disk.mkdirs(platform().paths.dirname(old));
@@ -154,7 +158,9 @@ export async function assistantPiTests(): Promise<void> {
         }
     });
 
-    await test('independent conversations resume only listed native bindings and preserve editor selection context', async () => {
+    await test('independent conversations resume only' +
+        ' listed native bindings and preserve' +
+        ' editor selection context', async () => {
         const { session, fake, root } = setup();
         try {
             const file = disk.join(root, 'note.md');
@@ -197,7 +203,9 @@ export async function assistantPiTests(): Promise<void> {
         }
     });
 
-    await test('unknown or failed outcomes require explicit native recovery; Stop ends active work without replay', async () => {
+    await test('unknown or failed outcomes require' +
+        ' explicit native recovery; Stop ends' +
+        ' active work without replay', async () => {
         const { session, fake } = setup();
         try {
             await session.assistant.activate();
@@ -223,7 +231,9 @@ export async function assistantPiTests(): Promise<void> {
         }
     });
 
-    await test('tool writes refresh clean buffers, preserve dirty drafts, and require explicit conflict resolution', async () => {
+    await test('tool writes refresh clean buffers,' +
+        ' preserve dirty drafts, and require' +
+        ' explicit conflict resolution', async () => {
         const { session, root } = setup();
         try {
             const file = disk.join(root, 'report.md');
@@ -247,7 +257,9 @@ export async function assistantPiTests(): Promise<void> {
         }
     });
 
-    await test('reopening requires fresh activation and resumes the exact native history without prompt replay', async () => {
+    await test('reopening requires fresh activation' +
+        ' and resumes the exact native history' +
+        ' without prompt replay', async () => {
         const first = setup();
         await first.session.assistant.activate();
         await first.session.assistant.ask('remember this');
@@ -303,7 +315,9 @@ export async function assistantPiTests(): Promise<void> {
         }
     });
 
-    await test('pi Assistant local round-trip workload: warm native resume, projection, tools and events', async () => {
+    await test('pi Assistant local round-trip' +
+        ' workload: warm native resume,' +
+        ' projection, tools and events', async () => {
         const { session } = setup();
         try {
             await session.assistant.activate();

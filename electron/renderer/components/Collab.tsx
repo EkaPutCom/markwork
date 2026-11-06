@@ -80,7 +80,8 @@ export function Collab() {
                     <Button
                         key={p.number}
                         variant="ghost"
-                        className="pull-row h-auto items-stretch font-normal text-left"
+                        className={"pull-row h-auto items-stretch" +
+                            " font-normal text-left"}
                         onClick={() => client.openPull(p.number)}
                     >
                         <span className="subject">

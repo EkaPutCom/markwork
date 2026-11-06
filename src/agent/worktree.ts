@@ -231,7 +231,9 @@ export async function createWorktree(
     const base = options.isolation.base || branch;
     if (!base)
         return fail(
-            'the project folder is on no branch (a detached HEAD); choose a base branch in its settings'
+            'the project folder is on no branch (a' +
+                ' detached HEAD); choose a base branch' +
+                ' in its settings'
         );
     const baseCommit = await out(git, top, [
         'rev-parse',

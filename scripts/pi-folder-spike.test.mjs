@@ -79,7 +79,8 @@ test('LF framing preserves Unicode separators and split UTF-8', () =>
         assert.equal(await client.command('unicode'), 'a\u2028b\u2029🌱');
     }));
 
-test('subscribes before prompting, including completion before acknowledgement', () =>
+test('subscribes before prompting, including' +
+    ' completion before acknowledgement', () =>
     withClient(async (client) => {
         await client.prompt('fast');
         assert.equal(client.listeners.size, 0);
@@ -163,7 +164,8 @@ test('missing executable fails promptly', async () => {
     }
 });
 
-test('oversized unterminated records fail instead of growing indefinitely', () =>
+test('oversized unterminated records fail' +
+    ' instead of growing indefinitely', () =>
     withClient(async (client) => {
         await assert.rejects(client.command('oversize'), /exceeds 8 MiB/);
     }));

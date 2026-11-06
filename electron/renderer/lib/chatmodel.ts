@@ -180,7 +180,10 @@ export function usageLine(
 }
 
 const RESUME =
-    'Resume the saved work. Read the actual contents, check the journal, and do not repeat changes that were already applied.';
+    'Resume the saved work. Read the actual' +
+        ' contents, check the journal, and do' +
+        ' not repeat changes that were already' +
+        ' applied.';
 
 export class ChatModel {
     private snapshot: ChatState = {
@@ -333,7 +336,9 @@ export class ChatModel {
                 return true;
             case 'chat.noKey':
                 this.note(
-                    'There is no DeepSeek API key yet. Open the settings (gear icon), paste the key, then send again.',
+                    'There is no DeepSeek API key yet. Open' +
+                        ' the settings (gear icon), paste the' +
+                        ' key, then send again.',
                     true
                 );
                 this.set({ keyPrompt: this.snapshot.keyPrompt + 1 });

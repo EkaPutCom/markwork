@@ -108,7 +108,8 @@ export function PaneTabs({
                         <IconButton
                             label={`Close ${t.name}`}
                             size="icon-xs"
-                            className="close size-5 rounded-sm text-muted-foreground"
+                            className={"close size-5 rounded-sm" +
+                                " text-muted-foreground"}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 client.closeTab(t.id, pane.id);

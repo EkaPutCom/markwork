@@ -303,7 +303,8 @@ export class Orchestrator {
                     },
                     fmt(
                         _(
-                            'Project folder: {folder} (not a Git repository, so no worktree)'
+                            'Project folder: {folder} (not a Git' +
+                                ' repository, so no worktree)'
                         ),
                         { folder }
                     )
@@ -608,7 +609,9 @@ export class Orchestrator {
                 run.slots > 1
                     ? fmt(
                           _(
-                              '{agent} already works on {count} cards in {project}; this card is waiting its turn'
+                              '{agent} already works on {count} cards' +
+                                  ' in {project}; this card is waiting' +
+                                  ' its turn'
                           ),
                           {
                               agent: spec.label,
@@ -618,7 +621,9 @@ export class Orchestrator {
                       )
                     : fmt(
                           _(
-                              '{agent} is working on another card in {project}; this card is waiting its turn'
+                              '{agent} is working on another card in' +
+                                  ' {project}; this card is waiting its' +
+                                  ' turn'
                           ),
                           { agent: spec.label, project: run.project }
                       )
@@ -635,7 +640,8 @@ export class Orchestrator {
                 fmt(_('{agent} not found'), { agent: spec.label }),
                 fmt(
                     _(
-                        'The program "{program}" is not in PATH or ~/.local/bin.'
+                        'The program "{program}" is not in PATH' +
+                            ' or ~/.local/bin.'
                     ),
                     { program: spec.program }
                 )
@@ -762,7 +768,9 @@ export class Orchestrator {
             }),
             fmt(
                 _(
-                    'Found again on {machine} after Markwork was closed; its history follows.'
+                    'Found again on {machine} after' +
+                        ' Markwork was closed; its history' +
+                        ' follows.'
                 ),
                 { machine: info.machine }
             )
@@ -830,7 +838,8 @@ export class Orchestrator {
                             _('Answer time ran out'),
                             fmt(
                                 _(
-                                    '{agent} used its default answer for: {question}'
+                                    '{agent} used its default answer for:' +
+                                        ' {question}'
                                 ),
                                 { agent: spec.label, question: ask.title }
                             )
@@ -915,7 +924,8 @@ export class Orchestrator {
             : result.interrupted
               ? fmt(
                     _(
-                        '{agent} was interrupted on “{title}”: resume it from the card'
+                        '{agent} was interrupted on “{title}”:' +
+                            ' resume it from the card'
                     ),
                     { agent: spec.label, title: run.title }
                 )
@@ -945,14 +955,19 @@ export class Orchestrator {
         return (
             error ??
             (missing
-                ? 'the card was not found on the board (its text may have been changed)'
+                ? 'the card was not found on the board' +
+                    ' (its text may have been changed)'
                 : null)
         );
     }
 }
 
 const RESUME_PROMPT =
-    'Your work was interrupted before it was finished (the process that was running you was stopped). Check the current state of the files, then continue where you left off.';
+    'Your work was interrupted before it' +
+        ' was finished (the process that was' +
+        ' running you was stopped). Check the' +
+        ' current state of the files, then' +
+        ' continue where you left off.';
 
 // the daemon limits the labels of a run to 8 KB; a longer card is matched by
 // its start

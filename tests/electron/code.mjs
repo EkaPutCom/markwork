@@ -6,7 +6,10 @@ import { launchApp, scratchFolder, stepper, waitFor } from './support.mjs';
 const { scratch, notes } = scratchFolder('code');
 const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
 const source =
-    '// A workspace file, shown without executing it.\nexport function greet(name: string): string {\n    return `Hello, ${name}! 🐈`;\n}\n';
+    '// A workspace file, shown without' +
+        ' executing it.\nexport function' +
+        ' greet(name: string): string {\n   ' +
+        ' return `Hello, ${name}! 🐈`;\n}\n';
 writeFileSync(join(notes, 'main.ts'), source);
 writeFileSync(
     join(notes, 'unknown.custom'),
@@ -42,7 +45,9 @@ try {
             .waitFor();
     };
     await step(
-        'the workspace tree opens highlighted code with line numbers, not Markdown widgets',
+        'the workspace tree opens highlighted' +
+            ' code with line numbers, not Markdown' +
+            ' widgets',
         async () => {
             await open('main.ts');
             await page.locator('.code-page .tok-keyword').first().waitFor();
@@ -85,7 +90,9 @@ try {
         }
     );
     await step(
-        'selected code opens a reviewable Assistant draft without sending or writing',
+        'selected code opens a reviewable' +
+            ' Assistant draft without sending or' +
+            ' writing',
         async () => {
             const ask = page.getByRole('button', {
                 name: 'Ask Assistant',
@@ -200,7 +207,9 @@ try {
         }
     );
     await step(
-        'Find is available and unknown extensions stay plain text without executing markup',
+        'Find is available and unknown' +
+            ' extensions stay plain text without' +
+            ' executing markup',
         async () => {
             await page
                 .getByRole('button', { name: 'Find', exact: true })
@@ -237,7 +246,9 @@ try {
         }
     );
     await step(
-        'the code footer counts Unicode characters, follows navigation, and reports original line endings',
+        'the code footer counts Unicode' +
+            ' characters, follows navigation, and' +
+            ' reports original line endings',
         async () => {
             await open('unicode.txt');
             const status = page.getByRole('status', { name: 'Code status' });
@@ -392,7 +403,9 @@ try {
         }
     );
     await step(
-        'Markdown and code side by side share one aligned status bar that follows pane focus',
+        'Markdown and code side by side share' +
+            ' one aligned status bar that follows' +
+            ' pane focus',
         async () => {
             await page.setViewportSize({ width: 1400, height: 900 });
             await page
@@ -623,7 +636,9 @@ try {
         }
     );
     await step(
-        'Markdown keeps its editor and binary files show an explanation instead of text',
+        'Markdown keeps its editor and binary' +
+            ' files show an explanation instead of' +
+            ' text',
         async () => {
             await page.getByRole('treeitem', { name: /note\.md/ }).click();
             await page
@@ -657,7 +672,8 @@ try {
             new Promise((resolve) => {
                 closeTimer = setTimeout(() => {
                     console.warn(
-                        'Electron did not close within 5 seconds; forcing shutdown'
+                        'Electron did not close within 5' +
+                            ' seconds; forcing shutdown'
                     );
                     resolve();
                 }, 5000);

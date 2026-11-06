@@ -255,7 +255,8 @@ export function stepError(step: unknown): string | null {
         )
             return null;
         if (c && Number.isInteger(c.pos) && (c.pos as number) >= 0) return null;
-        return 'clicks neither on visible text, at the edge of a line, nor at a position';
+        return 'clicks neither on visible text, at the' +
+            ' edge of a line, nor at a position';
     }
     return 'is no step a repro knows';
 }
@@ -278,7 +279,8 @@ export function reproError(value: unknown): string | null {
         !start.selection.length ||
         !start.selection.every((p) => isPair(p) && p.every((n) => n <= length))
     ) {
-        return '"start.selection" is not a list of [anchor, head] inside the text';
+        return '"start.selection" is not a list of' +
+            ' [anchor, head] inside the text';
     }
     if (!Array.isArray(r.steps)) return '"steps" is not a list';
     for (const [i, step] of r.steps.entries()) {

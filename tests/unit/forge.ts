@@ -125,7 +125,8 @@ export async function forgeTests(): Promise<void> {
     });
 
     section('Forge: Forgejo/Gitea client');
-    await test('listPulls reads the open pull requests and sends the token', async () => {
+    await test('listPulls reads the open pull requests' +
+        ' and sends the token', async () => {
         const forge = fakeForge({
             'GET /pulls?state=open&limit=50&page=1': json(200, [
                 apiPull(42),
@@ -151,7 +152,8 @@ export async function forgeTests(): Promise<void> {
         );
         eq(forge.seen[0].headers?.Authorization, 'token tok');
     });
-    await test('a merged pull request is told apart from a closed one', async () => {
+    await test('a merged pull request is told apart' +
+        ' from a closed one', async () => {
         const forge = fakeForge({
             'GET /pulls?state=closed&limit=50&page=1': json(200, [
                 apiPull(1, { state: 'closed', merged: true }),
@@ -169,7 +171,8 @@ export async function forgeTests(): Promise<void> {
             ['merged', 'closed']
         );
     });
-    await test('mergeable that the forge has not computed yet is null', async () => {
+    await test('mergeable that the forge has not' +
+        ' computed yet is null', async () => {
         const forge = fakeForge({
             'GET /pulls/7': json(200, apiPull(7, { mergeable: undefined })),
         });
@@ -246,7 +249,8 @@ export async function forgeTests(): Promise<void> {
             ]
         );
     });
-    await test('getDiff asks for plain text and returns it as it is', async () => {
+    await test('getDiff asks for plain text and' +
+        ' returns it as it is', async () => {
         const forge = fakeForge({
             'GET /pulls/42.diff': { status: 200, body: 'diff --git a/x b/x\n' },
         });
@@ -258,7 +262,9 @@ export async function forgeTests(): Promise<void> {
         );
         eq(forge.seen[0].headers?.Accept, 'text/plain');
     });
-    await test('getContent reads a file at a commit, escapes the path, and gives null when it is not there', async () => {
+    await test('getContent reads a file at a commit,' +
+        ' escapes the path, and gives null when' +
+        ' it is not there', async () => {
         const forge = fakeForge({
             'GET /raw/agenda/rapat%20a.md?ref=abc123': {
                 status: 200,
@@ -272,7 +278,8 @@ export async function forgeTests(): Promise<void> {
         );
         eq(await within(gitea.getContent('agenda/missing.md', 'abc123')), null);
     });
-    await test('the head and base commits of a pull request are read', async () => {
+    await test('the head and base commits of a pull' +
+        ' request are read', async () => {
         const forge = fakeForge({
             'GET /pulls/9': json(
                 200,
@@ -287,7 +294,8 @@ export async function forgeTests(): Promise<void> {
         );
         eq([p.headSha, p.baseSha], ['h9', 'b9']);
     });
-    await test('the description and the discussion of a pull request are read', async () => {
+    await test('the description and the discussion of' +
+        ' a pull request are read', async () => {
         const forge = fakeForge({
             'GET /pulls/9': json(
                 200,
@@ -333,7 +341,9 @@ export async function forgeTests(): Promise<void> {
         eq(JSON.parse(forge.seen[0].body ?? '{}'), { body: 'Thanks!' });
         eq([comment.id, comment.author, comment.body], [7, 'eka', 'Thanks!']);
     });
-    await test('markMerged records a merge made outside the forge, with the commit that was pushed', async () => {
+    await test('markMerged records a merge made' +
+        ' outside the forge, with the commit' +
+        ' that was pushed', async () => {
         const forge = fakeForge({
             'POST /pulls/9/merge': { status: 200, body: '' },
         });
@@ -350,7 +360,8 @@ export async function forgeTests(): Promise<void> {
         const refused = fakeForge({
             'POST /pulls/9/merge': json(405, {
                 message:
-                    'manually-merged is not an allowed merge style for this repository',
+                    'manually-merged is not an allowed' +
+                        ' merge style for this repository',
             }),
         });
         eq(
@@ -375,7 +386,8 @@ export async function forgeTests(): Promise<void> {
         eq(JSON.parse(forge.seen[0].body ?? '{}'), { Do: 'squash' });
         eq(forge.seen[0].headers?.['Content-Type'], 'application/json');
     });
-    await test('HTTP errors become the failure the interface can act on', async () => {
+    await test('HTTP errors become the failure the' +
+        ' interface can act on', async () => {
         const forge = fakeForge({
             'GET /pulls/1': json(401, { message: 'token is invalid' }),
             'GET /pulls/2': json(404, {}),
@@ -397,11 +409,16 @@ export async function forgeTests(): Promise<void> {
         );
         eq((await failure(gitea.getPull(5))).failure, 'server');
     });
-    await test('a server that explains itself over many lines is reported with its first line', async () => {
+    await test('a server that explains itself over' +
+        ' many lines is reported with its first' +
+        ' line', async () => {
         const forge = fakeForge({
             'GET /pulls/1': json(401, {
                 message:
-                    'token is malformed: invalid number of segments\naccess token does not exist [sha: x]\nauthorized integration: parse JWT error',
+                    'token is malformed: invalid number of' +
+                        ' segments\naccess token does not exist' +
+                        ' [sha: x]\nauthorized integration:' +
+                        ' parse JWT error',
             }),
         });
         const error = await failure(
@@ -431,7 +448,9 @@ export async function forgeTests(): Promise<void> {
         );
         eq(forge.seen.length, 0);
     });
-    await test('a transport that throws is a network failure; a body that is not JSON is a server failure', async () => {
+    await test('a transport that throws is a network' +
+        ' failure; a body that is not JSON is a' +
+        ' server failure', async () => {
         const down: Transport = async () => {
             throw new Error('Connection refused');
         };
@@ -454,7 +473,8 @@ export async function forgeTests(): Promise<void> {
     });
 
     section('Forge: monitor');
-    await test('diffPulls: opened, updated, closed, and nothing when nothing changed', async () => {
+    await test('diffPulls: opened, updated, closed,' +
+        ' and nothing when nothing changed', async () => {
         const before = [pull(1), pull(2), pull(3)];
         const after = [
             pull(1),
@@ -471,7 +491,8 @@ export async function forgeTests(): Promise<void> {
         );
         eq(diffPulls(before, before), []);
     });
-    await test('a pull request that becomes mergeable or is renamed counts as updated', async () => {
+    await test('a pull request that becomes mergeable' +
+        ' or is renamed counts as updated', async () => {
         eq(
             diffPulls(
                 [pull(1, { mergeable: null })],
@@ -486,7 +507,8 @@ export async function forgeTests(): Promise<void> {
             ['updated']
         );
     });
-    await test('the first poll is a baseline: no events for what was already open', async () => {
+    await test('the first poll is a baseline: no' +
+        ' events for what was already open', async () => {
         let open = [pull(1), pull(2)];
         const monitor = new PullMonitor({
             listPulls: async () => open,
@@ -506,7 +528,8 @@ export async function forgeTests(): Promise<void> {
         eq(seen[1], ['3', 'opened#3']);
         eq(monitor.pulls.length, 3);
     });
-    await test('an error keeps the last known list and is reported once per round', async () => {
+    await test('an error keeps the last known list and' +
+        ' is reported once per round', async () => {
         let fail = false;
         const monitor = new PullMonitor({
             listPulls: async () => {
@@ -522,7 +545,8 @@ export async function forgeTests(): Promise<void> {
         eq(errors, ['network']);
         eq(monitor.pulls.length, 1);
     });
-    await test('a poll that is still running is not started twice', async () => {
+    await test('a poll that is still running is not' +
+        ' started twice', async () => {
         let calls = 0;
         const monitor = new PullMonitor({
             listPulls: async () => {
@@ -553,7 +577,8 @@ export async function forgeTests(): Promise<void> {
         reply.end();
     });
     const http = platform().http;
-    await test('sends method, headers, and body, and reads status and text', async () => {
+    await test('sends method, headers, and body, and' +
+        ' reads status and text', async () => {
         const answer = await within(
             http({
                 method: 'POST',
@@ -573,7 +598,8 @@ export async function forgeTests(): Promise<void> {
             body: '{"Do":"merge"}',
         });
     });
-    await test('a server that is not there rejects (so the client reports a network failure)', async () => {
+    await test('a server that is not there rejects (so' +
+        ' the client reports a network failure)', async () => {
         const dead = await failure(
             new GiteaProvider(
                 { ...REPO, baseUrl: 'http://127.0.0.1:1' },

@@ -84,7 +84,9 @@ const initial = (): SourceFile[] => [
     { name: 'plan.md', text: '# Plan\nRelease November 15\n' },
     {
         name: 'board.md',
-        text: '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n',
+        text: '---\nlayout: board\n---\n\n##' +
+            ' Plan\n\n- [ ] Release material\n\n##' +
+            ' In Progress\n\n',
     },
 ];
 
@@ -163,7 +165,8 @@ function harness() {
 
 export async function agenticTests(): Promise<void> {
     section('Agent evaluation: work through to a verified result');
-    await test('the folder boundary rejects creating files through a symlink', async () => {
+    await test('the folder boundary rejects creating' +
+        ' files through a symlink', async () => {
         const root = host().makeTempDir();
         const outside = host().makeTempDir();
         const link = disk.join(root, 'link');
@@ -186,7 +189,8 @@ export async function agenticTests(): Promise<void> {
             disk.remove(outside);
         }
     });
-    await test('verification re-reads a same-size change and skips source symlinks', async () => {
+    await test('verification re-reads a same-size' +
+        ' change and skips source symlinks', async () => {
         const root = host().makeTempDir();
         const file = disk.join(root, 'a.md');
         const link = disk.join(root, 'alias.md');
@@ -211,7 +215,9 @@ export async function agenticTests(): Promise<void> {
             disk.remove(root);
         }
     });
-    await test('plan → batch approval → verification of the actual result → finished; the checkpoint can be opened', async () => {
+    await test('plan → batch approval → verification' +
+        ' of the actual result → finished; the' +
+        ' checkpoint can be opened', async () => {
         const h = harness();
         const r = await h.run([[plan(false)], [batch], [plan(true)], [verify]]);
         eq(r.applied, 2);
@@ -225,7 +231,9 @@ export async function agenticTests(): Promise<void> {
         );
         contains(h.disk.get('plan.md')!, 'November 22');
     });
-    await test('a new conversation while a response is pending is not mixed with the old work result', async () => {
+    await test('a new conversation while a response is' +
+        ' pending is not mixed with the old' +
+        ' work result', async () => {
         const h = harness();
         let finish: (() => void) | null = null;
         const pending = h.session.ask(
@@ -251,12 +259,14 @@ export async function agenticTests(): Promise<void> {
         eq(h.session.events, []);
         eq(h.session.work, null);
     });
-    await test('all steps done without verification are not yet considered finished', async () => {
+    await test('all steps done without verification' +
+        ' are not yet considered finished', async () => {
         const h = harness();
         await h.run([[plan(true)]]);
         eq(h.session.work?.status, 'paused');
     });
-    await test('verification must cover all changed files and read external changes', async () => {
+    await test('verification must cover all changed' +
+        ' files and read external changes', async () => {
         const h = harness();
         h.handlers.currentFiles = () => [
             { name: 'plan.md', text: 'Release November 15' },
@@ -283,7 +293,9 @@ export async function agenticTests(): Promise<void> {
         ]);
         eq(omitted.session.work?.verification?.passed, false);
     });
-    await test('a rejected batch does not change the disk; the decision is kept after recovery', async () => {
+    await test('a rejected batch does not change the' +
+        ' disk; the decision is kept after' +
+        ' recovery', async () => {
         const h = harness(),
             before = [...h.disk];
         h.handlers.onBatchProposal = async () => ({ applied: false });
@@ -292,7 +304,8 @@ export async function agenticTests(): Promise<void> {
         eq([...h.disk], before);
         eq(parseChat(h.checkpoint())?.events?.[0].status, 'rejected');
     });
-    await test('a conflict on one file cancels the whole batch and is recorded as failed', async () => {
+    await test('a conflict on one file cancels the' +
+        ' whole batch and is recorded as failed', async () => {
         const h = harness(),
             apply = h.handlers.onBatchProposal!;
         h.handlers.onBatchProposal = async (changes) => {
@@ -303,7 +316,10 @@ export async function agenticTests(): Promise<void> {
         contains(h.disk.get('plan.md')!, 'November 15');
         eq(h.session.events[0].status, 'failed');
     });
-    await test('the connection fails after applying: the checkpoint still keeps the result and the next turn does not need to repeat it', async () => {
+    await test('the connection fails after applying:' +
+        ' the checkpoint still keeps the result' +
+        ' and the next turn does not need to' +
+        ' repeat it', async () => {
         const h = harness();
         let failed = false;
         try {

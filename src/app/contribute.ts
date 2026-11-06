@@ -66,7 +66,9 @@ export class ContributeController {
         if (!session)
             return this.host.toast(
                 _(
-                    'Connect to a server first: add an access token in the pull requests tab.'
+                    'Connect to a server first: add an' +
+                        ' access token in the pull requests' +
+                        ' tab.'
                 )
             );
         if (!folder) return this.host.toast(_('Open a folder first.'));
@@ -88,7 +90,9 @@ export class ContributeController {
         if (!info)
             return this.host.toast(
                 _(
-                    'The server does not know this repository, or the token cannot see it.'
+                    'The server does not know this' +
+                        ' repository, or the token cannot see' +
+                        ' it.'
                 )
             );
         const answer = await this.dialogs.send({

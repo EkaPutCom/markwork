@@ -83,7 +83,17 @@ export function Select({
                     data-slot="select-content"
                     position="popper"
                     sideOffset={4}
-                    className="relative z-[60] max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+                    className={"relative z-[60]" +
+                        " max-h-(--radix-select-content-avai" +
+                        "lable-height) min-w-[8rem]" +
+                        " origin-(--radix-select-content-tra" +
+                        "nsform-origin) overflow-y-auto" +
+                        " overflow-x-hidden rounded-md" +
+                        " border bg-popover" +
+                        " text-popover-foreground shadow-md" +
+                        " data-[state=open]:animate-in" +
+                        " data-[state=open]:fade-in-0" +
+                        " data-[state=open]:zoom-in-95"}
                 >
                     <SelectPrimitive.Viewport className="min-w-[var(--radix-select-trigger-width)] scroll-my-1 p-1">
                         {items.map((item) => (

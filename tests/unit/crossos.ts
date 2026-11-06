@@ -10,7 +10,9 @@ import { section, test, eq, ok } from '../core/framework';
 export async function crossOsTests(): Promise<void> {
     section('Per system: folders, programs, terminals');
 
-    await test('user folders: XDG on Linux, ~/Library on macOS, %APPDATA% and %LOCALAPPDATA% on Windows', () => {
+    await test('user folders: XDG on Linux, ~/Library' +
+        ' on macOS, %APPDATA% and' +
+        ' %LOCALAPPDATA% on Windows', () => {
         eq(userDirs('linux', {}, '/home/eka', posix.join), {
             config: '/home/eka/.config',
             data: '/home/eka/.local/share',
@@ -77,7 +79,8 @@ export async function crossOsTests(): Promise<void> {
         );
     });
 
-    await test('program names: a bare name gets each PATHEXT extension on Windows only', () => {
+    await test('program names: a bare name gets each' +
+        ' PATHEXT extension on Windows only', () => {
         eq(programNames('linux', 'git', '.EXE'), ['git']);
         eq(programNames('win32', 'git', '.COM;.EXE;.CMD'), [
             'git',
@@ -97,7 +100,9 @@ export async function crossOsTests(): Promise<void> {
         );
     });
 
-    await test('terminals: GNOME on Linux, Terminal on macOS, Windows Terminal then cmd on Windows', () => {
+    await test('terminals: GNOME on Linux, Terminal on' +
+        ' macOS, Windows Terminal then cmd on' +
+        ' Windows', () => {
         eq(terminals('linux', '/w', null)[0], [
             'kgx',
             '--working-directory=/w',
@@ -126,7 +131,9 @@ export async function crossOsTests(): Promise<void> {
         );
     });
 
-    await test('openFirstTerminal starts the first installed candidate and says false when none is', () => {
+    await test('openFirstTerminal starts the first' +
+        ' installed candidate and says false' +
+        ' when none is', () => {
         const started: string[][] = [];
         const installed = (names: string[]) => ({
             findProgram: (n: string) =>
@@ -167,7 +174,8 @@ export async function crossOsTests(): Promise<void> {
         );
     });
 
-    await test('same path: case counts on Linux only, and . and .. parts never do', () => {
+    await test('same path: case counts on Linux only,' +
+        ' and . and .. parts never do', () => {
         eq(
             samePath(
                 'linux',

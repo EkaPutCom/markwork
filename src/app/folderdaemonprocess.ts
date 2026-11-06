@@ -19,7 +19,9 @@ export async function daemonDeadline<T>(
         cancel = platform().scheduler.idleAfter(ms, () =>
             reject(
                 Error(
-                    'markworkd did not answer; outcome unknown. Reconnect to the original run.'
+                    'markworkd did not answer; outcome' +
+                        ' unknown. Reconnect to the original' +
+                        ' run.'
                 )
             )
         );
@@ -57,7 +59,9 @@ export class FolderDaemonProcess implements ChildProcess {
             end: () =>
                 this.finish(
                     0,
-                    'Background pi ended before its result could be read. Restore native history.'
+                    'Background pi ended before its result' +
+                        ' could be read. Restore native' +
+                        ' history.'
                 ),
             failed: (error) => this.finish(1, error.message),
         });
@@ -68,7 +72,8 @@ export class FolderDaemonProcess implements ChildProcess {
         if (record.seq !== this.sequence + 1 || record.truncated) {
             this.finish(
                 1,
-                'Incomplete pi event stream; explicit native recovery is required'
+                'Incomplete pi event stream; explicit' +
+                    ' native recovery is required'
             );
             return;
         }

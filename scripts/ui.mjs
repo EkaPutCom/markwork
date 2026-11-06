@@ -32,17 +32,26 @@ const RULES = {
         'a raw control; use the primitive from ui/ (ui.md "Primitives")',
     'font-size': 'a text size in px; use the scale (ui.md "Type")',
     'constant-style':
-        'an inline style of constants only; put it in a class (ui.md "Inline style")',
+        'an inline style of constants only; put' +
+            ' it in a class (ui.md "Inline style")',
     'icon-button':
         'a Button of an icon size; use IconButton (ui.md "Tooltip and title")',
     'old-class':
-        'a class of the old set in theme.css; use the primitive (ui.md "theme.css")',
-    radius: 'a radius in px; use a --radius-* token or a rounded-* class (ui.md "Spacing, size, radius")',
+        'a class of the old set in theme.css;' +
+            ' use the primitive (ui.md "theme.css")',
+    radius: 'a radius in px; use a --radius-* token' +
+        ' or a rounded-* class (ui.md "Spacing,' +
+        ' size, radius")',
     spacing:
-        'a spacing of 10px or 14px; use the scale (ui.md "Spacing, size, radius")',
-    title: 'a title on a Button with text; change the text or use aria-description (ui.md "Tooltip and title")',
+        'a spacing of 10px or 14px; use the' +
+            ' scale (ui.md "Spacing, size, radius")',
+    title: 'a title on a Button with text; change' +
+        ' the text or use aria-description' +
+        ' (ui.md "Tooltip and title")',
     'z-index': 'a layer as a number; use a --z-* token (ui.md "Layers")',
-    motion: 'a duration or an easing of its own; use a --duration-* token (ui.md "Motion")',
+    motion: 'a duration or an easing of its own;' +
+        ' use a --duration-* token (ui.md' +
+        ' "Motion")',
 };
 
 const RAW = new Set(['button', 'input', 'select', 'textarea']);
@@ -62,7 +71,10 @@ const OLD_CLASSES = new Set([
 ]);
 const ICON_SIZES = new Set(['icon', 'icon-sm', 'icon-xs']);
 const HUES =
-    'white|black|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
+    'white|black|slate|gray|zinc|neutral|st' +
+        'one|red|orange|amber|yellow|lime|green' +
+        '|emerald|teal|cyan|sky|blue|indigo|vio' +
+        'let|purple|fuchsia|pink|rose';
 // A color written in a string: #rgb … #rrggbbaa standing alone or in brackets,
 // a color function, or a Tailwind class of
 // its palette (`text-white`, `bg-red-500/50`).

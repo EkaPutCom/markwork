@@ -54,9 +54,14 @@ import {
 } from '../core/framework';
 
 const NOTES =
-    '---\ntitle: meeting\n---\n# Meeting\n\nRelease November 15.\nNote: November 15 final.\n';
+    '---\ntitle: meeting\n---\n#' +
+        ' Meeting\n\nRelease November' +
+        ' 15.\nNote: November 15 final.\n';
 const BOARD =
-    '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Release material\n\n## In Progress\n\n## Done\n\n- [x] Book venue\n';
+    '---\nlayout: board\n---\n\n##' +
+        ' Plan\n\n- [ ] Release material\n\n##' +
+        ' In Progress\n\n## Done\n\n- [x] Book' +
+        ' venue\n';
 const base = (): SourceFile[] => [
     { name: 'meeting.md', text: NOTES },
     { name: 'board.md', text: BOARD },
@@ -167,7 +172,9 @@ function sync(disk: Map<string, string>, c: Change): void {
 export async function agentActionTests(): Promise<void> {
     section('Agent: edit and file tools');
 
-    await test('edit_file all=true replaces every occurrence; without it a non-unique one is still rejected', async () => {
+    await test('edit_file all=true replaces every' +
+        ' occurrence; without it a non-unique' +
+        ' one is still rejected', async () => {
         eq(
             planned('edit_file', {
                 name: 'meeting',
@@ -187,7 +194,9 @@ export async function agentActionTests(): Promise<void> {
         );
     });
 
-    await test('insert_text: start after the frontmatter, end, and after a line with the line_text safeguard', async () => {
+    await test('insert_text: start after the' +
+        ' frontmatter, end, and after a line' +
+        ' with the line_text safeguard', async () => {
         eq(
             planned('insert_text', {
                 name: 'meeting',
@@ -283,7 +292,9 @@ export async function agentActionTests(): Promise<void> {
         );
     });
 
-    await test('delete_file and move_file: the proposal shape, a safe destination name, a taken destination is rejected', async () => {
+    await test('delete_file and move_file: the' +
+        ' proposal shape, a safe destination' +
+        ' name, a taken destination is rejected', async () => {
         const del = planned('delete_file', { name: 'archive/old' });
         eq(
             [del.kind, del.file, del.before, del.after],
@@ -321,7 +332,10 @@ export async function agentActionTests(): Promise<void> {
         );
     });
 
-    await test('edit_note on a board: change a card title, delete a card, and manage groups; a group containing cards cannot be deleted', async () => {
+    await test('edit_note on a board: change a card' +
+        ' title, delete a card, and manage' +
+        ' groups; a group containing cards' +
+        ' cannot be deleted', async () => {
         const note = (args: object) =>
             planned('edit_note', { name: 'board', ...args }).after;
         contains(
@@ -400,7 +414,8 @@ export async function agentActionTests(): Promise<void> {
         );
     });
 
-    await test('the inverse of a change and the state check for each kind', async () => {
+    await test('the inverse of a change and the state' +
+        ' check for each kind', async () => {
         const read = (files: Map<string, string>) => (f: string) =>
             files.get(f) ?? null;
         const kinds: Change[] = [
@@ -462,7 +477,9 @@ export async function agentActionTests(): Promise<void> {
         );
     });
 
-    await test('batch: a deleted/moved file must not be touched by another action; delete and move can be batched', async () => {
+    await test('batch: a deleted/moved file must not' +
+        ' be touched by another action; delete' +
+        ' and move can be batched', async () => {
         const act = (tool: string, args: object) => ({
             tool,
             arguments: JSON.stringify({ reason: 'x', ...args }),
@@ -529,7 +546,9 @@ export async function agentActionTests(): Promise<void> {
         eq([...disk.keys()].sort(), ['archive/meeting.md', 'board.md']);
     });
 
-    await test('journal: move/delete are validated, recovered after an interruption, and the undone status is accepted', async () => {
+    await test('journal: move/delete are validated,' +
+        ' recovered after an interruption, and' +
+        ' the undone status is accepted', async () => {
         const move: Change = {
             kind: 'move',
             file: 'a.md',
@@ -583,9 +602,15 @@ export async function agentActionTests(): Promise<void> {
 
     section('Agent: structure verification');
 
-    await test('structure: tables, skipped/empty headings, an unclosed code block; code contents and frontmatter are ignored', async () => {
+    await test('structure: tables, skipped/empty' +
+        ' headings, an unclosed code block;' +
+        ' code contents and frontmatter are' +
+        ' ignored', async () => {
         const text =
-            '---\ntitle: x\n---\n# A\n### Jump\n##\n\n| a | b |\n| - | - |\n| 1 |\n| 1 | 2 |\n\n```\n# not a heading\n| x |\n';
+            '---\ntitle: x\n---\n# A\n###' +
+                ' Jump\n##\n\n| a | b |\n| - | - |\n| 1' +
+                ' |\n| 1 | 2 |\n\n```\n# not a' +
+                ' heading\n| x |\n';
         const issues = structureIssues(text).map((i) => i.text);
         ok(
             issues.some((t) => t.includes('jumps from H1 to H3')),
@@ -607,9 +632,13 @@ export async function agentActionTests(): Promise<void> {
         eq(structureIssues('## Start from H2\n### Down one\n').length, 0);
     });
 
-    await test('local links: taken outside code, URLs and anchors skipped, relative paths resolved', async () => {
+    await test('local links: taken outside code, URLs' +
+        ' and anchors skipped, relative paths' +
+        ' resolved', async () => {
         const links = localLinks(
-            '[a](../b.md#x) ![g](image.png) [web](https://x.id) [j](#top) `[k](code.md)` [s](<with%20space.md>)'
+            '[a](../b.md#x) ![g](image.png)' +
+                ' [web](https://x.id) [j](#top)' +
+                ' `[k](code.md)` [s](<with%20space.md>)'
         );
         eq(
             links.map((l) => l.target),
@@ -629,7 +658,9 @@ export async function agentActionTests(): Promise<void> {
         );
     });
 
-    await test('verifyWork: "*" looks for leftover text in the whole folder; structure only fails new problems', async () => {
+    await test('verifyWork: "*" looks for leftover' +
+        ' text in the whole folder; structure' +
+        ' only fails new problems', async () => {
         const files = [
             { name: 'a.md', text: 'Release November 22\n' },
             { name: 'b.md', text: 'still November 15\n[to c](c.md)\n' },
@@ -695,7 +726,10 @@ export async function agentActionTests(): Promise<void> {
         ],
     });
 
-    await test('a batch applied partly: only the chosen files change, the journal records two decisions, the model is told', async () => {
+    await test('a batch applied partly: only the' +
+        ' chosen files change, the journal' +
+        ' records two decisions, the model is' +
+        ' told', async () => {
         const h = harness([[pack]], () => ({
             applied: true,
             accepted: [0, 2],
@@ -721,7 +755,8 @@ export async function agentActionTests(): Promise<void> {
         contains(reply, 'User note: I will arrange the board myself');
     });
 
-    await test('a single proposal rejected with a note: the note reaches the model', async () => {
+    await test('a single proposal rejected with a' +
+        ' note: the note reaches the model', async () => {
         const h = harness(
             [
                 [
@@ -744,7 +779,9 @@ export async function agentActionTests(): Promise<void> {
         );
     });
 
-    await test('automatic verification: a deleted file is checked as absent, the structure of a changed file is checked too', async () => {
+    await test('automatic verification: a deleted file' +
+        ' is checked as absent, the structure' +
+        ' of a changed file is checked too', async () => {
         const breakTable = call(
             'insert_text',
             {
@@ -802,7 +839,9 @@ export async function agentActionTests(): Promise<void> {
 
     section('Agent: Git history tools');
 
-    await test('parseGitCall validates the commit and file; formatGit tidies the log, diff, and file contents', async () => {
+    await test('parseGitCall validates the commit and' +
+        ' file; formatGit tidies the log, diff,' +
+        ' and file contents', async () => {
         eq(parseGitCall('git_log', '{}'), {
             kind: 'log',
             file: null,
@@ -836,12 +875,17 @@ export async function agentActionTests(): Promise<void> {
             { kind: 'log', file: null, limit: 5 },
             {
                 ok: true,
-                text: '\x1ea1b2c3d\x1f2026-10-01 10:00\x1fEka\x1fPostpone release\n\nM\tplan.md\nR100\told.md\tarchive/old.md\n',
+                text: '\x1ea1b2c3d\x1f2026-10-01' +
+                    ' 10:00\x1fEka\x1fPostpone' +
+                    ' release\n\nM\tplan.md\nR100\told.md\t' +
+                    'archive/old.md\n',
             }
         );
         eq(
             log.content,
-            'a1b2c3d 2026-10-01 10:00 · Eka · Postpone release\n  edit plan.md\n  move old.md → archive/old.md'
+            'a1b2c3d 2026-10-01 10:00 · Eka ·' +
+                ' Postpone release\n  edit plan.md\n ' +
+                ' move old.md → archive/old.md'
         );
         eq(log.summary, '1 commit');
         eq(
@@ -867,7 +911,9 @@ export async function agentActionTests(): Promise<void> {
         );
     });
 
-    await test('session: Git tools are only offered when there is a handler; the result goes back to the model', async () => {
+    await test('session: Git tools are only offered' +
+        ' when there is a handler; the result' +
+        ' goes back to the model', async () => {
         const asked: GitRequest[] = [];
         const h = harness([[call('git_log', { file: 'meeting.md' })]]);
         let tools: string[] = [];
@@ -875,7 +921,9 @@ export async function agentActionTests(): Promise<void> {
             asked.push(request);
             return {
                 ok: true,
-                text: '\x1ea1b2c3d\x1f2026-10-01 10:00\x1fEka\x1fPostpone release\n\nM\tmeeting.md\n',
+                text: '\x1ea1b2c3d\x1f2026-10-01' +
+                    ' 10:00\x1fEka\x1fPostpone' +
+                    ' release\n\nM\tmeeting.md\n',
             };
         };
         const provider: Provider = {
@@ -938,7 +986,9 @@ export async function agentActionTests(): Promise<void> {
         ok(!tools.includes('git_log'), 'Git tool offered without a handler');
     });
 
-    await test('agentGit in a real repository: log, diff, and file contents are limited to non-hidden Markdown', async () => {
+    await test('agentGit in a real repository: log,' +
+        ' diff, and file contents are limited' +
+        ' to non-hidden Markdown', async () => {
         const root = disk.join(tmp, 'git-agent');
         disk.mkdirs(disk.join(root, '.secret'));
         const write = (name: string, text: string) =>
@@ -996,7 +1046,8 @@ export async function agentActionTests(): Promise<void> {
         contains(old.content, '1│ Release November 15');
     });
 
-    await test('runGit: a git that hangs ends as a failure instead of waiting forever', async () => {
+    await test('runGit: a git that hangs ends as a' +
+        ' failure instead of waiting forever', async () => {
         const limits = { ...gitLimits };
         try {
             gitLimits.runMs = 500;

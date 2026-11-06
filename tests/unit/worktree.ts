@@ -101,7 +101,10 @@ export async function worktreeTests(): Promise<void> {
         eq(parseIsolation('not json'), DEFAULT_ISOLATION);
         eq(
             parseIsolation(
-                '{"worktrees":false,"slots":50,"base":" dev ","dir":"relative","afterMerge":"keep-branch"}'
+                '{"worktrees":false,"slots":50,"base":"' +
+                    ' dev' +
+                    ' ","dir":"relative","afterMerge":"keep' +
+                    '-branch"}'
             ),
             {
                 worktrees: false,
@@ -126,7 +129,9 @@ export async function worktreeTests(): Promise<void> {
         );
         eq(
             text,
-            'Checkout with QRIS [agent:: pi] #feature [branch:: markwork/checkout-with-qris]'
+            'Checkout with QRIS [agent:: pi]' +
+                ' #feature [branch::' +
+                ' markwork/checkout-with-qris]'
         );
         eq(cardBranch(text), 'markwork/checkout-with-qris');
         eq(cardBranch('No branch [agent:: pi]'), null);
@@ -136,7 +141,8 @@ export async function worktreeTests(): Promise<void> {
         );
     });
 
-    await test('a worktree is made next to the project on a branch of its own', async () => {
+    await test('a worktree is made next to the project' +
+        ' on a branch of its own', async () => {
         const { root, repo } = await project();
         const made = await within(
             createWorktree(runGit, {
@@ -198,7 +204,8 @@ export async function worktreeTests(): Promise<void> {
         );
     });
 
-    await test('a worktree is found again from its branch, and removed', async () => {
+    await test('a worktree is found again from its' +
+        ' branch, and removed', async () => {
         const { repo } = await project();
         const made = await within(
             createWorktree(runGit, {
@@ -349,7 +356,9 @@ export async function worktreeTests(): Promise<void> {
         return { ...p, wt };
     };
 
-    await test('the review shows committed, uncommitted, new, and deleted changes against the start', async () => {
+    await test('the review shows committed,' +
+        ' uncommitted, new, and deleted changes' +
+        ' against the start', async () => {
         const { repo, wt } = await worked();
         const read = await within(readReview(runGit, wt));
         if (!read.ok) throw new Error(read.message);
@@ -378,7 +387,11 @@ export async function worktreeTests(): Promise<void> {
 
     await test('splitDiff: renames and binary files', async () => {
         const files = splitDiff(
-            'diff --git a/a.md b/b.md\nsimilarity index 90%\nrename from a.md\nrename to b.md\n@@ -1 +1 @@\n-x\n+y\ndiff --git a/i.png b/i.png\nBinary files a/i.png and b/i.png differ\n'
+            'diff --git a/a.md b/b.md\nsimilarity' +
+                ' index 90%\nrename from a.md\nrename' +
+                ' to b.md\n@@ -1 +1 @@\n-x\n+y\ndiff' +
+                ' --git a/i.png b/i.png\nBinary files' +
+                ' a/i.png and b/i.png differ\n'
         );
         eq(
             files.map((f) => [f.path, f.oldPath, f.status, f.binary]),
@@ -389,7 +402,8 @@ export async function worktreeTests(): Promise<void> {
         );
     });
 
-    await test('merging takes everything into the base and removes the worktree', async () => {
+    await test('merging takes everything into the base' +
+        ' and removes the worktree', async () => {
         const { repo, wt } = await worked();
         const merged = await within(
             mergeWorktree(runGit, wt, {
@@ -414,7 +428,8 @@ export async function worktreeTests(): Promise<void> {
         eq(await sh(repo, 'branch', '--list', wt.branch), '', 'and its branch');
     });
 
-    await test('squashing makes one commit; taking some files leaves the others out', async () => {
+    await test('squashing makes one commit; taking' +
+        ' some files leaves the others out', async () => {
         const a = await worked();
         const squashed = await within(
             mergeWorktree(runGit, a.wt, {
@@ -459,7 +474,9 @@ export async function worktreeTests(): Promise<void> {
         );
     });
 
-    await test('a merge that would conflict is found before, and refused without leaving a mess', async () => {
+    await test('a merge that would conflict is found' +
+        ' before, and refused without leaving a' +
+        ' mess', async () => {
         const { repo, wt } = await worked();
         disk.write(`${repo}/web/cart.ts`, 'export const cart = [9];\n');
         await sh(repo, 'commit', '-q', '-a', '-m', 'Main moved on');
@@ -499,7 +516,8 @@ export async function worktreeTests(): Promise<void> {
         );
     });
 
-    await test('the project folder must be on the base branch and clean', async () => {
+    await test('the project folder must be on the base' +
+        ' branch and clean', async () => {
         const { repo, wt } = await worked();
         disk.write(`${repo}/web/cart.ts`, 'dirty\n');
         const dirty = await within(
@@ -542,11 +560,15 @@ export async function worktreeTests(): Promise<void> {
                     text: 'Use the order total.',
                 },
             ]),
-            'Please address these review comments on your changes:\n\n- web/cart.ts:2 (`+export const total = 0;`): Use the order total.\n'
+            'Please address these review comments' +
+                ' on your changes:\n\n- web/cart.ts:2' +
+                ' (`+export const total = 0;`): Use the' +
+                ' order total.\n'
         );
     });
 
-    await test('RunQueue: cards with worktrees share their lane up to its slots', async () => {
+    await test('RunQueue: cards with worktrees share' +
+        ' their lane up to its slots', async () => {
         const q = new RunQueue();
         const base = {
             board: '/p.md',

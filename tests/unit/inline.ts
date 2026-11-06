@@ -65,7 +65,11 @@ export function inlineTests(): void {
     });
     test('staged masking keeps mixed code, links, and emphasis intact', () => {
         const r = parseInline(
-            '`**code**` [**title**](https://a_b.test) <https://c_d.test> https://e_f.test **bold** *italic* ~~delete~~ ==highlight=='
+            '`**code**`' +
+                ' [**title**](https://a_b.test)' +
+                ' <https://c_d.test> https://e_f.test' +
+                ' **bold** *italic* ~~delete~~' +
+                ' ==highlight=='
         );
         const count = (name: string) =>
             r.tags.filter(([n]) => n === name).length;

@@ -87,7 +87,9 @@ export async function filesControllerTests(): Promise<void> {
         };
     };
 
-    await test('a listing shows folders first, then all files in natural order; dot files and node_modules are not shown', () => {
+    await test('a listing shows folders first, then' +
+        ' all files in natural order; dot files' +
+        ' and node_modules are not shown', () => {
         const dir = disk.join(tmp, 'files-listing');
         for (const name of [
             'chapter 10.md',
@@ -127,7 +129,9 @@ export async function filesControllerTests(): Promise<void> {
         );
     });
 
-    await test('code opens as a read-only page outside the document set, reuses its tab, and closes when moved', async () => {
+    await test('code opens as a read-only page outside' +
+        ' the document set, reuses its tab, and' +
+        ' closes when moved', async () => {
         const { dir, session, files, opened, answers } = setup();
         const path = disk.join(dir, 'main.ts');
         const text = 'const emoji = "🐈";\n';
@@ -174,7 +178,9 @@ export async function filesControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('binary, non-UTF-8, oversized, symbolic-link and missing files do not open code pages', () => {
+    await test('binary, non-UTF-8, oversized,' +
+        ' symbolic-link and missing files do' +
+        ' not open code pages', () => {
         const { dir, session, frontend } = setup();
         const errors: string[] = [];
         frontend.documents.dialogs.showError = (message) => {
@@ -201,7 +207,9 @@ export async function filesControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('the work folder and the folders the tree opens are sent as plain data; root answers the other controllers', () => {
+    await test('the work folder and the folders the' +
+        ' tree opens are sent as plain data;' +
+        ' root answers the other controllers', () => {
         const { dir, session, files, folders } = setup();
         files.setRoot(dir);
         eq(folders.get(dir), ['sub', 'b.md']);
@@ -219,7 +227,9 @@ export async function filesControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a file made outside the app shows up through the folder watch; after dispose nothing more is sent', async () => {
+    await test('a file made outside the app shows up' +
+        ' through the folder watch; after' +
+        ' dispose nothing more is sent', async () => {
         const { dir, session, files, folders } = setup();
         files.setRoot(dir);
         disk.write(disk.join(dir, 'outside.md'), 'x');
@@ -233,7 +243,9 @@ export async function filesControllerTests(): Promise<void> {
         );
     });
 
-    await test('create asks for a name, makes the file, highlights it, and opens it; a bad name is reported, not thrown', async () => {
+    await test('create asks for a name, makes the' +
+        ' file, highlights it, and opens it; a' +
+        ' bad name is reported, not thrown', async () => {
         const {
             dir,
             session,
@@ -278,7 +290,10 @@ export async function filesControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a new CSV table is a .csv file with a header and an empty row, and opens in a tab; a CSV file keeps its extension when renamed', async () => {
+    await test('a new CSV table is a .csv file with a' +
+        ' header and an empty row, and opens in' +
+        ' a tab; a CSV file keeps its extension' +
+        ' when renamed', async () => {
         const { dir, session, files, folders, opened, answers } = setup();
         files.setRoot(dir);
         answers.push('sales');
@@ -308,7 +323,8 @@ export async function filesControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('rename, move, and copy keep the tree and the open documents in step', async () => {
+    await test('rename, move, and copy keep the tree' +
+        ' and the open documents in step', async () => {
         const { dir, session, files, folders, expanded, answers } = setup();
         files.setRoot(dir);
         ok(session.host.openInTab(disk.join(dir, 'b.md')), 'open b.md');
@@ -386,7 +402,8 @@ export async function filesControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('remove asks first and leaves the file when the answer is no', async () => {
+    await test('remove asks first and leaves the file' +
+        ' when the answer is no', async () => {
         const { dir, session, files } = setup();
         files.setRoot(dir);
         eq(await session.host.fileTree.onRemove(disk.join(dir, 'b.md')), false);

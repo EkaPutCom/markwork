@@ -66,7 +66,8 @@ export async function preflight(
     if (branch !== base)
         return `Switch this folder to the branch ${base} first (it is on ${branch ?? 'no branch'}).`;
     if (await out(git, folder, ['rev-parse', '-q', '--verify', 'MERGE_HEAD']))
-        return 'A merge is already in progress in this folder. Finish or abort it first.';
+        return 'A merge is already in progress in this' +
+            ' folder. Finish or abort it first.';
     if (
         await out(git, folder, [
             'status',
@@ -74,7 +75,9 @@ export async function preflight(
             '--untracked-files=no',
         ])
     )
-        return 'This folder has changes that are not committed. Commit or stash them first.';
+        return 'This folder has changes that are not' +
+            ' committed. Commit or stash them' +
+            ' first.';
     return null;
 }
 
@@ -287,7 +290,12 @@ export async function confirmMerged(
         const refused = (e as { failure?: string }).failure === 'not-mergeable';
         return failed(
             refused
-                ? "the repository does not allow manually merged pull requests, so the server still shows it as open. Turn on “Manually merged” in the repository's Pull Requests settings, or close the pull request by hand"
+                ? "the repository does not allow manually" +
+                    " merged pull requests, so the server" +
+                    " still shows it as open. Turn on" +
+                    " “Manually merged” in the repository's" +
+                    " Pull Requests settings, or close the" +
+                    " pull request by hand"
                 : e instanceof Error
                   ? e.message
                   : String(e)

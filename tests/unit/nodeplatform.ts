@@ -94,7 +94,9 @@ export async function nodePlatformTests(): Promise<void> {
         );
     });
 
-    await test('the settings are kept in a JSON file; a key or a value the schema does not take is refused', () => {
+    await test('the settings are kept in a JSON file;' +
+        ' a key or a value the schema does not' +
+        ' take is refused', () => {
         const specs = SETTING_KEYS;
         const file = join(tmp, 'node-settings', 'markwork', 'settings.json');
         const settings = new AppSettings(new JsonSettingsStore(file, specs));
@@ -163,7 +165,9 @@ export async function nodePlatformTests(): Promise<void> {
         );
     });
 
-    await test('every setting has its default, and compound values are written and read back', () => {
+    await test('every setting has its default, and' +
+        ' compound values are written and read' +
+        ' back', () => {
         const file = join(tmp, 'node-settings', 'defaults.json');
         const s = new AppSettings(new JsonSettingsStore(file, SETTING_KEYS));
         eq(
@@ -234,9 +238,15 @@ export async function nodePlatformTests(): Promise<void> {
         eq(again.dark, null, 'dark goes back to the system');
     });
 
-    await test("translations come from the gettext catalog of the user's language, with its plural rule and contexts", () => {
+    await test("translations come from the gettext" +
+        " catalog of the user's language, with" +
+        " its plural rule and contexts", () => {
         const mo = moFile(
-            'Content-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n',
+            'Content-Type: text/plain;' +
+                ' charset=UTF-8\nPlural-Forms:' +
+                ' nplurals=3; plural=(n==1 ? 0 :' +
+                ' n%10>=2 && n%10<=4 && (n%100<10 ||' +
+                ' n%100>=20) ? 1 : 2);\n',
             {
                 Saved: ['Zapisano'],
                 '{n} file': ['{n} plik', '{n} pliki', '{n} plików'],
@@ -294,7 +304,8 @@ export async function nodePlatformTests(): Promise<void> {
             [...new TextDecoder().decode(data)].reverse().join(''),
     });
 
-    await test('the vault keeps items encrypted, by schema and attributes in any order', () => {
+    await test('the vault keeps items encrypted, by' +
+        ' schema and attributes in any order', () => {
         const path = join(tmp, 'vault', 'secrets.json');
         const vault = new SecretVault(path, cipher());
         ok(vault.store('s', { a: '1', b: '2' }, 'sk-secret'), 'stored');
@@ -322,7 +333,9 @@ export async function nodePlatformTests(): Promise<void> {
         eq(vault.lookup('s', {}), null);
     });
 
-    await test('the core asks the vault over the channel, and a malformed request gets no answer', async () => {
+    await test('the core asks the vault over the' +
+        ' channel, and a malformed request gets' +
+        ' no answer', async () => {
         const vault = new SecretVault(
             join(tmp, 'vault-remote', 'secrets.json'),
             cipher()

@@ -24,7 +24,8 @@ export async function fileWriteTests(): Promise<void> {
     disk.mkdirs(base);
     const at = (name: string) => disk.join(base, name);
 
-    await test('fileUri encodes each part, and a Windows drive path gets file:///C:/', () => {
+    await test('fileUri encodes each part, and a' +
+        ' Windows drive path gets file:///C:/', () => {
         eq(
             fileUri('/home/eka/my notes/a#b.md'),
             'file:///home/eka/my%20notes/a%23b.md'
@@ -36,7 +37,9 @@ export async function fileWriteTests(): Promise<void> {
         eq(fileUri('d:/x/y.md'), 'file:///d:/x/y.md');
     });
 
-    await test('insideName gives the / name below a folder, and null for the folder itself or elsewhere', () => {
+    await test('insideName gives the / name below a' +
+        ' folder, and null for the folder' +
+        ' itself or elsewhere', () => {
         eq(insideName('/home/eka/notes', '/home/eka/notes/a/b.md'), 'a/b.md');
         eq(
             insideName('/home/eka/notes/', '/home/eka/notes/b.md'),
@@ -56,7 +59,9 @@ export async function fileWriteTests(): Promise<void> {
         eq(insideName('/home/eka/notes', '/home/eka/b.md'), null, 'outside');
     });
 
-    await test('below: a path under a folder, with / everywhere and \\ under a Windows folder', () => {
+    await test('below: a path under a folder, with /' +
+        ' everywhere and \\ under a Windows' +
+        ' folder', () => {
         eq(
             [
                 below('/a/b', '/a/b/c'),
@@ -77,7 +82,8 @@ export async function fileWriteTests(): Promise<void> {
         );
     });
 
-    await test('paths: Windows spellings are told apart from POSIX names that hold a \\', () => {
+    await test('paths: Windows spellings are told' +
+        ' apart from POSIX names that hold a \\', () => {
         eq(['C:\\a', 'c:/a', 'C:', '/a', 'a\\b'].map(hasDrive), [
             true,
             true,
@@ -104,7 +110,8 @@ export async function fileWriteTests(): Promise<void> {
         );
     });
 
-    await test('overlapping background writes to one file end with the newest text', async () => {
+    await test('overlapping background writes to one' +
+        ' file end with the newest text', async () => {
         const path = at('burst.md');
         const calls: string[] = [];
         for (let i = 1; i <= 20; i++)
@@ -121,7 +128,9 @@ export async function fileWriteTests(): Promise<void> {
         );
     });
 
-    await test('flushWrites finishes waiting writes without running other main-loop callbacks', async () => {
+    await test('flushWrites finishes waiting writes' +
+        ' without running other main-loop' +
+        ' callbacks', async () => {
         const path = at('flush.md');
         let idleRan = false,
             doneCount = 0;
@@ -137,7 +146,8 @@ export async function fileWriteTests(): Promise<void> {
         await until(() => idleRan && doneCount === 2);
     });
 
-    await test('a synchronous write after background writes is the one that stays', async () => {
+    await test('a synchronous write after background' +
+        ' writes is the one that stays', async () => {
         const path = at('sync.md');
         let done = 0;
         writeTextFileAsync(path, 'background 1', () => done++);
@@ -147,7 +157,8 @@ export async function fileWriteTests(): Promise<void> {
         eq(readTextFile(path), 'saved', 'file contents');
     });
 
-    await test('a failed background write reports its error to every waiting caller', async () => {
+    await test('a failed background write reports its' +
+        ' error to every waiting caller', async () => {
         const path = at('missing/dir/file.md');
         const errors: unknown[] = [];
         writeTextFileAsync(path, 'a', (e) => errors.push(e));

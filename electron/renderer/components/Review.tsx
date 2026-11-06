@@ -366,7 +366,8 @@ export function ReviewPage() {
                             <Button
                                 variant="ghost"
                                 size="xs"
-                                className="pick h-auto justify-start font-normal text-left"
+                                className={"pick h-auto justify-start" +
+                                    " font-normal text-left"}
                                 aria-current={selected === i}
                                 onClick={() => {
                                     showTab('changes');

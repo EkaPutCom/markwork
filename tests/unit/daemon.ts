@@ -75,7 +75,8 @@ const out = (recs: DaemonRecord[]) =>
 export async function daemonClientTests(): Promise<void> {
     section('markworkd client: frames');
 
-    await test('parseFrame: replies and events are told apart; anything else is ignored', async () => {
+    await test('parseFrame: replies and events are' +
+        ' told apart; anything else is ignored', async () => {
         eq(parseFrame('{"re":"3","ok":true,"seq":9}'), {
             type: 'reply',
             re: '3',
@@ -94,7 +95,9 @@ export async function daemonClientTests(): Promise<void> {
         eq(parseFrame('   '), null);
     });
 
-    await test('encodeRequest puts id and op next to the parameters; parameters cannot override them', async () => {
+    await test('encodeRequest puts id and op next to' +
+        ' the parameters; parameters cannot' +
+        ' override them', async () => {
         const o = JSON.parse(
             encodeRequest('7', 'write', {
                 run: 'r',
@@ -106,7 +109,8 @@ export async function daemonClientTests(): Promise<void> {
         eq(o, { run: 'r', line: 'x', id: '7', op: 'write' });
     });
 
-    await test('exitStatus: exit code, 128 + signal, 127 when it never started', async () => {
+    await test('exitStatus: exit code, 128 + signal,' +
+        ' 127 when it never started', async () => {
         eq(exitStatus({ reason: 'exited', code: 3 }), 3);
         eq(exitStatus({ reason: 'exited', code: 0 }), 0);
         eq(exitStatus({ reason: 'stopped', signal: 15 }), 143);
@@ -122,7 +126,9 @@ export async function daemonClientTests(): Promise<void> {
 
     section('markworkd client: requests');
 
-    await test("a request gets its reply; a failed one becomes a DaemonError with the daemon's code", async () => {
+    await test("a request gets its reply; a failed one" +
+        " becomes a DaemonError with the" +
+        " daemon's code", async () => {
         const daemon = new FakeDaemon();
         const client = new DaemonClient(daemon.open());
         const hello = await within(client.hello('t'));
@@ -159,7 +165,9 @@ export async function daemonClientTests(): Promise<void> {
         client.close();
     });
 
-    await test('a request the daemon never answers times out; a closed connection rejects at once', async () => {
+    await test('a request the daemon never answers' +
+        ' times out; a closed connection' +
+        ' rejects at once', async () => {
         const daemon = new FakeDaemon();
         daemon.silent = true;
         const timers = new ManualTimers();
@@ -191,7 +199,8 @@ export async function daemonClientTests(): Promise<void> {
         eq(after, 'connection_closed');
     });
 
-    await test('the connection ending rejects the requests that are waiting', async () => {
+    await test('the connection ending rejects the' +
+        ' requests that are waiting', async () => {
         const daemon = new FakeDaemon();
         daemon.silent = true;
         const client = new DaemonClient(daemon.open());
@@ -211,7 +220,8 @@ export async function daemonClientTests(): Promise<void> {
         ok(client.isClosed, 'closed');
     });
 
-    await test('records that arrive in the same read as the subscribe reply are not lost', async () => {
+    await test('records that arrive in the same read' +
+        ' as the subscribe reply are not lost', async () => {
         const daemon = new FakeDaemon();
         const client = new DaemonClient(daemon.open());
         await within(client.hello('t'));
@@ -241,7 +251,8 @@ export async function daemonClientTests(): Promise<void> {
         eq(ended, 4);
     });
 
-    await test('behind an SSH bridge, text before the sentinel line is ignored', async () => {
+    await test('behind an SSH bridge, text before the' +
+        ' sentinel line is ignored', async () => {
         const daemon = new FakeDaemon();
         daemon.bannerNoise = true;
         daemon.expectBridgeSentinel = true;
@@ -252,7 +263,9 @@ export async function daemonClientTests(): Promise<void> {
 
     section('markworkd client: reconnecting');
 
-    await test('the connection connects, and waits with a growing delay while the machine cannot be reached', async () => {
+    await test('the connection connects, and waits' +
+        ' with a growing delay while the' +
+        ' machine cannot be reached', async () => {
         const { daemon, timers, conn } = setup({ backoffMs: [100, 200, 400] });
         daemon.refuse = true;
         const states: ConnectionState[] = [];
@@ -314,7 +327,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('a protocol the daemon does not support is final: no retries, ready() and followers fail', async () => {
+    await test('a protocol the daemon does not support' +
+        ' is final: no retries, ready() and' +
+        ' followers fail', async () => {
         const { daemon, timers, conn } = setup();
         daemon.protoVersion = 2;
         let failed = '',
@@ -337,7 +352,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('a follower resumes after the link drops and sees every record once, in order', async () => {
+    await test('a follower resumes after the link' +
+        ' drops and sees every record once, in' +
+        ' order', async () => {
         const { daemon, timers, conn } = setup();
         const client = await within(conn.ready());
         await within(
@@ -382,7 +399,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('a daemon that replays older records does not make the follower repeat them', async () => {
+    await test('a daemon that replays older records' +
+        ' does not make the follower repeat' +
+        ' them', async () => {
         const { daemon, timers, conn } = setup();
         const client = await within(conn.ready());
         await within(
@@ -406,7 +425,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('a follower of a run that does not exist fails; one that is stopped hears nothing more', async () => {
+    await test('a follower of a run that does not' +
+        ' exist fails; one that is stopped' +
+        ' hears nothing more', async () => {
         const { daemon, conn } = setup();
         let failed = '';
         conn.follow('ghost', 0, {
@@ -438,7 +459,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('watch: the snapshot comes first, then the changes; after a reconnect there is a new snapshot', async () => {
+    await test('watch: the snapshot comes first, then' +
+        ' the changes; after a reconnect there' +
+        ' is a new snapshot', async () => {
         const { daemon, timers, conn } = setup();
         const client = await within(conn.ready());
         await within(
@@ -472,7 +495,8 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('disposing the connection rejects waiters and stops retrying', async () => {
+    await test('disposing the connection rejects' +
+        ' waiters and stops retrying', async () => {
         const { daemon, timers, conn } = setup();
         daemon.refuse = true;
         let code = '';
@@ -494,7 +518,9 @@ export async function daemonClientTests(): Promise<void> {
 
     section('markworkd client: the Spawner for the orchestrator');
 
-    await test('a run through the daemon: the program is a name, lines come back, the exit status and stderr are reported', async () => {
+    await test('a run through the daemon: the program' +
+        ' is a name, lines come back, the exit' +
+        ' status and stderr are reported', async () => {
         const { daemon, conn } = setup();
         const c = collector();
         const spawn = daemonSpawner(conn, { newRunId: () => 'run-1' });
@@ -539,7 +565,8 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('lines written before the run exists are delivered after it, in order', async () => {
+    await test('lines written before the run exists' +
+        ' are delivered after it, in order', async () => {
         const { daemon, timers, conn } = setup();
         daemon.refuse = true; // not connected yet
         const c = collector();
@@ -568,7 +595,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('shutting the connection down ends the pending creation of a run instead of retrying forever', async () => {
+    await test('shutting the connection down ends the' +
+        ' pending creation of a run instead of' +
+        ' retrying forever', async () => {
         const { daemon, conn } = setup();
         daemon.refuse = true;
         const c = collector();
@@ -580,7 +609,9 @@ export async function daemonClientTests(): Promise<void> {
         contains(c.exit!.stderr, 'shut down');
     });
 
-    await test('a connection that dies while the run is created is retried: exactly one run results', async () => {
+    await test('a connection that dies while the run' +
+        ' is created is retried: exactly one' +
+        ' run results', async () => {
         const { daemon, timers, conn } = setup();
         await within(conn.ready());
         daemon.dropAfterSpawn = true;
@@ -600,7 +631,8 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('a spawn the daemon refuses ends the run with the reason as its message', async () => {
+    await test('a spawn the daemon refuses ends the' +
+        ' run with the reason as its message', async () => {
         const { daemon, conn } = setup();
         daemon.failSpawnWith = 'program_not_allowed';
         const c = collector();
@@ -616,7 +648,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('closeInput and stop reach the daemon; stop goes before lines that were not sent yet', async () => {
+    await test('closeInput and stop reach the daemon;' +
+        ' stop goes before lines that were not' +
+        ' sent yet', async () => {
         const { daemon, conn } = setup();
         const c = collector();
         const proc = daemonSpawner(conn, { newRunId: () => 'r' })(
@@ -662,7 +696,8 @@ export async function daemonClientTests(): Promise<void> {
         s.conn.dispose();
     });
 
-    await test('a write is not repeated when the link dies under it: it is reported instead', async () => {
+    await test('a write is not repeated when the link' +
+        ' dies under it: it is reported instead', async () => {
         const { daemon, timers, conn } = setup();
         const problems: string[] = [];
         const c = collector();
@@ -685,7 +720,8 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('output is delivered exactly once across a reconnect', async () => {
+    await test('output is delivered exactly once' +
+        ' across a reconnect', async () => {
         const { daemon, timers, conn } = setup();
         const c = collector();
         daemonSpawner(conn, { newRunId: () => 'r' })(['pi'], '/p', c.handlers);
@@ -704,7 +740,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('how a run can end: a signal, a daemon that restarted, a program that never started', async () => {
+    await test('how a run can end: a signal, a daemon' +
+        ' that restarted, a program that never' +
+        ' started', async () => {
         const { daemon, conn } = setup();
         const cases: [
             string,
@@ -748,7 +786,9 @@ export async function daemonClientTests(): Promise<void> {
         conn.dispose();
     });
 
-    await test('adoptRun follows a run that is already there from the record after the last one seen', async () => {
+    await test('adoptRun follows a run that is already' +
+        ' there from the record after the last' +
+        ' one seen', async () => {
         const { daemon, conn } = setup();
         const client = await within(conn.ready());
         await within(
@@ -779,7 +819,10 @@ export async function daemonClientTests(): Promise<void> {
     // The orchestrator with a fake Spawner and a board held in memory.
     function orchestrate(spawner: Spawner) {
         let board: Board = parseBoard(
-            '---\nlayout: board\nproject: shop\n---\n\n## Plan\n\n- [ ] Checkout [agent:: pi]\n\n## In Progress\n\n## Review\n'
+            '---\nlayout: board\nproject:' +
+                ' shop\n---\n\n## Plan\n\n- [ ]' +
+                ' Checkout [agent:: pi]\n\n## In' +
+                ' Progress\n\n## Review\n'
         );
         const host = {
             workspace: () => null,
@@ -807,7 +850,9 @@ export async function daemonClientTests(): Promise<void> {
         return { orch, folder, board: () => board };
     }
 
-    await test('closing the window stops a harness that is a child of this window, and lets go of one that lives in a daemon', async () => {
+    await test('closing the window stops a harness' +
+        ' that is a child of this window, and' +
+        ' lets go of one that lives in a daemon', async () => {
         const calls: string[] = [];
         const local: Spawner = () => ({
             write: () => true,
@@ -835,7 +880,9 @@ export async function daemonClientTests(): Promise<void> {
         );
     });
 
-    await test('the orchestrator tells the spawner which lane and which card a run is for', async () => {
+    await test('the orchestrator tells the spawner' +
+        ' which lane and which card a run is' +
+        ' for', async () => {
         let seen: SpawnMeta | undefined;
         const spawner: Spawner = (_argv, _cwd, _h, meta) => {
             seen = meta;
@@ -856,7 +903,9 @@ export async function daemonClientTests(): Promise<void> {
         orch.dispose();
     });
 
-    await test('git through the daemon passes environment variables only to the call that asks for them', async () => {
+    await test('git through the daemon passes' +
+        ' environment variables only to the' +
+        ' call that asks for them', async () => {
         const { daemon, conn } = setup();
         daemon.git = (args) =>
             args[0] === 'push'
@@ -890,12 +939,15 @@ export async function daemonClientTests(): Promise<void> {
         eq(
             daemon.requestsOf('forget').length,
             2,
-            'both runs are forgotten, so the daemon keeps no record of the token'
+            'both runs are forgotten, so the daemon' +
+                ' keeps no record of the token'
         );
         conn.dispose();
     });
 
-    await test('detaching from a daemon run stops the callbacks and leaves the run on the daemon', async () => {
+    await test('detaching from a daemon run stops the' +
+        ' callbacks and leaves the run on the' +
+        ' daemon', async () => {
         const { daemon, conn } = setup();
         const c = collector();
         const proc = daemonSpawner(conn, { newRunId: () => 'r' })(

@@ -115,7 +115,9 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'find notes by a date and a status (read-only)',
         question:
-            'Which tasks in tasks.md are not done and are due before 26 October 2026? List only their titles.',
+            'Which tasks in tasks.md are not done' +
+                ' and are due before 26 October 2026?' +
+                ' List only their titles.',
         files: { 'tasks.md': TASKS },
         check: (r) => [
             ...(/write spec/i.test(r.answer) && /fix login/i.test(r.answer)
@@ -137,7 +139,9 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'count the notes per status',
         question:
-            'How many tasks does tasks.md have in each status? Answer with the three numbers.',
+            'How many tasks does tasks.md have in' +
+                ' each status? Answer with the three' +
+                ' numbers.',
         files: { 'tasks.md': TASKS },
         check: (r) => [
             ...(/todo\D{0,20}\b2\b|\b2\b\D{0,20}todo/i.test(r.answer)
@@ -155,7 +159,9 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'change the fields of one note (edit_note)',
         question:
-            'In tasks.md, set Fix login to doing and move its due date to 3 November 2026. Change nothing else.',
+            'In tasks.md, set Fix login to doing' +
+                ' and move its due date to 3 November' +
+                ' 2026. Change nothing else.',
         files: { 'tasks.md': TASKS },
         check: (r) => {
             const text = r.read('tasks.md');
@@ -180,7 +186,9 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'add a field with options, then use it (edit_schema + edit_note)',
         question:
-            'Add a priority field to tasks.md with the options high, medium, and low, and set Write spec to high.',
+            'Add a priority field to tasks.md with' +
+                ' the options high, medium, and low,' +
+                ' and set Write spec to high.',
         files: { 'tasks.md': TASKS },
         check: (r) => {
             const text = r.read('tasks.md');
@@ -207,7 +215,10 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'a value the schema does not have must not end up in the file',
         question:
-            'Add a task "Review PR" to tasks.md with the status blocked. If blocked is not an existing status, add it as a new status first.',
+            'Add a task "Review PR" to tasks.md' +
+                ' with the status blocked. If blocked' +
+                ' is not an existing status, add it as' +
+                ' a new status first.',
         files: { 'tasks.md': TASKS },
         check: (r) => {
             const text = r.read('tasks.md');
@@ -231,7 +242,9 @@ const SCENARIOS: Scenario[] = [
     {
         name: 'move a note on a board and set its field',
         question:
-            'On the board in board.md, move Release material to In Progress and set its priority to low.',
+            'On the board in board.md, move Release' +
+                ' material to In Progress and set its' +
+                ' priority to low.',
         files: { 'board.md': BOARD },
         check: (r) => {
             const text = r.read('board.md');

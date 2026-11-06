@@ -29,7 +29,9 @@ export function layoutTests(): void {
             ['board', 'list', null, null, null, null]
         );
     });
-    test('layoutOf: case, quotes, other keys around it, and values that are not a layout', () => {
+    test('layoutOf: case, quotes, other keys' +
+        ' around it, and values that are not a' +
+        ' layout', () => {
         const doc = (line: string) => `---\n${line}\n---\n\n## A`;
         eq(
             [
@@ -71,9 +73,13 @@ export function layoutTests(): void {
             [true, false, true, false, true, false, true, true, false]
         );
     });
-    test('optionOf: a one-line option in the frontmatter, without quotes; not from a block, the body, or a missing value', () => {
+    test('optionOf: a one-line option in the' +
+        ' frontmatter, without quotes; not from' +
+        ' a block, the body, or a missing value', () => {
         const doc =
-            '---\nlayout: list\nadd: "bottom"\nAdd-To: Now \nfields:\n  add: text\nempty:\n---\n\nadd: top\n';
+            '---\nlayout: list\nadd:' +
+                ' "bottom"\nAdd-To: Now \nfields:\n ' +
+                ' add: text\nempty:\n---\n\nadd: top\n';
         eq(
             [
                 optionOf(doc, 'add'),
@@ -85,7 +91,9 @@ export function layoutTests(): void {
             ['bottom', 'Now', null, null, null]
         );
     });
-    test('withOption: replaces or adds a one-line option after layout:, null removes it; no frontmatter, no change', () => {
+    test('withOption: replaces or adds a' +
+        ' one-line option after layout:, null' +
+        ' removes it; no frontmatter, no change', () => {
         eq(
             withOption('---\nlayout: chart\nby: due\n---\nx', 'by', 'created'),
             '---\nlayout: chart\nby: created\n---\nx'
@@ -96,7 +104,8 @@ export function layoutTests(): void {
                 'charts',
                 '[tags]'
             ),
-            '---\ntitle: t\nlayout: chart\ncharts: [tags]\nfields:\n  a: date\n---\nx'
+            '---\ntitle: t\nlayout: chart\ncharts:' +
+                ' [tags]\nfields:\n  a: date\n---\nx'
         );
         eq(
             withOption(
@@ -116,7 +125,9 @@ export function layoutTests(): void {
         );
     });
 
-    test('withLayout: replaces the line, adds it to a frontmatter, or adds a frontmatter; nothing else changes', () => {
+    test('withLayout: replaces the line, adds it' +
+        ' to a frontmatter, or adds a' +
+        ' frontmatter; nothing else changes', () => {
         eq(
             withLayout(
                 '---\ntitle: x\nlayout: "list"\nadd: top\n---\n\n## A\n- b',

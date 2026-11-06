@@ -162,10 +162,12 @@ export class CollabController {
             return panel.setNote(
                 url
                     ? _(
-                          'The git remote of this folder does not look like a hosted repository'
+                          'The git remote of this folder does not' +
+                              ' look like a hosted repository'
                       )
                     : _(
-                          'This folder has no git remote, so there are no pull requests to show'
+                          'This folder has no git remote, so' +
+                              ' there are no pull requests to show'
                       )
             );
         this.repo = repo;
@@ -176,7 +178,8 @@ export class CollabController {
             return panel.setNote(
                 fmt(
                     _(
-                        'Add an access token for {host} to see its pull requests'
+                        'Add an access token for {host} to see' +
+                            ' its pull requests'
                     ),
                     { host: repo.host }
                 )

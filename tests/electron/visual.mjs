@@ -19,7 +19,9 @@ copyFileSync(
 );
 writeFileSync(join(notes, 'plan.md'), '# Plan\n\nsome **bold** text\n');
 const boardText =
-    '---\nlayout: board\n---\n\n## Todo\n\n- [ ] One\n- [ ] Two\n\n## Done\n\n- [x] Old\n';
+    '---\nlayout: board\n---\n\n##' +
+        ' Todo\n\n- [ ] One\n- [ ] Two\n\n##' +
+        ' Done\n\n- [x] Old\n';
 writeFileSync(join(notes, 'board.md'), boardText);
 writeFileSync(
     join(notes, 'inbox.md'),
@@ -119,7 +121,9 @@ try {
     await page.locator('.headerbar .title').getByText('plan.md').waitFor();
 
     await step(
-        'the visual editor is on at first: the switch, the toolbar, and no syntax on the cursor line',
+        'the visual editor is on at first: the' +
+            ' switch, the toolbar, and no syntax on' +
+            ' the cursor line',
         async () => {
             assert.equal(
                 await mode
@@ -157,7 +161,9 @@ try {
     );
 
     await step(
-        'horizontal rules hide all three markers and preserve their source through mode changes and undo',
+        'horizontal rules hide all three' +
+            ' markers and preserve their source' +
+            ' through mode changes and undo',
         async () => {
             const text = 'Before\n\n---\n\n***\n\n___\n\nAfter';
             await setDoc(text, 9);
@@ -193,7 +199,9 @@ try {
     );
 
     await step(
-        'clicking a divider and pressing either delete key removes it as one block, and undo restores it',
+        'clicking a divider and pressing either' +
+            ' delete key removes it as one block,' +
+            ' and undo restores it',
         async () => {
             for (const marker of ['---', '***', '___'])
                 for (const key of ['Backspace', 'Delete']) {
@@ -213,7 +221,9 @@ try {
     );
 
     await step(
-        'the minus beside Add block removes a divider or paragraph as one undoable action',
+        'the minus beside Add block removes a' +
+            ' divider or paragraph as one undoable' +
+            ' action',
         async () => {
             for (const block of ['---', 'Paragraph\ncontinued']) {
                 const text = `Before\n\n${block}\n\nAfter`;
@@ -234,7 +244,9 @@ try {
     );
 
     await step(
-        'the toolbar formats the selection and turns a line into a list, a numbered list, and a to-do list',
+        'the toolbar formats the selection and' +
+            ' turns a line into a list, a numbered' +
+            ' list, and a to-do list',
         async () => {
             await setDoc('one word', 4, 8);
             await toolbar.getByRole('button', { name: 'Italic' }).click();
@@ -270,7 +282,9 @@ try {
     );
 
     await step(
-        'the cursor stays out of a hidden prefix, and Backspace there makes the line a paragraph',
+        'the cursor stays out of a hidden' +
+            ' prefix, and Backspace there makes the' +
+            ' line a paragraph',
         async () => {
             await setDoc('# Title', 7);
             await page.keyboard.press('Home');
@@ -294,7 +308,9 @@ try {
             assert.equal(
                 await cursor(),
                 1,
-                'Left from the start of a list item goes to the line above, not into the "- "'
+                'Left from the start of a list item' +
+                    ' goes to the line above, not into the' +
+                    ' "- "'
             );
         }
     );
@@ -321,13 +337,16 @@ try {
             assert.equal(
                 await docText(),
                 'firstsecond',
-                'Delete at a line end joins the next line\'s text without its "- "'
+                'Delete at a line end joins the next' +
+                    ' line\'s text without its "- "'
             );
         }
     );
 
     await step(
-        'Enter after text that hidden pictures end breaks the line before the pictures',
+        'Enter after text that hidden pictures' +
+            ' end breaks the line before the' +
+            ' pictures',
         async () => {
             const text = 'A title: ![pic](images/x.png "t")\nnext';
             await setDoc(text, text.indexOf('\n'));
@@ -343,7 +362,8 @@ try {
             assert.equal(
                 await docText(),
                 'Two:\n![a](images/x.png) ![b](images/y.png)\nnext',
-                'on the space between two pictures, the line still breaks before them all'
+                'on the space between two pictures, the' +
+                    ' line still breaks before them all'
             );
             await setDoc('![pic](images/x.png)\nnext', 20);
             await page.keyboard.press('Enter');
@@ -356,7 +376,9 @@ try {
     );
 
     await step(
-        'a code block: Enter on its empty last line leaves it, Ctrl+Enter too, and its toolbar deletes it',
+        'a code block: Enter on its empty last' +
+            ' line leaves it, Ctrl+Enter too, and' +
+            ' its toolbar deletes it',
         async () => {
             await setDoc('Before\n```js\nconst a = 1;\n```\nAfter', 0);
             const pre = page.locator('.cm-md-codebox pre');
@@ -375,7 +397,8 @@ try {
             assert.equal(
                 await docText(),
                 'Before\n```js\nconst a = 1;\n```\nnext\nAfter',
-                'the empty code line goes, and a paragraph comes under the block'
+                'the empty code line goes, and a' +
+                    ' paragraph comes under the block'
             );
             await pre.click();
             await page.keyboard.press('ControlOrMeta+Enter');
@@ -435,7 +458,9 @@ try {
         });
 
     await step(
-        "pictures: a click after a line's text puts the cursor before its hidden pictures, where Enter and typing go",
+        "pictures: a click after a line's text" +
+            " puts the cursor before its hidden" +
+            " pictures, where Enter and typing go",
         async () => {
             const two = 'Two: ![one](pic.png) ![two](pic.png)\nnext';
             await setDoc(two, two.length);
@@ -461,13 +486,16 @@ try {
             assert.equal(
                 await cursorLineNumber(),
                 2,
-                'moving right from there goes to the next line, over the pictures'
+                'moving right from there goes to the' +
+                    ' next line, over the pictures'
             );
         }
     );
 
     await step(
-        'a picture: a click picks it with a ring and a hint, and Enter, typing, Copy, Backspace, Esc act on it whole',
+        'a picture: a click picks it with a' +
+            ' ring and a hint, and Enter, typing,' +
+            ' Copy, Backspace, Esc act on it whole',
         async () => {
             await setDoc('Two: ![one](pic.png) ![two](pic.png)\nnext', 0);
             await picturesLoaded(2);
@@ -479,7 +507,8 @@ try {
             assert.equal(
                 await docText(),
                 'Two: ![one](pic.png)\n![two](pic.png)\nnext',
-                'Enter after the first picture puts the second on a line of its own'
+                'Enter after the first picture puts the' +
+                    ' second on a line of its own'
             );
             await undo();
             await pictures.last().click();
@@ -512,7 +541,9 @@ try {
     );
 
     await step(
-        'Backspace at the start of the line after a picture picks the picture, and a second one deletes it',
+        'Backspace at the start of the line' +
+            ' after a picture picks the picture,' +
+            ' and a second one deletes it',
         async () => {
             await setDoc('![one](pic.png)\nnext', 0);
             await picturesLoaded(1);
@@ -534,7 +565,10 @@ try {
     );
 
     await step(
-        'a code block: Esc in it picks it, Enter opens a line under it, and Backspace on the line after picks it before deleting',
+        'a code block: Esc in it picks it,' +
+            ' Enter opens a line under it, and' +
+            ' Backspace on the line after picks it' +
+            ' before deleting',
         async () => {
             await setDoc('Before\n```js\nconst a = 1;\n```\nAfter', 0);
             await editor.locator('.cm-md-codebox pre').click();
@@ -553,7 +587,10 @@ try {
             assert.equal(
                 await docText(),
                 'Before\n```js\nconst a = 1;\n```\nx\nAfter',
-                'at the start of the line after the block, Backspace picks the block instead of joining the line to its fence'
+                'at the start of the line after the' +
+                    ' block, Backspace picks the block' +
+                    ' instead of joining the line to its' +
+                    ' fence'
             );
             await page.keyboard.press('Backspace');
             assert.equal(
@@ -565,7 +602,9 @@ try {
     );
 
     await step(
-        'a diagram: a click picks it, Enter opens a line under it, Delete deletes it',
+        'a diagram: a click picks it, Enter' +
+            ' opens a line under it, Delete deletes' +
+            ' it',
         async () => {
             await setDoc(
                 'Before\n```dbml\nTable t { id int [pk] }\n```\nAfter',
@@ -612,7 +651,9 @@ try {
     );
 
     await step(
-        "a list item's first letter lines up with the lines that wrap under it: bulleted, nested, to-do, and numbered",
+        "a list item's first letter lines up" +
+            " with the lines that wrap under it:" +
+            " bulleted, nested, to-do, and numbered",
         async () => {
             const long = 'words that go on and on until the line has to wrap '
                 .repeat(5)
@@ -680,7 +721,9 @@ try {
             // runner the one item shows before the list takes keys.
             await page
                 .locator(
-                    '.cm-tooltip-autocomplete:not(.cm-tooltip-autocomplete-disabled) li[aria-selected]'
+                    '.cm-tooltip-autocomplete:not(.cm-toolt' +
+                        'ip-autocomplete-disabled)' +
+                        ' li[aria-selected]'
                 )
                 .waitFor();
             await page.keyboard.press('Enter');
@@ -714,7 +757,10 @@ try {
     );
 
     await step(
-        'Highlight is in the toolbar and the selection menu, pressed in ==highlighted== text, and on Ctrl+Alt+H',
+        'Highlight is in the toolbar and the' +
+            ' selection menu, pressed in' +
+            ' ==highlighted== text, and on' +
+            ' Ctrl+Alt+H',
         async () => {
             await setDoc('mark this', 5, 9);
             await page
@@ -739,7 +785,9 @@ try {
     );
 
     await step(
-        'Insert Link asks for the address in a box: a selection becomes a link, and Remove link undoes it',
+        'Insert Link asks for the address in a' +
+            ' box: a selection becomes a link, and' +
+            ' Remove link undoes it',
         async () => {
             await setDoc('see the docs', 8, 12);
             await toolbar.getByRole('button', { name: 'Insert Link' }).click();
@@ -784,7 +832,8 @@ try {
     );
 
     await step(
-        'a table stays a grid, its cells are typed in, and the toolbar adds to it',
+        'a table stays a grid, its cells are' +
+            ' typed in, and the toolbar adds to it',
         async () => {
             await setDoc('intro\n\n');
             await toolbar.getByRole('button', { name: 'Insert Table' }).click();
@@ -805,7 +854,8 @@ try {
             assert.match(
                 await docText(),
                 /\| jadi \| apa dulu \| a\\\|b \|/,
-                'each cell is written into the text as it is typed; a pipe is escaped'
+                'each cell is written into the text as' +
+                    ' it is typed; a pipe is escaped'
             );
             assert.equal(
                 await toolbar
@@ -849,11 +899,15 @@ try {
     );
 
     await step(
-        'a table cell is edited and drawn as the text around it: formats without markers, the caret where the click was, Bold on and off',
+        'a table cell is edited and drawn as' +
+            ' the text around it: formats without' +
+            ' markers, the caret where the click' +
+            ' was, Bold on and off',
         async () => {
             const grid = editor.locator('.cm-md-table-grid.editable');
             await setDoc(
-                'intro\n\n| A | B |\n| --- | --- |\n| `npm i` | make **this** loud |\n',
+                'intro\n\n| A | B |\n| --- | --- |\n|' +
+                    ' `npm i` | make **this** loud |\n',
                 0
             );
             await grid.waitFor();
@@ -876,7 +930,9 @@ try {
                     return [st.fontWeight, st.fontFamily, st.backgroundColor];
                 }, sel);
             await setDoc(
-                'make **this** loud `npm i`\n\n| A | B |\n| --- | --- |\n| `npm i` | make **this** loud |\n',
+                'make **this** loud `npm i`\n\n| A | B' +
+                    ' |\n| --- | --- |\n| `npm i` | make' +
+                    ' **this** loud |\n',
                 0
             );
             assert.deepEqual(
@@ -890,7 +946,8 @@ try {
                 'code in a cell looks as code in text does'
             );
             await setDoc(
-                'intro\n\n| A | B |\n| --- | --- |\n| `npm i` | make **this** loud |\n',
+                'intro\n\n| A | B |\n| --- | --- |\n|' +
+                    ' `npm i` | make **this** loud |\n',
                 0
             );
             const before = await grid.boundingBox();
@@ -1076,7 +1133,9 @@ try {
                         const td = document.activeElement;
                         document
                             .querySelector(
-                                '[role="toolbar"][aria-label="Format the selection"] button[aria-label^="Bold"]'
+                                '[role="toolbar"][aria-label="Format' +
+                                    ' the selection"]' +
+                                    ' button[aria-label^="Bold"]'
                             )
                             .click();
                         td.blur();
@@ -1170,11 +1229,15 @@ try {
         }
     );
     await step(
-        "a selection made in a cell right after a command is kept, though the cell takes the text's selection a frame late",
+        "a selection made in a cell right after" +
+            " a command is kept, though the cell" +
+            " takes the text's selection a frame" +
+            " late",
         async () => {
             const grid = editor.locator('.cm-md-table-grid.editable');
             await setDoc(
-                'intro\n\n| A | B |\n| --- | --- |\n| x | make **this** loud |\n',
+                'intro\n\n| A | B |\n| --- | --- |\n| x' +
+                    ' | make **this** loud |\n',
                 0
             );
             const cell = grid.locator('td').nth(1);
@@ -1234,10 +1297,14 @@ try {
     );
 
     await step(
-        'formatting a cell keeps the page where it is; a row added below the view comes into view',
+        'formatting a cell keeps the page where' +
+            ' it is; a row added below the view' +
+            ' comes into view',
         async () => {
             const para =
-                'Some text above the table, long enough to wrap onto a second line in the editor at this width.\n\n';
+                'Some text above the table, long enough' +
+                    ' to wrap onto a second line in the' +
+                    ' editor at this width.\n\n';
             const rows = Array.from(
                 { length: 14 },
                 (_, i) =>
@@ -1314,7 +1381,8 @@ try {
             assert.equal(
                 await top(),
                 before,
-                'a row added from the toolbar moves nothing; the cell keeps the focus'
+                'a row added from the toolbar moves' +
+                    ' nothing; the cell keeps the focus'
             );
             // Tab from the last cell adds a row under the view: the page brings
             // the new cell into view.
@@ -1379,7 +1447,9 @@ try {
     );
 
     await step(
-        'a code block is edited in its box: it scrolls sideways as one, and the arrows leave it',
+        'a code block is edited in its box: it' +
+            ' scrolls sideways as one, and the' +
+            ' arrows leave it',
         async () => {
             await setDoc(
                 'Above\n\n```js\nconst a = 1;\nlet b = ' +
@@ -1449,7 +1519,10 @@ try {
     );
 
     await step(
-        "a code block's language is a button over its box: the list finds it by name, a word not in it is kept, Plain text takes it away",
+        "a code block's language is a button" +
+            " over its box: the list finds it by" +
+            " name, a word not in it is kept, Plain" +
+            " text takes it away",
         async () => {
             await setDoc('Above\n\n```\nprint("hi")\n```\n\nBelow', 0);
             const language = editor.locator('.cm-md-codelang');
@@ -1488,10 +1561,13 @@ try {
         }
     );
     await step(
-        'block controls stay inside the editor margin and clear of text in narrow and wide windows',
+        'block controls stay inside the editor' +
+            ' margin and clear of text in narrow' +
+            ' and wide windows',
         async () => {
             await setDoc(
-                '# Editor elements\n\nEvery element of the editor remains readable.\n\nLast',
+                '# Editor elements\n\nEvery element of' +
+                    ' the editor remains readable.\n\nLast',
                 0
             );
             for (const width of [875, 560, 1400]) {
@@ -1532,7 +1608,9 @@ try {
     );
 
     await step(
-        'a block has a handle: + adds a block with the / menu, the grip drags it, and the keyboard moves it',
+        'a block has a handle: + adds a block' +
+            ' with the / menu, the grip drags it,' +
+            ' and the keyboard moves it',
         async () => {
             await setDoc('# Plan\n\nFirst\n\n- a\n- b\n\nLast', 0);
             await editor.locator('.cm-line', { hasText: 'First' }).hover();
@@ -1618,10 +1696,16 @@ try {
     );
 
     await step(
-        'Markdown is the file as it is written: every marker, plain text in a fixed-width font, and Visual comes back',
+        'Markdown is the file as it is written:' +
+            ' every marker, plain text in a' +
+            ' fixed-width font, and Visual comes' +
+            ' back',
         async () => {
             const raw =
-                '# Plan\n\nsome **bold** and [a link](https://x.org)\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n- [ ] task\n\n![pic](pic.png)';
+                '# Plan\n\nsome **bold** and [a' +
+                    ' link](https://x.org)\n\n| a | b |\n|' +
+                    ' - | - |\n| 1 | 2 |\n\n- [ ]' +
+                    ' task\n\n![pic](pic.png)';
             await setDoc(raw, raw.length);
             await mode.getByRole('radio', { name: 'Code' }).click();
             await toolbar.waitFor({ state: 'detached' });
@@ -1688,7 +1772,10 @@ try {
     );
 
     await step(
-        'a document with another form (a board, a list, a CSV table) has the switch too: Visual is that form, Markdown its text',
+        'a document with another form (a board,' +
+            ' a list, a CSV table) has the switch' +
+            ' too: Visual is that form, Markdown' +
+            ' its text',
         async () => {
             const text = () =>
                 editor.evaluate(() =>
@@ -1754,7 +1841,10 @@ try {
 
     // Last: it leaves a new document with no file open.
     await step(
-        'a picture in a text with no file (its address cannot be told) is drawn as missing, and Backspace and Delete take it whole',
+        'a picture in a text with no file (its' +
+            ' address cannot be told) is drawn as' +
+            ' missing, and Backspace and Delete' +
+            ' take it whole',
         async () => {
             await page.keyboard.press('ControlOrMeta+n');
             await waitFor(

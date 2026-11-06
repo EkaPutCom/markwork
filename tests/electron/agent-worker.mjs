@@ -47,7 +47,10 @@ writeFileSync(
 writeFileSync(join(root, 'plan.md'), '# Plan\n\nShip 15 November\n');
 writeFileSync(
     join(chats, 'worker.md'),
-    '---\nlayout: chat\ntitle: "Background test"\nmodel: deepseek-flash\ncreated: 2026-10-31\n---\n\n'
+    '---\nlayout: chat\ntitle: "Background' +
+        ' test"\nmodel:' +
+        ' deepseek-flash\ncreated:' +
+        ' 2026-10-31\n---\n\n'
 );
 const daemonBin = join(scratch, 'markworkd'),
     launcher = join(scratch, 'markwork-agent');
@@ -229,7 +232,10 @@ try {
         /Proposal answered/
     );
     console.log(
-        'Agent worker: real markworkd, disconnect/replay, pending approval, duplicate command, approved continuation passed'
+        'Agent worker: real markworkd,' +
+            ' disconnect/replay, pending approval,' +
+            ' duplicate command, approved' +
+            ' continuation passed'
     );
 } finally {
     try {

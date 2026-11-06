@@ -70,7 +70,9 @@ export function documentHandlers({
         ) {
             throw new RequestError(
                 'conflict',
-                'The document changed. Open Compare Changes again before applying the result.'
+                'The document changed. Open Compare' +
+                    ' Changes again before applying the' +
+                    ' result.'
             );
         }
     });

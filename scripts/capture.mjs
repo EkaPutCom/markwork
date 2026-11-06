@@ -60,14 +60,31 @@ mkdirSync(OUT, { recursive: true });
 const WORK = {
     'plans/launch.md': LAUNCH,
     'notes/meeting-1-oct.md':
-        '# Weekly meeting, 1 October\n\n## Decisions\n\n- The public release is postponed to **22 November** because the sync testing is not finished.\n- The budget does not change.\n- Sari prepares the release material.\n\n## Follow-up\n\n- [ ] Budi fixes the sync bug\n- [ ] Dewi schedules the beta trial\n',
+        '# Weekly meeting, 1 October\n\n##' +
+            ' Decisions\n\n- The public release is' +
+            ' postponed to **22 November** because' +
+            ' the sync testing is not finished.\n-' +
+            ' The budget does not change.\n- Sari' +
+            ' prepares the release material.\n\n##' +
+            ' Follow-up\n\n- [ ] Budi fixes the' +
+            ' sync bug\n- [ ] Dewi schedules the' +
+            ' beta trial\n',
     'notes/meeting-8-oct.md':
-        '# Weekly meeting, 8 October\n\nThe sync bug is still open. The closed beta stays on 20 October.\n',
+        '# Weekly meeting, 8 October\n\nThe' +
+            ' sync bug is still open. The closed' +
+            ' beta stays on 20 October.\n',
     'research/competitors.md': RESEARCH,
     'research/users.md':
         '# User interviews\n\nFive users want syncing without an account.\n',
     'tasks.md':
-        '---\nlayout: board\n---\n\n## Plan\n\n- [ ] Prepare the release material #marketing [due:: 2026-11-10]\n- [ ] Write the release notes #docs\n\n## In Progress\n\n- [ ] Fix the sync bug #bug #important [due:: 2026-10-25]\n\n## Done\n\n- [x] Redesign the home page #design\n',
+        '---\nlayout: board\n---\n\n##' +
+            ' Plan\n\n- [ ] Prepare the release' +
+            ' material #marketing [due::' +
+            ' 2026-11-10]\n- [ ] Write the release' +
+            ' notes #docs\n\n## In Progress\n\n- [' +
+            ' ] Fix the sync bug #bug #important' +
+            ' [due:: 2026-10-25]\n\n## Done\n\n-' +
+            ' [x] Redesign the home page #design\n',
     'ideas.md': '# Ideas\n\nA PDF export feature.\n',
 };
 
@@ -97,11 +114,42 @@ function remainingBudget(total: number, spent: number): number {
 | Trial run | *Budi* | 17 Oct |
 `;
 const TABLE_DOC =
-    '# Project Budget\n\nTables are rendered as a grid. Click a cell to edit it.\n\n| Item | Owner | Cost ($) |\n| :-- | :--------------: | ---------: |\n| **Design** | Sari | 750 |\n| Development | *Budi* | 2,800 |\n| Testing | Dewi | 530 |\n| `Server` | Andi | 375 |\n| [License](https://example.com) | Rina | 200 |\n\nThe total cost is still below the **budget**.\n';
+    '# Project Budget\n\nTables are' +
+        ' rendered as a grid. Click a cell to' +
+        ' edit it.\n\n| Item | Owner | Cost ($)' +
+        ' |\n| :-- | :--------------: |' +
+        ' ---------: |\n| **Design** | Sari |' +
+        ' 750 |\n| Development | *Budi* | 2,800' +
+        ' |\n| Testing | Dewi | 530 |\n|' +
+        ' `Server` | Andi | 375 |\n|' +
+        ' [License](https://example.com) | Rina' +
+        ' | 200 |\n\nThe total cost is still' +
+        ' below the **budget**.\n';
 const DBML_DOC =
-    '# Database Schema\n\nA `dbml` block (the dbdiagram.io language) is drawn as an ER diagram.\n\n```dbml\nTable projects {\n  id int [pk]\n  name varchar\n}\n\nTable tasks {\n  id int [pk]\n  title varchar\n  project_id int\n}\n\nRef: tasks.project_id > projects.id\n```\n';
+    '# Database Schema\n\nA `dbml` block' +
+        ' (the dbdiagram.io language) is drawn' +
+        ' as an ER diagram.\n\n```dbml\nTable' +
+        ' projects {\n  id int [pk]\n  name' +
+        ' varchar\n}\n\nTable tasks {\n  id int' +
+        ' [pk]\n  title varchar\n  project_id' +
+        ' int\n}\n\nRef: tasks.project_id >' +
+        ' projects.id\n```\n';
 const BOARD =
-    '---\nlayout: board\n---\n\n## Plan\n\n- [ ] User research #research [due:: 2026-10-10]\n  Interview five active users.\n- [ ] Redesign the home page #design\n- [ ] Write the **API** documentation #docs [due:: 2026-10-25]\n\n## In Progress\n\n- [ ] Implement the kanban board #feature #important\n- [ ] Fix the `HTML export` bug #bug [due:: 2026-10-03]\n\n## Review\n\n- [ ] Trial on Ubuntu 24.04 #qa\n\n## Done\n\n- [x] Choose the project name: Markwork\n- [x] Set up the GitHub repository #infra\n';
+    '---\nlayout: board\n---\n\n##' +
+        ' Plan\n\n- [ ] User research #research' +
+        ' [due:: 2026-10-10]\n  Interview five' +
+        ' active users.\n- [ ] Redesign the' +
+        ' home page #design\n- [ ] Write the' +
+        ' **API** documentation #docs [due::' +
+        ' 2026-10-25]\n\n## In Progress\n\n- [' +
+        ' ] Implement the kanban board #feature' +
+        ' #important\n- [ ] Fix the `HTML' +
+        ' export` bug #bug [due::' +
+        ' 2026-10-03]\n\n## Review\n\n- [ ]' +
+        ' Trial on Ubuntu 24.04 #qa\n\n##' +
+        ' Done\n\n- [x] Choose the project' +
+        ' name: Markwork\n- [x] Set up the' +
+        ' GitHub repository #infra\n';
 const day = (offset) => {
     const d = new Date();
     d.setDate(d.getDate() + offset);
@@ -144,7 +192,14 @@ draw();
 </script></body></html>
 `;
 const PI_BOARD =
-    '---\nlayout: board\nproject: web-ecommerce\n---\n\n## Plan\n\n- [ ] Checkout with QRIS #feature\n  Use the official SDK.\n- [ ] Test the cart #test\n- [ ] Tidy up the README #docs\n\n## In Progress\n\n## Review\n\n## Done\n\n- [x] Product page #feature\n';
+    '---\nlayout: board\nproject:' +
+        ' web-ecommerce\n---\n\n## Plan\n\n- [' +
+        ' ] Checkout with QRIS #feature\n  Use' +
+        ' the official SDK.\n- [ ] Test the' +
+        ' cart #test\n- [ ] Tidy up the README' +
+        ' #docs\n\n## In Progress\n\n##' +
+        ' Review\n\n## Done\n\n- [x] Product' +
+        ' page #feature\n';
 
 // ---------- Files, git, and images ----------
 
@@ -622,7 +677,9 @@ function workRun(name, settings = {}) {
     put(
         root,
         'image.md',
-        '# Image\n\nDouble-click the image to enlarge it.\n\n![Example image](images/example.png)\n'
+        '# Image\n\nDouble-click the image to' +
+            ' enlarge it.\n\n![Example' +
+            ' image](images/example.png)\n'
     );
     mkdirSync(join(root, 'images'), { recursive: true });
     copyFileSync(
@@ -686,7 +743,13 @@ const GROUPS = {
             await run.cursorTo(0);
             await run.frame('typing', 2);
             const typed =
-                '# Meeting Notes\n\nDecision: release on **22 November**, the budget is *unchanged*, and the bug is in `syncing`.\n\n- [ ] Budi: fix the bug\n- [x] Sari: prepare the material\n- [ ] Dewi: schedule the beta\n';
+                '# Meeting Notes\n\nDecision: release' +
+                    ' on **22 November**, the budget is' +
+                    ' *unchanged*, and the bug is in' +
+                    ' `syncing`.\n\n- [ ] Budi: fix the' +
+                    ' bug\n- [x] Sari: prepare the' +
+                    ' material\n- [ ] Dewi: schedule the' +
+                    ' beta\n';
             let count = 0;
             for (const ch of typed) {
                 await run.insert(ch);
@@ -803,7 +866,8 @@ const GROUPS = {
         put(
             root,
             'main.ts',
-            'export function greet(name: string) {\n    return `Hello, ${name}`;\n}\n'
+            'export function greet(name: string)' +
+                ' {\n    return `Hello, ${name}`;\n}\n'
         );
         const run = new Run('assistant', root, {
             env: {
@@ -980,11 +1044,18 @@ const GROUPS = {
             ],
             [
                 'Add a schedule section',
-                '# Launch Plan\n\n## Goal\n\nRelease Markwork 1.0.\n\n## Schedule\n\n- Closed beta: October\n',
+                '# Launch Plan\n\n## Goal\n\nRelease' +
+                    ' Markwork 1.0.\n\n## Schedule\n\n-' +
+                    ' Closed beta: October\n',
             ],
             [
                 'Clarify the goal and the dates',
-                '# Launch Plan\n\n## Goal\n\nRelease Markwork 1.0 for Linux users, complete with folder syncing.\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n',
+                '# Launch Plan\n\n## Goal\n\nRelease' +
+                    ' Markwork 1.0 for Linux users,' +
+                    ' complete with folder syncing.\n\n##' +
+                    ' Schedule\n\n- Closed beta: 20' +
+                    ' October\n- Public release: 15' +
+                    ' November\n',
             ],
         ]) {
             put(root, 'plan.md', text);
@@ -1030,7 +1101,8 @@ const GROUPS = {
             await page.keyboard.press('Escape');
             await run.panel('chat', true);
             await run.ask(
-                'When was the public release date written in the plan, and by whom?'
+                'When was the public release date' +
+                    ' written in the plan, and by whom?'
             );
             await run.answered();
             await run.idle(500);
@@ -1248,12 +1320,16 @@ const GROUPS = {
         put(
             project,
             'README.md',
-            '# Web e-commerce\n\nInstall with `npm install` or `pnpm install`.\n'
+            '# Web e-commerce\n\nInstall with `npm' +
+                ' install` or `pnpm install`.\n'
         );
         put(
             project,
             'src/checkout/cart.ts',
-            'export const cartTotal = (items: { price: number; qty: number }[]) => items.reduce((sum, i) => sum + i.price * i.qty, 0);\n'
+            'export const cartTotal = (items: {' +
+                ' price: number; qty: number }[]) =>' +
+                ' items.reduce((sum, i) => sum +' +
+                ' i.price * i.qty, 0);\n'
         );
         put(
             project,
@@ -1386,7 +1462,9 @@ const GROUPS = {
                 await form.getByRole('button', { name: 'Cancel' }).click();
             } else {
                 console.log(
-                    '  pi-pr-dialog: skipped, the project has no forge to send a pull request to'
+                    '  pi-pr-dialog: skipped, the project' +
+                        ' has no forge to send a pull request' +
+                        ' to'
                 );
                 await page.keyboard.press('Escape');
             }
@@ -1522,17 +1600,32 @@ const GROUPS = {
         put(
             agent,
             'workspace/plan.md',
-            '# Launch plan\n\n## Schedule\n\n- Closed beta: 20 October\n- Public release: 15 November\n- Evaluation: 30 November\n\n## Budget\n\n- Test servers: $3,000\n'
+            '# Launch plan\n\n## Schedule\n\n-' +
+                ' Closed beta: 20 October\n- Public' +
+                ' release: 15 November\n- Evaluation:' +
+                ' 30 November\n\n## Budget\n\n- Test' +
+                ' servers: $3,000\n'
         );
         put(
             agent,
             'workspace/references/meeting.md',
-            '# Weekly meeting, 1 October\n\n## Decisions\n\n- The public release moves to **22 November**; the sync testing is not finished.\n- The budget does not change.\n- Sari prepares the release material.\n\n## Follow-up\n\n- [ ] Budi fixes the sync bug\n- [ ] Dewi schedules the beta trial\n'
+            '# Weekly meeting, 1 October\n\n##' +
+                ' Decisions\n\n- The public release' +
+                ' moves to **22 November**; the sync' +
+                ' testing is not finished.\n- The' +
+                ' budget does not change.\n- Sari' +
+                ' prepares the release material.\n\n##' +
+                ' Follow-up\n\n- [ ] Budi fixes the' +
+                ' sync bug\n- [ ] Dewi schedules the' +
+                ' beta trial\n'
         );
         put(
             agent,
             'workspace/references/interviews.md',
-            '# User interviews\n\nFive of eight users want syncing without an account. Two asked for a PDF export.\n'
+            '# User interviews\n\nFive of eight' +
+                ' users want syncing without an' +
+                ' account. Two asked for a PDF' +
+                ' export.\n'
         );
         const fixtureChat = `---
 layout: chat
@@ -1573,7 +1666,9 @@ Those facts belong in the *Schedule* section. pi can update files directly after
         put(
             root,
             'notes/reading-list.md',
-            '# Reading list\n\n- The sync architecture article\n- Notes on writing launch briefs\n'
+            '# Reading list\n\n- The sync' +
+                ' architecture article\n- Notes on' +
+                ' writing launch briefs\n'
         );
         put(
             root,

@@ -133,7 +133,9 @@ async function inNormalStart() {
             name: 'Something looks wrong?',
         });
         await step(
-            'a report of a problem with the editor: what the editor did, blurred, with a picture, and the text left as it was',
+            'a report of a problem with the editor:' +
+                ' what the editor did, blurred, with a' +
+                ' picture, and the text left as it was',
             async () => {
                 await page.getByText('setelah QA').click();
                 await page.keyboard.press('End');
@@ -189,7 +191,8 @@ async function inNormalStart() {
                 );
                 assert.equal(
                     report.actual.doc,
-                    '# Xxxxxxx xxxxx\n\nXxxx **xxxxx Xxxxx** xxxxxxx XX, 00 Xxxxxxx. Xxx\n'
+                    '# Xxxxxxx xxxxx\n\nXxxx **xxxxx' +
+                        ' Xxxxx** xxxxxxx XX, 00 Xxxxxxx. Xxx\n'
                 );
                 assert.equal(report.actual.doc.length, before.length);
                 assert.ok(
@@ -241,7 +244,9 @@ async function inNormalStart() {
 
         await openFile(page, 'all.md');
         await step(
-            'the report dialog keeps the keys from the editor, and its picture leaves the editor where it was scrolled',
+            'the report dialog keeps the keys from' +
+                ' the editor, and its picture leaves' +
+                ' the editor where it was scrolled',
             async () => {
                 await page.locator('.cm-content').click();
                 await page.keyboard.type('Q');
@@ -295,7 +300,9 @@ async function inNormalStart() {
 
         await openFile(page, 'all.md');
         await step(
-            'performance: a typed character in a long text, with only the recorder running',
+            'performance: a typed character in a' +
+                ' long text, with only the recorder' +
+                ' running',
             async () => {
                 const result = await page.evaluate(`(() => {
                 const v = ${view};
@@ -357,7 +364,9 @@ async function inDevMode() {
         );
 
         await step(
-            'the source shows what the visual editor hides on the cursor line, with offsets',
+            'the source shows what the visual' +
+                ' editor hides on the cursor line, with' +
+                ' offsets',
             async () => {
                 await setDoc(page, '# Plan\n\nsome **bold** text', 15);
                 await waitFor(
@@ -427,7 +436,9 @@ async function inDevMode() {
         });
 
         await step(
-            'the checks stay quiet on typing, deleting, undo, and moving the cursor in the long sample, in each mode',
+            'the checks stay quiet on typing,' +
+                ' deleting, undo, and moving the cursor' +
+                ' in the long sample, in each mode',
             async () => {
                 await openFile(page, 'all.md');
                 const lines = page.locator('.cm-content > .cm-line');
@@ -480,7 +491,10 @@ async function inDevMode() {
         );
 
         await step(
-            'a diagram opens to its source when the selection enters it and closes when it leaves, with no drawing kept wrongly',
+            'a diagram opens to its source when the' +
+                ' selection enters it and closes when' +
+                ' it leaves, with no drawing kept' +
+                ' wrongly',
             async () => {
                 await setDoc(
                     page,
@@ -522,7 +536,9 @@ async function inDevMode() {
         );
 
         await step(
-            'a Backspace that removes a hidden * fails backspace-visible, and the transaction says why',
+            'a Backspace that removes a hidden *' +
+                ' fails backspace-visible, and the' +
+                ' transaction says why',
             async () => {
                 await setDoc(page, 'some **bold** text', 13);
                 await page.evaluate(
@@ -578,7 +594,8 @@ async function inDevMode() {
         );
 
         await step(
-            'Paused shows the text as a transaction left it, and steps back and forward',
+            'Paused shows the text as a transaction' +
+                ' left it, and steps back and forward',
             async () => {
                 await setDoc(page, 'one', 3);
                 await page.keyboard.type('xy');
@@ -645,7 +662,10 @@ async function inDevMode() {
         );
 
         await step(
-            'a piece of the source is boxed in the editor, and the place under the pointer in the editor is lit in the source',
+            'a piece of the source is boxed in the' +
+                ' editor, and the place under the' +
+                ' pointer in the editor is lit in the' +
+                ' source',
             async () => {
                 await setDoc(page, 'some **bold** text', 0);
                 await source
@@ -693,7 +713,9 @@ async function inDevMode() {
         const clipboard = () =>
             app.evaluate(({ clipboard }) => clipboard.readText());
         await step(
-            "Copy Snapshot and a transaction's Copy as JSON give what the bridge gives; Show the State Before pauses one back",
+            "Copy Snapshot and a transaction's Copy" +
+                " as JSON give what the bridge gives;" +
+                " Show the State Before pauses one back",
             async () => {
                 await tab('Transactions').click();
                 await setDoc(page, '# Plan\n\nsome text', 17);
@@ -758,7 +780,10 @@ async function inDevMode() {
         );
 
         await step(
-            'Replay & test: the recording plays again in a tab of its own and passes; a repro file that expects another text differs',
+            'Replay & test: the recording plays' +
+                ' again in a tab of its own and passes;' +
+                ' a repro file that expects another' +
+                ' text differs',
             async () => {
                 // A tab of its own: a recording of keys and clicks only, none
                 // of the dispatches of the steps above.
@@ -824,7 +849,9 @@ async function inDevMode() {
         );
 
         await step(
-            'Replay & test: Save Repro writes the repro, and Make a Test keeps it as test-from does',
+            'Replay & test: Save Repro writes the' +
+                ' repro, and Make a Test keeps it as' +
+                ' test-from does',
             async () => {
                 await inspector
                     .getByRole('button', { name: 'Save Repro…' })
@@ -874,7 +901,8 @@ async function throughTheBridge() {
         const pid = ['--pid', String(await mainPid(app))];
 
         await step(
-            'editor.mjs: hello reaches the window, and open shows a file of the folder',
+            'editor.mjs: hello reaches the window,' +
+                ' and open shows a file of the folder',
             async () => {
                 let hello = null;
                 await waitFor(
@@ -896,7 +924,9 @@ async function throughTheBridge() {
         );
 
         await step(
-            'editor.mjs: snapshot gives what the visual editor hides, and the letter the eye sees before the cursor',
+            'editor.mjs: snapshot gives what the' +
+                ' visual editor hides, and the letter' +
+                ' the eye sees before the cursor',
             async () => {
                 const selected = await cli(...pid, 'select', '21');
                 assert.equal(selected.code, 0, selected.stderr);
@@ -926,7 +956,9 @@ async function throughTheBridge() {
         );
 
         await step(
-            'editor.mjs: press --explain answers the transaction with its key and the findings',
+            'editor.mjs: press --explain answers' +
+                ' the transaction with its key and the' +
+                ' findings',
             async () => {
                 const { code, answer, stderr } = await cli(
                     ...pid,
@@ -957,7 +989,9 @@ async function throughTheBridge() {
         );
 
         await step(
-            'editor.mjs: a click on visible text puts the cursor at its end, and typing types',
+            'editor.mjs: a click on visible text' +
+                ' puts the cursor at its end, and' +
+                ' typing types',
             async () => {
                 const clicked = await cli(
                     ...pid,
@@ -987,7 +1021,9 @@ async function throughTheBridge() {
         );
 
         await step(
-            'editor.mjs: save-repro, then replay passes; a repro that expects another text differs',
+            'editor.mjs: save-repro, then replay' +
+                ' passes; a repro that expects another' +
+                ' text differs',
             async () => {
                 const saved = await cli(...pid, 'save-repro', repro);
                 assert.equal(saved.code, 0, saved.stderr);
@@ -1029,7 +1065,9 @@ async function throughTheBridge() {
         );
 
         await step(
-            'editor.mjs: save-repro --blur keeps every offset, so the blurred repro plays the same way',
+            'editor.mjs: save-repro --blur keeps' +
+                ' every offset, so the blurred repro' +
+                ' plays the same way',
             async () => {
                 const plain = JSON.parse(readFileSync(repro, 'utf8')),
                     file = JSON.parse(readFileSync(blurred, 'utf8'));
@@ -1039,7 +1077,8 @@ async function throughTheBridge() {
                 assert.deepEqual(
                     file.steps,
                     plain.steps,
-                    'keys, punctuation typed, clicks, and selections are the same'
+                    'keys, punctuation typed, clicks, and' +
+                        ' selections are the same'
                 );
                 const played = await cli(...pid, 'replay', blurred);
                 assert.equal(
@@ -1078,7 +1117,9 @@ async function throughTheBridge() {
             }
         );
         await step(
-            'editor.mjs: snapshot with an emoji, in UTF-16 and with --cp in code points; around, visibleAfter, and the parse',
+            'editor.mjs: snapshot with an emoji, in' +
+                ' UTF-16 and with --cp in code points;' +
+                ' around, visibleAfter, and the parse',
             async () => {
                 assert.equal((await cli(...pid, 'open', 'emoji.md')).code, 0);
                 const selected = await cli(...pid, '--cp', 'select', '24');
@@ -1088,7 +1129,8 @@ async function throughTheBridge() {
                 assert.deepEqual(
                     u16.cursor,
                     { pos: 26, line: 3, col: 18, inPrefix: false, cp: 24 },
-                    'before "text", after "🎉 ": the emoji is two units and one character'
+                    'before "text", after "🎉 ": the emoji' +
+                        ' is two units and one character'
                 );
                 assert.deepEqual(u16.around, {
                     before: 'some **bold** 🎉 ',
@@ -1141,7 +1183,9 @@ async function throughTheBridge() {
         );
 
         await step(
-            'editor.mjs: click --line clicks where the eye sees a line start and end, past its hidden syntax',
+            'editor.mjs: click --line clicks where' +
+                ' the eye sees a line start and end,' +
+                ' past its hidden syntax',
             async () => {
                 const end = await cli(
                     ...pid,
@@ -1175,7 +1219,8 @@ async function throughTheBridge() {
         );
 
         await step(
-            'editor.mjs: fuzz with a fixed seed on the long sample passes every check',
+            'editor.mjs: fuzz with a fixed seed on' +
+                ' the long sample passes every check',
             async () => {
                 const sample = fileURLToPath(
                     new URL('../samples/all-formats.md', import.meta.url)
@@ -1206,7 +1251,8 @@ async function throughTheBridge() {
         );
 
         await step(
-            'editor.mjs: test-from keeps a repro as a test that must pass every check',
+            'editor.mjs: test-from keeps a repro as' +
+                ' a test that must pass every check',
             async () => {
                 const { code, answer, stderr } = await cli(
                     'test-from',
@@ -1278,7 +1324,9 @@ async function throughTheBridge() {
     );
 
     await step(
-        'editor.mjs --headless starts a window of its own on a copy of the folder, plays a repro, and closes',
+        'editor.mjs --headless starts a window' +
+            ' of its own on a copy of the folder,' +
+            ' plays a repro, and closes',
         async () => {
             const before = readFileSync(join(notes, 'bridge.md'), 'utf8');
             // The repro of the step above, without the text it was told to

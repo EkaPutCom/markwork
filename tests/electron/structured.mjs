@@ -17,15 +17,27 @@ const read = (name) => readFileSync(join(notes, name), 'utf8');
 
 writeFileSync(
     join(notes, 'board.md'),
-    '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two\n\n## Done\n\n- [x] Old\n'
+    '---\nlayout: board\n---\n\n##' +
+        ' Plan\n\n- [ ] One\n- [ ] Two\n\n##' +
+        ' Done\n\n- [x] Old\n'
 );
 writeFileSync(
     join(notes, 'list.md'),
-    '---\nlayout: list\nadd: top\nfields:\n  created: date = now\n  kind: select(idea:purple, task:amber)\n---\n\n# Inbox\n\nThings to sort.\n\n- First idea #idea [kind:: idea]\n- Second\n'
+    '---\nlayout: list\nadd: top\nfields:\n' +
+        '  created: date = now\n  kind:' +
+        ' select(idea:purple,' +
+        ' task:amber)\n---\n\n# Inbox\n\nThings' +
+        ' to sort.\n\n- First idea #idea' +
+        ' [kind:: idea]\n- Second\n'
 );
 writeFileSync(
     join(notes, 'table.md'),
-    '---\nlayout: table\nfields:\n  status: select(todo:gray, doing:blue, done:green) = todo\n  qty: number\n---\n\n# Table\n\n- Bravo [status:: todo] [qty:: 5]\n- Alpha [status:: done] [qty:: 9]\n'
+    '---\nlayout: table\nfields:\n  status:' +
+        ' select(todo:gray, doing:blue,' +
+        ' done:green) = todo\n  qty:' +
+        ' number\n---\n\n# Table\n\n- Bravo' +
+        ' [status:: todo] [qty:: 5]\n- Alpha' +
+        ' [status:: done] [qty:: 9]\n'
 );
 writeFileSync(
     join(notes, 'cal.md'),
@@ -33,15 +45,25 @@ writeFileSync(
 );
 writeFileSync(
     join(notes, 'line.md'),
-    '---\nlayout: timeline\nzoom: month\nfields:\n  start: date\n  due: date\n---\n\n# Line\n\n- Build [start:: 2026-10-05] [due:: 2026-10-09]\n'
+    '---\nlayout: timeline\nzoom:' +
+        ' month\nfields:\n  start: date\n  due:' +
+        ' date\n---\n\n# Line\n\n- Build' +
+        ' [start:: 2026-10-05] [due::' +
+        ' 2026-10-09]\n'
 );
 writeFileSync(
     join(notes, 'gallery.md'),
-    '---\nlayout: gallery\nfields:\n  cover: link\n---\n\n# Gallery\n\n- Sunset #sky\n- Forest #tree\n'
+    '---\nlayout: gallery\nfields:\n ' +
+        ' cover: link\n---\n\n# Gallery\n\n-' +
+        ' Sunset #sky\n- Forest #tree\n'
 );
 writeFileSync(
     join(notes, 'chart.md'),
-    '---\nlayout: chart\nfields:\n  status: select(todo:gray, done:green)\n---\n\n# Chart\n\n- A [status:: todo]\n- B [status:: done]\n- C [status:: done]\n'
+    '---\nlayout: chart\nfields:\n  status:' +
+        ' select(todo:gray,' +
+        ' done:green)\n---\n\n# Chart\n\n- A' +
+        ' [status:: todo]\n- B [status::' +
+        ' done]\n- C [status:: done]\n'
 );
 writeFileSync(join(notes, 'sheet.csv'), 'name,qty\nada,3\nlin,5\n');
 
@@ -118,7 +140,9 @@ try {
     );
 
     await step(
-        'board: a card is edited in the dialog, keeping the fields the dialog does not show',
+        'board: a card is edited in the dialog,' +
+            ' keeping the fields the dialog does' +
+            ' not show',
         async () => {
             await page.locator('.board .card', { hasText: 'Three' }).click();
             await dialog.getByLabel('Title').fill('Three edited');
@@ -204,7 +228,9 @@ try {
     });
 
     await step(
-        "Fields…: a field with colored options is added, and a card's chip changes it from a popover",
+        "Fields…: a field with colored options" +
+            " is added, and a card's chip changes" +
+            " it from a popover",
         async () => {
             await page
                 .getByRole('menubar')
@@ -264,7 +290,9 @@ try {
     // ---------- List ----------
 
     await step(
-        'list: a note is captured from the line, with the capture time of its field',
+        'list: a note is captured from the' +
+            ' line, with the capture time of its' +
+            ' field',
         async () => {
             await open('list.md');
             await page.locator('[data-page=inbox]').waitFor();
@@ -294,7 +322,9 @@ try {
     );
 
     await step(
-        'list: a note is edited in its dialog and moved into a new section from its menu',
+        'list: a note is edited in its dialog' +
+            ' and moved into a new section from its' +
+            ' menu',
         async () => {
             await page.locator('.inbox-row', { hasText: 'Second' }).click();
             await dialog.getByLabel('Title').fill('Second, edited');
@@ -395,7 +425,9 @@ try {
     // ---------- Calendar, timeline, gallery, chart ----------
 
     await step(
-        'calendar: a note is dragged to a day and takes that date; the empty part of a day adds a note',
+        'calendar: a note is dragged to a day' +
+            ' and takes that date; the empty part' +
+            ' of a day adds a note',
         async () => {
             await open('cal.md');
             await page.locator('[data-page=calendar]').waitFor();
@@ -430,7 +462,8 @@ try {
     );
 
     await step(
-        'timeline: a bar is dragged to move both dates, and an edge to change one',
+        'timeline: a bar is dragged to move' +
+            ' both dates, and an edge to change one',
         async () => {
             await open('line.md');
             await page.locator('[data-page=timeline]').waitFor();
@@ -498,7 +531,9 @@ try {
     });
 
     await step(
-        'gallery: a search hides the cards that do not match, and a size changes their width',
+        'gallery: a search hides the cards that' +
+            ' do not match, and a size changes' +
+            ' their width',
         async () => {
             await open('gallery.md');
             await page.locator('[data-page=gallery]').waitFor();
@@ -529,7 +564,9 @@ try {
     );
 
     await step(
-        'chart: numbers and a donut over the notes, and the panels are edited from the settings',
+        'chart: numbers and a donut over the' +
+            ' notes, and the panels are edited from' +
+            ' the settings',
         async () => {
             await open('chart.md');
             await page.locator('[data-page=chart]').waitFor();
@@ -557,7 +594,9 @@ try {
     // ---------- Layout menu ----------
 
     await step(
-        'the layout menu shows the same notes as another layout, and Text shows the Markdown',
+        'the layout menu shows the same notes' +
+            ' as another layout, and Text shows the' +
+            ' Markdown',
         async () => {
             await open('table.md');
             await page.locator('[data-page=table]').waitFor();
@@ -607,7 +646,9 @@ try {
     // ---------- CSV ----------
 
     await step(
-        'csv: a CSV file is a grid; a cell is written when it loses the focus, and Enter on the last row adds one',
+        'csv: a CSV file is a grid; a cell is' +
+            ' written when it loses the focus, and' +
+            ' Enter on the last row adds one',
         async () => {
             await open('sheet.csv');
             await page.locator('[data-page=csv]').waitFor();
@@ -643,7 +684,9 @@ try {
     );
 
     await step(
-        'csv: rows and columns are added and removed from the menus, and Escape puts the old value back',
+        'csv: rows and columns are added and' +
+            ' removed from the menus, and Escape' +
+            ' puts the old value back',
         async () => {
             await page.getByRole('button', { name: 'Add Column' }).click();
             await page.locator('[data-cell="0:2"]').waitFor();
@@ -657,7 +700,8 @@ try {
             assert.equal(
                 await page.locator('[data-cell="1:0"]').inputValue(),
                 '3',
-                'the first column is now qty (name was deleted), and Escape restored it'
+                'the first column is now qty (name was' +
+                    ' deleted), and Escape restored it'
             );
             const expected = /^qty,Column 3\n3,\n55,\n9,\n/;
             const text = await saved('sheet.csv', expected);

@@ -115,7 +115,9 @@ try {
     );
 
     await step(
-        'the sidebar opens the page: git installed with its path, pi with how to install it, markworkd optional',
+        'the sidebar opens the page: git' +
+            ' installed with its path, pi with how' +
+            ' to install it, markworkd optional',
         async () => {
             await page
                 .getByRole('button', { name: /^Programs/ })

@@ -113,7 +113,9 @@ export function Palette() {
                 ))}
             </CommandList>
             <div
-                className="flex h-9 items-center gap-4 border-t bg-muted/50 px-3 text-xs text-muted-foreground"
+                className={"flex h-9 items-center gap-4" +
+                    " border-t bg-muted/50 px-3 text-xs" +
+                    " text-muted-foreground"}
                 aria-hidden="true"
             >
                 <span>↑↓ to move</span>

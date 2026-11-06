@@ -203,7 +203,9 @@ export async function daemonLiveTests(): Promise<void> {
             eq(conn.state, 'ready');
         });
 
-        await test('a harness run: the program is found by name, output comes back in order, exit status and stderr are reported', async () => {
+        await test('a harness run: the program is found by' +
+            ' name, output comes back in order,' +
+            ' exit status and stderr are reported', async () => {
             const conn = connect();
             const c = collect();
             const proc = daemonSpawner(conn)(
@@ -220,7 +222,8 @@ export async function daemonLiveTests(): Promise<void> {
             eq(c.exit, { status: 3, stderr: 'something went wrong\n' });
         });
 
-        await test('closing stdin ends the agent in an orderly way (status 0)', async () => {
+        await test('closing stdin ends the agent in an' +
+            ' orderly way (status 0)', async () => {
             const conn = connect();
             const c = collect();
             const proc = daemonSpawner(conn)([agent], proj, c.handlers);
@@ -245,7 +248,9 @@ export async function daemonLiveTests(): Promise<void> {
             eq(c.exit?.status, 143);
         });
 
-        await test('a very long line goes through a non-blocking socket in pieces and arrives whole', async () => {
+        await test('a very long line goes through a' +
+            ' non-blocking socket in pieces and' +
+            ' arrives whole', async () => {
             const conn = connect();
             const c = collect();
             const proc = daemonSpawner(conn)([agent], proj, c.handlers);
@@ -271,7 +276,8 @@ export async function daemonLiveTests(): Promise<void> {
             eq(c.lines[300], 'echo:line 299');
         });
 
-        await test("a request the daemon refuses ends the run with the daemon's reason", async () => {
+        await test("a request the daemon refuses ends the" +
+            " run with the daemon's reason", async () => {
             const conn = connect();
             const c = collect();
             daemonSpawner(conn)([agent], '/etc', c.handlers);
@@ -288,7 +294,9 @@ export async function daemonLiveTests(): Promise<void> {
             );
         });
 
-        await test('the link drops while the agent runs: the run goes on and the output is whole, once', async () => {
+        await test('the link drops while the agent runs:' +
+            ' the run goes on and the output is' +
+            ' whole, once', async () => {
             const conn = connect();
             const c = collect();
             const proc = daemonSpawner(conn)([agent], proj, c.handlers);
@@ -309,7 +317,9 @@ export async function daemonLiveTests(): Promise<void> {
             eq(c.exit?.status, 0);
         });
 
-        await test('Markwork closes while the agent runs: a new connection finds the run and carries on', async () => {
+        await test('Markwork closes while the agent runs:' +
+            ' a new connection finds the run and' +
+            ' carries on', async () => {
             const first = connect();
             const c1 = collect();
             const proc = daemonSpawner(first)([agent], proj, c1.handlers, {
@@ -348,7 +358,8 @@ export async function daemonLiveTests(): Promise<void> {
             eq(
                 c2.lines,
                 ['ready', 'echo:one', 'echo:two', 'eof'],
-                'everything from the start, including what happened while closed'
+                'everything from the start, including' +
+                    ' what happened while closed'
             );
             eq(c2.exit?.status, 0);
         });
@@ -384,7 +395,9 @@ export async function daemonLiveTests(): Promise<void> {
             eq(id, 'watched-1');
         });
 
-        await test('through `markworkd bridge`, as over SSH: the same protocol over the stdio of a command', async () => {
+        await test('through `markworkd bridge`, as over' +
+            ' SSH: the same protocol over the stdio' +
+            ' of a command', async () => {
             const conn = connect(
                 () => openCommandLink([bin, 'bridge', ...common]),
                 { expectBridge: true }
@@ -398,7 +411,8 @@ export async function daemonLiveTests(): Promise<void> {
             eq(c.exit?.status, 0);
         });
 
-        await test('lane slots: two runs of a lane work at once, a third waits for a slot', async () => {
+        await test('lane slots: two runs of a lane work at' +
+            ' once, a third waits for a slot', async () => {
             const conn = connect();
             const runs = [collect(), collect(), collect()];
             const procs = runs.map((c) =>
@@ -434,7 +448,9 @@ export async function daemonLiveTests(): Promise<void> {
             );
         });
 
-        await test('git through the daemon: a card worktree is made, listed, and removed on its machine', async () => {
+        await test('git through the daemon: a card' +
+            ' worktree is made, listed, and removed' +
+            ' on its machine', async () => {
             const conn = connect();
             const repo = `${proj}/shop`;
             disk.mkdirs(repo);
@@ -494,7 +510,9 @@ export async function daemonLiveTests(): Promise<void> {
             );
         });
 
-        await test('a command that cannot be run is a failed attempt with its reason, not a crash', async () => {
+        await test('a command that cannot be run is a' +
+            ' failed attempt with its reason, not a' +
+            ' crash', async () => {
             const conn = connect(
                 () =>
                     openCommandLink([
@@ -593,7 +611,8 @@ export async function daemonSshTests(): Promise<void> {
             eq(conn.state, 'ready');
         });
 
-        await test("a run over ssh: the agent's events come back, and stop ends it (143)", async () => {
+        await test("a run over ssh: the agent's events" +
+            " come back, and stop ends it (143)", async () => {
             const conn = mk();
             const c = collect();
             const proc = start(conn, c);
@@ -608,7 +627,9 @@ export async function daemonSshTests(): Promise<void> {
             eq(c.exit?.status, 143);
         });
 
-        await test('Markwork closes while the agent works on the machine: a new ssh finds the run and replays it', async () => {
+        await test('Markwork closes while the agent works' +
+            ' on the machine: a new ssh finds the' +
+            ' run and replays it', async () => {
             const label = `ssh-adopt-${Date.now()}`;
             const first = mk();
             const c1 = collect();
@@ -640,7 +661,9 @@ export async function daemonSshTests(): Promise<void> {
             eq(c2.exit?.status, 143);
         });
 
-        await test('the ssh link dies mid-run: it reconnects and the output is whole, once', async () => {
+        await test('the ssh link dies mid-run: it' +
+            ' reconnects and the output is whole,' +
+            ' once', async () => {
             const conn = mk();
             const c = collect();
             const proc = start(conn, c);
@@ -664,7 +687,8 @@ export async function daemonSshTests(): Promise<void> {
             eq(c.exit?.status, 143);
         });
 
-        await test("a host that does not exist is a failed attempt with ssh's own reason", async () => {
+        await test("a host that does not exist is a failed" +
+            " attempt with ssh's own reason", async () => {
             const conn = mk('markwork-no-such-host.invalid');
             conn.start();
             await waitUntil(

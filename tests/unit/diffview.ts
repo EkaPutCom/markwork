@@ -31,7 +31,9 @@ export function diffViewTests(): void {
             ],
         ]);
     });
-    test('side by side pairs a removed line with the line that replaced it and fills the side that has none', () => {
+    test('side by side pairs a removed line with' +
+        ' the line that replaced it and fills' +
+        ' the side that has none', () => {
         const rows = sideBySide(parseDiff(DIFF));
         // the section git names after it reads like a line of the file
         eq(rows[0], { kind: 'hunk', text: '@@ -3,4 +3,4 @@' });
@@ -61,7 +63,8 @@ export function diffViewTests(): void {
             ['Markwork']
         );
     });
-    test('inline keeps both line numbers, removed lines before added ones', () => {
+    test('inline keeps both line numbers,' +
+        ' removed lines before added ones', () => {
         const rows = inline(parseDiff(DIFF))
             .slice(1)
             .map((r) => (r.kind === 'hunk' ? r.text : [r.kind, r.old, r.new]));

@@ -69,7 +69,16 @@ export function EditingMode({ tab, pane }: { tab: Tab; pane: Pane }) {
                 <ToggleGroupItem
                     value={toMarkdown ? 'code' : 'visual'}
                     onClick={() => choose(toMarkdown)}
-                    className="rounded-md border border-transparent px-2 text-ui text-muted-foreground hover:bg-transparent hover:text-foreground aria-checked:bg-background aria-checked:text-foreground aria-checked:shadow-sm dark:aria-checked:border-input dark:aria-checked:bg-input/30"
+                    className={"rounded-md border" +
+                        " border-transparent px-2 text-ui" +
+                        " text-muted-foreground" +
+                        " hover:bg-transparent" +
+                        " hover:text-foreground" +
+                        " aria-checked:bg-background" +
+                        " aria-checked:text-foreground" +
+                        " aria-checked:shadow-sm" +
+                        " dark:aria-checked:border-input" +
+                        " dark:aria-checked:bg-input/30"}
                 >
                     <Icon name={toMarkdown ? 'mode-markdown' : 'mode-visual'} />
                     <span className="label-text">{label}</span>

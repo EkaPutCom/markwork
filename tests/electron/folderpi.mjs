@@ -168,7 +168,16 @@ export function createRuntime(PiRpc, _platform) {
                         const output = join(cwd, 'output', 'research');
                         mkdirSync(output, { recursive: true });
                         const report =
-                            '## Research findings\n\n| CVE | Risk | Score | Source |\n| :--- | :---: | ---: | --- |\n| **CVE-2026-0001** | High | `9.8` | https://example.com/advisory |\n| CVE-2026-0002 | Investigating | — | Awaiting verification |\n\n3. Verify the source.\n4. Review the affected versions.\n\n- [x] Save the report\n- [ ] Verify deployment\n';
+                            '## Research findings\n\n| CVE | Risk |' +
+                                ' Score | Source |\n| :--- | :---: |' +
+                                ' ---: | --- |\n| **CVE-2026-0001** |' +
+                                ' High | `9.8` |' +
+                                ' https://example.com/advisory |\n|' +
+                                ' CVE-2026-0002 | Investigating | — |' +
+                                ' Awaiting verification |\n\n3. Verify' +
+                                ' the source.\n4. Review the affected' +
+                                ' versions.\n\n- [x] Save the report\n-' +
+                                ' [ ] Verify deployment\n';
                         writeFileSync(join(output, 'cve-report.md'), report);
                         send({
                             type: 'tool_execution_end',
@@ -196,7 +205,9 @@ export function createRuntime(PiRpc, _platform) {
                         });
                         writeFileSync(
                             join(cwd, 'report.md'),
-                            '# Research report\n\nhttps://example.com\n\nRevision ' +
+                            '# Research' +
+                                ' report\n\nhttps://example.com\n\nRevi' +
+                                'sion ' +
                                 messages.filter(
                                     (message) =>
                                         message.role === 'user' &&

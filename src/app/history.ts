@@ -209,7 +209,8 @@ export class HistoryController<E extends TextEditor = TextEditor> {
                 file
                     ? _('Loading…')
                     : _(
-                          'Save the document to a file, and its git history will show up here'
+                          'Save the document to a file, and its' +
+                              ' git history will show up here'
                       ),
                 false
             );
@@ -400,7 +401,8 @@ export class HistoryController<E extends TextEditor = TextEditor> {
                         this.diffText(
                             result,
                             _(
-                                'There are no content changes in this commit (for example only a rename)'
+                                'There are no content changes in this' +
+                                    ' commit (for example only a rename)'
                             )
                         )
                     );
@@ -415,7 +417,8 @@ export class HistoryController<E extends TextEditor = TextEditor> {
                             ? result.text
                             : fmt(
                                   _(
-                                      'Failed to read the file contents:\n{message}'
+                                      'Failed to read the file' +
+                                          ' contents:\n{message}'
                                   ),
                                   { message: result.message }
                               )
@@ -523,7 +526,8 @@ export class HistoryController<E extends TextEditor = TextEditor> {
         if (!this.host.saveAll())
             return {
                 error: _(
-                    'The document failed to save; the changes were not discarded'
+                    'The document failed to save; the' +
+                        ' changes were not discarded'
                 ),
             };
         const result = await discardChanges([path]);

@@ -66,7 +66,9 @@ try {
     );
     if (!available)
         console.log(
-            'safeStorage has no encryption here; the vault deliberately stores nothing (covered by core tests)'
+            'safeStorage has no encryption here;' +
+                ' the vault deliberately stores nothing' +
+                ' (covered by core tests)'
         );
     else {
         const action = (op) =>
@@ -114,7 +116,9 @@ try {
             }
         );
         await step(
-            'the credential survives restarting Electron without involving Assistant chat',
+            'the credential survives restarting' +
+                ' Electron without involving Assistant' +
+                ' chat',
             async () => {
                 await app.close();
                 app = await launch();

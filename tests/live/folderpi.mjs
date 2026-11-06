@@ -9,7 +9,9 @@ import { launchApp, scratchFolder, waitFor } from '../electron/support.mjs';
 
 if (!process.argv.includes('--activate'))
     throw Error(
-        'Live, unsandboxed smoke test requires --activate (real credentials and quota).'
+        'Live, unsandboxed smoke test requires' +
+            ' --activate (real credentials and' +
+            ' quota).'
     );
 const { scratch, notes } = scratchFolder('folderpi-live');
 const id = randomUUID();
@@ -26,7 +28,9 @@ writeFileSync(
 );
 writeFileSync(
     join(notes, 'instructions.md'),
-    '# Research agent\nUse tools, cite sources and persist concise facts in workspace/memory.md.'
+    '# Research agent\nUse tools, cite' +
+        ' sources and persist concise facts in' +
+        ' workspace/memory.md.'
 );
 const app = await launchApp({
     scratch,
@@ -62,7 +66,18 @@ try {
     const input = chat.getByRole('textbox', { name: 'Message' });
     await input.waitFor({ timeout: 20000 });
     await input.fill(
-        'In this disposable workspace, use bash to print pwd and fetch https://example.com and https://www.iana.org/help/example-domains with curl --max-time 20. Use Python to analyze their titles and byte counts. Write a concise sourced Markdown report to report.md and a reusable fact to memory.md in the current working directory. Do not just describe these actions: execute them. End with RESEARCH_COMPLETE.'
+        'In this disposable workspace, use bash' +
+            ' to print pwd and fetch' +
+            ' https://example.com and' +
+            ' https://www.iana.org/help/example-dom' +
+            'ains with curl --max-time 20. Use' +
+            ' Python to analyze their titles and' +
+            ' byte counts. Write a concise sourced' +
+            ' Markdown report to report.md and a' +
+            ' reusable fact to memory.md in the' +
+            ' current working directory. Do not' +
+            ' just describe these actions: execute' +
+            ' them. End with RESEARCH_COMPLETE.'
     );
     const turnStarted = performance.now();
     await input.press('Enter');
@@ -97,7 +112,9 @@ try {
     // synthetic transcript replay.
     writeFileSync(
         join(notes, 'instructions.md'),
-        '# Research agent\nUse tools and cite sources. Append REVISION_TWO to the end of your next answer.'
+        '# Research agent\nUse tools and cite' +
+            ' sources. Append REVISION_TWO to the' +
+            ' end of your next answer.'
     );
     await input.fill(
         'Read memory.md, then state one saved fact and its source.'
@@ -114,7 +131,9 @@ try {
     assert.equal(resumed.native, native);
     assert.ok(resumed.instructionRevision);
     await input.fill(
-        'Run bash command sleep 60 now, then write never.md. Do not skip the sleep.'
+        'Run bash command sleep 60 now, then' +
+            ' write never.md. Do not skip the' +
+            ' sleep.'
     );
     await input.press('Enter');
     await waitFor(

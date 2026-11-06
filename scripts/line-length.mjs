@@ -103,7 +103,8 @@ async function main() {
                 'Counts Unicode code points, excluding line endings.\n' +
                 '--tracked checks scoped Git files (default maximum: 80).\n' +
                 '--summary writes violation counts to stderr.\n' +
-                'Exit status: 0 success, 1 violations, 2 argument or file error.'
+                'Exit status: 0 success, 1 violations,' +
+                    ' 2 argument or file error.'
         );
         return;
     }

@@ -61,7 +61,12 @@ writeFileSync(
 writeFileSync(join(notes, 'Plan.md'), '# Plan\n');
 writeFileSync(
     join(notes, 'page.html'),
-    '<!doctype html><h1 id="h">hello html</h1><script>document.getElementById("h").textContent += " (js)"</script><img src="images/small.png"><a href="https://example.com">out</a>'
+    '<!doctype html><h1 id="h">hello' +
+        ' html</h1><script>document.getElementB' +
+        'yId("h").textContent += "' +
+        ' (js)"</script><img' +
+        ' src="images/small.png"><a' +
+        ' href="https://example.com">out</a>'
 );
 writeFileSync(join(notes, 'Journal', 'Daily Notes.md'), '# Daily\n');
 writeFileSync(join(notes, 'projects', 'Meeting Notes.md'), '# Meeting\n');
@@ -135,7 +140,8 @@ try {
 
     // ---------- format.ts ----------
     await step(
-        'format: Ctrl+B wraps and unwraps, undo restores, headings, quote, link',
+        'format: Ctrl+B wraps and unwraps, undo' +
+            ' restores, headings, quote, link',
         async () => {
             await setDoc('some word', 5, 9);
             await page.keyboard.press('ControlOrMeta+b');
@@ -219,7 +225,8 @@ try {
     );
 
     await step(
-        'wikilink: Ctrl+click opens the note in a new tab and jumps to the section',
+        'wikilink: Ctrl+click opens the note in' +
+            ' a new tab and jumps to the section',
         async () => {
             await setDoc('see [[Idea#Section Two]]\n\nx');
             await editor
@@ -246,7 +253,9 @@ try {
     );
 
     await step(
-        'wikilink: a note that does not exist opens empty and is not written to disk',
+        'wikilink: a note that does not exist' +
+            ' opens empty and is not written to' +
+            ' disk',
         async () => {
             await setDoc('continue to [[New Note]]\n\nx');
             await editor
@@ -260,7 +269,9 @@ try {
     );
 
     await step(
-        'wikilink: Ctrl+click on a relative link to an .md file opens it in Markwork',
+        'wikilink: Ctrl+click on a relative' +
+            ' link to an .md file opens it in' +
+            ' Markwork',
         async () => {
             await setDoc('see [plan](Plan.md)\n\nx');
             await editor
@@ -272,7 +283,9 @@ try {
     );
 
     await step(
-        'wikilink: [[ suggests, arrow and Enter insert the name and close the brackets',
+        'wikilink: [[ suggests, arrow and Enter' +
+            ' insert the name and close the' +
+            ' brackets',
         async () => {
             await setDoc('');
             await page.keyboard.type('read [[note');
@@ -299,7 +312,9 @@ try {
     );
 
     await step(
-        'wikilink: Esc closes, no match closes, an existing ]] is kept, an old [[ stays quiet',
+        'wikilink: Esc closes, no match closes,' +
+            ' an existing ]] is kept, an old [[' +
+            ' stays quiet',
         async () => {
             await setDoc('');
             await page.keyboard.type('[[pl');
@@ -345,7 +360,9 @@ try {
 
     // ---------- outline.ts (the side panel) ----------
     await step(
-        'outline: the Files view lists the headings in its Outline section, and a click jumps to one',
+        'outline: the Files view lists the' +
+            ' headings in its Outline section, and' +
+            ' a click jumps to one',
         async () => {
             await open(/Idea\.md/);
             const rows = page
@@ -381,7 +398,9 @@ try {
             });
     };
     await step(
-        'files: folders open when first shown, New File / Rename / Move work through the menu, keys and drag',
+        'files: folders open when first shown,' +
+            ' New File / Rename / Move work through' +
+            ' the menu, keys and drag',
         async () => {
             await page
                 .getByRole('button', { name: 'Files', exact: true })
@@ -444,7 +463,8 @@ try {
             await dialog.getByRole('button', { name: 'OK' }).click();
             await page
                 .locator(
-                    '[data-sonner-toast][data-index="0"]:not([data-removed=true]) [data-title]'
+                    '[data-sonner-toast][data-index="0"]:no' +
+                        't([data-removed=true]) [data-title]'
                 )
                 .filter({ hasText: /already exists/ })
                 .waitFor();
@@ -454,7 +474,9 @@ try {
 
     // ---------- home.ts, htmlpage.ts (pages that are tabs) ----------
     await step(
-        'home: Alt+Home opens the Home tab with the recent files; a click on one opens it',
+        'home: Alt+Home opens the Home tab with' +
+            ' the recent files; a click on one' +
+            ' opens it',
         async () => {
             await page.keyboard.press('Alt+Home');
             await page
@@ -472,7 +494,9 @@ try {
     );
 
     await step(
-        'htmlpage: an HTML file opens in its own tab, runs its script, reads only its folder, and closes',
+        'htmlpage: an HTML file opens in its' +
+            ' own tab, runs its script, reads only' +
+            ' its folder, and closes',
         async () => {
             await open(/page\.html/);
             const frame = page.frameLocator('iframe');
@@ -501,7 +525,9 @@ try {
 
     // ---------- window.ts, dialogs.ts (menus and dialogs) ----------
     await step(
-        'menus: Recent in the New menu, Preferences, Keyboard Shortcuts, and About from the main menu',
+        'menus: Recent in the New menu,' +
+            ' Preferences, Keyboard Shortcuts, and' +
+            ' About from the main menu',
         async () => {
             await open(/Idea\.md/);
             await open(/Source\.md/);
@@ -571,7 +597,9 @@ try {
 
     // ---------- findbar.ts ----------
     await step(
-        'find bar: Ctrl+F counts the results, Enter goes to the next, Ctrl+H replaces all, Escape closes',
+        'find bar: Ctrl+F counts the results,' +
+            ' Enter goes to the next, Ctrl+H' +
+            ' replaces all, Escape closes',
         async () => {
             await open(/Source\.md/);
             await setDoc('one two one\nOne\n', 0);
@@ -610,7 +638,9 @@ try {
 
     // ---------- search.ts (the side panel) ----------
     await step(
-        'search: Ctrl+Shift+F finds in all notes, a hit opens with the match selected, Replace All asks first',
+        'search: Ctrl+Shift+F finds in all' +
+            ' notes, a hit opens with the match' +
+            ' selected, Replace All asks first',
         async () => {
             await open(/Source\.md/);
             await editor.click();
@@ -664,7 +694,9 @@ try {
 
     // ---------- image.ts ----------
     await step(
-        'image: shown under its line, ignored in tables and code, hidden in source mode, click moves the cursor',
+        'image: shown under its line, ignored' +
+            ' in tables and code, hidden in source' +
+            ' mode, click moves the cursor',
         async () => {
             await setDoc('![small](images/small.png)\ntext');
             const pictures = editor.locator('.cm-md-pictures img');
@@ -693,7 +725,9 @@ try {
             await setDoc('text only');
             await pictures.waitFor({ state: 'detached' });
             await setDoc(
-                '| ![a](images/small.png) |\n| --- |\n\n```\n![b](images/small.png)\n```\n\nend',
+                '| ![a](images/small.png) |\n| ---' +
+                    ' |\n\n```\n![b](images/small.png)\n```' +
+                    '\n\nend',
                 70
             );
             // drawn in the same pass that would add a picture
@@ -718,10 +752,13 @@ try {
             ).match(/(\d+)%/)[1]
         );
     await step(
-        'imagezoom: a double click enlarges; small opens at 100%, large is fitted; Esc closes',
+        'imagezoom: a double click enlarges;' +
+            ' small opens at 100%, large is fitted;' +
+            ' Esc closes',
         async () => {
             await setDoc(
-                '![A small one](images/small.png)![A large one](images/large.png)',
+                '![A small one](images/small.png)![A' +
+                    ' large one](images/large.png)',
                 0
             );
             await page.waitForFunction(
@@ -773,7 +810,9 @@ try {
     );
 
     await step(
-        'imagezoom: + − 0 F keys, limits 5%–800%, other keys leave the viewer open',
+        'imagezoom: + − 0 F keys, limits' +
+            ' 5%–800%, other keys leave the viewer' +
+            ' open',
         async () => {
             await page.keyboard.press('0');
             assert.equal(await percent(), 100);
@@ -795,7 +834,9 @@ try {
     );
 
     await step(
-        'imagezoom: a double click alternates fit and 100%, the wheel zooms, dragging moves the picture',
+        'imagezoom: a double click alternates' +
+            ' fit and 100%, the wheel zooms,' +
+            ' dragging moves the picture',
         async () => {
             const img = page.locator('.image-viewer img');
             await img.dblclick();
@@ -961,7 +1002,9 @@ try {
     );
 
     await step(
-        'imagezoom: the Zoom Image command uses the cursor line, and says when there is no image',
+        'imagezoom: the Zoom Image command uses' +
+            ' the cursor line, and says when there' +
+            ' is no image',
         async () => {
             await setDoc('![A small one](images/small.png)\ntext', 0);
             await page.waitForFunction(
@@ -986,7 +1029,10 @@ try {
     );
 
     await step(
-        'imagezoom: a diagram opens the viewer on a double click, a single click picks it, and Edit source opens its source',
+        'imagezoom: a diagram opens the viewer' +
+            ' on a double click, a single click' +
+            ' picks it, and Edit source opens its' +
+            ' source',
         async () => {
             await setDoc('a\n```dbml\nTable t { id int [pk] }\n```\nb', 0);
             await editor.locator('.cm-md-diagram .er-diagram').waitFor();
@@ -1021,7 +1067,9 @@ try {
 
     // ---------- codeblock.ts, codecolor.ts ----------
     await step(
-        'codeblock: a box outside the block, raw text inside, no box for diagrams or unclosed blocks',
+        'codeblock: a box outside the block,' +
+            ' raw text inside, no box for diagrams' +
+            ' or unclosed blocks',
         async () => {
             const box = editor.locator('.cm-md-codebox');
             await setDoc('a\n```js\nconst x = 1\n```\nb', 0);
@@ -1048,7 +1096,10 @@ try {
     );
 
     await step(
-        'codecolor: unknown language is plain, typing recolors, an emoji before does not shift, dark mode differs, focus dims',
+        'codecolor: unknown language is plain,' +
+            ' typing recolors, an emoji before does' +
+            ' not shift, dark mode differs, focus' +
+            ' dims',
         async () => {
             await setDoc('```nonexistentlang\nconst x = 1\n```\n');
             await editor.locator('.cm-md-codebox').waitFor();
@@ -1095,10 +1146,17 @@ try {
 
     // ---------- conflicts.ts ----------
     await step(
-        'Compare Changes previews Incoming, Current, and Result; only Apply Result changes the selected conflict',
+        'Compare Changes previews Incoming,' +
+            ' Current, and Result; only Apply' +
+            ' Result changes the selected conflict',
         async () => {
             const text =
-                '<<<<<<< first\nnot selected\n=======\nother\n>>>>>>> elsewhere\n\n<<<<<<< HEAD\nThe release is on Friday.\n=======\nThe release is on Monday.\n>>>>>>> feature/release-date';
+                '<<<<<<< first\nnot' +
+                    ' selected\n=======\nother\n>>>>>>>' +
+                    ' elsewhere\n\n<<<<<<< HEAD\nThe' +
+                    ' release is on Friday.\n=======\nThe' +
+                    ' release is on Monday.\n>>>>>>>' +
+                    ' feature/release-date';
             await setDoc(text, text.length);
             const errors = [];
             const onError = (error) => errors.push(String(error));
@@ -1219,7 +1277,9 @@ try {
                 assert.equal(
                     await compare
                         .locator(
-                            '.conflict-merge-sources [contenteditable=true], .conflict-merge-sources textarea'
+                            '.conflict-merge-sources' +
+                                ' [contenteditable=true],' +
+                                ' .conflict-merge-sources textarea'
                         )
                         .count(),
                     0,
@@ -1254,7 +1314,8 @@ try {
                 assert.equal(
                     await docText(),
                     text,
-                    'opening and closing does not alter conflict markers or editor text'
+                    'opening and closing does not alter' +
+                        ' conflict markers or editor text'
                 );
             }
             await page.setViewportSize({ width: 1280, height: 800 });
@@ -1290,10 +1351,14 @@ try {
     );
 
     await step(
-        'conflicts: sides colored, Accept Current Change / Both, a conflict at the end, plain headings left alone',
+        'conflicts: sides colored, Accept' +
+            ' Current Change / Both, a conflict at' +
+            ' the end, plain headings left alone',
         async () => {
             const two =
-                '<<<<<<< HEAD\na1\n=======\nb1\n>>>>>>> topic\n\nmid\n\n<<<<<<< HEAD\na2\n=======\nb2\n>>>>>>> topic';
+                '<<<<<<< HEAD\na1\n=======\nb1\n>>>>>>>' +
+                    ' topic\n\nmid\n\n<<<<<<<' +
+                    ' HEAD\na2\n=======\nb2\n>>>>>>> topic';
             await setDoc(two, 0);
             await editor.locator('.cm-md-conflict-bar').first().waitFor();
             assert.equal(
@@ -1356,7 +1421,9 @@ try {
                 'undo restores the original markers without adding the labels'
             );
             const diff3 =
-                '<<<<<<< HEAD\nours\n||||||| base\nancestor\n=======\ntheirs\n>>>>>>> topic';
+                '<<<<<<< HEAD\nours\n|||||||' +
+                    ' base\nancestor\n=======\ntheirs\n>>>>' +
+                    '>>> topic';
             await setDoc(diff3, 0);
             await editor
                 .getByText('(Current Change)', { exact: true })

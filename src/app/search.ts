@@ -233,8 +233,14 @@ export class SearchController<E extends TextEditor = TextEditor> {
         const { total } = this.results;
         const detail = fmt(
             ngettext(
-                '{count} occurrence in {files} file will be replaced. Open files can be undone with Ctrl+Z; other files are written right away.',
-                '{count} occurrences in {files} files will be replaced. Open files can be undone with Ctrl+Z; other files are written right away.',
+                '{count} occurrence in {files} file' +
+                    ' will be replaced. Open files can be' +
+                    ' undone with Ctrl+Z; other files are' +
+                    ' written right away.',
+                '{count} occurrences in {files} files' +
+                    ' will be replaced. Open files can be' +
+                    ' undone with Ctrl+Z; other files are' +
+                    ' written right away.',
                 total
             ),
             { count: total, files: changes.length }

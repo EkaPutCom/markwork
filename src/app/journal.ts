@@ -221,7 +221,11 @@ export class JournalController {
             .then(() =>
                 chat.ask(
                     `Close the day: read the journal ${name} (the active document), then write a short summary under the heading "## Summary": ` +
-                        'what was finished, what got in the way, and what continues tomorrow. Use only the contents of the journal and the files it links; do not change other sections.'
+                        'what was finished, what got in the' +
+                            ' way, and what continues tomorrow. Use' +
+                            ' only the contents of the journal and' +
+                            ' the files it links; do not change' +
+                            ' other sections.'
                 )
             )
             .catch((error) => {

@@ -308,7 +308,9 @@ async function projectReady(
     if (status === null) return fail('cannot read the project folder');
     if (status.trim())
         return fail(
-            'the project folder has changes that are not committed; commit or stash them first'
+            'the project folder has changes that' +
+                ' are not committed; commit or stash' +
+                ' them first'
         );
     if (
         (await out(git, wt.repo, [

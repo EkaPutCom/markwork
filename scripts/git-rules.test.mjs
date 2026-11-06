@@ -13,7 +13,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { checkBranch, checkSubject } from './git-rules.mjs';
 
-test('commit subjects require the repository type, module, and a nonempty description', () => {
+test('commit subjects require the repository' +
+    ' type, module, and a nonempty' +
+    ' description', () => {
     for (const type of [
         'feat',
         'fix',
@@ -58,7 +60,9 @@ test('branch names follow the existing type and kebab-case convention', () => {
         assert.throws(() => checkBranch(name));
 });
 
-test('installed hook rejects invalid commits, CI checks the PR range, and existing hooks are preserved', () => {
+test('installed hook rejects invalid' +
+    ' commits, CI checks the PR range, and' +
+    ' existing hooks are preserved', () => {
     const dir = mkdtempSync(join(tmpdir(), 'markwork-git-rules-'));
     const git = (...args) =>
         execFileSync('git', args, {
@@ -117,7 +121,9 @@ test('installed hook rejects invalid commits, CI checks the PR range, and existi
             run(['--ci'], { ...env, PR_HEAD_SHA: git('rev-parse', 'HEAD') })
                 .status,
             0,
-            'a real merge keeps its generated message and is excluded from CI subject checks'
+            'a real merge keeps its generated' +
+                ' message and is excluded from CI' +
+                ' subject checks'
         );
         git('switch', 'feat/git-rules');
         // Simulate a contributor without the local hook: CI must still reject

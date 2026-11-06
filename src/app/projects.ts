@@ -232,7 +232,10 @@ export class ProjectsPages {
                     branch: wt.branch,
                 }),
                 detail: _(
-                    'Its folder and its branch are deleted, with every change in them that was not merged. The project folder is not touched.'
+                    'Its folder and its branch are deleted,' +
+                        ' with every change in them that was' +
+                        ' not merged. The project folder is not' +
+                        ' touched.'
                 ),
                 accept: _('Remove'),
                 destructive: true,

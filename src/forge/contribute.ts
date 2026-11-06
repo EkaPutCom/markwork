@@ -222,7 +222,9 @@ export async function sendChanges(
     }
     if (!target)
         return fail(
-            'The server does not know this repository, or the token cannot see it'
+            'The server does not know this' +
+                ' repository, or the token cannot see' +
+                ' it'
         );
     const committed = await commitOnBranch(ctx, request);
     if (committed) return fail(committed);

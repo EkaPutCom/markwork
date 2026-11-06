@@ -165,7 +165,9 @@ export async function assistantTests(): Promise<void> {
         reason: 'the meeting moved it',
     });
 
-    await test('the panel gets the proposal as plain data; the core writes only after the panel asks it to', async () => {
+    await test('the panel gets the proposal as plain' +
+        ' data; the core writes only after the' +
+        ' panel asks it to', async () => {
         const { root, chat, asks, decideWith } = setup();
         const replies: string[] = [];
         let before = '';
@@ -193,7 +195,9 @@ export async function assistantTests(): Promise<void> {
         eq(chat.session.events[0].status, 'applied');
     });
 
-    await test('Undo names an ask or an event; the core undoes what it wrote, and nothing the panel makes up', async () => {
+    await test('Undo names an ask or an event; the' +
+        ' core undoes what it wrote, and' +
+        ' nothing the panel makes up', async () => {
         const { root, chat, panel, decideWith } = setup();
         const replies: string[] = [];
         let askId = 0;
@@ -221,7 +225,9 @@ export async function assistantTests(): Promise<void> {
         eq(chat.session.events[0].status, 'reverted');
     });
 
-    await test('an applied action of an opened conversation is undone by its event id', async () => {
+    await test('an applied action of an opened' +
+        ' conversation is undone by its event' +
+        ' id', async () => {
         const { root, chat, panel, decideWith } = setup();
         decideWith(async (ask, view) => {
             await view.onApply(ask.id, null);
@@ -238,7 +244,9 @@ export async function assistantTests(): Promise<void> {
         );
     });
 
-    await test('the agent log reaches the panel as updates of plain events, and clearing it is asked of the core', async () => {
+    await test('the agent log reaches the panel as' +
+        ' updates of plain events, and clearing' +
+        ' it is asked of the core', async () => {
         const { chat, panel, updates } = setup();
         eq(
             [updates.length, updates[0].reset, updates[0].events.length],
@@ -261,7 +269,9 @@ export async function assistantTests(): Promise<void> {
         eq(chat.session.trace.events.length, 0);
     });
 
-    await test('a review that closes without an apply is a rejection, whatever the panel answers', async () => {
+    await test('a review that closes without an apply' +
+        ' is a rejection, whatever the panel' +
+        ' answers', async () => {
         const { root, chat, decideWith } = setup();
         const replies: string[] = [];
         decideWith(async () => ({ note: '' }));
@@ -272,7 +282,8 @@ export async function assistantTests(): Promise<void> {
         eq(chat.session.events[0].status, 'rejected');
     });
 
-    await test('a partial batch applies the chosen files, once; the agent is told which', async () => {
+    await test('a partial batch applies the chosen' +
+        ' files, once; the agent is told which', async () => {
         const { root, chat, decideWith } = setup();
         const replies: string[] = [];
         const answers: (string | null)[] = [];
@@ -307,7 +318,9 @@ export async function assistantTests(): Promise<void> {
         );
     });
 
-    await test('applying re-checks the file: a change the user made after the proposal is not overwritten', async () => {
+    await test('applying re-checks the file: a change' +
+        ' the user made after the proposal is' +
+        ' not overwritten', async () => {
         const { root, chat, decideWith } = setup();
         const replies: string[] = [];
         let answer: string | null = null;
@@ -327,7 +340,9 @@ export async function assistantTests(): Promise<void> {
         eq(chat.session.events[0].status, 'failed');
     });
 
-    await test('stopping the turn withdraws the ask; an apply that comes after it writes nothing', async () => {
+    await test('stopping the turn withdraws the ask;' +
+        ' an apply that comes after it writes' +
+        ' nothing', async () => {
         const { root, chat, log, decideWith } = setup();
         let late: string | null = null;
         decideWith(
@@ -369,7 +384,9 @@ export async function assistantTests(): Promise<void> {
         eq(read(root, 'notes.md'), 'Release 15 November\n');
     });
 
-    await test('the settings live in the store: the panel shows them and reports changes to the store', () => {
+    await test('the settings live in the store: the' +
+        ' panel shows them and reports changes' +
+        ' to the store', () => {
         const { session, settings, chat, panel, shown } = setup();
         eq(shown.at(-1)?.saveChats, false);
         settings.chatModel = 'deepseek-chat'; // a name from an older version
@@ -399,7 +416,9 @@ export async function assistantTests(): Promise<void> {
         );
     });
 
-    await test('an approved change to an open document lands even when the editor applies writes a turn later', async () => {
+    await test('an approved change to an open document' +
+        ' lands even when the editor applies' +
+        ' writes a turn later', async () => {
         const { session, root, chat, decideWith } = setup(
             () => new LaggingEditor()
         );
@@ -479,7 +498,8 @@ export async function assistantTests(): Promise<void> {
         });
     });
 
-    await test('an answer goes into the open note only while its text is shown', async () => {
+    await test('an answer goes into the open note only' +
+        ' while its text is shown', async () => {
         const { session, root, panel } = setup();
         ok(session.host.openInTab(disk.join(root, 'notes.md')), 'openInTab');
         ok(await panel.onInsert('  The answer.  '), 'insert');

@@ -65,7 +65,9 @@ export async function searchControllerTests(): Promise<void> {
         };
     };
 
-    await test('a query from the panel is answered with plain results, a summary, and a mark for an invalid expression', () => {
+    await test('a query from the panel is answered' +
+        ' with plain results, a summary, and a' +
+        ' mark for an invalid expression', () => {
         const { session, view, last, shown } = setup();
         view.onSearch({ ...QUERY, text: 'foo' });
         eq(
@@ -111,7 +113,9 @@ export async function searchControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a hit opens its file with the match selected, counted in code points; a hit that was not shown is ignored', () => {
+    await test('a hit opens its file with the match' +
+        ' selected, counted in code points; a' +
+        ' hit that was not shown is ignored', () => {
         const { dir, session, view } = setup();
         view.onSearch({ ...QUERY, text: 'foo' });
         view.onOpenHit('sub/b.md', 2);
@@ -128,7 +132,10 @@ export async function searchControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('Replace All asks first, then writes closed files to disk and open ones through their editor, and searches again', async () => {
+    await test('Replace All asks first, then writes' +
+        ' closed files to disk and open ones' +
+        ' through their editor, and searches' +
+        ' again', async () => {
         const { dir, session, view, last, questions, answer } = setup();
         view.onSearch({ ...QUERY, text: 'foo' });
         session.host.openInTab(disk.join(dir, 'a.md'));
@@ -152,7 +159,9 @@ export async function searchControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a regular expression replaces with its groups; a literal replacement keeps its $', async () => {
+    await test('a regular expression replaces with its' +
+        ' groups; a literal replacement keeps' +
+        ' its $', async () => {
         const { dir, session, view } = setup();
         view.onSearch({ ...QUERY, text: '(foo) (bar)', regex: true });
         await view.onReplaceAll('$2 $1');
@@ -163,7 +172,9 @@ export async function searchControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('Replace All in an open document whose writes land a turn later does not read its own write', async () => {
+    await test('Replace All in an open document whose' +
+        ' writes land a turn later does not' +
+        ' read its own write', async () => {
         const { dir, session, view, last } = setup(() => new LaggingEditor());
         session.host.openInTab(disk.join(dir, 'a.md'));
         view.onSearch({ ...QUERY, text: 'foo' });
@@ -171,7 +182,9 @@ export async function searchControllerTests(): Promise<void> {
         eq(
             last().total,
             0,
-            'the results already follow the replacement, before the editor has applied it'
+            'the results already follow the' +
+                ' replacement, before the editor has' +
+                ' applied it'
         );
         await untilText(session.documents.active.editor, '# Alpha\nbaz bar\n');
         session.dispose();

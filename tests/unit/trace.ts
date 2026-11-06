@@ -46,7 +46,9 @@ const handlers = {
 
 export async function traceTests(): Promise<void> {
     section('Agent: activity log');
-    await test('streaming reasoning and answers are joined; tools are completed with a result and duration', async () => {
+    await test('streaming reasoning and answers are' +
+        ' joined; tools are completed with a' +
+        ' result and duration', async () => {
         let t = 0;
         const trace = new AgentTrace(
             () => (t += 50),
@@ -77,7 +79,8 @@ export async function traceTests(): Promise<void> {
         trace.finish('tool', '1:x', 'failed', 'double');
         eq(trace.events[1].status, 'ok');
     });
-    await test('a huge detail is truncated and the log is limited in count', async () => {
+    await test('a huge detail is truncated and the log' +
+        ' is limited in count', async () => {
         const trace = new AgentTrace();
         trace.add('note', 'big', 'x'.repeat(50000));
         ok(trace.events[0].detail.length < 21000, 'not truncated');
@@ -85,7 +88,9 @@ export async function traceTests(): Promise<void> {
         eq(trace.events.length, 2000);
         eq(trace.jsonl().trim().split('\n').length, 2000);
     });
-    await test('a turn with tools records rounds, reasoning, arguments, results, and tokens', async () => {
+    await test('a turn with tools records rounds,' +
+        ' reasoning, arguments, results, and' +
+        ' tokens', async () => {
         const session = new ChatSession();
         let n = 0;
         const call: ToolCall = {
@@ -172,7 +177,9 @@ export async function traceTests(): Promise<void> {
             'failed'
         );
     });
-    await test('the tree: a turn holds rounds, a round holds its steps, loose notes stay under the turn', async () => {
+    await test('the tree: a turn holds rounds, a round' +
+        ' holds its steps, loose notes stay' +
+        ' under the turn', async () => {
         const t = new AgentTrace(
             () => 0,
             () => '2026-10-05T10:00:00'
@@ -217,7 +224,10 @@ export async function traceTests(): Promise<void> {
             [2, 1, 1, 10, 2]
         );
     });
-    await test('a log viewer shows the steps the filter lets through, none under a folded step, and follows the newest settled one', async () => {
+    await test('a log viewer shows the steps the' +
+        ' filter lets through, none under a' +
+        ' folded step, and follows the newest' +
+        ' settled one', async () => {
         const t = new AgentTrace(
             () => 0,
             () => '2026-10-05T10:00:00'
@@ -278,7 +288,9 @@ export async function traceTests(): Promise<void> {
         );
         eq([formatSize(500), formatSize(3500)], ['500 B', '3.4 KB']);
     });
-    await test('a saved log comes back as it was, damaged lines are skipped, and a running event is marked as unfinished', async () => {
+    await test('a saved log comes back as it was,' +
+        ' damaged lines are skipped, and a' +
+        ' running event is marked as unfinished', async () => {
         const t = new AgentTrace(
             () => 0,
             () => '2026-10-05T10:00:00'
@@ -296,7 +308,9 @@ export async function traceTests(): Promise<void> {
         t.begin('round', '2', 'Calling', '', 2);
         const text =
             t.jsonl() +
-            'not json\n{"seq":"x"}\n{"seq":99,"time":"t","kind":"bogus","title":"x"}\n';
+            'not' +
+                ' json\n{"seq":"x"}\n{"seq":99,"time":"' +
+                't","kind":"bogus","title":"x"}\n';
         const back = AgentTrace.parse(text);
         eq(back.length, 4);
         const canon = (events: typeof back) =>
@@ -319,7 +333,9 @@ export async function traceTests(): Promise<void> {
         );
     });
 
-    await test('a feed sends the log, then batched updates; a replica that applies them holds the same events', async () => {
+    await test('a feed sends the log, then batched' +
+        ' updates; a replica that applies them' +
+        ' holds the same events', async () => {
         const trace = new AgentTrace(
             () => 0,
             () => '2026-10-05T10:00:00'
@@ -366,7 +382,9 @@ export async function traceTests(): Promise<void> {
         eq(updates.length, 2, 'a stopped feed sends nothing');
     });
 
-    await test('clearing or restoring the log resets the replica; a clear asked for by the viewer reaches the core', async () => {
+    await test('clearing or restoring the log resets' +
+        ' the replica; a clear asked for by the' +
+        ' viewer reaches the core', async () => {
         const trace = new AgentTrace();
         const replica = new TraceReplica();
         const feed = new TraceFeed(trace, (u) => replica.apply(u));

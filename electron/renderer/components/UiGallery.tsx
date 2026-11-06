@@ -196,7 +196,10 @@ function Section({
 function Row({ label, children }: { label: string; children: ReactNode }) {
     return (
         <div className="flex flex-wrap items-center gap-2">
-            <span className="w-24 shrink-0 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className={"w-24 shrink-0 text-2xs" +
+                " font-semibold uppercase" +
+                " tracking-wider" +
+                " text-muted-foreground"}>
                 {label}
             </span>
             {children}
@@ -214,7 +217,9 @@ function Tokens() {
                             key={size.name}
                             className="flex items-baseline gap-3"
                         >
-                            <span className="w-28 shrink-0 whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground">
+                            <span className={"w-28 shrink-0 whitespace-nowrap" +
+                                " font-mono text-xs tabular-nums" +
+                                " text-muted-foreground"}>
                                 {size.name} · {size.px}
                             </span>
                             <span className={size.className}>
@@ -815,7 +820,12 @@ function Containers() {
                     <Button
                         variant="ghost"
                         size="xs"
-                        className="justify-start text-2xs font-semibold uppercase tracking-wider text-muted-foreground aria-expanded:bg-transparent text-left"
+                        className={"justify-start text-2xs" +
+                            " font-semibold uppercase" +
+                            " tracking-wider" +
+                            " text-muted-foreground" +
+                            " aria-expanded:bg-transparent" +
+                            " text-left"}
                     >
                         <Icon name={open ? 'pan-down' : 'pan-end'} size={14} />
                         Recent
@@ -826,7 +836,9 @@ function Containers() {
                     <span>journal/2026-10-25.md</span>
                 </CollapsibleContent>
             </Collapsible>
-            <div className="flex h-6 max-w-sm items-center gap-3 text-xs text-muted-foreground">
+            <div className={"flex h-6 max-w-sm items-center" +
+                " gap-3 text-xs" +
+                " text-muted-foreground"}>
                 <span>Before</span>
                 <Separator orientation="vertical" />
                 <span>Between</span>
@@ -862,7 +874,8 @@ function Patterns() {
                 <Badge variant="destructive">Late</Badge>
             </Row>
             <Row label="Working">
-                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className={"flex items-center gap-2 text-sm" +
+                    " text-muted-foreground"}>
                     <Spinner />
                     Sending…
                 </span>
@@ -879,7 +892,8 @@ function Patterns() {
             <Row label="Error">
                 <p
                     role="alert"
-                    className="flex items-center gap-1.5 text-sm text-destructive"
+                    className={"flex items-center gap-1.5 text-sm" +
+                        " text-destructive"}
                 >
                     <Icon name="dialog-error" size={14} />
                     Could not push: the remote has new commits. Pull, then push
@@ -911,9 +925,12 @@ export function UiGallery({ onClose }: { onClose: () => void }) {
         <div
             role="region"
             aria-label="UI Gallery"
-            className="fixed inset-0 z-(--z-screen) flex flex-col bg-background text-foreground"
+            className={"fixed inset-0 z-(--z-screen) flex" +
+                " flex-col bg-background" +
+                " text-foreground"}
         >
-            <header className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
+            <header className={"flex flex-wrap items-center gap-2" +
+                " border-b px-4 py-2"}>
                 <h1 className="text-lg font-semibold">UI Gallery</h1>
                 <span className="text-xs text-muted-foreground">
                     Dev mode · the primitives of ui/ and the tokens, as

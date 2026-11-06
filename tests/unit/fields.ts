@@ -50,7 +50,9 @@ const value = (key: string, raw: string) => {
 export function fieldsModelTests(): void {
     section('Typed fields (model)');
 
-    test('parseSchema: reads the fields block, stops at the next key, and reports unreadable lines', () => {
+    test('parseSchema: reads the fields block,' +
+        ' stops at the next key, and reports' +
+        ' unreadable lines', () => {
         eq(
             SCHEMA.map((f) => `${f.key}:${f.type}${f.multiple ? '[]' : ''}`),
             [
@@ -65,7 +67,9 @@ export function fieldsModelTests(): void {
         );
         eq(def('prioritas').options, ['tinggi', 'sedang', 'rendah']);
         const bad = parseSchema(
-            '---\nfields:\n  a: wat\n  b: text(x)\n  a b: text\n  ok: text\n  ok: number\n---\n'
+            '---\nfields:\n  a: wat\n  b: text(x)\n' +
+                '  a b: text\n  ok: text\n  ok:' +
+                ' number\n---\n'
         );
         eq(
             bad.fields.map((f) => f.key),
@@ -76,7 +80,8 @@ export function fieldsModelTests(): void {
         eq(parseSchema('---\ntitle: a\n---').fields, []);
     });
 
-    test('parseValue: date, with and without time, rejecting impossible days', () => {
+    test('parseValue: date, with and without' +
+        ' time, rejecting impossible days', () => {
         eq(value('due', '2026-10-24'), { date: '2026-10-24', time: null });
         eq(value('due', '2026-10-24 9:05'), {
             date: '2026-10-24',
@@ -100,7 +105,9 @@ export function fieldsModelTests(): void {
         eq(value('progres', '120%'), 'error: more than 100%');
     });
 
-    test('parseValue: number, select (case-insensitive, canonical result), agent, and link', () => {
+    test('parseValue: number, select' +
+        ' (case-insensitive, canonical result),' +
+        ' agent, and link', () => {
         eq(
             [
                 value('halaman', '352'),
@@ -127,13 +134,16 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('parseValue: several values are split at commas outside quotes and links', () => {
+    test('parseValue: several values are split' +
+        ' at commas outside quotes and links', () => {
         eq(value('pemilik', 'Eka, Rina'), ['Eka', 'Rina']);
         eq(value('pemilik', '"Putra, Eka", Rina'), ['Putra, Eka', 'Rina']);
         eq(value('pemilik', ' , '), 'error: empty');
     });
 
-    test('formatValue is the inverse of parseValue, and quotes only when it has to', () => {
+    test('formatValue is the inverse of' +
+        ' parseValue, and quotes only when it' +
+        ' has to', () => {
         for (const [key, raw] of [
             ['due', '2026-10-24 09:00'],
             ['progres', '3/5'],
@@ -160,9 +170,12 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('findSegments: finds fields, nests [[links]], protects quoted brackets, ignores unclosed ones', () => {
+    test('findSegments: finds fields, nests' +
+        ' [[links]], protects quoted brackets,' +
+        ' ignores unclosed ones', () => {
         const text =
-            'Task [a:: 1] and [b:: [[X]]] [c:: "a ] b"] [d:: open [[x]] and [not:: closed';
+            'Task [a:: 1] and [b:: [[X]]] [c:: "a ]' +
+                ' b"] [d:: open [[x]] and [not:: closed';
         eq(
             findSegments(text).map((s) => [s.key, s.raw]),
             [
@@ -174,9 +187,13 @@ export function fieldsModelTests(): void {
         eq(findSegments('see [[Skema]] and [link](x)'), []);
     });
 
-    test('readItem: title, tags, declared fields, invalid values, and unknown keys', () => {
+    test('readItem: title, tags, declared' +
+        ' fields, invalid values, and unknown' +
+        ' keys', () => {
         const item = readItem(
-            'Parser #design [prioritas:: Tinggi] [due:: besok] [foo:: bar] #x [due:: 2026-10-24]',
+            'Parser #design [prioritas:: Tinggi]' +
+                ' [due:: besok] [foo:: bar] #x [due::' +
+                ' 2026-10-24]',
             SCHEMA
         );
         eq(item.title, 'Parser');
@@ -195,12 +212,15 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('writeField changes only its own field and leaves everything else as it was', () => {
+    test('writeField changes only its own field' +
+        ' and leaves everything else as it was', () => {
         const text =
-            'Parser   #design [prioritas:: tinggi]  [foo:: bar] [due:: 2026-10-24]';
+            'Parser   #design [prioritas:: tinggi] ' +
+                ' [foo:: bar] [due:: 2026-10-24]';
         eq(
             writeField(text, def('prioritas'), 'sedang'),
-            'Parser   #design [prioritas:: sedang]  [foo:: bar] [due:: 2026-10-24]'
+            'Parser   #design [prioritas:: sedang] ' +
+                ' [foo:: bar] [due:: 2026-10-24]'
         );
         eq(
             writeField(text, def('progres'), {
@@ -230,7 +250,9 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('setField: empty removes, a valid value is normalized, an invalid one changes nothing', () => {
+    test('setField: empty removes, a valid value' +
+        ' is normalized, an invalid one changes' +
+        ' nothing', () => {
         const text = 'A [due:: 2026-10-24] [pemilik:: Eka]';
         eq(
             setField(text, def('due'), '2026-10-25 9:30'),
@@ -245,7 +267,9 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('fieldInputText: normal form when valid, the written text when not, empty when absent', () => {
+    test('fieldInputText: normal form when' +
+        ' valid, the written text when not,' +
+        ' empty when absent', () => {
         eq(
             [
                 'A [prioritas:: TINGGI]',
@@ -269,9 +293,13 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('fieldChips: schema order, select by option position, invalid marked, unknown last, skipped keys left out', () => {
+    test('fieldChips: schema order, select by' +
+        ' option position, invalid marked,' +
+        ' unknown last, skipped keys left out', () => {
         const item = readItem(
-            'A [progres:: 3/5] [prioritas:: sedang] [due:: besok] [foo:: bar] [terkait:: [[Skema]]]',
+            'A [progres:: 3/5] [prioritas:: sedang]' +
+                ' [due:: besok] [foo:: bar] [terkait::' +
+                ' [[Skema]]]',
             SCHEMA
         );
         eq(
@@ -299,9 +327,16 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('a default after the type: dates take now and today, other types a value of the field; a bad default is reported', () => {
+    test('a default after the type: dates take' +
+        ' now and today, other types a value of' +
+        ' the field; a bad default is reported', () => {
         const { fields, problems } = parseSchema(
-            '---\nfields:\n  created: date = now\n  day: date = today\n  status: select(a, b) = a\n  n: number = 3\n  bad: select(a, b) = c\n  worse: number = now\n  who: person[] = Eka, Rina\n---\n'
+            '---\nfields:\n  created: date = now\n ' +
+                ' day: date = today\n  status:' +
+                ' select(a, b) = a\n  n: number = 3\n ' +
+                ' bad: select(a, b) = c\n  worse:' +
+                ' number = now\n  who: person[] = Eka,' +
+                ' Rina\n---\n'
         );
         eq(
             fields.map((f) => [f.key, f.default]),
@@ -325,9 +360,13 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('resolveDefault and applyDefaults: now and today in local time, existing fields kept, order of the schema', () => {
+    test('resolveDefault and applyDefaults: now' +
+        ' and today in local time, existing' +
+        ' fields kept, order of the schema', () => {
         const { fields } = parseSchema(
-            '---\nfields:\n  created: date = now\n  day: date = today\n  status: select(a, b) = a\n  free: text\n---\n'
+            '---\nfields:\n  created: date = now\n ' +
+                ' day: date = today\n  status:' +
+                ' select(a, b) = a\n  free: text\n---\n'
         );
         const now = new Date(2026, 0, 2, 3, 4);
         eq(
@@ -349,7 +388,8 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('addOption adds an option to the frontmatter line and nothing else', () => {
+    test('addOption adds an option to the' +
+        ' frontmatter line and nothing else', () => {
         const next = addOption(DOC, 'prioritas', 'urgent');
         eq(
             parseSchema(next).fields.find((f) => f.key === 'prioritas')
@@ -372,7 +412,9 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('nearestOption offers an existing option for a different case or one typo', () => {
+    test('nearestOption offers an existing' +
+        ' option for a different case or one' +
+        ' typo', () => {
         const p = def('prioritas');
         eq(
             [
@@ -387,7 +429,9 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('fieldNameProblem and optionProblem: empty, not allowed, or taken (ignoring case)', () => {
+    test('fieldNameProblem and optionProblem:' +
+        ' empty, not allowed, or taken' +
+        ' (ignoring case)', () => {
         eq(
             ['', ' ', '9x', 'a b', 'due', 'Due', 'prioritas', 'p-1'].map((n) =>
                 fieldNameProblem(n, ['due', 'agent'])
@@ -411,14 +455,21 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('writeSchema replaces the fields block and nothing else; it makes the block when there is none and removes it when empty', () => {
+    test('writeSchema replaces the fields block' +
+        ' and nothing else; it makes the block' +
+        ' when there is none and removes it' +
+        ' when empty', () => {
         const doc =
-            '---\nlayout: board\nfields:\n  a: text\n  b: select(x, y) = x\n\ntitle: after\n---\n\nbody\n';
+            '---\nlayout: board\nfields:\n  a:' +
+                ' text\n  b: select(x, y) = x\n\ntitle:' +
+                ' after\n---\n\nbody\n';
         const a = parseSchema(doc).fields,
             b = a[1];
         eq(
             writeSchema(doc, [b, a[0]]),
-            '---\nlayout: board\nfields:\n  b: select(x, y) = x\n  a: text\n\ntitle: after\n---\n\nbody\n',
+            '---\nlayout: board\nfields:\n  b:' +
+                ' select(x, y) = x\n  a: text\n\ntitle:' +
+                ' after\n---\n\nbody\n',
             'reordered; the lines after the block and the body are untouched'
         );
         eq(
@@ -450,7 +501,9 @@ export function fieldsModelTests(): void {
         );
         eq(
             writeSchema('---\nlayout: list\n---\n\n- one\n', a),
-            '---\nlayout: list\nfields:\n  a: text\n  b: select(x, y) = x\n---\n\n- one\n',
+            '---\nlayout: list\nfields:\n  a:' +
+                ' text\n  b: select(x, y) = x\n---\n\n-' +
+                ' one\n',
             'a block is made before the closing line'
         );
         eq(writeSchema('no frontmatter', a), 'no frontmatter');
@@ -461,7 +514,9 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('countUses: notes with a value for the field, or with that option among their values', () => {
+    test('countUses: notes with a value for the' +
+        ' field, or with that option among' +
+        ' their values', () => {
         const texts = [
             'A [prio:: tinggi]',
             'B [prio:: Tinggi]',
@@ -482,9 +537,13 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('option colors: `text:color` with a known color name; anything else stays part of the option', () => {
+    test('option colors: `text:color` with a' +
+        ' known color name; anything else stays' +
+        ' part of the option', () => {
         const { fields } = parseSchema(
-            '---\nfields:\n  p: select(tinggi:red, sedang:Amber, Q3: rilis, ok:nope, rendah, :red, x:  gray )\n---\n'
+            '---\nfields:\n  p: select(tinggi:red,' +
+                ' sedang:Amber, Q3: rilis, ok:nope,' +
+                ' rendah, :red, x:  gray )\n---\n'
         );
         eq(fields[0].options, [
             'tinggi',
@@ -508,14 +567,19 @@ export function fieldsModelTests(): void {
         );
     });
 
-    test('option colors are written back, kept when an option is added, and shown on the chip', () => {
+    test('option colors are written back, kept' +
+        ' when an option is added, and shown on' +
+        ' the chip', () => {
         const doc =
-            '---\nfields:\n  p: select(tinggi:red, sedang, rendah:gray) = sedang\n---\n';
+            '---\nfields:\n  p: select(tinggi:red,' +
+                ' sedang, rendah:gray) = sedang\n---\n';
         const def = parseSchema(doc).fields[0];
         eq(writeSchema(doc, [def]), doc, 'read and written as it was');
         eq(
             addOption(doc, 'p', 'urgent'),
-            '---\nfields:\n  p: select(tinggi:red, sedang, rendah:gray, urgent) = sedang\n---\n'
+            '---\nfields:\n  p: select(tinggi:red,' +
+                ' sedang, rendah:gray, urgent) =' +
+                ' sedang\n---\n'
         );
         const chips = fieldChips(readItem('A [p:: Tinggi] [p2:: x]', [def]), [
             def,

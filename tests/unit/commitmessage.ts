@@ -26,7 +26,8 @@ export async function commitMessageTests(): Promise<void> {
         ok(!fitted.shortened, 'shortened');
     });
 
-    await test('the largest diff is cut to whole lines and the total fits the budget', async () => {
+    await test('the largest diff is cut to whole lines' +
+        ' and the total fits the budget', async () => {
         const big = Array.from({ length: 200 }, (_, i) => `+line ${i}`).join(
             '\n'
         );
@@ -79,7 +80,8 @@ export async function commitMessageTests(): Promise<void> {
         eq(names(['/r/notes/plan.md']), ['plan.md']);
     });
 
-    await test('the prompt holds the diffs and the recent subjects, not other files', async () => {
+    await test('the prompt holds the diffs and the' +
+        ' recent subjects, not other files', async () => {
         const [system, user] = commitPrompt(
             [{ name: 'plan.md', diff: '-15 November\n+22 November\n' }],
             ['Add a schedule section'],
@@ -121,7 +123,9 @@ export async function commitMessageTests(): Promise<void> {
         return { s, requests };
     };
 
-    await test('writing streams the cleaned message and uses the model without thinking or tools', async () => {
+    await test('writing streams the cleaned message' +
+        ' and uses the model without thinking' +
+        ' or tools', async () => {
         const { s, requests } = sources(['"Move the ', 'release', '"\nextra']);
         const seen: string[] = [];
         const result = await within(
@@ -174,7 +178,8 @@ export async function commitMessageTests(): Promise<void> {
         eq(requests.length, 0);
     });
 
-    await test('one unreadable diff does not stop the rest; all of them failing does', async () => {
+    await test('one unreadable diff does not stop the' +
+        ' rest; all of them failing does', async () => {
         const { s, requests } = sources(['Ok'], {
             diff: async (f) =>
                 f.endsWith('gone.md')
@@ -199,7 +204,8 @@ export async function commitMessageTests(): Promise<void> {
         eq(result.ok ? '' : result.message, 'no folder');
     });
 
-    await test('a provider error becomes a failure with its message', async () => {
+    await test('a provider error becomes a failure' +
+        ' with its message', async () => {
         const { s } = sources([], {
             makeProvider: () => ({
                 chat: async () => {

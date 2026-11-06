@@ -34,7 +34,8 @@ function Source({
             className={`conflict-merge-source ${title.toLowerCase()}`}
             aria-label={`${title} Change`}
         >
-            <div className="flex flex-wrap items-baseline gap-2 border-b px-3 py-2">
+            <div className={"flex flex-wrap items-baseline gap-2" +
+                " border-b px-3 py-2"}>
                 <h3 className="text-sm font-medium">{title}</h3>
                 <span className="break-all text-xs text-muted-foreground">
                     {branch || title}
@@ -135,7 +136,9 @@ function MergeResult({ comparison }: { comparison: ConflictComparison }) {
                 className="conflict-merge-result"
                 aria-label="Merge result"
             >
-                <div className="flex flex-wrap items-baseline justify-between gap-2 border-b px-3 py-2">
+                <div className={"flex flex-wrap items-baseline" +
+                    " justify-between gap-2 border-b" +
+                    " px-3 py-2"}>
                     <h3 className="text-sm font-medium">
                         Result{' '}
                         <span className="text-xs font-normal text-muted-foreground">
@@ -151,7 +154,9 @@ function MergeResult({ comparison }: { comparison: ConflictComparison }) {
                 </div>
                 <Textarea
                     aria-label="Result"
-                    className="min-h-32 resize-none rounded-none border-0 font-mono text-sm shadow-none"
+                    className={"min-h-32 resize-none rounded-none" +
+                        " border-0 font-mono text-sm" +
+                        " shadow-none"}
                     value={text}
                     onChange={(event) =>
                         choose(event.target.value, 'Edited result')
@@ -204,7 +209,10 @@ export function ConflictCompare() {
             }}
         >
             <DialogContent
-                className="conflict-merge flex flex-col sm:max-w-6xl max-h-[calc(100%-2rem)] overflow-y-auto"
+                className={"conflict-merge flex flex-col" +
+                    " sm:max-w-6xl" +
+                    " max-h-[calc(100%-2rem)]" +
+                    " overflow-y-auto"}
                 onCloseAutoFocus={(event) => {
                     event.preventDefault();
                     client.focusEditor();

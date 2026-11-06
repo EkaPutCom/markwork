@@ -34,7 +34,9 @@ export async function outlineTests(): Promise<void> {
         };
     };
 
-    await test("the active document's headings are sent as plain data, and a change of a background document is not", () => {
+    await test("the active document's headings are" +
+        " sent as plain data, and a change of a" +
+        " background document is not", () => {
         const { session, shown, editor } = setup();
         const first = session.documents.active;
         editor().headings = [H(1, 'Title', 0), H(2, 'Part', 4)];
@@ -58,7 +60,9 @@ export async function outlineTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a jump goes to the line the list had when it was drawn, even if the headings moved since', () => {
+    await test('a jump goes to the line the list had' +
+        ' when it was drawn, even if the' +
+        ' headings moved since', () => {
         const { session, view, editor } = setup();
         editor().headings = [H(1, 'Title', 0), H(2, 'Part', 4)];
         session.outline.show(session.documents.active);
@@ -72,7 +76,9 @@ export async function outlineTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('suggestions for [[ come by the id of the document; an id that is not open has none', () => {
+    await test('suggestions for [[ come by the id of' +
+        ' the document; an id that is not open' +
+        ' has none', () => {
         const { session } = setup();
         const dir = disk.join(tmp, 'outline-notes');
         disk.mkdirs(disk.join(dir, 'sub'));

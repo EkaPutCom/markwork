@@ -23,7 +23,10 @@ interface CommitScenario {
 }
 
 const PLAN =
-    '# Release plan\n\n## Schedule\n\nThe public release is on 15 November.\nThe beta opens two weeks before.\n';
+    '# Release plan\n\n## Schedule\n\nThe' +
+        ' public release is on 15' +
+        ' November.\nThe beta opens two weeks' +
+        ' before.\n';
 
 const SCENARIOS: CommitScenario[] = [
     {
@@ -63,7 +66,9 @@ const SCENARIOS: CommitScenario[] = [
         before: { 'notes.md': '# Notes\n' },
         after: {
             'notes.md':
-                '# Notes\n\n- Call the printer about the cover proof\n- Send chapter three to the editor\n',
+                '# Notes\n\n- Call the printer about' +
+                    ' the cover proof\n- Send chapter three' +
+                    ' to the editor\n',
         },
         check: [],
         stopAfter: 1,

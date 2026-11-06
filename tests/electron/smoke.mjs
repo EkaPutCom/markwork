@@ -13,7 +13,9 @@ const { scratch, notes } = scratchFolder('electron');
 writeFileSync(join(notes, 'note.md'), '# Note\n\nhello\n');
 writeFileSync(
     join(notes, 'board.md'),
-    '---\nlayout: board\n---\n\n## Plan\n\n- [ ] One\n- [ ] Two\n\n## Done\n\n- [x] Old\n'
+    '---\nlayout: board\n---\n\n##' +
+        ' Plan\n\n- [ ] One\n- [ ] Two\n\n##' +
+        ' Done\n\n- [x] Old\n'
 );
 
 writeFileSync(
@@ -26,7 +28,9 @@ writeFileSync(
 writeFileSync(
     join(notes, 'dot.png'),
     Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAA' +
+            'AfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842' +
+            'iQAAAABJRU5ErkJggg==',
         'base64'
     )
 );
@@ -44,12 +48,19 @@ writeFileSync(
 
 writeFileSync(
     join(notes, 'grid.md'),
-    '# Grid\n\n| Name | Qty |\n| :--- | ---: |\n| apple | **3** |\n| pear | 5 |\n\nafter\n'
+    '# Grid\n\n| Name | Qty |\n| :--- |' +
+        ' ---: |\n| apple | **3** |\n| pear | 5' +
+        ' |\n\nafter\n'
 );
 
 writeFileSync(
     join(notes, 'diagram.md'),
-    '# Diagram\n\n```mermaid\nflowchart LR\n  A[Start] --> B[Finish]\n```\n\n```dbml\nTable users {\n  id int [pk]\n}\n```\n\n```mermaid\nnot a diagram at all\n```\n'
+    '# Diagram\n\n```mermaid\nflowchart' +
+        ' LR\n  A[Start] -->' +
+        ' B[Finish]\n```\n\n```dbml\nTable' +
+        ' users {\n  id int' +
+        ' [pk]\n}\n```\n\n```mermaid\nnot a' +
+        ' diagram at all\n```\n'
 );
 
 writeFileSync(
@@ -124,12 +135,15 @@ try {
     });
 
     await step(
-        'closing a Saved notice does not remove the next notice while the first animates out',
+        'closing a Saved notice does not remove' +
+            ' the next notice while the first' +
+            ' animates out',
         async () => {
             await page.keyboard.press('ControlOrMeta+s');
             const notice = page
                 .locator(
-                    '[data-sonner-toast][data-index="0"]:not([data-removed=true])'
+                    '[data-sonner-toast][data-index="0"]:no' +
+                        't([data-removed=true])'
                 )
                 .filter({ hasText: /^Saved$/ });
             await notice
@@ -148,7 +162,9 @@ try {
     );
 
     await step(
-        'clicking a task box flips it, and a wrapped list item hangs under its text',
+        'clicking a task box flips it, and a' +
+            ' wrapped list item hangs under its' +
+            ' text',
         async () => {
             await page.getByRole('treeitem', { name: /tasks\.md/ }).click();
             await title.getByText('tasks.md').waitFor();
@@ -169,7 +185,8 @@ try {
     );
 
     await step(
-        'Ctrl+click on a [[wikilink]] opens the note, and [[ suggests note names',
+        'Ctrl+click on a [[wikilink]] opens the' +
+            ' note, and [[ suggests note names',
         async () => {
             await editor
                 .locator('.cm-md-link', { hasText: 'note' })
@@ -197,7 +214,9 @@ try {
     );
 
     await step(
-        'a picture shows under its line, a double click zooms it, and Escape closes it',
+        'a picture shows under its line, a' +
+            ' double click zooms it, and Escape' +
+            ' closes it',
         async () => {
             await page.getByRole('treeitem', { name: /pics\.md/ }).click();
             await title.getByText('pics.md').waitFor();
@@ -240,7 +259,9 @@ try {
     });
 
     await step(
-        'a table is a grid until the cursor goes in, and a click on a cell opens it there',
+        'a table is a grid until the cursor' +
+            ' goes in, and a click on a cell opens' +
+            ' it there',
         async () => {
             await page.getByRole('treeitem', { name: /grid\.md/ }).click();
             await title.getByText('grid.md').waitFor();
@@ -261,7 +282,10 @@ try {
     );
 
     await step(
-        'Mermaid and DBML blocks are drawn, a broken one says why, a click picks one, and its Edit source opens the source',
+        'Mermaid and DBML blocks are drawn, a' +
+            ' broken one says why, a click picks' +
+            ' one, and its Edit source opens the' +
+            ' source',
         async () => {
             await page.getByRole('treeitem', { name: /diagram\.md/ }).click();
             await title.getByText('diagram.md').waitFor();
@@ -283,7 +307,9 @@ try {
     );
 
     await step(
-        'a git conflict has buttons above it, and Accept Incoming Change keeps their side in one undo step',
+        'a git conflict has buttons above it,' +
+            ' and Accept Incoming Change keeps' +
+            ' their side in one undo step',
         async () => {
             await page.getByRole('treeitem', { name: /conflict\.md/ }).click();
             await title.getByText('conflict.md').waitFor();
@@ -303,7 +329,9 @@ try {
     );
 
     await step(
-        "Focus Mode (F8) dims the other paragraphs and it is the core's setting",
+        "Focus Mode (F8) dims the other" +
+            " paragraphs and it is the core's" +
+            " setting",
         async () => {
             await page.getByRole('treeitem', { name: /note\.md/ }).click();
             await editor.click();
@@ -410,7 +438,9 @@ try {
     );
 
     await step(
-        'a board shows its counts and the layout button, and text commands no longer apply',
+        'a board shows its counts and the' +
+            ' layout button, and text commands no' +
+            ' longer apply',
         async () => {
             await page.getByRole('treeitem', { name: /board\.md/ }).click();
             await page
@@ -466,7 +496,9 @@ try {
     );
 
     await step(
-        "closing an unsaved document asks in the window's dialog, and Cancel keeps it",
+        "closing an unsaved document asks in" +
+            " the window's dialog, and Cancel keeps" +
+            " it",
         async () => {
             await page.keyboard.press('ControlOrMeta+n');
             await editor.click();
@@ -480,7 +512,9 @@ try {
         }
     );
     await step(
-        'closing the window asks about the unsaved document, and Discard lets it go',
+        'closing the window asks about the' +
+            ' unsaved document, and Discard lets it' +
+            ' go',
         async () => {
             const closed = page.waitForEvent('close');
             await app.evaluate(({ BrowserWindow }) =>

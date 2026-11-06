@@ -46,7 +46,10 @@ export function pushFailure(run: GitRun | null, branch: string): string {
     const said = run?.err.trim() || run?.out.trim() || '';
     if (!run) return 'git could not be run';
     if (/env_not_allowed|environment variable .* is not allowed/i.test(said)) {
-        return 'markworkd on that machine does not allow the variables the access token travels in; add "GIT_CONFIG_*" to env_allow in its config';
+        return 'markworkd on that machine does not' +
+            ' allow the variables the access token' +
+            ' travels in; add "GIT_CONFIG_*" to' +
+            ' env_allow in its config';
     }
     if (
         /non-fast-forward|\[rejected\]|fetch first|already exists/i.test(said)
@@ -106,11 +109,15 @@ export async function publishBranch(
     }
     if (!target)
         return fail(
-            'The server does not know this repository, or the token cannot see it'
+            'The server does not know this' +
+                ' repository, or the token cannot see' +
+                ' it'
         );
     if (request.via === 'direct' && !target.canPush)
         return fail(
-            'The access token may not push branches to this repository; send it through a fork instead'
+            'The access token may not push branches' +
+                ' to this repository; send it through a' +
+                ' fork instead'
         );
     try {
         if (request.via === 'direct') {

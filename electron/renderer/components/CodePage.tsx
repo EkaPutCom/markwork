@@ -100,7 +100,9 @@ export function CodePage({
     }, [client, id, pane, file, text, language, name]);
     return (
         <div className="code-page">
-            <div className="flex items-center gap-2 border-b px-3 py-2 text-xs text-muted-foreground">
+            <div className={"flex items-center gap-2 border-b" +
+                " px-3 py-2 text-xs" +
+                " text-muted-foreground"}>
                 <Badge variant="secondary">Read-only</Badge>
                 <span>{language?.name ?? 'Plain text'}</span>
                 <Button

@@ -157,7 +157,8 @@ export async function historyControllerTests(): Promise<void> {
     };
     const read = (path: string) => disk.read(path);
 
-    await test("the tab gets the file's commits and the uncommitted files as plain data", async () => {
+    await test("the tab gets the file's commits and" +
+        " the uncommitted files as plain data", async () => {
         const {
             session,
             root,
@@ -222,7 +223,8 @@ export async function historyControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a commit opens in a viewer with its diff and the file at that commit', async () => {
+    await test('a commit opens in a viewer with its' +
+        ' diff and the file at that commit', async () => {
         const { session, root, a, history, lastLog, opened, diffs, contents } =
             await setup();
         history.show(a, root);
@@ -251,7 +253,9 @@ export async function historyControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('the tab commits only the files it was shown, after saving the open documents', async () => {
+    await test('the tab commits only the files it was' +
+        ' shown, after saving the open' +
+        ' documents', async () => {
         const { session, root, a, history, toasts, lastLog, lastChanges } =
             await setup();
         const b = disk.join(root, 'b.md'),
@@ -290,7 +294,9 @@ export async function historyControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('the uncommitted changes of a file open with a form; its commit closes the viewer', async () => {
+    await test('the uncommitted changes of a file open' +
+        ' with a form; its commit closes the' +
+        ' viewer', async () => {
         const { session, root, a, history, opened, diffs, closed, lastLog } =
             await setup();
         disk.write(a, V2 + 'three\n');
@@ -324,7 +330,9 @@ export async function historyControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('a discard asks first, saves, restores the file, and the open document follows a turn later', async () => {
+    await test('a discard asks first, saves, restores' +
+        ' the file, and the open document' +
+        ' follows a turn later', async () => {
         const { session, root, a, history, asked, toasts, lastChanges } =
             await setup(() => new LaggingEditor());
         ok(session.host.openInTab(a), 'openInTab');
@@ -367,7 +375,8 @@ export async function historyControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('the viewer discards with the state git reports now, asked over the viewer', async () => {
+    await test('the viewer discards with the state git' +
+        ' reports now, asked over the viewer', async () => {
         const { session, root, a, history, asked, closed, lastLog } =
             await setup();
         history.show(a, root);
@@ -382,7 +391,9 @@ export async function historyControllerTests(): Promise<void> {
         session.dispose();
     });
 
-    await test('the commit message writer streams into the form that asked, from the files it was shown', async () => {
+    await test('the commit message writer streams into' +
+        ' the form that asked, from the files' +
+        ' it was shown', async () => {
         const { session, root, a, history, streamed, lastChanges } =
             await setup();
         disk.write(a, V2 + 'three\n');
