@@ -13,12 +13,17 @@ const tool = (id, name, args) => ({
     arguments: JSON.stringify(args),
 });
 
-export const ANSWER = `There is **one decision that is not in the plan yet**:
-
-- In *notes/meeting-1-oct.md* › Decisions: "The public release is postponed to 22 November because the sync testing is not finished."
-- In *plans/launch.md* › Schedule: "Public release: 15 November."
-
-The budget is already consistent ($3,000) and the closed beta stays on 20 October. Shall I propose a change to the date?`;
+const meetingDecision =
+    '- In *notes/meeting-1-oct.md* › Decisions: ' +
+    '"The public release is postponed to 22 November because ' +
+    'the sync testing is not finished."';
+const planDecision =
+    '- In *plans/launch.md* › Schedule: "Public release: 15 November."';
+export const ANSWER =
+    `There is **one decision that is not in the plan yet**:\n\n` +
+    `${meetingDecision}\n${planDecision}\n\n` +
+    'The budget is already consistent ($3,000) and the closed beta stays on ' +
+    '20 October. Shall I propose a change to the date?';
 
 const steps = (...status) =>
     [

@@ -226,10 +226,16 @@ async function fuzzOne(
             seconds: shrinkSeconds,
         });
         const file = join(out, `fuzz-${seed}-${run + 1}.mwrepro.json`);
-        writeFileSync(
-            file,
-            `${JSON.stringify({ ...repro, steps: shrunk.steps, actual: { doc: answer.doc, failed: [failing.check] } }, null, 2)}\n`
+        const output = JSON.stringify(
+            {
+                ...repro,
+                steps: shrunk.steps,
+                actual: { doc: answer.doc, failed: [failing.check] },
+            },
+            null,
+            2
         );
+        writeFileSync(file, `${output}\n`);
         return {
             ...found,
             steps: shrunk.steps.length,

@@ -98,8 +98,15 @@ const rules = [
 const files = readdirSync(src, { recursive: true })
     .filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'))
     .map((f) => f.split('\\').join('/'));
-const IMPORT =
-    /(?:^|\n)\s*(?:import|export)(\s+type\b)?[^'"]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*['"]([^'"]+)['"]/g;
+const IMPORT = new RegExp(
+    [
+        String.raw`(?:^|\n)\s*(?:import|export)(\s+type\b)?[^'"]*?`,
+        String.raw`\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*`,
+        String.raw`['"]([^'"]+)['"]\s*\)|(?:^|\n)\s*import\s*`,
+        String.raw`['"]([^'"]+)['"]`,
+    ].join(''),
+    'g'
+);
 
 const errors = [];
 // src-relative module → the local modules it imports for their values (not
@@ -138,8 +145,10 @@ for (const file of files) {
 // port), where tests/unit/crossos.ts
 // runs it for all three systems. The core and app/ ask the port; they never
 // test `process.platform` or name such a program.
-const SYSTEM_SPECIFIC =
-    /process\.platform|\b(kgx|ptyxis|gnome-terminal|xdg-terminal-exec|secret-tool|osascript)\b/;
+const SYSTEM_SPECIFIC = new RegExp(
+    String.raw`process\.platform|\b(kgx|ptyxis|gnome-terminal|` +
+        String.raw`xdg-terminal-exec|secret-tool|osascript)\b`
+);
 for (const file of files.filter(
     (f) => (isCore(f) || f.startsWith('app/')) && !f.startsWith('platform/')
 )) {
@@ -253,8 +262,14 @@ for (const file of rendererFiles) {
             " src/)"}`
             );
         else if (m[1] ? !RENDERER_TYPES(target) : !RENDERER_VALUES(target)) {
+            const allowed = m[1]
+                ? 'types only from markdown/, app/protocol/, ' +
+                    'app/commands.ts, app/dialogs.ts, and platform/index.ts'
+                : 'values only from markdown/, app/protocol/ messages, wire, ' +
+                    'mirror, and changes, and app/commands.ts; import other ' +
+                    'types with `import type`';
             errors.push(
-                `${where} (from src/ the renderer takes ${m[1] ? 'types only from markdown/, app/protocol/, app/commands.ts, app/dialogs.ts, and platform/index.ts' : 'values only from markdown/, app/protocol/ messages, wire, mirror, and changes, and app/commands.ts; import other types with `import type`'})`
+                `${where} (from src/ the renderer takes ${allowed})`
             );
         } else if (!m[1] && acts(target)) {
             errors.push(
@@ -320,8 +335,12 @@ function functionName(node, parents, source) {
     const cls = owner ? `${owner.id.name}.` : '';
     if (node.type === 'StaticBlock') return `${cls}static{}`;
     if (node.id) return `${cls}${node.id.name}`;
-    if (parent.type === 'MethodDefinition')
-        return `${cls}${parent.kind === 'constructor' ? 'constructor' : keyName(parent.key)}`;
+    if (parent.type === 'MethodDefinition') {
+        const key = parent.kind === 'constructor'
+            ? 'constructor'
+            : keyName(parent.key);
+        return `${cls}${key}`;
+    }
     if (parent.type === 'PropertyDefinition')
         return `${cls}${keyName(parent.key)}`;
     if (parent.type === 'VariableDeclarator')
@@ -399,10 +418,13 @@ for (const [name, path] of checked) {
         if (allowed !== undefined)
             seen.set(key, Math.max(seen.get(key) ?? 0, fn.cc));
         if (fn.cc > Math.max(MAX_COMPLEXITY, allowed ?? 0)) {
+            const guidance = allowed
+                ? ` (limit ${allowed}, may not grow; split it into ` +
+                    'smaller functions)'
+                : ` (limit ${MAX_COMPLEXITY}; split it into smaller functions)`;
             errors.push(
-                `${name}:${fn.line}: ${fn.name}${" has cyclomatic" +
-            " complexity "}${fn.cc} (limit ${allowed ?? MAX_COMPLEXITY}${allowed ? ', may not grow' : ''}${"); split it into smaller" +
-            " functions"}`
+                `${name}:${fn.line}: ${fn.name} has cyclomatic complexity ` +
+                    `${fn.cc}${guidance}`
             );
         }
     }
@@ -435,6 +457,7 @@ if (errors.length) {
     process.exit(1);
 }
 console.log(
-    `Layer rules: ${files.length} modules and ${rendererFiles.length}${" renderer files checked;" +
-            " complexity: "}${functions} functions within ${MAX_COMPLEXITY} or their allowance`
+    `Layer rules: ${files.length} modules and ${rendererFiles.length} ` +
+        `renderer files checked; complexity: ${functions} functions ` +
+        `within ${MAX_COMPLEXITY} or their allowance`
 );

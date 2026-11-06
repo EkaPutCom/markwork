@@ -101,8 +101,12 @@ const STRING_MOTION =
 const STRING_RADIUS = /(^|\s|:)rounded(-[a-z]+)?-\[[^\]]*px\](?![\w-])/g;
 // A spacing class of 10px or 14px (`px-2.5`, `gap-3.5`, `p-[10px]`), off the
 // scale of ui.md.
-const STRING_SPACING =
-    /(^|\s|:)-?(p[xytrblse]?|m[xytrblse]?|gap(-[xy])?|space-[xy])-(2\.5|3\.5|\[(10|14)px\])(?![\w-])/g;
+const STRING_SPACING = new RegExp(
+    String.raw`(^|\s|:)-?(p[xytrblse]?|m[xytrblse]?|` +
+        String.raw`gap(-[xy])?|space-[xy])-(2\.5|3\.5|\[(10|14)px\])` +
+        String.raw`(?![\w-])`,
+    'g'
+);
 // In CSS, a radius written in px outside a calc() on --radius
 // (`calc(var(--radius) + 2px)` is the token).
 const CSS_RADIUS_PX = /(?<![\d.\w-])[1-9]\d*(\.\d+)?px/;
@@ -429,7 +433,8 @@ function errorsOf(findings) {
                 .map(([, line, what]) => `\n      ${line}: ${what}`)
                 .join('');
             errors.push(
-                `electron/renderer/${file}: ${found.length} × ${RULES[rule]}:${where}`
+                `electron/renderer/${file}: ${found.length} × ` +
+                    `${RULES[rule]}:${where}`
             );
         }
     }
