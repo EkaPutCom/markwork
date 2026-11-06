@@ -12,7 +12,7 @@ export const RE = {
     tableSep: /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/,
 };
 
-// Table separator row ("| --- | :-: |" or "--- | ---"). Must contain '|' so that
+// Table separator row ("| --- | :-: |" or "--- | ---"). It must contain '|',
 // it
 // is not confused with the "---" divider line.
 export const isTableSeparator = (line: string): boolean =>

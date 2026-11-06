@@ -50,7 +50,7 @@ export function cpLength(s: string): number {
 const ASCII_SEPARATOR = new Uint8Array(128);
 for (const c of ' \t\n\v\f\r#>*_`~=|-') ASCII_SEPARATOR[c.charCodeAt(0)] = 1;
 
-// Word count, the same as (s.match(/[^\s#>*_`~=|-]+/g) ?? []).length but without
+// Word count, like (s.match(/[^\s#>*_`~=|-]+/g) ?? []).length, without
 // creating a
 // string per word: opening a 100,000-word manuscript 3× faster and without
 // garbage for the GC.

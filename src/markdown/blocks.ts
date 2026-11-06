@@ -123,7 +123,7 @@ export const blockAt = (blocks: readonly Block[], line: number): number =>
 
 // ---------- Moving a block ----------
 
-// What moving a block changes: the lines `from`..`to` (from 0, inclusive) become
+// Moving replaces the lines `from`..`to` (from 0, inclusive) with
 // `lines`, and the cursor goes to the line
 // `cursor` of the whole document, where the moved block now starts.
 export interface BlockMove {

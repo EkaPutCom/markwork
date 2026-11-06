@@ -84,7 +84,7 @@ export function coverOf(card: Card, schema: FieldDef[], key: string): Cover {
         : { kind: 'none' };
 }
 
-// The first line of text under the title, without images, as the card's preview.
+// The first line under the title, without images, previews the card.
 export function snippetOf(card: Card): string {
     const line =
         card.notes

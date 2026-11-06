@@ -2,7 +2,7 @@
 // style: **bold**, *italic*, ~~strike~~,
 // ==mark==, `code`, and links. The Markdown markers are dropped. Pure
 // TypeScript, and the one place where the line's
-// styles are merged, so Pango (pango.ts), HTML (inlinehtml.ts), and any terminal
+// styles are merged, so Pango (pango.ts), HTML (inlinehtml.ts), and terminals
 // renderer show the same text the same way.
 
 import { parseInline } from './inline';

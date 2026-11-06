@@ -22,7 +22,8 @@ const pad = (n: number, width = 2): string => String(n).padStart(width, '0');
 
 export function dayString(day: number): string {
     const d = new Date(day * DAY);
-    return `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+    return `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1)}-` +
+        pad(d.getUTCDate());
 }
 
 export const addDays = (date: string, n: number): string =>

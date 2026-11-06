@@ -40,7 +40,8 @@ export type InlineRow =
       };
 
 const HUNK = /^(@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@)/;
-const MAX_TOKENS = 400; // past this a pair is marked as a whole: the word diff is quadratic
+// Past this limit, a pair is marked as a whole; word diff is quadratic.
+const MAX_TOKENS = 400;
 
 // The text of a line without its marker; "\ No newline at end of file" is not a
 // line of the file.

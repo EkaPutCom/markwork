@@ -23,7 +23,7 @@ export const isAbsolutePath = (path: string): boolean =>
 export const slashed = (path: string): string =>
     isWindowsPath(path) ? path.replace(/\\/g, '/') : path;
 
-// Whether `path` lies strictly below `folder`: the separator after the folder is
+// Whether `path` lies strictly below `folder`; the separator after it is
 // / everywhere, and also \ when the
 // folder is a Windows path.
 export function below(folder: string, path: string): boolean {

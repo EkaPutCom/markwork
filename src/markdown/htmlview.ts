@@ -20,7 +20,7 @@ export const isHtmlFile = (name: string): boolean =>
 
 // Sent with every response. Scripts and inline styles are allowed (the page is
 // meant to be interactive), but nothing
-// loads from, or connects to, anything except this scheme, `data:`, and `blob:`:
+// loads from or connects to anything except this scheme, `data:`, and `blob:`.
 // no network, no `file:`. Forms can only
 // post back to the viewer, and plugins are off.
 export const HTML_CSP = [

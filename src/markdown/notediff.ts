@@ -137,7 +137,7 @@ function middle(a: string[], b: string[]): TextLine[] {
             i++;
             j++;
         }
-        // A removed line comes before the line that replaces it, as in git's own
+        // A removed line comes before its replacement, as in git's own
         // diffs.
         else if (
             i < a.length &&
