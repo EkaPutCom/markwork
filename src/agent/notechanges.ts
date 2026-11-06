@@ -381,8 +381,8 @@ class NoteTarget {
         if (raw === null)
             return {
                 ok: false,
-                message: `The value of "${key}${"\" must be text, a number, or a" +
-        " list of them."}`,
+                message: `The value of "${key}"` +
+                    ' must be text, a number, or a list of them.',
             };
         if (!raw.trim())
             return { ok: true, value: writeField(text, def.value, null) };
@@ -393,7 +393,9 @@ class NoteTarget {
         if (!parsed.ok)
             return {
                 ok: false,
-                message: `Field "${def.value.key}": "${raw}" is not valid (${parsed.error}). Expected: ${valueHint(def.value)}.`,
+                message:
+                    `Field "${def.value.key}": "${raw}" is not valid ` +
+                    `(${parsed.error}). Expected: ${valueHint(def.value)}.`
             };
         return { ok: true, value: writeField(text, def.value, parsed.value) };
     }
@@ -407,8 +409,10 @@ class NoteTarget {
             ? { ok: true, value: option }
             : {
                   ok: false,
-                  message: `"${asText(this.args.group)}" is not a value of ${def.key}${". The board's columns" +
-            " are: "}${def.options.join(', ')}.`,
+                  message:
+                      `"${asText(this.args.group)}" is not a value of ` +
+                      `${def.key}. The board's columns are: ` +
+                      `${def.options.join(', ')}.`
               };
     }
 }
@@ -608,8 +612,9 @@ function deleteGroup(t: NoteTarget): Board | Found<never> {
     if (cards.length)
         return {
             ok: false,
-            message: `The group "${title}" still contains ${cards.length}${" notes. Move or delete the notes" +
-        " first."}`,
+            message:
+                `The group "${title}" still contains ${cards.length} ` +
+                'notes. Move or delete the notes first.'
         };
     return deleteColumn(t.board, column.value);
 }
@@ -713,8 +718,8 @@ function addField(t: SchemaTarget): SchemaResult {
             ok: false,
             message:
                 problem === 'taken'
-                    ? `${"The document already has" +
-            " a field \""}${key}". Fields: ${t.doc.schema.map((f) => f.key).join(', ')}.`
+                    ? `The document already has a field "${key}". ` +
+                        `Fields: ${t.doc.schema.map((f) => f.key).join(', ')}.`
                     : `"${key}${"\" is not a valid field name (a" +
         " letter first, then letters," +
         " digits, _ or -)."}`,
@@ -746,10 +751,11 @@ function removeField(t: SchemaTarget): SchemaResult {
     if (uses && t.args.force !== true)
         return {
             ok: false,
-            message: `${uses} notes still have a value for "${def.value.key}${"\". Removing the declaration keeps" +
-        " those values in the notes as" +
-        " undeclared fields; set force=true" +
-        " if that is what the user wants."}`,
+            message:
+                `${uses} notes still have a value for "${def.value.key}". ` +
+                'Removing the declaration keeps those values in the notes as ' +
+                'undeclared fields; set force=true if that is what the user ' +
+                'wants.',
         };
     return t.withDeclared(
         t.doc.declared.filter((f) => f.key !== def.value.key)
@@ -761,7 +767,9 @@ function selectField(t: SchemaTarget): Found<FieldDef> {
     return def.ok && def.value.type !== 'select'
         ? {
               ok: false,
-              message: `"${def.value.key}" is a ${def.value.type} field, not a select.`,
+              message:
+                  `"${def.value.key}" is a ${def.value.type} field, ` +
+                  'not a select.'
           }
         : def;
 }
@@ -772,17 +780,25 @@ function addOptionTo(t: SchemaTarget): SchemaResult {
     const option = t.arg('option'),
         color = t.arg('color');
     const problem = optionProblem(option, def.value.options);
-    if (problem)
+    if (problem) {
+        const reason =
+            problem === 'taken'
+                ? `${def.value.key} already has it (` +
+                    `${def.value.options.join(', ')})`
+                : problem === 'empty'
+                  ? 'the "option" argument is required'
+                  : 'an option has no comma, parenthesis, or colon';
         return {
             ok: false,
-            message: `"${option}" cannot be added: ${problem === 'taken' ? `${def.value.key} already has it (${def.value.options.join(', ')})` : problem === 'empty' ? 'the "option" argument is required' : 'an option has no comma, parenthesis, or colon'}.`,
+            message: `"${option}" cannot be added: ${reason}.`,
         };
+    }
     if (color && !isOptionColor(color))
         return {
             ok: false,
-            message: `"${color}${"\" is not a color. Use red, amber," +
-        " green, blue, purple, teal, pink," +
-        " or gray."}`,
+            message:
+                `"${color}" is not a color. Use red, amber, green, ` +
+                'blue, purple, teal, pink, or gray.'
         };
     const colors =
         color && isOptionColor(color)
@@ -806,21 +822,24 @@ function removeOption(t: SchemaTarget): SchemaResult {
     if (option === undefined)
         return {
             ok: false,
-            message: `${def.value.key} has no option "${t.arg('option')}". Options: ${def.value.options.join(', ') || '(none)'}.`,
+            message:
+                `${def.value.key} has no option "${t.arg('option')}". ` +
+                `Options: ${def.value.options.join(', ') || '(none)'}.`
         };
     const uses = countUses(t.texts(), def.value.key, option);
     if (uses)
         return {
             ok: false,
-            message: `${uses} notes use "${option}" in ${def.value.key}${". Change those notes first" +
-        " (edit_note), then remove the" +
-        " option."}`,
+            message:
+                `${uses} notes use "${option}" in ${def.value.key}. ` +
+                'Change those notes first (edit_note), then remove the option.'
         };
     if (def.value.default === option)
         return {
             ok: false,
-            message: `"${option}" is the default of ${def.value.key}${". Change the default" +
-            " first."}`,
+            message:
+                `"${option}" is the default of ${def.value.key}. ` +
+                'Change the default first.'
         };
     const colors = Object.entries(def.value.colors ?? {}).filter(
         ([o]) => o !== option
@@ -881,10 +900,10 @@ function setLayout(t: SchemaTarget): SchemaResult {
     if (lacking)
         return {
             ok: false,
-            message: `A ${layout} layout needs a ${lacking.type}${" field and the document has none." +
-        " Declare one first with" +
-        " edit_schema add_field (for" +
-        " example "}${lacking.key}).`,
+            message:
+                `A ${layout} layout needs a ${lacking.type} field and the ` +
+                'document has none. Declare one first with edit_schema ' +
+                `add_field (for example ${lacking.key}).`
         };
     return { ok: true, value: text };
 }
@@ -926,9 +945,11 @@ function optionProblemOf(
         const candidates = doc.schema
             .filter((f) => !type || (f.type === type && !f.multiple))
             .map((f) => f.key);
+        const expected = type ? `a ${type} field` : 'a field';
         return candidates.includes(value)
             ? null
-            : `${key} must name ${type ? `a ${type} field` : 'a field'} of the document: ${candidates.join(', ') || '(none)'}.`;
+            : `${key} must name ${expected} of the document: ` +
+                  `${candidates.join(', ') || '(none)'}.`
     }
     if (key === 'sort')
         return [...fields, 'title', 'section'].includes(value.replace(/^-/, ''))
@@ -958,9 +979,11 @@ function setOption(t: SchemaTarget): SchemaResult {
     if (!KEY_OPTION.test(key) || !known.includes(key))
         return {
             ok: false,
-            message: `"${key}" is not a layout option. Options: ${known.join(', ')}${". The layout itself changes with" +
-        " set_layout and the fields with" +
-        " add_field."}`,
+            message:
+                `"${key}" is not a layout option. ` +
+                `Options: ${known.join(', ')}. ` +
+                'The layout itself changes with set_layout and the fields ' +
+                'with add_field.'
         };
     if (value.includes('\n'))
         return {
@@ -994,10 +1017,11 @@ function checkCharts(text: string, written: string): SchemaResult {
         ? { ok: true, value: text }
         : {
               ok: false,
-              message: `${"Some charts cannot be read (they" +
-        " would be left out): wanted "}${names.join(', ')}, understood ${read.join(', ')}${". Use kpi, tags," +
-        " bar[:dateField[:week|month]]," +
-        " donut[:selectField]."}`,
+              message:
+                  'Some charts cannot be read (they would be left out): ' +
+                  `wanted ${names.join(', ')}, understood ` +
+                  `${read.join(', ')}. Use kpi, tags, ` +
+                  'bar[:dateField[:week|month]], donut[:selectField].',
           };
 }
 
@@ -1050,9 +1074,10 @@ function planFirstLayout(args: Record<string, unknown>, text: string): Planned {
     const lacking = missingField(parseBoard(after), layout);
     if (lacking)
         return fail(
-            `A ${layout} layout needs a ${lacking.type}${" field. Declare it in the same" +
-        " batch (edit_schema add_field "}${lacking.key}${") after giving the document a" +
-        " layout such as list."}`,
+            `A ${layout} layout needs a ${lacking.type} field. ` +
+                'Declare it in the same batch (edit_schema add_field ' +
+                `${lacking.key}) after giving the document a ` +
+                'layout such as list.',
             'needs a field'
         );
     return { ok: true, after };
