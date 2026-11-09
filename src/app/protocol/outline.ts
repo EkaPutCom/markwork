@@ -1,5 +1,7 @@
-// The Outline panel over the protocol: the headings of the active document go out as `view.outline` whenever the controller
-// sends them, and the heading the user chose comes back as its place in that list (`act.outline.jump`, docs/design/protocol.md).
+// The Outline panel over the protocol: the headings of the active document go
+// out as `view.outline` whenever the controller
+// sends them, and the heading the user chose comes back as its place in that
+// list (`act.outline.jump`, docs/design/protocol.md).
 
 import type { OutlineHeading, OutlineView } from '../outline';
 import type { Wire } from './messages';

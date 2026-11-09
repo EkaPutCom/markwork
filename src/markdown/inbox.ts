@@ -1,69 +1,149 @@
-// The notes of a `layout: list` document (an inbox, a reading list, …). The model is the same as a board's
-// (kanban.ts): the notes before the first `##` heading are one unnamed group and every heading starts another, so a
-// document can be shown as a board or as a list without being converted. Frontmatter marks the document (layout.ts):
+// The notes of a `layout: list` document (an inbox, a reading list, …). The
+// model is the same as a board's
+// (kanban.ts): the notes before the first `##` heading are one unnamed group
+// and
+// every heading starts another, so a
+// document can be shown as a board or as a list without being converted.
+// Frontmatter marks the document (layout.ts):
 //
-//   ---
-//   layout: list
-//   add: top             ← where a new note goes: top (default) or bottom
-//   fields:
-//     created: date = now
-//   ---
+// ---
+// layout: list
+// add: top             ← where a new note goes: top (default) or bottom
+// fields:
+// created: date = now
+// ---
 //
-//   # Inbox                          ← title and description (anything before the first item) are kept
+// # Inbox                          ← title and description (anything before the
+// first item) are kept
 //
-//   - Read the GNOME HIG article #read [created:: 2026-10-07 14:32]
-//     item note (indented)           ← an indented line = item note
-//   - [x] Workbench name idea #markwork [created:: 2026-10-07 09:10]
+// - Read the GNOME HIG article #read [created:: 2026-10-07 14:32]
+// item note (indented)           ← an indented line = item note
+// - [x] Workbench name idea #markwork [created:: 2026-10-07 09:10]
 //
-// One item = one list bullet; the `created` field (see fields.ts) is the capture time. Items without a time are
+// One item = one list bullet; the `created` field (see fields.ts) is the
+// capture
+// time. Items without a time are
 // still valid. Pure TypeScript; all operations return a new board.
 
-import { applyDefaults, fieldChips, findSegments, readItem, type DateValue, type FieldChip, type FieldDef } from './fields';
+import {
+    applyDefaults,
+    fieldChips,
+    findSegments,
+    readItem,
+    type DateValue,
+    type FieldChip,
+    type FieldDef,
+} from './fields';
 import { boardSchema, type Board, type Card, type Column } from './kanban';
 import { optionOf } from './layout';
 
-export const CREATED_FIELD: FieldDef = { key: 'created', type: 'date', multiple: false, options: [] };
+export const CREATED_FIELD: FieldDef = {
+    key: 'created',
+    type: 'date',
+    multiple: false,
+    options: [],
+};
 
-export const DEFAULT_HEAD = ['---', 'layout: list', 'add: top', 'fields:', '  created: date = now', '---'];
+export const DEFAULT_HEAD = [
+    '---',
+    'layout: list',
+    'add: top',
+    'fields:',
+    '  created: date = now',
+    '---',
+];
 
 // An empty list: the frontmatter and a title, no notes.
 export function newList(title = 'Inbox'): Board {
-    return { head: [...DEFAULT_HEAD, '', `# ${title}`], columns: [], footer: [] };
+    return {
+        head: [...DEFAULT_HEAD, '', `# ${title}`],
+        columns: [],
+        footer: [],
+    };
 }
 
 // ---------- Operations ----------
 
-const emptyGroup = (): Column => ({ title: '', intro: [], cards: [], outro: [] });
+const emptyGroup = (): Column => ({
+    title: '',
+    intro: [],
+    cards: [],
+    outro: [],
+});
 
-// Where a new note goes: `add: top` (the default) or `add: bottom`, and `add-to: Name` for the group of that name
+// Where a new note goes: `add: top` (the default) or `add: bottom`, and
+// `add-to:
+// Name` for the group of that name
 // instead of the first (top) or last (bottom) group of the document.
-export interface AddTarget { position: 'top' | 'bottom'; group: string | null }
+export interface AddTarget {
+    position: 'top' | 'bottom';
+    group: string | null;
+}
 
 export function addTarget(board: Board): AddTarget {
     const head = board.head.join('\n');
-    return { position: optionOf(head, 'add')?.toLowerCase() === 'bottom' ? 'bottom' : 'top', group: optionOf(head, 'add-to') };
+    return {
+        position:
+            optionOf(head, 'add')?.toLowerCase() === 'bottom'
+                ? 'bottom'
+                : 'top',
+        group: optionOf(head, 'add-to'),
+    };
 }
 
-// The index of the group a new note goes into: the one named by `add-to` if there is one, else the first group (top)
+// The index of the group a new note goes into: the one named by `add-to` if
+// there is one, else the first group (top)
 // or the last (bottom).
 function targetGroup(columns: Column[], target: AddTarget): number {
-    const named = target.group === null ? -1 : columns.findIndex(c => c.title.toLowerCase() === target.group!.toLowerCase());
-    return named >= 0 ? named : target.position === 'top' ? 0 : columns.length - 1;
+    const named =
+        target.group === null
+            ? -1
+            : columns.findIndex(
+                  (c) => c.title.toLowerCase() === target.group!.toLowerCase()
+              );
+    return named >= 0
+        ? named
+        : target.position === 'top'
+          ? 0
+          : columns.length - 1;
 }
 
-// A new note, put where the document says (see addTarget; at the very top of the first group by default; a group
-// without a name is made if there is none), with the default of every field of the document that the text does not
-// set itself (the capture time, for a list that declares `created: date = now`).
-export function captureItem(board: Board, text: string, now: Date, notes: string[] = []): Board {
+// A new note, put where the document says (see addTarget; at the very top of
+// the
+// first group by default; a group
+// without a name is made if there is none), with the default of every field of
+// the document that the text does not
+// set itself (the capture time, for a list that declares `created: date =
+// now`).
+export function captureItem(
+    board: Board,
+    text: string,
+    now: Date,
+    notes: string[] = []
+): Board {
     const body = text.trim();
     if (!body) return board;
-    const item: Card = { done: null, text: applyDefaults(body, boardSchema(board), now), notes };
+    const item: Card = {
+        done: null,
+        text: applyDefaults(body, boardSchema(board), now),
+        notes,
+    };
     const columns = board.columns.length ? board.columns : [emptyGroup()];
     const target = addTarget(board);
     const into = targetGroup(columns, target);
     return {
         ...board,
-        columns: columns.map((c, i) => (i !== into ? c : { ...c, cards: target.position === 'top' ? [item, ...c.cards] : [...c.cards, item] })),
+        columns: columns.map((c, i) =>
+            i !== into
+                ? c
+                : {
+                      ...c,
+                      cards:
+                          target.position === 'top'
+                              ? [item, ...c.cards]
+                              : [...c.cards, item],
+                  }
+        ),
     };
 }
 
@@ -76,9 +156,10 @@ export const itemFields = (text: string, schema: FieldDef[]): FieldChip[] =>
 // ---------- Item content ----------
 
 export interface ItemMeta {
-    title: string;            // text without #tags and capture time
+    title: string; // text without #tags and capture time
     tags: string[];
-    captured: Date | null;    // local time; an item without a time of day is treated as midnight
+    // local time; an item without a time of day is treated as midnight
+    captured: Date | null;
 }
 
 export function itemMeta(text: string): ItemMeta {
@@ -94,22 +175,38 @@ export function itemMeta(text: string): ItemMeta {
     return { title: item.title, tags: item.tags, captured };
 }
 
-// Compose the item text from an edited title and tags; every field in `oldText` (the capture time among them) is kept.
-export function composeItem(title: string, tags: string[], oldText = ''): string {
-    const tagText = tags.map(t => t.replace(/^#+/, '')).filter(Boolean).map(t => `#${t}`);
-    const fields = findSegments(oldText).map(s => oldText.slice(s.start, s.end));
+// Compose the item text from an edited title and tags; every field in `oldText`
+// (the capture time among them) is kept.
+export function composeItem(
+    title: string,
+    tags: string[],
+    oldText = ''
+): string {
+    const tagText = tags
+        .map((t) => t.replace(/^#+/, ''))
+        .filter(Boolean)
+        .map((t) => `#${t}`);
+    const fields = findSegments(oldText).map((s) =>
+        oldText.slice(s.start, s.end)
+    );
     return [title.trim(), ...tagText, ...fields].filter(Boolean).join(' ');
 }
 
 export type AgeUnit = 'now' | 'minutes' | 'hours' | 'days' | 'date';
-export interface Age { unit: AgeUnit; n: number }
+export interface Age {
+    unit: AgeUnit;
+    n: number;
+}
 
-// Item age for the "10 minutes ago" label; more than a week falls back to the date.
+// Item age for the "10 minutes ago" label; more than a week falls back to the
+// date.
 export function ageOf(captured: Date, now: Date): Age {
     const minutes = Math.floor((now.getTime() - captured.getTime()) / 60000);
     if (minutes < 1) return { unit: 'now', n: 0 };
     if (minutes < 60) return { unit: 'minutes', n: minutes };
-    if (minutes < 60 * 24) return { unit: 'hours', n: Math.floor(minutes / 60) };
-    if (minutes < 60 * 24 * 7) return { unit: 'days', n: Math.floor(minutes / (60 * 24)) };
+    if (minutes < 60 * 24)
+        return { unit: 'hours', n: Math.floor(minutes / 60) };
+    if (minutes < 60 * 24 * 7)
+        return { unit: 'days', n: Math.floor(minutes / (60 * 24)) };
     return { unit: 'date', n: 0 };
 }

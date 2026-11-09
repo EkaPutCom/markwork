@@ -1,6 +1,9 @@
-// The few web-standard globals the core uses, which every runtime it runs on has (Node, the renderer's Chromium). Only
-// these are declared, not Node's types: anything else the core needs from the runtime goes through the platform port
-// (platform/index.ts), so a `node:` import or a Node global in the core fails this typecheck.
+// The few web-standard globals the core uses, which every runtime it runs on
+// has (Node, the renderer's Chromium). Only
+// these are declared, not Node's types: anything else the core needs from the
+// runtime goes through the platform port
+// (platform/index.ts), so a `node:` import or a Node global in the core fails
+// this typecheck.
 
 declare type TimerHandle = { readonly __timer: unique symbol };
 declare function setTimeout(handler: () => void, ms?: number): TimerHandle;

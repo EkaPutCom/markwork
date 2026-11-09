@@ -1,8 +1,14 @@
-// Deterministic checks of the actual contents; it does not claim to prove the meaning of the whole document.
+// Deterministic checks of the actual contents; it does not claim to prove the
+// meaning of the whole document.
 import type { SourceFile } from './context';
 import type { ToolSpec } from './provider';
 import { checkNote, checkNoteField, structuredIssues } from './notes';
-import { newIssues, resolveLink, scanDocument, type Issue } from '../markdown/lint';
+import {
+    newIssues,
+    resolveLink,
+    scanDocument,
+    type Issue,
+} from '../markdown/lint';
 
 export interface Verification {
     passed: boolean;
@@ -14,97 +20,273 @@ const MAX_LISTED = 8;
 
 export const VERIFY_TOOL: ToolSpec = {
     name: 'verify_work',
-    description: 'Check the actual result after changes. State the criteria from the user\'s request: text that must be present/absent, a note in a structured document (kind note: text = the note, optionally in a group and done or not done), the value of a field of a note in a structured document (kind field: text = a piece of the note, field = the field name, value = the expected value, empty for no value), or Markdown structure (tables, headings, code blocks, links to other files, and for a structured document its field declarations and the values of its notes) without new problems. file "*" means the whole folder, e.g. making sure an old date remains in no file. Check all changed files. A failed result means the work is not finished.',
-    parameters: { type: 'object', properties: {
-        checks: { type: 'array', minItems: 1, maxItems: 40, items: { type: 'object', properties: {
-            file: { type: 'string', description: 'File name, or "*" for the whole folder (present/absent only)' },
-            kind: { type: 'string', enum: ['present', 'absent', 'note', 'field', 'structure'] },
-            text: { type: 'string', description: 'present/absent: the exact text; note: a piece of the text of the note; field: a piece of the text of the note. Not used for structure' },
-            group: { type: 'string', description: 'note only: the group (the ## heading, the column of a board) the note must be in' },
-            done: { type: 'boolean', description: 'note only: the done status the note must have' },
-            field: { type: 'string', description: 'field only: the field name' },
-            value: { type: 'string', description: 'field only: the expected value (as written in the note); empty means the note must not have the field' },
-        }, required: ['file', 'kind'], additionalProperties: false } },
-    }, required: ['checks'], additionalProperties: false },
+    description:
+        'Check the actual result after changes.' +
+            ' State the criteria from the user\'s' +
+            ' request: text that must be' +
+            ' present/absent, a note in a' +
+            ' structured document (kind note: text' +
+            ' = the note, optionally in a group and' +
+            ' done or not done), the value of a' +
+            ' field of a note in a structured' +
+            ' document (kind field: text = a piece' +
+            ' of the note, field = the field name,' +
+            ' value = the expected value, empty for' +
+            ' no value), or Markdown structure' +
+            ' (tables, headings, code blocks, links' +
+            ' to other files, and for a structured' +
+            ' document its field declarations and' +
+            ' the values of its notes) without new' +
+            ' problems. file "*" means the whole' +
+            ' folder, e.g. making sure an old date' +
+            ' remains in no file. Check all changed' +
+            ' files. A failed result means the work' +
+            ' is not finished.',
+    parameters: {
+        type: 'object',
+        properties: {
+            checks: {
+                type: 'array',
+                minItems: 1,
+                maxItems: 40,
+                items: {
+                    type: 'object',
+                    properties: {
+                        file: {
+                            type: 'string',
+                            description:
+                                'File name, or "*" for the whole folder' +
+                                    ' (present/absent only)',
+                        },
+                        kind: {
+                            type: 'string',
+                            enum: [
+                                'present',
+                                'absent',
+                                'note',
+                                'field',
+                                'structure',
+                            ],
+                        },
+                        text: {
+                            type: 'string',
+                            description:
+                                'present/absent: the exact text; note:' +
+                                    ' a piece of the text of the note;' +
+                                    ' field: a piece of the text of the' +
+                                    ' note. Not used for structure',
+                        },
+                        group: {
+                            type: 'string',
+                            description:
+                                'note only: the group (the ## heading,' +
+                                    ' the column of a board) the note must' +
+                                    ' be in',
+                        },
+                        done: {
+                            type: 'boolean',
+                            description:
+                                'note only: the done status the note must have',
+                        },
+                        field: {
+                            type: 'string',
+                            description: 'field only: the field name',
+                        },
+                        value: {
+                            type: 'string',
+                            description:
+                                'field only: the expected value (as' +
+                                    ' written in the note); empty means the' +
+                                    ' note must not have the field',
+                        },
+                    },
+                    required: ['file', 'kind'],
+                    additionalProperties: false,
+                },
+            },
+        },
+        required: ['checks'],
+        additionalProperties: false,
+    },
 };
 
-const listLines = (hits: string[]): string => `${hits.slice(0, MAX_LISTED).join('; ')}${hits.length > MAX_LISTED ? `; +${hits.length - MAX_LISTED} more` : ''}`;
+const listLines = (hits: string[]): string => {
+    const listed = hits.slice(0, MAX_LISTED).join('; ');
+    const more =
+        hits.length > MAX_LISTED ? `; +${hits.length - MAX_LISTED} more` : '';
+    return `${listed}${more}`;
+};
 
 // File lines containing the text, as "file:line".
 function occurrences(file: SourceFile, text: string): string[] {
     if (!file.text.includes(text)) return [];
-    return file.text.split('\n').flatMap((line, i) => line.includes(text) ? [`${file.name}:${i + 1}`] : []);
+    return file.text
+        .split('\n')
+        .flatMap((line, i) =>
+            line.includes(text) ? [`${file.name}:${i + 1}`] : []
+        );
 }
 
-// Structure problems of one file, including links to Markdown files that are not in the folder.
-export function fileIssues(name: string, text: string, files: SourceFile[]): Issue[] {
+// Structure problems of one file, including links to Markdown files that are
+// not in the folder.
+export function fileIssues(
+    name: string,
+    text: string,
+    files: SourceFile[]
+): Issue[] {
     const { issues, links } = scanDocument(text);
-    const names = new Set(files.map(f => f.name));
+    const names = new Set(files.map((f) => f.name));
     for (const link of links) {
-        if (!MARKDOWN_EXTENSION.test(link.target)) continue;   // images and other files are not visible to the agent
+        // images and other files are not visible to the agent
+        if (!MARKDOWN_EXTENSION.test(link.target)) continue;
         const path = resolveLink(name, link.target);
-        if (path === null || !names.has(path)) issues.push({ line: link.line, key: `link:${link.target}`, text: `the link to "${link.target}" (line ${link.line}) does not point to a file in the folder` });
+        if (path === null || !names.has(path))
+            issues.push({
+                line: link.line,
+                key: `link:${link.target}`,
+                text:
+                    `the link to "${link.target}" (line ${link.line}) ` +
+                    'does not point to a file in the folder',
+            });
     }
     issues.push(...structuredIssues(text));
     return issues;
 }
 
-// baseline(file) = contents before the work started (null = unknown; '' = new file). With a baseline, the structure
-// check only fails problems that appeared because of the changes, not old problems that were already there.
-export function structureCheck(file: SourceFile, files: SourceFile[], baseline: string | null): { label: string; passed: boolean } {
+// baseline(file) = contents before the work started (null = unknown; '' = new
+// file). With a baseline, the structure
+// check only fails problems that appeared because of the changes, not old
+// problems that were already there.
+export function structureCheck(
+    file: SourceFile,
+    files: SourceFile[],
+    baseline: string | null
+): { label: string; passed: boolean } {
     const after = fileIssues(file.name, file.text, files);
     // Unchanged contents cannot have new problems; skip the second parse.
-    const found = baseline === null ? after : baseline === file.text ? [] : newIssues(fileIssues(file.name, baseline, files), after);
+    const found =
+        baseline === null
+            ? after
+            : baseline === file.text
+              ? []
+              : newIssues(fileIssues(file.name, baseline, files), after);
     const old = after.length - found.length;
+    const freshness = baseline === null ? '' : ' new';
     const label = found.length
-        ? `structure: ${found.length} problems${baseline === null ? '' : ' new'} (${listLines(found.map(i => i.text))})`
-        : `structure: no${baseline === null ? '' : ' new'} problems${old ? ` (${old} old problems left alone)` : ''}`;
+        ? `structure: ${found.length} problems${freshness} ` +
+            `(${listLines(found.map((i) => i.text))})`
+        : `structure: no${freshness} problems` +
+            `${old ? ` (${old} old problems left alone)` : ''}`;
     return { label, passed: !found.length };
 }
 
 type Check = Verification['checks'][number];
 const KINDS = ['present', 'absent', 'note', 'field', 'structure'];
 
-export function verifyWork(raw: string, files: SourceFile[], baseline: (file: string) => string | null = () => null): Verification {
+export function verifyWork(
+    raw: string,
+    files: SourceFile[],
+    baseline: (file: string) => string | null = () => null
+): Verification {
     try {
         const a = JSON.parse(raw);
-        if (!Array.isArray(a.checks) || !a.checks.length || a.checks.length > 40) throw Error();
-        const checks: Check[] = a.checks.map((c: any) => runCheck(c, files, baseline));
-        return { passed: checks.every(c => c.passed), checks };
-    } catch { return { passed: false, checks: [{ file: '', label: 'Invalid check', passed: false }] }; }
+        if (
+            !Array.isArray(a.checks) ||
+            !a.checks.length ||
+            a.checks.length > 40
+        )
+            throw Error();
+        const checks: Check[] = a.checks.map((c: any) =>
+            runCheck(c, files, baseline)
+        );
+        return { passed: checks.every((c) => c.passed), checks };
+    } catch {
+        return {
+            passed: false,
+            checks: [{ file: '', label: 'Invalid check', passed: false }],
+        };
+    }
 }
 
-// One criterion. Throws on a malformed one: the whole call is then reported as invalid.
-function runCheck(c: any, files: SourceFile[], baseline: (file: string) => string | null): Check {
-    if (!c || typeof c.file !== 'string' || !KINDS.includes(c.kind)) throw Error();
+// One criterion. Throws on a malformed one: the whole call is then reported as
+// invalid.
+function runCheck(
+    c: any,
+    files: SourceFile[],
+    baseline: (file: string) => string | null
+): Check {
+    if (!c || typeof c.file !== 'string' || !KINDS.includes(c.kind))
+        throw Error();
     const text: string = typeof c.text === 'string' ? c.text : '';
-    if (c.kind !== 'structure' && (!text.trim() || text.length > 10000)) throw Error();
+    if (c.kind !== 'structure' && (!text.trim() || text.length > 10000))
+        throw Error();
     if (c.file === '*') return folderCheck(c.kind, text, files);
-    const file = files.find(f => f.name === c.file);
-    if (!file) return { file: c.file, label: `${c.kind}: file does not exist`, passed: false };
-    if (c.kind === 'structure') return { file: c.file, ...structureCheck(file, files, baseline(c.file)) };
+    const file = files.find((f) => f.name === c.file);
+    if (!file)
+        return {
+            file: c.file,
+            label: `${c.kind}: file does not exist`,
+            passed: false,
+        };
+    if (c.kind === 'structure')
+        return {
+            file: c.file,
+            ...structureCheck(file, files, baseline(c.file)),
+        };
     return fileCheck(c, text, file);
 }
 
-// present/absent over the whole folder, e.g. an old date that must remain nowhere.
+// present/absent over the whole folder, e.g. an old date that must remain
+// nowhere.
 function folderCheck(kind: string, text: string, files: SourceFile[]): Check {
     if (kind !== 'present' && kind !== 'absent') throw Error();
-    const hits = files.flatMap(f => occurrences(f, text));
+    const hits = files.flatMap((f) => occurrences(f, text));
     const passed = kind === 'present' ? hits.length > 0 : !hits.length;
-    return { file: '*', label: `${kind} in the whole folder: ${text}${hits.length && kind === 'absent' ? ` — still present in ${listLines(hits)}` : ''}`, passed };
+    const remaining =
+        hits.length && kind === 'absent'
+            ? ` — still present in ${listLines(hits)}`
+            : '';
+    return {
+        file: '*',
+        label: `${kind} in the whole folder: ${text}${remaining}`,
+        passed,
+    };
 }
 
 // present, absent, note, or field in one file.
 function fileCheck(c: any, text: string, file: SourceFile): Check {
     if (c.kind === 'field') return fieldCheck(c, text, file);
-    if (c.kind === 'note') return { file: c.file, ...checkNote(file.text, text, typeof c.group === 'string' ? c.group : null, typeof c.done === 'boolean' ? c.done : null) };
-    const passed = c.kind === 'present' ? file.text.includes(text) : !file.text.includes(text);
-    const where = !passed && c.kind === 'absent' ? ` — still present in ${listLines(occurrences(file, text))}` : '';
+    if (c.kind === 'note')
+        return {
+            file: c.file,
+            ...checkNote(
+                file.text,
+                text,
+                typeof c.group === 'string' ? c.group : null,
+                typeof c.done === 'boolean' ? c.done : null
+            ),
+        };
+    const passed =
+        c.kind === 'present'
+            ? file.text.includes(text)
+            : !file.text.includes(text);
+    const where =
+        !passed && c.kind === 'absent'
+            ? ` — still present in ${listLines(occurrences(file, text))}`
+            : '';
     return { file: c.file, label: `${c.kind}: ${text}${where}`, passed };
 }
 
 // The one note containing `text` has the expected value in the field.
 function fieldCheck(c: any, text: string, file: SourceFile): Check {
     if (typeof c.field !== 'string' || !c.field.trim()) throw Error();
-    return { file: c.file, ...checkNoteField(file.text, text, c.field, typeof c.value === 'string' ? c.value : '') };
+    return {
+        file: c.file,
+        ...checkNoteField(
+            file.text,
+            text,
+            c.field,
+            typeof c.value === 'string' ? c.value : ''
+        ),
+    };
 }

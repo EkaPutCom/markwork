@@ -1,19 +1,37 @@
-// The open tabs: the documents (which one is active, opening files into them, saving, asking before discarding
-// changes) and the pages (Home, an HTML file in its sandbox), and restoring the tabs of the last session. The window composes the widgets; it gives this
-// controller hooks for what must follow a document on screen (DocumentsHost), and keeps thin public methods that
+// The open tabs: the documents (which one is active, opening files into them,
+// saving, asking before discarding
+// changes) and the pages (Home, an HTML file in its sandbox), and restoring the
+// tabs of the last session. The window composes the widgets; it gives this
+// controller hooks for what must follow a document on screen (DocumentsHost),
+// and keeps thin public methods that
 // pass through for the actions and tests.
 
 import type { AppSettings } from '../base/settings';
-import { readTextFile, writeTextFile, fileExists, insideName } from '../base/files';
+import {
+    readTextFile,
+    writeTextFile,
+    fileExists,
+    insideName,
+} from '../base/files';
 import { platform } from '../platform/index';
 import { moveRecent, rememberRecent } from '../markdown/home';
 import { markdownToHtml } from '../markdown/html';
 import { _, fmt, ngettext } from '../base/i18n';
-import { errorMessage, type Doc, type Page, type TextEditor, type ToastAction } from './document';
+import {
+    errorMessage,
+    type Doc,
+    type Page,
+    type TextEditor,
+    type ToastAction,
+} from './document';
 import type { ChooseFileOptions } from './dialogs';
 import type { Autosaver } from './autosave';
 import { below } from '../markdown/paths';
-import { findConflicts, resolution, type Conflict } from '../markdown/conflicts';
+import {
+    findConflicts,
+    resolution,
+    type Conflict,
+} from '../markdown/conflicts';
 import { projectPath } from '../agent/path';
 import { loadAgentFolder } from '../agent/folder';
 import { loadChat } from '../agent/chatstore';
@@ -38,13 +56,21 @@ const HOME_TAB = 'markwork:home';
 
 // The questions about documents; each frontend shows its own dialogs.
 export interface DocumentDialogs {
-    askSaveChanges(documentName: string): Promise<'save' | 'discard' | 'cancel'>;
+    askSaveChanges(
+        documentName: string
+    ): Promise<'save' | 'discard' | 'cancel'>;
     showError(message: string): void;
-    chooseFile(options: ChooseFileOptions): Promise<string | null>;   // null = cancelled
+    // null = cancelled
+    chooseFile(options: ChooseFileOptions): Promise<string | null>;
 }
 
-// Where `path` lands when `source` is moved to `target`; null if path is outside source.
-export function remapPath(path: string, source: string, target: string): string | null {
+// Where `path` lands when `source` is moved to `target`; null if path is
+// outside source.
+export function remapPath(
+    path: string,
+    source: string,
+    target: string
+): string | null {
     if (path === source) return target;
     return below(source, path) ? target + path.slice(source.length) : null;
 }
@@ -52,33 +78,46 @@ export function remapPath(path: string, source: string, target: string): string 
 export interface DocumentsHost<E extends TextEditor> {
     readonly settings: AppSettings;
     readonly dialogs: DocumentDialogs;
-    createEditor(id: number): E;                // the editor for a new document (a replica of the frontend's, over the protocol)
+    // the editor for a new document (a replica of the frontend's, over the
+    // protocol)
+    createEditor(id: number): E;
     readonly autosaver: Autosaver;
     canSaveDocument?(doc: Doc<E>): boolean;
     root(): string | null;
     toast(message: string, action?: ToastAction): void;
-    // A new document: connect its editor, and add its page and tab. Called before it joins the list, so the
-    // active document is still the previous one (a new document inherits its modes).
+    // A new document: connect its editor, and add its page and tab. Called
+    // before it joins the list, so the
+    // active document is still the previous one (a new document inherits its
+    // modes).
     attach(id: number): void;
-    // A closed document: remove its tab and page and destroy its editor (it is no longer in the list).
+    // A closed document: remove its tab and page and destroy its editor (it is
+    // no longer in the list).
     detach(id: number): void;
-    // The document's tab appears or goes. The one empty document kept while only pages are open has no tab.
+    // The document's tab appears or goes. The one empty document kept while
+    // only pages are open has no tab.
     listTab(id: number, listed: boolean): void;
-    // doc became the active document: the outline, search, tab row, and side panels follow it.
+    // doc became the active document: the outline, search, tab row, and side
+    // panels follow it.
     activated(id: number): void;
-    // A page: its tab and contents are added, and removed again when it is closed.
+    // A page: its tab and contents are added, and removed again when it is
+    // closed.
     attachPage(page: Page): void;
     detachPage(id: number): void;
-    // A page became the shown tab: the tab row and the content area follow it; no document is active then.
+    // A page became the shown tab: the tab row and the content area follow it;
+    // no document is active then.
     pageActivated(id: number): void;
-    // The active document's contents or file changed: pick the view (text/board/inbox), the title, the tree highlight, history.
+    // The active document's contents or file changed: pick the view
+    // (text/board/inbox), the title, the tree highlight, history.
     contentChanged(id: number): void;
     refreshTitle(id: number): void;
-    tabOrder(): number[];                       // tab ids (documents and pages) in the order of the tab row
+    // tab ids (documents and pages) in the order of the tab row
+    tabOrder(): number[];
     refreshHome(): void;
     openFolder(path: string): void;
-    openConversation?(path: string, text: string): boolean; // a validated transcript can open as a session page
-    fileSaved(path: string): void;              // a new file was written through Save As: show it in the tree
+    // a validated transcript can open as a session page
+    openConversation?(path: string, text: string): boolean;
+    // a new file was written through Save As: show it in the tree
+    fileSaved(path: string): void;
     showConflictComparison(comparison: ConflictComparison): void;
 }
 
@@ -86,20 +125,33 @@ type MutableDoc = { -readonly [K in keyof Doc]: Doc[K] };
 
 export class DocumentController<E extends TextEditor> {
     private docs: Doc<E>[] = [];
-    private current!: Doc<E>;   // the active document; while a page is shown, the last one that was (what the page leaves behind)
+    // the active document; while a page is shown, the last one that was (what
+    // the page leaves behind)
+    private current!: Doc<E>;
     private pages: Page[] = [];
-    private shown: Page | null = null;     // the page that is shown instead of the active document
-    // While only pages are open there is still one empty document, because the application always has an active one. It
-    // has no tab, and it comes back when a file is opened or a new document made.
+    // the page that is shown instead of the active document
+    private shown: Page | null = null;
+    // While only pages are open there is still one empty document, because the
+    // application always has an active one. It
+    // has no tab, and it comes back when a file is opened or a new document
+    // made.
     private parked: Doc<E> | null = null;
     private nextId = 1;
-    private restoring = false;   // a tab from the last session is being reopened: do not record it as newly opened
-    private comparison: { id: number; doc: number; before: string; conflict: Conflict } | null = null;
+    // a tab from the last session is being reopened: do not record it as newly
+    // opened
+    private restoring = false;
+    private comparison: {
+        id: number;
+        doc: number;
+        before: string;
+        conflict: Conflict;
+    } | null = null;
     private nextComparison = 1;
 
     constructor(private readonly host: DocumentsHost<E>) {}
 
-    // The first document, active without the activation hooks (the window is still being built).
+    // The first document, active without the activation hooks (the window is
+    // still being built).
     start(): Doc<E> {
         this.current = this.add();
         return this.current;
@@ -122,41 +174,79 @@ export class DocumentController<E extends TextEditor> {
         return this.pages;
     }
 
-    // Compare a conflict from the editor replica, including unsaved edits. The result is a read-only snapshot.
+    // Compare a conflict from the editor replica, including unsaved edits. The
+    // result is a read-only snapshot.
     compareConflict(id: number, line: number): boolean {
-        const doc = this.docs.find(d => d.id === id);
+        const doc = this.docs.find((d) => d.id === id);
         if (!doc) return false;
-        const before = doc.editor.getText(), lines = before.split('\n');
-        const conflict = findConflicts(lines).find(c => c.start + 1 === line);
+        const before = doc.editor.getText(),
+            lines = before.split('\n');
+        const conflict = findConflicts(lines).find((c) => c.start + 1 === line);
         if (!conflict) return false;
-        const current = resolution(lines, conflict, 'current'), incoming = resolution(lines, conflict, 'incoming');
-        const text = (side: string[]) => side.length ? side.join('\n') + '\n' : '';
-        const diff = parseDiff(unifiedDiff(text(current), text(incoming), lines.length));
+        const current = resolution(lines, conflict, 'current'),
+            incoming = resolution(lines, conflict, 'incoming');
+        const text = (side: string[]) =>
+            side.length ? side.join('\n') + '\n' : '';
+        const diff = parseDiff(
+            unifiedDiff(text(current), text(incoming), lines.length)
+        );
         const comparisonId = this.nextComparison++;
         this.comparison = { id: comparisonId, doc: doc.id, before, conflict };
-        this.host.showConflictComparison({ id: comparisonId, file: this.nameOf(doc), current: conflict.current, incoming: conflict.incoming,
-            currentText: text(current), incomingText: text(incoming),
-            lines: diff.length ? diff : [{ kind: 'hunk', text: `@@ -1,${current.length} +1,${incoming.length} @@` },
-                ...current.map(text => ({ kind: 'context' as const, text: ' ' + text }))] });
+        this.host.showConflictComparison({
+            id: comparisonId,
+            file: this.nameOf(doc),
+            current: conflict.current,
+            incoming: conflict.incoming,
+            currentText: text(current),
+            incomingText: text(incoming),
+            lines: diff.length
+                ? diff
+                : [
+                      {
+                          kind: 'hunk',
+                          text:
+                              `@@ -1,${current.length} ` +
+                                  `+1,${incoming.length} @@`,
+                      },
+                      ...current.map((text) => ({
+                          kind: 'context' as const,
+                          text: ' ' + text,
+                      })),
+                  ],
+        });
         return true;
     }
 
-    // Apply only the comparison the core offered, after the user's explicit Apply Result action.
+    // Apply only the comparison the core offered, after the user's explicit
+    // Apply Result action.
     applyConflictComparison(id: number, result: string): boolean {
         const comparison = this.comparison;
         if (!comparison || comparison.id !== id) return false;
-        const doc = this.docs.find(d => d.id === comparison.doc);
+        const doc = this.docs.find((d) => d.id === comparison.doc);
         if (!doc) return false;
         let accepted = true;
-        doc.editor.update(text => {
+        doc.editor.update((text) => {
             if (text !== comparison.before) {
                 accepted = false;
-                this.host.toast(_('The document changed. Open Compare Changes again before applying the result.'));
+                this.host.toast(
+                    _(
+                        'The document changed. Open Compare' +
+                            ' Changes again before applying the' +
+                            ' result.'
+                    )
+                );
                 return null;
             }
-            const lines = text.split('\n'), { start, end } = comparison.conflict;
-            const replacement = result ? result.replace(/\n$/, '').split('\n') : [];
-            return [...lines.slice(0, start), ...replacement, ...lines.slice(end + 1)].join('\n');
+            const lines = text.split('\n'),
+                { start, end } = comparison.conflict;
+            const replacement = result
+                ? result.replace(/\n$/, '').split('\n')
+                : [];
+            return [
+                ...lines.slice(0, start),
+                ...replacement,
+                ...lines.slice(end + 1),
+            ].join('\n');
         });
         if (accepted) this.comparison = null;
         return accepted;
@@ -169,7 +259,11 @@ export class DocumentController<E extends TextEditor> {
     // Create an empty document together with its editor, without activating it.
     add(): Doc<E> {
         const id = this.nextId++;
-        const doc: Doc<E> = { id, editor: this.host.createEditor(id), file: null };
+        const doc: Doc<E> = {
+            id,
+            editor: this.host.createEditor(id),
+            file: null,
+        };
         this.host.attach(id);
         this.docs.push(doc);
         return doc;
@@ -182,7 +276,8 @@ export class DocumentController<E extends TextEditor> {
         this.current = doc;
         this.shown = null;
         if (this.parked === doc) this.unpark(doc);
-        this.host.autosaver.now(previous);   // leaving a tab = a safe point to save
+        // leaving a tab = a safe point to save
+        this.host.autosaver.now(previous);
         if (doc.file) this.rememberRecent(doc.file);
         this.host.activated(doc.id);
     }
@@ -194,10 +289,17 @@ export class DocumentController<E extends TextEditor> {
 
     // Tab name/title for a page.
     nameOfPage(page: Page): string {
-        return page.kind === 'agent' ? page.label ?? 'Agent' : page.file ? platform().paths.basename(page.file) : page.kind === 'programs' ? PROGRAMS : HOME;
+        return page.kind === 'agent'
+            ? (page.label ?? 'Agent')
+            : page.file
+              ? platform().paths.basename(page.file)
+              : page.kind === 'programs'
+                ? PROGRAMS
+                : HOME;
     }
 
-    // A document without a file and without changes has no contents that need to be kept,
+    // A document without a file and without changes has no contents that need
+    // to be kept,
     // so it may be reused for the next file that is opened.
     isPristine(doc: Doc): boolean {
         return !doc.file && !doc.editor.isModified();
@@ -212,56 +314,74 @@ export class DocumentController<E extends TextEditor> {
 
     // The tab with this id (a document or a page) becomes the shown one.
     select(id: number): void {
-        const doc = this.docs.find(d => d.id === id);
+        const doc = this.docs.find((d) => d.id === id);
         if (doc) {
             this.activate(doc);
             return;
         }
-        const page = this.pages.find(p => p.id === id);
+        const page = this.pages.find((p) => p.id === id);
         if (page) this.activatePage(page);
     }
 
-    // The close button of a tab: a document asks about its changes, a page closes at once.
+    // The close button of a tab: a document asks about its changes, a page
+    // closes at once.
     async closeById(id: number): Promise<boolean> {
-        const doc = this.docs.find(d => d.id === id);
+        const doc = this.docs.find((d) => d.id === id);
         if (doc) return this.closeTab(doc);
-        const page = this.pages.find(p => p.id === id);
+        const page = this.pages.find((p) => p.id === id);
         return page ? this.closePage(page) : false;
     }
 
-    // Close a tab (asks if there are changes); the shown tab if no document is named. Closing the only tab empties its document.
+    // Close a tab (asks if there are changes); the shown tab if no document is
+    // named. Closing the only tab empties its document.
     async closeTab(doc?: Doc<E>): Promise<boolean> {
         if (!doc && this.shown) return this.closePage(this.shown);
         const target = doc ?? this.current;
-        return await this.confirmDiscard(target) && this.docs.includes(target) && this.remove(target);
+        return (
+            (await this.confirmDiscard(target)) &&
+            this.docs.includes(target) &&
+            this.remove(target)
+        );
     }
 
-    // Close several tabs at once (Close All, Close Others): it asks about the changed documents first, one by one, and
-    // closes nothing if one is cancelled. With no ids, every tab. Documents go before pages, so the last document is
+    // Close several tabs at once (Close All, Close Others): it asks about the
+    // changed documents first, one by one, and
+    // closes nothing if one is cancelled. With no ids, every tab. Documents go
+    // before pages, so the last document is
     // emptied (or parked behind a page) as with its own close button.
-    async closeMany(ids: readonly number[] = this.host.tabOrder()): Promise<boolean> {
-        const docs = this.docs.filter(d => ids.includes(d.id));
-        if (!await this.confirmDiscardAll(docs)) return false;
+    async closeMany(
+        ids: readonly number[] = this.host.tabOrder()
+    ): Promise<boolean> {
+        const docs = this.docs.filter((d) => ids.includes(d.id));
+        if (!(await this.confirmDiscardAll(docs))) return false;
         for (const doc of docs) if (this.docs.includes(doc)) this.remove(doc);
-        for (const page of this.pages.filter(p => ids.includes(p.id))) if (this.pages.includes(page)) this.closePage(page);
+        for (const page of this.pages.filter((p) => ids.includes(p.id)))
+            if (this.pages.includes(page)) this.closePage(page);
         return true;
     }
 
-    // Close the tabs whose file lies outside folder (asks about unsaved changes first).
+    // Close the tabs whose file lies outside folder (asks about unsaved changes
+    // first).
     // false = the user cancelled, so the folder should not be switched.
     async closeOutside(folder: string): Promise<boolean> {
-        const stale = this.docs.filter(d => d.file && insideName(folder, d.file) === null);
-        const stalePages = this.pages.filter(p => p.file && insideName(folder, p.file) === null);
+        const stale = this.docs.filter(
+            (d) => d.file && insideName(folder, d.file) === null
+        );
+        const stalePages = this.pages.filter(
+            (p) => p.file && insideName(folder, p.file) === null
+        );
         if (stale.length === 0 && stalePages.length === 0) return true;
-        if (!await this.confirmDiscardAll(stale)) return false;
+        if (!(await this.confirmDiscardAll(stale))) return false;
         for (const doc of stale) if (this.docs.includes(doc)) this.remove(doc);
-        for (const page of stalePages) if (this.pages.includes(page)) this.closePage(page);
+        for (const page of stalePages)
+            if (this.pages.includes(page)) this.closePage(page);
         return true;
     }
 
     private remove(doc: Doc<E>): boolean {
         if (this.docs.length === 1) {
-            // The last document is emptied, not closed. What is shown next: a page that is open, else Home if it is
+            // The last document is emptied, not closed. What is shown next: a
+            // page that is open, else Home if it is
             // switched on, else the empty document itself.
             const was = this.shown;
             this.reset(doc);
@@ -274,11 +394,13 @@ export class DocumentController<E extends TextEditor> {
         const index = this.docs.indexOf(doc);
         this.host.autosaver.cancel(doc);
         this.docs.splice(index, 1);
-        // Move first, then destroy: the search and other components still point at this editor.
+        // Move first, then destroy: the search and other components still point
+        // at this editor.
         if (doc === this.current) {
             const next = this.docs[Math.min(index, this.docs.length - 1)];
             if (this.shown) {
-                this.current = next;   // a page stays shown; what it leaves behind is now the neighbor
+                // a page stays shown; what it leaves behind is now the neighbor
+                this.current = next;
                 this.host.pageActivated(this.shown.id);
             } else this.activate(next);
         }
@@ -288,10 +410,12 @@ export class DocumentController<E extends TextEditor> {
 
     // ---------- Asking before discarding ----------
 
-    // If there are changes, ask first. true = it is fine to go on and discard this document.
+    // If there are changes, ask first. true = it is fine to go on and discard
+    // this document.
     async confirmDiscard(doc: Doc<E> = this.current): Promise<boolean> {
         if (this.host.autosaver.now(doc)) return true;
-        this.activate(doc);   // the user needs to see which document is being asked about
+        // the user needs to see which document is being asked about
+        this.activate(doc);
         const answer = await this.host.dialogs.askSaveChanges(this.nameOf(doc));
         if (answer !== 'save') return answer === 'discard';
         this.activate(doc);
@@ -300,13 +424,15 @@ export class DocumentController<E extends TextEditor> {
 
     // Ask about documents one by one; stop at the first Cancel answer.
     async confirmDiscardAll(docs: Doc<E>[] = [...this.docs]): Promise<boolean> {
-        for (const doc of docs) if (!await this.confirmDiscard(doc)) return false;
+        for (const doc of docs)
+            if (!(await this.confirmDiscard(doc))) return false;
         return true;
     }
 
     // ---------- New and opened documents ----------
 
-    // The document that may be overwritten: the active one if it has no contents that need to be kept, otherwise a new tab.
+    // The document that may be overwritten: the active one if it has no
+    // contents that need to be kept, otherwise a new tab.
     blank(): Doc<E> {
         const doc = this.isPristine(this.current) ? this.current : this.add();
         this.activate(doc);
@@ -314,19 +440,23 @@ export class DocumentController<E extends TextEditor> {
     }
 
     // Empty doc (or fill it with text) as a new document without a file.
-    // A document that already is that text, unchanged (a new tab is empty), is not written again: the window has it, and a
+    // A document that already is that text, unchanged (a new tab is empty), is
+    // not written again: the window has it, and a
     // second write would wipe what the user typed into it meanwhile.
     reset(doc: Doc<E>, text = ''): void {
         this.activate(doc);
         this.set(doc, { file: null });
-        if (doc.editor.getText() !== text || doc.editor.isModified()) doc.editor.setText(text);
+        if (doc.editor.getText() !== text || doc.editor.isModified())
+            doc.editor.setText(text);
         this.host.contentChanged(doc.id);
     }
 
-    // Fill the active document with the absolute file that has been read (text).
+    // Fill the active document with the absolute file that has been read
+    // (text).
     private show(absolute: string, text: string): void {
         const doc = this.current;
-        // The file is set before setText(): relative image paths are resolved from its folder.
+        // The file is set before setText(): relative image paths are resolved
+        // from its folder.
         this.set(doc, { file: absolute });
         this.rememberRecent(absolute);
         doc.editor.setText(text);
@@ -335,15 +465,22 @@ export class DocumentController<E extends TextEditor> {
 
     private read(absolute: string): string | null {
         try {
-            return fileExists(absolute) ? readTextFile(absolute) : '';  // a new file if it does not exist yet
+            // a new file if it does not exist yet
+            return fileExists(absolute) ? readTextFile(absolute) : '';
         } catch (e) {
-            this.host.dialogs.showError(fmt(_('Failed to open the file:\n{error}'), { error: errorMessage(e) }));
+            this.host.dialogs.showError(
+                fmt(_('Failed to open the file:\n{error}'), {
+                    error: errorMessage(e),
+                })
+            );
             return null;
         }
     }
 
-    // Open a file in the active document, replacing its contents. If the path turns out to be a folder (for example chosen
-    // through the Open File dialog, or given on the command line), that folder is opened in the Files tab.
+    // Open a file in the active document, replacing its contents. If the path
+    // turns out to be a folder (for example chosen
+    // through the Open File dialog, or given on the command line), that folder
+    // is opened in the Files tab.
     load(path: string): boolean {
         const absolute = platform().paths.resolve(path);
         if (platform().fs.isDirectory(absolute)) {
@@ -357,7 +494,8 @@ export class DocumentController<E extends TextEditor> {
         return true;
     }
 
-    // Open a file in a tab: switch to its tab if already open, use the active empty document if there is one,
+    // Open a file in a tab: switch to its tab if already open, use the active
+    // empty document if there is one,
     // otherwise open a new tab.
     openInTab(path: string): boolean {
         const absolute = platform().paths.resolve(path);
@@ -365,30 +503,42 @@ export class DocumentController<E extends TextEditor> {
             this.host.openFolder(absolute);
             return true;
         }
-        const open = this.docs.find(d => d.file !== null && platform().paths.same(d.file, absolute));
+        const open = this.docs.find(
+            (d) => d.file !== null && platform().paths.same(d.file, absolute)
+        );
         if (open) {
-            if (!open.editor.isModified() && this.host.openConversation?.(absolute, open.editor.getText())) this.remove(open);
+            if (
+                !open.editor.isModified() &&
+                this.host.openConversation?.(absolute, open.editor.getText())
+            )
+                this.remove(open);
             else this.activate(open);
             return true;
         }
         const text = this.read(absolute);
         if (text === null) return false;
         if (this.host.openConversation?.(absolute, text)) return true;
-        this.activate(this.isPristine(this.current) ? this.current : this.add());
+        this.activate(
+            this.isPristine(this.current) ? this.current : this.add()
+        );
         this.show(absolute, text);
         return true;
     }
 
     rememberRecent(path: string): void {
         if (this.restoring) return;
-        this.host.settings.recentFiles = rememberRecent(this.host.settings.recentFiles, path, Math.floor(Date.now() / 1000));
+        this.host.settings.recentFiles = rememberRecent(
+            this.host.settings.recentFiles,
+            path,
+            Math.floor(Date.now() / 1000)
+        );
     }
 
     // ---------- Pages: Home and HTML files ----------
 
     // Switch to the Home tab, or open it if there is none.
     openHome(): void {
-        const open = this.pages.find(p => p.kind === 'home');
+        const open = this.pages.find((p) => p.kind === 'home');
         if (open) {
             if (open === this.shown) this.host.refreshHome();
             else this.activatePage(open);
@@ -397,51 +547,92 @@ export class DocumentController<E extends TextEditor> {
         this.openPage({ kind: 'home', file: null, root: null });
     }
 
-    // Switch to the Programs tab, or open it (Home's Set up section, the sidebar).
+    // Switch to the Programs tab, or open it (Home's Set up section, the
+    // sidebar).
     openPrograms(): void {
-        const open = this.pages.find(p => p.kind === 'programs');
+        const open = this.pages.find((p) => p.kind === 'programs');
         if (open) this.activatePage(open);
         else this.openPage({ kind: 'programs', file: null, root: null });
     }
 
     openAgent(root: string, id: string, title: string): void {
-        const open = this.pages.find(p => p.kind === 'agent' && p.file === id);
+        const open = this.pages.find(
+            (p) => p.kind === 'agent' && p.file === id
+        );
         if (open) this.activatePage(open);
         else this.openPage({ kind: 'agent', root, file: id, label: title });
     }
 
     renameAgent(id: string, title: string): void {
-        const page = this.pages.find(p => p.kind === 'agent' && p.file === id);
-        if (page) { page.label = title; this.host.refreshTitle(page.id); }
+        const page = this.pages.find(
+            (p) => p.kind === 'agent' && p.file === id
+        );
+        if (page) {
+            page.label = title;
+            this.host.refreshTitle(page.id);
+        }
     }
 
-    // Show an HTML file in its own tab, or switch to the tab it already has. root = the folder the page may read.
+    // Show an HTML file in its own tab, or switch to the tab it already has.
+    // root = the folder the page may read.
     openHtml(path: string, root: string | null): void {
         const absolute = platform().paths.resolve(path);
-        const open = this.pages.find(p => p.file !== null && platform().paths.same(p.file, absolute));
+        const open = this.pages.find(
+            (p) => p.file !== null && platform().paths.same(p.file, absolute)
+        );
         if (open) {
             this.activatePage(open);
             return;
         }
         const folder = platform().paths.dirname(absolute);
-        this.openPage({ kind: 'html', file: absolute, root: root && insideName(root, absolute) !== null ? root : folder });
+        this.openPage({
+            kind: 'html',
+            file: absolute,
+            root: root && insideName(root, absolute) !== null ? root : folder,
+        });
     }
 
-    // Code is a page, not a document: Save, autosave, and assistant manuscript context cannot write or ingest it.
+    // Code is a page, not a document: Save, autosave, and assistant manuscript
+    // context cannot write or ingest it.
     openCode(path: string): void {
         const { fs, paths } = platform();
         const absolute = paths.resolve(path);
-        const open = this.pages.find(p => p.kind === 'code' && p.file !== null && paths.same(p.file, absolute));
-        if (open) { this.activatePage(open); return; }
+        const open = this.pages.find(
+            (p) =>
+                p.kind === 'code' &&
+                p.file !== null &&
+                paths.same(p.file, absolute)
+        );
+        if (open) {
+            this.activatePage(open);
+            return;
+        }
         try {
             const info = fs.info(absolute);
-            if (info.kind !== 'file') throw new Error(_('The code viewer only opens regular files, not symbolic links or special files.'));
-            if (info.size > 2 * 1024 * 1024) throw new Error(_('The code viewer supports text files up to 2 MiB.'));
+            if (info.kind !== 'file')
+                throw new Error(
+                    _(
+                        'The code viewer only opens regular' +
+                            ' files, not symbolic links or special' +
+                            ' files.'
+                    )
+                );
+            if (info.size > 2 * 1024 * 1024)
+                throw new Error(
+                    _('The code viewer supports text files up to 2 MiB.')
+                );
             const text = fs.readText(absolute);
-            if (/[\u0000-\u0008\u000e-\u001f\ufffd]/.test(text)) throw new Error(_('This file is binary or is not supported UTF-8 text.'));
+            if (/[\u0000-\u0008\u000e-\u001f\ufffd]/.test(text))
+                throw new Error(
+                    _('This file is binary or is not supported UTF-8 text.')
+                );
             this.openPage({ kind: 'code', file: absolute, root: null, text });
         } catch (e) {
-            this.host.dialogs.showError(fmt(_('Could not open file:\n{error}'), { error: errorMessage(e) }));
+            this.host.dialogs.showError(
+                fmt(_('Could not open file:\n{error}'), {
+                    error: errorMessage(e),
+                })
+            );
         }
     }
 
@@ -453,7 +644,8 @@ export class DocumentController<E extends TextEditor> {
         this.activatePage(page);
     }
 
-    // The tab of an empty document does not stay next to a page: it goes, or is parked if it is the only document.
+    // The tab of an empty document does not stay next to a page: it goes, or is
+    // parked if it is the only document.
     private retirePristine(): void {
         const doc = this.current;
         if (this.parked || !this.isPristine(doc)) return;
@@ -480,18 +672,21 @@ export class DocumentController<E extends TextEditor> {
 
     private activatePage(page: Page): void {
         if (page === this.shown) return;
-        this.host.autosaver.now(this.current);   // leaving a document = a safe point to save
+        // leaving a document = a safe point to save
+        this.host.autosaver.now(this.current);
         this.shown = page;
         this.host.pageActivated(page.id);
     }
 
-    // Close a page's tab. The last tab of all stays when it is Home and Home is switched on.
+    // Close a page's tab. The last tab of all stays when it is Home and Home is
+    // switched on.
     closePage(page: Page): boolean {
         const ids = this.host.tabOrder();
         const at = ids.indexOf(page.id);
         const neighbor = ids[at + 1] ?? ids[at - 1];
         if (neighbor === undefined) {
-            // The only tab: Home stays; an HTML page gives way to Home, or to the empty document.
+            // The only tab: Home stays; an HTML page gives way to Home, or to
+            // the empty document.
             if (page.kind === 'home' && this.host.settings.home) return true;
             this.dropPage(page);
             if (this.host.settings.home) this.openHome();
@@ -512,21 +707,30 @@ export class DocumentController<E extends TextEditor> {
     // ---------- Saving ----------
 
     write(path: string, text: string): boolean {
-        const doc = this.docs.find(item => item.file && platform().paths.same(item.file, path));
+        const doc = this.docs.find(
+            (item) => item.file && platform().paths.same(item.file, path)
+        );
         if (doc && this.host.canSaveDocument?.(doc) === false) {
-            this.host.dialogs.showError('Resolve the disk conflict from the agent Sessions panel before saving. Your draft has not been overwritten.');
+            this.host.dialogs.showError(
+                'Resolve the disk conflict from the' +
+                    ' agent Sessions panel before saving.' +
+                    ' Your draft has not been overwritten.'
+            );
             return false;
         }
         try {
             writeTextFile(path, text);
             return true;
         } catch (e) {
-            this.host.dialogs.showError(fmt(_('Failed to save:\n{error}'), { error: errorMessage(e) }));
+            this.host.dialogs.showError(
+                fmt(_('Failed to save:\n{error}'), { error: errorMessage(e) })
+            );
             return false;
         }
     }
 
-    // A file document is written at once; a new document waits for the Save As dialog.
+    // A file document is written at once; a new document waits for the Save As
+    // dialog.
     async save(): Promise<boolean> {
         const doc = this.current;
         if (this.shown) return true;
@@ -542,7 +746,9 @@ export class DocumentController<E extends TextEditor> {
         const doc = this.current;
         if (this.shown) return false;
         let path = await this.host.dialogs.chooseFile({
-            title: _('Save Markdown'), save: true, filters: ['markdown', 'all'],
+            title: _('Save Markdown'),
+            save: true,
+            filters: ['markdown', 'all'],
             name: doc.file ? this.nameOf(doc) : `${this.suggestName()}.md`,
             // A new document is saved in the folder that is currently open.
             folder: doc.file ? null : this.host.root(),
@@ -552,12 +758,13 @@ export class DocumentController<E extends TextEditor> {
         this.activate(doc);
         this.set(doc, { file: path });
         this.host.refreshTitle(doc.id);
-        if (!await this.save()) return false;
+        if (!(await this.save())) return false;
         this.host.fileSaved(path);
         return true;
     }
 
-    // Save all changed file documents (before a git commit). Documents without a file are not touched.
+    // Save all changed file documents (before a git commit). Documents without
+    // a file are not touched.
     saveOpenFiles(): boolean {
         for (const doc of this.docs) {
             if (!doc.file || !doc.editor.isModified()) continue;
@@ -571,7 +778,9 @@ export class DocumentController<E extends TextEditor> {
     // Suggested file name from the first heading.
     suggestName(): string {
         const h = this.current.editor.headings[0];
-        return h?.text ? h.text.replace(/[\/\\:*?"<>|]/g, '').slice(0, 60) : UNTITLED;
+        return h?.text
+            ? h.text.replace(/[\/\\:*?"<>|]/g, '').slice(0, 60)
+            : UNTITLED;
     }
 
     // ---------- The file of an open document ----------
@@ -581,25 +790,29 @@ export class DocumentController<E extends TextEditor> {
         Object.assign(doc as MutableDoc, change);
     }
 
-    // Set the file without reading it, e.g. before saving a new document there (tests, the window's file setter).
+    // Set the file without reading it, e.g. before saving a new document there
+    // (tests, the window's file setter).
     setFile(doc: Doc<E>, path: string | null): void {
         this.set(doc, { file: path });
     }
 
-    // The document's file was moved or renamed (in the tree, or by an agent change); the contents do not change.
+    // The document's file was moved or renamed (in the tree, or by an agent
+    // change); the contents do not change.
     fileMoved(doc: Doc<E>, path: string): void {
         this.set(doc, { file: path });
         this.host.refreshTitle(doc.id);
     }
 
-    // The document's file was deleted: its contents stay in the editor, marked as unsaved.
+    // The document's file was deleted: its contents stay in the editor, marked
+    // as unsaved.
     fileGone(doc: Doc<E>): void {
         this.set(doc, { file: null });
         doc.editor.setModified(true);
         this.host.refreshTitle(doc.id);
     }
 
-    // A deleted file was written back with the editor's contents (an undone delete): the document is saved again.
+    // A deleted file was written back with the editor's contents (an undone
+    // delete): the document is saved again.
     fileBack(doc: Doc<E>, path: string): void {
         this.set(doc, { file: path });
         doc.editor.setModified(false);
@@ -608,22 +821,38 @@ export class DocumentController<E extends TextEditor> {
 
     // ---------- Files moved or deleted in the tree ----------
 
-    // Open documents under `from` move along to `to`; their contents do not change.
+    // Open documents under `from` move along to `to`; their contents do not
+    // change.
     filesMoved(from: string, to: string): void {
         for (const doc of this.docs) {
             const moved = doc.file ? remapPath(doc.file, from, to) : null;
             if (moved) this.fileMoved(doc, moved);
         }
         for (const page of [...this.pages]) {
-            if (page.kind === 'code' && page.file && remapPath(page.file, from, to)) this.closePage(page);
+            if (
+                page.kind === 'code' &&
+                page.file &&
+                remapPath(page.file, from, to)
+            )
+                this.closePage(page);
         }
-        this.host.settings.recentFiles = moveRecent(this.host.settings.recentFiles, from, to);
+        this.host.settings.recentFiles = moveRecent(
+            this.host.settings.recentFiles,
+            from,
+            to
+        );
     }
 
-    // Open documents at or under `path` lose their file: their contents stay in the editor, marked as unsaved.
+    // Open documents at or under `path` lose their file: their contents stay in
+    // the editor, marked as unsaved.
     fileDeleted(path: string): void {
         for (const page of [...this.pages]) {
-            if (page.kind === 'code' && page.file && remapPath(page.file, path, path)) this.closePage(page);
+            if (
+                page.kind === 'code' &&
+                page.file &&
+                remapPath(page.file, path, path)
+            )
+                this.closePage(page);
         }
         for (const doc of this.docs) {
             if (doc.file && remapPath(doc.file, path, path)) this.fileGone(doc);
@@ -635,95 +864,155 @@ export class DocumentController<E extends TextEditor> {
     async exportHtml(): Promise<void> {
         const doc = this.current;
         if (this.shown) return;
-        const base = doc.file ? this.nameOf(doc).replace(/\.[^.]+$/, '') : this.suggestName();
-        const text = doc.editor.getText(), title = doc.editor.headings[0]?.text || base;
+        const base = doc.file
+            ? this.nameOf(doc).replace(/\.[^.]+$/, '')
+            : this.suggestName();
+        const text = doc.editor.getText(),
+            title = doc.editor.headings[0]?.text || base;
         const path = await this.host.dialogs.chooseFile({
-            title: _('Export HTML'), save: true, filters: ['html', 'all'], name: `${base}.html`,
+            title: _('Export HTML'),
+            save: true,
+            filters: ['html', 'all'],
+            name: `${base}.html`,
             folder: doc.file ? platform().paths.dirname(doc.file) : null,
         });
         if (!path) return;
         const html = markdownToHtml(text, title);
-        if (this.write(path, html)) this.host.toast(fmt(_('Exported to {name}'), { name: platform().paths.basename(path) }));
+        if (this.write(path, html))
+            this.host.toast(
+                fmt(_('Exported to {name}'), {
+                    name: platform().paths.basename(path),
+                })
+            );
     }
 
     // Insert ![name](path). The path is made relative to the file if possible.
     async insertImage(): Promise<void> {
         const doc = this.current;
-        let path = await this.host.dialogs.chooseFile({ title: _('Choose Image'), filters: ['image'] });
+        let path = await this.host.dialogs.chooseFile({
+            title: _('Choose Image'),
+            filters: ['image'],
+        });
         if (!path || doc !== this.current) return;
         const { paths } = platform();
-        if (doc.file) path = paths.relative(paths.dirname(doc.file), path) ?? path;
+        if (doc.file)
+            path = paths.relative(paths.dirname(doc.file), path) ?? path;
         const alt = paths.basename(path).replace(/\.[^.]+$/, '');
         doc.editor.insertAtCursor(`![${alt}](${encodeURI(path)})`);
     }
 
     // ---------- Tab restoration ----------
 
-    // Record file tabs and Home (ordered like the tab row) together with their cursors for the next launch.
-    // Documents without a file are not recorded: their contents are not on disk to be read again. An HTML page is not
+    // Record file tabs and Home (ordered like the tab row) together with their
+    // cursors for the next launch.
+    // Documents without a file are not recorded: their contents are not on disk
+    // to be read again. An HTML page is not
     // recorded either.
     rememberTabs(): void {
-        const kept: { tab: { file: string; cursor: number }; at: Doc<E> | Page }[] = [];
+        const kept: {
+            tab: { file: string; cursor: number };
+            at: Doc<E> | Page;
+        }[] = [];
         for (const id of this.host.tabOrder()) {
-            const doc = this.docs.find(d => d.id === id);
-            if (doc?.file) kept.push({ tab: { file: doc.file, cursor: doc.editor.cursorOffset }, at: doc });
-            const page = this.pages.find(p => p.id === id);
-            if (page?.kind === 'agent' && page.file) kept.push({ tab: { file: 'markwork:agent:' + encodeURIComponent(page.file), cursor: 0 }, at: page });
-            if (page?.kind === 'home') kept.push({ tab: { file: HOME_TAB, cursor: 0 }, at: page });
+            const doc = this.docs.find((d) => d.id === id);
+            if (doc?.file)
+                kept.push({
+                    tab: { file: doc.file, cursor: doc.editor.cursorOffset },
+                    at: doc,
+                });
+            const page = this.pages.find((p) => p.id === id);
+            if (page?.kind === 'agent' && page.file)
+                kept.push({
+                    tab: {
+                        file: 'markwork:agent:' + encodeURIComponent(page.file),
+                        cursor: 0,
+                    },
+                    at: page,
+                });
+            if (page?.kind === 'home')
+                kept.push({ tab: { file: HOME_TAB, cursor: 0 }, at: page });
         }
-        this.host.settings.tabs = kept.map(k => k.tab);
+        this.host.settings.tabs = kept.map((k) => k.tab);
         const shown = this.shown ?? this.current;
-        this.host.settings.activeTab = kept.findIndex(k => k.at === shown);
+        this.host.settings.activeTab = kept.findIndex((k) => k.at === shown);
     }
 
     private restoreBelongs(file: unknown, root: string | null): boolean {
         if (!root || typeof file !== 'string' || file === HOME_TAB) return true;
-        return file.startsWith('markwork:agent:') || insideName(root, file) !== null;
+        return (
+            file.startsWith('markwork:agent:') ||
+            insideName(root, file) !== null
+        );
     }
 
     private restoreAgentTab(marker: string, root: string | null): Page | null {
         try {
-            const id = decodeURIComponent(marker.slice('markwork:agent:'.length));
-            const folder = platform().paths.dirname(platform().paths.dirname(id));
-            if (!root || folder !== root && insideName(root, folder) === null) return null;
+            const id = decodeURIComponent(
+                marker.slice('markwork:agent:'.length)
+            );
+            const folder = platform().paths.dirname(
+                platform().paths.dirname(id)
+            );
+            if (!root || (folder !== root && insideName(root, folder) === null))
+                return null;
             if (loadAgentFolder(folder).kind !== 'agent') return null;
-            const safe = projectPath(folder, 'chats/' + platform().paths.basename(id));
+            const safe = projectPath(
+                folder,
+                'chats/' + platform().paths.basename(id)
+            );
             if (!platform().paths.same(safe, id)) return null;
             const chat = loadChat(id);
             if (!chat) return null;
             this.openAgent(folder, id, chat.title);
-            return this.pages.find(p => p.kind === 'agent' && p.file === id) ?? null;
-        } catch { return null; }
+            return (
+                this.pages.find((p) => p.kind === 'agent' && p.file === id) ??
+                null
+            );
+        } catch {
+            return null;
+        }
     }
 
-    private restoreTab(file: unknown, root: string | null): Doc<E> | Page | null {
+    private restoreTab(
+        file: unknown,
+        root: string | null
+    ): Doc<E> | Page | null {
         if (typeof file !== 'string') return null;
-        if (file.startsWith('markwork:agent:')) return this.restoreAgentTab(file, root);
+        if (file.startsWith('markwork:agent:'))
+            return this.restoreAgentTab(file, root);
         if (file === HOME_TAB) {
             this.openHome();
-            return this.pages.find(p => p.kind === 'home') ?? null;
+            return this.pages.find((p) => p.kind === 'home') ?? null;
         }
         if (!fileExists(file) || platform().fs.isDirectory(file)) return null;
-        return this.openInTab(file) ? this.shown ?? this.current : null;
+        return this.openInTab(file) ? (this.shown ?? this.current) : null;
     }
 
-    // Reopen tabs from the settings. A saved list can predate a workspace switch, so only restore files inside
-    // the current work folder. Without a work folder, standalone files can still be restored.
+    // Reopen tabs from the settings. A saved list can predate a workspace
+    // switch, so only restore files inside
+    // the current work folder. Without a work folder, standalone files can
+    // still be restored.
     // true = some tabs were restored.
     restoreTabs(): boolean {
         const settings = this.host.settings;
         const saved = Array.isArray(settings.tabs) ? settings.tabs : [];
         const root = this.host.root();
         const belongs = (file: unknown) => this.restoreBelongs(file, root);
-        const candidates = Array.from(saved.entries()).filter(([, tab]) => belongs(tab?.file));
+        const candidates = Array.from(saved.entries()).filter(([, tab]) =>
+            belongs(tab?.file)
+        );
         const opened: [Doc<E>, number][] = [];
         let restored = false;
-        let active: Doc<E> | Page | null = null, last: Doc<E> | Page | null = null;
+        let active: Doc<E> | Page | null = null,
+            last: Doc<E> | Page | null = null;
         let missing = 0;
         this.restoring = true;
         for (const [i, tab] of candidates) {
             last = this.restoreTab(tab?.file, root);
-            if (!last) { missing++; continue; }
+            if (!last) {
+                missing++;
+                continue;
+            }
             if ('editor' in last) opened.push([last, Number(tab.cursor) || 0]);
             restored = true;
             if (i === settings.activeTab) active = last;
@@ -734,7 +1023,17 @@ export class DocumentController<E extends TextEditor> {
         const target = active ?? last!;
         if ('editor' in target) this.activate(target);
         else this.activatePage(target);
-        if (missing) this.host.toast(fmt(ngettext('{missing} file from the last session was not found', '{missing} files from the last session were not found', missing), { missing }));
+        if (missing)
+            this.host.toast(
+                fmt(
+                    ngettext(
+                        '{missing} file from the last session was not found',
+                        '{missing} files from the last session were not found',
+                        missing
+                    ),
+                    { missing }
+                )
+            );
         return true;
     }
 }

@@ -1,7 +1,15 @@
-// API key storage: the DEEPSEEK_API_KEY environment variable, then the system keyring, then the file
-// ~/.config/markwork/deepseek.key (see base/credentials.ts for the order and the file's access mode).
+// API key storage: the DEEPSEEK_API_KEY environment variable, then the system
+// keyring, then the file
+// ~/.config/markwork/deepseek.key (see base/credentials.ts for the order and
+// the file's access mode).
 
-import { clearCredential, readCredential, saveCredential, type Credential, type CredentialSource } from '../base/credentials';
+import {
+    clearCredential,
+    readCredential,
+    saveCredential,
+    type Credential,
+    type CredentialSource,
+} from '../base/credentials';
 
 export type KeySource = CredentialSource;
 
@@ -24,6 +32,6 @@ export const systemKeyStore: KeyStore = {
         const found = await readCredential(DEEPSEEK);
         return found && { key: found.value, source: found.source };
     },
-    set: key => saveCredential(DEEPSEEK, key),
+    set: (key) => saveCredential(DEEPSEEK, key),
     clear: () => clearCredential(DEEPSEEK),
 };

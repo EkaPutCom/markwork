@@ -18,6 +18,8 @@ Language: code comments, commit messages, interface text, test names, and docume
 | --- | --- |
 | `npm install` | Install the dependencies (once) |
 | `npm run typecheck` | The types (the core without Node's types, the Node port and the core's tests, the Electron app) and the layer rules |
+| `npm run lint:width` | Audit tracked maintained source files for lines over 80 characters; required in CI |
+| `npm run test:width` | Unit tests for the 80-character source checker |
 | `npm run build` | Check, then build the app into `dist-electron/` |
 | `npm start` | Build and open the app in dev mode: the Editor Inspector, `Ctrl+Alt+I`, and the UI Gallery, `Ctrl+Alt+G` (`npm start -- <folder>` opens a folder) |
 | `npm test` | The core's tests on Node, then the Electron tests |

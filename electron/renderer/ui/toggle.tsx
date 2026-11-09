@@ -1,5 +1,7 @@
-// shadcn/ui Toggle: a button that stays pressed. Its variants are shared with ToggleGroup. The pressed look follows
-// aria-pressed (a Toggle, a multiple ToggleGroup) or aria-checked (a single one) rather than shadcn's data-state=on: a
+// shadcn/ui Toggle: a button that stays pressed. Its variants are shared with
+// ToggleGroup. The pressed look follows
+// aria-pressed (a Toggle, a multiple ToggleGroup) or aria-checked (a single
+// one) rather than shadcn's data-state=on: a
 // Tooltip around it sets its own data-state on the same element.
 
 import type { ComponentProps } from 'react';
@@ -8,12 +10,28 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 export const toggleVariants = cva(
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium outline-none transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-checked:bg-accent aria-checked:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+    (
+        "inline-flex items-center justify-center gap-2 whitespace-nowrap " +
+        "rounded-md text-sm font-medium outline-none " +
+        "transition-[color,box-shadow] hover:bg-muted " +
+        "hover:text-muted-foreground disabled:pointer-events-none " +
+        "disabled:opacity-50 aria-pressed:bg-accent " +
+        "aria-pressed:text-accent-foreground aria-checked:bg-accent " +
+        "aria-checked:text-accent-foreground focus-visible:border-ring " +
+        "focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
+        "aria-invalid:border-destructive aria-invalid:ring-destructive/20 " +
+        "dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none " +
+        "[&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+    ),
     {
         variants: {
             variant: {
                 default: 'bg-transparent',
-                outline: 'border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground',
+                outline:
+                    (
+                        "border border-input bg-transparent shadow-xs " +
+                        "hover:bg-accent hover:text-accent-foreground"
+                    ),
             },
             size: {
                 default: 'h-9 min-w-9 px-2',
@@ -23,9 +41,21 @@ export const toggleVariants = cva(
             },
         },
         defaultVariants: { variant: 'default', size: 'default' },
-    },
+    }
 );
 
-export function Toggle({ className, variant, size, ...props }: ComponentProps<typeof TogglePrimitive.Root> & VariantProps<typeof toggleVariants>) {
-    return <TogglePrimitive.Root data-slot="toggle" className={cn(toggleVariants({ variant, size, className }))} {...props} />;
+export function Toggle({
+    className,
+    variant,
+    size,
+    ...props
+}: ComponentProps<typeof TogglePrimitive.Root> &
+    VariantProps<typeof toggleVariants>) {
+    return (
+        <TogglePrimitive.Root
+            data-slot="toggle"
+            className={cn(toggleVariants({ variant, size, className }))}
+            {...props}
+        />
+    );
 }

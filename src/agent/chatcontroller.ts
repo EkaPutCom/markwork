@@ -1,19 +1,47 @@
-// The life cycle of an assistant conversation, without widgets: sending a turn and stopping it, guarding against
-// a work folder that changes during a request, saving the conversation after every turn, reopening and deleting
-// saved conversations, undoing applied changes, and composing the context. The panel (electron/renderer/components/Chat.tsx) draws what it
-// is told through ChatView and passes user actions in; tests drive this class with a fake view and provider.
+// The life cycle of an assistant conversation, without widgets: sending a turn
+// and stopping it, guarding against
+// a work folder that changes during a request, saving the conversation after
+// every turn, reopening and deleting
+// saved conversations, undoing applied changes, and composing the context. The
+// panel (electron/renderer/components/Chat.tsx) draws what it
+// is told through ChatView and passes user actions in; tests drive this class
+// with a fake view and provider.
 
 import { readTextFile } from '../base/files';
 import { folderPath } from './path';
 import { Cancellable } from '../base/cancel';
 import { platform } from '../platform/index';
 import { systemKeyStore, type KeyStore } from './apikey';
-import { buildContext, DEFAULT_BUDGET, findMentions, type BuiltContext, type ContextOptions, type SourceFile } from './context';
-import { deleteChat, listChats, loadChat, loadChatLog, chatLogPath, nowStamp, saveChat, saveChatLog, titleFrom, type ChatSummary, type ChatStorage } from './chatstore';
+import {
+    buildContext,
+    DEFAULT_BUDGET,
+    findMentions,
+    type BuiltContext,
+    type ContextOptions,
+    type SourceFile,
+} from './context';
+import {
+    deleteChat,
+    listChats,
+    loadChat,
+    loadChatLog,
+    chatLogPath,
+    nowStamp,
+    saveChat,
+    saveChatLog,
+    titleFrom,
+    type ChatSummary,
+    type ChatStorage,
+} from './chatstore';
 import { AgentTrace } from './trace';
 import { DEEPSEEK_MODELS, DeepSeek } from './deepseek';
 import type { Provider, Usage } from './provider';
-import { ChatSession, type ProposalResult, type ToolStep, type TurnInput } from './session';
+import {
+    ChatSession,
+    type ProposalResult,
+    type ToolStep,
+    type TurnInput,
+} from './session';
 import { invertChange, type Change } from './changes';
 import type { GitAnswer, GitRequest } from './gittools';
 import type { SavedChat } from './transcript';
@@ -22,22 +50,34 @@ import type { Freshness } from '../base/workspace';
 
 export const FOLDER_CHANGED = 'The work folder changed during the request';
 
-// What the conversation needs from the window: the manuscript and a way to apply approved changes.
+// What the conversation needs from the window: the manuscript and a way to
+// apply approved changes.
 export interface ChatControllerHost {
-    active(): { name: string; text: string; cursorLine: number } | null;   // the open document (buffer contents, not disk)
+    // the open document (buffer contents, not disk)
+    active(): { name: string; text: string; cursorLine: number } | null;
     selection(): string;
-    files(freshness?: Freshness): SourceFile[];                            // other files in the project folder (default cached)
-    // Apply a change the user has approved. Returns an error message, or null on success.
+    // other files in the project folder (default cached)
+    files(freshness?: Freshness): SourceFile[];
+    // Apply a change the user has approved. Returns an error message, or null
+    // on success.
     applyChange?(change: Change): string | null;
     applyBatch?(changes: Change[]): string | null;
-    git?(request: GitRequest): Promise<GitAnswer>;                         // read-only Git history tools in the work folder
+    // read-only Git history tools in the work folder
+    git?(request: GitRequest): Promise<GitAnswer>;
     canSave?(path: string): string | null;
-    root(): string | null;                                                 // the manuscript folder; where conversation history is saved
+    // the manuscript folder; where conversation history is saved
+    root(): string | null;
 }
 
 // How a turn ended, for its footer.
 export type TurnOutcome =
-    | { cancelled: boolean; usage: Usage | null; toolCalls: number; applied: number; text: string }
+    | {
+          cancelled: boolean;
+          usage: Usage | null;
+          toolCalls: number;
+          applied: number;
+          text: string;
+      }
     | { error: string };
 
 // The parts of one answer as it streams in.
@@ -46,37 +86,57 @@ export interface TurnView {
     text(delta: string): void;
     reasoning(delta: string): void;
     step(step: ToolStep): void;
-    // The turn's work plan; running = the turn is still going (false once, at the end, if a plan was shown).
+    // The turn's work plan; running = the turn is still going (false once, at
+    // the end, if a plan was shown).
     work(work: WorkState, running: boolean, elapsedSeconds: number): void;
     end(outcome: TurnOutcome): void;
 }
 
 export interface ChatView {
-    noKey(): void;                                  // sending needs an API key first
-    saveFailed(error: string): void;                // the conversation could not be written to disk
+    noKey(): void; // sending needs an API key first
+    // the conversation could not be written to disk
+    saveFailed(error: string): void;
     busyChanged(busy: boolean): void;
-    startTurn(question: string): TurnView;          // the question was accepted: show it with an empty answer
-    // Show a change proposal and wait for the user's decision. apply writes an approved change (an error message or
-    // null); cancelled fires when the turn is stopped, which must end the review as rejected.
-    review(change: Change | Change[], apply: (change: Change | Change[]) => string | null, cancelled: Cancellable): Promise<ProposalResult>;
+    // the question was accepted: show it with an empty answer
+    startTurn(question: string): TurnView;
+    // Show a change proposal and wait for the user's decision. apply writes an
+    // approved change (an error message or
+    // null); cancelled fires when the turn is stopped, which must end the
+    // review as rejected.
+    review(
+        change: Change | Change[],
+        apply: (change: Change | Change[]) => string | null,
+        cancelled: Cancellable
+    ): Promise<ProposalResult>;
 }
 
 export class ChatController {
     readonly session = new ChatSession();
-    host: ChatControllerHost = { active: () => null, selection: () => '', files: () => [], root: () => null };
+    host: ChatControllerHost = {
+        active: () => null,
+        selection: () => '',
+        files: () => [],
+        root: () => null,
+    };
     // Replaced in tests with a fake provider and key store.
-    makeProvider: (key: string) => Provider = key => new DeepSeek(key);
+    makeProvider: (key: string) => Provider = (key) => new DeepSeek(key);
     keyStore: KeyStore = systemKeyStore;
     model = DEEPSEEK_MODELS[0];
     storage: ChatStorage = 'assistant';
     roleInstructions = '';
-    saveChats = true;   // save every turn to <folder>/.markwork/chats
-    options: ContextOptions = { activeDocument: true, selection: true, project: true };
+    saveChats = true; // save every turn to <folder>/.markwork/chats
+    options: ContextOptions = {
+        activeDocument: true,
+        selection: true,
+        project: true,
+    };
     budget = DEFAULT_BUDGET;
 
-    private generation = 0;              // bumped by reset(): late results of an older conversation are dropped
+    // bumped by reset(): late results of an older conversation are dropped
+    private generation = 0;
     private cancellable: Cancellable | null = null;
-    // The conversation currently shown on disk: its file (null = not written yet), the folder it came from, and its title.
+    // The conversation currently shown on disk: its file (null = not written
+    // yet), the folder it came from, and its title.
     private chatPath: string | null = null;
     private savedText: string | null = null;
     private chatRoot: string | null = null;
@@ -89,12 +149,16 @@ export class ChatController {
         return this.cancellable !== null;
     }
 
-    // An old or unknown model name (e.g. from a settings version) is replaced with the default model.
+    // An old or unknown model name (e.g. from a settings version) is replaced
+    // with the default model.
     setModel(model: string): void {
-        this.model = DEEPSEEK_MODELS.includes(model) ? model : DEEPSEEK_MODELS[0];
+        this.model = DEEPSEEK_MODELS.includes(model)
+            ? model
+            : DEEPSEEK_MODELS[0];
     }
 
-    // Start a new conversation; a running turn is stopped and its late results are dropped.
+    // Start a new conversation; a running turn is stopped and its late results
+    // are dropped.
     reset(): void {
         this.generation++;
         this.stop();
@@ -113,43 +177,92 @@ export class ChatController {
         const generation = this.generation;
         const found = await this.keyStore.get();
         if (generation !== this.generation || this.busy) return;
-        if (!found) { this.view.noKey(); return; }
+        if (!found) {
+            this.view.noKey();
+            return;
+        }
 
         const turn = this.view.startTurn(question);
-        const cancellable = this.cancellable = new Cancellable();
+        const cancellable = (this.cancellable = new Cancellable());
         this.view.busyChanged(true);
-        // Everything that touches files is refused once the folder changes; the answer itself may still finish.
+        // Everything that touches files is refused once the folder changes; the
+        // answer itself may still finish.
         const requestRoot = this.host.root();
         const sameRoot = () => requestRoot === this.host.root();
         const started = platform().monotonicMs();
         const elapsed = () => (platform().monotonicMs() - started) / 1000;
         let planShown = false;
         const showWork = (running: boolean) => {
-            if (!this.session.work || !running && !planShown) return;
+            if (!this.session.work || (!running && !planShown)) return;
             planShown = true;
             turn.work(this.session.work, running, elapsed());
         };
         try {
-            const result = await this.session.ask(this.turnInput(question, 'current'), this.makeProvider(found.key), this.model, {
-                onContext: built => turn.context(built),
-                onText: delta => turn.text(delta),
-                onReasoning: delta => turn.reasoning(delta),
-                currentFiles: () => {
-                    if (!sameRoot()) throw Error(FOLDER_CHANGED);
-                    const active = this.options.activeDocument ? this.host.active() : null;
-                    return [...this.host.files('fresh').filter(f => f.name !== active?.name), ...(active ? [{ name: active.name, text: active.text }] : [])];
+            const result = await this.session.ask(
+                this.turnInput(question, 'current'),
+                this.makeProvider(found.key),
+                this.model,
+                {
+                    onContext: (built) => turn.context(built),
+                    onText: (delta) => turn.text(delta),
+                    onReasoning: (delta) => turn.reasoning(delta),
+                    currentFiles: () => {
+                        if (!sameRoot()) throw Error(FOLDER_CHANGED);
+                        const active = this.options.activeDocument
+                            ? this.host.active()
+                            : null;
+                        return [
+                            ...this.host
+                                .files('fresh')
+                                .filter((f) => f.name !== active?.name),
+                            ...(active
+                                ? [{ name: active.name, text: active.text }]
+                                : []),
+                        ];
+                    },
+                    onState: () => {
+                        if (generation !== this.generation) return;
+                        this.persist();
+                        showWork(true);
+                    },
+                    // A valid plan is already shown as a checklist; its step
+                    // row does not need repeating.
+                    onTool: (step) => {
+                        if (!(
+                            step.label === 'Work plan' &&
+                            this.session.work &&
+                            step.summary !== 'invalid plan'
+                        ))
+                            turn.step(step);
+                    },
+                    onBatchProposal: this.host.applyBatch
+                        ? (changes) =>
+                              sameRoot()
+                                  ? this.propose(changes, cancellable)
+                                  : Promise.resolve({
+                                        applied: false,
+                                        error: FOLDER_CHANGED,
+                                    })
+                        : undefined,
+                    onProposal: (change) =>
+                        sameRoot()
+                            ? this.propose(change, cancellable)
+                            : Promise.resolve({
+                                  applied: false,
+                                  error: FOLDER_CHANGED,
+                              }),
+                    git: this.host.git
+                        ? (request) =>
+                              sameRoot()
+                                  ? this.host.git!(request)
+                                  : Promise.resolve({
+                                        ok: false,
+                                        message: FOLDER_CHANGED,
+                                    })
+                        : undefined,
                 },
-                onState: () => {
-                    if (generation !== this.generation) return;
-                    this.persist();
-                    showWork(true);
-                },
-                // A valid plan is already shown as a checklist; its step row does not need repeating.
-                onTool: step => { if (!(step.label === 'Work plan' && this.session.work && step.summary !== 'invalid plan')) turn.step(step); },
-                onBatchProposal: this.host.applyBatch ? changes => sameRoot() ? this.propose(changes, cancellable) : Promise.resolve({ applied: false, error: FOLDER_CHANGED }) : undefined,
-                onProposal: change => sameRoot() ? this.propose(change, cancellable) : Promise.resolve({ applied: false, error: FOLDER_CHANGED }),
-                git: this.host.git ? request => sameRoot() ? this.host.git!(request) : Promise.resolve({ ok: false, message: FOLDER_CHANGED }) : undefined,
-            }, cancellable);
+                cancellable
+            );
             if (generation !== this.generation) return;
             showWork(false);
             turn.end(result);
@@ -166,31 +279,60 @@ export class ChatController {
         }
     }
 
-    // A proposal is applied only while the work folder is still the one it was made in.
-    private propose(change: Change | Change[], cancellable: Cancellable): Promise<ProposalResult> {
+    // A proposal is applied only while the work folder is still the one it was
+    // made in.
+    private propose(
+        change: Change | Change[],
+        cancellable: Cancellable
+    ): Promise<ProposalResult> {
         const proposalRoot = this.host.root();
-        return this.view.review(change, c => {
-            if (proposalRoot !== this.host.root()) return 'The work folder changed since the proposal was made';
-            if (Array.isArray(c)) return this.host.applyBatch ? this.host.applyBatch(c) : 'applying batches is not available';
-            return this.host.applyChange ? this.host.applyChange(c) : 'applying is not available';
-        }, cancellable);
+        return this.view.review(
+            change,
+            (c) => {
+                if (proposalRoot !== this.host.root())
+                    return 'The work folder changed since the' +
+                        ' proposal was made';
+                if (Array.isArray(c))
+                    return this.host.applyBatch
+                        ? this.host.applyBatch(c)
+                        : 'applying batches is not available';
+                return this.host.applyChange
+                    ? this.host.applyChange(c)
+                    : 'applying is not available';
+            },
+            cancellable
+        );
     }
 
-    // Undo agent changes that were already applied: the inverse goes through the same preflight, so it fails (without
-    // overwriting anything) if a file has been edited again since. The journal records it so the agent knows that
+    // Undo agent changes that were already applied: the inverse goes through
+    // the same preflight, so it fails (without
+    // overwriting anything) if a file has been edited again since. The journal
+    // records it so the agent knows that
     // change no longer applies. Returns an error message, or null when undone.
     undo(changes: Change[]): string | null {
         if (this.busy) return 'wait for the agent to finish';
         const root = this.host.root();
-        const error = this.host.applyBatch ? this.host.applyBatch([...changes].reverse().map(invertChange)) : 'applying is not available';
+        const error = this.host.applyBatch
+            ? this.host.applyBatch([...changes].reverse().map(invertChange))
+            : 'applying is not available';
         if (error) return error;
         for (const event of this.session.events) {
-            if (event.status !== 'applied' || !event.changes.some(c => changes.includes(c))) continue;
+            if (
+                event.status !== 'applied' ||
+                !event.changes.some((c) => changes.includes(c))
+            )
+                continue;
             event.status = 'reverted';
-            event.summary = 'Undone by the user from the panel; the files are back to their previous contents.';
+            event.summary =
+                'Undone by the user from the panel; the' +
+                    ' files are back to their previous' +
+                    ' contents.';
         }
         const work = this.session.work;
-        if (work) { delete work.verification; if (work.status === 'complete') work.status = 'paused'; }
+        if (work) {
+            delete work.verification;
+            if (work.status === 'complete') work.status = 'paused';
+        }
         if (root === this.host.root()) this.persist();
         return null;
     }
@@ -201,24 +343,49 @@ export class ChatController {
 
     // ---------- History on disk ----------
 
-    // Write the conversation to <folder>/.markwork/chats after every turn. Without a folder, or when turned off, nothing is written.
+    // Write the conversation to <folder>/.markwork/chats after every turn.
+    // Without a folder, or when turned off, nothing is written.
     private persist(): void {
         const root = this.host.root();
         const history = this.session.history;
-        if (!this.saveChats || !root || !history.length && !this.session.work && !this.session.events.length) return;
+        if (
+            !this.saveChats ||
+            !root ||
+            (!history.length &&
+                !this.session.work &&
+                !this.session.events.length)
+        )
+            return;
         if (root !== this.chatRoot) {
-            // Switching folders in the middle of a conversation: the continuation is written as a new file in the new folder.
+            // Switching folders in the middle of a conversation: the
+            // continuation is written as a new file in the new folder.
             this.chatRoot = root;
             this.chatPath = null;
         }
         if (!this.chatPath) {
             this.chatCreated = nowStamp();
-            this.chatTitle = titleFrom(history.find(t => t.role === 'user')?.content ?? this.session.work?.goal ?? this.session.events[0]?.question ?? '');
+            this.chatTitle = titleFrom(
+                history.find((t) => t.role === 'user')?.content ??
+                    this.session.work?.goal ??
+                    this.session.events[0]?.question ??
+                    ''
+            );
         }
-        if (this.storage === 'agent-folder' && history.some(t => t.role === 'user')) this.chatTitle = titleFrom(history.find(t => t.role === 'user')!.content);
+        if (
+            this.storage === 'agent-folder' &&
+            history.some((t) => t.role === 'user')
+        )
+            this.chatTitle = titleFrom(
+                history.find((t) => t.role === 'user')!.content
+            );
         try {
             this.checkSave(root);
-            this.chatPath = saveChat(root, this.savedConversation(), this.chatPath, this.storage);
+            this.chatPath = saveChat(
+                root,
+                this.savedConversation(),
+                this.chatPath,
+                this.storage
+            );
             this.savedText = readTextFile(this.chatPath);
             saveChatLog(this.chatPath, this.session.trace.jsonl());
         } catch (e) {
@@ -227,20 +394,41 @@ export class ChatController {
     }
 
     private savedConversation(): SavedChat {
-        return { ...(this.storage === 'agent-folder' ? { layout: 'chat' as const } : {}), title: this.chatTitle, model: this.model,
-            created: this.chatCreated, turns: [...this.session.history], work: this.session.work, events: this.session.events };
+        return {
+            ...(this.storage === 'agent-folder'
+                ? { layout: 'chat' as const }
+                : {}),
+            title: this.chatTitle,
+            model: this.model,
+            created: this.chatCreated,
+            turns: [...this.session.history],
+            work: this.session.work,
+            events: this.session.events,
+        };
     }
 
     private checkSave(root: string): void {
         if (this.storage !== 'agent-folder' || !this.chatPath) return;
         folderPath(root, 'chats/' + platform().paths.basename(this.chatPath));
-        folderPath(root, 'chats/' + platform().paths.basename(chatLogPath(this.chatPath)));
+        folderPath(
+            root,
+            'chats/' + platform().paths.basename(chatLogPath(this.chatPath))
+        );
         const conflict = this.host.canSave?.(this.chatPath);
         if (conflict) throw Error(conflict);
-        if (this.savedText !== null && readTextFile(this.chatPath) !== this.savedText) throw Error('The conversation file changed outside this session. Its contents were not overwritten.');
+        if (
+            this.savedText !== null &&
+            readTextFile(this.chatPath) !== this.savedText
+        )
+            throw Error(
+                'The conversation file changed outside' +
+                    ' this session. Its contents were not' +
+                    ' overwritten.'
+            );
     }
 
-    // Continue a saved conversation: the next turns are appended to the same file. null = the file could not be read
+    // Continue a saved conversation: the next turns are appended to the same
+    // file. null = the file could not be read
     // (the current conversation is kept).
     open(path: string): SavedChat | null {
         const chat = loadChat(path);
@@ -248,7 +436,7 @@ export class ChatController {
         this.reset();
         this.session.restore(chat.turns);
         this.session.work = chat.work ?? null;
-        this.session.events.push(...chat.events ?? []);
+        this.session.events.push(...(chat.events ?? []));
         this.session.trace.restore(AgentTrace.parse(loadChatLog(path)));
         this.chatPath = path;
         this.savedText = readTextFile(path);
@@ -258,13 +446,15 @@ export class ChatController {
         return chat;
     }
 
-    // Saved conversations of the work folder, newest first; null = no work folder.
+    // Saved conversations of the work folder, newest first; null = no work
+    // folder.
     chats(): ChatSummary[] | null {
         const root = this.host.root();
         return root ? listChats(root, this.storage) : null;
     }
 
-    // Move a saved conversation to the Trash. Throws on failure. Deleting the one shown starts a new file on the next turn.
+    // Move a saved conversation to the Trash. Throws on failure. Deleting the
+    // one shown starts a new file on the next turn.
     deleteChat(path: string): void {
         deleteChat(path);
         if (path === this.chatPath) this.chatPath = null;
@@ -272,7 +462,8 @@ export class ChatController {
 
     // ---------- Context ----------
 
-    // A turn walks the folder again so it sees outside changes at once; the preview while typing uses the snapshot.
+    // A turn walks the folder again so it sees outside changes at once; the
+    // preview while typing uses the snapshot.
     private turnInput(question: string, freshness: Freshness): TurnInput {
         return {
             question,
@@ -288,6 +479,9 @@ export class ChatController {
 
     // The context that would be sent for `draft`, without sending anything.
     preview(draft: string): BuiltContext {
-        return buildContext({ ...this.turnInput(draft, 'cached'), recent: this.session.questions });
+        return buildContext({
+            ...this.turnInput(draft, 'cached'),
+            recent: this.session.questions,
+        });
     }
 }

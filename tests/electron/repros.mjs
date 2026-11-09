@@ -1,6 +1,9 @@
-// The repros kept as tests (tests/electron/repros/*.mwrepro.json, written by `npm run editor -- test-from`): each is
-// played again in a window in dev mode, with every check after every step (docs/design/debugger.md, section 10). A repro
-// of a bug that was fixed passes; one that fails again names the step and the check.
+// The repros kept as tests (tests/electron/repros/*.mwrepro.json, written by
+// `npm run editor -- test-from`): each is
+// played again in a window in dev mode, with every check after every step
+// (docs/design/debugger.md, section 10). A repro
+// of a bug that was fixed passes; one that fails again names the step and the
+// check.
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -10,46 +13,99 @@ import { fileURLToPath } from 'node:url';
 import { scratchFolder, launchApp, waitFor, stepper } from './support.mjs';
 
 const folder = fileURLToPath(new URL('./repros/', import.meta.url));
-const editorScript = fileURLToPath(new URL('../../scripts/editor.mjs', import.meta.url));
+const editorScript = fileURLToPath(
+    new URL('../../scripts/editor.mjs', import.meta.url)
+);
 const { scratch, notes } = scratchFolder('repros');
 const { steps, step } = stepper();
 let failed = false;
 
-const cli = (...args) => new Promise(resolve => {
-    execFile(process.execPath, [editorScript, ...args], { timeout: 120_000, maxBuffer: 16 << 20 }, (error, stdout, stderr) => {
-        const answer = stdout.trim() ? JSON.parse(stdout.trim().split('\n').at(-1)) : null;
-        resolve({ code: error ? error.code ?? 1 : 0, answer, stderr });
+const cli = (...args) =>
+    new Promise((resolve) => {
+        execFile(
+            process.execPath,
+            [editorScript, ...args],
+            { timeout: 120_000, maxBuffer: 16 << 20 },
+            (error, stdout, stderr) => {
+                const answer = stdout.trim()
+                    ? JSON.parse(stdout.trim().split('\n').at(-1))
+                    : null;
+                resolve({
+                    code: error ? (error.code ?? 1) : 0,
+                    answer,
+                    stderr,
+                });
+            }
+        );
     });
-});
 
 let files = [];
-try { files = readdirSync(folder).filter(f => f.endsWith('.mwrepro.json')).sort(); } catch { /* no folder: no repros yet */ }
+try {
+    files = readdirSync(folder)
+        .filter((f) => f.endsWith('.mwrepro.json'))
+        .sort();
+} catch {
+    /* no folder: no repros yet */
+}
 
 if (files.length) {
     writeFileSync(join(notes, 'ready.md'), '# Repro fixture\n');
-    const app = await launchApp({ scratch, notes, settings: { welcomed: true, home: false }, env: { MARKWORK_DEV: '1' } });
+    const app = await launchApp({
+        scratch,
+        notes,
+        settings: { welcomed: true, home: false },
+        env: { MARKWORK_DEV: '1' },
+    });
     try {
         const page = await app.firstWindow();
         await page.setViewportSize({ width: 1400, height: 900 });
-        // Inspector hello only proves the bridge is ready; opening a core-owned file also proves the app is connected.
-        await page.getByRole('treeitem', { name: /ready\.md/ }).click({ timeout: 30000 });
-        await page.locator('.text-editor:not([hidden]) .cm-content').waitFor({ timeout: 30000 });
+        // Inspector hello only proves the bridge is ready; opening a core-owned
+        // file also proves the app is connected.
+        await page
+            .getByRole('treeitem', { name: /ready\.md/ })
+            .click({ timeout: 30000 });
+        await page
+            .locator('.text-editor:not([hidden]) .cm-content')
+            .waitFor({ timeout: 30000 });
         const pid = ['--pid', String(await app.evaluate(() => process.pid))];
-        await waitFor(async () => (await cli(...pid, 'hello')).answer?.ready === true, 30000);
+        await waitFor(
+            async () => (await cli(...pid, 'hello')).answer?.ready === true,
+            30000
+        );
         for (const file of files) {
-            await step(`repro ${file.replace(/\.mwrepro\.json$/, '')}`, async () => {
-                const { code, answer, stderr } = await cli(...pid, 'replay', join(folder, file));
-                assert.ok(answer, stderr);
-                const why = answer.first ? `step ${answer.first.step}: ${answer.first.finding.check}: ${answer.first.finding.message}` : answer.result === 'differs' ? `the text came out ${JSON.stringify(answer.doc)}` : stderr;
-                assert.equal(answer.result, 'pass', why);
-                assert.equal(code, 0);
-            });
+            await step(
+                `repro ${file.replace(/\.mwrepro\.json$/, '')}`,
+                async () => {
+                    const { code, answer, stderr } = await cli(
+                        ...pid,
+                        'replay',
+                        join(folder, file)
+                    );
+                    assert.ok(answer, stderr);
+                    const why = answer.first
+                        ? `step ${answer.first.step}: ` +
+                            `${answer.first.finding.check}: ` +
+                            answer.first.finding.message
+                        : answer.result === 'differs'
+                          ? `the text came out ${JSON.stringify(answer.doc)}`
+                          : stderr;
+                    assert.equal(answer.result, 'pass', why);
+                    assert.equal(code, 0);
+                }
+            );
         }
     } catch {
         failed = true;
     } finally {
-        await Promise.race([app.close().catch(() => {}), new Promise(r => setTimeout(r, 5000))]);
-        try { app.process().kill(); } catch { /* already gone */ }
+        await Promise.race([
+            app.close().catch(() => {}),
+            new Promise((r) => setTimeout(r, 5000)),
+        ]);
+        try {
+            app.process().kill();
+        } catch {
+            /* already gone */
+        }
     }
 } else {
     steps.push('  – no repros in tests/electron/repros yet');
